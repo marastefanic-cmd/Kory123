@@ -66,6 +66,12 @@ Cold Snap resets, trinket lockout, Tinnitus, and Sated. Raid-called times (Blood
 anchors the search never moves. Planner-placed buffs always **complete their full duration before the
 fight ends** — no truncated windows. Baselines shown: no cooldowns, and "mash everything on cooldown".
 
+Two trust rules keep the plan readable: **Cold Snap materiality** — if burning Cold Snap wouldn't beat
+the best natural-cooldown plan by at least one effective cast, the planner holds it and says so — and
+**press price tags** — any activation deliberately offset from a neighboring press is tagged with what
+a single merged press would cost (e.g. "+133 dmg vs one press at 0:05"), so a scattered-looking second
+is always either justified with a number or merged away.
+
 Reproduces the community-consensus behaviors on its own: Icy Veins inside Bloodlust at 0 gear haste
 and shifted out past ~150–200 rating; no mid-fight BL+IV+Berserking triple-stack (but it will
 deliberately triple-stack the opener ramp, where casts are still longer than the GCD); the Serpent-Coil
@@ -83,17 +89,21 @@ your entered length as a sensitivity note, with the measured upside):
 | Unlock | Fight length |
 |---|---|
 | 2nd Mana Gem (Serpent-Coil) | 2:15 |
-| 2nd Icon / Skull / Drums | 2:30 |
+| 2nd Icon / Skull | 2:20 (first press at 0:00 sharp) |
+| 2nd Drums | 2:30 |
 | 2nd Berserking | 3:10 |
 | 2nd Arcane Power | 3:15 (~+2% overlay gain) |
 | 3rd Icy Veins (Cold Snap spent early) | 3:40 |
 | 3rd Mana Gem | 4:15 |
-| 3rd Icon / Skull / Drums | 4:30 |
-| 3rd Arcane Power / Berserking | ~6:15 |
+| 3rd Icon / Skull | 4:20 |
+| 3rd Drums | 4:30 |
+| 3rd Berserking | 6:10 |
+| 3rd Arcane Power | 6:15 |
 
 Verified by a 60s–600s optimizer sweep across three loadouts: every use appears at exactly its
 theoretical minimum length, total damage is monotone in fight length, and all schedules pass the
-cooldown/lockout/full-duration invariants.
+cooldown/lockout/full-duration invariants. The same cooldown math powers the in-app sensitivity
+notes ("if the kill runs to 2:20, a 2nd Icon fits").
 
 ## Validation
 
