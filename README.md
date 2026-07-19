@@ -44,11 +44,11 @@ shorter fight than last week's log so the final burn window isn't planned past t
 | Bloodlust | +30% cast speed | 40s | 10 min (Sated) | **Anniversary: raid-wide + Sated** — one per 10 min of a pull, resets on boss kill |
 | Icy Veins | +20% cast speed | 20s | 3 min | off-GCD; multiplicative |
 | Cold Snap | resets Icy Veins | — | 8 min | off-GCD, instant second IV |
-| Power Infusion | +20% cast speed | 15s | 3 min | priest external; **does not stack with Bloodlust** |
+| Power Infusion | +20% cast speed | 15s | 3 min | priest external; **does not stack with Bloodlust** (original 2.4.0 rule) |
 | Berserking (Troll) | +10% cast speed at full HP | 10s | 3 min | the "10% version" — scales to 30% only when badly hurt |
-| Drums of Battle | +80 haste rating | 30s | 2 min | party-wide; **Anniversary Tinnitus**: one drum buff per 2 min |
+| Drums of Battle | +80 haste rating | 30s | 2 min | party-wide; **Tinnitus** (TBC-Classic rule, kept on Anniversary): one drum buff per 2 min |
 | Skull of Gul'dan | +175 haste rating | 20s | 2 min | BT (Illidan), Phase 3; shares offensive-trinket lockout |
-| Mind Quickening Gem | +330 haste rating | 20s | 5 min | Classic Naxx trinket; shares offensive-trinket lockout with Skull |
+| Mind Quickening Gem | +330 haste rating | 20s | 5 min | Azuregos (Classic world boss); shares offensive-trinket lockout with Skull |
 | Ashtongue Talisman of Insight | 145 haste rating proc | 5s | none | 50% on spell crit, **no ICD**; per-cast up-probability from the last 5s of real casts, floor applied per proc state |
 | Arcane Power | +30% damage, +30% mana cost | 15s | 3 min | no shared CD with PoM/trinkets in TBC (that's WotLK) |
 | Serpent-Coil Braid | +225 spell dmg on Mana Gem use (+25% gem mana) | 15s | 2 min (gem) | SSC (Morogrim), Phase 2 — passive trinket, gem is off-GCD |
@@ -124,7 +124,7 @@ buffs and gear rating.
 
 Game data cross-checked against both [wowsims/tbc](https://github.com/wowsims/tbc) and the
 Anniversary-era [wowsims/tbc-new](https://github.com/wowsims/tbc-new) source (which natively encodes
-the Anniversary rules this app models: the 2-min Tinnitus drum debuff, the 10-min Sated gate on
-Bloodlust, Bloodlust/Power-Infusion haste non-stacking, the offensive-trinket shared lockout equal to
+the rules this app models: the 2-min Tinnitus drum debuff (TBC-Classic era, retained), the 10-min
+Sated gate on Bloodlust (Anniversary), Bloodlust/Power-Infusion haste non-stacking (original 2.4.0), the offensive-trinket shared lockout equal to
 the used buff's duration, and Ashtongue Talisman at 145 haste), plus Wowhead TBC tooltips and the
 community cast-time reference table.
