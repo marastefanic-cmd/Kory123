@@ -1227,11 +1227,21 @@ function readCfg() {
     const rows = [];
     state.phases.forEach((p, i) => {
       const from = parseLen(p.from), to = parseLen(p.to);
-      if (!isFinite(from) || !isFinite(to) || to <= from || from >= T) {
-        if ((p.from || "").trim() || (p.to || "").trim())
-          warnings.push(`Phase ${i + 1} (${p.type}): invalid time range “${p.from}–${p.to}” — ignored.`);
+      const label = `Phase ${i + 1} (${p.type})`;
+      if (!(p.from || "").trim() && !(p.to || "").trim()) return;
+      if (!isFinite(from) || !isFinite(to)) {
+        warnings.push(`${label}: couldn’t read “${p.from}–${p.to}” — use m:ss times.`);
         return;
       }
+      if (to <= from) {
+        warnings.push(`${label}: ends (${fmtT(to)}) before it starts (${fmtT(from)}) — ignored.`);
+        return;
+      }
+      if (from >= T) {
+        warnings.push(`${label}: starts at ${fmtT(from)} but the fight length is set to ${fmtT(T)} — increase the fight length if the fight runs longer.`);
+        return;
+      }
+      if (to > T) warnings.push(`${label}: clipped at the ${fmtT(T)} fight end — increase the fight length if the fight runs longer.`);
       rows.push({ type: p.type, from: Math.max(0, from), to: Math.min(T, to),
         mult: Math.min(10, Math.max(1, +p.mult || 2)), targets: Math.min(20, Math.max(1, p.targets | 0 || 4)) });
     });
