@@ -587,11 +587,26 @@ function simulate(schedule, cfg, collect) {
   const g = GAME;
   const crit = Math.min(1, Math.max(0, cfg.critPct / 100));
   const critFactor = 1 + crit * (g.CRIT_MULT - 1);
-  const tracks = [];
+  // Activations fire at real press opportunities only: the pull (t=0), a cast
+  // boundary (the "/cast Buff /cast Arcane Blast" macro on the next spam
+  // press), or any moment you aren't casting (intermissions). A scheduled
+  // time that lands mid-cast fires at the NEXT boundary, and cooldown chains
+  // (and the shared trinket lockout) run from the ACTUAL press moments, so
+  // slip carries forward instead of compressing gaps.
+  const evs = [];
   for (const key in schedule) {
     const def = BUFFS[key];
-    if (def && def.kind !== "proc" && schedule[key].length) tracks.push({ key, def, times: schedule[key] });
+    if (!def || def.kind === "proc" || !schedule[key].length) continue;
+    const sorted = schedule[key].slice().sort((a, b) => a - b);
+    for (let j = 0; j < sorted.length; j++) evs.push({ key, def, ts: sorted[j], gap: j > 0 ? sorted[j] - sorted[j - 1] : 0, fired: false });
   }
+  evs.sort((a, b) => a.ts - b.ts);
+  let evi = 0;
+  const lastEff = Object.create(null);
+  const active = []; // fired buff windows {key, def, start}
+  const actEff = collect ? {} : null;
+  let lastTrinket = null;
+  let prevCastEnd = 0;
   // Ashtongue Talisman: discrete 145-rating / 5s procs, 50% per spell crit,
   // no ICD. Modeled per cast as the probability the proc is CURRENTLY up,
   // derived from the actual casts of the last 5s — so procs cluster where
@@ -613,23 +628,41 @@ function simulate(schedule, cfg, collect) {
       if (seg.type === "intermission") { t = seg.end; continue; } // boss untargetable: wait it out
     }
     if (t - lastCastStart >= GAME.AB.DEBUFF_DUR) stacks = 0; // AB debuff fell off during the gap
+    // fire pending activations at this press opportunity: a scheduled time in
+    // [prevCastEnd, t) was a non-casting gap (press lands exactly there); a
+    // time inside the previous cast fires now, with this cast's press
+    for (let k2 = evi; k2 < evs.length; k2++) {
+      const e = evs[k2];
+      if (e.fired) continue;
+      if (e.ts > t) break;
+      let eff;
+      if (e.key === "bloodlust" || e.key === "powerInfusion" || e.key === "drums") {
+        eff = e.ts; // raid externals: someone ELSE presses these — they land exactly when called
+      } else {
+        let minStart = e.ts;
+        if (e.gap && lastEff[e.key] !== undefined) minStart = Math.max(minStart, lastEff[e.key] + e.gap);
+        if (lastTrinket && lastTrinket.key !== e.key && OFF_TRINKETS.includes(e.key)) minStart = Math.max(minStart, lastTrinket.end);
+        if (minStart > t) continue; // slipped past this boundary — try again later
+        eff = Math.min(t, Math.max(minStart, prevCastEnd));
+      }
+      e.fired = true;
+      active.push({ key: e.key, def: e.def, start: eff });
+      lastEff[e.key] = eff;
+      if (OFF_TRINKETS.includes(e.key)) lastTrinket = { key: e.key, end: eff + e.def.dur };
+      if (actEff) (actEff[e.key] = actEff[e.key] || []).push(eff);
+    }
+    while (evi < evs.length && evs[evi].fired) evi++;
     let rating = cfg.hasteRating;
     let mult = 1, dmgMult = 1, sp = cfg.sp;
     let blActive = false, piActive = false;
-    for (let i = 0; i < tracks.length; i++) {
-      const def = tracks[i].def, times = tracks[i].times;
-      for (let j = times.length - 1; j >= 0; j--) {
-        if (t >= times[j]) {
-          if (t < times[j] + def.dur) {
-            if (tracks[i].key === "powerInfusion") piActive = true; // resolved after loop (no stack with BL)
-            else if (def.kind === "mult") { mult *= def.value; if (tracks[i].key === "bloodlust") blActive = true; }
-            else if (def.kind === "rating") rating += def.value;
-            else if (def.kind === "dmg") dmgMult *= def.value;
-            else sp += def.value;
-          }
-          break;
-        }
-      }
+    for (let i = 0; i < active.length; i++) {
+      const w = active[i];
+      if (t >= w.start + w.def.dur) continue; // expired window
+      if (w.key === "powerInfusion") piActive = true; // resolved after loop (no stack with BL)
+      else if (w.def.kind === "mult") { mult *= w.def.value; if (w.key === "bloodlust") blActive = true; }
+      else if (w.def.kind === "rating") rating += w.def.value;
+      else if (w.def.kind === "dmg") dmgMult *= w.def.value;
+      else sp += w.def.value;
     }
     if (piActive && !blActive) mult *= BUFFS.powerInfusion.value; // PI is overridden while Bloodlust runs
     const multDn = mult * (1 + rating / (g.HASTE_RATING_PER_PCT * 100));
@@ -672,9 +705,10 @@ function simulate(schedule, cfg, collect) {
       recentT.push(t); recentNoQ.push(1 - qCast);
     }
     lastCastStart = t;
+    prevCastEnd = t + interval;
     t += interval;
   }
-  return { total, castCount, gcdCappedTime, casts, dps: total / cfg.T };
+  return { total, castCount, gcdCappedTime, casts, actEff, dps: total / cfg.T };
 }
 
 function trackRule(key, cfg) {
@@ -1711,7 +1745,8 @@ function renderTimeline(run) {
       sv += `<rect x="${PADL}" y="${ly}" width="${plotW}" height="${LANE_H}" fill="${col}" opacity="${(0.14 + atiUp * 0.5).toFixed(2)}" rx="3"/>`;
       sv += `<text x="${PADL + 8}" y="${ly + LANE_H / 2 + 4}" fill="${col}" font-size="11">~${(atiUp * 100).toFixed(0)}% avg uptime (+${atiR.toFixed(0)} rating avg)</text>`;
     } else {
-      for (const t of (best.s[k] || [])) {
+      const times = (run.optR.actEff && run.optR.actEff[k]) || best.s[k] || [];
+      for (const t of times) {
         const w = Math.max(2, (Math.min(def.dur, cfg.T - t) / cfg.T) * plotW);
         sv += `<rect x="${x(t).toFixed(1)}" y="${ly}" width="${w.toFixed(1)}" height="${LANE_H}" fill="${col}" rx="3"><title>${def.name} @ ${fmtT(t)}</title></rect>`;
       }
@@ -1744,7 +1779,7 @@ function hookTooltip(run, geo) {
     let s = geo.samples[0];
     for (const c of geo.samples) { if (c.t <= t) s = c; else break; }
     const active = LANE_ORDER.filter(k => cfg.enabled[k] && BUFFS[k].kind !== "proc" &&
-      (best.s[k] || []).some(a => t >= a && t < a + BUFFS[k].dur)).map(k => BUFFS[k].name);
+      (((run.optR.actEff && run.optR.actEff[k]) || best.s[k]) || []).some(a => t >= a && t < a + BUFFS[k].dur)).map(k => BUFFS[k].name);
     tip.innerHTML = `<b>${fmtT(t)}</b> · haste <b>+${s.pct.toFixed(1)}%</b>${s.capped ? ' · <span style="color:var(--warn)">GCD floor</span>' : ""}<br>` +
       (active.length ? active.join(", ") : "no on-use buffs");
     tip.style.display = "block";
@@ -1760,14 +1795,20 @@ function hookTooltip(run, geo) {
 /* schedule table: activations grouped into windows */
 function scheduleRows(run) {
   const { cfg, best, optR } = run;
+  // display the EFFECTIVE press moments (when the macro actually fires on a
+  // cast boundary), keeping the planner's intent time alongside for cd math
+  const eff = optR && optR.actEff;
   const acts = [];
-  for (const k in best.s) for (const t of best.s[k]) acts.push({ t, k });
+  for (const k in best.s) {
+    const intents = best.s[k].slice().sort((a, b) => a - b);
+    intents.forEach((ti, j) => acts.push({ t: eff && eff[k] && eff[k][j] !== undefined ? eff[k][j] : ti, intent: ti, k }));
+  }
   acts.sort((a, b) => a.t - b.t || LANE_ORDER.indexOf(a.k) - LANE_ORDER.indexOf(b.k));
   // annotate icy veins activations that need Cold Snap
   if (cfg.coldSnap && best.s.icyVeins) {
     let cdReady = 0, csReady = 0;
     for (const a of acts.filter(a => a.k === "icyVeins")) {
-      if (a.t >= cdReady) cdReady = a.t + BUFFS.icyVeins.cd;
+      if (a.t >= cdReady - 1e-6) cdReady = a.t + BUFFS.icyVeins.cd;
       else { a.coldSnap = true; csReady = a.t + GAME.COLD_SNAP_CD; cdReady = a.t + BUFFS.icyVeins.cd; }
     }
   }
@@ -1974,7 +2015,7 @@ function renderAssumptions({ cfg }) {
     <li>The opener is special: during the 0→3 stack ramp, AB casts are longer than the GCD, so haste that would be “wasted” at 3 stacks still compresses the ramp — the planner may deliberately triple-stack haste at the pull (especially inside Arcane Power) and keep those same buffs apart mid-fight.</li>
     <li>Complicated fights: intermissions score zero damage (cooldowns and buff durations keep ticking — the planner holds cooldowns to recover through downtime, and your AB stacks drop after the 8s debuff expires); Burn phases multiply Arcane Blast damage; AoE phases switch to Arcane Explosion spam — instant, GCD-bound (haste pays to the 1.0s floor even without stacks) and damage scaling with target count. Phases apply per cast start.</li>
     <li>Mana is not simulated — the planner assumes you can afford to chain-cast through the windows it picks (gems, potions, Evocation are yours to manage).</li>
-    <li>Buffs snapshot at cast start; activation clicks are assumed off-GCD / macroed into the next cast. Crits count as 182% — 2/2 Spell Power with a Chaotic Skyfire Diamond. (No toggle for the meta gem: a constant crit-damage factor scales every schedule equally, so it cannot change which overlay wins — only things that vary during the fight can.)</li>
+    <li>Buffs snapshot at cast start, and activations only fire at real press opportunities: with the pull, macroed into the next cast ("/cast Berserking /cast Arcane Blast" on the spam press as the previous cast ends), or freely while not casting (intermissions). A planned time that lands mid-cast fires at the next cast boundary, and cooldowns run from the actual press. Displayed times are the real press moments. Crits count as 182% — 2/2 Spell Power with a Chaotic Skyfire Diamond. (No toggle for the meta gem: a constant crit-damage factor scales every schedule equally, so it cannot change which overlay wins — only things that vary during the fight can.)</li>
   </ul>`;
 }
 
@@ -2074,7 +2115,7 @@ function pressPlan(run) {
     if (r && Math.round(a.t) === Math.round(r.t)) r.items.push(a);
     else rows.push({ t: a.t, items: [a] });
   }
-  const isPinned = a => (cfg.fixed[a.k] || []).some(ft => Math.abs(ft - a.t) < 0.5);
+  const isPinned = a => (cfg.fixed[a.k] || []).some(ft => Math.abs(ft - a.intent) < 0.5);
   const sig = JSON.stringify(best.s);
   for (const r of rows) {
     const mobile = r.items.filter(a => !isPinned(a));
@@ -2083,21 +2124,32 @@ function pressPlan(run) {
       .sort((x, y) => Math.abs(x.t - r.t) - Math.abs(y.t - r.t))[0];
     if (!nb) continue;
     const cand = cloneS(best.s);
+    let changed = false;
     for (const a of mobile) {
-      const idx = cand[a.k].findIndex(t => Math.abs(t - a.t) < 1e-6);
-      if (idx >= 0) cand[a.k][idx] = Math.round(nb.t);
+      const idx = cand[a.k].findIndex(t => Math.abs(t - a.intent) < 1e-6);
+      if (idx >= 0 && Math.abs(cand[a.k][idx] - Math.round(nb.t)) > 1e-9) { cand[a.k][idx] = Math.round(nb.t); changed = true; }
     }
+    if (!changed) continue; // same press intent — the row only differs by boundary deferral
     const rep = repair(cand, cfg);
     if (JSON.stringify(rep) === sig) { r.tag = `locked here by its cooldown`; continue; }
     const delta = best.val - simulate(rep, cfg).total;
     if (delta > 0.5) r.tag = `deliberate: +${Math.round(delta)} dmg vs one press at ${fmtT(nb.t)}`;
+  }
+  // a press whose intent sits on a raid call but fires on the next cast gets
+  // the practical instruction instead of a time mystery
+  for (const r of rows) {
+    if (r.tag) continue;
+    const iMin = Math.min(...r.items.map(a => a.intent));
+    if (r.t - iMin <= 0.7) continue;
+    const nbPin = rows.find(o => o !== r && o.items.some(isPinned) && Math.abs(o.t - iMin) <= 1.2);
+    if (nbPin) r.tag = `press with ${BUFFS[nbPin.items[0].k].name} — it fires on your next AB`;
   }
   // annotate presses whose window is clipped by the kill, with what they earn
   for (const r of rows) {
     const clip = r.items.find(a => a.t > cfg.T - BUFFS[a.k].dur + 1e-9);
     if (!clip) continue;
     const cand = cloneS(best.s);
-    const idx = cand[clip.k].findIndex(t => Math.abs(t - clip.t) < 1e-6);
+    const idx = cand[clip.k].findIndex(t => Math.abs(t - clip.intent) < 1e-6);
     if (idx < 0) continue;
     cand[clip.k].splice(idx, 1);
     const worth = Math.round(best.val - simulate(repair(cand, cfg), cfg).total);

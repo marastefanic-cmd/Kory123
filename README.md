@@ -60,7 +60,11 @@ duration** (20s), while the used trinket takes its own full cooldown.
 ## The optimizer
 
 Cast-by-cast simulation of AB spam (stacking debuff, hasted GCD with floor, buff snapshots at cast
-start) scored over the whole fight, then multi-start local search over activation times: single shifts,
+start) scored over the whole fight. Activations fire only at real press opportunities — with the pull,
+macroed into the next cast (the "/cast Buff /cast Arcane Blast" spam press), or freely while not
+casting (intermissions); a planned time that lands mid-cast fires at the next cast boundary, and
+cooldowns run from the actual press moments, which is what the schedule displays. On top of that,
+multi-start local search over activation times: single shifts,
 block shifts, and re-adding dropped uses, with a deterministic repair pass that enforces cooldowns,
 Cold Snap resets, trinket lockout, Tinnitus, and Sated. Raid-called times (Bloodlust / Drums / PI) are
 anchors the search never moves. Full durations are preferred — the sim slides a press earlier whenever
