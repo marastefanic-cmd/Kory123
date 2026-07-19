@@ -1250,6 +1250,38 @@ function optimizeAsync(cfg, starts, onProgress) {
               s = rep; val = Math.max(val, r1.total); merged = true; break outerMerge;
             }
           }
+          // downtime slide: a press inside an intermission is worth the same
+          // anywhere in the downtime — slide it to the phase start so it can
+          // join the press that opens the next phase. Tried plain, and with
+          // the same buff's next use pulled back-to-back (a slid window may
+          // need its successor re-chained to keep coverage seamless).
+          if (!merged && cfg.segments) {
+            outerSlide:
+            for (const [sec, movers] of press) {
+              const seg = cfg.segments.find(sg => sg.type === "intermission" && sec >= sg.start && sec < sg.end);
+              if (!seg) continue;
+              const to = Math.round(seg.end);
+              if (to === sec) continue;
+              for (const tighten of [false, true]) {
+                const cand = cloneS(s);
+                for (const m of movers) {
+                  cand[m.key][m.i2] = to;
+                  if (tighten) {
+                    const dur = BUFFS[m.key].dur;
+                    let nextIdx = -1, nextT = Infinity;
+                    cand[m.key].forEach((tt, j) => { if (j !== m.i2 && tt > sec && tt < nextT) { nextT = tt; nextIdx = j; } });
+                    if (nextIdx >= 0 && nextT > to + dur) cand[m.key][nextIdx] = to + dur;
+                  }
+                }
+                const rep = repair(cand, cfg);
+                if (JSON.stringify(rep) === JSON.stringify(s)) continue;
+                const r1 = simulate(rep, cfg).total;
+                if (r1 < val - EPS) continue;
+                if (clipOf(rep) > clipOf(s) + 1e-9) continue;
+                s = rep; val = Math.max(val, r1); merged = true; break outerSlide;
+              }
+            }
+          }
           if (!merged) break;
         }
         // A ready cooldown near the kill is always worth pressing — clipped
