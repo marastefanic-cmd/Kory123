@@ -698,6 +698,44 @@ function optimizeAsync(cfg, starts, onProgress) {
         // schedule — integer moves keep it integer — and score THAT.
         const snapped = repair(Object.fromEntries(Object.entries(best.s).map(([k, ts]) => [k, ts.map(Math.round)])), cfg);
         best = polish(snapped, cfg);
+        // Robustness tie-break: among equal-damage plans, a damage active
+        // (AP / gem / Icon) started LATER sits deeper in the stacked-haste
+        // window and doesn't depend on a perfectly executed ramp to catch
+        // its casts — so push each one as late as damage-neutrality allows.
+        // "You know the fight length — you won't get it back, so don't rush it."
+        let s = best.s, val = best.val;
+        for (let round = 0; round < 6; round++) {
+          // damage actives that overlap move as one cluster — splitting them
+          // costs the AP × (+spellpower) multiplication overlap
+          const acts = [];
+          for (const key in s) {
+            if (cfg.fixed[key]) continue;
+            const kind = BUFFS[key].kind;
+            if (kind !== "dmg" && kind !== "sp") continue;
+            s[key].forEach((t, i2) => acts.push({ key, i2, t }));
+          }
+          if (!acts.length) break;
+          acts.sort((a, b) => a.t - b.t);
+          const clusters = [];
+          for (const a of acts) {
+            const c = clusters[clusters.length - 1];
+            if (c && a.t - c[c.length - 1].t <= 8) c.push(a); else clusters.push([a]);
+          }
+          let moved = false;
+          for (const c of clusters.reverse()) {
+            let jump = null;
+            for (let d = 1; d <= 30; d++) {
+              const cand = cloneS(s);
+              for (const m of c) cand[m.key][m.i2] += d;
+              const rep = repair(cand, cfg);
+              const v = simulate(rep, cfg).total;
+              if (v >= val - 0.5) jump = { rep, v }; // latest damage-neutral spot wins
+            }
+            if (jump) { s = jump.rep; val = Math.max(val, jump.v); moved = true; break; }
+          }
+          if (!moved) break;
+        }
+        best = { s, val };
         resolve(best); return;
       }
       const r = polish(seeds[i], cfg);
