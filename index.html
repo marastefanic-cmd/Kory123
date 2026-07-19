@@ -511,7 +511,7 @@ const BUFFS = {
   ati:           { name: "Ashtongue Talisman",   kind: "proc",   value: 145,  dur: 5,  cd: 0,   color: "var(--c-ati)",         stat: "145 haste proc on crit", src: "BT rep, Phase 3" },
   skull:         { name: "Skull of Gul’dan",     kind: "rating", value: 175,  dur: 20, cd: 120, color: "var(--c-skull)",       stat: "+175 haste · 20s · 2m", src: "Illidan, Phase 3" },
   arcanePower:   { name: "Arcane Power",         kind: "dmg",    value: 1.30, dur: 15, cd: 180, color: "var(--c-arcanepower)", stat: "+30% dmg · 15s · 3m" },
-  scb:           { name: "Serpent-Coil Braid",   kind: "sp",     value: 225,  dur: 15, cd: 120, color: "var(--c-scb)",         stat: "+225 dmg on gem · 15s", src: "Morogrim, Phase 2" },
+  scb:           { name: "Serpent-Coil Braid",   kind: "sp",     value: 225,  dur: 15, cd: 120, color: "var(--c-scb)",         stat: "+225 dmg on gem · 3 charges", src: "Morogrim, Phase 2 · 2m gem cd" },
   berserking:    { name: "Berserking",           kind: "mult",   value: 1.10, dur: 10, cd: 180, color: "var(--c-berserking)",  stat: "+10% haste · 10s · 3m", src: "Troll racial" },
   mqg:           { name: "Mind Quickening Gem",  kind: "rating", value: 330,  dur: 20, cd: 300, color: "var(--c-mqg)",         stat: "+330 haste · 20s · 5m", src: "Classic Azuregos" },
   powerInfusion: { name: "Power Infusion",       kind: "mult",   value: 1.20, dur: 15, cd: 180, color: "var(--c-pi)",          stat: "+20% haste · 15s", src: "priest" },
@@ -626,6 +626,8 @@ function simulate(schedule, cfg, collect) {
 
 function trackRule(key, cfg) {
   const def = BUFFS[key];
+  // Mana Emerald: 3 charges, conjured pre-combat (re-conjuring mid-fight isn't worth the mana)
+  if (key === "scb") return { sep: def.cd, maxUses: 3 };
   // Anniversary Bloodlust: raid-wide + Sated — one lust per 10 min within a pull
   return { sep: def.cd, maxUses: Infinity };
 }
@@ -982,6 +984,7 @@ const PIN_LABEL = {
   scb: "Mana Emerald at",
 };
 const PIN_HINT = {
+  scb: "3 charges per fight — conjured pre-combat.",
   bloodlust: "Raid-wide + Sated: one per 10 min of a pull.",
   drums: "Tinnitus: one drum buff per 2 min.",
   powerInfusion: "Doesn’t stack with Bloodlust.",
@@ -1197,9 +1200,13 @@ function readCfg() {
     const name = BUFFS[key].name;
     const { times, bad } = parseTimeList(raw, T);
     if (bad.length) warnings.push(`${name}: ignored “${bad.join("”, “")}” — not a valid time inside the fight.`);
-    const { eff, dropped } = key === "icyVeins"
+    let { eff, dropped } = key === "icyVeins"
       ? ivPinFilter(times, coldSnap)
       : sepFilter(times, BUFFS[key].cd);
+    if (key === "scb" && eff.length > 3) {
+      warnings.push(`${name}: the Mana Emerald has 3 charges — pins after ${fmtT(eff[2])} ignored.`);
+      eff = eff.slice(0, 3);
+    }
     if (dropped.length) warnings.push(`${name}: ignored ${dropped.map(fmtT).join(", ")} — ${key === "bloodlust" ? "Sated needs" : key === "drums" ? "Tinnitus needs" : "its cooldown needs"} ${fmtT(BUFFS[key].cd)} between uses${key === "icyVeins" ? (coldSnap ? " (Cold Snap already spent)" : " (no Cold Snap taken)") : ""}.`);
     if (eff.length) fixed[key] = eff;
     else warnings.push(`${name}: no usable times entered — the planner will place it instead.`);
@@ -1544,7 +1551,8 @@ function unlockThresholds(cfg) {
         prevEnd = start + dur;
       }
     } else {
-      for (let n = 0; n < 8; n++) ends.push(n * cd + dur);
+      const maxN = key === "scb" ? 3 : 8; // 3 gem charges per fight
+      for (let n = 0; n < maxN; n++) ends.push(n * cd + dur);
     }
     ends.forEach((e, i) => { if (i > 0) out.push({ T: e, key, name, uses: i + 1 }); });
   }
@@ -1625,7 +1633,7 @@ function renderAssumptions({ cfg }) {
     <li>Rotation: continuous Arcane Blast spam; the AB debuff (−1/3s base cast, +75% mana per stack, max 3) is at 3 stacks after the opener. Cast time = (2.5 − 1/3·stacks) / total haste; next cast starts at max(cast time, hasted GCD), GCD floor 1.0s.</li>
     <li>Haste stacking: all haste rating adds first (${GAME.HASTE_RATING_PER_PCT} rating = 1% at 70), then multiplies with each %-speed buff: (1+rating%) × 1.30<small>BL</small> × 1.20<small>IV</small> × 1.10<small>Zerk</small>.</li>
     <li>Ashtongue Talisman is tracked per cast: the chance the 145-haste proc is up right now comes from your actual casts in the last 5s (procs cluster inside fast windows), and the GCD floor is applied separately to the proc-up and proc-down cases before averaging — not smeared into a flat average.</li>
-    <li>Serpent-Coil Braid assumes a Mana Emerald is available each use (2-min gem cooldown).</li>
+    <li>Serpent-Coil Braid: the Mana Emerald is conjured pre-combat with 3 charges — at most 3 gem windows per fight, 2 minutes apart (re-conjuring mid-fight isn’t modeled; not worth the mana).</li>
     <li>The objective is equivalent to maximizing <em>effective casts</em>: each cast counts 1.0, ×1.3 under Arcane Power, ×(720+0.714·(SP+bonus))/(720+0.714·SP) under a spellpower active (the bonus flows through the spell coefficient, so +225 ≈ ×1.10 at 1150 SP, not ×1.20), and ×N in Burn phases. Crit multiplies every cast equally and cancels out. AoE casts are counted in the same plain-AB unit.</li>
     <li>Going past the 50% GCD floor is not treated as a mistake — the planner simulates actual casts, so it will happily overcap a window (especially under Arcane Power) when that beats staying under the line. The floor line just marks where extra haste stops adding casts.</li>
     <li>Any pinned times are hard anchors: a buff with times entered fires at exactly those times (validated against its cooldown, Sated/Tinnitus, Cold Snap, and the trinket lockout) and the planner schedules everything unpinned around them. Blank = the planner owns that buff.</li>
