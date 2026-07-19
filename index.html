@@ -640,7 +640,7 @@ function simulate(schedule, cfg, collect) {
         eff = e.ts; // raid externals: someone ELSE presses these — they land exactly when called
       } else {
         let minStart = e.ts;
-        if (e.gap && lastEff[e.key] !== undefined) minStart = Math.max(minStart, lastEff[e.key] + e.gap);
+        if (e.gap && lastEff[e.key] !== undefined) minStart = Math.max(minStart, lastEff[e.key] + Math.min(e.gap, e.def.cd)); // slip carries the chain, but never tighter than the real cooldown
         if (lastTrinket && lastTrinket.key !== e.key && OFF_TRINKETS.includes(e.key)) minStart = Math.max(minStart, lastTrinket.end);
         if (minStart > t) continue; // slipped past this boundary — try again later
         eff = Math.min(t, Math.max(minStart, prevCastEnd));
@@ -704,8 +704,11 @@ function simulate(schedule, cfg, collect) {
       const qCast = isAoe ? 1 - Math.pow(1 - crit * ATI.procChance, seg.targets) : crit * ATI.procChance;
       recentT.push(t); recentNoQ.push(1 - qCast);
     }
-    lastCastStart = t;
-    prevCastEnd = t + interval;
+    if (!isAoe) lastCastStart = t; // AE casts don't refresh the AB debuff — stacks drop 8s after the last AB
+    // casting blocks presses only while the cast is in flight; the GCD-idle
+    // remainder (and all of an instant AE's interval) is free press time
+    const castLen = pUp * up.cast + (1 - pUp) * dn.cast;
+    prevCastEnd = t + Math.min(interval, castLen);
     t += interval;
   }
   return { total, castCount, gcdCappedTime, casts, actEff, dps: total / cfg.T };
@@ -913,14 +916,19 @@ function optimizeAsync(cfg, starts, onProgress) {
     // with every planner-controlled track requesting its uses at the window
     if (cfg.segments) {
       for (const seg of cfg.segments) {
-        if (seg.type === "normal" || seg.type === "intermission") continue;
+        if (seg.type === "normal") continue;
+        // burn/AoE windows anchor at their start; intermissions anchor at their
+        // EXIT — the burn resumes there, and plans that hold cooldowns through
+        // the downtime live in a basin the plain seeds miss
+        const anchor = seg.type === "intermission" ? seg.end : seg.start;
+        if (anchor >= cfg.T) continue;
         const s = {};
         for (const key of scheduledKeys(cfg)) {
           if (cfg.fixed[key]) { s[key] = cfg.fixed[key].slice(); continue; }
-          s[key] = Array.from({ length: Math.min(maxUses(key, cfg), 64) }, () => seg.start);
+          s[key] = Array.from({ length: Math.min(maxUses(key, cfg), 64) }, () => anchor);
         }
         seeds.push(repair(s, cfg));
-        if (seeds.length >= starts + 4) break;
+        if (seeds.length >= starts + 8) break;
       }
     }
     // pinned raid calls (Bloodlust / Drums / PI times) are magnets too: seed a
@@ -966,7 +974,10 @@ function optimizeAsync(cfg, starts, onProgress) {
         {
           const anchors = new Set([0]);
           for (const k2 in cfg.fixed) for (const t of cfg.fixed[k2]) anchors.add(Math.round(t));
-          if (cfg.segments) for (const seg of cfg.segments) if (seg.type === "burn" || seg.type === "aoe") anchors.add(Math.round(seg.start));
+          if (cfg.segments) for (const seg of cfg.segments) {
+            if (seg.type === "burn" || seg.type === "aoe") anchors.add(Math.round(seg.start));
+            if (seg.type === "intermission" && seg.end < cfg.T) anchors.add(Math.round(seg.end));
+          }
           for (let round2 = 0; round2 < 2; round2++) {
             let improved2 = false;
             for (const key in s) {
@@ -985,6 +996,15 @@ function optimizeAsync(cfg, starts, onProgress) {
               const prev = n >= 2 ? s[key][n - 2] : -Infinity;
               for (const t of [Math.max(0, cfg.T - def.dur), Math.round(prev + def.cd)]) {
                 if (t >= 0 && isFinite(t)) cands.push([...s[key].slice(0, n - 1), t]);
+              }
+              // "save the last use for X": natural chain from the pull for the
+              // first n−1 uses, last use at each anchor (a Cold Snap legalizes
+              // one tight Icy Veins gap; repair drops anything illegal)
+              for (const a0 of anchors) {
+                const chain = [];
+                for (let t2 = 0, m = 0; m < n - 1 && t2 <= cfg.T - 1; m++, t2 += Math.max(def.cd, def.dur)) chain.push(t2);
+                chain.push(a0);
+                cands.push(chain);
               }
               for (const c2 of cands) {
                 const cand = cloneS(s);
@@ -1288,6 +1308,16 @@ function optimizeAsync(cfg, starts, onProgress) {
         // final windows are kept whenever they add damage; the press plan tags
         // each one with its real uptime and worth.
         const castVal = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + (cfg.critPct / 100) * (GAME.CRIT_MULT - 1));
+        // drop planner-placed presses that can never fire (no cast boundary
+        // reaches their intent before the kill) — zero value, dead instruction
+        {
+          const chk = simulate(s, cfg, true);
+          for (const key in s) {
+            if (cfg.fixed[key]) continue;
+            const fired = (chk.actEff && chk.actEff[key]) ? chk.actEff[key].length : 0;
+            if (fired < s[key].length) s[key] = s[key].slice().sort((a, b) => a - b).slice(0, fired);
+          }
+        }
         best = { s, val };
         // ——— Cold Snap materiality: an 8-min cooldown is only worth burning if it
         // beats the best natural-cooldown plan by at least one effective cast.
@@ -1666,7 +1696,8 @@ el("btn-run").addEventListener("click", async () => {
   const naive = naiveSchedule(cfg);
   const naiveR = simulate(naive, cfg);
   const starts = 14;
-  const best = await optimizeAsync(cfg, starts, p => bar.style.width = (p * 100).toFixed(0) + "%");
+  let pMax = 0; // the Cold Snap dual-run remaps progress — never let the bar move backwards
+  const best = await optimizeAsync(cfg, starts, p => { pMax = Math.max(pMax, p); bar.style.width = (pMax * 100).toFixed(0) + "%"; });
   const optR = simulate(best.s, cfg, true);
   lastRun = { cfg, baseline, naive, naiveR, best, optR };
   render(lastRun);
@@ -1690,6 +1721,10 @@ function render(run) {
 }
 function renderTiles({ cfg, baseline, naiveR, optR }) {
   const tiles = el("tiles"); tiles.hidden = false;
+  if (!optR.castCount) {
+    tiles.innerHTML = `<div class="tile"><div class="k">No casting time</div><div class="v">0<small> casts — check the phase rows: downtime covers the whole fight</small></div></div>`;
+    return;
+  }
   const gain = 100 * (optR.total / baseline.total - 1);
   const vsNaive = 100 * (optR.total / naiveR.total - 1);
   const capPct = 100 * optR.gcdCappedTime / cfg.T;
@@ -1808,6 +1843,7 @@ function hookTooltip(run, geo) {
     const px = e.clientX - r.left;
     if (px < geo.PADL || px > geo.W - geo.PADR) { tip.style.display = "none"; return; }
     const t = (px - geo.PADL) / (geo.W - geo.PADL - geo.PADR) * cfg.T;
+    if (!geo.samples.length) { tip.style.display = "none"; return; }
     let s = geo.samples[0];
     for (const c of geo.samples) { if (c.t <= t) s = c; else break; }
     const active = LANE_ORDER.filter(k => cfg.enabled[k] && BUFFS[k].kind !== "proc" &&
@@ -1957,6 +1993,7 @@ function unlockThresholds(cfg) {
   return out.sort((a, b) => a.T - b.T);
 }
 function ordinal(n) { return n === 2 ? "2nd" : n === 3 ? "3rd" : n + "th"; }
+renderSensitivity.seq = 0;
 function renderSensitivity(run) {
   const { cfg } = run;
   const host = el("sense");
@@ -1985,10 +2022,12 @@ function renderSensitivity(run) {
   host.innerHTML = lines.join("");
   // quantify the upside in the background with a real optimization at T2
   if (groupTs.length) {
+    const tok = ++renderSensitivity.seq; // stale-result guard: a newer run wins
     const t2 = groupTs[groupTs.length - 1];
     const cfg2 = { ...cfg, T: t2, fixed: { ...cfg.fixed } };
     const curGain = run.optR.total / run.baseline.total - 1;
     optimizeAsync(cfg2, 10, () => {}).then(b2 => {
+      if (tok !== renderSensitivity.seq) return;
       const base2 = simulate({}, cfg2).total;
       const d = (b2.val / base2 - 1 - curGain) * 100;
       const span = el("sense-gain");
@@ -2046,7 +2085,7 @@ function renderAssumptions({ cfg }) {
     <li>Rotation is modeled as continuous AB spam. Real play conserves (AB×3 + Frostbolt filler) between windows — that changes absolute DPS, not which overlay wins, so the schedule stands either way.</li>
     <li>The opener is special: during the 0→3 stack ramp, AB casts are longer than the GCD, so haste that would be “wasted” at 3 stacks still compresses the ramp — the planner may deliberately triple-stack haste at the pull (especially inside Arcane Power) and keep those same buffs apart mid-fight.</li>
     <li>Complicated fights: intermissions score zero damage (cooldowns and buff durations keep ticking — the planner holds cooldowns to recover through downtime, and your AB stacks drop after the 8s debuff expires); Burn phases multiply Arcane Blast damage; AoE phases switch to Arcane Explosion spam — instant, GCD-bound (haste pays to the 1.0s floor even without stacks) and damage scaling with target count. Phases apply per cast start.</li>
-    <li>Mana is not simulated — the planner assumes you can afford to chain-cast through the windows it picks (gems, potions, Evocation are yours to manage).</li>
+    <li>Mana is not simulated — the planner assumes you can afford to chain-cast through the windows it picks (gems, potions, Evocation are yours to manage). Treat late-fight Arcane Power and gem placements with care on mana-tight fights: AP's +30% cost and the gem's mana role are outside the model.</li>
     <li>Buffs snapshot at cast start, and activations only fire at real press opportunities: with the pull, macroed into the next cast ("/cast Berserking /cast Arcane Blast" on the spam press as the previous cast ends), or freely while not casting (intermissions). A planned time that lands mid-cast fires at the next cast boundary, and cooldowns run from the actual press. Displayed times are the real press moments. Crits count as 182% — 2/2 Spell Power with a Chaotic Skyfire Diamond. (No toggle for the meta gem: a constant crit-damage factor scales every schedule equally, so it cannot change which overlay wins — only things that vary during the fight can.)</li>
   </ul>`;
 }
@@ -2158,8 +2197,15 @@ function pressPlan(run) {
     const cand = cloneS(best.s);
     let changed = false;
     for (const a of mobile) {
-      const idx = cand[a.k].findIndex(t => Math.abs(t - a.intent) < 1e-6);
-      if (idx >= 0 && Math.abs(cand[a.k][idx] - Math.round(nb.t)) > 1e-9) { cand[a.k][idx] = Math.round(nb.t); changed = true; }
+      const arr = cand[a.k];
+      const idx = arr.findIndex(t => Math.abs(t - a.intent) < 1e-6);
+      if (idx < 0) continue;
+      const d = Math.round(nb.t) - arr[idx];
+      if (Math.abs(d) < 1e-9) continue;
+      // shift the press AND its same-buff followers, so the price reflects the
+      // press itself rather than dragging its whole cooldown chain off-beat
+      for (let j = idx; j < arr.length; j++) arr[j] += d;
+      changed = true;
     }
     if (!changed) continue; // same press intent — the row only differs by boundary deferral
     const rep = repair(cand, cfg);
@@ -2316,7 +2362,7 @@ function updateSaveUI() {
   const chip = document.querySelector(".pchip.active");
   if (chip) {
     chip.classList.toggle("dirty", presetDirty);
-    chip.title = presetDirty ? `“${activePreset}” has unsaved changes — Update saves them` : `Load ${esc(activePreset)}`;
+    chip.title = presetDirty ? `“${activePreset}” has unsaved changes — Update saves them` : `Load ${activePreset}`;
   }
   const btn = el("preset-save");
   if (btn) btn.textContent = activePreset && presetDirty && !el("preset-name").value.trim() ? "Update" : "Save";
