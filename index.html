@@ -214,18 +214,37 @@
   .progress.busy { display: block; }
   .progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.15s; }
 
-  .presetrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hairline); }
-  .presetrow select { flex: 100%; }
-  .presetrow select {
-    flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--grid);
-    border-radius: 6px; color: var(--ink); font-size: 13px; padding: 6px 8px;
+  .preset-strip {
+    display: flex; align-items: center; flex-wrap: wrap; gap: 8px;
+    padding-bottom: 14px; margin-bottom: 16px;
+    border-bottom: 1px solid var(--hairline);
   }
-  .presetrow input { flex: 1; min-width: 0; font-size: 13px; padding: 6px 8px; }
-  .presetrow button {
+  .preset-strip .pslab {
+    font-family: var(--font-display); font-size: 13px; font-weight: 600;
+    color: var(--gold); letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .pchips { display: flex; flex-wrap: wrap; gap: 6px; }
+  .pchip {
+    display: inline-flex; align-items: center; gap: 2px;
+    background: var(--panel); border: 1px solid var(--grid); border-radius: 999px;
+    padding: 4px 6px 4px 13px; font-size: 13px; color: var(--ink); cursor: pointer;
+  }
+  .pchip:hover { border-color: var(--accent); }
+  .pchip.active { border-color: var(--gold-dim); background: color-mix(in srgb, var(--gold) 9%, var(--panel)); }
+  .pchip .pdel { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0 5px; line-height: 1; }
+  .pchip .pdel:hover { color: var(--warn); }
+  .pchips .pnone { color: var(--muted); font-size: 12.5px; }
+  .psave { display: flex; gap: 6px; margin-left: auto; }
+  .psave input { width: 130px; font-size: 13px; padding: 5px 9px; }
+  .psave button {
     background: var(--panel); border: 1px solid var(--grid); color: var(--ink-2);
-    border-radius: 6px; font-size: 13px; padding: 6px 10px; cursor: pointer; white-space: nowrap;
+    border-radius: 6px; font-size: 13px; padding: 5px 12px; cursor: pointer;
   }
-  .presetrow button:hover { color: var(--ink); border-color: var(--accent); }
+  .psave button:hover { color: var(--ink); border-color: var(--accent); }
+  .phasecol h2 label.use { display: flex; align-items: center; gap: 8px; cursor: pointer; color: var(--gold); text-transform: uppercase; }
+  .phasecol h2 label.use input { accent-color: var(--accent); width: 15px; height: 15px; }
+  .phasecol:not(.on) #phase-editor { opacity: 0.45; }
+  .scol h2.stacked { margin-top: 14px; }
 
   /* ————— results ————— */
   .results { display: flex; flex-direction: column; gap: 20px; scroll-margin-top: 12px; }
@@ -354,6 +373,14 @@
   </header>
 
   <section class="setup" id="setup">
+    <div class="preset-strip" id="preset-strip">
+      <span class="pslab">Boss presets</span>
+      <span class="pchips" id="preset-chips"></span>
+      <span class="psave">
+        <input id="preset-name" type="text" placeholder="Save as…" aria-label="Preset name">
+        <button id="preset-save" title="Save the current setup under this name">Save</button>
+      </span>
+    </div>
     <div class="setup-grid">
       <div class="scol">
         <h2>Fight</h2>
@@ -380,25 +407,25 @@
           </div>
         </div>
         <span class="hint">Damage model weighs haste vs. Arcane Power; crit drives Ashtongue uptime.</span>
-        <div class="presetrow" id="presetrow">
-          <select id="preset-sel" aria-label="Boss presets"><option value="">Boss presets…</option></select>
-          <input id="preset-name" type="text" placeholder="Boss name" aria-label="Preset name">
-          <button id="preset-save" title="Save current setup under this name">Save</button>
-          <button id="preset-del" title="Delete the selected preset">✕</button>
-        </div>
-        <label class="check complicated"><input id="ck-phases" type="checkbox"> Complicated fight — phases / intermissions / AoE</label>
       </div>
 
-      <div class="scol"><h2>Your spells</h2><div class="grp" id="grp-spells"></div></div>
-      <div class="scol"><h2>Trinkets <span class="counter" id="trink-count"></span></h2><div class="grp" id="grp-trinkets"></div></div>
-      <div class="scol"><h2>Raid externals</h2><div class="grp" id="grp-ext"></div></div>
-    </div>
+      <div class="scol">
+        <h2>Your spells</h2><div class="grp" id="grp-spells"></div>
+        <h2 class="stacked">Raid externals</h2><div class="grp" id="grp-ext"></div>
+      </div>
 
-    <div id="phase-editor" hidden>
-      <div id="phase-rows"></div>
-      <button id="phase-add" type="button">+ Add phase</button>
-      <span class="hint">Phases paint over the base fight (later rows win on overlap). Intermission = boss untargetable,
-      damage ×0, cooldowns keep ticking. Burn = Arcane Blast damage ×N. AoE = Arcane Explosion spam on N targets.</span>
+      <div class="scol"><h2>Trinkets <span class="counter" id="trink-count"></span></h2><div class="grp" id="grp-trinkets"></div></div>
+
+      <div class="scol phasecol" id="phasecol">
+        <h2><label class="check use"><input id="ck-phases" type="checkbox"> Complicated fight</label></h2>
+        <div id="phase-editor">
+          <div id="phase-rows"></div>
+          <button id="phase-add" type="button">+ Add phase</button>
+          <span class="hint">Untick to disregard. Phases paint over the base fight (later rows win on overlap).
+          Intermission = boss untargetable, damage ×0, cooldowns keep ticking. Burn = AB damage ×N.
+          AoE = Arcane Explosion spam on N targets.</span>
+        </div>
+      </div>
     </div>
 
     <div class="gen-bar">
@@ -980,7 +1007,7 @@ function renderPhaseRows() {
 }
 el("ck-phases").addEventListener("change", e => {
   state.complicated = e.target.checked;
-  el("phase-editor").hidden = !state.complicated;
+  el("phasecol").classList.toggle("on", state.complicated);
   if (state.complicated && !state.phases.length) {
     state.phases.push({ type: "intermission", from: "", to: "", mult: 2, targets: 4 });
     renderPhaseRows();
@@ -1496,7 +1523,7 @@ function applyState(s) {
   state.complicated = !!s.complicated;
   state.phases = Array.isArray(s.phases) ? s.phases.map(p => ({ type: p.type || "intermission", from: p.from || "", to: p.to || "", mult: +p.mult || 2, targets: p.targets | 0 || 4 })) : [];
   el("ck-phases").checked = state.complicated;
-  el("phase-editor").hidden = !state.complicated;
+  el("phasecol").classList.toggle("on", state.complicated);
   renderPhaseRows();
   el("in-haste").value = s.haste ?? 0;
   el("in-len").value = s.len ?? "5:00";
@@ -1505,30 +1532,38 @@ function applyState(s) {
   buildBuffList();
   el("in-haste").dispatchEvent(new Event("input"));
 }
+let activePreset = "";
 function refreshPresets(selected) {
+  activePreset = selected || "";
   const store = lsGet();
-  if (store === null) { el("presetrow").style.display = "none"; return; }
-  const sel = el("preset-sel");
-  sel.innerHTML = `<option value="">Boss presets…</option>` +
-    Object.keys(store).sort().map(n => `<option${n === selected ? " selected" : ""}>${n.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</option>`).join("");
+  if (store === null) { el("preset-strip").style.display = "none"; return; }
+  const names = Object.keys(store).sort();
+  const host = el("preset-chips");
+  host.innerHTML = names.length
+    ? names.map((n, i) => `<span class="pchip${n === activePreset ? " active" : ""}" data-i="${i}" role="button" tabindex="0" title="Load ${esc(n)}">${esc(n)}<button type="button" class="pdel" title="Delete" aria-label="Delete preset ${esc(n)}">×</button></span>`).join("")
+    : `<span class="pnone">none yet — set up a boss and save it</span>`;
+  host.querySelectorAll(".pchip").forEach(chip => {
+    const name = names[+chip.dataset.i];
+    chip.addEventListener("click", e => {
+      if (e.target.classList.contains("pdel")) return;
+      const st = lsGet();
+      if (st && st[name]) { applyState(st[name]); refreshPresets(name); }
+    });
+    chip.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); chip.click(); } });
+    chip.querySelector(".pdel").addEventListener("click", () => {
+      const st = lsGet(); if (!st) return;
+      delete st[name];
+      if (lsSet(st)) refreshPresets(activePreset === name ? "" : activePreset);
+    });
+  });
 }
 el("preset-save").addEventListener("click", () => {
   const store = lsGet(); if (store === null) return;
-  const name = (el("preset-name").value.trim() || el("preset-sel").value || "Unnamed").slice(0, 40);
+  const name = (el("preset-name").value.trim() || activePreset || "Unnamed").slice(0, 40);
   store[name] = snapshotState();
   if (lsSet(store)) { refreshPresets(name); el("preset-name").value = ""; }
 });
-el("preset-del").addEventListener("click", () => {
-  const store = lsGet(); if (store === null) return;
-  const name = el("preset-sel").value;
-  if (!name) return;
-  delete store[name];
-  if (lsSet(store)) refreshPresets("");
-});
-el("preset-sel").addEventListener("change", () => {
-  const store = lsGet(), name = el("preset-sel").value;
-  if (store && store[name]) { applyState(store[name]); refreshPresets(name); }
-});
+el("preset-name").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); el("preset-save").click(); } });
 
 buildBuffList();
 el("in-haste").dispatchEvent(new Event("input"));
