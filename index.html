@@ -921,6 +921,48 @@ function optimizeAsync(cfg, starts, onProgress) {
         const EPS = 0.5;
         const counts = sch => Object.fromEntries(Object.keys(sch).map(k => [k, sch[k].length]));
         const sameCounts = (a, b) => Object.keys(a).every(k => a[k] === (b[k] || 0));
+        // total buff-seconds running past the kill — among damage-equal spots,
+        // prefer windows that complete (bank the value before the boss dies)
+        const clipOf = sch => { let c = 0; for (const k in sch) for (const t of sch[k]) c += Math.max(0, t + BUFFS[k].dur - cfg.T); return c; };
+        // ——— Challenge pass: structured alternatives a mage would propose, tested
+        // head-to-head every run — each buff's cadence re-anchored at the pull, at
+        // every raid call, at every burn/AoE window (with one extra use offered),
+        // and the last use de-clipped to T−dur or its natural cooldown tick.
+        // Improvement-only; the aesthetic passes below re-groom the result.
+        {
+          const anchors = new Set([0]);
+          for (const k2 in cfg.fixed) for (const t of cfg.fixed[k2]) anchors.add(Math.round(t));
+          if (cfg.segments) for (const seg of cfg.segments) if (seg.type === "burn" || seg.type === "aoe") anchors.add(Math.round(seg.start));
+          for (let round2 = 0; round2 < 2; round2++) {
+            let improved2 = false;
+            for (const key in s) {
+              if (cfg.fixed[key]) continue;
+              const def = BUFFS[key], n = s[key].length;
+              if (!n) continue;
+              const cands = [];
+              const steps = key === "icyVeins" ? [def.cd, def.dur] : [Math.max(def.cd, def.dur)];
+              for (const a0 of [...anchors, Math.round(s[key][0])]) {
+                for (const step of steps) {
+                  const chain = [];
+                  for (let t = a0, m = 0; m <= n && t <= cfg.T - 1; m++, t += step) chain.push(t);
+                  if (chain.length) cands.push(chain);
+                }
+              }
+              const prev = n >= 2 ? s[key][n - 2] : -Infinity;
+              for (const t of [Math.max(0, cfg.T - def.dur), Math.round(prev + def.cd)]) {
+                if (t >= 0 && isFinite(t)) cands.push([...s[key].slice(0, n - 1), t]);
+              }
+              for (const c2 of cands) {
+                const cand = cloneS(s);
+                cand[key] = c2.slice();
+                const rep = repair(cand, cfg);
+                const v = simulate(rep, cfg).total;
+                if (v > val + 0.5) { s = rep; val = v; improved2 = true; }
+              }
+            }
+            if (!improved2) break;
+          }
+        }
         // Pass 1: haste actives — among equal-damage spots, minimize the seconds
         // of the buff's own window spent on floor-locked casts (its haste does
         // nothing there — don't park Berserking inside an already-capped
@@ -950,15 +992,17 @@ function optimizeAsync(cfg, starts, onProgress) {
               for (const cast of r.casts) {
                 if (cast.t >= at - 1e-9 && cast.t < at + dur - 1e-9 && cast.capped) nulled += cast.interval;
               }
+              const clip = clipOf(rep);
               // a strict damage improvement always outranks aesthetics
               if (r.total > val + 0.5) {
-                if (!pick || pick.v <= val + 0.5 || r.total > pick.v) pick = { rep, v: r.total, nulled, at, d };
+                if (!pick || pick.v <= val + 0.5 || r.total > pick.v) pick = { rep, v: r.total, nulled, at, d, clip };
                 continue;
               }
               if (pick && pick.v > val + 0.5) continue; // an improvement is already selected
-              if (!pick || nulled < pick.nulled - 1e-9 ||
-                  (Math.abs(nulled - pick.nulled) <= 1e-9 && at < pick.at)) {
-                pick = { rep, v: r.total, nulled, at, d };
+              if (!pick || clip < pick.clip - 1e-9 ||
+                  (Math.abs(clip - pick.clip) <= 1e-9 && (nulled < pick.nulled - 1e-9 ||
+                   (Math.abs(nulled - pick.nulled) <= 1e-9 && at < pick.at)))) {
+                pick = { rep, v: r.total, nulled, at, d, clip };
               }
             }
             if (pick && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); sweptMoved = true; }
@@ -1011,13 +1055,15 @@ function optimizeAsync(cfg, starts, onProgress) {
               }
               const clean = iMax - iMin <= 0.03 * iMin;
               const at = c[0].t + d;
+              const clip = clipOf(rep);
               // a strict damage improvement always outranks aesthetics
               if (r.total > val + 0.5) {
-                if (!pick || pick.v <= val + 0.5 || r.total > pick.v) pick = { rep, v: r.total, at, d };
+                if (!pick || pick.v <= val + 0.5 || r.total > pick.v) pick = { rep, v: r.total, at, d, clip };
                 continue;
               }
               if (pick && pick.v > val + 0.5) continue; // an improvement is already selected
-              if (clean && (!pick || at < pick.at)) pick = { rep, v: r.total, at, d };
+              if (clean && (!pick || clip < pick.clip - 1e-9 ||
+                  (Math.abs(clip - pick.clip) <= 1e-9 && at < pick.at))) pick = { rep, v: r.total, at, d, clip };
             }
             if (pick && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); moved = true; sweptMoved = true; break; }
           }
@@ -1148,13 +1194,26 @@ function optimizeAsync(cfg, starts, onProgress) {
             for (const [from, to] of [[b, a], [a, b]]) {
               const movers = press.get(from) || [];
               if (!movers.length) continue;
-              if (from < to && movers.some(m => BUFFS[m.key].kind === "mult" || BUFFS[m.key].kind === "rating")) continue;
               const cand = cloneS(s);
               for (const m of movers) cand[m.key][m.i2] = to;
               const rep = repair(cand, cfg);
               if (JSON.stringify(rep) === JSON.stringify(s)) continue;
-              const r = simulate(rep, cfg).total;
-              if (r >= val - EPS) { s = rep; val = Math.max(val, r); merged = true; break outerMerge; }
+              const r1 = simulate(rep, cfg, true);
+              if (r1.total < val - EPS) continue;
+              if (clipOf(rep) > clipOf(s) + 1e-9) continue;
+              if (from < to) {
+                // pushing a haste active later is fine only if it doesn't pick
+                // up more floor-dead seconds at the merged spot
+                const hasteMovers = movers.filter(m => BUFFS[m.key].kind === "mult" || BUFFS[m.key].kind === "rating");
+                if (hasteMovers.length) {
+                  const r0 = simulate(s, cfg, true);
+                  const nulledIn = (rr, key2, t2) => { const dur2 = BUFFS[key2].dur; let n2 = 0; for (const cast of rr.casts) if (cast.t >= t2 - 1e-9 && cast.t < t2 + dur2 - 1e-9 && cast.capped) n2 += cast.interval; return n2; };
+                  let n0 = 0, n1 = 0;
+                  for (const m of hasteMovers) { n0 += nulledIn(r0, m.key, s[m.key][m.i2]); n1 += nulledIn(r1, m.key, to); }
+                  if (n1 > n0 + 1e-9) continue;
+                }
+              }
+              s = rep; val = Math.max(val, r1.total); merged = true; break outerMerge;
             }
           }
           if (!merged) break;
