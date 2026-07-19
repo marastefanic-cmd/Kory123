@@ -987,7 +987,7 @@ function optimizeAsync(cfg, starts, onProgress) {
             const dur3 = BUFFS[k3].dur;
             for (const tt of rep2[k3]) {
               if (k3 !== key2 && Math.abs(tt - att) <= 0.5) return 1;      // co-press
-              if (Math.abs(tt + dur3 - att) <= 0.5) return 1;              // press as that buff ends
+              if (att - (tt + dur3) > -0.5 && att - (tt + dur3) <= 1.6) return 1; // press as that buff ends (next AB boundary)
             }
           }
           return 0;
@@ -1042,7 +1042,7 @@ function optimizeAsync(cfg, starts, onProgress) {
                 cand[key] = c2.slice();
                 const rep = repair(cand, cfg);
                 const rr2 = simulate(rep, cfg);
-                if (rr2.robust > val + QTOL) { s = rep; val = rr2.robust; valT = Math.max(valT, rr2.total); improved2 = true; }
+                if (rr2.robust > val + QTOL || (rr2.robust > val + 0.5 && rr2.total > valT + 0.5)) { s = rep; val = Math.max(val, rr2.robust); valT = Math.max(valT, rr2.total); improved2 = true; }
               }
             }
             if (!improved2) break;
@@ -1096,12 +1096,14 @@ function optimizeAsync(cfg, starts, onProgress) {
                 if (cast.t >= at - 1e-9 && cast.t < at + dur - 1e-9 && cast.capped) nulled += cast.interval;
               }
               const clip = clipOf(rep);
-              // a MATERIAL damage improvement (over a quarter cast) outranks aesthetics
-              if (r.robust > val + QTOL) {
-                if (!pick || pick.v <= val + QTOL || r.robust > pick.v) pick = { rep, v: r.robust, tv: r.total, nulled, at, d, clip, grp: 0 };
+              // a MATERIAL improvement (over a cast in expectation, or real in
+              // both expected AND at-kill-time damage) outranks aesthetics
+              const imp1 = r.robust > val + QTOL || (r.robust > val + 0.5 && r.total > valT + 0.5);
+              if (imp1) {
+                if (!pick || !pick.imp || r.robust > pick.v) pick = { rep, v: r.robust, tv: r.total, nulled, at, d, clip, grp: 0, imp: 1 };
                 continue;
               }
-              if (pick && pick.v > val + QTOL) continue; // an improvement is already selected
+              if (pick && pick.imp) continue; // an improvement is already selected
               const grp = anchored(rep, key, at);
               if (!pick || clip < pick.clip - 1e-9 ||
                   (Math.abs(clip - pick.clip) <= 1e-9 && (grp > pick.grp ||
@@ -1179,11 +1181,12 @@ function optimizeAsync(cfg, starts, onProgress) {
               const at = c[0].t + d;
               const clip = clipOf(rep);
               // a MATERIAL damage improvement (over a quarter cast) outranks aesthetics
-              if (r.robust > val + QTOL) {
-                if (!pick || pick.v <= val + QTOL || r.robust > pick.v) pick = { rep, v: r.robust, tv: r.total, at, d, clip, grp: 0 };
+              const imp2 = r.robust > val + QTOL || (r.robust > val + 0.5 && r.total > valT + 0.5);
+              if (imp2) {
+                if (!pick || !pick.imp || r.robust > pick.v) pick = { rep, v: r.robust, tv: r.total, at, d, clip, grp: 0, imp: 1 };
                 continue;
               }
-              if (pick && pick.v > val + QTOL) continue; // an improvement is already selected
+              if (pick && pick.imp) continue; // an improvement is already selected
               let grp = 0; // anchored: a raid call, a non-member press, or a buff-expiry moment
               {
                 const repOthers = {};
@@ -1231,7 +1234,7 @@ function optimizeAsync(cfg, starts, onProgress) {
               if (JSON.stringify(rep) === curSig) continue;
               if (!sameCounts(c0, counts(rep))) continue;
               const rr3 = simulate(rep, cfg);
-              if (rr3.robust > val + QTOL && (!pick || rr3.robust > pick.v)) pick = { rep, v: rr3.robust, tv: rr3.total };
+              if ((rr3.robust > val + QTOL || (rr3.robust > val + 0.5 && rr3.total > valT + 0.5)) && (!pick || rr3.robust > pick.v)) pick = { rep, v: rr3.robust, tv: rr3.total };
             }
             if (pick) { s = pick.rep; val = pick.v; valT = Math.max(valT, pick.tv); sweptMoved = true; break; }
           }
