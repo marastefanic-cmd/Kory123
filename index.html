@@ -994,6 +994,29 @@ function optimizeAsync(cfg, starts, onProgress) {
           }
           return 0;
         };
+        // seconds of this window overlaid with OTHER buff windows. Among
+        // damage-equal spots, prefer the overlaid one: stacked windows keep
+        // their value when the fight drifts a few seconds off the plan,
+        // perfectly-tiled ones don't — and one grouped press is easier to hit.
+        const overlapOf = (rep2, key2, att) => {
+          const a0 = att, a1 = Math.min(att + BUFFS[key2].dur, cfg.T);
+          let o = 0, skippedSelf = false;
+          for (const k3 in rep2) {
+            const dur3 = BUFFS[k3].dur;
+            for (const tt of rep2[k3]) {
+              if (!skippedSelf && k3 === key2 && Math.abs(tt - att) <= 1e-9) { skippedSelf = true; continue; }
+              o += Math.max(0, Math.min(a1, Math.min(tt + dur3, cfg.T)) - Math.max(a0, tt));
+            }
+          }
+          return o;
+        };
+        // does this press land on an existing press second (one macro, no new row)?
+        const joinsRow = (rep2, key2, att) => {
+          for (const k3 in rep2) for (const tt of rep2[k3]) {
+            if ((k3 !== key2 || Math.abs(tt - att) > 1e-9) && Math.abs(tt - att) <= 0.5) return 1;
+          }
+          return 0;
+        };
         const counts = sch => Object.fromEntries(Object.keys(sch).map(k => [k, sch[k].length]));
         const sameCounts = (a, b) => Object.keys(a).every(k => a[k] === (b[k] || 0));
         // total buff-seconds running past the kill — among damage-equal spots,
@@ -1004,7 +1027,7 @@ function optimizeAsync(cfg, starts, onProgress) {
         // every raid call, at every burn/AoE window (with one extra use offered),
         // and the last use de-clipped to T−dur or its natural cooldown tick.
         // Improvement-only; the aesthetic passes below re-groom the result.
-        {
+        const challengePass = () => {
           const anchors = new Set([0]);
           for (const k2 in cfg.fixed) for (const t of cfg.fixed[k2]) anchors.add(Math.round(t));
           if (cfg.segments) for (const seg of cfg.segments) {
@@ -1013,6 +1036,11 @@ function optimizeAsync(cfg, starts, onProgress) {
           }
           for (let round2 = 0; round2 < 2; round2++) {
             let improved2 = false;
+            // judge candidates against the CURRENT plan, not the running max —
+            // aesthetics may sit a hair below the best-ever value, and a real
+            // improvement from here must not be masked by that stale high-water mark
+            const rCur0 = simulate(s, cfg);
+            let curRob = rCur0.robust, curTot = rCur0.total;
             for (const key in s) {
               if (cfg.fixed[key]) continue;
               const def = BUFFS[key], n = s[key].length;
@@ -1029,6 +1057,15 @@ function optimizeAsync(cfg, starts, onProgress) {
               const prev = n >= 2 ? s[key][n - 2] : -Infinity;
               for (const t of [Math.max(0, cfg.T - def.dur), Math.round(prev + def.cd)]) {
                 if (t >= 0 && isFinite(t)) cands.push([...s[key].slice(0, n - 1), t]);
+              }
+              // Cold Snap end-chain: last use back on its natural ready tick,
+              // one extra reset-chained use appended as that window ends — a
+              // final clipped window is free damage the basin search can miss
+              if (key === "icyVeins" && cfg.coldSnap) {
+                const ready = n >= 2 ? Math.round(s[key][n - 2] + def.cd) : 0;
+                if (ready >= 0 && ready + def.dur <= cfg.T - 1) cands.push([...s[key].slice(0, n - 1), ready, ready + def.dur]);
+                const lastNow = Math.round(s[key][n - 1]);
+                if (lastNow + def.dur <= cfg.T - 1) cands.push([...s[key], lastNow + def.dur]);
               }
               // "save the last use for X": natural chain from the pull for the
               // first n−1 uses, last use at each anchor (a Cold Snap legalizes
@@ -1049,15 +1086,21 @@ function optimizeAsync(cfg, starts, onProgress) {
             }
             if (!improved2) break;
           }
-        }
+        };
+        challengePass();
         // Pass 1: haste actives — among equal-damage spots, minimize the seconds
         // of the buff's own window spent on floor-locked casts (its haste does
         // nothing there — don't park Berserking inside an already-capped
         // Lust+IV overlap), earliest on ties. Iterated with pass 2 to a fixed
         // point: one buff's cleanup changes where the others' clean spots are.
-        // Groom twice: the snap/merge stages after the aesthetic sweeps can
-        // shuffle a haste active off its clean spot; a second cycle re-grooms.
-        for (let groom = 0; groom < 2; groom++) {
+        // Groom three times: the snap/merge stages after the aesthetic sweeps
+        // can shuffle a press off its clean spot (and a merge can strand a
+        // partner on an emptied row); the extra cycles re-groom to a fixed point.
+        for (let groom = 0; groom < 3; groom++) {
+        // the structured alternatives get a second hearing once grooming has
+        // reshaped the plan — a chain that lost against the raw snap can win
+        // against the groomed line (and vice versa)
+        if (groom > 0) challengePass();
         for (let sweep = 0, sweptMoved = true; sweep < 8 && sweptMoved; sweep++) {
         sweptMoved = false;
         for (const key in s) {
@@ -1076,7 +1119,7 @@ function optimizeAsync(cfg, starts, onProgress) {
               const at0i = s[key][i2];
               let nulled0 = 0;
               for (const cast of r0.casts) if (cast.t >= at0i - 1e-9 && cast.t < at0i + dur - 1e-9 && cast.capped) nulled0 += cast.interval;
-              pick = { rep: null, v: r0.robust, tv: r0.total, nulled: nulled0, at: at0i, d: 0, clip: clipOf(s), grp: anchored(s, key, at0i) };
+              pick = { rep: null, v: r0.robust, tv: r0.total, nulled: nulled0, at: at0i, d: 0, clip: clipOf(s), grp: anchored(s, key, at0i), jn: joinsRow(s, key, at0i), ov: overlapOf(s, key, at0i) };
             }
             for (let d = -45; d <= 45; d++) {
               const cand = cloneS(s);
@@ -1107,11 +1150,14 @@ function optimizeAsync(cfg, starts, onProgress) {
               }
               if (pick && pick.imp) continue; // an improvement is already selected
               const grp = anchored(rep, key, at);
+              const jn = joinsRow(rep, key, at), ov = overlapOf(rep, key, at);
               if (!pick || clip < pick.clip - 1e-9 ||
                   (Math.abs(clip - pick.clip) <= 1e-9 && (grp > pick.grp ||
                    (grp === pick.grp && (nulled < pick.nulled - 1e-9 ||
-                    (Math.abs(nulled - pick.nulled) <= 1e-9 && at < pick.at)))))) {
-                pick = { rep, v: r.robust, tv: r.total, nulled, at, d, clip, grp };
+                    (Math.abs(nulled - pick.nulled) <= 1e-9 && (jn > pick.jn ||
+                     (jn === pick.jn && (ov > pick.ov + 1e-9 ||
+                      (Math.abs(ov - pick.ov) <= 1e-9 && at < pick.at)))))))))) {
+                pick = { rep, v: r.robust, tv: r.total, nulled, at, d, clip, grp, jn, ov };
               }
             }
             if (pick && pick.rep && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); valT = Math.max(valT, pick.tv); sweptMoved = true; }
@@ -1138,17 +1184,39 @@ function optimizeAsync(cfg, starts, onProgress) {
             // one macro press ≈ within a GCD; wider gaps are cd-anchored neighbors that must stay free
             if (c && a.t - c[c.length - 1].t <= 3) c.push(a); else clusters.push([a]);
           }
+          // cluster rank helpers: overlap of every member window vs non-member
+          // presses, and whether the cluster start lands on a non-member row
+          const clusterOv = (others, mems, d0) => {
+            let o = 0;
+            for (const m of mems) {
+              const a0 = m.t + d0, a1 = Math.min(a0 + BUFFS[m.key].dur, cfg.T);
+              for (const k3 in others) {
+                const dur3 = BUFFS[k3].dur;
+                for (const tt of others[k3]) o += Math.max(0, Math.min(a1, Math.min(tt + dur3, cfg.T)) - Math.max(a0, tt));
+              }
+            }
+            return o;
+          };
+          const clusterJoins = (others, att) => {
+            for (const k3 in others) for (const tt of others[k3]) if (Math.abs(tt - att) <= 0.5) return 1;
+            return 0;
+          };
           let moved = false;
           for (const c of clusters) {
             const c0 = counts(s);
             let pick = null;
             const curSig = JSON.stringify(s);
             {
-              const r0 = simulate(s, cfg);
+              const r0 = simulate(s, cfg, true);
               const at0i = c[0].t;
               const oth = {};
               for (const k3 in s) if (!c.some(m => m.key === k3)) oth[k3] = s[k3];
-              pick = { rep: null, v: r0.robust, tv: r0.total, at: at0i, d: 0, clip: clipOf(s), grp: anchored(oth, null, at0i) };
+              let iMin0 = Infinity, iMax0 = 0;
+              for (const m of c) {
+                const a0 = m.t, a1 = a0 + BUFFS[m.key].dur;
+                for (const cast of r0.casts) if (cast.t >= a0 - 1e-9 && cast.t < a1 - 1e-9) { if (cast.interval < iMin0) iMin0 = cast.interval; if (cast.interval > iMax0) iMax0 = cast.interval; }
+              }
+              pick = { rep: null, v: r0.robust, tv: r0.total, at: at0i, d: 0, clip: clipOf(s), grp: anchored(oth, null, at0i), jn: clusterJoins(oth, at0i), ov: clusterOv(oth, c, 0), cl: iMax0 - iMin0 <= 0.03 * iMin0 ? 1 : 0 };
             }
             for (let d = -45; d <= 45; d++) {
               const cand = cloneS(s);
@@ -1179,7 +1247,9 @@ function optimizeAsync(cfg, starts, onProgress) {
                   }
                 }
               }
-              const clean = iMax - iMin <= 0.03 * iMin;
+              // uniform-speed is a preference, not a veto: a window straddling a
+              // haste ramp can still win when it overlays more buff windows
+              const cl = iMax - iMin <= 0.03 * iMin ? 1 : 0;
               const at = c[0].t + d;
               const clip = clipOf(rep);
               // a MATERIAL damage improvement (over a quarter cast) outranks aesthetics
@@ -1189,7 +1259,7 @@ function optimizeAsync(cfg, starts, onProgress) {
                 continue;
               }
               if (pick && pick.imp) continue; // an improvement is already selected
-              let grp = 0; // anchored: a raid call, a non-member press, or a buff-expiry moment
+              let grp = 0, jn = 0, ov = 0; // anchored: a raid call, a non-member press, or a buff-expiry moment
               {
                 const repOthers = {};
                 for (const k3 in rep) if (!c.some(m => m.key === k3)) repOthers[k3] = rep[k3];
@@ -1198,10 +1268,15 @@ function optimizeAsync(cfg, starts, onProgress) {
                   for (const tt of rep[k3]) if (Math.abs(tt + BUFFS[k3].dur - at) <= 0.5) { grp = 1; break; }
                   if (grp) break;
                 }
+                jn = clusterJoins(repOthers, at);
+                ov = clusterOv(repOthers, c, d);
               }
-              if (clean && (!pick || clip < pick.clip - 1e-9 ||
+              if (!pick || clip < pick.clip - 1e-9 ||
                   (Math.abs(clip - pick.clip) <= 1e-9 && (grp > pick.grp ||
-                   (grp === pick.grp && at < pick.at))))) pick = { rep, v: r.robust, tv: r.total, at, d, clip, grp };
+                   (grp === pick.grp && (jn > pick.jn ||
+                    (jn === pick.jn && (ov > pick.ov + 1e-9 ||
+                     (Math.abs(ov - pick.ov) <= 1e-9 && (cl > pick.cl ||
+                      (cl === pick.cl && at < pick.at)))))))))) pick = { rep, v: r.robust, tv: r.total, at, d, clip, grp, jn, ov, cl };
             }
             if (pick && pick.rep && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); valT = Math.max(valT, pick.tv); moved = true; sweptMoved = true; break; }
           }
@@ -1239,6 +1314,33 @@ function optimizeAsync(cfg, starts, onProgress) {
               if ((rr3.robust > val + QTOL || (rr3.robust > val + 0.5 && rr3.total > valT + 0.5)) && (!pick || rr3.robust > pick.v)) pick = { rep, v: rr3.robust, tv: rr3.total };
             }
             if (pick) { s = pick.rep; val = pick.v; valT = Math.max(valT, pick.tv); sweptMoved = true; break; }
+            // tick-seek: a whole press group can coalesce PAST its members'
+            // cooldown-ready ticks (each member prefers staying joined, so
+            // nobody moves first). Slide the group back onto the earliest
+            // member tick it can reach — "press them as they light up" —
+            // when that costs nothing real.
+            const onOwnTick = (sch, key2, tt) => (sch[key2] || []).some(pv => pv < tt - 1 && tt - (pv + BUFFS[key2].cd) > -0.5 && tt - (pv + BUFFS[key2].cd) <= 1.6);
+            if (!g.some(m => onOwnTick(s, m.key, m.t))) {
+              let tickPick = null;
+              for (let d = -8; d < 0; d++) {
+                const cand = cloneS(s);
+                for (const m of g) cand[m.key][m.i2] += d;
+                const rep = repair(cand, cfg);
+                if (JSON.stringify(rep) === curSig) continue;
+                if (!sameCounts(c0, counts(rep))) continue;
+                let hit = false;
+                for (const m of g) {
+                  const tgt = m.t + d;
+                  if ((rep[m.key] || []).some(tt => Math.abs(tt - tgt) <= 0.5) && onOwnTick(rep, m.key, tgt)) { hit = true; break; }
+                }
+                if (!hit) continue;
+                const rr4 = simulate(rep, cfg);
+                if (rr4.robust < val - QTOL || rr4.total < valT - TOLT) continue;
+                if (clipOf(rep) > clipOf(s) + 1e-9) continue;
+                if (!tickPick || rr4.robust > tickPick.v + 1e-9 || (Math.abs(rr4.robust - tickPick.v) <= 1e-9 && d > tickPick.d)) tickPick = { rep, v: rr4.robust, tv: rr4.total, d };
+              }
+              if (tickPick) { s = tickPick.rep; val = Math.max(val, tickPick.v); valT = Math.max(valT, tickPick.tv); sweptMoved = true; break; }
+            }
           }
         }
         }
@@ -1278,6 +1380,7 @@ function optimizeAsync(cfg, starts, onProgress) {
                 for (const m of c) cand[m.key][m.i2] += target - Math.round(m.t);
                 const rep = repair(cand, cfg);
                 if (JSON.stringify(rep) === JSON.stringify(s)) continue;
+                if (clipOf(rep) > clipOf(s) + 1e-9) continue; // never collapse into a worse-clipped chain
                 const rr = simulate(rep, cfg);
                 if (rr.robust >= val - QTOL && rr.total >= valT - TOLT) { s = rep; val = Math.max(val, rr.robust); valT = Math.max(valT, rr.total); snapped = true; break; }
               }
@@ -1299,6 +1402,7 @@ function optimizeAsync(cfg, starts, onProgress) {
               for (const m of c) cand[m.key][m.i2] += d;
               const rep = repair(cand, cfg);
               if (JSON.stringify(rep) === JSON.stringify(s)) continue;
+              if (clipOf(rep) > clipOf(s) + 1e-9) continue;
               const rr = simulate(rep, cfg);
               if (rr.robust >= val - QTOL && rr.total >= valT - TOLT) { s = rep; val = Math.max(val, rr.robust); valT = Math.max(valT, rr.total); snapped = true; break; }
             }
@@ -1325,10 +1429,22 @@ function optimizeAsync(cfg, starts, onProgress) {
           for (const key in cfg.fixed) for (const t of cfg.fixed[key]) pinnedSecs.add(Math.round(t));
           const secs = [...new Set([...press.keys(), ...pinnedSecs])].sort((x, y) => x - y);
           let merged = false;
+          const robNow = simulate(s, cfg).robust;
+          // a press-second on one of its members' cooldown-ready ticks is a
+          // natural anchor ("press it as it lights back up") — never fold it
+          // into a neighboring row when that costs expected damage
+          const onTickSec = sec => {
+            for (const m of (press.get(sec) || [])) {
+              const prevs = s[m.key].filter(tt => tt < sec - 1);
+              if (prevs.some(tt => sec - (tt + BUFFS[m.key].cd) > -0.5 && sec - (tt + BUFFS[m.key].cd) <= 1.6)) return true;
+            }
+            return false;
+          };
           outerMerge:
           for (let x = 0; x < secs.length - 1; x++) {
             const a = secs[x], b = secs[x + 1];
-            if (b - a > 2) continue;
+            if (b - a > 10) continue; // one press window: unify staggered rows up to 10s apart
+            let bestM = null;
             for (const [from, to] of [[b, a], [a, b]]) {
               const movers = press.get(from) || [];
               if (!movers.length) continue;
@@ -1336,9 +1452,20 @@ function optimizeAsync(cfg, starts, onProgress) {
               for (const m of movers) cand[m.key][m.i2] = to;
               const rep = repair(cand, cfg);
               if (JSON.stringify(rep) === JSON.stringify(s)) continue;
+              // the merge must be COMPLETE: if repair clamps any mover back,
+              // the old row still exists and we've only dragged its partners
+              // off it — no row saved, grouping destroyed
+              let partial = false;
+              for (const m of movers) {
+                let bd3 = Infinity;
+                for (const tt of (rep[m.key] || [])) bd3 = Math.min(bd3, Math.abs(tt - to));
+                if (bd3 > 0.5) { partial = true; break; }
+              }
+              if (partial) continue;
               const r1 = simulate(rep, cfg, true);
               if (r1.robust < val - QTOL || r1.total < valT - TOLT) continue;
               if (clipOf(rep) > clipOf(s) + 1e-9) continue;
+              if (r1.robust < robNow - EPS && onTickSec(from)) continue;
               if (from < to) {
                 // pushing a haste active later is fine only if it doesn't pick
                 // up more floor-dead seconds at the merged spot
@@ -1351,8 +1478,9 @@ function optimizeAsync(cfg, starts, onProgress) {
                   if (n1 > n0 + 1e-9) continue;
                 }
               }
-              s = rep; val = Math.max(val, r1.robust); valT = Math.max(valT, r1.total); merged = true; break outerMerge;
+              if (!bestM || r1.robust > bestM.rob) bestM = { rep, rob: r1.robust, tot: r1.total };
             }
+            if (bestM) { s = bestM.rep; val = Math.max(val, bestM.rob); valT = Math.max(valT, bestM.tot); merged = true; break outerMerge; }
           }
           // downtime slide: a press inside an intermission is worth the same
           // anywhere in the downtime — slide it to the phase start so it can
@@ -1423,6 +1551,11 @@ function optimizeAsync(cfg, starts, onProgress) {
           };
           for (let round5 = 0; round5 < 8; round5++) {
             let snapped5 = false;
+            // the grid IS the execution: judge each snap's at-kill sliver
+            // against the CURRENT plan, not the search's high-water mark —
+            // otherwise earlier aesthetic trades eat the whole band and a
+            // 4:39 press stays one second off the lattice forever
+            const rCur5 = simulate(s, cfg);
             const press5 = new Map();
             for (const key in s) {
               if (cfg.fixed[key]) continue;
@@ -1452,7 +1585,7 @@ function optimizeAsync(cfg, starts, onProgress) {
                 const rep = repair(cand, cfg);
                 if (JSON.stringify(rep) === JSON.stringify(s)) continue;
                 const rr = simulate(rep, cfg);
-                if (rr.robust < val - QTOL || rr.total < valT - TOLT) continue;
+                if (rr.robust < val - QTOL || rr.total < Math.min(valT, rCur5.total) - TOLT) continue;
                 if (clipOf(rep) > clipOf(s) + 1e-9) continue;
                 s = rep; val = Math.max(val, rr.robust); valT = Math.max(valT, rr.total); snapped5 = true; break outer5;
               }
@@ -1470,10 +1603,15 @@ function optimizeAsync(cfg, starts, onProgress) {
           for (const t of ivs) { if (t < cdReady - 1e-6) { consumed = true; break; } cdReady = t + BUFFS.icyVeins.cd; }
           if (consumed) {
             optimizeAsync({ ...cfg, coldSnap: false }, starts, p => onProgress(0.5 + p / 2)).then(bestN => {
-              if (bestN.val >= best.val - castVal) {
-                resolve({ s: bestN.s, val: bestN.val, csNote: { held: true, delta: Math.round(best.val - bestN.val), castVal } });
+              // a Cold-Snapped IV whose window is cut by the kill falls under
+              // "always press what's ready when the fight is ending" — burn it
+              // for any real gain; a mid-fight reset must be worth a full cast
+              const endChain = Math.max(...best.s.icyVeins) > cfg.T - BUFFS.icyVeins.dur;
+              const bar = endChain ? castVal / 8 : castVal;
+              if (bestN.val >= best.val - bar) {
+                resolve({ s: bestN.s, val: bestN.val, csNote: { held: true, delta: Math.round(best.val - bestN.val), castVal, endChain } });
               } else {
-                resolve({ ...best, csNote: { held: false, delta: Math.round(best.val - bestN.val), castVal } });
+                resolve({ ...best, csNote: { held: false, delta: Math.round(best.val - bestN.val), castVal, endChain } });
               }
             });
             return;
@@ -2051,13 +2189,13 @@ function renderSchedule(run) {
     const stats = w.peakHaste != null
       ? `peak haste +${w.peakHaste.toFixed(0)}% · AB ${w.minCast.toFixed(2)}s` + (w.capped ? ` · <span class="warntag">at GCD floor</span>` : "")
       : "";
-    html += `<tr class="window-head"><td class="t">${fmtT(w.start)}</td><td>Window ${wi + 1}</td><td class="num">${stats}</td></tr>`;
+    html += `<tr class="window-head"><td class="t">${fmtT(Math.min(...w.acts.map(x => Math.round(x.intent))))}</td><td>Window ${wi + 1}</td><td class="num">${stats}</td></tr>`;
     for (const a of w.acts) {
       const def = BUFFS[a.k];
-      const sec = Math.round(a.t);
+      const sec = Math.round(a.intent);
       const tg = !tagged.has(sec) && tags.get(sec);
       if (tg) tagged.add(sec);
-      html += `<tr><td class="t">${fmtT(a.t)}</td>
+      html += `<tr><td class="t">${fmtT(Math.round(a.intent))}</td>
         <td>${iconOf(a.k, 22)}${a.coldSnap ? "Cold Snap → " : ""}${def.name}${a.k === "scb" ? " (Mana Emerald)" : ""}${tg ? `<span class="whytag">${esc(tg)}</span>` : ""}</td>
         <td class="num">${def.kind === "mult" ? "+" + Math.round((def.value - 1) * 100) + "% haste" : def.kind === "rating" ? "+" + def.value + " haste" : def.kind === "dmg" ? "+" + Math.round((def.value - 1) * 100) + "% damage" : "+" + def.value + " spell dmg"} for ${def.dur}s</td></tr>`;
     }
@@ -2078,12 +2216,12 @@ el("btn-copy").addEventListener("click", () => {
   const ctags = new Map((lastRun.pressRows || []).filter(r => r.tag).map(r => [Math.round(r.t), r.tag]));
   const ctagged = new Set();
   windows.forEach((w, wi) => {
-    out += `\n[Window ${wi + 1} @ ${fmtT(w.start)}]` + (w.peakHaste != null ? ` peak +${w.peakHaste.toFixed(0)}% haste` : "") + "\n";
+    out += `\n[Window ${wi + 1} @ ${fmtT(Math.min(...w.acts.map(x => Math.round(x.intent))))}]` + (w.peakHaste != null ? ` peak +${w.peakHaste.toFixed(0)}% haste` : "") + "\n";
     for (const a of w.acts) {
-      const sec = Math.round(a.t);
+      const sec = Math.round(a.intent);
       const tg = !ctagged.has(sec) && ctags.get(sec);
       if (tg) ctagged.add(sec);
-      out += `  ${fmtT(a.t)}  ${a.coldSnap ? "Cold Snap -> " : ""}${BUFFS[a.k].name}${tg ? `  (${tg})` : ""}\n`;
+      out += `  ${fmtT(Math.round(a.intent))}  ${a.coldSnap ? "Cold Snap -> " : ""}${BUFFS[a.k].name}${tg ? `  (${tg})` : ""}\n`;
     }
   });
   if (lastRun.best.csNote?.held) out += `\nCold Snap held in pocket — natural Icy Veins cooldowns cover this fight.\n`;
@@ -2158,6 +2296,7 @@ function renderSensitivity(run) {
   if (cs) {
     if (cs.held) lines.push(`<div class="cs">Cold Snap held in pocket: the natural Icy Veins cooldowns cover this fight — burning it ${cs.delta <= 0 ? "is actually worse here" : `buys only +${cs.delta} damage (under one cast)`}. Keep it for a wipe recovery or a faster kill next week.</div>`);
     else if (cs.unused) lines.push(`<div class="cs">Cold Snap not needed at this fight length — the natural Icy Veins cooldown covers every window.</div>`);
+    else if (cs.endChain && cs.delta < cs.castVal) lines.push(`<div class="cs">Cold Snap spent on the kill: the reset buys one extra clipped Icy Veins at the very end, worth <b>+${cs.delta}</b> damage. It's ready and the fight is ending — press it.</div>`);
     else lines.push(`<div class="cs">Cold Snap is doing real work here: without it the best plan loses <b>${cs.delta}</b> damage (≈ ${(cs.delta / cs.castVal).toFixed(1)} casts).</div>`);
   }
   host.hidden = !lines.length;
@@ -2224,12 +2363,13 @@ function renderAssumptions({ cfg }) {
     <li>Any pinned times are hard anchors: a buff with times entered fires at exactly those times (validated against its cooldown, Sated/Tinnitus, Cold Snap, and the trinket lockout) and the planner schedules everything unpinned around them. Blank = the planner owns that buff.</li>
     <li>Full durations are preferred — the sim naturally slides a press earlier when that covers the same casts and finishes before the kill — but a cooldown that's back up before the boss dies is always pressed: a clipped final window is free damage, and the schedule tags its real uptime and worth. Raid-called times are used exactly as entered.</li>
     <li>The kill time is treated as uncertain by ±3s: plans are chosen by expected damage (casts near the entered kill time count by the chance the boss is still alive), so value banked earlier beats value that squeaks in at the exact final second. The damage tiles still show the plain at-kill-time total.</li>
+    <li>Ties break toward the natural, overlaid line: when spots are within one expected cast, the planner prefers a window that completes before the kill, then a press anchored to something you can see (the pull, a raid call, a co-press, a buff ending, a cooldown lighting back up), then one that avoids floor-dead seconds, then one that joins an existing press row, then the one that overlays the most other buff windows — stacked windows keep their value when the fight drifts a few seconds off plan; perfectly-tiled ones don't. Anything deliberately scattered carries a price tag saying what the grouped press would cost. A Cold Snap whose reset only buys a clipped final Icy Veins is still spent: a ready cooldown near the kill is free damage.</li>
     <li>Power Infusion does not stack with Bloodlust (Bloodlust wins while both are up). Skull of Gul’dan and Mind Quickening Gem share the offensive-trinket lockout: using one locks the other for the used buff’s duration. Drums obey Anniversary Tinnitus (one drum buff per 2 min); Bloodlust obeys Anniversary Sated (raid-wide, one per 10 min of a pull, resets on boss kill).</li>
     <li>Rotation is modeled as continuous AB spam. Real play conserves (AB×3 + Frostbolt filler) between windows — that changes absolute DPS, not which overlay wins, so the schedule stands either way.</li>
     <li>The opener is special: during the 0→3 stack ramp, AB casts are longer than the GCD, so haste that would be “wasted” at 3 stacks still compresses the ramp — the planner may deliberately triple-stack haste at the pull (especially inside Arcane Power) and keep those same buffs apart mid-fight.</li>
     <li>Complicated fights: intermissions score zero damage (cooldowns and buff durations keep ticking — the planner holds cooldowns to recover through downtime, and your AB stacks drop after the 8s debuff expires); Burn phases multiply Arcane Blast damage; AoE phases switch to Arcane Explosion spam — instant, GCD-bound (haste pays to the 1.0s floor even without stacks) and damage scaling with target count. Phases apply per cast start.</li>
     <li>Mana is not simulated — the planner assumes you can afford to chain-cast through the windows it picks (gems, potions, Evocation are yours to manage). Treat late-fight Arcane Power and gem placements with care on mana-tight fights: AP's +30% cost and the gem's mana role are outside the model.</li>
-    <li>Buffs snapshot at cast start, and activations only fire at real press opportunities: with the pull, macroed into the next cast ("/cast Berserking /cast Arcane Blast" on the spam press as the previous cast ends), or freely while not casting (intermissions). A planned time that lands mid-cast fires at the next cast boundary, and cooldowns run from the actual press. Displayed times are the real press moments. Crits count as 182% — 2/2 Spell Power with a Chaotic Skyfire Diamond. (No toggle for the meta gem: a constant crit-damage factor scales every schedule equally, so it cannot change which overlay wins — only things that vary during the fight can.)</li>
+    <li>Buffs snapshot at cast start, and activations only fire at real press opportunities: with the pull, macroed into the next cast ("/cast Berserking /cast Arcane Blast" on the spam press as the previous cast ends), or freely while not casting (intermissions). A planned time that lands mid-cast fires at the next cast boundary, and cooldowns run from that real moment. Displayed times are the moments you press; when the buffs land on the next cast (or a cooldown lights up a beat into the spam), the row says so in words. Crits count as 182% — 2/2 Spell Power with a Chaotic Skyfire Diamond. (No toggle for the meta gem: a constant crit-damage factor scales every schedule equally, so it cannot change which overlay wins — only things that vary during the fight can.)</li>
   </ul>`;
 }
 
@@ -2322,12 +2462,14 @@ function pressPlan(run) {
   const { cfg, best } = run;
   const acts = [];
   for (const w of scheduleRows(run)) for (const a of w.acts) acts.push(a);
-  acts.sort((x, y) => x.t - y.t);
+  // the board is a to-do list: rows are PRESS moments (the planner's intent),
+  // not the cast boundary where the buff lands — one row per macro press
+  acts.sort((x, y) => x.intent - y.intent || x.t - y.t);
   const rows = [];
   for (const a of acts) {
     const r = rows[rows.length - 1];
-    if (r && Math.round(a.t) === Math.round(r.t)) r.items.push(a);
-    else rows.push({ t: a.t, items: [a] });
+    if (r && Math.round(a.intent) === r.t) r.items.push(a);
+    else rows.push({ t: Math.round(a.intent), items: [a] });
   }
   const isPinned = a => (cfg.fixed[a.k] || []).some(ft => Math.abs(ft - a.intent) < 0.5);
   const sig = JSON.stringify(best.s);
@@ -2356,13 +2498,16 @@ function pressPlan(run) {
     const delta = best.val - simulate(rep, cfg).robust;
     if (delta > 0.5) r.tag = `deliberate: +${Math.round(delta)} dmg vs one press at ${fmtT(nb.t)}`;
   }
-  // a press whose intent sits on a raid call but fires on the next cast gets
-  // the practical instruction instead of a time mystery
+  // when the buffs land on the next cast boundary after the press (or a
+  // cooldown lights up a beat into the spam), say so in words — the row time
+  // stays the moment you press
   for (const r of rows) {
     if (r.tag) continue;
-    const iMin = Math.min(...r.items.map(a => a.intent));
-    if (r.t - iMin <= 0.7) continue;
-    const nbPin = rows.find(o => o !== r && o.items.some(isPinned) && Math.abs(o.t - iMin) <= 1.2);
+    const late = r.items.filter(a => !isPinned(a) && a.t - a.intent > 0.7);
+    if (!late.length) continue;
+    const pinnedHere = r.items.find(isPinned);
+    if (pinnedHere) { r.tag = `press with the ${BUFFS[pinnedHere.k].name} call — the rest fires on your next AB`; continue; }
+    const nbPin = rows.find(o => o !== r && o.items.some(isPinned) && Math.abs(o.t - r.t) <= 1.2);
     if (nbPin) r.tag = `press with ${BUFFS[nbPin.items[0].k].name} — it fires on your next AB`;
   }
   // annotate presses whose window is clipped by the kill, with what they earn

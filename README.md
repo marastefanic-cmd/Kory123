@@ -75,11 +75,22 @@ boss dies is **always pressed**: a final window clipped by the kill is free dama
 clipped press with its real uptime and value. Baselines shown: no cooldowns, and "mash everything on
 cooldown".
 
-Two trust rules keep the plan readable: **Cold Snap materiality** — if burning Cold Snap wouldn't beat
-the best natural-cooldown plan by at least one effective cast, the planner holds it and says so — and
-**press price tags** — any activation deliberately offset from a neighboring press is tagged with what
-a single merged press would cost (e.g. "+133 dmg vs one press at 0:05"), so a scattered-looking second
-is always either justified with a number or merged away.
+Ties break toward the natural, overlaid line. When placements sit within one expected cast of each
+other, the planner prefers: a window that completes before the kill, then a press anchored to
+something you can see (the pull, a raid call, a co-press, a buff ending, a cooldown lighting back
+up), then one that avoids floor-dead seconds, then one that **joins an existing press row**, then the
+one that **overlays the most other buff windows** — stacked windows keep their value when the fight
+drifts a few seconds off last week's timing; perfectly-tiled ones don't. On plain fights the presses
+then snap to a 5-second grid phased by the raid calls. The Pressboard shows **press moments** (one
+row = one macro press); when the buffs land on the next cast boundary, the row says so in words.
+
+Three trust rules keep the plan readable: **Cold Snap materiality** — burning Cold Snap mid-fight must
+beat the best natural-cooldown plan by at least one effective cast, or the planner holds it and says
+so — with one exception: a reset whose extra Icy Veins is a **final clipped window** is spent for any
+real gain (a ready cooldown near the kill is free damage); and **press price tags** — any activation
+deliberately offset from a neighboring press is tagged with what a single merged press would cost
+(e.g. "+133 dmg vs one press at 0:05"), so a scattered-looking second is always either justified with
+a number or merged away.
 
 Reproduces the community-consensus behaviors on its own: Icy Veins inside Bloodlust at 0 gear haste
 and shifted out past ~150–200 rating; no mid-fight BL+IV+Berserking triple-stack (but it will
