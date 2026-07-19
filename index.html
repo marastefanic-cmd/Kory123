@@ -984,10 +984,11 @@ function optimizeAsync(cfg, starts, onProgress) {
         const anchored = (rep2, key2, att) => {
           if (att <= 0.5 && !earlyPin) return 1; // the pull itself, unless a raid call lands moments later
           for (const k3 in rep2) {
-            const dur3 = BUFFS[k3].dur;
+            const dur3 = BUFFS[k3].dur, cd3 = BUFFS[k3].cd;
             for (const tt of rep2[k3]) {
               if (k3 !== key2 && Math.abs(tt - att) <= 0.5) return 1;      // co-press
               if (att - (tt + dur3) > -0.5 && att - (tt + dur3) <= 1.6) return 1; // press as that buff ends (next AB boundary)
+              if (k3 === key2 && tt < att - 1 && att - (tt + cd3) > -0.5 && att - (tt + cd3) <= 1.6) return 1; // press as the cooldown lights back up
             }
           }
           return 0;
@@ -1430,6 +1431,13 @@ function optimizeAsync(cfg, starts, onProgress) {
             for (const [sec, movers] of press5) {
               const phases5 = phasesFor(sec);
               if ([...phases5].some(p => ((sec - p) % 5 + 5) % 5 === 0)) continue; // already on the grid
+              // a press at a member's cooldown-ready tick is already natural
+              let onTick = false;
+              for (const m of movers) {
+                const prevs = s[m.key].filter(tt => tt < sec - 1);
+                if (prevs.some(tt => sec - (tt + BUFFS[m.key].cd) > -0.5 && sec - (tt + BUFFS[m.key].cd) <= 1.6)) { onTick = true; break; }
+              }
+              if (onTick) continue;
               const targets = [];
               for (const p of phases5) {
                 const down = sec - (((sec - p) % 5) + 5) % 5;
