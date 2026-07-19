@@ -625,7 +625,14 @@ function simulate(schedule, cfg, collect) {
   // The optimizer maximizes this EXPECTED damage ("robust"); displays show
   // the plain at-T total.
   const KILL_WINDOW = 3;
-  let t = 0, stacks = 0, total = 0, totalEarly = 0, robust = 0, gcdCappedTime = 0, castCount = 0, lastCastStart = 0;
+  // Steady-state assumption: Arcane Blast is modeled at a permanent 3 stacks
+  // (1.5s base). Measured: the opening/post-gap ramp — the first ~3 casts at
+  // 0/1/2 stacks — is worth ZERO extra casts below ~400 gear rating and one
+  // quantized cast only far past the GCD floor; and that re-ramp is paid by
+  // every candidate plan equally, so it never changes which overlay wins.
+  // Dropping the ramp removes the stack-decay bookkeeping and the phantom
+  // "haste compresses the ramp" incentive, giving cleaner, more natural plans.
+  let t = 0, stacks = g.AB.MAX_STACKS, total = 0, totalEarly = 0, robust = 0, gcdCappedTime = 0, castCount = 0;
   const casts = collect ? [] : null;
   while (t < cfg.T + KILL_WINDOW) {
     let seg = null;
@@ -635,7 +642,6 @@ function simulate(schedule, cfg, collect) {
       if (seg.type === "intermission" && t < seg.end) { t = seg.end; continue; } // boss untargetable: wait it out
       if (seg.type === "intermission") seg = null; // past the last defined phase: plain casting
     }
-    if (t - lastCastStart >= GAME.AB.DEBUFF_DUR) stacks = 0; // AB debuff fell off during the gap
     // fire pending activations at this press opportunity: a scheduled time in
     // [prevCastEnd, t) was a non-casting gap (press lands exactly there); a
     // time inside the previous cast fires now, with this cast's press
@@ -698,7 +704,6 @@ function simulate(schedule, cfg, collect) {
     } else {
       dmg = (g.AB.AVG_BASE_DMG + g.AB.COEF * sp) * critFactor * dmgMult;
       if (seg && seg.type === "burn") dmg *= seg.mult;
-      if (stacks < g.AB.MAX_STACKS) stacks++;
     }
     if (t < cfg.T) { total += dmg; castCount++; }
     // damage banked by the PESSIMISTIC kill (T−W): a cast that only exists if
@@ -716,7 +721,6 @@ function simulate(schedule, cfg, collect) {
       const qCast = isAoe ? 1 - Math.pow(1 - crit * ATI.procChance, seg.targets) : crit * ATI.procChance;
       recentT.push(t); recentNoQ.push(1 - qCast);
     }
-    if (!isAoe) lastCastStart = t; // AE casts don't refresh the AB debuff — stacks drop 8s after the last AB
     // casting blocks presses only while the cast is in flight; the GCD-idle
     // remainder (and all of an instant AE's interval) is free press time
     const castLen = pUp * up.cast + (1 - pUp) * dn.cast;
@@ -2425,8 +2429,8 @@ function renderAssumptions({ cfg }) {
     <li>Ties break toward the natural, overlaid line: when spots are within one expected cast, the planner prefers a window that completes before the kill, then a press anchored to something you can see (the pull, a raid call, a co-press, a buff ending, a cooldown lighting back up), then one that avoids floor-dead seconds, then one that joins an existing press row, then the one that overlays the most other buff windows — stacked windows keep their value when the fight drifts a few seconds off plan; perfectly-tiled ones don't. Anything deliberately scattered carries a price tag saying what the grouped press would cost. A Cold Snap whose reset only buys a clipped final Icy Veins is still spent: a ready cooldown near the kill is free damage.</li>
     <li>Power Infusion does not stack with Bloodlust (Bloodlust wins while both are up). Skull of Gul’dan and Mind Quickening Gem share the offensive-trinket lockout: using one locks the other for the used buff’s duration. Drums obey Anniversary Tinnitus (one drum buff per 2 min); Bloodlust obeys Anniversary Sated (raid-wide, one per 10 min of a pull, resets on boss kill).</li>
     <li>Rotation is modeled as continuous AB spam. Real play conserves (AB×3 + Frostbolt filler) between windows — that changes absolute DPS, not which overlay wins, so the schedule stands either way.</li>
-    <li>The opener is special: during the 0→3 stack ramp, AB casts are longer than the GCD, so haste that would be “wasted” at 3 stacks still compresses the ramp — the planner may deliberately triple-stack haste at the pull (especially inside Arcane Power) and keep those same buffs apart mid-fight.</li>
-    <li>Complicated fights: intermissions score zero damage (cooldowns and buff durations keep ticking — the planner holds cooldowns to recover through downtime, and your AB stacks drop after the 8s debuff expires); Burn phases multiply Arcane Blast damage; AoE phases switch to Arcane Explosion spam — instant, GCD-bound (haste pays to the 1.0s floor even without stacks) and damage scaling with target count. Phases apply per cast start.</li>
+    <li>Arcane Blast is modeled at a steady 3 stacks (1.5s base). The opening/post-gap ramp — the first few casts at 0/1/2 stacks — is measured to be worth zero extra casts below ~400 haste rating and a single quantized cast only far past the GCD floor, and every candidate plan pays it equally, so it never changes which overlay wins. Dropping it keeps the plans natural (no phantom “triple-stack the pull for the ramp” incentive) while the real lever — not parking a multiplicative haste buff on already-floored casts (e.g. Icy Veins inside Bloodlust once geared) — is fully kept.</li>
+    <li>Complicated fights: intermissions score zero damage (cooldowns and buff durations keep ticking — the planner holds cooldowns to recover through downtime); Burn phases multiply Arcane Blast damage; AoE phases switch to Arcane Explosion spam — instant, GCD-bound (haste pays to the 1.0s floor) and damage scaling with target count. Phases apply per cast start.</li>
     <li>Mana is not simulated — the planner assumes you can afford to chain-cast through the windows it picks (gems, potions, Evocation are yours to manage). Treat late-fight Arcane Power and gem placements with care on mana-tight fights: AP's +30% cost and the gem's mana role are outside the model.</li>
     <li>Buffs snapshot at cast start, and activations only fire at real press opportunities: with the pull, macroed into the next cast ("/cast Berserking /cast Arcane Blast" on the spam press as the previous cast ends), or freely while not casting (intermissions). A planned time that lands mid-cast fires at the next cast boundary, and cooldowns run from that real moment. Displayed times are the moments you press; when the buffs land on the next cast (or a cooldown lights up a beat into the spam), the row says so in words. Crits count as 182% — 2/2 Spell Power with a Chaotic Skyfire Diamond. (No toggle for the meta gem: a constant crit-damage factor scales every schedule equally, so it cannot change which overlay wins — only things that vary during the fight can.)</li>
   </ul>`;

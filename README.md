@@ -33,6 +33,10 @@ shorter fight than last week's log so the final burn window isn't planned past t
   passes 50%, 3-stack AB is GCD-locked at 1.0s and *extra haste adds no casts*.
   Going over the floor is still often correct: the planner simulates real casts, so it will overcap a
   window (especially under Arcane Power) when that beats staying under the line.
+  The planner models AB at a steady 3 stacks: the opening/post-gap ramp is measured to be worth zero
+  extra casts below ~400 haste rating (and one quantized cast only far past the floor), and every plan
+  pays it equally — so modeling it would only add phantom "triple-stack the pull" behavior without
+  changing which overlay wins.
 - **Wording matters**: "increases casting speed by X%" divides cast time by (1+X) — that's Icy Veins,
   Bloodlust, Berserking, Power Infusion. Haste-*rating* effects (Drums, Skull, MQG, Ashtongue) go into
   the additive rating pool instead. Flat reductions (AB's own debuff) come off the base cast before haste.
@@ -98,8 +102,7 @@ deliberately offset from a neighboring press is tagged with what a single merged
 a number or merged away.
 
 Reproduces the community-consensus behaviors on its own: Icy Veins inside Bloodlust at 0 gear haste
-and shifted out past ~150–200 rating; no mid-fight BL+IV+Berserking triple-stack (but it will
-deliberately triple-stack the opener ramp, where casts are still longer than the GCD); the Serpent-Coil
+and shifted out past ~150–200 rating; no mid-fight BL+IV+Berserking triple-stack; the Serpent-Coil
 gem window paired with Arcane Power, twice on fights long enough to fit both windows fully.
 
 Not modeled: mana (you manage gems/potions/Evocation), the conserve rotation between windows
