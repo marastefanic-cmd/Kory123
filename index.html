@@ -489,22 +489,41 @@ function repair(schedule, cfg) {
   const lastFor = key => Math.max(0, cfg.T - BUFFS[key].dur);
   // Offensive on-use trinkets share a lockout: using one locks the whole
   // group for the used buff's duration; each also has its own cooldown.
+  // Pinned trinkets are immovable anchors; planner-placed ones fit around them.
   const group = OFF_TRINKETS.filter(k => k in schedule);
   if (group.length) {
+    const anchors = [];
+    for (const k of group) {
+      if (cfg.fixed[k]) {
+        out[k] = cfg.fixed[k].slice();
+        for (const t of out[k]) anchors.push({ k, t });
+      }
+    }
+    anchors.sort((a, b) => a.t - b.t);
+    const movable = group.filter(k => !cfg.fixed[k]);
     const reqs = [];
-    for (const k of group) for (const t of schedule[k]) reqs.push({ k, t });
+    for (const k of movable) for (const t of schedule[k]) reqs.push({ k, t });
     reqs.sort((a, b) => a.t - b.t);
     const own = {}, res = {};
-    for (const k of group) { own[k] = 0; res[k] = []; }
-    let lock = 0;
+    for (const k of group) own[k] = 0;
+    for (const k of movable) res[k] = [];
+    let lock = 0, ai = 0;
+    const commitAnchor = a => {
+      lock = Math.max(lock, a.t + BUFFS[a.k].dur);
+      own[a.k] = Math.max(own[a.k], a.t + BUFFS[a.k].cd);
+    };
     for (const r of reqs) {
-      const t = Math.max(0, r.t, lock, own[r.k]);
+      let t = Math.max(0, r.t, lock, own[r.k]);
+      // anchors that fire at/before the candidate happen regardless
+      while (ai < anchors.length && anchors[ai].t <= t) { commitAnchor(anchors[ai++]); t = Math.max(t, lock, own[r.k]); }
+      // a candidate window may not run into an upcoming anchor's press
+      while (ai < anchors.length && t + BUFFS[r.k].dur > anchors[ai].t) { commitAnchor(anchors[ai++]); t = Math.max(t, lock, own[r.k]); }
       if (t > lastFor(r.k)) continue;
       res[r.k].push(t);
       lock = t + BUFFS[r.k].dur;
       own[r.k] = t + BUFFS[r.k].cd;
     }
-    for (const k of group) out[k] = res[k];
+    for (const k of movable) out[k] = res[k];
   }
   for (const key in schedule) {
     if (out[key]) continue;
@@ -642,7 +661,20 @@ function optimizeAsync(cfg, starts, onProgress) {
 const el = id => document.getElementById(id);
 const state = {
   enabled: { bloodlust: true, icyVeins: true, drums: true, ati: false, skull: true, arcanePower: true, scb: true, berserking: false, mqg: false, powerInfusion: false, isc: false },
-  coldSnap: true, blTimes: "", drumTimes: "", piTimes: "",
+  coldSnap: true,
+  times: Object.fromEntries(Object.keys(BUFFS).filter(k => BUFFS[k].kind !== "proc").map(k => [k, ""])),
+};
+// per-buff pin field labels; everything not listed gets the generic label
+const PIN_LABEL = {
+  bloodlust: "Raid casts it at",
+  drums: "Party drums at",
+  powerInfusion: "Priest casts it at",
+  scb: "Mana Emerald at",
+};
+const PIN_HINT = {
+  bloodlust: "Anniversary: raid-wide + Sated — one Bloodlust per 10 min of a pull (resets on boss kill).",
+  drums: "Tinnitus: you can only receive one drum buff per 2 min — closer times are ignored.",
+  powerInfusion: "Doesn’t stack with Bloodlust — the planner keeps them apart.",
 };
 function trinketCount() { return TRINKETS.filter(k => state.enabled[k]).length; }
 function refreshTrinketLock() {
@@ -681,27 +713,21 @@ function buildBuffList() {
       subopts();
     });
     host.appendChild(lab);
-    if (key === "bloodlust" || key === "drums" || key === "icyVeins" || key === "powerInfusion") {
+    if (def.kind !== "proc") {
       const div = document.createElement("div");
       div.className = "subopt";
       div.dataset.for = key;
-      if (key === "bloodlust") div.innerHTML = `<div class="fixedtime"><label for="t-bl">Raid casts it at</label>
-        <input id="t-bl" type="text" placeholder="e.g. 0:05 — blank = planner picks" value="${state.blTimes}">
-        <span class="hint">Anniversary: raid-wide + Sated — one Bloodlust per 10 min of a pull (resets on boss kill).</span></div>`;
-      if (key === "drums") div.innerHTML = `<div class="fixedtime"><label for="t-drum">Party drums at</label>
-        <input id="t-drum" type="text" placeholder="e.g. 0:00, 2:00, 4:00 — blank = planner picks" value="${state.drumTimes}">
-        <span class="hint">Tinnitus: you can only receive one drum buff per 2 min — closer times are ignored.</span></div>`;
-      if (key === "powerInfusion") div.innerHTML = `<div class="fixedtime"><label for="t-pi">Priest casts it at</label>
-        <input id="t-pi" type="text" placeholder="e.g. 0:05, 3:10 — blank = planner picks" value="${state.piTimes}">
-        <span class="hint">Doesn’t stack with Bloodlust — the planner keeps them apart.</span></div>`;
-      if (key === "icyVeins") div.innerHTML = `<label class="check"><input id="ck-cs" type="checkbox" ${state.coldSnap ? "checked" : ""}> Cold Snap available (resets Icy Veins)</label>`;
+      const csRow = key === "icyVeins"
+        ? `<label class="check"><input id="ck-cs" type="checkbox" ${state.coldSnap ? "checked" : ""}> Cold Snap available (resets Icy Veins)</label>`
+        : "";
+      div.innerHTML = `<div class="fixedtime">${csRow}<label for="t-${key}">${PIN_LABEL[key] || "Pin to"}</label>
+        <input id="t-${key}" type="text" placeholder="e.g. 0:05, 3:10 — blank = planner picks" value="${state.times[key]}">
+        ${PIN_HINT[key] ? `<span class="hint">${PIN_HINT[key]}</span>` : ""}</div>`;
+      div.querySelector(`#t-${key}`).addEventListener("input", e => state.times[key] = e.target.value);
       host.appendChild(div);
     }
     }
   }
-  el("t-bl").addEventListener("input", e => state.blTimes = e.target.value);
-  el("t-drum").addEventListener("input", e => state.drumTimes = e.target.value);
-  el("t-pi").addEventListener("input", e => state.piTimes = e.target.value);
   el("ck-cs").addEventListener("change", e => state.coldSnap = e.target.checked);
   refreshTrinketLock();
   subopts();
@@ -743,25 +769,57 @@ function sepFilter(times, sep) {
   }
   return { eff, dropped };
 }
+// Pinned Icy Veins times must respect the 3-min cooldown, with Cold Snap
+// available to break it once per 8 min.
+function ivPinFilter(times, coldSnap) {
+  const eff = [], dropped = [];
+  let cdReady = 0, csReady = 0, prevEnd = 0;
+  for (const t of times) {
+    if (t >= prevEnd && (t >= cdReady || (coldSnap && t >= csReady))) {
+      if (t < cdReady) csReady = t + GAME.COLD_SNAP_CD;
+      eff.push(t);
+      cdReady = t + BUFFS.icyVeins.cd;
+      prevEnd = t + BUFFS.icyVeins.dur;
+    } else dropped.push(t);
+  }
+  return { eff, dropped };
+}
 function readCfg() {
   const T = parseLen(el("in-len").value);
+  const coldSnap = state.coldSnap && state.enabled.icyVeins;
   const fixed = {}, warnings = [];
-  // Raid-called fields. Separation rules: Bloodlust = Sated (10 min),
-  // Drums = Tinnitus (2 min), Power Infusion = the priest's own cooldown.
-  const raidFields = [
-    ["bloodlust", state.blTimes, BUFFS.bloodlust.cd],
-    ["drums", state.drumTimes, BUFFS.drums.cd],
-    ["powerInfusion", state.piTimes, BUFFS.powerInfusion.cd],
-  ];
-  for (const [key, raw, sep] of raidFields) {
-    if (!state.enabled[key] || !raw.trim()) continue;
+  // Any activatable can be pinned. Separation rules: Bloodlust = Sated (10 min),
+  // Drums = Tinnitus (2 min), everything else = its own cooldown; Icy Veins
+  // pins may chain through Cold Snap.
+  for (const key in BUFFS) {
+    if (BUFFS[key].kind === "proc" || !state.enabled[key]) continue;
+    const raw = state.times[key] || "";
+    if (!raw.trim()) continue;
     const name = BUFFS[key].name;
     const { times, bad } = parseTimeList(raw, T);
     if (bad.length) warnings.push(`${name}: ignored “${bad.join("”, “")}” — not a valid time inside the fight.`);
-    const { eff, dropped } = sepFilter(times, sep);
-    if (dropped.length) warnings.push(`${name}: ignored ${dropped.map(fmtT).join(", ")} — too close to the previous one (${key === "bloodlust" ? "Sated" : key === "drums" ? "Tinnitus" : "cooldown"} needs ${fmtT(sep)} between).`);
+    const { eff, dropped } = key === "icyVeins"
+      ? ivPinFilter(times, coldSnap)
+      : sepFilter(times, BUFFS[key].cd);
+    if (dropped.length) warnings.push(`${name}: ignored ${dropped.map(fmtT).join(", ")} — ${key === "bloodlust" ? "Sated needs" : key === "drums" ? "Tinnitus needs" : "its cooldown needs"} ${fmtT(BUFFS[key].cd)} between uses${key === "icyVeins" ? " (Cold Snap already spent)" : ""}.`);
     if (eff.length) fixed[key] = eff;
     else warnings.push(`${name}: no usable times entered — the planner will place it instead.`);
+  }
+  // Pinned on-use trinkets also share the offensive lockout with each other:
+  // a press inside another pinned trinket's buff window would fail in-game.
+  const pinnedTrinkets = OFF_TRINKETS.filter(k => fixed[k])
+    .flatMap(k => fixed[k].map(t => ({ k, t })))
+    .sort((a, b) => a.t - b.t);
+  let lock = 0;
+  const lockDrops = [];
+  for (const a of pinnedTrinkets) {
+    if (a.t < lock) lockDrops.push(a);
+    else lock = a.t + BUFFS[a.k].dur;
+  }
+  for (const d of lockDrops) {
+    fixed[d.k] = fixed[d.k].filter(t => t !== d.t);
+    warnings.push(`${BUFFS[d.k].name}: pinned ${fmtT(d.t)} ignored — trinket lockout from another pinned trinket is still running.`);
+    if (!fixed[d.k].length) { delete fixed[d.k]; warnings.push(`${BUFFS[d.k].name}: no usable times left — the planner will place it instead.`); }
   }
   return {
     T,
@@ -770,7 +828,7 @@ function readCfg() {
     critPct: Math.min(100, Math.max(0, +el("in-crit").value || 0)),
     enabled: { ...state.enabled },
     fixed, warnings,
-    coldSnap: state.coldSnap && state.enabled.icyVeins,
+    coldSnap,
   };
 }
 el("in-haste").addEventListener("input", () => {
@@ -1051,7 +1109,7 @@ function renderAssumptions({ cfg }) {
     <li>Ashtongue Talisman is modeled as its expected average haste from your crit and cast rate, not as discrete procs.</li>
     <li>Serpent-Coil Braid assumes a Mana Emerald is available each use (2-min gem cooldown).</li>
     <li>Going past the 50% GCD floor is not treated as a mistake — the planner simulates actual casts, so it will happily overcap a window (especially under Arcane Power) when that beats staying under the line. The floor line just marks where extra haste stops adding casts.</li>
-    <li>Bloodlust, Drums, and Power Infusion timings you enter are treated as raid-called anchors: the planner never moves them, it plans your cooldowns around them.</li>
+    <li>Any pinned times are hard anchors: a buff with times entered fires at exactly those times (validated against its cooldown, Sated/Tinnitus, Cold Snap, and the trinket lockout) and the planner schedules everything unpinned around them. Blank = the planner owns that buff.</li>
     <li>Planner-placed buffs always complete their full duration before the fight ends — no truncated windows. (Raid-called times are used exactly as entered.)</li>
     <li>Power Infusion does not stack with Bloodlust (Bloodlust wins while both are up). Skull of Gul’dan and Mind Quickening Gem share the offensive-trinket lockout: using one locks the other for the used buff’s duration. Drums obey Anniversary Tinnitus (one drum buff per 2 min); Bloodlust obeys Anniversary Sated (raid-wide, one per 10 min of a pull, resets on boss kill).</li>
     <li>Rotation is modeled as continuous AB spam. Real play conserves (AB×3 + Frostbolt filler) between windows — that changes absolute DPS, not which overlay wins, so the schedule stands either way.</li>
@@ -1130,7 +1188,7 @@ function lsSet(o) { try { localStorage.setItem(PRESET_KEY, JSON.stringify(o)); r
 function snapshotState() {
   return {
     enabled: { ...state.enabled }, coldSnap: state.coldSnap,
-    blTimes: state.blTimes, drumTimes: state.drumTimes, piTimes: state.piTimes,
+    times: { ...state.times },
     haste: el("in-haste").value, len: el("in-len").value,
     sp: el("in-sp").value, crit: el("in-crit").value,
   };
@@ -1140,7 +1198,8 @@ function applyState(s) {
   let eq = 0; // two trinket slots — sanitize old presets
   for (const k of TRINKETS) if (state.enabled[k] && ++eq > 2) state.enabled[k] = false;
   state.coldSnap = !!s.coldSnap;
-  state.blTimes = s.blTimes || ""; state.drumTimes = s.drumTimes || ""; state.piTimes = s.piTimes || "";
+  const legacy = { bloodlust: s.blTimes, drums: s.drumTimes, powerInfusion: s.piTimes };
+  for (const k in state.times) state.times[k] = (s.times || {})[k] || legacy[k] || "";
   el("in-haste").value = s.haste ?? 0;
   el("in-len").value = s.len ?? "5:00";
   el("in-sp").value = s.sp ?? 1150;
