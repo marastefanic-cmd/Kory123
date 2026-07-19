@@ -124,6 +124,15 @@
   .buff .name { font-size: 14px; }
   .buff .stat { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
   .buff input { position: absolute; opacity: 0; pointer-events: none; }
+  .buff.locked { opacity: 0.4; cursor: not-allowed; }
+  .group-head {
+    font-size: 11.5px; color: var(--gold-dim);
+    letter-spacing: 0.08em; text-transform: uppercase;
+    margin: 12px 0 6px;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .group-head:first-child { margin-top: 0; }
+  .group-head span { color: var(--muted); letter-spacing: 0.02em; text-transform: none; font-size: 11.5px; }
   .subopt {
     margin: -4px 0 8px 24px;
     display: flex; align-items: center; gap: 8px;
@@ -388,9 +397,16 @@ const BUFFS = {
   powerInfusion: { name: "Power Infusion",       kind: "mult",   value: 1.20, dur: 15, cd: 180, color: "var(--c-pi)",          stat: "+20% haste · 15s · priest" },
   isc:           { name: "Icon of the Silver Crescent", kind: "sp", value: 155, dur: 20, cd: 120, color: "var(--c-isc)",       stat: "+155 dmg · 20s · 2m cd" },
 };
-// lane/checkbox order is the CVD-safe palette order (validated), not arbitrary
+// timeline lane order is the CVD-safe palette order (validated), not arbitrary
 const LANE_ORDER = ["ati", "powerInfusion", "drums", "icyVeins", "skull", "isc", "scb", "arcanePower", "berserking", "mqg", "bloodlust"];
 const OFF_TRINKETS = ["skull", "mqg", "isc"]; // shared on-use lockout: using one locks the others for the buff's duration
+// checkbox list groups the way a player thinks about them
+const TRINKETS = ["skull", "ati", "scb", "mqg", "isc"];
+const GROUPS = [
+  { title: "Your spells", keys: ["icyVeins", "berserking", "arcanePower"] },
+  { title: "Trinkets", keys: TRINKETS, trinket: true },
+  { title: "Raid externals", keys: ["bloodlust", "powerInfusion", "drums"] },
+];
 const ATI = { rating: 145, dur: 5, procChance: 0.5 };
 
 /* ═══════════════ engine ═══════════════ */
@@ -628,20 +644,40 @@ const state = {
   enabled: { bloodlust: true, icyVeins: true, drums: true, ati: false, skull: true, arcanePower: true, scb: true, berserking: false, mqg: false, powerInfusion: false, isc: false },
   coldSnap: true, blTimes: "", drumTimes: "", piTimes: "",
 };
+function trinketCount() { return TRINKETS.filter(k => state.enabled[k]).length; }
+function refreshTrinketLock() {
+  const full = trinketCount() >= 2;
+  document.querySelectorAll("label.buff[data-trinket]").forEach(lab => {
+    lab.classList.toggle("locked", full && !lab.classList.contains("on"));
+  });
+  const c = el("trink-count");
+  if (c) c.textContent = trinketCount() + "/2 equipped";
+}
 function buildBuffList() {
   const host = el("buff-list");
   host.innerHTML = "";
-  for (const key of LANE_ORDER) {
+  for (const group of GROUPS) {
+    const head = document.createElement("div");
+    head.className = "group-head";
+    head.innerHTML = group.trinket ? `${group.title} <span id="trink-count"></span>` : group.title;
+    host.appendChild(head);
+    for (const key of group.keys) {
     const def = BUFFS[key];
     const lab = document.createElement("label");
     lab.className = "buff" + (state.enabled[key] ? " on" : "");
     lab.style.setProperty("--bc", def.color);
+    if (group.trinket) lab.dataset.trinket = "1";
     lab.innerHTML = `<span class="swatch"></span><span class="name">${def.name}</span>
       <span class="stat">${def.stat}</span>
       <input type="checkbox" ${state.enabled[key] ? "checked" : ""} aria-label="${def.name}">`;
     lab.querySelector("input").addEventListener("change", e => {
+      if (e.target.checked && TRINKETS.includes(key) && trinketCount() >= 2) {
+        e.target.checked = false; // only two trinket slots in the game
+        return;
+      }
       state.enabled[key] = e.target.checked;
       lab.classList.toggle("on", e.target.checked);
+      refreshTrinketLock();
       subopts();
     });
     host.appendChild(lab);
@@ -661,11 +697,13 @@ function buildBuffList() {
       if (key === "icyVeins") div.innerHTML = `<label class="check"><input id="ck-cs" type="checkbox" ${state.coldSnap ? "checked" : ""}> Cold Snap available (resets Icy Veins)</label>`;
       host.appendChild(div);
     }
+    }
   }
   el("t-bl").addEventListener("input", e => state.blTimes = e.target.value);
   el("t-drum").addEventListener("input", e => state.drumTimes = e.target.value);
   el("t-pi").addEventListener("input", e => state.piTimes = e.target.value);
   el("ck-cs").addEventListener("change", e => state.coldSnap = e.target.checked);
+  refreshTrinketLock();
   subopts();
 }
 function subopts() {
@@ -1099,6 +1137,8 @@ function snapshotState() {
 }
 function applyState(s) {
   for (const k in state.enabled) state.enabled[k] = !!(s.enabled || {})[k];
+  let eq = 0; // two trinket slots — sanitize old presets
+  for (const k of TRINKETS) if (state.enabled[k] && ++eq > 2) state.enabled[k] = false;
   state.coldSnap = !!s.coldSnap;
   state.blTimes = s.blTimes || ""; state.drumTimes = s.drumTimes || ""; state.piTimes = s.piTimes || "";
   el("in-haste").value = s.haste ?? 0;
