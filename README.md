@@ -9,7 +9,9 @@ second-screen schedule to follow during the pull.
 - Enter your **gear haste rating** and **fight length**
 - Check the cooldowns you actually have; enter the raid-called times for **Bloodlust / Drums / Power Infusion** (or leave blank to let the planner place them)
 - Hit **Find optimal overlay** — you get the burn timeline, an activation schedule with windows,
-  a live **cap sheet**, and a **follow mode** with a real-time playhead + "next up" countdown for the fight
+  a live **cap sheet**, and a **Pressboard**: one row per press (time + spell icons), with a live
+  follow mode — a next-up banner counts down to each press and the row highlight tracks the fight
+  (or read it as an agenda if the fight drifts off last week's timing)
 - **Save the setup as a boss preset** (stored in your browser) and recall it next raid week
 
 The intended weekly loop: sim/gem/enchant your gear in [wowsims](https://wowsims.com/tbc/), take that
