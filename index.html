@@ -373,7 +373,11 @@ const GAME = {
   GCD_BASE: 1.5,
   GCD_FLOOR: 1.0,
   AB: { BASE_CAST: 2.5, STACK_CAST_REDUCTION: 1/3, MAX_STACKS: 3, AVG_BASE_DMG: 720, COEF: 2.5/3.5 },
-  CRIT_MULT: 1.75, // 1.5 base, ×(1+0.25·2) bonus portion from 2/2 Spell Power (1.8175 with Chaotic Skyfire)
+  // 1 + (1.5×1.03 − 1)×1.5: base 150% crit, ×1.03 Chaotic Skyfire Diamond (assumed —
+  // everyone wears it), bonus portion ×1.5 from 2/2 Spell Power. A constant factor on
+  // every cast, so it cancels out of schedule comparisons — verified: 1.75 vs 1.8175
+  // produce byte-identical schedules and identical gain tiles.
+  CRIT_MULT: 1.8175,
   COLD_SNAP_CD: 480,
 };
 const BUFFS = {
@@ -1020,7 +1024,7 @@ function renderAssumptions({ cfg }) {
     <li>Rotation is modeled as continuous AB spam. Real play conserves (AB×3 + Frostbolt filler) between windows — that changes absolute DPS, not which overlay wins, so the schedule stands either way.</li>
     <li>The opener is special: during the 0→3 stack ramp, AB casts are longer than the GCD, so haste that would be “wasted” at 3 stacks still compresses the ramp — the planner may deliberately triple-stack haste at the pull (especially inside Arcane Power) and keep those same buffs apart mid-fight.</li>
     <li>Mana is not simulated — the planner assumes you can afford to chain-cast through the windows it picks (gems, potions, Evocation are yours to manage).</li>
-    <li>Buffs snapshot at cast start; activation clicks are assumed off-GCD / macroed into the next cast. Crit multiplier uses 2/2 Spell Power (175%).</li>
+    <li>Buffs snapshot at cast start; activation clicks are assumed off-GCD / macroed into the next cast. Crits count as 182% — 2/2 Spell Power with a Chaotic Skyfire Diamond. (No toggle for the meta gem: a constant crit-damage factor scales every schedule equally, so it cannot change which overlay wins — only things that vary during the fight can.)</li>
   </ul>`;
 }
 
