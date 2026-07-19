@@ -961,6 +961,70 @@ function optimizeAsync(cfg, starts, onProgress) {
           if (!moved) break;
         }
         }
+        // Final macro snap: a burst cluster sitting 1-2s off a cd- or
+        // chain-anchored neighbor (Icon at its cooldown tick, the Cold Snap
+        // IV at its chain point) snaps to co-start with it when damage-equal,
+        // so the plan reads as one press instead of scattered seconds.
+        for (let snapRound = 0; snapRound < 6; snapRound++) {
+          const acts = [];
+          for (const key in s) {
+            if (cfg.fixed[key]) continue;
+            const kind = BUFFS[key].kind;
+            if (kind !== "dmg" && kind !== "sp") continue;
+            s[key].forEach((t, i2) => acts.push({ key, i2, t }));
+          }
+          if (!acts.length) break;
+          acts.sort((a, b) => a.t - b.t);
+          const clusters = [];
+          for (const a of acts) {
+            const c = clusters[clusters.length - 1];
+            if (c && a.t - c[c.length - 1].t <= 3) c.push(a); else clusters.push([a]);
+          }
+          let snapped = false;
+          // an activation is a true anchor if its own constraints pin it:
+          // nudging it 1s earlier repairs back to the identical schedule
+          const isAnchored = (key, i2) => {
+            const cand = cloneS(s);
+            cand[key][i2] -= 1;
+            return JSON.stringify(repair(cand, cfg)) === JSON.stringify(s);
+          };
+          for (const c of clusters) {
+            // intra-cluster collapse: members 1-2s apart merge onto one second
+            const distinct = [...new Set(c.map(m => Math.round(m.t)))];
+            if (distinct.length > 1) {
+              for (const target of distinct) {
+                const cand = cloneS(s);
+                for (const m of c) cand[m.key][m.i2] += target - Math.round(m.t);
+                const rep = repair(cand, cfg);
+                if (JSON.stringify(rep) === JSON.stringify(s)) continue;
+                const r = simulate(rep, cfg).total;
+                if (r >= val - 0.5) { s = rep; val = Math.max(val, r); snapped = true; break; }
+              }
+              if (snapped) break; // recluster
+            }
+            const start = c[0].t;
+            const near = [];
+            for (const key in s) s[key].forEach((t, i2) => {
+              if (Math.abs(t - start) <= 4 && Math.abs(t - start) > 1e-9 &&
+                  (cfg.fixed[key] || isAnchored(key, i2))) near.push(Math.round(t));
+            });
+            const uniq = [...new Set(near)].sort((a, b) =>
+              near.filter(x => x === b).length - near.filter(x => x === a).length ||
+              Math.abs(a - start) - Math.abs(b - start));
+            for (const anchor of uniq) {
+              const d = anchor - start;
+              if (!d) continue;
+              const cand = cloneS(s);
+              for (const m of c) cand[m.key][m.i2] += d;
+              const rep = repair(cand, cfg);
+              if (JSON.stringify(rep) === JSON.stringify(s)) continue;
+              const r = simulate(rep, cfg).total;
+              if (r >= val - 0.5) { s = rep; val = Math.max(val, r); snapped = true; break; }
+            }
+            if (snapped) break; // indices stale — recluster
+          }
+          if (!snapped) break;
+        }
         best = { s, val };
         resolve(best); return;
       }
