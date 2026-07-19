@@ -794,15 +794,49 @@ function optimizeAsync(cfg, starts, onProgress) {
         // schedule — integer moves keep it integer — and score THAT.
         const snapped = repair(Object.fromEntries(Object.entries(best.s).map(([k, ts]) => [k, ts.map(Math.round)])), cfg);
         best = polish(snapped, cfg);
-        // Robustness tie-break: among equal-damage plans, a damage active
-        // (AP / gem / Icon) started LATER sits deeper in the stacked-haste
-        // window and doesn't depend on a perfectly executed ramp to catch
-        // its casts — so push each one as late as damage-neutrality allows.
-        // "You know the fight length — you won't get it back, so don't rush it."
+        // ——— tie-breaks among damage-equal plans (never lose damage: v ≥ val−EPS) ———
         let s = best.s, val = best.val;
-        for (let round = 0; round < 6; round++) {
-          // damage actives that overlap move as one cluster — splitting them
-          // costs the AP × (+spellpower) multiplication overlap
+        const EPS = 0.5;
+        const counts = sch => Object.fromEntries(Object.keys(sch).map(k => [k, sch[k].length]));
+        const sameCounts = (a, b) => Object.keys(a).every(k => a[k] === (b[k] || 0));
+        // Pass 1: haste actives — among equal-damage spots, minimize the seconds
+        // of the buff's own window spent on floor-locked casts (its haste does
+        // nothing there — don't park Berserking inside an already-capped
+        // Lust+IV overlap), earliest on ties.
+        for (const key in s) {
+          if (cfg.fixed[key]) continue;
+          const kind = BUFFS[key].kind;
+          if (kind !== "mult" && kind !== "rating") continue;
+          const dur = BUFFS[key].dur;
+          for (let i2 = 0; i2 < s[key].length; i2++) {
+            const c0 = counts(s);
+            let pick = null;
+            for (let d = -45; d <= 45; d++) {
+              const cand = cloneS(s);
+              cand[key][i2] += d;
+              const rep = repair(cand, cfg);
+              if (!sameCounts(c0, counts(rep))) continue;
+              const r = simulate(rep, cfg, true);
+              if (r.total < val - EPS) continue;
+              const at = s[key][i2] + d;
+              let nulled = 0;
+              for (const cast of r.casts) {
+                if (cast.t >= at - 1e-9 && cast.t < at + dur - 1e-9 && cast.capped) nulled += cast.interval;
+              }
+              if (!pick || nulled < pick.nulled - 1e-9 ||
+                  (Math.abs(nulled - pick.nulled) <= 1e-9 && at < pick.at)) {
+                pick = { rep, v: r.total, nulled, at, d };
+              }
+            }
+            if (pick && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); }
+          }
+        }
+        // Pass 2: damage actives (AP / gem / Icon) move as one coupled cluster —
+        // splitting them costs the AP × (+spellpower) overlap. Among equal-damage
+        // spots, anchor to the EARLIEST position whose whole window runs at one
+        // uniform full-speed cast rate: "pop the burst macro as soon as the haste
+        // buffs are up and stacks are rolling", never on the low part of the curve.
+        for (let round = 0; round < 4; round++) {
           const acts = [];
           for (const key in s) {
             if (cfg.fixed[key]) continue;
@@ -818,16 +852,32 @@ function optimizeAsync(cfg, starts, onProgress) {
             if (c && a.t - c[c.length - 1].t <= 8) c.push(a); else clusters.push([a]);
           }
           let moved = false;
-          for (const c of clusters.reverse()) {
-            let jump = null;
-            for (let d = 1; d <= 30; d++) {
+          for (const c of clusters) {
+            const c0 = counts(s);
+            let pick = null;
+            for (let d = -45; d <= 45; d++) {
               const cand = cloneS(s);
               for (const m of c) cand[m.key][m.i2] += d;
               const rep = repair(cand, cfg);
-              const v = simulate(rep, cfg).total;
-              if (v >= val - 0.5) jump = { rep, v }; // latest damage-neutral spot wins
+              if (!sameCounts(c0, counts(rep))) continue;
+              const r = simulate(rep, cfg, true);
+              if (r.total < val - EPS) continue;
+              // uniform-speed check across every member's window
+              let iMin = Infinity, iMax = 0;
+              for (const m of c) {
+                const a0 = m.t + d, a1 = a0 + BUFFS[m.key].dur;
+                for (const cast of r.casts) {
+                  if (cast.t >= a0 - 1e-9 && cast.t < a1 - 1e-9) {
+                    if (cast.interval < iMin) iMin = cast.interval;
+                    if (cast.interval > iMax) iMax = cast.interval;
+                  }
+                }
+              }
+              const clean = iMax - iMin <= 0.03 * iMin;
+              const at = c[0].t + d;
+              if (clean && (!pick || at < pick.at)) pick = { rep, v: r.total, at, d };
             }
-            if (jump) { s = jump.rep; val = Math.max(val, jump.v); moved = true; break; }
+            if (pick && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); moved = true; break; }
           }
           if (!moved) break;
         }
