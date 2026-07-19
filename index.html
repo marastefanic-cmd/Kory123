@@ -1022,6 +1022,9 @@ function optimizeAsync(cfg, starts, onProgress) {
         // nothing there — don't park Berserking inside an already-capped
         // Lust+IV overlap), earliest on ties. Iterated with pass 2 to a fixed
         // point: one buff's cleanup changes where the others' clean spots are.
+        // Groom twice: the snap/merge stages after the aesthetic sweeps can
+        // shuffle a haste active off its clean spot; a second cycle re-grooms.
+        for (let groom = 0; groom < 2; groom++) {
         for (let sweep = 0, sweptMoved = true; sweep < 8 && sweptMoved; sweep++) {
         sweptMoved = false;
         for (const key in s) {
@@ -1041,7 +1044,13 @@ function optimizeAsync(cfg, starts, onProgress) {
               if (!sameCounts(c0, counts(rep))) continue;
               const r = simulate(rep, cfg, true);
               if (r.total < val - EPS) continue;
-              const at = s[key][i2] + d;
+              // score the move at its REPAIRED position — a clamped candidate
+              // evaluated at its fictional intent time gets an empty window
+              // ("0 floor-dead, earliest ever") and causes aesthetic ping-pong
+              const at0 = s[key][i2] + d;
+              let at = at0, bd = Infinity;
+              for (const tt of (rep[key] || [])) { const dd = Math.abs(tt - at0); if (dd < bd) { bd = dd; at = tt; } }
+              if (bd > 0.5) continue; // repair relocated it — that spot is another d's candidate
               let nulled = 0;
               for (const cast of r.casts) {
                 if (cast.t >= at - 1e-9 && cast.t < at + dur - 1e-9 && cast.capped) nulled += cast.interval;
@@ -1096,6 +1105,16 @@ function optimizeAsync(cfg, starts, onProgress) {
               if (!sameCounts(c0, counts(rep))) continue;
               const r = simulate(rep, cfg, true);
               if (r.total < val - EPS) continue;
+              // reject cluster moves that repair relocated (fictional-position
+              // scoring causes ping-pong; the true spot is another d's candidate)
+              let deviant = false;
+              for (const m of c) {
+                const tgt = m.t + d;
+                let bd2 = Infinity;
+                for (const tt of (rep[m.key] || [])) bd2 = Math.min(bd2, Math.abs(tt - tgt));
+                if (bd2 > 0.5) { deviant = true; break; }
+              }
+              if (deviant) continue;
               // uniform-speed check across every member's window
               let iMin = Infinity, iMax = 0;
               for (const m of c) {
@@ -1303,6 +1322,7 @@ function optimizeAsync(cfg, starts, onProgress) {
             }
           }
           if (!merged) break;
+        }
         }
         // A ready cooldown near the kill is always worth pressing — clipped
         // final windows are kept whenever they add damage; the press plan tags
