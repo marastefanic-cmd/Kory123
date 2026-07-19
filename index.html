@@ -231,6 +231,8 @@
   }
   .pchip:hover { border-color: var(--accent); }
   .pchip.active { border-color: var(--gold-dim); background: color-mix(in srgb, var(--gold) 9%, var(--panel)); }
+  .pchip.dirty { border-color: var(--warn); }
+  .pchip.dirty::before { content: "•"; color: var(--warn); margin-right: 5px; }
   .pchip .pdel { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0 5px; line-height: 1; }
   .pchip .pdel:hover { color: var(--warn); }
   .pchips .pnone { color: var(--muted); font-size: 12.5px; }
@@ -294,7 +296,14 @@
   td .warntag { color: var(--warn); font-size: 12px; }
   tr.window-head td { background: var(--panel); color: var(--gold-dim); font-size: 12.5px; }
 
-  .assump { color: var(--muted); font-size: 12.5px; max-width: 90ch; }
+  .assump {
+    color: var(--muted); font-size: 12.5px;
+    margin-top: 28px; padding: 18px 0 4px;
+    border-top: 1px solid var(--hairline);
+  }
+  .assump ul { columns: 2; column-gap: 40px; }
+  @media (max-width: 900px) { .assump ul { columns: 1; } }
+  .assump li { break-inside: avoid; }
   .assump h4 { color: var(--ink-2); font-size: 13px; margin: 0 0 6px; }
   .assump ul { margin: 0; padding-left: 18px; }
   .assump li { margin-bottom: 3px; }
@@ -484,8 +493,9 @@
         “Rating to cap” is how much more gear haste would put that combo at the 1.0s GCD floor — <em>capped</em> means the combo is already there.</p>
         <div class="tablebox" id="capbox"></div>
       </details>
-      <div class="assump card" id="assump" hidden></div>
   </section>
+
+  <footer class="assump" id="assump" hidden></footer>
 </div>
 
 <script>
@@ -853,7 +863,7 @@ function optimizeAsync(cfg, starts, onProgress) {
         // nothing there — don't park Berserking inside an already-capped
         // Lust+IV overlap), earliest on ties. Iterated with pass 2 to a fixed
         // point: one buff's cleanup changes where the others' clean spots are.
-        for (let sweep = 0, sweptMoved = true; sweep < 3 && sweptMoved; sweep++) {
+        for (let sweep = 0, sweptMoved = true; sweep < 8 && sweptMoved; sweep++) {
         sweptMoved = false;
         for (const key in s) {
           if (cfg.fixed[key]) continue;
@@ -863,10 +873,12 @@ function optimizeAsync(cfg, starts, onProgress) {
           for (let i2 = 0; i2 < s[key].length; i2++) {
             const c0 = counts(s);
             let pick = null;
+            const curSig = JSON.stringify(s);
             for (let d = -45; d <= 45; d++) {
               const cand = cloneS(s);
               cand[key][i2] += d;
               const rep = repair(cand, cfg);
+              if (JSON.stringify(rep) === curSig) continue; // repair clamped it back — a phantom move
               if (!sameCounts(c0, counts(rep))) continue;
               const r = simulate(rep, cfg, true);
               if (r.total < val - EPS) continue;
@@ -875,6 +887,12 @@ function optimizeAsync(cfg, starts, onProgress) {
               for (const cast of r.casts) {
                 if (cast.t >= at - 1e-9 && cast.t < at + dur - 1e-9 && cast.capped) nulled += cast.interval;
               }
+              // a strict damage improvement always outranks aesthetics
+              if (r.total > val + 0.5) {
+                if (!pick || pick.v <= val + 0.5 || r.total > pick.v) pick = { rep, v: r.total, nulled, at, d };
+                continue;
+              }
+              if (pick && pick.v > val + 0.5) continue; // an improvement is already selected
               if (!pick || nulled < pick.nulled - 1e-9 ||
                   (Math.abs(nulled - pick.nulled) <= 1e-9 && at < pick.at)) {
                 pick = { rep, v: r.total, nulled, at, d };
@@ -888,7 +906,7 @@ function optimizeAsync(cfg, starts, onProgress) {
         // spots, anchor to the EARLIEST position whose whole window runs at one
         // uniform full-speed cast rate: "pop the burst macro as soon as the haste
         // buffs are up and stacks are rolling", never on the low part of the curve.
-        for (let round = 0; round < 4; round++) {
+        for (let round = 0; round < 10; round++) {
           const acts = [];
           for (const key in s) {
             if (cfg.fixed[key]) continue;
@@ -901,16 +919,19 @@ function optimizeAsync(cfg, starts, onProgress) {
           const clusters = [];
           for (const a of acts) {
             const c = clusters[clusters.length - 1];
-            if (c && a.t - c[c.length - 1].t <= 8) c.push(a); else clusters.push([a]);
+            // one macro press ≈ within a GCD; wider gaps are cd-anchored neighbors that must stay free
+            if (c && a.t - c[c.length - 1].t <= 3) c.push(a); else clusters.push([a]);
           }
           let moved = false;
           for (const c of clusters) {
             const c0 = counts(s);
             let pick = null;
+            const curSig = JSON.stringify(s);
             for (let d = -45; d <= 45; d++) {
               const cand = cloneS(s);
               for (const m of c) cand[m.key][m.i2] += d;
               const rep = repair(cand, cfg);
+              if (JSON.stringify(rep) === curSig) continue; // repair clamped it back — a phantom move
               if (!sameCounts(c0, counts(rep))) continue;
               const r = simulate(rep, cfg, true);
               if (r.total < val - EPS) continue;
@@ -927,6 +948,12 @@ function optimizeAsync(cfg, starts, onProgress) {
               }
               const clean = iMax - iMin <= 0.03 * iMin;
               const at = c[0].t + d;
+              // a strict damage improvement always outranks aesthetics
+              if (r.total > val + 0.5) {
+                if (!pick || pick.v <= val + 0.5 || r.total > pick.v) pick = { rep, v: r.total, at, d };
+                continue;
+              }
+              if (pick && pick.v > val + 0.5) continue; // an improvement is already selected
               if (clean && (!pick || at < pick.at)) pick = { rep, v: r.total, at, d };
             }
             if (pick && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); moved = true; sweptMoved = true; break; }
@@ -1001,6 +1028,7 @@ function refreshTrinketLock() {
 const pinTokens = key => (state.times[key] || "").split(/[,;]+/).map(s => s.trim()).filter(Boolean);
 function setPins(key, toks) {
   state.times[key] = toks.join(", ");
+  markPresetDirty();
   renderChips(key);
   refreshPinBadge(key);
 }
@@ -1088,6 +1116,7 @@ function buildBuffList() {
         const next = !state.enabled[key];
         if (next && TRINKETS.includes(key) && trinketCount() >= 2) return; // two trinket slots
         state.enabled[key] = next;
+        markPresetDirty();
         row.classList.toggle("on", next);
         row.querySelector(".tog").setAttribute("aria-checked", String(next));
         if (pinrow && !next) pinrow.hidden = true;
@@ -1123,7 +1152,7 @@ function renderPhaseRows() {
     row.querySelector(".ph-to").addEventListener("input", e => p.to = e.target.value);
     row.querySelector(".ph-mult").addEventListener("input", e => p.mult = +e.target.value || 2);
     row.querySelector(".ph-targets").addEventListener("input", e => p.targets = +e.target.value || 4);
-    row.querySelector(".ph-del").addEventListener("click", () => { state.phases.splice(i, 1); renderPhaseRows(); });
+    row.querySelector(".ph-del").addEventListener("click", () => { state.phases.splice(i, 1); markPresetDirty(); renderPhaseRows(); });
     host.appendChild(row);
   });
 }
@@ -1137,6 +1166,7 @@ el("ck-phases").addEventListener("change", e => {
 });
 el("phase-add").addEventListener("click", () => {
   state.phases.push({ type: "intermission", from: "", to: "", mult: 2, targets: 4 });
+  markPresetDirty();
   renderPhaseRows();
 });
 function parseLen(v) {
@@ -1724,6 +1754,8 @@ function snapshotState() {
   };
 }
 function applyState(s) {
+  applyingPreset = true;
+  try {
   for (const k in state.enabled) state.enabled[k] = !!(s.enabled || {})[k];
   let eq = 0; // two trinket slots — sanitize old presets
   for (const k of TRINKETS) if (state.enabled[k] && ++eq > 2) state.enabled[k] = false;
@@ -1741,10 +1773,26 @@ function applyState(s) {
   el("in-crit").value = s.crit ?? 25;
   buildBuffList();
   el("in-haste").dispatchEvent(new Event("input"));
+  } finally { applyingPreset = false; }
 }
-let activePreset = "";
+let activePreset = "", presetDirty = false, applyingPreset = false;
+function updateSaveUI() {
+  const chip = document.querySelector(".pchip.active");
+  if (chip) {
+    chip.classList.toggle("dirty", presetDirty);
+    chip.title = presetDirty ? `“${activePreset}” has unsaved changes — Update saves them` : `Load ${esc(activePreset)}`;
+  }
+  const btn = el("preset-save");
+  if (btn) btn.textContent = activePreset && presetDirty && !el("preset-name").value.trim() ? "Update" : "Save";
+}
+function markPresetDirty() {
+  if (applyingPreset || !activePreset || presetDirty) return;
+  presetDirty = true;
+  updateSaveUI();
+}
 function refreshPresets(selected) {
   activePreset = selected || "";
+  presetDirty = false;
   const store = lsGet();
   if (store === null) { el("preset-strip").style.display = "none"; return; }
   const names = Object.keys(store).sort();
@@ -1752,6 +1800,7 @@ function refreshPresets(selected) {
   host.innerHTML = names.length
     ? names.map((n, i) => `<span class="pchip${n === activePreset ? " active" : ""}" data-i="${i}" role="button" tabindex="0" title="Load ${esc(n)}">${esc(n)}<button type="button" class="pdel" title="Delete" aria-label="Delete preset ${esc(n)}">×</button></span>`).join("")
     : `<span class="pnone">none yet — set up a boss and save it</span>`;
+  updateSaveUI();
   host.querySelectorAll(".pchip").forEach(chip => {
     const name = names[+chip.dataset.i];
     chip.addEventListener("click", e => {
@@ -1775,6 +1824,10 @@ el("preset-save").addEventListener("click", () => {
 });
 el("preset-name").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); el("preset-save").click(); } });
 
+["input", "change"].forEach(ev => el("setup").addEventListener(ev, e => {
+  if (e.target.id === "preset-name") { updateSaveUI(); return; }
+  markPresetDirty();
+}, true));
 buildBuffList();
 el("in-haste").dispatchEvent(new Event("input"));
 refreshPresets("");
