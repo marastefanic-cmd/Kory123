@@ -786,6 +786,29 @@ function polish(seed, cfg) {
         }
       }
     }
+    if (!improved) {
+      // escape move: drop one use and relocate a sibling in the same step —
+      // fewer, better-placed uses can beat more of them (e.g. one AP inside
+      // a 6-target AoE beats two APs on ordinary casts), but the two changes
+      // lose value separately, so try them as one move once ordinary moves dry up.
+      outer:
+      for (const key in s) {
+        if (cfg.fixed[key] || s[key].length < 2) continue;
+        for (let i = 0; i < s[key].length; i++) {
+          for (let j = 0; j < s[key].length; j++) {
+            if (j === i) continue;
+            for (const d of [0, -90, -45, -20, 20, 45, 90]) {
+              const cand = cloneS(s);
+              cand[key][j] += d;
+              cand[key].splice(i, 1);
+              const rep = repair(cand, cfg);
+              const v = simulate(rep, cfg).total;
+              if (v > val + 1e-7) { s = rep; val = v; improved = true; break outer; }
+            }
+          }
+        }
+      }
+    }
     if (!improved) break;
   }
   return { s, val };
@@ -795,6 +818,20 @@ function optimizeAsync(cfg, starts, onProgress) {
   return new Promise(resolve => {
     const rand = mulberry32(1337);
     const seeds = [naiveSchedule(cfg), packedSchedule(cfg)];
+    // phase-anchored seeds: burn/AoE windows are magnets — start one candidate
+    // with every planner-controlled track requesting its uses at the window
+    if (cfg.segments) {
+      for (const seg of cfg.segments) {
+        if (seg.type === "normal" || seg.type === "intermission") continue;
+        const s = {};
+        for (const key of scheduledKeys(cfg)) {
+          if (cfg.fixed[key]) { s[key] = cfg.fixed[key].slice(); continue; }
+          s[key] = Array.from({ length: Math.min(maxUses(key, cfg), 64) }, () => seg.start);
+        }
+        seeds.push(repair(s, cfg));
+        if (seeds.length >= starts + 4) break;
+      }
+    }
     while (seeds.length < starts) seeds.push(randomSchedule(cfg, rand));
     let best = null, i = 0;
     (function step() {
