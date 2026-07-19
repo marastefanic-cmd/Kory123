@@ -39,6 +39,7 @@
     --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
   }
   * { box-sizing: border-box; }
+  [hidden] { display: none !important; }
   html, body { margin: 0; padding: 0; }
   body {
     background: var(--page);
@@ -61,30 +62,42 @@
   .masthead .sub { color: var(--ink-2); max-width: 68ch; margin: 0; }
   .masthead .sub em { color: var(--gold-dim); font-style: normal; }
 
-  .layout { display: grid; grid-template-columns: 330px 1fr; gap: 20px; align-items: start; }
-  @media (max-width: 900px) { .layout { grid-template-columns: 1fr; } }
-
-  /* ————— control rail ————— */
-  .rail {
-    display: flex; flex-direction: column; gap: 14px;
-    position: sticky; top: 16px;
-    max-height: calc(100vh - 32px); overflow-y: auto;
-    scrollbar-width: thin;
+  /* ————— setup console ————— */
+  .setup {
+    background: var(--surface);
+    border: 1px solid var(--hairline);
+    border-radius: 12px;
+    padding: 18px 18px 0;
+    margin-bottom: 24px;
   }
-  @media (max-width: 900px) { .rail { position: static; max-height: none; overflow: visible; } }
+  .setup-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
+    gap: 20px;
+  }
+  .scol { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
   .card {
     background: var(--surface);
     border: 1px solid var(--hairline);
     border-radius: 10px;
     padding: 16px;
   }
-  .card h2 {
+  .card h2, .scol h2 {
     font-family: var(--font-display);
-    font-size: 15px; font-weight: 600;
+    font-size: 14px; font-weight: 600;
     color: var(--gold);
     letter-spacing: 0.06em;
     text-transform: uppercase;
-    margin: 0 0 12px;
+    margin: 0 0 4px;
+    display: flex; justify-content: space-between; align-items: baseline;
+  }
+  .scol h2 .counter { color: var(--muted); font: 11.5px var(--font-ui); text-transform: none; letter-spacing: 0.02em; }
+  .gen-bar {
+    position: sticky; bottom: 0; z-index: 4;
+    margin: 16px -18px 0; padding: 12px 18px 16px;
+    background: color-mix(in srgb, var(--surface) 94%, black);
+    border-top: 1px solid var(--hairline);
+    border-radius: 0 0 12px 12px;
   }
   .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
   .field:last-child { margin-bottom: 0; }
@@ -106,50 +119,93 @@
   .inline { display: flex; gap: 10px; }
   .inline .field { flex: 1; }
 
-  /* buff toggles */
+  /* buff rows: separate toggle target and pin button — no misclicks */
+  .grp { display: flex; flex-direction: column; gap: 7px; }
   .buff {
-    display: grid;
-    grid-template-columns: 14px 1fr auto;
-    gap: 10px; align-items: center;
-    padding: 8px 10px;
+    display: flex; align-items: stretch;
     border: 1px solid var(--grid);
     border-radius: 8px;
-    margin-bottom: 8px;
     background: var(--panel);
+    overflow: hidden;
+  }
+  .buff.on { border-color: color-mix(in srgb, var(--bc) 55%, var(--grid)); background: color-mix(in srgb, var(--bc) 7%, var(--panel)); }
+  .buff .tog {
+    flex: 1; min-width: 0;
+    display: flex; align-items: center; gap: 9px;
+    padding: 8px 10px;
+    background: none; border: none;
+    color: var(--ink); font: inherit; text-align: left;
     cursor: pointer;
   }
-  .buff.on { border-color: color-mix(in srgb, var(--bc) 55%, var(--grid)); background: color-mix(in srgb, var(--bc) 8%, var(--panel)); }
-  .buff .swatch { width: 14px; height: 14px; border-radius: 4px; background: var(--bc); opacity: 0.35; }
-  .buff.on .swatch { opacity: 1; }
-  .buff .name { font-size: 14px; }
-  .buff .stat { font-size: 12px; color: var(--muted); font-family: var(--font-mono); }
-  .buff input { position: absolute; opacity: 0; pointer-events: none; }
-  .buff.locked { opacity: 0.4; cursor: not-allowed; }
-  .group-head {
-    font-size: 11.5px; color: var(--gold-dim);
-    letter-spacing: 0.08em; text-transform: uppercase;
-    margin: 12px 0 6px;
-    display: flex; justify-content: space-between; align-items: baseline;
+  .buff .tick {
+    flex: none; width: 16px; height: 16px;
+    border-radius: 4px; border: 1.5px solid var(--bc);
+    opacity: 0.55; position: relative;
   }
-  .group-head:first-child { margin-top: 0; }
-  .group-head span { color: var(--muted); letter-spacing: 0.02em; text-transform: none; font-size: 11.5px; }
-  .subopt {
-    margin: -4px 0 8px 24px;
-    display: flex; align-items: center; gap: 8px;
-    font-size: 13px; color: var(--ink-2);
+  .buff.on .tick { background: var(--bc); opacity: 1; }
+  .buff.on .tick::after {
+    content: "✓"; position: absolute; inset: 0;
+    display: grid; place-items: center;
+    color: #131320; font-size: 11px; font-weight: 800;
   }
-  .subopt input[type="number"] { width: 62px; padding: 4px 8px; }
-  .subopt label.check { display: flex; align-items: center; gap: 6px; cursor: pointer; }
-  .subopt input[type="checkbox"] { accent-color: var(--accent); width: 15px; height: 15px; }
+  .buff .txt { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
+  .buff .name { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .buff .stat { font: 10.5px var(--font-mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .buff .pinbtn {
+    display: none;
+    align-items: center; justify-content: center; gap: 3px;
+    width: 44px; flex: none;
+    border: none; border-left: 1px solid var(--grid);
+    background: transparent; color: var(--muted);
+    cursor: pointer; font-size: 14px;
+  }
+  .buff.on .pinbtn { display: flex; }
+  .buff .pinbtn:hover { color: var(--ink); background: var(--panel-2); }
+  .buff .pinbtn.haspins { color: var(--gold); }
+  .buff .pinbtn b { font: 700 11px var(--font-mono); }
+  .buff.locked { opacity: 0.4; }
+  .buff.locked .tog { cursor: not-allowed; }
+
+  /* pin chips */
+  .pinrow {
+    display: flex; flex-wrap: wrap; gap: 6px; align-items: center;
+    margin: -3px 6px 0; padding: 8px 10px;
+    border: 1px dashed var(--grid); border-top: none;
+    border-radius: 0 0 8px 8px;
+  }
+  .pinrow .pinlab { width: 100%; font-size: 11.5px; color: var(--ink-2); }
+  .chipt {
+    display: inline-flex; align-items: center; gap: 2px;
+    background: var(--panel-2); border: 1px solid var(--grid);
+    border-radius: 999px; padding: 2px 4px 2px 10px;
+    font: 12.5px var(--font-mono); color: var(--ink);
+  }
+  .chipt button { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0 5px; line-height: 1; }
+  .chipt button:hover { color: var(--warn); }
+  .pinrow input { width: 62px; padding: 4px 8px; font-size: 13px; }
+  .pinrow input.bad { border-color: var(--warn); }
+  .pinrow .pinadd {
+    background: var(--panel); border: 1px solid var(--grid); border-radius: 6px;
+    color: var(--ink-2); padding: 4px 11px; cursor: pointer; font-size: 12.5px;
+  }
+  .pinrow .pinadd:hover { color: var(--ink); border-color: var(--accent); }
+  .pinrow .hint { width: 100%; font-size: 11px; color: var(--muted); }
+  label.check.cs {
+    display: flex; align-items: center; gap: 7px;
+    margin: -3px 6px 0; padding: 6px 10px;
+    font-size: 12.5px; color: var(--ink-2); cursor: pointer;
+    border: 1px dashed var(--grid); border-top: none; border-radius: 0 0 8px 8px;
+  }
+  label.check.cs input { accent-color: var(--accent); width: 14px; height: 14px; }
 
   button.run {
     width: 100%;
     background: linear-gradient(180deg, #2a2749, #211f3a);
     color: var(--ink);
     border: 1px solid var(--accent);
-    border-radius: 8px;
-    font: 600 15px var(--font-ui);
-    padding: 11px;
+    border-radius: 9px;
+    font: 600 16px var(--font-ui);
+    padding: 14px;
     cursor: pointer;
   }
   button.run:hover { background: linear-gradient(180deg, #322e57, #262344); }
@@ -158,7 +214,8 @@
   .progress.busy { display: block; }
   .progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.15s; }
 
-  .presetrow { display: flex; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hairline); }
+  .presetrow { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hairline); }
+  .presetrow select { flex: 100%; }
   .presetrow select {
     flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--grid);
     border-radius: 6px; color: var(--ink); font-size: 13px; padding: 6px 8px;
@@ -171,7 +228,7 @@
   .presetrow button:hover { color: var(--ink); border-color: var(--accent); }
 
   /* ————— results ————— */
-  .results { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
+  .results { display: flex; flex-direction: column; gap: 20px; scroll-margin-top: 12px; }
   .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
   .tile { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 12px 14px; }
   .tile .k { font-size: 12px; color: var(--muted); letter-spacing: 0.04em; text-transform: uppercase; }
@@ -223,7 +280,6 @@
   .assump ul { margin: 0; padding-left: 18px; }
   .assump li { margin-bottom: 3px; }
 
-  .empty { color: var(--muted); text-align: center; padding: 40px 0; font-size: 14px; }
   .warnbar {
     background: color-mix(in srgb, var(--warn) 8%, var(--surface));
     border: 1px solid color-mix(in srgb, var(--warn) 35%, var(--surface));
@@ -257,8 +313,6 @@
     position: absolute; top: 0; width: 2px; background: var(--gold);
     pointer-events: none; display: none; z-index: 2;
   }
-  .subopt .fixedtime { display: flex; flex-direction: column; gap: 3px; flex: 1; }
-  .subopt .fixedtime input { width: 100%; font-size: 13px; }
   label.check.complicated { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
   label.check.complicated input { accent-color: var(--accent); width: 15px; height: 15px; }
   #phase-editor { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
@@ -296,14 +350,12 @@
   <header class="masthead">
     <h1>Arcane Burn Planner</h1>
     <p class="sub">Optimal cooldown overlays for TBC Arcane mages — <em>Anniversary realms, patch 2.4.3</em>.
-    Enter your gear haste and fight length, pick your cooldowns, and the planner finds the activation
-    schedule that maximizes total damage: which buffs to stack, which to stagger, and where the
-    1.0-second GCD floor makes extra haste worthless.</p>
+    Set the fight, pick your cooldowns, pin anything the raid controls, and generate the schedule.</p>
   </header>
 
-  <div class="layout">
-    <div class="rail">
-      <div class="card">
+  <section class="setup" id="setup">
+    <div class="setup-grid">
+      <div class="scol">
         <h2>Fight</h2>
         <div class="inline">
           <div class="field">
@@ -327,35 +379,35 @@
             <input id="in-crit" type="number" value="25" min="0" max="100" step="0.5">
           </div>
         </div>
-        <span class="hint">Weighs haste vs. Arcane Power and the +dmg actives; crit also drives Ashtongue uptime.</span>
+        <span class="hint">Damage model weighs haste vs. Arcane Power; crit drives Ashtongue uptime.</span>
         <div class="presetrow" id="presetrow">
           <select id="preset-sel" aria-label="Boss presets"><option value="">Boss presets…</option></select>
           <input id="preset-name" type="text" placeholder="Boss name" aria-label="Preset name">
           <button id="preset-save" title="Save current setup under this name">Save</button>
           <button id="preset-del" title="Delete the selected preset">✕</button>
         </div>
+        <label class="check complicated"><input id="ck-phases" type="checkbox"> Complicated fight — phases / intermissions / AoE</label>
       </div>
 
-      <div class="card">
-        <label class="check complicated"><input id="ck-phases" type="checkbox"> Complicated fight — phases, intermissions, AoE</label>
-        <div id="phase-editor" hidden>
-          <div id="phase-rows"></div>
-          <button id="phase-add" type="button">+ Add phase</button>
-          <span class="hint">Phases paint over the base fight (later rows win on overlap). Intermission = boss untargetable,
-          damage ×0, cooldowns keep ticking. Burn = Arcane Blast damage ×N. AoE = Arcane Explosion spam on N targets.</span>
-        </div>
-      </div>
-
-      <div class="card">
-        <h2>Cooldowns to overlay</h2>
-        <div id="buff-list"></div>
-        <button class="run" id="btn-run">Find optimal overlay</button>
-        <div class="progress" id="prog"><i></i></div>
-      </div>
+      <div class="scol"><h2>Your spells</h2><div class="grp" id="grp-spells"></div></div>
+      <div class="scol"><h2>Trinkets <span class="counter" id="trink-count"></span></h2><div class="grp" id="grp-trinkets"></div></div>
+      <div class="scol"><h2>Raid externals</h2><div class="grp" id="grp-ext"></div></div>
     </div>
 
-    <div class="results" id="results">
-      <div class="empty" id="empty-state">Pick your cooldowns and hit <b>Find optimal overlay</b>.</div>
+    <div id="phase-editor" hidden>
+      <div id="phase-rows"></div>
+      <button id="phase-add" type="button">+ Add phase</button>
+      <span class="hint">Phases paint over the base fight (later rows win on overlap). Intermission = boss untargetable,
+      damage ×0, cooldowns keep ticking. Burn = Arcane Blast damage ×N. AoE = Arcane Explosion spam on N targets.</span>
+    </div>
+
+    <div class="gen-bar">
+      <button class="run" id="btn-run">Find optimal overlay</button>
+      <div class="progress" id="prog"><i></i></div>
+    </div>
+  </section>
+
+  <section class="results" id="results">
       <div class="warnbar" id="warnbar" hidden></div>
       <div class="tiles" id="tiles" hidden></div>
       <div class="follow" id="follow" hidden>
@@ -396,8 +448,7 @@
         <div class="tablebox" id="capbox"></div>
       </details>
       <div class="assump card" id="assump" hidden></div>
-    </div>
-  </div>
+  </section>
 </div>
 
 <script>
@@ -417,17 +468,17 @@ const GAME = {
   COLD_SNAP_CD: 480,
 };
 const BUFFS = {
-  bloodlust:     { name: "Bloodlust",            kind: "mult",   value: 1.30, dur: 40, cd: 600, color: "var(--c-bloodlust)",   stat: "+30% haste · 40s" },
-  icyVeins:      { name: "Icy Veins",            kind: "mult",   value: 1.20, dur: 20, cd: 180, color: "var(--c-icyveins)",    stat: "+20% haste · 20s · 3m cd" },
-  drums:         { name: "Drums of Battle",      kind: "rating", value: 80,   dur: 30, cd: 120, color: "var(--c-drums)",       stat: "+80 haste · 30s · 2m cd" },
-  ati:           { name: "Ashtongue Talisman",   kind: "proc",   value: 145,  dur: 5,  cd: 0,   color: "var(--c-ati)",         stat: "145 haste proc · BT P3" },
-  skull:         { name: "Skull of Gul’dan",     kind: "rating", value: 175,  dur: 20, cd: 120, color: "var(--c-skull)",       stat: "+175 haste · 20s · 2m cd · BT P3" },
-  arcanePower:   { name: "Arcane Power",         kind: "dmg",    value: 1.30, dur: 15, cd: 180, color: "var(--c-arcanepower)", stat: "+30% damage · 15s · 3m cd" },
-  scb:           { name: "Serpent-Coil Braid",   kind: "sp",     value: 225,  dur: 15, cd: 120, color: "var(--c-scb)",         stat: "+225 dmg on gem · 15s · SSC P2" },
-  berserking:    { name: "Berserking",           kind: "mult",   value: 1.10, dur: 10, cd: 180, color: "var(--c-berserking)",  stat: "+10% haste · 10s · 3m cd" },
-  mqg:           { name: "Mind Quickening Gem",  kind: "rating", value: 330,  dur: 20, cd: 300, color: "var(--c-mqg)",         stat: "+330 haste · 20s · 5m cd" },
-  powerInfusion: { name: "Power Infusion",       kind: "mult",   value: 1.20, dur: 15, cd: 180, color: "var(--c-pi)",          stat: "+20% haste · 15s · priest" },
-  isc:           { name: "Icon of the Silver Crescent", kind: "sp", value: 155, dur: 20, cd: 120, color: "var(--c-isc)",       stat: "+155 dmg · 20s · 2m cd" },
+  bloodlust:     { name: "Bloodlust",            kind: "mult",   value: 1.30, dur: 40, cd: 600, color: "var(--c-bloodlust)",   stat: "+30% haste · 40s", src: "shaman" },
+  icyVeins:      { name: "Icy Veins",            kind: "mult",   value: 1.20, dur: 20, cd: 180, color: "var(--c-icyveins)",    stat: "+20% haste · 20s · 3m" },
+  drums:         { name: "Drums of Battle",      kind: "rating", value: 80,   dur: 30, cd: 120, color: "var(--c-drums)",       stat: "+80 haste · 30s · 2m" },
+  ati:           { name: "Ashtongue Talisman",   kind: "proc",   value: 145,  dur: 5,  cd: 0,   color: "var(--c-ati)",         stat: "145 haste proc on crit", src: "BT rep, Phase 3" },
+  skull:         { name: "Skull of Gul’dan",     kind: "rating", value: 175,  dur: 20, cd: 120, color: "var(--c-skull)",       stat: "+175 haste · 20s · 2m", src: "Illidan, Phase 3" },
+  arcanePower:   { name: "Arcane Power",         kind: "dmg",    value: 1.30, dur: 15, cd: 180, color: "var(--c-arcanepower)", stat: "+30% dmg · 15s · 3m" },
+  scb:           { name: "Serpent-Coil Braid",   kind: "sp",     value: 225,  dur: 15, cd: 120, color: "var(--c-scb)",         stat: "+225 dmg on gem · 15s", src: "Morogrim, Phase 2" },
+  berserking:    { name: "Berserking",           kind: "mult",   value: 1.10, dur: 10, cd: 180, color: "var(--c-berserking)",  stat: "+10% haste · 10s · 3m", src: "Troll racial" },
+  mqg:           { name: "Mind Quickening Gem",  kind: "rating", value: 330,  dur: 20, cd: 300, color: "var(--c-mqg)",         stat: "+330 haste · 20s · 5m", src: "Classic Azuregos" },
+  powerInfusion: { name: "Power Infusion",       kind: "mult",   value: 1.20, dur: 15, cd: 180, color: "var(--c-pi)",          stat: "+20% haste · 15s", src: "priest" },
+  isc:           { name: "Icon of the Silver Crescent", kind: "sp", value: 155, dur: 20, cd: 120, color: "var(--c-isc)",       stat: "+155 dmg · 20s · 2m", src: "badge vendor" },
 };
 // timeline lane order is the CVD-safe palette order (validated), not arbitrary
 const LANE_ORDER = ["ati", "powerInfusion", "drums", "icyVeins", "skull", "isc", "scb", "arcanePower", "berserking", "mqg", "bloodlust"];
@@ -785,70 +836,119 @@ const PIN_LABEL = {
   scb: "Mana Emerald at",
 };
 const PIN_HINT = {
-  bloodlust: "Anniversary: raid-wide + Sated — one Bloodlust per 10 min of a pull (resets on boss kill).",
-  drums: "Tinnitus: you can only receive one drum buff per 2 min — closer times are ignored.",
-  powerInfusion: "Doesn’t stack with Bloodlust — the planner keeps them apart.",
+  bloodlust: "Raid-wide + Sated: one per 10 min of a pull.",
+  drums: "Tinnitus: one drum buff per 2 min.",
+  powerInfusion: "Doesn’t stack with Bloodlust.",
 };
 function trinketCount() { return TRINKETS.filter(k => state.enabled[k]).length; }
 function refreshTrinketLock() {
   const full = trinketCount() >= 2;
-  document.querySelectorAll("label.buff[data-trinket]").forEach(lab => {
-    lab.classList.toggle("locked", full && !lab.classList.contains("on"));
+  document.querySelectorAll(".buff[data-trinket]").forEach(row => {
+    row.classList.toggle("locked", full && !row.classList.contains("on"));
   });
   const c = el("trink-count");
   if (c) c.textContent = trinketCount() + "/2 equipped";
 }
-function buildBuffList() {
-  const host = el("buff-list");
-  host.innerHTML = "";
-  for (const group of GROUPS) {
-    const head = document.createElement("div");
-    head.className = "group-head";
-    head.innerHTML = group.trinket ? `${group.title} <span id="trink-count"></span>` : group.title;
-    host.appendChild(head);
-    for (const key of group.keys) {
-    const def = BUFFS[key];
-    const lab = document.createElement("label");
-    lab.className = "buff" + (state.enabled[key] ? " on" : "");
-    lab.style.setProperty("--bc", def.color);
-    if (group.trinket) lab.dataset.trinket = "1";
-    lab.innerHTML = `<span class="swatch"></span><span class="name">${def.name}</span>
-      <span class="stat">${def.stat}</span>
-      <input type="checkbox" ${state.enabled[key] ? "checked" : ""} aria-label="${def.name}">`;
-    lab.querySelector("input").addEventListener("change", e => {
-      if (e.target.checked && TRINKETS.includes(key) && trinketCount() >= 2) {
-        e.target.checked = false; // only two trinket slots in the game
-        return;
-      }
-      state.enabled[key] = e.target.checked;
-      lab.classList.toggle("on", e.target.checked);
-      refreshTrinketLock();
-      subopts();
-    });
-    host.appendChild(lab);
-    if (def.kind !== "proc") {
-      const div = document.createElement("div");
-      div.className = "subopt";
-      div.dataset.for = key;
-      const csRow = key === "icyVeins"
-        ? `<label class="check"><input id="ck-cs" type="checkbox" ${state.coldSnap ? "checked" : ""}> Cold Snap available (resets Icy Veins)</label>`
-        : "";
-      div.innerHTML = `<div class="fixedtime">${csRow}<label for="t-${key}">${PIN_LABEL[key] || "Pin to"}</label>
-        <input id="t-${key}" type="text" placeholder="e.g. 0:05, 3:10 — blank = planner picks" value="${esc(state.times[key])}">
-        ${PIN_HINT[key] ? `<span class="hint">${PIN_HINT[key]}</span>` : ""}</div>`;
-      div.querySelector(`#t-${key}`).addEventListener("input", e => state.times[key] = e.target.value);
-      host.appendChild(div);
-    }
-    }
-  }
-  el("ck-cs").addEventListener("change", e => state.coldSnap = e.target.checked);
-  refreshTrinketLock();
-  subopts();
+const pinTokens = key => (state.times[key] || "").split(/[,;]+/).map(s => s.trim()).filter(Boolean);
+function setPins(key, toks) {
+  state.times[key] = toks.join(", ");
+  renderChips(key);
+  refreshPinBadge(key);
 }
-function subopts() {
-  document.querySelectorAll(".subopt").forEach(d => {
-    d.style.display = state.enabled[d.dataset.for] ? "flex" : "none";
+function renderChips(key) {
+  const host = el(`chips-${key}`);
+  if (!host) return;
+  host.innerHTML = pinTokens(key).map(t =>
+    `<span class="chipt">${esc(t)}<button type="button" data-t="${esc(t)}" title="Remove" aria-label="Remove pin ${esc(t)}">×</button></span>`).join("");
+  host.querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+    const toks = pinTokens(key);
+    toks.splice(toks.indexOf(b.dataset.t), 1);
+    setPins(key, toks);
+  }));
+}
+function refreshPinBadge(key) {
+  const btn = document.querySelector(`.buff[data-key="${key}"] .pinbtn`);
+  if (!btn) return;
+  const n = pinTokens(key).length;
+  btn.classList.toggle("haspins", n > 0);
+  btn.querySelector("b").textContent = n || "";
+}
+function buildBuffList() {
+  const hosts = { spells: el("grp-spells"), trinkets: el("grp-trinkets"), ext: el("grp-ext") };
+  for (const h of Object.values(hosts)) h.innerHTML = "";
+  GROUPS.forEach((group, gi) => {
+    const host = gi === 0 ? hosts.spells : group.trinket ? hosts.trinkets : hosts.ext;
+    for (const key of group.keys) {
+      const def = BUFFS[key];
+      const pinnable = def.kind !== "proc";
+      const wrap = document.createElement("div");
+      const row = document.createElement("div");
+      row.className = "buff" + (state.enabled[key] ? " on" : "");
+      row.style.setProperty("--bc", def.color);
+      row.dataset.key = key;
+      if (group.trinket) row.dataset.trinket = "1";
+      row.innerHTML = `
+        <button type="button" class="tog" role="switch" aria-checked="${state.enabled[key]}" aria-label="${def.name}" title="${def.name} — ${def.stat}${def.src ? " · " + def.src : ""}">
+          <span class="tick" aria-hidden="true"></span>
+          <span class="txt"><span class="name">${def.name}</span><span class="stat">${def.stat}</span></span>
+        </button>
+        ${pinnable ? `<button type="button" class="pinbtn" title="Pin exact use times — blank = planner picks" aria-label="Pin ${def.name} times"><span aria-hidden="true">⏱</span><b></b></button>` : ""}`;
+      wrap.appendChild(row);
+
+      let pinrow = null;
+      if (pinnable) {
+        pinrow = document.createElement("div");
+        pinrow.className = "pinrow";
+        pinrow.hidden = true;
+        pinrow.innerHTML = `
+          <span class="pinlab">${PIN_LABEL[key] || "Use exactly at"} — blank = planner picks</span>
+          <span class="chips" id="chips-${key}"></span>
+          <input type="text" id="t-${key}-entry" placeholder="m:ss" inputmode="numeric" aria-label="Add pin time for ${def.name}">
+          <button type="button" class="pinadd" id="pinadd-${key}">Add</button>
+          ${PIN_HINT[key] ? `<span class="hint">${PIN_HINT[key]}</span>` : ""}`;
+        const entry = pinrow.querySelector("input");
+        const add = () => {
+          const t = parseLen(entry.value);
+          if (!isFinite(t)) { entry.classList.add("bad"); return; }
+          entry.classList.remove("bad");
+          const toks = pinTokens(key);
+          toks.push(fmtT(t));
+          toks.sort((a, b) => parseLen(a) - parseLen(b));
+          setPins(key, toks);
+          entry.value = "";
+          entry.focus();
+        };
+        pinrow.querySelector(".pinadd").addEventListener("click", add);
+        entry.addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); add(); } });
+        entry.addEventListener("input", () => entry.classList.remove("bad"));
+        wrap.appendChild(pinrow);
+
+        row.querySelector(".pinbtn").addEventListener("click", () => {
+          pinrow.hidden = !pinrow.hidden;
+          if (!pinrow.hidden) pinrow.querySelector("input").focus();
+        });
+      }
+      if (key === "icyVeins") {
+        const cs = document.createElement("label");
+        cs.className = "check cs";
+        cs.innerHTML = `<input id="ck-cs" type="checkbox" ${state.coldSnap ? "checked" : ""}> Cold Snap available (resets Icy Veins)`;
+        cs.querySelector("input").addEventListener("change", e => state.coldSnap = e.target.checked);
+        wrap.appendChild(cs);
+      }
+      row.querySelector(".tog").addEventListener("click", () => {
+        const next = !state.enabled[key];
+        if (next && TRINKETS.includes(key) && trinketCount() >= 2) return; // two trinket slots
+        state.enabled[key] = next;
+        row.classList.toggle("on", next);
+        row.querySelector(".tog").setAttribute("aria-checked", String(next));
+        if (pinrow && !next) pinrow.hidden = true;
+        refreshTrinketLock();
+      });
+      host.appendChild(wrap);
+      if (pinnable) { renderChips(key); refreshPinBadge(key); }
+    }
   });
+  refreshTrinketLock();
 }
 
 /* phase editor */
@@ -1033,7 +1133,6 @@ el("btn-run").addEventListener("click", async () => {
 });
 
 function render(run) {
-  el("empty-state").hidden = true;
   followReset();
   const wb = el("warnbar");
   wb.hidden = !run.cfg.warnings.length;
@@ -1042,6 +1141,10 @@ function render(run) {
   el("follow").hidden = false;
   followPrime(run);
   window.__run = run; // debug/test hook
+  el("results").scrollIntoView({
+    behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    block: "start",
+  });
 }
 function renderTiles({ cfg, baseline, naiveR, optR }) {
   const tiles = el("tiles"); tiles.hidden = false;
@@ -1064,7 +1167,7 @@ function renderTimeline(run) {
   const atiUp = cfg.enabled.ati ? atiR / ATI.rating : 0;
 
   const PADL = 148, PADR = 16, CURVE_H = 96, LANE_H = 24, LANE_GAP = 6, AXIS_H = 26, PADT = 18;
-  const W = Math.max(640, Math.min(1200, cfg.T * 2)), plotW = W - PADL - PADR;
+  const W = Math.max(760, Math.min(1600, cfg.T * 3)), plotW = W - PADL - PADR;
   const H = PADT + CURVE_H + 18 + lanes.length * (LANE_H + LANE_GAP) + AXIS_H;
   const x = t => PADL + (t / cfg.T) * plotW;
 
