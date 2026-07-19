@@ -889,15 +889,33 @@ function optimizeAsync(cfg, starts, onProgress) {
         if (seeds.length >= starts + 4) break;
       }
     }
+    // pinned raid calls (Bloodlust / Drums / PI times) are magnets too: seed a
+    // candidate with every planner-controlled track stacked on each pinned time
+    for (const pt of [...new Set(Object.values(cfg.fixed).flat().map(Math.round))].slice(0, 4)) {
+      const s = {};
+      for (const key of scheduledKeys(cfg)) {
+        if (cfg.fixed[key]) { s[key] = cfg.fixed[key].slice(); continue; }
+        s[key] = Array.from({ length: Math.min(maxUses(key, cfg), 64) }, () => pt);
+      }
+      seeds.push(repair(s, cfg));
+    }
     while (seeds.length < starts) seeds.push(randomSchedule(cfg, rand));
+    const results = [];
     let best = null, i = 0;
     (function step() {
       if (i >= seeds.length) {
         // Execution pass: the plan must be in whole seconds (a player can't
-        // press a button at 502.14s). Snap, then re-polish the integer
-        // schedule — integer moves keep it integer — and score THAT.
-        const snapped = repair(Object.fromEntries(Object.entries(best.s).map(([k, ts]) => [k, ts.map(Math.round)])), cfg);
-        best = polish(snapped, cfg);
+        // press a button at 502.14s). Snap and re-polish the TOP candidates,
+        // not just the max — rounding a fractional winner can cost real damage
+        // and land in a worse basin, while an already-integer runner-up keeps
+        // its full value. Keep the best INTEGER plan.
+        results.sort((a, b) => b.val - a.val);
+        best = null;
+        for (const cand of results.slice(0, 4)) {
+          const snapped = repair(Object.fromEntries(Object.entries(cand.s).map(([k, ts]) => [k, ts.map(Math.round)])), cfg);
+          const p = polish(snapped, cfg);
+          if (!best || p.val > best.val) best = p;
+        }
         // ——— tie-breaks among damage-equal plans (never lose damage: v ≥ val−EPS) ———
         let s = best.s, val = best.val;
         const EPS = 0.5;
@@ -1168,6 +1186,7 @@ function optimizeAsync(cfg, starts, onProgress) {
         resolve(best); return;
       }
       const r = polish(seeds[i], cfg);
+      results.push(r);
       if (!best || r.val > best.val) best = r;
       i++; onProgress(i / (seeds.length + 1));
       setTimeout(step, 0);
