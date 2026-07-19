@@ -78,11 +78,16 @@ cooldown".
 Ties break toward the natural, overlaid line. When placements sit within one expected cast of each
 other, the planner prefers: a window that completes before the kill, then a press anchored to
 something you can see (the pull, a raid call, a co-press, a buff ending, a cooldown lighting back
-up), then one that avoids floor-dead seconds, then one that **joins an existing press row**, then the
-one that **overlays the most other buff windows** — stacked windows keep their value when the fight
-drifts a few seconds off last week's timing; perfectly-tiled ones don't. On plain fights the presses
-then snap to a 5-second grid phased by the raid calls. The Pressboard shows **press moments** (one
-row = one macro press); when the buffs land on the next cast boundary, the row says so in words.
+up), then one that **joins an existing press row**, then the one that **overlays the most other buff
+windows** (compared coarsely — a few raw seconds of overlap is fake precision), then real expected
+damage, with floor-dead avoidance breaking exact value ties — stacked windows keep their value when
+the fight drifts a few seconds off last week's timing; perfectly-tiled ones don't. On plain fights
+the presses then snap to a 5-second grid phased by the raid calls. The only guarded currency in these
+trades is **expected damage under kill-time uncertainty**: per-second thresholds cliff by a whole cast
+when the cast train slides across a wire, so a razor-timed variant that sims higher at exactly the
+entered kill time is reported as a note ("only pays if the boss dies on schedule") instead of
+dictating the plan. The Pressboard shows **press moments** (one row = one macro press); when the
+buffs land on the next cast boundary, the row says so in words.
 
 Three trust rules keep the plan readable: **Cold Snap materiality** — burning Cold Snap mid-fight must
 beat the best natural-cooldown plan by at least one effective cast, or the planner holds it and says
