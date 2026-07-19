@@ -206,6 +206,14 @@
   .assump li { margin-bottom: 3px; }
 
   .empty { color: var(--muted); text-align: center; padding: 40px 0; font-size: 14px; }
+  .warnbar {
+    background: color-mix(in srgb, var(--warn) 8%, var(--surface));
+    border: 1px solid color-mix(in srgb, var(--warn) 35%, var(--surface));
+    border-radius: 8px; padding: 10px 14px;
+    color: var(--ink-2); font-size: 13px;
+  }
+  .warnbar div { margin: 2px 0; }
+  .warnbar div::before { content: "⚠ "; color: var(--warn); }
 
   /* follow mode */
   .follow { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 16px; }
@@ -267,7 +275,7 @@
           <div class="field">
             <label for="in-len">Fight length</label>
             <input id="in-len" type="text" value="5:00" inputmode="numeric">
-            <span class="hint">m:ss or seconds</span>
+            <span class="hint">m:ss or seconds · 0:30 to 15:00</span>
           </div>
         </div>
         <details class="adv">
@@ -296,6 +304,7 @@
 
     <div class="results" id="results">
       <div class="empty" id="empty-state">Pick your cooldowns and hit <b>Find optimal overlay</b>.</div>
+      <div class="warnbar" id="warnbar" hidden></div>
       <div class="tiles" id="tiles" hidden></div>
       <div class="follow" id="follow" hidden>
         <div class="follow-head">
@@ -513,6 +522,21 @@ function randomSchedule(cfg, rand) {
   for (const key of scheduledKeys(cfg)) s[key] = Array.from({ length: Math.min(maxUses(key, cfg), 64) }, () => rand() * cfg.T);
   return repair(s, cfg);
 }
+// Backward-packed seed: anchor the last use so it just completes at fight end,
+// then walk back on cooldown — catches "one more use fits" cases the forward
+// greedy misses on long fights.
+function packedSchedule(cfg) {
+  const s = {};
+  for (const key of scheduledKeys(cfg)) {
+    if (cfg.fixed[key]) { s[key] = cfg.fixed[key].slice(); continue; }
+    const def = BUFFS[key];
+    const sep = key === "icyVeins" ? def.cd : trackRule(key, cfg).sep;
+    const times = [];
+    for (let t = Math.max(0, cfg.T - def.dur); t >= 0 && times.length < 64; t -= sep) times.push(t);
+    s[key] = times.reverse();
+  }
+  return repair(s, cfg);
+}
 function mulberry32(a) {
   return function () {
     a |= 0; a = (a + 0x6D2B79F5) | 0;
@@ -562,20 +586,21 @@ function polish(seed, cfg) {
 function optimizeAsync(cfg, starts, onProgress) {
   return new Promise(resolve => {
     const rand = mulberry32(1337);
-    const seeds = [naiveSchedule(cfg)];
+    const seeds = [naiveSchedule(cfg), packedSchedule(cfg)];
     while (seeds.length < starts) seeds.push(randomSchedule(cfg, rand));
     let best = null, i = 0;
     (function step() {
       if (i >= seeds.length) {
-        // execution polish: snap to whole seconds, keep if within noise
+        // Execution pass: the plan must be in whole seconds (a player can't
+        // press a button at 502.14s). Snap, then re-polish the integer
+        // schedule — integer moves keep it integer — and score THAT.
         const snapped = repair(Object.fromEntries(Object.entries(best.s).map(([k, ts]) => [k, ts.map(Math.round)])), cfg);
-        const sv = simulate(snapped, cfg).total;
-        if (sv >= best.val * 0.999) best = { s: snapped, val: sv };
+        best = polish(snapped, cfg);
         resolve(best); return;
       }
       const r = polish(seeds[i], cfg);
       if (!best || r.val > best.val) best = r;
-      i++; onProgress(i / seeds.length);
+      i++; onProgress(i / (seeds.length + 1));
       setTimeout(step, 0);
     })();
   });
@@ -610,7 +635,7 @@ function buildBuffList() {
       div.dataset.for = key;
       if (key === "bloodlust") div.innerHTML = `<div class="fixedtime"><label for="t-bl">Raid casts it at</label>
         <input id="t-bl" type="text" placeholder="e.g. 0:05 — blank = planner picks" value="${state.blTimes}">
-        <span class="hint">Anniversary: raid-wide + Sated — one Bloodlust per pull (resets on boss kill).</span></div>`;
+        <span class="hint">Anniversary: raid-wide + Sated — one Bloodlust per 10 min of a pull (resets on boss kill).</span></div>`;
       if (key === "drums") div.innerHTML = `<div class="fixedtime"><label for="t-drum">Party drums at</label>
         <input id="t-drum" type="text" placeholder="e.g. 0:00, 2:00, 4:00 — blank = planner picks" value="${state.drumTimes}">
         <span class="hint">Tinnitus: you can only receive one drum buff per 2 min — closer times are ignored.</span></div>`;
@@ -634,52 +659,68 @@ function subopts() {
 }
 function parseLen(v) {
   v = String(v).trim();
-  const m = v.match(/^(\d+):(\d{1,2})$/);
+  const m = v.match(/^(\d+):([0-5]\d)$/); // m:ss with real seconds (00–59)
   if (m) return (+m[1]) * 60 + (+m[2]);
+  if (v.includes(":")) return NaN; // malformed m:ss — don't guess
   const n = parseFloat(v);
-  return isFinite(n) && n > 0 ? n : NaN;
+  return isFinite(n) && n > 0 && /^\d+(\.\d+)?$/.test(v) ? n : NaN;
 }
 function fmtT(t) {
   t = Math.round(t);
   return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0");
 }
 function parseTimeList(v, T) {
-  const out = [];
+  const times = [], bad = [];
   for (const part of String(v).split(/[,;]+/)) {
-    const t = parseLen(part);
-    if (isFinite(t) && t >= 0 && t < T) out.push(t);
+    const p = part.trim();
+    if (!p) continue;
+    const t = parseLen(p);
+    if (isFinite(t) && t >= 0 && t < T) times.push(t);
+    else bad.push(p);
   }
-  return out.sort((a, b) => a - b);
+  return { times: times.sort((a, b) => a - b), bad };
+}
+// Greedy min-separation filter (Sated / Tinnitus / a single caster's cooldown)
+function sepFilter(times, sep) {
+  const eff = [], dropped = [];
+  for (const t of times) {
+    if (!eff.length || t - eff[eff.length - 1] >= sep) eff.push(t);
+    else dropped.push(t);
+  }
+  return { eff, dropped };
 }
 function readCfg() {
   const T = parseLen(el("in-len").value);
-  const fixed = {};
-  if (state.enabled.bloodlust && state.blTimes.trim()) {
-    // Anniversary Sated: a second Bloodlust can't land within 10 min of the first
-    const all = parseTimeList(state.blTimes, T), eff = [];
-    for (const t of all) if (!eff.length || t - eff[eff.length - 1] >= BUFFS.bloodlust.cd) eff.push(t);
-    fixed.bloodlust = eff;
+  const fixed = {}, warnings = [];
+  // Raid-called fields. Separation rules: Bloodlust = Sated (10 min),
+  // Drums = Tinnitus (2 min), Power Infusion = the priest's own cooldown.
+  const raidFields = [
+    ["bloodlust", state.blTimes, BUFFS.bloodlust.cd],
+    ["drums", state.drumTimes, BUFFS.drums.cd],
+    ["powerInfusion", state.piTimes, BUFFS.powerInfusion.cd],
+  ];
+  for (const [key, raw, sep] of raidFields) {
+    if (!state.enabled[key] || !raw.trim()) continue;
+    const name = BUFFS[key].name;
+    const { times, bad } = parseTimeList(raw, T);
+    if (bad.length) warnings.push(`${name}: ignored “${bad.join("”, “")}” — not a valid time inside the fight.`);
+    const { eff, dropped } = sepFilter(times, sep);
+    if (dropped.length) warnings.push(`${name}: ignored ${dropped.map(fmtT).join(", ")} — too close to the previous one (${key === "bloodlust" ? "Sated" : key === "drums" ? "Tinnitus" : "cooldown"} needs ${fmtT(sep)} between).`);
+    if (eff.length) fixed[key] = eff;
+    else warnings.push(`${name}: no usable times entered — the planner will place it instead.`);
   }
-  if (state.enabled.drums && state.drumTimes.trim()) {
-    // Tinnitus (Anniversary rule): after receiving a drum buff you can't gain
-    // another for 2 min — keep only the drum casts that actually land on you.
-    const all = parseTimeList(state.drumTimes, T), eff = [];
-    for (const t of all) if (!eff.length || t - eff[eff.length - 1] >= BUFFS.drums.cd) eff.push(t);
-    fixed.drums = eff;
-  }
-  if (state.enabled.powerInfusion && state.piTimes.trim()) fixed.powerInfusion = parseTimeList(state.piTimes, T);
   return {
     T,
     hasteRating: Math.max(0, +el("in-haste").value || 0),
     sp: Math.max(0, +el("in-sp").value || 0),
-    critPct: Math.max(0, +el("in-crit").value || 0),
+    critPct: Math.min(100, Math.max(0, +el("in-crit").value || 0)),
     enabled: { ...state.enabled },
-    fixed,
+    fixed, warnings,
     coldSnap: state.coldSnap && state.enabled.icyVeins,
   };
 }
 el("in-haste").addEventListener("input", () => {
-  const pct = (+el("in-haste").value || 0) / GAME.HASTE_RATING_PER_PCT;
+  const pct = Math.max(0, +el("in-haste").value || 0) / GAME.HASTE_RATING_PER_PCT;
   el("haste-pct").textContent = `= ${pct.toFixed(1)}% spell haste`;
 });
 
@@ -688,15 +729,20 @@ let lastRun = null, lastGeo = null;
 const colorOf = k => getComputedStyle(document.documentElement).getPropertyValue(BUFFS[k].color.slice(4, -1)).trim() || "#888";
 el("btn-run").addEventListener("click", async () => {
   const cfg = readCfg();
-  if (!isFinite(cfg.T) || cfg.T < 30 || cfg.T > 1800) {
+  const lenHint = el("in-len").nextElementSibling;
+  if (!isFinite(cfg.T) || cfg.T < 30 || cfg.T > 900) {
+    lenHint.textContent = "Enter a length between 0:30 and 15:00 (m:ss or seconds).";
+    lenHint.style.color = "var(--warn)";
     el("in-len").focus(); el("in-len").select(); return;
   }
+  lenHint.textContent = "m:ss or seconds · 0:30 to 15:00";
+  lenHint.style.color = "";
   const btn = el("btn-run"), prog = el("prog"), bar = prog.querySelector("i");
   btn.disabled = true; btn.textContent = "Optimizing…"; prog.classList.add("busy");
   const baseline = simulate({}, cfg);
   const naive = naiveSchedule(cfg);
   const naiveR = simulate(naive, cfg);
-  const starts = cfg.T > 480 ? 10 : 14;
+  const starts = 14;
   const best = await optimizeAsync(cfg, starts, p => bar.style.width = (p * 100).toFixed(0) + "%");
   const optR = simulate(best.s, cfg, true);
   lastRun = { cfg, baseline, naive, naiveR, best, optR };
@@ -707,6 +753,9 @@ el("btn-run").addEventListener("click", async () => {
 function render(run) {
   el("empty-state").hidden = true;
   followReset();
+  const wb = el("warnbar");
+  wb.hidden = !run.cfg.warnings.length;
+  wb.innerHTML = run.cfg.warnings.map(w => `<div>${w}</div>`).join("");
   renderTiles(run); renderTimeline(run); renderSchedule(run); renderCapSheet(run.cfg); renderAssumptions(run);
   el("follow").hidden = false;
   followPrime(run);
@@ -816,8 +865,10 @@ function hookTooltip(run, geo) {
       (active.length ? active.join(", ") : "no on-use buffs");
     tip.style.display = "block";
     const bx = box.getBoundingClientRect();
-    tip.style.left = Math.min(e.clientX - bx.left + 14, bx.width - tip.offsetWidth - 8) + "px";
-    tip.style.top = (e.clientY - bx.top + 14) + "px";
+    // tip lives in the scrolled content, so offset by scrollLeft and clamp to the visible box
+    const lx = e.clientX - bx.left + box.scrollLeft;
+    tip.style.left = Math.min(lx + 14, box.scrollLeft + box.clientWidth - tip.offsetWidth - 8) + "px";
+    tip.style.top = Math.min(e.clientY - bx.top + 14, box.clientHeight - tip.offsetHeight - 8) + "px";
   });
   svg.addEventListener("mouseleave", () => tip.style.display = "none");
 }
@@ -883,10 +934,24 @@ el("btn-copy").addEventListener("click", () => {
     out += `\n[Window ${wi + 1} @ ${fmtT(w.start)}]` + (w.peakHaste != null ? ` peak +${w.peakHaste.toFixed(0)}% haste` : "") + "\n";
     for (const a of w.acts) out += `  ${fmtT(a.t)}  ${a.coldSnap ? "Cold Snap -> " : ""}${BUFFS[a.k].name}\n`;
   });
-  navigator.clipboard.writeText(out).then(() => {
-    el("btn-copy").textContent = "Copied";
-    setTimeout(() => el("btn-copy").textContent = "Copy as text", 1200);
-  });
+  const done = ok => {
+    el("btn-copy").textContent = ok ? "Copied" : "Copy failed — select the table instead";
+    setTimeout(() => el("btn-copy").textContent = "Copy as text", ok ? 1200 : 2600);
+  };
+  const fallback = () => {
+    const ta = document.createElement("textarea");
+    ta.value = out;
+    ta.style.position = "fixed"; ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    let ok = false;
+    try { ok = document.execCommand("copy"); } catch (_) {}
+    ta.remove();
+    done(ok);
+  };
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    navigator.clipboard.writeText(out).then(() => done(true), fallback);
+  } else fallback();
 });
 
 function renderCapSheet(cfg) {
@@ -902,6 +967,7 @@ function renderCapSheet(cfg) {
     if (picked.length > 3) continue;
     const keys = picked.map(([k]) => k);
     if (keys.includes("bloodlust") && keys.includes("powerInfusion")) continue; // don't stack
+    if (keys.filter(k => OFF_TRINKETS.includes(k)).length > 1) continue; // shared lockout — never simultaneous
     let mults = 1, ratings = 0;
     for (const [k] of picked) {
       const d = BUFFS[k];
@@ -933,7 +999,7 @@ function renderAssumptions({ cfg }) {
     <li>Going past the 50% GCD floor is not treated as a mistake — the planner simulates actual casts, so it will happily overcap a window (especially under Arcane Power) when that beats staying under the line. The floor line just marks where extra haste stops adding casts.</li>
     <li>Bloodlust, Drums, and Power Infusion timings you enter are treated as raid-called anchors: the planner never moves them, it plans your cooldowns around them.</li>
     <li>Planner-placed buffs always complete their full duration before the fight ends — no truncated windows. (Raid-called times are used exactly as entered.)</li>
-    <li>Power Infusion does not stack with Bloodlust (Bloodlust wins while both are up). Skull of Gul’dan and Mind Quickening Gem share the offensive-trinket lockout: using one locks the other for the used buff’s duration. Drums obey Anniversary Tinnitus (one drum buff per 2 min); Bloodlust obeys Anniversary Sated (raid-wide, one per 10 min, resets on boss kill).</li>
+    <li>Power Infusion does not stack with Bloodlust (Bloodlust wins while both are up). Skull of Gul’dan and Mind Quickening Gem share the offensive-trinket lockout: using one locks the other for the used buff’s duration. Drums obey Anniversary Tinnitus (one drum buff per 2 min); Bloodlust obeys Anniversary Sated (raid-wide, one per 10 min of a pull, resets on boss kill).</li>
     <li>Rotation is modeled as continuous AB spam. Real play conserves (AB×3 + Frostbolt filler) between windows — that changes absolute DPS, not which overlay wins, so the schedule stands either way.</li>
     <li>The opener is special: during the 0→3 stack ramp, AB casts are longer than the GCD, so haste that would be “wasted” at 3 stacks still compresses the ramp — the planner may deliberately triple-stack haste at the pull (especially inside Arcane Power) and keep those same buffs apart mid-fight.</li>
     <li>Mana is not simulated — the planner assumes you can afford to chain-cast through the windows it picks (gems, potions, Evocation are yours to manage).</li>

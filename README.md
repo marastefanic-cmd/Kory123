@@ -32,7 +32,7 @@ second-screen schedule to follow during the pull.
 
 | Cooldown | Effect | Duration | Cooldown | Notes |
 |---|---|---|---|---|
-| Bloodlust | +30% cast speed | 40s | per pull | **Anniversary: raid-wide + Sated** — one per pull, resets on boss kill |
+| Bloodlust | +30% cast speed | 40s | 10 min (Sated) | **Anniversary: raid-wide + Sated** — one per 10 min of a pull, resets on boss kill |
 | Icy Veins | +20% cast speed | 20s | 3 min | off-GCD; multiplicative |
 | Cold Snap | resets Icy Veins | — | 8 min | off-GCD, instant second IV |
 | Power Infusion | +20% cast speed | 15s | 3 min | priest external; **does not stack with Bloodlust** |
@@ -73,7 +73,9 @@ The engine reproduces the Mage-discord cast-time table exactly (3-stack AB, gear
 (−141, −87, −77, −61 …). The in-app **cap sheet** regenerates this table live from your enabled
 buffs and gear rating.
 
-Game data cross-checked against the [wowsims/tbc](https://github.com/wowsims/tbc) source
-(sim/core/unit.go, cast.go, buffs.go, sim/mage/*), Wowhead TBC tooltips, and TBC Classic /
-Anniversary change notes. One deliberate deviation: Ashtongue Talisman uses the tooltip's
-**145** haste (wowsims codes 150).
+Game data cross-checked against both [wowsims/tbc](https://github.com/wowsims/tbc) and the
+Anniversary-era [wowsims/tbc-new](https://github.com/wowsims/tbc-new) source (which natively encodes
+the Anniversary rules this app models: the 2-min Tinnitus drum debuff, the 10-min Sated gate on
+Bloodlust, Bloodlust/Power-Infusion haste non-stacking, the offensive-trinket shared lockout equal to
+the used buff's duration, and Ashtongue Talisman at 145 haste), plus Wowhead TBC tooltips and the
+community cast-time reference table.
