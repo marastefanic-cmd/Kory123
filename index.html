@@ -151,6 +151,17 @@
 
   details.adv { border-top: 1px solid var(--hairline); padding-top: 10px; margin-top: 12px; }
   details.adv summary { cursor: pointer; color: var(--ink-2); font-size: 13px; }
+  .presetrow { display: flex; gap: 6px; margin-top: 2px; }
+  .presetrow select {
+    flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--grid);
+    border-radius: 6px; color: var(--ink); font-size: 13px; padding: 6px 8px;
+  }
+  .presetrow input { flex: 1; min-width: 0; font-size: 13px; padding: 6px 8px; }
+  .presetrow button {
+    background: var(--panel); border: 1px solid var(--grid); color: var(--ink-2);
+    border-radius: 6px; font-size: 13px; padding: 6px 10px; cursor: pointer; white-space: nowrap;
+  }
+  .presetrow button:hover { color: var(--ink); border-color: var(--accent); }
 
   /* ————— results ————— */
   .results { display: flex; flex-direction: column; gap: 20px; min-width: 0; }
@@ -277,6 +288,12 @@
             <input id="in-len" type="text" value="5:00" inputmode="numeric">
             <span class="hint">m:ss or seconds · 0:30 to 15:00</span>
           </div>
+        </div>
+        <div class="presetrow" id="presetrow">
+          <select id="preset-sel" aria-label="Boss presets"><option value="">Boss presets…</option></select>
+          <input id="preset-name" type="text" placeholder="Boss name" aria-label="Preset name">
+          <button id="preset-save" title="Save current setup under this name">Save</button>
+          <button id="preset-del" title="Delete the selected preset">✕</button>
         </div>
         <details class="adv">
           <summary>Damage model (for weighing haste vs. Arcane Power)</summary>
@@ -1069,8 +1086,57 @@ el("btn-follow").addEventListener("click", () => {
 });
 el("btn-freset").addEventListener("click", followReset);
 
+/* ═══════════════ boss presets (localStorage) ═══════════════ */
+const PRESET_KEY = "abp-presets";
+function lsGet() { try { return JSON.parse(localStorage.getItem(PRESET_KEY) || "{}"); } catch (_) { return null; } }
+function lsSet(o) { try { localStorage.setItem(PRESET_KEY, JSON.stringify(o)); return true; } catch (_) { return false; } }
+function snapshotState() {
+  return {
+    enabled: { ...state.enabled }, coldSnap: state.coldSnap,
+    blTimes: state.blTimes, drumTimes: state.drumTimes, piTimes: state.piTimes,
+    haste: el("in-haste").value, len: el("in-len").value,
+    sp: el("in-sp").value, crit: el("in-crit").value,
+  };
+}
+function applyState(s) {
+  for (const k in state.enabled) state.enabled[k] = !!(s.enabled || {})[k];
+  state.coldSnap = !!s.coldSnap;
+  state.blTimes = s.blTimes || ""; state.drumTimes = s.drumTimes || ""; state.piTimes = s.piTimes || "";
+  el("in-haste").value = s.haste ?? 0;
+  el("in-len").value = s.len ?? "5:00";
+  el("in-sp").value = s.sp ?? 1150;
+  el("in-crit").value = s.crit ?? 25;
+  buildBuffList();
+  el("in-haste").dispatchEvent(new Event("input"));
+}
+function refreshPresets(selected) {
+  const store = lsGet();
+  if (store === null) { el("presetrow").style.display = "none"; return; }
+  const sel = el("preset-sel");
+  sel.innerHTML = `<option value="">Boss presets…</option>` +
+    Object.keys(store).sort().map(n => `<option${n === selected ? " selected" : ""}>${n.replace(/&/g, "&amp;").replace(/</g, "&lt;")}</option>`).join("");
+}
+el("preset-save").addEventListener("click", () => {
+  const store = lsGet(); if (store === null) return;
+  const name = (el("preset-name").value.trim() || el("preset-sel").value || "Unnamed").slice(0, 40);
+  store[name] = snapshotState();
+  if (lsSet(store)) { refreshPresets(name); el("preset-name").value = ""; }
+});
+el("preset-del").addEventListener("click", () => {
+  const store = lsGet(); if (store === null) return;
+  const name = el("preset-sel").value;
+  if (!name) return;
+  delete store[name];
+  if (lsSet(store)) refreshPresets("");
+});
+el("preset-sel").addEventListener("change", () => {
+  const store = lsGet(), name = el("preset-sel").value;
+  if (store && store[name]) { applyState(store[name]); refreshPresets(name); }
+});
+
 buildBuffList();
 el("in-haste").dispatchEvent(new Event("input"));
+refreshPresets("");
 </script>
 </body>
 </html>

@@ -10,6 +10,13 @@ second-screen schedule to follow during the pull.
 - Check the cooldowns you actually have; enter the raid-called times for **Bloodlust / Drums / Power Infusion** (or leave blank to let the planner place them)
 - Hit **Find optimal overlay** — you get the burn timeline, an activation schedule with windows,
   a live **cap sheet**, and a **follow mode** with a real-time playhead + "next up" countdown for the fight
+- **Save the setup as a boss preset** (stored in your browser) and recall it next raid week
+
+The intended weekly loop: sim/gem/enchant your gear in [wowsims](https://wowsims.com/tbc/), take that
+set's haste rating into this tool; before each boss, pull last week's kill time and Bloodlust timing
+from Warcraft Logs, load the boss preset, adjust the kill time, and follow the schedule on your second
+screen. Tip: kills usually get *faster* week over week — if your gear improved, enter a slightly
+shorter fight than last week's log so the final burn window isn't planned past the boss's death.
 
 ## The math (TBC 2.4.3, as on Anniversary realms)
 
