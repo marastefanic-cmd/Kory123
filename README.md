@@ -47,7 +47,7 @@ shorter fight than last week's log so the final burn window isn't planned past t
 | Drums of Battle | +80 haste rating | 30s | 2 min | party-wide; **Anniversary Tinnitus**: one drum buff per 2 min |
 | Skull of Gul'dan | +175 haste rating | 20s | 2 min | BT (Illidan), Phase 3; shares offensive-trinket lockout |
 | Mind Quickening Gem | +330 haste rating | 20s | 5 min | Classic Naxx trinket; shares offensive-trinket lockout with Skull |
-| Ashtongue Talisman of Insight | 145 haste rating proc | 5s | none | 50% on spell crit, **no ICD**; modeled as expected uptime `1−(1−0.5c)^(5/T)` |
+| Ashtongue Talisman of Insight | 145 haste rating proc | 5s | none | 50% on spell crit, **no ICD**; per-cast up-probability from the last 5s of real casts, floor applied per proc state |
 | Arcane Power | +30% damage, +30% mana cost | 15s | 3 min | no shared CD with PoM/trinkets in TBC (that's WotLK) |
 | Serpent-Coil Braid | +225 spell dmg on Mana Gem use (+25% gem mana) | 15s | 2 min (gem) | SSC (Morogrim), Phase 2 — passive trinket, gem is off-GCD |
 | Icon of the Silver Crescent | +155 spell dmg | 20s | 2 min | badge trinket; shares offensive-trinket lockout |
@@ -69,8 +69,9 @@ and shifted out past ~150–200 rating; no mid-fight BL+IV+Berserking triple-sta
 deliberately triple-stack the opener ramp, where casts are still longer than the GCD); the Serpent-Coil
 gem window paired with Arcane Power, twice on fights long enough to fit both windows fully.
 
-Not modeled: mana (you manage gems/potions/Evocation), discrete Ashtongue procs (expected-value
-haste instead), the conserve rotation between windows (changes absolute DPS, not which overlay wins).
+Not modeled: mana (you manage gems/potions/Evocation), the conserve rotation between windows
+(changes absolute DPS, not which overlay wins). Ashtongue procs are handled as a per-cast
+up-probability driven by the simulation's own cast history — validated against Monte-Carlo rollouts.
 
 ## Validation
 

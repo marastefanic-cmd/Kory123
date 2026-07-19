@@ -520,17 +520,6 @@ const GROUPS = [
 const ATI = { rating: 145, dur: 5, procChance: 0.5 };
 
 /* ═══════════════ engine ═══════════════ */
-function atiAvgRating(cfg) {
-  if (!cfg.enabled.ati) return 0;
-  const multBase = 1 + cfg.hasteRating / (GAME.HASTE_RATING_PER_PCT * 100);
-  const iv = Math.max(
-    Math.max(GAME.GCD_FLOOR, GAME.GCD_BASE / multBase),
-    (GAME.AB.BASE_CAST - GAME.AB.STACK_CAST_REDUCTION * GAME.AB.MAX_STACKS) / multBase
-  );
-  const crit = Math.min(1, Math.max(0, cfg.critPct / 100));
-  const uptime = 1 - Math.pow(1 - crit * ATI.procChance, ATI.dur / iv);
-  return ATI.rating * uptime;
-}
 function simulate(schedule, cfg, collect) {
   const g = GAME;
   const crit = Math.min(1, Math.max(0, cfg.critPct / 100));
@@ -540,7 +529,15 @@ function simulate(schedule, cfg, collect) {
     const def = BUFFS[key];
     if (def && def.kind !== "proc" && schedule[key].length) tracks.push({ key, def, times: schedule[key] });
   }
-  const atiR = atiAvgRating(cfg);
+  // Ashtongue Talisman: discrete 145-rating / 5s procs, 50% per spell crit,
+  // no ICD. Modeled per cast as the probability the proc is CURRENTLY up,
+  // derived from the actual casts of the last 5s — so procs cluster where
+  // cast rate is high, and the GCD floor is applied inside each up/down
+  // branch (E[max(...)] per state, not max(E[...])).
+  const atiOn = !!cfg.enabled.ati;
+  const atiScale = ATI.rating / (g.HASTE_RATING_PER_PCT * 100);
+  const recentT = [], recentNoQ = []; // cast starts + per-cast no-proc probability
+  let ri = 0;
   const segs = cfg.segments || null; // "complicated fight" phases; null = plain fight, identical to the old model
   let si = 0;
   let t = 0, stacks = 0, total = 0, gcdCappedTime = 0, castCount = 0, lastCastStart = 0;
@@ -553,7 +550,7 @@ function simulate(schedule, cfg, collect) {
       if (seg.type === "intermission") { t = seg.end; continue; } // boss untargetable: wait it out
     }
     if (t - lastCastStart >= GAME.AB.DEBUFF_DUR) stacks = 0; // AB debuff fell off during the gap
-    let rating = cfg.hasteRating + atiR;
+    let rating = cfg.hasteRating;
     let mult = 1, dmgMult = 1, sp = cfg.sp;
     let blActive = false, piActive = false;
     for (let i = 0; i < tracks.length; i++) {
@@ -572,24 +569,45 @@ function simulate(schedule, cfg, collect) {
       }
     }
     if (piActive && !blActive) mult *= BUFFS.powerInfusion.value; // PI is overridden while Bloodlust runs
-    mult *= 1 + rating / (g.HASTE_RATING_PER_PCT * 100);
-    const gcd = Math.max(g.GCD_FLOOR, g.GCD_BASE / mult);
-    let cast, interval, dmg, capped;
-    if (seg && seg.type === "aoe") {
-      // Arcane Explosion spam: instant, GCD-bound, hits every target
-      cast = 0; interval = gcd; capped = g.GCD_BASE / mult <= g.GCD_FLOOR;
+    const multDn = mult * (1 + rating / (g.HASTE_RATING_PER_PCT * 100));
+    let pUp = 0;
+    if (atiOn) {
+      while (ri < recentT.length && recentT[ri] <= t - ATI.dur) ri++;
+      let noProc = 1;
+      for (let k = ri; k < recentT.length; k++) noProc *= recentNoQ[k];
+      pUp = 1 - noProc;
+    }
+    const multUp = atiOn ? multDn + mult * atiScale : multDn;
+    const isAoe = !!(seg && seg.type === "aoe");
+    const stepFor = m => {
+      const gcd = Math.max(g.GCD_FLOOR, g.GCD_BASE / m);
+      if (isAoe) return { cast: 0, gcd, interval: gcd, capped: g.GCD_BASE / m <= g.GCD_FLOOR };
+      const cast = (g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * stacks) / m;
+      return { cast, gcd, interval: Math.max(cast, gcd), capped: cast < gcd };
+    };
+    const dn = stepFor(multDn);
+    const up = atiOn && pUp > 0 ? stepFor(multUp) : dn;
+    const interval = pUp * up.interval + (1 - pUp) * dn.interval;
+    let dmg;
+    if (isAoe) {
       dmg = (g.AE.AVG_BASE_DMG + g.AE.COEF * sp) * seg.targets * critFactor * dmgMult;
     } else {
-      cast = (g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * stacks) / mult;
-      interval = Math.max(cast, gcd);
-      capped = cast < gcd;
       dmg = (g.AB.AVG_BASE_DMG + g.AB.COEF * sp) * critFactor * dmgMult;
       if (seg && seg.type === "burn") dmg *= seg.mult;
       if (stacks < g.AB.MAX_STACKS) stacks++;
     }
     total += dmg; castCount++;
-    if (capped) gcdCappedTime += interval;
-    if (casts) casts.push({ t, interval, cast, gcd, mult, dmg, stacks, capped, ae: !!(seg && seg.type === "aoe") });
+    gcdCappedTime += pUp * (up.capped ? up.interval : 0) + (1 - pUp) * (dn.capped ? dn.interval : 0);
+    if (casts) casts.push({
+      t, interval, cast: pUp * up.cast + (1 - pUp) * dn.cast, gcd: pUp * up.gcd + (1 - pUp) * dn.gcd,
+      mult: pUp * multUp + (1 - pUp) * multDn, dmg, stacks,
+      capped: (pUp >= 0.5 ? up : dn).capped, pUp, ae: isAoe,
+    });
+    if (atiOn) {
+      // proc chance of THIS cast: any target's crit can trigger the 50% roll
+      const qCast = isAoe ? 1 - Math.pow(1 - crit * ATI.procChance, seg.targets) : crit * ATI.procChance;
+      recentT.push(t); recentNoQ.push(1 - qCast);
+    }
     lastCastStart = t;
     t += interval;
   }
@@ -1190,8 +1208,14 @@ function renderTimeline(run) {
   const { cfg, best, optR } = run;
   el("viz").hidden = false;
   const lanes = LANE_ORDER.filter(k => cfg.enabled[k]);
-  const atiR = atiAvgRating(cfg);
-  const atiUp = cfg.enabled.ati ? atiR / ATI.rating : 0;
+  // ATI uptime measured from the simulated casts (procs cluster in fast windows)
+  let atiUp = 0;
+  if (cfg.enabled.ati && optR.casts.length) {
+    let upT = 0;
+    for (const c of optR.casts) upT += (c.pUp || 0) * c.interval;
+    atiUp = upT / cfg.T;
+  }
+  const atiR = ATI.rating * atiUp;
 
   const PADL = 148, PADR = 16, CURVE_H = 96, LANE_H = 24, LANE_GAP = 6, AXIS_H = 26, PADT = 18;
   const W = Math.max(760, Math.min(1600, cfg.T * 3)), plotW = W - PADL - PADR;
@@ -1423,7 +1447,7 @@ function renderAssumptions({ cfg }) {
   a.innerHTML = `<h4>Model assumptions</h4><ul>
     <li>Rotation: continuous Arcane Blast spam; the AB debuff (−1/3s base cast, +75% mana per stack, max 3) is at 3 stacks after the opener. Cast time = (2.5 − 1/3·stacks) / total haste; next cast starts at max(cast time, hasted GCD), GCD floor 1.0s.</li>
     <li>Haste stacking: all haste rating adds first (${GAME.HASTE_RATING_PER_PCT} rating = 1% at 70), then multiplies with each %-speed buff: (1+rating%) × 1.30<small>BL</small> × 1.20<small>IV</small> × 1.10<small>Zerk</small>.</li>
-    <li>Ashtongue Talisman is modeled as its expected average haste from your crit and cast rate, not as discrete procs.</li>
+    <li>Ashtongue Talisman is tracked per cast: the chance the 145-haste proc is up right now comes from your actual casts in the last 5s (procs cluster inside fast windows), and the GCD floor is applied separately to the proc-up and proc-down cases before averaging — not smeared into a flat average.</li>
     <li>Serpent-Coil Braid assumes a Mana Emerald is available each use (2-min gem cooldown).</li>
     <li>Going past the 50% GCD floor is not treated as a mistake — the planner simulates actual casts, so it will happily overcap a window (especially under Arcane Power) when that beats staying under the line. The floor line just marks where extra haste stops adding casts.</li>
     <li>Any pinned times are hard anchors: a buff with times entered fires at exactly those times (validated against its cooldown, Sated/Tinnitus, Cold Snap, and the trinket lockout) and the planner schedules everything unpinned around them. Blank = the planner owns that buff.</li>
@@ -1431,7 +1455,7 @@ function renderAssumptions({ cfg }) {
     <li>Power Infusion does not stack with Bloodlust (Bloodlust wins while both are up). Skull of Gul’dan and Mind Quickening Gem share the offensive-trinket lockout: using one locks the other for the used buff’s duration. Drums obey Anniversary Tinnitus (one drum buff per 2 min); Bloodlust obeys Anniversary Sated (raid-wide, one per 10 min of a pull, resets on boss kill).</li>
     <li>Rotation is modeled as continuous AB spam. Real play conserves (AB×3 + Frostbolt filler) between windows — that changes absolute DPS, not which overlay wins, so the schedule stands either way.</li>
     <li>The opener is special: during the 0→3 stack ramp, AB casts are longer than the GCD, so haste that would be “wasted” at 3 stacks still compresses the ramp — the planner may deliberately triple-stack haste at the pull (especially inside Arcane Power) and keep those same buffs apart mid-fight.</li>
-    <li>Complicated fights: intermissions score zero damage (cooldowns and buff durations keep ticking — the planner holds cooldowns to recover through downtime, and your AB stacks drop after the 8s debuff expires); Burn phases multiply Arcane Blast damage; AoE phases switch to Arcane Explosion spam — instant, GCD-bound (haste pays to the 1.0s floor even without stacks) and damage scaling with target count. Phases apply per cast start; the Ashtongue average-uptime model stays fight-wide.</li>
+    <li>Complicated fights: intermissions score zero damage (cooldowns and buff durations keep ticking — the planner holds cooldowns to recover through downtime, and your AB stacks drop after the 8s debuff expires); Burn phases multiply Arcane Blast damage; AoE phases switch to Arcane Explosion spam — instant, GCD-bound (haste pays to the 1.0s floor even without stacks) and damage scaling with target count. Phases apply per cast start.</li>
     <li>Mana is not simulated — the planner assumes you can afford to chain-cast through the windows it picks (gems, potions, Evocation are yours to manage).</li>
     <li>Buffs snapshot at cast start; activation clicks are assumed off-GCD / macroed into the next cast. Crits count as 182% — 2/2 Spell Power with a Chaotic Skyfire Diamond. (No toggle for the meta gem: a constant crit-damage factor scales every schedule equally, so it cannot change which overlay wins — only things that vary during the fight can.)</li>
   </ul>`;
