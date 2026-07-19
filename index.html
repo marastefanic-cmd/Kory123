@@ -1405,9 +1405,20 @@ function optimizeAsync(cfg, starts, onProgress) {
         // the raid calls (lust at 0:07 -> presses at 0:02/0:07/0:12/...). Snap
         // press groups onto it when it costs no at-kill-time damage and at most
         // the legibility band in expected damage. Fights with phases are exempt.
-        if (!cfg.segments || cfg.segments.every(sg => sg.type === "normal")) {
-          const phases5 = new Set([0]);
-          for (const k5 in cfg.fixed) for (const pt of cfg.fixed[k5]) phases5.add(((Math.round(pt) % 5) + 5) % 5);
+        {
+          // on phased fights each burn window carries its own 5s grid, phased
+          // at the intermission exit / window start (which also matches the
+          // post-downtime stack ramp: 3 stacks take ~5s)
+          const basePhases = new Set([0]);
+          for (const k5 in cfg.fixed) for (const pt of cfg.fixed[k5]) basePhases.add(((Math.round(pt) % 5) + 5) % 5);
+          const phasesFor = sec => {
+            const out = new Set(basePhases);
+            if (cfg.segments) for (const sg of cfg.segments) {
+              if (sg.type === "intermission" && sg.end <= sec + 0.5) out.add(((Math.round(sg.end) % 5) + 5) % 5);
+              if ((sg.type === "burn" || sg.type === "aoe") && sg.start <= sec + 0.5) out.add(((Math.round(sg.start) % 5) + 5) % 5);
+            }
+            return out;
+          };
           for (let round5 = 0; round5 < 8; round5++) {
             let snapped5 = false;
             const press5 = new Map();
@@ -1417,6 +1428,7 @@ function optimizeAsync(cfg, starts, onProgress) {
             }
             outer5:
             for (const [sec, movers] of press5) {
+              const phases5 = phasesFor(sec);
               if ([...phases5].some(p => ((sec - p) % 5 + 5) % 5 === 0)) continue; // already on the grid
               const targets = [];
               for (const p of phases5) {
