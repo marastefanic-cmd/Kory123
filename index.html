@@ -802,7 +802,10 @@ function optimizeAsync(cfg, starts, onProgress) {
         // Pass 1: haste actives — among equal-damage spots, minimize the seconds
         // of the buff's own window spent on floor-locked casts (its haste does
         // nothing there — don't park Berserking inside an already-capped
-        // Lust+IV overlap), earliest on ties.
+        // Lust+IV overlap), earliest on ties. Iterated with pass 2 to a fixed
+        // point: one buff's cleanup changes where the others' clean spots are.
+        for (let sweep = 0, sweptMoved = true; sweep < 3 && sweptMoved; sweep++) {
+        sweptMoved = false;
         for (const key in s) {
           if (cfg.fixed[key]) continue;
           const kind = BUFFS[key].kind;
@@ -828,7 +831,7 @@ function optimizeAsync(cfg, starts, onProgress) {
                 pick = { rep, v: r.total, nulled, at, d };
               }
             }
-            if (pick && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); }
+            if (pick && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); sweptMoved = true; }
           }
         }
         // Pass 2: damage actives (AP / gem / Icon) move as one coupled cluster —
@@ -877,9 +880,10 @@ function optimizeAsync(cfg, starts, onProgress) {
               const at = c[0].t + d;
               if (clean && (!pick || at < pick.at)) pick = { rep, v: r.total, at, d };
             }
-            if (pick && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); moved = true; break; }
+            if (pick && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); moved = true; sweptMoved = true; break; }
           }
           if (!moved) break;
+        }
         }
         best = { s, val };
         resolve(best); return;
