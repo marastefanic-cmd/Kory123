@@ -970,6 +970,12 @@ function optimizeAsync(cfg, starts, onProgress) {
         // ——— tie-breaks among damage-equal plans (never lose damage: v ≥ val−EPS) ———
         let s = best.s, val = best.val;
         const EPS = 0.5;
+        // Phase-luck slivers from the kill-time window are noise, not signal:
+        // aesthetics may trade up to a QUARTER-CAST of expected damage, but
+        // never any at-kill-time damage (beyond float noise).
+        const castVal = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + (cfg.critPct / 100) * (GAME.CRIT_MULT - 1));
+        const QTOL = castVal / 4;
+        let valT = simulate(s, cfg).total;
         const counts = sch => Object.fromEntries(Object.keys(sch).map(k => [k, sch[k].length]));
         const sameCounts = (a, b) => Object.keys(a).every(k => a[k] === (b[k] || 0));
         // total buff-seconds running past the kill — among damage-equal spots,
@@ -1019,8 +1025,8 @@ function optimizeAsync(cfg, starts, onProgress) {
                 const cand = cloneS(s);
                 cand[key] = c2.slice();
                 const rep = repair(cand, cfg);
-                const v = simulate(rep, cfg).robust;
-                if (v > val + 0.5) { s = rep; val = v; improved2 = true; }
+                const rr2 = simulate(rep, cfg);
+                if (rr2.robust > val + QTOL) { s = rep; val = rr2.robust; valT = Math.max(valT, rr2.total); improved2 = true; }
               }
             }
             if (!improved2) break;
@@ -1052,7 +1058,7 @@ function optimizeAsync(cfg, starts, onProgress) {
               if (JSON.stringify(rep) === curSig) continue; // repair clamped it back — a phantom move
               if (!sameCounts(c0, counts(rep))) continue;
               const r = simulate(rep, cfg, true);
-              if (r.robust < val - EPS) continue;
+              if (r.robust < val - QTOL || r.total < valT - EPS) continue;
               // score the move at its REPAIRED position — a clamped candidate
               // evaluated at its fictional intent time gets an empty window
               // ("0 floor-dead, earliest ever") and causes aesthetic ping-pong
@@ -1065,19 +1071,22 @@ function optimizeAsync(cfg, starts, onProgress) {
                 if (cast.t >= at - 1e-9 && cast.t < at + dur - 1e-9 && cast.capped) nulled += cast.interval;
               }
               const clip = clipOf(rep);
-              // a strict damage improvement always outranks aesthetics
-              if (r.robust > val + 0.5) {
-                if (!pick || pick.v <= val + 0.5 || r.robust > pick.v) pick = { rep, v: r.robust, nulled, at, d, clip };
+              // a MATERIAL damage improvement (over a quarter cast) outranks aesthetics
+              if (r.robust > val + QTOL) {
+                if (!pick || pick.v <= val + QTOL || r.robust > pick.v) pick = { rep, v: r.robust, tv: r.total, nulled, at, d, clip, grp: 0 };
                 continue;
               }
-              if (pick && pick.v > val + 0.5) continue; // an improvement is already selected
+              if (pick && pick.v > val + QTOL) continue; // an improvement is already selected
+              let grp = 0; // co-press: sharing a second with another buff beats being earlier
+              for (const k3 in rep) { if (k3 === key) continue; for (const tt of rep[k3]) if (Math.abs(tt - at) <= 0.5) { grp = 1; break; } if (grp) break; }
               if (!pick || clip < pick.clip - 1e-9 ||
                   (Math.abs(clip - pick.clip) <= 1e-9 && (nulled < pick.nulled - 1e-9 ||
-                   (Math.abs(nulled - pick.nulled) <= 1e-9 && at < pick.at)))) {
-                pick = { rep, v: r.robust, nulled, at, d, clip };
+                   (Math.abs(nulled - pick.nulled) <= 1e-9 && (grp > pick.grp ||
+                    (grp === pick.grp && at < pick.at)))))) {
+                pick = { rep, v: r.robust, tv: r.total, nulled, at, d, clip, grp };
               }
             }
-            if (pick && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); sweptMoved = true; }
+            if (pick && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); valT = Math.max(valT, pick.tv); sweptMoved = true; }
           }
         }
         // Pass 2: damage actives (AP / gem / Icon) move as one coupled cluster —
@@ -1113,7 +1122,7 @@ function optimizeAsync(cfg, starts, onProgress) {
               if (JSON.stringify(rep) === curSig) continue; // repair clamped it back — a phantom move
               if (!sameCounts(c0, counts(rep))) continue;
               const r = simulate(rep, cfg, true);
-              if (r.robust < val - EPS) continue;
+              if (r.robust < val - QTOL || r.total < valT - EPS) continue;
               // reject cluster moves that repair relocated (fictional-position
               // scoring causes ping-pong; the true spot is another d's candidate)
               let deviant = false;
@@ -1138,16 +1147,23 @@ function optimizeAsync(cfg, starts, onProgress) {
               const clean = iMax - iMin <= 0.03 * iMin;
               const at = c[0].t + d;
               const clip = clipOf(rep);
-              // a strict damage improvement always outranks aesthetics
-              if (r.robust > val + 0.5) {
-                if (!pick || pick.v <= val + 0.5 || r.robust > pick.v) pick = { rep, v: r.robust, at, d, clip };
+              // a MATERIAL damage improvement (over a quarter cast) outranks aesthetics
+              if (r.robust > val + QTOL) {
+                if (!pick || pick.v <= val + QTOL || r.robust > pick.v) pick = { rep, v: r.robust, tv: r.total, at, d, clip, grp: 0 };
                 continue;
               }
-              if (pick && pick.v > val + 0.5) continue; // an improvement is already selected
+              if (pick && pick.v > val + QTOL) continue; // an improvement is already selected
+              let grp = 0; // co-press with a non-member (the lust call, a chained IV) beats earlier
+              for (const k3 in rep) {
+                if (c.some(m => m.key === k3)) continue;
+                for (const tt of rep[k3]) if (Math.abs(tt - at) <= 0.5) { grp = 1; break; }
+                if (grp) break;
+              }
               if (clean && (!pick || clip < pick.clip - 1e-9 ||
-                  (Math.abs(clip - pick.clip) <= 1e-9 && at < pick.at))) pick = { rep, v: r.robust, at, d, clip };
+                  (Math.abs(clip - pick.clip) <= 1e-9 && (grp > pick.grp ||
+                   (grp === pick.grp && at < pick.at))))) pick = { rep, v: r.robust, tv: r.total, at, d, clip, grp };
             }
-            if (pick && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); moved = true; sweptMoved = true; break; }
+            if (pick && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); valT = Math.max(valT, pick.tv); moved = true; sweptMoved = true; break; }
           }
           if (!moved) break;
         }
@@ -1179,10 +1195,10 @@ function optimizeAsync(cfg, starts, onProgress) {
               const rep = repair(cand, cfg);
               if (JSON.stringify(rep) === curSig) continue;
               if (!sameCounts(c0, counts(rep))) continue;
-              const v = simulate(rep, cfg).robust;
-              if (v > val + 0.5 && (!pick || v > pick.v)) pick = { rep, v };
+              const rr3 = simulate(rep, cfg);
+              if (rr3.robust > val + QTOL && (!pick || rr3.robust > pick.v)) pick = { rep, v: rr3.robust, tv: rr3.total };
             }
-            if (pick) { s = pick.rep; val = pick.v; sweptMoved = true; break; }
+            if (pick) { s = pick.rep; val = pick.v; valT = Math.max(valT, pick.tv); sweptMoved = true; break; }
           }
         }
         }
@@ -1222,8 +1238,8 @@ function optimizeAsync(cfg, starts, onProgress) {
                 for (const m of c) cand[m.key][m.i2] += target - Math.round(m.t);
                 const rep = repair(cand, cfg);
                 if (JSON.stringify(rep) === JSON.stringify(s)) continue;
-                const r = simulate(rep, cfg).robust;
-                if (r >= val - 0.5) { s = rep; val = Math.max(val, r); snapped = true; break; }
+                const rr = simulate(rep, cfg);
+                if (rr.robust >= val - QTOL && rr.total >= valT - EPS) { s = rep; val = Math.max(val, rr.robust); valT = Math.max(valT, rr.total); snapped = true; break; }
               }
               if (snapped) break; // recluster
             }
@@ -1243,8 +1259,8 @@ function optimizeAsync(cfg, starts, onProgress) {
               for (const m of c) cand[m.key][m.i2] += d;
               const rep = repair(cand, cfg);
               if (JSON.stringify(rep) === JSON.stringify(s)) continue;
-              const r = simulate(rep, cfg).robust;
-              if (r >= val - 0.5) { s = rep; val = Math.max(val, r); snapped = true; break; }
+              const rr = simulate(rep, cfg);
+              if (rr.robust >= val - QTOL && rr.total >= valT - EPS) { s = rep; val = Math.max(val, rr.robust); valT = Math.max(valT, rr.total); snapped = true; break; }
             }
             if (snapped) break; // indices stale — recluster
           }
@@ -1281,7 +1297,7 @@ function optimizeAsync(cfg, starts, onProgress) {
               const rep = repair(cand, cfg);
               if (JSON.stringify(rep) === JSON.stringify(s)) continue;
               const r1 = simulate(rep, cfg, true);
-              if (r1.robust < val - EPS) continue;
+              if (r1.robust < val - QTOL || r1.total < valT - EPS) continue;
               if (clipOf(rep) > clipOf(s) + 1e-9) continue;
               if (from < to) {
                 // pushing a haste active later is fine only if it doesn't pick
@@ -1295,7 +1311,7 @@ function optimizeAsync(cfg, starts, onProgress) {
                   if (n1 > n0 + 1e-9) continue;
                 }
               }
-              s = rep; val = Math.max(val, r1.robust); merged = true; break outerMerge;
+              s = rep; val = Math.max(val, r1.robust); valT = Math.max(valT, r1.total); merged = true; break outerMerge;
             }
           }
           // downtime slide: a press inside an intermission is worth the same
@@ -1323,10 +1339,10 @@ function optimizeAsync(cfg, starts, onProgress) {
                 }
                 const rep = repair(cand, cfg);
                 if (JSON.stringify(rep) === JSON.stringify(s)) continue;
-                const r1 = simulate(rep, cfg).robust;
-                if (r1 < val - EPS) continue;
+                const rr1 = simulate(rep, cfg);
+                if (rr1.robust < val - QTOL || rr1.total < valT - EPS) continue;
                 if (clipOf(rep) > clipOf(s) + 1e-9) continue;
-                s = rep; val = Math.max(val, r1); merged = true; break outerSlide;
+                s = rep; val = Math.max(val, rr1.robust); valT = Math.max(valT, rr1.total); merged = true; break outerSlide;
               }
             }
           }
@@ -1336,7 +1352,6 @@ function optimizeAsync(cfg, starts, onProgress) {
         // A ready cooldown near the kill is always worth pressing — clipped
         // final windows are kept whenever they add damage; the press plan tags
         // each one with its real uptime and worth.
-        const castVal = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + (cfg.critPct / 100) * (GAME.CRIT_MULT - 1));
         // drop planner-placed presses that can never fire (no cast boundary
         // reaches their intent before the kill) — zero value, dead instruction
         {
