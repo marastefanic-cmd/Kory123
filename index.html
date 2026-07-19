@@ -696,9 +696,11 @@ function maxUses(key, cfg) {
 }
 function repair(schedule, cfg) {
   const out = {};
-  // A planner-placed buff must run its FULL duration before the fight ends
-  // (no truncated windows); a buff longer than the whole fight goes at 0.
-  const lastFor = key => Math.max(0, cfg.T - BUFFS[key].dur);
+  // A press may run into the kill (a clipped final window is still real damage
+  // — the sim only scores casts that happen); it just needs ≥2s of uptime.
+  // Whether a clipped press is WORTH its button is decided later by the
+  // materiality filter (≥ half an effective cast), not forbidden here.
+  const lastFor = key => Math.max(0, cfg.T - 2);
   // Offensive on-use trinkets share a lockout: using one locks the whole
   // group for the used buff's duration; each also has its own cooldown.
   // Pinned trinkets are immovable anchors; planner-placed ones fit around them.
@@ -1139,6 +1141,26 @@ function optimizeAsync(cfg, starts, onProgress) {
           }
           if (!merged) break;
         }
+        // ——— Fight-end clipped presses must earn their button: a press whose
+        // window is cut short by the kill is kept only if dropping it would
+        // cost at least a QUARTER of an effective cast — real tails (a 10s Icon
+        // before the kill) survive, epsilon presses don't.
+        const castVal = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + (cfg.critPct / 100) * (GAME.CRIT_MULT - 1));
+        for (let redo = true; redo;) {
+          redo = false;
+          clipScan:
+          for (const key in s) {
+            if (cfg.fixed[key]) continue;
+            for (let i = s[key].length - 1; i >= 0; i--) {
+              if (s[key][i] <= cfg.T - BUFFS[key].dur + 1e-9) continue;
+              const cand = cloneS(s);
+              cand[key].splice(i, 1);
+              const rep = repair(cand, cfg);
+              const v = simulate(rep, cfg).total;
+              if (val - v < castVal / 4) { s = rep; val = v; redo = true; break clipScan; }
+            }
+          }
+        }
         best = { s, val };
         // ——— Cold Snap materiality: an 8-min cooldown is only worth burning if it
         // beats the best natural-cooldown plan by at least one effective cast.
@@ -1148,7 +1170,6 @@ function optimizeAsync(cfg, starts, onProgress) {
           let consumed = false, cdReady = 0;
           for (const t of ivs) { if (t < cdReady - 1e-6) { consumed = true; break; } cdReady = t + BUFFS.icyVeins.cd; }
           if (consumed) {
-            const castVal = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + (cfg.critPct / 100) * (GAME.CRIT_MULT - 1));
             optimizeAsync({ ...cfg, coldSnap: false }, starts, p => onProgress(0.5 + p / 2)).then(bestN => {
               if (bestN.val >= best.val - castVal) {
                 resolve({ s: bestN.s, val: bestN.val, csNote: { held: true, delta: Math.round(best.val - bestN.val), castVal } });
@@ -1885,7 +1906,7 @@ function renderAssumptions({ cfg }) {
     <li>The objective is equivalent to maximizing <em>effective casts</em>: each cast counts 1.0, ×1.3 under Arcane Power, ×(720+0.714·(SP+bonus))/(720+0.714·SP) under a spellpower active (the bonus flows through the spell coefficient, so +225 ≈ ×1.10 at 1150 SP, not ×1.20), and ×N in Burn phases. Crit multiplies every cast equally and cancels out. AoE casts are counted in the same plain-AB unit.</li>
     <li>Going past the 50% GCD floor is not treated as a mistake — the planner simulates actual casts, so it will happily overcap a window (especially under Arcane Power) when that beats staying under the line. The floor line just marks where extra haste stops adding casts.</li>
     <li>Any pinned times are hard anchors: a buff with times entered fires at exactly those times (validated against its cooldown, Sated/Tinnitus, Cold Snap, and the trinket lockout) and the planner schedules everything unpinned around them. Blank = the planner owns that buff.</li>
-    <li>Planner-placed buffs always complete their full duration before the fight ends — no truncated windows. (Raid-called times are used exactly as entered.)</li>
+    <li>Full durations are preferred — the sim naturally slides a press earlier when that covers the same casts and finishes before the kill — but a final window clipped by the boss dying is allowed when it genuinely beats every earlier spot (it must be worth at least a quarter of an effective cast, and the schedule tags it). Raid-called times are used exactly as entered.</li>
     <li>Power Infusion does not stack with Bloodlust (Bloodlust wins while both are up). Skull of Gul’dan and Mind Quickening Gem share the offensive-trinket lockout: using one locks the other for the used buff’s duration. Drums obey Anniversary Tinnitus (one drum buff per 2 min); Bloodlust obeys Anniversary Sated (raid-wide, one per 10 min of a pull, resets on boss kill).</li>
     <li>Rotation is modeled as continuous AB spam. Real play conserves (AB×3 + Frostbolt filler) between windows — that changes absolute DPS, not which overlay wins, so the schedule stands either way.</li>
     <li>The opener is special: during the 0→3 stack ramp, AB casts are longer than the GCD, so haste that would be “wasted” at 3 stacks still compresses the ramp — the planner may deliberately triple-stack haste at the pull (especially inside Arcane Power) and keep those same buffs apart mid-fight.</li>
@@ -2007,6 +2028,18 @@ function pressPlan(run) {
     if (JSON.stringify(rep) === sig) { r.tag = `locked here by its cooldown`; continue; }
     const delta = best.val - simulate(rep, cfg).total;
     if (delta > 0.5) r.tag = `deliberate: +${Math.round(delta)} dmg vs one press at ${fmtT(nb.t)}`;
+  }
+  // annotate presses whose window is clipped by the kill, with what they earn
+  for (const r of rows) {
+    const clip = r.items.find(a => a.t > cfg.T - BUFFS[a.k].dur + 1e-9);
+    if (!clip) continue;
+    const cand = cloneS(best.s);
+    const idx = cand[clip.k].findIndex(t => Math.abs(t - clip.t) < 1e-6);
+    if (idx < 0) continue;
+    cand[clip.k].splice(idx, 1);
+    const worth = Math.round(best.val - simulate(repair(cand, cfg), cfg).total);
+    const clipTxt = `clipped by the kill — ${Math.round(cfg.T - clip.t)}s of ${BUFFS[clip.k].dur}s, worth +${worth} dmg`;
+    r.tag = r.tag ? `${r.tag} · ${clipTxt}` : clipTxt;
   }
   run.pressRows = rows;
 }

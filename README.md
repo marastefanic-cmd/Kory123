@@ -63,8 +63,12 @@ Cast-by-cast simulation of AB spam (stacking debuff, hasted GCD with floor, buff
 start) scored over the whole fight, then multi-start local search over activation times: single shifts,
 block shifts, and re-adding dropped uses, with a deterministic repair pass that enforces cooldowns,
 Cold Snap resets, trinket lockout, Tinnitus, and Sated. Raid-called times (Bloodlust / Drums / PI) are
-anchors the search never moves. Planner-placed buffs always **complete their full duration before the
-fight ends** — no truncated windows. Baselines shown: no cooldowns, and "mash everything on cooldown".
+anchors the search never moves. Full durations are preferred — the sim slides a press earlier whenever
+that covers the same casts and completes before the kill — but a **final window clipped by the boss
+dying is allowed** when it beats every earlier full-duration spot (a second Icon at 2:00 on a 2:10
+kill runs 10 of its 20 seconds and still wins over holding it). A clipped press must be worth at
+least a quarter of an effective cast, and the schedule tags it with its real uptime and value. Baselines
+shown: no cooldowns, and "mash everything on cooldown".
 
 Two trust rules keep the plan readable: **Cold Snap materiality** — if burning Cold Snap wouldn't beat
 the best natural-cooldown plan by at least one effective cast, the planner holds it and says so — and
