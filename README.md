@@ -43,9 +43,10 @@ second-screen schedule to follow during the pull.
 | Ashtongue Talisman of Insight | 145 haste rating proc | 5s | none | 50% on spell crit, **no ICD**; modeled as expected uptime `1−(1−0.5c)^(5/T)` |
 | Arcane Power | +30% damage, +30% mana cost | 15s | 3 min | no shared CD with PoM/trinkets in TBC (that's WotLK) |
 | Serpent-Coil Braid | +225 spell dmg on Mana Gem use (+25% gem mana) | 15s | 2 min (gem) | SSC (Morogrim), Phase 2 — passive trinket, gem is off-GCD |
+| Icon of the Silver Crescent | +155 spell dmg | 20s | 2 min | badge trinket; shares offensive-trinket lockout |
 
-Offensive-trinket lockout: activating Skull or MQG locks the other for the **used buff's duration**
-(20s), while the used trinket takes its own full cooldown.
+Offensive-trinket lockout: activating Skull, MQG, or Icon locks the others for the **used buff's
+duration** (20s), while the used trinket takes its own full cooldown.
 
 ## The optimizer
 
@@ -53,7 +54,13 @@ Cast-by-cast simulation of AB spam (stacking debuff, hasted GCD with floor, buff
 start) scored over the whole fight, then multi-start local search over activation times: single shifts,
 block shifts, and re-adding dropped uses, with a deterministic repair pass that enforces cooldowns,
 Cold Snap resets, trinket lockout, Tinnitus, and Sated. Raid-called times (Bloodlust / Drums / PI) are
-anchors the search never moves. Baselines shown: no cooldowns, and "mash everything on cooldown".
+anchors the search never moves. Planner-placed buffs always **complete their full duration before the
+fight ends** — no truncated windows. Baselines shown: no cooldowns, and "mash everything on cooldown".
+
+Reproduces the community-consensus behaviors on its own: Icy Veins inside Bloodlust at 0 gear haste
+and shifted out past ~150–200 rating; no mid-fight BL+IV+Berserking triple-stack (but it will
+deliberately triple-stack the opener ramp, where casts are still longer than the GCD); the Serpent-Coil
+gem window paired with Arcane Power, twice on fights long enough to fit both windows fully.
 
 Not modeled: mana (you manage gems/potions/Evocation), discrete Ashtongue procs (expected-value
 haste instead), the conserve rotation between windows (changes absolute DPS, not which overlay wins).

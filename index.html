@@ -33,6 +33,7 @@
     --c-berserking:  #d96f24;
     --c-mqg:         #1f9d9d;
     --c-pi:          #6b7fd7;
+    --c-isc:         #4f86c9;
     --font-display: "Palatino Linotype", "Book Antiqua", Palatino, "Iowan Old Style", Georgia, serif;
     --font-ui: system-ui, -apple-system, "Segoe UI", sans-serif;
     --font-mono: ui-monospace, "SF Mono", "Cascadia Mono", Menlo, Consolas, monospace;
@@ -360,10 +361,11 @@ const BUFFS = {
   berserking:    { name: "Berserking",           kind: "mult",   value: 1.10, dur: 10, cd: 180, color: "var(--c-berserking)",  stat: "+10% haste · 10s · 3m cd" },
   mqg:           { name: "Mind Quickening Gem",  kind: "rating", value: 330,  dur: 20, cd: 300, color: "var(--c-mqg)",         stat: "+330 haste · 20s · 5m cd" },
   powerInfusion: { name: "Power Infusion",       kind: "mult",   value: 1.20, dur: 15, cd: 180, color: "var(--c-pi)",          stat: "+20% haste · 15s · priest" },
+  isc:           { name: "Icon of the Silver Crescent", kind: "sp", value: 155, dur: 20, cd: 120, color: "var(--c-isc)",       stat: "+155 dmg · 20s · 2m cd" },
 };
 // lane/checkbox order is the CVD-safe palette order (validated), not arbitrary
-const LANE_ORDER = ["ati", "icyVeins", "drums", "arcanePower", "bloodlust", "mqg", "berserking", "scb", "powerInfusion", "skull"];
-const OFF_TRINKETS = ["skull", "mqg"]; // shared on-use lockout: using one locks the other for the buff's duration
+const LANE_ORDER = ["ati", "powerInfusion", "drums", "icyVeins", "skull", "isc", "scb", "arcanePower", "berserking", "mqg", "bloodlust"];
+const OFF_TRINKETS = ["skull", "mqg", "isc"]; // shared on-use lockout: using one locks the others for the buff's duration
 const ATI = { rating: 145, dur: 5, procChance: 0.5 };
 
 /* ═══════════════ engine ═══════════════ */
@@ -441,7 +443,9 @@ function maxUses(key, cfg) {
 }
 function repair(schedule, cfg) {
   const out = {};
-  const LAST = cfg.T - 1;
+  // A planner-placed buff must run its FULL duration before the fight ends
+  // (no truncated windows); a buff longer than the whole fight goes at 0.
+  const lastFor = key => Math.max(0, cfg.T - BUFFS[key].dur);
   // Offensive on-use trinkets share a lockout: using one locks the whole
   // group for the used buff's duration; each also has its own cooldown.
   const group = OFF_TRINKETS.filter(k => k in schedule);
@@ -454,7 +458,7 @@ function repair(schedule, cfg) {
     let lock = 0;
     for (const r of reqs) {
       const t = Math.max(0, r.t, lock, own[r.k]);
-      if (t > LAST) continue;
+      if (t > lastFor(r.k)) continue;
       res[r.k].push(t);
       lock = t + BUFFS[r.k].dur;
       own[r.k] = t + BUFFS[r.k].cd;
@@ -475,7 +479,7 @@ function repair(schedule, cfg) {
           if (cfg.coldSnap && t >= csReady) csReady = t + GAME.COLD_SNAP_CD;
           else t = cdReady;
         }
-        if (t > LAST) continue;
+        if (t > lastFor(key)) continue;
         times.push(t);
         cdReady = t + def.cd;
         prevEnd = t + def.dur;
@@ -486,7 +490,7 @@ function repair(schedule, cfg) {
       for (const t0 of req) {
         if (times.length >= r.maxUses) break;
         const t = Math.max(0, t0, next);
-        if (t > LAST) continue;
+        if (t > lastFor(key)) continue;
         times.push(t);
         next = t + r.sep;
       }
@@ -541,7 +545,7 @@ function polish(seed, cfg) {
         }
       }
       if (s[key].length < Math.min(maxUses(key, cfg), 64)) {
-        for (const extra of [0, cfg.T - 1]) {
+        for (const extra of [0, Math.max(0, cfg.T - BUFFS[key].dur)]) {
           const cand = cloneS(s);
           cand[key].push(extra);
           const rep = repair(cand, cfg);
@@ -580,7 +584,7 @@ function optimizeAsync(cfg, starts, onProgress) {
 /* ═══════════════ UI state ═══════════════ */
 const el = id => document.getElementById(id);
 const state = {
-  enabled: { bloodlust: true, icyVeins: true, drums: true, ati: false, skull: true, arcanePower: true, scb: true, berserking: false, mqg: false, powerInfusion: false },
+  enabled: { bloodlust: true, icyVeins: true, drums: true, ati: false, skull: true, arcanePower: true, scb: true, berserking: false, mqg: false, powerInfusion: false, isc: false },
   coldSnap: true, blTimes: "", drumTimes: "", piTimes: "",
 };
 function buildBuffList() {
@@ -865,7 +869,7 @@ function renderSchedule(run) {
       const def = BUFFS[a.k];
       html += `<tr><td class="t">${fmtT(a.t)}</td>
         <td><span class="chip" style="background:${laneColor(a.k)}"></span>${a.coldSnap ? "Cold Snap → " : ""}${def.name}${a.k === "scb" ? " (Mana Emerald)" : ""}</td>
-        <td class="num">${def.kind === "mult" ? "+" + Math.round((def.value - 1) * 100) + "% haste" : def.kind === "rating" ? "+" + def.value + " haste" : def.kind === "dmg" ? "+30% damage" : "+225 spell dmg"} for ${def.dur}s</td></tr>`;
+        <td class="num">${def.kind === "mult" ? "+" + Math.round((def.value - 1) * 100) + "% haste" : def.kind === "rating" ? "+" + def.value + " haste" : def.kind === "dmg" ? "+" + Math.round((def.value - 1) * 100) + "% damage" : "+" + def.value + " spell dmg"} for ${def.dur}s</td></tr>`;
     }
   });
   html += `</tbody></table>`;
@@ -928,6 +932,7 @@ function renderAssumptions({ cfg }) {
     <li>Serpent-Coil Braid assumes a Mana Emerald is available each use (2-min gem cooldown).</li>
     <li>Going past the 50% GCD floor is not treated as a mistake — the planner simulates actual casts, so it will happily overcap a window (especially under Arcane Power) when that beats staying under the line. The floor line just marks where extra haste stops adding casts.</li>
     <li>Bloodlust, Drums, and Power Infusion timings you enter are treated as raid-called anchors: the planner never moves them, it plans your cooldowns around them.</li>
+    <li>Planner-placed buffs always complete their full duration before the fight ends — no truncated windows. (Raid-called times are used exactly as entered.)</li>
     <li>Power Infusion does not stack with Bloodlust (Bloodlust wins while both are up). Skull of Gul’dan and Mind Quickening Gem share the offensive-trinket lockout: using one locks the other for the used buff’s duration. Drums obey Anniversary Tinnitus (one drum buff per 2 min); Bloodlust obeys Anniversary Sated (raid-wide, one per 10 min, resets on boss kill).</li>
     <li>Rotation is modeled as continuous AB spam. Real play conserves (AB×3 + Frostbolt filler) between windows — that changes absolute DPS, not which overlay wins, so the schedule stands either way.</li>
     <li>The opener is special: during the 0→3 stack ramp, AB casts are longer than the GCD, so haste that would be “wasted” at 3 stacks still compresses the ramp — the planner may deliberately triple-stack haste at the pull (especially inside Arcane Power) and keep those same buffs apart mid-fight.</li>
