@@ -1,0 +1,72 @@
+# Arcane Burn Planner — TBC Cooldown Overlay Optimizer
+
+A single-file web app for **TBC Anniversary-realm Arcane mages** that finds the optimal way to
+overlay your on-use / proc haste and spell-power cooldowns over a fight, and gives you a
+second-screen schedule to follow during the pull.
+
+**Use it:** open `index.html` in any browser (no install, no network needed).
+
+- Enter your **gear haste rating** and **fight length**
+- Check the cooldowns you actually have; enter the raid-called times for **Bloodlust / Drums / Power Infusion** (or leave blank to let the planner place them)
+- Hit **Find optimal overlay** — you get the burn timeline, an activation schedule with windows,
+  a live **cap sheet**, and a **follow mode** with a real-time playhead + "next up" countdown for the fight
+
+## The math (TBC 2.4.3, as on Anniversary realms)
+
+- **15.77 haste rating = 1% spell haste** at level 70.
+- `castTime = baseCastTime / (1 + haste)`. All haste **rating** adds into one pool first; the resulting
+  percentage then stacks **multiplicatively** with each %-speed buff:
+  `total = (1 + rating/1577) × 1.30 (Lust) × 1.20 (IV/PI) × 1.10 (Zerk)`.
+- The **global cooldown** is hasted too, with a hard **1.0s floor** — reached at exactly **+50% total haste**
+  (789 rating unbuffed).
+- **Arcane Blast**: 2.5s base cast; each cast stacks a debuff (max 3) cutting the **base** cast by ⅓s
+  (and +75% base mana). At 3 stacks the base is 1.5s — identical to the GCD — so once total haste
+  passes 50%, 3-stack AB is GCD-locked at 1.0s and *extra haste adds no casts*.
+  Going over the floor is still often correct: the planner simulates real casts, so it will overcap a
+  window (especially under Arcane Power) when that beats staying under the line.
+- **Wording matters**: "increases casting speed by X%" divides cast time by (1+X) — that's Icy Veins,
+  Bloodlust, Berserking, Power Infusion. Haste-*rating* effects (Drums, Skull, MQG, Ashtongue) go into
+  the additive rating pool instead. Flat reductions (AB's own debuff) come off the base cast before haste.
+
+## The cooldowns
+
+| Cooldown | Effect | Duration | Cooldown | Notes |
+|---|---|---|---|---|
+| Bloodlust | +30% cast speed | 40s | per pull | **Anniversary: raid-wide + Sated** — one per pull, resets on boss kill |
+| Icy Veins | +20% cast speed | 20s | 3 min | off-GCD; multiplicative |
+| Cold Snap | resets Icy Veins | — | 8 min | off-GCD, instant second IV |
+| Power Infusion | +20% cast speed | 15s | 3 min | priest external; **does not stack with Bloodlust** |
+| Berserking (Troll) | +10% cast speed at full HP | 10s | 3 min | the "10% version" — scales to 30% only when badly hurt |
+| Drums of Battle | +80 haste rating | 30s | 2 min | party-wide; **Anniversary Tinnitus**: one drum buff per 2 min |
+| Skull of Gul'dan | +175 haste rating | 20s | 2 min | BT (Illidan), Phase 3; shares offensive-trinket lockout |
+| Mind Quickening Gem | +330 haste rating | 20s | 5 min | Classic Naxx trinket; shares offensive-trinket lockout with Skull |
+| Ashtongue Talisman of Insight | 145 haste rating proc | 5s | none | 50% on spell crit, **no ICD**; modeled as expected uptime `1−(1−0.5c)^(5/T)` |
+| Arcane Power | +30% damage, +30% mana cost | 15s | 3 min | no shared CD with PoM/trinkets in TBC (that's WotLK) |
+| Serpent-Coil Braid | +225 spell dmg on Mana Gem use (+25% gem mana) | 15s | 2 min (gem) | SSC (Morogrim), Phase 2 — passive trinket, gem is off-GCD |
+
+Offensive-trinket lockout: activating Skull or MQG locks the other for the **used buff's duration**
+(20s), while the used trinket takes its own full cooldown.
+
+## The optimizer
+
+Cast-by-cast simulation of AB spam (stacking debuff, hasted GCD with floor, buff snapshots at cast
+start) scored over the whole fight, then multi-start local search over activation times: single shifts,
+block shifts, and re-adding dropped uses, with a deterministic repair pass that enforces cooldowns,
+Cold Snap resets, trinket lockout, Tinnitus, and Sated. Raid-called times (Bloodlust / Drums / PI) are
+anchors the search never moves. Baselines shown: no cooldowns, and "mash everything on cooldown".
+
+Not modeled: mana (you manage gems/potions/Evocation), discrete Ashtongue procs (expected-value
+haste instead), the conserve rotation between windows (changes absolute DPS, not which overlay wins).
+
+## Validation
+
+The engine reproduces the Mage-discord cast-time table exactly (3-stack AB, gear rating 0):
+`lust+iv+drums → 0.915s`, `lust+mqg → 0.954s`, `lust+skull+ash → 0.959s`, `iv+mqg → 1.034s`,
+`lust → 1.154s`, `no mods → 1.500s / 789 to cap` — including the "HR to cap" column
+(−141, −87, −77, −61 …). The in-app **cap sheet** regenerates this table live from your enabled
+buffs and gear rating.
+
+Game data cross-checked against the [wowsims/tbc](https://github.com/wowsims/tbc) source
+(sim/core/unit.go, cast.go, buffs.go, sim/mage/*), Wowhead TBC tooltips, and TBC Classic /
+Anniversary change notes. One deliberate deviation: Ashtongue Talisman uses the tooltip's
+**145** haste (wowsims codes 150).
