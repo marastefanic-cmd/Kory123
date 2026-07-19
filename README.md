@@ -73,6 +73,26 @@ Not modeled: mana (you manage gems/potions/Evocation), the conserve rotation bet
 (changes absolute DPS, not which overlay wins). Ashtongue procs are handled as a per-cast
 up-probability driven by the simulation's own cast history — validated against Monte-Carlo rollouts.
 
+## Kill-time breakpoints
+
+Fight lengths where a cooldown gains one more full-duration use (the app surfaces the ones near
+your entered length as a sensitivity note, with the measured upside):
+
+| Unlock | Fight length |
+|---|---|
+| 2nd Mana Gem (Serpent-Coil) | 2:15 |
+| 2nd Icon / Skull / Drums | 2:30 |
+| 2nd Berserking | 3:10 |
+| 2nd Arcane Power | 3:15 (~+2% overlay gain) |
+| 3rd Icy Veins (Cold Snap spent early) | 3:40 |
+| 3rd Mana Gem | 4:15 |
+| 3rd Icon / Skull / Drums | 4:30 |
+| 3rd Arcane Power / Berserking | ~6:15 |
+
+Verified by a 60s–600s optimizer sweep across three loadouts: every use appears at exactly its
+theoretical minimum length, total damage is monotone in fight length, and all schedules pass the
+cooldown/lockout/full-duration invariants.
+
 ## Validation
 
 The engine reproduces the Mage-discord cast-time table exactly (3-stack AB, gear rating 0):
