@@ -648,7 +648,7 @@ function simulate(schedule, cfg, collect) {
         eff = e.ts; // raid externals: someone ELSE presses these — they land exactly when called
       } else {
         let minStart = e.ts;
-        if (e.gap && lastEff[e.key] !== undefined) minStart = Math.max(minStart, lastEff[e.key] + Math.min(e.gap, e.def.cd)); // slip carries the chain, but never tighter than the real cooldown
+        if (e.gap && lastEff[e.key] !== undefined) minStart = Math.max(minStart, lastEff[e.key] + (e.gap >= e.def.cd - 1e-9 ? e.def.cd : e.def.dur)); // natural spacing enforces the cooldown from the real press; a reset-chained use only needs the previous window to finish
         if (lastTrinket && lastTrinket.key !== e.key && OFF_TRINKETS.includes(e.key)) minStart = Math.max(minStart, lastTrinket.end);
         if (minStart > t) continue; // slipped past this boundary — try again later
         eff = Math.min(t, Math.max(minStart, prevCastEnd));
@@ -1398,6 +1398,45 @@ function optimizeAsync(cfg, starts, onProgress) {
             if (cfg.fixed[key]) continue;
             const fired = (chk.actEff && chk.actEff[key]) ? chk.actEff[key].length : 0;
             if (fired < s[key].length) s[key] = s[key].slice().sort((a, b) => a - b).slice(0, fired);
+          }
+        }
+        // ——— 5-second lattice (plain fights): every buff duration and cooldown
+        // is a multiple of 5s, so the natural line lives on a 5s grid phased by
+        // the raid calls (lust at 0:07 -> presses at 0:02/0:07/0:12/...). Snap
+        // press groups onto it when it costs no at-kill-time damage and at most
+        // the legibility band in expected damage. Fights with phases are exempt.
+        if (!cfg.segments || cfg.segments.every(sg => sg.type === "normal")) {
+          const phases5 = new Set([0]);
+          for (const k5 in cfg.fixed) for (const pt of cfg.fixed[k5]) phases5.add(((Math.round(pt) % 5) + 5) % 5);
+          for (let round5 = 0; round5 < 8; round5++) {
+            let snapped5 = false;
+            const press5 = new Map();
+            for (const key in s) {
+              if (cfg.fixed[key]) continue;
+              s[key].forEach((t, i2) => { const sec = Math.round(t); if (!press5.has(sec)) press5.set(sec, []); press5.get(sec).push({ key, i2 }); });
+            }
+            outer5:
+            for (const [sec, movers] of press5) {
+              if ([...phases5].some(p => ((sec - p) % 5 + 5) % 5 === 0)) continue; // already on the grid
+              const targets = [];
+              for (const p of phases5) {
+                const down = sec - (((sec - p) % 5) + 5) % 5;
+                targets.push(down, down + 5);
+              }
+              targets.sort((x, y) => Math.abs(x - sec) - Math.abs(y - sec) || x - y);
+              for (const to of targets) {
+                if (to < 0 || to > cfg.T - 1 || to === sec) continue;
+                const cand = cloneS(s);
+                for (const m of movers) cand[m.key][m.i2] = to;
+                const rep = repair(cand, cfg);
+                if (JSON.stringify(rep) === JSON.stringify(s)) continue;
+                const rr = simulate(rep, cfg);
+                if (rr.robust < val - QTOL || rr.total < valT - EPS) continue;
+                if (clipOf(rep) > clipOf(s) + 1e-9) continue;
+                s = rep; val = Math.max(val, rr.robust); valT = Math.max(valT, rr.total); snapped5 = true; break outer5;
+              }
+            }
+            if (!snapped5) break;
           }
         }
         best = { s, val };
