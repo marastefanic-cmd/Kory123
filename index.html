@@ -970,12 +970,28 @@ function optimizeAsync(cfg, starts, onProgress) {
         // ——— tie-breaks among damage-equal plans (never lose damage: v ≥ val−EPS) ———
         let s = best.s, val = best.val;
         const EPS = 0.5;
-        // Phase-luck slivers from the kill-time window are noise, not signal:
-        // aesthetics may trade up to a QUARTER-CAST of expected damage, but
-        // never any at-kill-time damage (beyond float noise).
+        // Execution beats microtiming: expected-damage differences under ONE
+        // effective cast are below real-world execution noise (movement, the
+        // opener, latency), so aesthetics may trade up to a full cast of
+        // EXPECTED damage for a pressable line — but never any at-kill-time
+        // damage (beyond float noise).
         const castVal = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + (cfg.critPct / 100) * (GAME.CRIT_MULT - 1));
-        const QTOL = castVal / 4;
+        const QTOL = castVal;
         let valT = simulate(s, cfg).total;
+        // a press is EXECUTABLE when anchored to something you can see: a raid
+        // call, another press of your own, or the moment a buff expires
+        const earlyPin = Object.values(cfg.fixed).flat().some(pt => pt <= 10);
+        const anchored = (rep2, key2, att) => {
+          if (att <= 0.5 && !earlyPin) return 1; // the pull itself, unless a raid call lands moments later
+          for (const k3 in rep2) {
+            const dur3 = BUFFS[k3].dur;
+            for (const tt of rep2[k3]) {
+              if (k3 !== key2 && Math.abs(tt - att) <= 0.5) return 1;      // co-press
+              if (Math.abs(tt + dur3 - att) <= 0.5) return 1;              // press as that buff ends
+            }
+          }
+          return 0;
+        };
         const counts = sch => Object.fromEntries(Object.keys(sch).map(k => [k, sch[k].length]));
         const sameCounts = (a, b) => Object.keys(a).every(k => a[k] === (b[k] || 0));
         // total buff-seconds running past the kill — among damage-equal spots,
@@ -1051,6 +1067,15 @@ function optimizeAsync(cfg, starts, onProgress) {
             const c0 = counts(s);
             let pick = null;
             const curSig = JSON.stringify(s);
+            {
+              // the incumbent competes: without it every sweep MUST move and
+              // the anchored/nulled rank landscape can cycle forever
+              const r0 = simulate(s, cfg, true);
+              const at0i = s[key][i2];
+              let nulled0 = 0;
+              for (const cast of r0.casts) if (cast.t >= at0i - 1e-9 && cast.t < at0i + dur - 1e-9 && cast.capped) nulled0 += cast.interval;
+              pick = { rep: null, v: r0.robust, tv: r0.total, nulled: nulled0, at: at0i, d: 0, clip: clipOf(s), grp: anchored(s, key, at0i) };
+            }
             for (let d = -45; d <= 45; d++) {
               const cand = cloneS(s);
               cand[key][i2] += d;
@@ -1077,16 +1102,15 @@ function optimizeAsync(cfg, starts, onProgress) {
                 continue;
               }
               if (pick && pick.v > val + QTOL) continue; // an improvement is already selected
-              let grp = 0; // co-press: sharing a second with another buff beats being earlier
-              for (const k3 in rep) { if (k3 === key) continue; for (const tt of rep[k3]) if (Math.abs(tt - at) <= 0.5) { grp = 1; break; } if (grp) break; }
+              const grp = anchored(rep, key, at);
               if (!pick || clip < pick.clip - 1e-9 ||
-                  (Math.abs(clip - pick.clip) <= 1e-9 && (nulled < pick.nulled - 1e-9 ||
-                   (Math.abs(nulled - pick.nulled) <= 1e-9 && (grp > pick.grp ||
-                    (grp === pick.grp && at < pick.at)))))) {
+                  (Math.abs(clip - pick.clip) <= 1e-9 && (grp > pick.grp ||
+                   (grp === pick.grp && (nulled < pick.nulled - 1e-9 ||
+                    (Math.abs(nulled - pick.nulled) <= 1e-9 && at < pick.at)))))) {
                 pick = { rep, v: r.robust, tv: r.total, nulled, at, d, clip, grp };
               }
             }
-            if (pick && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); valT = Math.max(valT, pick.tv); sweptMoved = true; }
+            if (pick && pick.rep && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); valT = Math.max(valT, pick.tv); sweptMoved = true; }
           }
         }
         // Pass 2: damage actives (AP / gem / Icon) move as one coupled cluster —
@@ -1115,6 +1139,13 @@ function optimizeAsync(cfg, starts, onProgress) {
             const c0 = counts(s);
             let pick = null;
             const curSig = JSON.stringify(s);
+            {
+              const r0 = simulate(s, cfg);
+              const at0i = c[0].t;
+              const oth = {};
+              for (const k3 in s) if (!c.some(m => m.key === k3)) oth[k3] = s[k3];
+              pick = { rep: null, v: r0.robust, tv: r0.total, at: at0i, d: 0, clip: clipOf(s), grp: anchored(oth, null, at0i) };
+            }
             for (let d = -45; d <= 45; d++) {
               const cand = cloneS(s);
               for (const m of c) cand[m.key][m.i2] += d;
@@ -1153,17 +1184,21 @@ function optimizeAsync(cfg, starts, onProgress) {
                 continue;
               }
               if (pick && pick.v > val + QTOL) continue; // an improvement is already selected
-              let grp = 0; // co-press with a non-member (the lust call, a chained IV) beats earlier
-              for (const k3 in rep) {
-                if (c.some(m => m.key === k3)) continue;
-                for (const tt of rep[k3]) if (Math.abs(tt - at) <= 0.5) { grp = 1; break; }
-                if (grp) break;
+              let grp = 0; // anchored: a raid call, a non-member press, or a buff-expiry moment
+              {
+                const repOthers = {};
+                for (const k3 in rep) if (!c.some(m => m.key === k3)) repOthers[k3] = rep[k3];
+                grp = anchored(repOthers, null, at);
+                if (!grp) for (const k3 in rep) if (c.some(m => m.key === k3)) {
+                  for (const tt of rep[k3]) if (Math.abs(tt + BUFFS[k3].dur - at) <= 0.5) { grp = 1; break; }
+                  if (grp) break;
+                }
               }
               if (clean && (!pick || clip < pick.clip - 1e-9 ||
                   (Math.abs(clip - pick.clip) <= 1e-9 && (grp > pick.grp ||
                    (grp === pick.grp && at < pick.at))))) pick = { rep, v: r.robust, tv: r.total, at, d, clip, grp };
             }
-            if (pick && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); valT = Math.max(valT, pick.tv); moved = true; sweptMoved = true; break; }
+            if (pick && pick.rep && pick.d !== 0) { s = pick.rep; val = Math.max(val, pick.v); valT = Math.max(valT, pick.tv); moved = true; sweptMoved = true; break; }
           }
           if (!moved) break;
         }
