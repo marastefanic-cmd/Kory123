@@ -977,6 +977,7 @@ function optimizeAsync(cfg, starts, onProgress) {
         // damage (beyond float noise).
         const castVal = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + (cfg.critPct / 100) * (GAME.CRIT_MULT - 1));
         const QTOL = castVal;
+        const TOLT = castVal / 8; // at-kill-time boundary slivers (one cast crossing a snapshot line) are tradeable; real casts are not
         let valT = simulate(s, cfg).total;
         // a press is EXECUTABLE when anchored to something you can see: a raid
         // call, another press of your own, or the moment a buff expires
@@ -1084,7 +1085,7 @@ function optimizeAsync(cfg, starts, onProgress) {
               if (JSON.stringify(rep) === curSig) continue; // repair clamped it back — a phantom move
               if (!sameCounts(c0, counts(rep))) continue;
               const r = simulate(rep, cfg, true);
-              if (r.robust < val - QTOL || r.total < valT - EPS) continue;
+              if (r.robust < val - QTOL || r.total < valT - TOLT) continue;
               // score the move at its REPAIRED position — a clamped candidate
               // evaluated at its fictional intent time gets an empty window
               // ("0 floor-dead, earliest ever") and causes aesthetic ping-pong
@@ -1156,7 +1157,7 @@ function optimizeAsync(cfg, starts, onProgress) {
               if (JSON.stringify(rep) === curSig) continue; // repair clamped it back — a phantom move
               if (!sameCounts(c0, counts(rep))) continue;
               const r = simulate(rep, cfg, true);
-              if (r.robust < val - QTOL || r.total < valT - EPS) continue;
+              if (r.robust < val - QTOL || r.total < valT - TOLT) continue;
               // reject cluster moves that repair relocated (fictional-position
               // scoring causes ping-pong; the true spot is another d's candidate)
               let deviant = false;
@@ -1278,7 +1279,7 @@ function optimizeAsync(cfg, starts, onProgress) {
                 const rep = repair(cand, cfg);
                 if (JSON.stringify(rep) === JSON.stringify(s)) continue;
                 const rr = simulate(rep, cfg);
-                if (rr.robust >= val - QTOL && rr.total >= valT - EPS) { s = rep; val = Math.max(val, rr.robust); valT = Math.max(valT, rr.total); snapped = true; break; }
+                if (rr.robust >= val - QTOL && rr.total >= valT - TOLT) { s = rep; val = Math.max(val, rr.robust); valT = Math.max(valT, rr.total); snapped = true; break; }
               }
               if (snapped) break; // recluster
             }
@@ -1299,7 +1300,7 @@ function optimizeAsync(cfg, starts, onProgress) {
               const rep = repair(cand, cfg);
               if (JSON.stringify(rep) === JSON.stringify(s)) continue;
               const rr = simulate(rep, cfg);
-              if (rr.robust >= val - QTOL && rr.total >= valT - EPS) { s = rep; val = Math.max(val, rr.robust); valT = Math.max(valT, rr.total); snapped = true; break; }
+              if (rr.robust >= val - QTOL && rr.total >= valT - TOLT) { s = rep; val = Math.max(val, rr.robust); valT = Math.max(valT, rr.total); snapped = true; break; }
             }
             if (snapped) break; // indices stale — recluster
           }
@@ -1336,7 +1337,7 @@ function optimizeAsync(cfg, starts, onProgress) {
               const rep = repair(cand, cfg);
               if (JSON.stringify(rep) === JSON.stringify(s)) continue;
               const r1 = simulate(rep, cfg, true);
-              if (r1.robust < val - QTOL || r1.total < valT - EPS) continue;
+              if (r1.robust < val - QTOL || r1.total < valT - TOLT) continue;
               if (clipOf(rep) > clipOf(s) + 1e-9) continue;
               if (from < to) {
                 // pushing a haste active later is fine only if it doesn't pick
@@ -1379,7 +1380,7 @@ function optimizeAsync(cfg, starts, onProgress) {
                 const rep = repair(cand, cfg);
                 if (JSON.stringify(rep) === JSON.stringify(s)) continue;
                 const rr1 = simulate(rep, cfg);
-                if (rr1.robust < val - QTOL || rr1.total < valT - EPS) continue;
+                if (rr1.robust < val - QTOL || rr1.total < valT - TOLT) continue;
                 if (clipOf(rep) > clipOf(s) + 1e-9) continue;
                 s = rep; val = Math.max(val, rr1.robust); valT = Math.max(valT, rr1.total); merged = true; break outerSlide;
               }
@@ -1451,7 +1452,7 @@ function optimizeAsync(cfg, starts, onProgress) {
                 const rep = repair(cand, cfg);
                 if (JSON.stringify(rep) === JSON.stringify(s)) continue;
                 const rr = simulate(rep, cfg);
-                if (rr.robust < val - QTOL || rr.total < valT - EPS) continue;
+                if (rr.robust < val - QTOL || rr.total < valT - TOLT) continue;
                 if (clipOf(rep) > clipOf(s) + 1e-9) continue;
                 s = rep; val = Math.max(val, rr.robust); valT = Math.max(valT, rr.total); snapped5 = true; break outer5;
               }
