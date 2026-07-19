@@ -89,7 +89,7 @@
   .field { display: flex; flex-direction: column; gap: 4px; margin-bottom: 12px; }
   .field:last-child { margin-bottom: 0; }
   .field label { font-size: 13px; color: var(--ink-2); }
-  .field .hint { font-size: 12px; color: var(--muted); }
+  .field .hint, .card > .hint { font-size: 12px; color: var(--muted); }
   input[type="text"], input[type="number"] {
     background: var(--panel);
     border: 1px solid var(--grid);
@@ -149,9 +149,7 @@
   .progress.busy { display: block; }
   .progress i { display: block; height: 100%; width: 0; background: var(--accent); transition: width 0.15s; }
 
-  details.adv { border-top: 1px solid var(--hairline); padding-top: 10px; margin-top: 12px; }
-  details.adv summary { cursor: pointer; color: var(--ink-2); font-size: 13px; }
-  .presetrow { display: flex; gap: 6px; margin-top: 2px; }
+  .presetrow { display: flex; gap: 6px; margin-top: 12px; padding-top: 12px; border-top: 1px solid var(--hairline); }
   .presetrow select {
     flex: 1; min-width: 0; background: var(--panel); border: 1px solid var(--grid);
     border-radius: 6px; color: var(--ink); font-size: 13px; padding: 6px 8px;
@@ -289,26 +287,23 @@
             <span class="hint">m:ss or seconds · 0:30 to 15:00</span>
           </div>
         </div>
+        <div class="inline">
+          <div class="field">
+            <label for="in-sp">Spell damage</label>
+            <input id="in-sp" type="number" value="1150" min="0" max="3000" step="10">
+          </div>
+          <div class="field">
+            <label for="in-crit">Spell crit %</label>
+            <input id="in-crit" type="number" value="25" min="0" max="100" step="0.5">
+          </div>
+        </div>
+        <span class="hint">Weighs haste vs. Arcane Power and the +dmg actives; crit also drives Ashtongue uptime.</span>
         <div class="presetrow" id="presetrow">
           <select id="preset-sel" aria-label="Boss presets"><option value="">Boss presets…</option></select>
           <input id="preset-name" type="text" placeholder="Boss name" aria-label="Preset name">
           <button id="preset-save" title="Save current setup under this name">Save</button>
           <button id="preset-del" title="Delete the selected preset">✕</button>
         </div>
-        <details class="adv">
-          <summary>Damage model (for weighing haste vs. Arcane Power)</summary>
-          <div class="inline" style="margin-top:10px">
-            <div class="field">
-              <label for="in-sp">Spell damage</label>
-              <input id="in-sp" type="number" value="1150" min="0" max="3000" step="10">
-            </div>
-            <div class="field">
-              <label for="in-crit">Spell crit %</label>
-              <input id="in-crit" type="number" value="25" min="0" max="100" step="0.5">
-            </div>
-          </div>
-          <span class="hint">Crit also drives the Ashtongue Talisman uptime model.</span>
-        </details>
       </div>
 
       <div class="card">
