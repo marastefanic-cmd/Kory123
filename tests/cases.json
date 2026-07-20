@@ -1,0 +1,21 @@
+{
+  "_comment": "Exact-match regression cases. Because the optimizer is deterministic (fixed seed) and leftover haste snaps to the earliest efficient spot, one setup produces exactly one schedule. `gear`/`kit` are the defaults; a case may override either. Regenerate the golden with `node exact-match.mjs --update` after an INTENTIONAL model change, and eyeball the diff.",
+  "gear": { "sp": 1387, "crit": 38, "haste": 0, "coldSnap": true },
+  "kit": ["icyVeins", "isc", "scb", "arcanePower", "berserking", "bloodlust"],
+  "cases": [
+    { "name": "1:40 lust 0:05",              "T": 100, "pins": { "bloodlust": [5] } },
+    { "name": "2:00 lust 0:05",              "T": 120, "pins": { "bloodlust": [5] } },
+    { "name": "2:20 lust 0:05",              "T": 140, "pins": { "bloodlust": [5] } },
+    { "name": "2:40 lust 0:05",              "T": 160, "pins": { "bloodlust": [5] } },
+    { "name": "2:40 lust 0:07",              "T": 160, "pins": { "bloodlust": [7] } },
+    { "name": "2:40 lust 0:07 intermission 1:30-2:10", "T": 160, "pins": { "bloodlust": [7] }, "intermission": [90, 130] },
+    { "name": "3:20 lust 0:05",              "T": 200, "pins": { "bloodlust": [5] } },
+    { "name": "4:00 lust 0:05",              "T": 240, "pins": { "bloodlust": [5] } },
+    { "name": "5:00 lust 0:05",              "T": 300, "pins": { "bloodlust": [5] } },
+    { "name": "5:40 lust 0:05",              "T": 340, "pins": { "bloodlust": [5] } },
+    { "name": "7:20 lust 0:05",              "T": 440, "pins": { "bloodlust": [5] } },
+    { "name": "KaelThas 6:00 lust 4:20",     "T": 360, "pins": { "bloodlust": [260] } },
+    { "name": "Vashj 5:45 lust 4:20",        "T": 345, "pins": { "bloodlust": [260] } },
+    { "name": "2:40 lust 0:07 @150 haste rating", "T": 160, "gear": { "sp": 1387, "crit": 38, "haste": 150, "coldSnap": true }, "pins": { "bloodlust": [7] } }
+  ]
+}
