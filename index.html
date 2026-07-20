@@ -1746,6 +1746,39 @@ function optimizeAsync(cfg, starts, onProgress) {
             }
           }
         }
+        // ——— "Let the stacks build" (opener / post-intermission ramp). Arcane Blast
+        // ramps 0→3 stacks over the first few casts, and those low-stack casts are
+        // slow — a SPELLPOWER/damage cooldown fired on them catches fewer casts than
+        // one fired once stacks are up (haste doesn't care, it's position-independent,
+        // but the burst macro fires as one press so the whole cluster moves). When
+        // Lust or the burst already sits a few seconds in this is automatic; on a
+        // late-Lust pull the burst can land at 0:00, so slide any press still stuck on
+        // the ramp out to the ramp's end. The steady-state score can't see the ramp
+        // (it assumes 3 stacks), so this applies on a genuine tie — never when it
+        // costs banked or expected damage, which keeps an un-clip that truly needs the
+        // 0:00 press (e.g. Icon at 0:00 to fit a second window before the kill).
+        {
+          const RAMP = 5; // ≈ seconds to 3 stacks
+          const rampStarts = [0];
+          if (cfg.segments) for (const sg of cfg.segments) if (sg.type === "intermission") rampStarts.push(sg.end);
+          for (const rs of rampStarts) {
+            const target = rs + RAMP;
+            if (target >= cfg.T - 1) continue;
+            const cand = cloneS(s);
+            let moved = false;
+            for (const key in cand) {
+              if (cfg.fixed[key]) continue;
+              cand[key] = cand[key].map(t => (t >= rs - 0.5 && t < target - 1e-6 ? (moved = true, target) : t));
+              cand[key].sort((a, b) => a - b);
+            }
+            if (!moved) continue;
+            const rep = repair(cand, cfg);
+            const r0 = simulate(s, cfg), r1 = simulate(rep, cfg);
+            if (r1.robust >= r0.robust - 0.5 && r1.totalEarly >= r0.totalEarly - 0.5 && clipOf(rep) <= clipOf(s) + 1e-9) {
+              s = rep; val = Math.max(val, r1.robust);
+            }
+          }
+        }
         best = { s, val };
         // a razor-timed variant may sim higher at EXACTLY the entered kill by
         // squeezing one last cast under the wire; the planner keeps the
