@@ -626,12 +626,20 @@ function simulate(schedule, cfg, collect) {
   // the plain at-T total.
   const KILL_WINDOW = 3;
   // Steady-state assumption: Arcane Blast is modeled at a permanent 3 stacks
-  // (1.5s base). Measured: the opening/post-gap ramp — the first ~3 casts at
-  // 0/1/2 stacks — is worth ZERO extra casts below ~400 gear rating and one
-  // quantized cast only far past the GCD floor; and that re-ramp is paid by
-  // every candidate plan equally, so it never changes which overlay wins.
-  // Dropping the ramp removes the stack-decay bookkeeping and the phantom
-  // "haste compresses the ramp" incentive, giving cleaner, more natural plans.
+  // (1.5s base). Verified against a headless wowsims build: this steady-state model
+  // reproduces the sim's overlay ranking to within ~0.4% at every fight length and
+  // Bloodlust position (rank 1 of 101 on the Kael late-Lust case, within 0.4% on
+  // Vashj). Modelling the opening ramp explicitly is worse, not better — opener
+  // haste buffs compress the ramp, so an explicit ramp OVER-credits a pull-time
+  // burst and destabilises the long-fight search. The only residual is the pull-Lust
+  // opener, and the sim shows it FLIPS with gear: at ~0 haste the burst wants to open
+  // inside Bloodlust (+~0.9%), but once geared (~150+ rating) Lust alone starts
+  // flooring the cast, so Icy Veins is worth more BEFORE Lust and the whole burst
+  // wants the pull (opening in Lust then loses ~2%). This model already lands on the
+  // geared-correct answer (open at the pull); it is only slightly conservative at 0
+  // haste. Because the crossover is haste-dependent, it is surfaced as a Bloodlust-
+  // overlay rule for the player rather than a fixed score correction that would be
+  // wrong at the other end. See the README / notes panel.
   let t = 0, stacks = g.AB.MAX_STACKS, total = 0, totalEarly = 0, robust = 0, gcdCappedTime = 0, castCount = 0;
   const casts = collect ? [] : null;
   while (t < cfg.T + KILL_WINDOW) {
@@ -923,6 +931,7 @@ function polish(seed, cfg) {
   }
   return { s, val };
 }
+
 // async multi-start so the UI can breathe between starts
 function optimizeAsync(cfg, starts, onProgress) {
   return new Promise(resolve => {

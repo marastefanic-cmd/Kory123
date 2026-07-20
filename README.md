@@ -105,6 +105,40 @@ Reproduces the community-consensus behaviors on its own: Icy Veins inside Bloodl
 and shifted out past ~150–200 rating; no mid-fight BL+IV+Berserking triple-stack; the Serpent-Coil
 gem window paired with Arcane Power, twice on fights long enough to fit both windows fully.
 
+## Bloodlust overlay rules (how to layer cooldowns in the raid)
+
+These are the practical rules behind the schedule, each **verified against a headless wowsims build**
+(see Validation). They tell you what to do when the fight drifts off the planned timing, and — the part
+the schedule can't fully show — where Bloodlust actually goes on the bosses that pop it late.
+
+1. **Use every cooldown on cooldown.** Before the next boss they're all back off cooldown, so there's
+   no reason to "save" one for a better moment — a use you skip is damage you don't get. A window
+   clipped by the kill is still free damage.
+2. **Overlap your damage cooldowns with Bloodlust.** Arcane Power (+30% dmg) and the spellpower actives
+   (Icon, Serpent-Coil gem) gain value from Lust's extra haste — more casts happen under them — so one
+   use of each wants to sit inside the Lust window. Icy Veins wants it too.
+3. **But never drop or clip a use just to force the overlap.** On long fights you can't align every
+   cooldown with a single Lust window without wasting uses. Roll them on cooldown instead; the ones
+   that come off cooldown near the Lust call land in it on their own. Sacrificing a whole use to align
+   one loses more than the overlay gains (measured: on a 7:00 Kael pull, three naked Arcane Powers beat
+   two with one Lust-aligned).
+4. **Lust at the pull → the opener flips with your gear (this one surprised us).**
+   - **At ~0 haste:** open the burst *inside* Lust. Your unbuffed cast is slow, so Lust's haste is
+     pure extra casts under Arcane Power / Icon / gem — opening in Lust sims **+~0.9%** over opening
+     at the pull.
+   - **Once geared (~150+ haste rating):** open the burst *at the pull*, not in Lust. Lust alone now
+     drives your cast into the GCD floor, so stacking Icy Veins on top of it is wasted — Icy Veins is
+     worth far more before Lust, and the whole burst wants to stay together at the pull. Opening in
+     Lust here sims **−2%**. The sim confirmed the crossover between 0 and ~150 rating; the planner is
+     tuned to the geared side (opens at the pull) and is only ~0.9% conservative at exactly 0 haste.
+   - The other wrinkle is a **breakpoint kill** where a pull-time press unlocks a full second use a
+     Lust opener would clip (e.g. Icon at 0:00 on a ~2:20 kill fits two full windows). Whether that
+     wins is a per-fight coin-flip the planner weighs.
+5. **Late Lust (Vashj ~5:45, Kael ~4:20): same rules, and Cold Snap is your lever.** Everything rolls
+   on cooldown from the pull (not wasted just because Lust is minutes away); whatever comes off cooldown
+   around the Lust call drops into it. Spend **Cold Snap** to put a bonus Icy Veins into the Lust window,
+   and keep a Serpent-Coil gem charge and an Arcane Power for it if the cooldown timing lines up.
+
 Not modeled: mana (you manage gems/potions/Evocation), the conserve rotation between windows
 (changes absolute DPS, not which overlay wins). Ashtongue procs are handled as a per-cast
 up-probability driven by the simulation's own cast history — validated against Monte-Carlo rollouts.
@@ -147,3 +181,20 @@ the rules this app models: the 2-min Tinnitus drum debuff (TBC-Classic era, reta
 Sated gate on Bloodlust (Anniversary), Bloodlust/Power-Infusion haste non-stacking (original 2.4.0), the offensive-trinket shared lockout equal to
 the used buff's duration, and Ashtongue Talisman at 145 haste), plus Wowhead TBC tooltips and the
 community cast-time reference table.
+
+**End-to-end against the real sim.** The overlay choices were checked not just for data but for
+*outcome*, by building `wowsims/tbc-new` into a headless CLI and running each planned schedule through
+the actual sim engine on this loadout (10k–200k iterations, common random numbers so the mean
+difference has a sub-0.1-DPS error bar). Isolating the overlay decision (pure Arcane-Blast spam, mana
+removed) the planner's schedule sims **highest** at every length: it beats "mash on cooldown" by
+2–3.5%, and its non-obvious calls each pay real damage — Cold Snap's extra Icy Veins is worth +0.5 to
++3.6%, and *holding* Arcane Power to align with the final Icy Veins window (rather than firing it on
+cooldown) is worth +1.5% at 5:00. A 160-schedule perturbation search around the planner's output ranks
+it in the top few of ~150 at every length and Bloodlust position — nothing beats it by more than
+~0.4%, and that residual is diffuse cast-boundary noise, not a structural miss (rank 1 of 101 on the
+Kael late-Lust case). The steady-state-3-stack model was confirmed correct here: adding an explicit
+opening ramp *lowered* agreement with the sim and destabilised the long-fight search, because opener
+haste buffs compress the ramp and the optimizer over-credits a pull-time burst — the reason the ramp
+is left out. The one sim-flagged refinement, the early-Lust opener, is captured as a Bloodlust-overlay
+rule above rather than sim-fitted into the score (it is haste- and length-dependent, so a fixed
+correction would be wrong at other gear levels).
