@@ -665,7 +665,13 @@ function simulate(schedule, cfg, collect) {
         if (e.gap && lastEff[e.key] !== undefined) minStart = Math.max(minStart, lastEff[e.key] + (e.gap >= e.def.cd - 1e-9 ? e.def.cd : e.def.dur)); // natural spacing enforces the cooldown from the real press; a reset-chained use only needs the previous window to finish
         if (lastTrinket && lastTrinket.key !== e.key && OFF_TRINKETS.includes(e.key)) minStart = Math.max(minStart, lastTrinket.end);
         if (minStart > t) continue; // slipped past this boundary — try again later
-        eff = Math.min(t, Math.max(minStart, prevCastEnd));
+        // Effective start = the PRESS moment (a self-buff macro applies its buff to
+        // the same press's Arcane Blast). We deliberately do NOT snap to the exact
+        // next cast boundary: which boundary you land on is set by opener timing and
+        // latency (a fraction of a GCD, uniformly), so the phase-averaged start the
+        // scoring integral wants IS the press moment. Snapping instead coupled every
+        // window's start to the whole cast cadence and re-introduced phase artifacts.
+        eff = Math.max(minStart, e.ts);
       }
       e.fired = true;
       active.push({ key: e.key, def: e.def, start: eff });
@@ -713,11 +719,7 @@ function simulate(schedule, cfg, collect) {
       dmg = (g.AB.AVG_BASE_DMG + g.AB.COEF * sp) * critFactor * dmgMult;
       if (seg && seg.type === "burn") dmg *= seg.mult;
     }
-    if (t < cfg.T) { total += dmg; castCount++; }
-    // damage banked by the PESSIMISTIC kill (T−W): a cast that only exists if
-    // the boss dies exactly on schedule is a wire-squeak, not bankable value
-    if (t < cfg.T - KILL_WINDOW) totalEarly += dmg;
-    robust += dmg * Math.min(1, Math.max(0, (cfg.T + KILL_WINDOW - t) / (2 * KILL_WINDOW)));
+    if (t < cfg.T) castCount++; // discrete press count (board/UI); damage is scored by the integral below
     if (t < cfg.T) gcdCappedTime += pUp * (up.capped ? up.interval : 0) + (1 - pUp) * (dn.capped ? dn.interval : 0);
     if (casts && t < cfg.T) casts.push({
       t, interval, cast: pUp * up.cast + (1 - pUp) * dn.cast, gcd: pUp * up.gcd + (1 - pUp) * dn.gcd,
@@ -734,6 +736,80 @@ function simulate(schedule, cfg, collect) {
     const castLen = pUp * up.cast + (1 - pUp) * dn.cast;
     prevCastEnd = t + Math.min(interval, castLen);
     t += interval;
+  }
+  // ═══════════ continuous cast-rate integral — THE scoring model ═══════════
+  // The discrete loop above fixes WHEN each buff lands (activation boundaries,
+  // trinket lockouts, cooldown chains) and builds the press board. DAMAGE is
+  // scored separately, as the time-integral of instantaneous DPS =
+  // castDamage(t) / interval(t), which is the coherent law behind every overlay
+  // rule:
+  //   • haste past the GCD floor leaves interval pinned at the floor, so its
+  //     surplus is simply never counted — "only the below-cap haste is efficient";
+  //   • a damage buff (Arcane Power / Icon / gem) earns its multiplier against the
+  //     base-damage FLUX flowing through its window, and flux is higher where casts
+  //     are faster, so overlapping a damage buff with a haste buff is worth strictly
+  //     more — automatically, and at EVERY haste level (as gear haste rises the
+  //     floor is closer, an in-lust Icy Veins wins less, and the optimum slides the
+  //     haste buff out of lust on its own, no per-haste rule).
+  // A per-cast SUM (the old model) quantised each window to a whole number of casts,
+  // so it couldn't see sub-cast alignment — that blindness produced the phantom
+  // "press 2s before lust" gains and the lust-position-dependent placement.
+  const KW = KILL_WINDOW;
+  const rateAt = (tt, segB) => {
+    let rating2 = cfg.hasteRating, mult2 = 1, dmgMult2 = 1, sp2 = cfg.sp;
+    let blA = false, piA = false;
+    for (let i = 0; i < active.length; i++) {
+      const w = active[i];
+      if (tt < w.start || tt >= w.start + w.def.dur) continue;
+      if (w.key === "powerInfusion") piA = true;
+      else if (w.def.kind === "mult") { mult2 *= w.def.value; if (w.key === "bloodlust") blA = true; }
+      else if (w.def.kind === "rating") rating2 += w.def.value;
+      else if (w.def.kind === "dmg") dmgMult2 *= w.def.value;
+      else sp2 += w.def.value;
+    }
+    if (piA && !blA) mult2 *= BUFFS.powerInfusion.value;
+    const multDn2 = mult2 * (1 + rating2 / (g.HASTE_RATING_PER_PCT * 100));
+    const aoe = !!(segB && segB.type === "aoe");
+    const intervalOf = m => {
+      const gcd = Math.max(g.GCD_FLOOR, g.GCD_BASE / m);
+      return aoe ? gcd : Math.max((g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * g.AB.MAX_STACKS) / m, gcd);
+    };
+    let dmg2;
+    if (aoe) dmg2 = (g.AE.AVG_BASE_DMG + g.AE.COEF * sp2) * segB.targets * critFactor * dmgMult2;
+    else { dmg2 = (g.AB.AVG_BASE_DMG + g.AB.COEF * sp2) * critFactor * dmgMult2; if (segB && segB.type === "burn") dmg2 *= segB.mult; }
+    if (atiOn) {
+      // Ashtongue: blend the proc-up / proc-down haste states by the steady-state
+      // probability the proc is up at the local cast rate (E[rate], not rate at E[state])
+      const intDn = intervalOf(multDn2);
+      const q = aoe ? 1 - Math.pow(1 - crit * ATI.procChance, segB.targets) : crit * ATI.procChance;
+      const pUp2 = 1 - Math.pow(1 - q, ATI.dur / intDn);
+      const intUp = intervalOf(multDn2 + mult2 * atiScale);
+      return dmg2 * (pUp2 / intUp + (1 - pUp2) / intDn);
+    }
+    return dmg2 / intervalOf(multDn2);
+  };
+  // integrate over piecewise-constant segments: buff state changes only at window
+  // edges / phase boundaries / the kill window, so a few dozen breakpoints are exact
+  const bpS = new Set([0, cfg.T, Math.max(0, cfg.T - KW), cfg.T + KW]);
+  for (let i = 0; i < active.length; i++) { const w = active[i]; if (w.start > 0) bpS.add(w.start); bpS.add(w.start + w.def.dur); }
+  if (segs) for (const sg of segs) { bpS.add(sg.start); bpS.add(sg.end); }
+  const bps = [...bpS].filter(x => x >= 0 && x <= cfg.T + KW).sort((a, b) => a - b);
+  total = 0; totalEarly = 0; robust = 0;
+  let sj = 0;
+  for (let i = 0; i < bps.length - 1; i++) {
+    const a = bps[i], b = bps[i + 1], len = b - a;
+    if (len < 1e-9) continue;
+    const mid = (a + b) / 2;
+    let segB = null;
+    if (segs) {
+      while (sj < segs.length - 1 && mid >= segs[sj].end) sj++;
+      segB = segs[sj];
+      if (segB.type === "intermission") { if (mid < segB.end) continue; segB = null; } // boss untargetable: no damage
+    }
+    const contrib = rateAt(mid, segB) * len;
+    if (b <= cfg.T + 1e-9) total += contrib;
+    if (b <= cfg.T - KW + 1e-9) totalEarly += contrib;
+    robust += contrib * Math.min(1, Math.max(0, (cfg.T + KW - mid) / (2 * KW)));
   }
   return { total, totalEarly, robust, castCount, gcdCappedTime, casts, actEff, dps: total / cfg.T };
 }
@@ -1636,6 +1712,40 @@ function optimizeAsync(cfg, starts, onProgress) {
         // groomed plan — the last groom cycle's merges are otherwise never
         // re-challenged, and the Cold Snap end-chain can be lost to path order
         challengePass();
+        // ——— Wasted-haste relocation. A haste buff whose whole window sits on the
+        // GCD floor (already there from Lust+Icy Veins) adds LITERALLY nothing —
+        // the integral values its marginal damage at zero. Grouping it into the
+        // opener burst looks tidy but throws the entire use away (Berserking parked
+        // in Lust+IV is the canonical case). The aesthetic passes above rank a real
+        // ~5 DPS loss as "within a cast", so they leave it; here we test each haste
+        // use by its MARGINAL damage (with vs without) — the honest "is it doing
+        // anything" question — and if it is effectively dead, move it to the second
+        // that scores highest. Marginal never flags Icy Veins itself (removing IT
+        // lifts the floor → large marginal) or any use already doing work, and a use
+        // that can't find a better home simply stays put. Phased fights included.
+        {
+          const MARG = castVal * 0.1; // contributes < ~1/10 of a cast ⇒ effectively dead
+          let robNow = simulate(s, cfg).robust;
+          for (const key in s) {
+            if (cfg.fixed[key]) continue;
+            const kind = BUFFS[key].kind;
+            if (kind !== "mult" && kind !== "rating") continue;
+            for (let i = 0; i < s[key].length; i++) {
+              const without = cloneS(s); without[key] = without[key].slice(); without[key].splice(i, 1);
+              if (robNow - simulate(repair(without, cfg), cfg).robust > MARG) continue; // this use does real work
+              let bestRep = null, bestRob = robNow;
+              for (let t = 0; t <= cfg.T - 1; t++) {
+                const cand = cloneS(s); cand[key] = cand[key].slice(); cand[key][i] = t; cand[key].sort((a, b) => a - b);
+                const rep = repair(cand, cfg);
+                if (!sameCounts(counts(s), counts(rep))) continue;
+                if (clipOf(rep) > clipOf(s) + 1e-9) continue;
+                const rr = simulate(rep, cfg).robust;
+                if (rr > bestRob + 0.5) { bestRob = rr; bestRep = rep; }
+              }
+              if (bestRep) { s = bestRep; val = Math.max(val, bestRob); robNow = bestRob; }
+            }
+          }
+        }
         best = { s, val };
         // a razor-timed variant may sim higher at EXACTLY the entered kill by
         // squeezing one last cast under the wire; the planner keeps the
