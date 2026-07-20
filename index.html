@@ -1816,6 +1816,44 @@ function optimizeAsync(cfg, starts, onProgress) {
           }
           if (!epMoved) break;
         }
+        // ——— Snap-to-pinned-buff. A burst's damage cooldowns (and the Icy Veins that
+        // rides them) belong ON the pinned haste window — the integral scores them
+        // higher there (more casts under the buff). But with no cooldown pressure to
+        // fire them early, a grouping/earliest tweak can drift them a few seconds off
+        // it for a within-a-cast loss, which is real damage, not noise (a Lust opener
+        // pulled onto the 0:00 pull loses ~2%). Re-offer snapping any press sitting
+        // within a few seconds of a pinned raid buff onto it, one at a time, keeping
+        // ONLY strict robust gains — so a press that genuinely wants to be off it (a
+        // haste buff that would just floor there, an un-clip that needs the pull) stays.
+        for (const L of [...new Set(Object.values(cfg.fixed).flat().map(Math.round))]) {
+          for (let ap = 0; ap < 3; ap++) {
+            let apMoved = false;
+            for (const key in s) {
+              if (cfg.fixed[key]) continue;
+              for (let i = 0; i < s[key].length; i++) {
+                const gap = Math.abs(s[key][i] - L);
+                if (gap > 8 || gap < 0.5) continue;
+                const d = L - s[key][i];
+                // try moving just this press onto the window (works when the next use
+                // has room), and — for a long-cooldown buff whose next use would then
+                // collide — shifting this press AND its later same-buff uses together.
+                // Keep whichever strictly improves the objective.
+                for (const chain of [false, true]) {
+                  const cand = cloneS(s); cand[key] = cand[key].slice();
+                  if (chain) for (let j = i; j < cand[key].length; j++) cand[key][j] += d;
+                  else cand[key][i] = L;
+                  cand[key].sort((a, b) => a - b);
+                  const rep = repair(cand, cfg);
+                  if (!sameCounts(counts(s), counts(rep))) continue;
+                  if (!(rep[key] || []).some(x => Math.abs(x - L) < 0.5)) continue;
+                  const rr = simulate(rep, cfg).robust;
+                  if (rr > simulate(s, cfg).robust + 0.5) { s = rep; val = Math.max(val, rr); apMoved = true; break; }
+                }
+              }
+            }
+            if (!apMoved) break;
+          }
+        }
         best = { s, val };
         // a razor-timed variant may sim higher at EXACTLY the entered kill by
         // squeezing one last cast under the wire; the planner keeps the
