@@ -120,6 +120,17 @@ entered kill time is reported as a note ("only pays if the boss dies on schedule
 dictating the plan. The Pressboard shows **press moments** (one row = one macro press); when the
 buffs land on the next cast boundary, the row says so in words.
 
+**Leftover haste goes to the earliest efficient spot.** Once every damage cooldown is spent, a haste
+buff with nothing left to overlay is pure haste — position-independent, so the score is flat across
+every legal spot (Berserking sims the same at 0:25, 0:45 or 1:40). Rather than leave that to search
+luck, the planner pulls each such press to the **earliest** second that ties the score, stays efficient
+(no extra floored casts — never into a Lust+Icy Veins floor), and is legal. That's deterministic and
+drift-safe: a cooldown you *could* fire at 0:25 shouldn't wait until 1:40, where an early kill wastes
+it. A press that sits in a real burst (a spellpower buff within a GCD) is left where the alignment put
+it. Because the output is now deterministic, a given setup produces one exact schedule — the copyable
+plan carries its full setup (gear, enabled trinkets/cooldowns, pinned raid-call times) so it reproduces
+byte-for-byte.
+
 Three trust rules keep the plan readable: **Cold Snap materiality** — burning Cold Snap mid-fight must
 beat the best natural-cooldown plan by at least one effective cast, or the planner holds it and says
 so — with one exception: a reset whose extra Icy Veins is a **final clipped window** is spent for any

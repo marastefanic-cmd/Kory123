@@ -1779,6 +1779,43 @@ function optimizeAsync(cfg, starts, onProgress) {
             }
           }
         }
+        // ——— Earliest-on-ties for leftover haste. A haste buff with a damage cooldown
+        // beside it wins that spot on real damage (handled above). But a LEFTOVER haste
+        // press — no damage buff within a GCD, because every damage cooldown is already
+        // spent — is pure haste: position-independent, so the score is flat across every
+        // legal spot and the search parks it arbitrarily (often clustered late). Pull
+        // each such press to the EARLIEST second that (a) ties the score, (b) is at least
+        // as efficient there (no more floored casts in its window — never into a Lust+IV
+        // floor), and (c) is legal. Zero expected-damage cost, but it makes the leftover
+        // placement deterministic and drift-safe: a cooldown you could press at 0:25
+        // shouldn't wait to 1:40, where an early kill wastes it. A press sitting in a
+        // burst is left where the alignment put it.
+        const nulledIn = (rep, key, at) => { let n = 0; for (const c of simulate(rep, cfg, true).casts) if (c.t >= at - 1e-9 && c.t < at + BUFFS[key].dur - 1e-9 && c.capped) n += c.interval; return n; };
+        for (let ep = 0; ep < 4; ep++) {
+          let epMoved = false;
+          for (const key in s) {
+            if (cfg.fixed[key]) continue;
+            if (BUFFS[key].kind !== "mult" && BUFFS[key].kind !== "rating") continue;
+            for (let i = 0; i < s[key].length; i++) {
+              const cur = s[key][i];
+              let inBurst = false;
+              for (const k2 in s) { const kd = BUFFS[k2].kind; if (kd !== "dmg" && kd !== "sp") continue; if (s[k2].some(t => Math.abs(t - cur) <= 1.5)) { inBurst = true; break; } }
+              if (inBurst) continue;
+              const r0 = simulate(s, cfg), curNul = nulledIn(s, key, cur);
+              for (let t = 0; t < cur - 0.5; t++) {
+                const cand = cloneS(s); cand[key] = cand[key].slice(); cand[key][i] = t; cand[key].sort((a, b) => a - b);
+                const rep = repair(cand, cfg);
+                if (!sameCounts(counts(s), counts(rep))) continue;
+                if (!(rep[key] || []).some(x => Math.abs(x - t) < 0.5)) continue;
+                const rr = simulate(rep, cfg);
+                if (rr.robust < r0.robust - 0.5 || rr.totalEarly < r0.totalEarly - 0.5 || clipOf(rep) > clipOf(s) + 1e-9) continue;
+                if (nulledIn(rep, key, t) > curNul + 1e-9) continue; // less efficient (more floored) — keep looking
+                s = rep; val = Math.max(val, rr.robust); epMoved = true; break;
+              }
+            }
+          }
+          if (!epMoved) break;
+        }
         best = { s, val };
         // a razor-timed variant may sim higher at EXACTLY the entered kill by
         // squeezing one last cast under the wire; the planner keeps the
@@ -2420,8 +2457,15 @@ function renderSchedule(run) {
 el("btn-copy").addEventListener("click", () => {
   if (!lastRun) return;
   const windows = scheduleRows(lastRun);
-  let out = `Arcane burn plan — ${fmtT(lastRun.cfg.T)} fight, ${lastRun.cfg.hasteRating} haste rating\n`;
-  if (lastRun.cfg.segments) {
+  const g = lastRun.cfg;
+  let out = `Arcane burn plan — ${fmtT(g.T)} fight, ${g.hasteRating} haste rating\n`;
+  // Setup block — travels with the plan so a pasted schedule reproduces exactly
+  // (deterministic output: earliest-on-ties makes "setup X ⇒ output Y" exact).
+  out += `Setup: ${g.sp} SP · ${g.critPct}% crit · ${g.hasteRating} haste rating · Cold Snap ${g.coldSnap ? "on" : "off"}\n`;
+  out += `Cooldowns: ${LANE_ORDER.filter(k => g.enabled[k]).map(k => BUFFS[k].name).join(", ") || "none"}\n`;
+  const pins = Object.entries(g.fixed || {}).filter(([, v]) => v && v.length).map(([k, v]) => `${BUFFS[k].name} @ ${v.map(t => fmtT(t)).join("/")}`);
+  if (pins.length) out += `Pinned: ${pins.join("; ")}\n`;
+  if (g.segments) {
     for (const s of lastRun.cfg.segments) {
       if (s.type === "normal") continue;
       out += `[${s.type === "intermission" ? "Intermission" : s.type === "burn" ? "Burn x" + s.mult : "AoE x" + s.targets} ${fmtT(s.start)}-${fmtT(s.end)}]\n`;
