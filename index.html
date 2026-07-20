@@ -2390,6 +2390,10 @@ function renderTimeline(run) {
     else path += `L${nx.toFixed(1)} ${y(samples[i - 1].pct).toFixed(1)}L${nx.toFixed(1)} ${ny.toFixed(1)}`;
   });
   if (samples.length) path += `L${x(cfg.T).toFixed(1)} ${y(samples[samples.length - 1].pct).toFixed(1)}`;
+  if (samples.length) { // soft area fill under the curve so haste magnitude reads at a glance
+    const fx = x(samples[0].t).toFixed(1), lx = x(cfg.T).toFixed(1), by = y(0).toFixed(1);
+    sv += `<path d="M${fx} ${by}L${path.slice(1)}L${lx} ${by}Z" fill="${ink}" opacity="0.06"/>`;
+  }
   sv += `<path d="${path}" fill="none" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/>`;
   sv += `<text x="${PADL - 8}" y="${(y(0) + 4).toFixed(1)}" fill="${muted}" font-size="11" text-anchor="end">0%</text>`;
   sv += `<text x="${PADL - 8}" y="${(y(maxPct) + 10).toFixed(1)}" fill="${muted}" font-size="11" text-anchor="end">+${maxPct}%</text>`;
