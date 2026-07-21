@@ -26,16 +26,17 @@ snapshot at cast completion (between casts).
   recovered big — 4:00-multi **+18**, KaelThas **+22**, Vashj **+26** (they were badly under-executed).
   Vashj 4-icon plan VINDICATED on the fixed engine (1594.3 > 3-icon 1587.2). Exact-match still 16/16.
 
-## FOLLOW-UP A (do first — bigger than the ramp shift): AP-cd + intermission re-gate
-- **AP's real cadence is 195s, not 180** (`arcane_power.go` starts the 180s cd in the aura `OnExpire`,
-  = 15+180). The model's `BUFFS.arcanePower.cd = 180` plans AP infeasibly (every 180s). **Decide:** set
-  the model's AP cd to 195 (match the referee) after a SOURCES check of TBC AP behavior; then re-optimize
-  and re-gate the multi-AP goldens. (If TBC is genuinely 180, flag the sim instead — but the sim is the
-  referee, so default to 195.)
-- **Re-gate the intermission goldens** (Vashj/KT/4:00-multi/2:40-inter) on the FIXED engine: their old
-  sim-gating ran on the drop-buggy harness (baselines off by +18..+26), so re-confirm each plan is still
-  optimal vs its alternatives on the fixed rig; re-lock any that move. Plans are unchanged (exact-match
-  green) — this checks whether they're still *best*, now that the sim executes them faithfully.
+## FOLLOW-UP A (open questions the fix surfaced): AP-cd source + intermission re-gate
+- **AP-cd discrepancy (needs a real TBC source — do NOT guess).** The sim intentionally models AP's cd
+  from buff-END (195s = 15+180, `arcane_power.go` `OnExpire`); SOURCES claims `cd180` "verified". Neither
+  is settleable from here. **Don't change `BUFFS.arcanePower.cd`** until a definitive TBC source resolves
+  it. Impact on current goldens is low (AP is a common factor in the gating A/Bs; infeasible 2nd uses
+  often land at the kill). See TOOLING. If it turns out 195, reconcile the model; if 180, treat the sim
+  as an unreliable referee for multi-AP timing (like AoE).
+- **Re-gate the intermission goldens (lower priority — plans validated no-regression).** Their sim
+  baselines jumped +18..+26 on the fixed engine, but the reval showed no regressions and the Vashj plan
+  is vindicated (4-icon > 3-icon). Spot-check KT / 4:00-multi plans vs their documented alternatives on
+  the fixed rig to confirm they're still *best* (plans are unchanged — exact-match green either way).
 
 ## W2 — Ramp-aware SP-buff shift (245/365) — CONFIRMED but sequence AFTER Follow-up A
 The 4:05/6:05 shift is real on the fixed engine but **small: +0.8 var0 / +0.3 var10** (stable across far

@@ -42,7 +42,7 @@ Cross-check these against the sources above whenever they're touched; update the
 | Direct-damage SP coefficient | `castTime / 3.5` (AB 2.5s → 2.5/3.5 ≈ 0.714) | Warcraft Wiki (spell coefficients) + wowsims mage | verified |
 | Arcane Blast | −1/3s cast per stack, max 3; +75% mana/stack; 8s debuff | Wowhead (AB, spell 30451) + wowsims `arcane_blast.go` | verified |
 | Bloodlust / Icy Veins / Berserking | ×1.30 40s / ×1.20 20s cd180 / ×1.10 10s cd180 | Wowhead + wowsims | verified |
-| Arcane Power | +30% dmg (and +30% cost), 15s, cd180 | Wowhead + wowsims | verified |
+| Arcane Power | +30% dmg (and +30% cost), 15s, cd180 | Wowhead + wowsims | **DISCREPANCY** — model uses cd180 (from cast); wowsims code starts the cd on buff-**expire** (effective ~195s), intentionally. Real TBC value unconfirmed; needs a definitive source (patch notes / server test) before reconciling. See TOOLING ★. |
 | Icon of the Silver Crescent | +155 SP, 20s, cd120 (itemId 29370) | Wowhead item 29370 | verified |
 | Serpent-Coil Braid + mana-gem | +225 SP 15s on gem use; ≤3 gem charges | Wowhead (SCB set + Mana Emerald) | verified |
 | Cold Snap | resets Icy Veins; cd 480s | Wowhead + wowsims | verified |
