@@ -81,3 +81,5 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/ARCHITECTURE.md` — `index.html` internals and the optimizer pass order.
 - `docs/TOOLING.md` — the wowsims sim harness (how to verify a plan) and its gotchas.
 - `docs/ROADMAP.md` — status, current work, and open questions.
+- `docs/SOURCES.md` — where WoW facts come from (TBC is a solved game — look up + cite, don't
+  re-derive) and the verified-facts ledger of the constants the model uses.
