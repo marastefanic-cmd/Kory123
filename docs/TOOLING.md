@@ -54,8 +54,10 @@ node tools/genapl.mjs '<specA>' A.apl.json && ./runner --export gear.json --apl 
 - **Fixed-length boundary artifacts.** At an exact fight length, whose cast train ends flush at the
   buzzer can swing ±1 cast. If an A/B gap looks suspiciously large at one length, re-check under
   `--var 10` (randomized kill) — a real effect survives, a boundary artifact collapses.
-- **Cold-Snap IV** must be scheduled with `CS` slightly before the reset IV, and the runner's Cold
-  Snap resets IV mid-schedule — mirror the plan's timing.
+- **Cold-Snap IV** — treat it simply as "once per fight, one IV ignores the cooldown." In the APL,
+  schedule `CS` slightly before the cheated IV (the runner resets IV mid-schedule); since there's no
+  second reset, the CS→IV must be the IV that breaks the 180s cd. You can otherwise ignore the fine
+  timing — it's just one bonus IV.
 - **AoE isn't modeled by AB-spam.** The runner casts Arcane Blast; it can't value a real 6-target
   AoE phase. Calls that hinge on AoE weighting (KT double-IV-over-AoE) are model assumptions the sim
   can't confirm — flag them, don't claim sim proof.

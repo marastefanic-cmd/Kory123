@@ -63,7 +63,7 @@ Haste **rating** converts to a percentage, then percentage buffs stack **multipl
   Crit is the **same for every cast**, so it **cancels** in any overlay comparison — it changes total
   DPS but never *which* schedule wins.
 
-## 4. The driving equation: cast-rate DPS
+## 4. The driving equation: effective ABs cast
 
 Put §1–§3 together. Instantaneous DPS at time `t` is one cast's damage divided by how long that cast
 takes:
@@ -71,8 +71,21 @@ takes:
 **`DPS(t) = cast_damage(t) / interval(t)`** and **`total = ∫ DPS(t) dt`** over the fight (intermissions
 contribute 0 — no casting).
 
-This single integral is the whole scoring model (`simulate`/`rateAt` in `index.html`). Everything the
-planner decides falls out of it.
+**The dimensionless form is the quantity that actually matters: "effective ABs cast."** Divide the
+integrand by a *plain* AB's damage (`base·crit`, no buffs). Crit cancels; what's left is each cast's
+**multiplier relative to a plain AB** — a cast under Arcane Power ≈ ×1.30, spell power adds
+`(SP·coef)/base`, an AoE cast is `targets ×` an AE cast, etc. — integrated over the cast rate:
+
+**`effectiveABs = ∫ [cast_damage(t)/plainAB] / interval(t) dt`.**
+
+This is the **single number the planner maximizes**, and the only one it needs (raw damage is just this
+× a constant). A haste buff raises how *many* casts fit; a damage/SP buff raises what each is *worth*.
+`total` (`simulate`/`rateAt` in `index.html`) is this integral up to the constant. **Everything the
+planner decides is a *consequence* of maximizing this one quantity — Lust alignment, haste sequencing,
+SP-on-fast-casts are *methods* that usually maximize it, never rules in their own right.** When a
+heuristic and the effective-AB count (or the sim, its ground truth) disagree, the count wins. This is
+also the output to compare **setups** on: plan each with its own ideal cooldown usage, then read off
+whose effective-AB total is higher to decide which trinkets/gear to bring.
 
 ## 5. What the formulas force (the decisions they drive)
 
@@ -87,20 +100,22 @@ Directly from §4, each **sim-corroborated**:
    flux is larger where casts are faster. ⇒ *put spellpower and Arcane Power on the fastest
    (haste-buffed) casts.* And because `cast_damage = (base + SP·coef)·damage_mult`, a spellpower buff
    overlapping Arcane Power is worth `damage_mult` (×1.30) more — **SP × AP is multiplicative.**
-3. **Two pure-haste buffs — overlap vs separate** (0 gear haste). Fire A and B in the *same* window,
-   or in two *separate* windows? Work the integral (each buff alone stays under the floor, the
-   overlap goes over it): **`overlap − separate = d · (0.5 − (h_a + h_b)) / 1.5`** per buff-window `d`.
-   - The `0.5` is the **floor headroom** — the haste that takes you from `m = 1` up to the `m = 1.5`
-     floor — **not** the two buffs' combined haste. Haste never adds: overlapping Lust and IV gives
-     `m = 1.30 · 1.20 = 1.56` (**+56%, already over the floor**), not +50%. The wash at Lust+IV
-     happens because their *additive* percentages `30 + 20` equal the 50% headroom, so the ~4% the
-     `×1.56` overlap spills past the floor (wasted) exactly cancels the multiplicative gain.
-   - Below headroom (e.g. Lust+Berserking, `30 + 10 = 40 < 50` → `m = 1.43`, under floor) overlap wins
-     by a hair; above it, separate wins. With gear haste `g` the headroom shrinks to `1.5/g − 1`,
-     tipping everything toward separate (this is why "IV slides out of Lust" — §5 pt 5 / RULES §5).
+3. **Two pure-haste buffs — overlap vs sequence** (0 gear haste). Below the floor, a pure-haste buff is
+   **position-independent**: over a fixed fight it banks the same fractional extra casts wherever it
+   lands, so overlapping two of them yields **no extra effective ABs from the haste product — a wash,
+   not a synergy.** *Sim-confirmed:* Berserking **inside** Lust vs **after** it (both unfloored, no
+   damage buffs) score an identical **2367.4 DPS** at 0 gear (var 0, 300k, mana-independent). The
+   multiplicative arithmetic (`1.30 · 1.10 = 1.43`) is real, but the *product itself* buys nothing.
+   - What overlap *can* cost is the **GCD floor.** Two haste buffs whose combined multiplier passes
+     `m = 1.5` spill the excess into the pinned 1.0s interval, where it's wasted: Lust+IV = `1.56`
+     wastes ~4% (an exact wash), Lust+IV+Berserking wastes *all* of Berserking. Overlap cost
+     `∝ max(0, (h_a + h_b) − headroom)`, where **headroom `= 1.5/g − 1`** (0.5 at 0 gear; it shrinks as
+     gear haste `g` rises — which is why "IV slides out of Lust", §5 pt 5 / RULES §5).
 
-   ⇒ *haste-on-haste is never a real synergy; the reason to stack haste into Lust is to speed the
-   damage-buffed casts, not the haste product itself.*
+   ⇒ *the reason to* **sequence** *haste buffs (IV in Lust, Berserking on the unfloored tail) is to keep
+   each under the floor; the reason to put haste on Lust at all is* **flux** *(speeding the damage/SP
+   casts, pt 2) or banking before an early kill — never the haste product.* "Synergy" is the wrong lens:
+   score haste by the effective ABs it adds (§4), and the placement follows.
 4. **Damage per cast is stack-independent** ⇒ ramp position doesn't change a haste buff's banked value
    (haste is ~position-independent among max-stack windows), but a **damage/SP** buff still wants the
    post-ramp fast casts (fewer, slower casts during the ramp = less flux).

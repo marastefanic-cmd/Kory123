@@ -15,16 +15,21 @@
    with the configured author/trailers; never leak identity or a model id into `index.html` or any
    pushed artifact; no PR unless asked; keep determinism; keep these docs current in the same commit.
 
-## The three-phase arc
+## The goal, and the payoffs it unlocks
 
-1. **Perfect the planner** (in progress) — its cooldown plan must be optimal at *any* gear/haste.
-2. **Haste-agnostic ideal APL** — use the planner to emit a cooldown plan that adapts per gear set.
-3. **EP / stat-weight calculator** — finite-difference stat weights where each `gear ± Δstat` is
-   re-optimized with its *own* ideal plan, so haste isn't undervalued. Method: base gear → planner →
-   forced-schedule APL (`tools/genapl.mjs`) → sim → base DPS; then `gear+Δ` → **re-run the planner** →
-   new APL → sim → `Δdps/Δstat`, normalized to spell power. This corrects wowsims' `statweight.go`,
-   which finite-differences with the **rotation frozen** across perturbations (so a fixed suboptimal
-   cooldown plan drags haste's EP down). Phase 1 must be trustworthy first.
+**The planner is the goal** (see `CLAUDE.md`): a trustworthy, *generalisable* tool that maximizes the
+**effective ABs cast** (`MECHANICS §4`) for any setup and reports that number. Every heuristic (Lust
+packing, haste sequencing, downtime avoidance) is a *consequence* of that objective, not a hardcoded
+rule — keeping that framing is what makes it generalise to future phases/trinkets/gear/haste.
+
+Payoffs the same engine then unlocks (secondary — the planner's correctness comes first):
+1. **Haste-agnostic ideal APL** — emit a cooldown plan that adapts per gear set.
+2. **Setup comparison** — plan each setup with its *own* ideal cooldown usage, then compare
+   effective-AB totals to decide which trinkets/gear to bring.
+3. **EP / stat-weight calculator** — finite-difference where each `gear ± Δstat` is re-optimized with
+   its own ideal plan (base gear → planner → forced-schedule APL via `tools/genapl.mjs` → sim → DPS;
+   then `gear+Δ` → re-run planner → new APL → sim → `Δdps/Δstat`). Corrects wowsims' `statweight.go`,
+   which freezes the rotation across perturbations (dragging haste's EP down).
 
 ## Status (as of the current work)
 
@@ -39,20 +44,26 @@
   a post-Lust intermission) and `Vashj 6:30 lust 5:45` (six intermissions); the `2:40 @150 haste`
   case was **removed** (the IV-slides-out breakpoint isn't pinned yet — don't lock it).
 
-## Current top task — Icon-count / SP-alignment (a SEARCH fix, sim-proven)
+## Current top task — Icon-count / SP-alignment (a sub-cast TIE-BREAK, handle carefully)
 
-The planner presses Icon on **cooldown** (max uptime), but a spellpower buff wants the **fast** casts
-(RULES §3): fewer icons all on haste windows can beat more icons half on no-haste casts. **Sim-proven
-on Vashj 6:30:** 3 icons @ 0:00/3:00/6:00 (each on an IV window) beats the planner's 4 icons @
-0:00/2:00/4:00/6:00 by **+5.4 DPS** (wowsims 250k, var0 **and** var10, seeds 11/19 identical, intermissions
-modeled). So the current `Vashj 6:30` golden is locked at a **known-suboptimal** 4-icon plan.
-- **Diagnosed: this is a VALUATION issue, not a search miss** (`tests/evalsched.mjs`). The model scores
-  the 4-icon plan **higher** (robust 443442 vs 442568, **+874**) — the exact opposite of the sim. It
-  over-credits the two extra icons' SP-seconds on the no-haste windows (it counts casts-caught, blind to
-  the fact those casts are slow / low-value relative to an IV-window icon). So the optimizer *correctly*
-  produces 4 for its scorer; fixing it means devaluing off-haste SP-flux in the scorer — the "floored-
-  flux crediting" the Open-questions section flags as risky to touch (it can shift the validated
-  goldens). Do it carefully, sim-gate EVERY golden, and don't rush it into the same pass as a search fix.
+A spellpower buff wants the **fast** casts (RULES §3/§6), so fewer icons all on haste windows can beat
+more icons half on no-haste casts. **Sim-proven on Vashj 6:30:** 3 icons @ 0:00/3:00/6:00 (each on an IV
+window) beats the planner's 4 icons @ 0:00/2:00/4:00/6:00 by **+5.4 DPS** (wowsims 250k, var0 **and**
+var10, seeds 11/19 identical). So the current `Vashj 6:30` golden is at a **sim-suboptimal** 4-icon plan.
+- **Diagnosed (`tests/evalsched.mjs` + controlled sims): this is a sub-cast TIE, not a scorer bug.**
+  1. The scorer's SP valuation is **sound in general** — on a *plain* fight a marginal icon is worth
+     +10.7 DPS on an IV window vs +9.2 off it, ratio **1.16**, matching the model's predicted 1.20. No
+     global over-valuation. And plain 6:30 (no intermissions) still has the sim preferring 3-icon by only
+     **+1.5 DPS** (0.06%) — *within* the model's ~0.4% accuracy.
+  2. The model scores 4-icon higher by **+874**, but `QTOL` (one cast) ≈ **2242** — so the model treats
+     3-icon and 4-icon as a **tie**, lands on 4-icon inside the tie band, and the sim's preference is a
+     genuine *sub-cast* refinement (exactly the RULES §10 caveat).
+- **So the fix is a conservative TIE-BREAK, not a scorer change:** among plans the model can't tell apart
+  (within QTOL), prefer the one that concentrates SP-buff windows on the fastest (haste/AP) casts over the
+  one that maximizes SP-buff *count*. Do NOT hack the SP-flux crediting — the plain-fight test shows it's
+  sound, and changing it trades the planner's *generalisability* (the actual goal) for a sub-cast win on
+  one fight. Sim-gate EVERY golden; a tie-break that shifts a validated plan for < the sim margin is a
+  regression. If it proves too destabilizing for a sub-cast payoff, documenting it and moving on is fine.
 
 ## Also planned
 
@@ -60,8 +71,11 @@ modeled). So the current `Vashj 6:30` golden is locked at a **known-suboptimal**
   Lust (e.g. 2:15 @0:25), packing the burst on costs Icon its cd-second, so `sameCounts` blocks it and
   the plan stays burst-at-pull (**−34 to −50 DPS** vs packed). Needs a pack variant that *drops* a
   damage-buff use to align the first onto Lust. Add 2:15 as a golden once it lands.
-- **Coherent intermission/AoE handling** (`RULES.md` §9): enforce "no buff window begins in downtime"
-  as an invariant (in `repair`) + make tie-break passes downtime-aware.
+- **Coherent intermission/AoE handling** (`RULES.md` §9): make placement/tie-break passes downtime-aware
+  so a window doesn't *usually* begin in a dead zone — as a **strong default, not an invariant** (pressing
+  early into downtime can be right when it's the only way to get a cooldown back for a bigger later window;
+  the effective-AB count decides). Amplifies the icon tie-break above (intermission ramps make off-haste
+  SP-buff windows even weaker).
 
 **Done — sequential buff-into-Lust packing (the SEARCH fix).** A window-packing move in `optimizeAsync`
 (last structural pass, ~1913) assembles the packed burst at each haste raid-call: damage cluster on the
@@ -71,6 +85,16 @@ and `5:45 lust 4:20` (**+13.9 var0 / +5.7 var10**), both sim-gated and re-locked
 goldens and the two real boss fights were **untouched** (their bursts were already on Lust). Placing it
 last meant no defensive rework of the eviction / `nulled` vetoes was needed (nothing runs after to undo
 it). See `docs/ARCHITECTURE.md` and RULES §4.
+
+**Done — theorycraft regrounded on "effective ABs" (this session).** Reframed the docs so every rule is a
+*consequence* of maximizing effective ABs cast, not a hardcoded law (`CLAUDE.md` goal, `MECHANICS §4`).
+Softened the over-strong absolutes the user flagged: Lust-packing is the usual *method* (§4), not "THE
+rule"; the intermission invariant is a strong *default*, not a "never" (§9). And **sim-settled the
+haste-on-haste question**: isolated pure-haste Berserking **inside** Lust vs **after** it scores an
+identical **2367.4 DPS** (0 gear, var 0, 300k, mana-independent) — a **wash, not a synergy**; the value
+of haste-on-Lust is *flux* (speeding damage/SP casts) or banking before an early kill, never the product
+(RULES §7, MECHANICS §5.3). The planner already sequences correctly, so no code change — a doc/mental-model
+correctness fix in service of generalisability.
 
 **Done:** ~~Boss-preset UI = the golden set~~ — landed. `GOLDEN_PRESETS` drives both the UI strip and the
 exact-match suite; new fights are added by editing that one array.

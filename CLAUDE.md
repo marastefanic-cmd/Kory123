@@ -14,14 +14,25 @@ so one setup ⇒ exactly one schedule), each case sim-verified against wowsims.
 
 ## The end goal (why this exists)
 
-Three phases, biggest payoff last (see `docs/ROADMAP.md`):
-1. **Perfect the planner** so its cooldown plan is optimal at *any* gear/haste level.
-2. Use it to generate a **haste-agnostic ideal APL** (cooldown usage that adapts to gear).
-3. Build an **EP / stat-weight calculator** that compares gear sets *each with its own ideal APL* —
-   correcting wowsims' bias (its EP freezes the rotation across `stat±Δ`, so haste is undervalued
-   once the fixed rotation stops using it well).
+**The planner itself is the goal** — a tool that, given what you know and control going into a fight
+(fight shape, raid buffs, gear, trinkets, haste level), lays out how to press every on-use cooldown to
+**maximize the "effective ABs cast"** and reports that number so you can trust it and act on it. It must
+be **trustworthy and generalisable** — correct across *future* phases, trinkets, gear, and spell-haste
+levels, not tuned to today's cases.
 
-The planner must be trustworthy before it can drive (2) and (3).
+- **The one maximizable quantity is "effective ABs cast per fight."** An Arcane Blast's *damage* is
+  stack-independent, so score each cast by its **multiplier relative to a plain AB** — AP makes a cast
+  ≈ ×1.30, spell power adds its coefficient, etc. — and sum that over the fight (a haste buff raises how
+  *many* casts you fit; a damage/SP buff raises what each is *worth*). Crit is a constant factor and
+  cancels. Every rule below (Lust alignment, haste sequencing, SP-on-fast-casts) is a **consequence** of
+  maximizing this single number — none is an axiom. See `docs/MECHANICS.md`.
+
+Additional payoffs the same engine unlocks (nice-to-haves, not the point):
+- A **haste-agnostic ideal APL** (cooldown usage that adapts to gear).
+- **Setup comparison** — with each setup planned by its *own* ideal cooldown usage, compare their
+  effective-AB output to decide *which trinkets/gear to bring* to a fight.
+- An **EP / stat-weight calculator** that re-optimizes the plan at each `stat±Δ` (correcting wowsims'
+  frozen-rotation EP bias, which undervalues haste once a fixed rotation stops using it well).
 
 ## How to run the tests
 
