@@ -4,17 +4,20 @@
 
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
-2. **Next task = `docs/PLAN.md` (approved): the RIGOROUS wowsims harness audit, then ramp-aware SP-buff
-   valuation.** The audit grounds the referee — trust-anchor vs canonical wowsims DPS, resolve the
-   offset/"collision" question **empirically** (two source traces contradicted each other), external-
-   buff modeling, a documented stats protocol — and **subsumes the intermission-resume fix** (its
-   dimension D, the biggest unlock: until the harness scores intermission-exit placement correctly, no
-   intermission theorycraft can be sim-gated). Then W2 (ramp: tie-break 2a first, scorer 2b only on
-   evidence). Remaining fronts after: coherent intermission/AoE placement (RULES §9; `dodgeDowntime`
-   did the "don't begin in downtime" half); then **the payoffs** (haste-agnostic APL → setup comparison
-   → EP calculator, "the goal" section). **Until the audit certifies the rig, trust the model's
-   cast-counting over a contradicting sim number** (MECHANICS §3 corollary); sim-gate every moved golden
-   on the corrected rig.
+2. **Next task = `docs/PLAN.md`: fix the HARNESS DROP BUG (W1.5), then re-validate all goldens, then
+   maybe ramp valuation (W2).** The rigorous harness audit (old W1) is **done** — findings are the
+   authoritative reference in `docs/TOOLING.md` (trust-anchor = runner==`wowsimcli` to the decimal;
+   the off-GCD "collision" is a **myth**, drop the offsets; external buffs off-GCD single-application;
+   stats protocol with the **seeds-11/19-are-the-same-sample** correction; `SIMLOG=1` combat log
+   exists). The audit's **headline finding** (TOOLING ★): `APLActionSchedule` **silently DROPS an
+   on-cooldown press** — Vashj's "4-icon" golden was really firing **3** icons (terminal dropped), which
+   is the entire "−4.2 / 3-icons-win"; fix the drop and 4 icons (1576.6) beat 3 (1573.1), vindicating
+   the golden. So: **W1.5 = implement a clean drop-free fix (`Cooldowns.Timings`+autocast) and
+   re-validate every golden** (the drop was systematic — it also lost AP/IV/Zerk uses), then **W2 only
+   if the "+0.6 shift" survives the fixed rig** (it was measured while both plans dropped terminals, so
+   it's suspect). Payoffs after (haste-agnostic APL → setup comparison → EP calculator). **The model /
+   cast-counting was RIGHT on Vashj; the sim was wrong because of the drop bug — fix the sim, don't
+   distrust the model.**
 3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 16/16).
 4. The sim harness (`runner` binary, gear export, `wowsims/tbc-new` source) persists in the session
    **scratchpad** and survives `/clear` *within the same session* — check it's there before rebuilding
@@ -42,6 +45,14 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
 ## Status (as of the current work)
 
 - Planner is deterministic, ~0.4%-accurate, with **16 sim-verified golden regression cases** (green).
+- **Done this session — the RIGOROUS wowsims harness audit** (was W1). Rig rebuilt from `ade9f39`
+  (`-tags with_db`, byte-identical to prior), trust-anchored to `wowsimcli`. Overturned two old claims
+  (the off-GCD "collision" is a myth → drop the offsets; `SIMLOG=1` combat log exists) and corrected the
+  stats protocol (seeds 11/19 are the same sample). **Headline: found a real harness DROP BUG** —
+  `APLActionSchedule` silently drops an on-cooldown press (TOOLING ★), which was the entire Vashj
+  "3-icons-win" (it deleted the 4-icon plan's terminal icon). Fix + full re-validation is now **W1.5**
+  (`docs/PLAN.md`), ahead of ramp valuation (W2, whose "+0.6" evidence is now suspect). Docs are the
+  authoritative record; `index.html`/`genapl.mjs` unchanged, goldens still 16/16.
 - Recent landed work: cast-rate-integral scorer; timeline redesign; spellpower-overlap forward-slide;
   **known-kill planning** (half-cast kill window); **full docs set** so `/clear` is safe;
   **Debugging-presets UI** (every golden is a live-computed preset off the single `GOLDEN_PRESETS`
@@ -53,12 +64,22 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
   a post-Lust intermission) and `Vashj 6:30 lust 5:45` (six intermissions); the `2:40 @150 haste`
   case was **removed** (the IV-slides-out breakpoint isn't pinned yet — don't lock it).
 
-## Icon-count / SP-alignment — RESOLVED: the sim was WRONG, the 4-icon model plan is correct (user-confirmed)
+## Icon-count / SP-alignment — RESOLVED: the sim was WRONG (HARNESS DROP BUG), 4-icon plan is correct
 
-**Old belief (overturned):** "3 icons @ 0:00/3:00/6:00 beats the planner's 4 icons @ 0/2/4/6 by +5.4 on
-Vashj 6:30, so the golden is sim-suboptimal." **This is a HARNESS/SETUP ARTIFACT, not a real gap.** The
-`Vashj 6:30` golden's 4-icon plan is **correct** — confirmed by the user and by first-principles
-cast-counting. Do **not** re-open this as an optimizer task.
+**MECHANISM NOW PINNED (harness audit, TOOLING ★).** The artifact is not vague "resume mis-scoring" — it
+is a concrete harness bug: `APLActionSchedule` **silently DROPS an on-cooldown press**. On Vashj the
+icon@240 quantizes to 242.5 (the [3:30–4:00] exit ramp cast) → its 120s cd runs to 362.5 → the
+**terminal icon@360 is dropped** (combat log: queued to 362.5, then no icon aura). So the golden's
+"4-icon" plan was really firing **3** icons, missing the high-value 6:00-burst one — *that* is the whole
+"−4.2 / drop-the-icon-wins +4.8" (deterministic, stable across independent far seeds). **With the drop
+fixed (icon-track prototype) 4 icons = 1576.6 beat 3 icons = 1573.1.** The 4-icon plan is correct — as
+the user and cast-counting always said — and the *fix is in the sim, not the model*.
+
+**Old belief (overturned):** "3 icons @ 0/3/6 beats 4 icons @ 0/2/4/6, so the golden is sim-suboptimal."
+Wrong: the sim was deleting the 4-icon plan's terminal icon. Do **not** re-open this as an optimizer
+task. (Note the earlier "RNG-desync" hypothesis for the +4.8 was *also* wrong — far seeds proved it
+stable/deterministic; it's the dropped use.) Fixing the drop + re-validating every golden is **W1.5**
+(`docs/PLAN.md`) — the drop was systematic (it also lost AP/IV/Zerk uses), so other goldens may move.
 
 - **Cast-counting settles it (the model's method; MECHANICS §3 "score by cast-counting").** Value each
   icon by `(casts it catches) × (multipliers there)`, relative to a bare-window icon:

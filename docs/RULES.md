@@ -180,12 +180,16 @@ durations the contained region shrinks to the **intersection** of the constraint
     the Cold-Snap IV at 3:47 (2s inside the [3:28–3:49] dead zone) → **3:49** (wowsims var0 exact wash
     2079.1 = 2079.1; the live window 3:49–4:00 is identical, so DPS-neutral, legibility-positive). This
     is only the "don't *begin* in the dead zone" half of the default. The other half — a press whose
-    window opens right at an **exit** should dip a few seconds later into **already-built AB stacks**
-    rather than the ramp (a small real gain: icon@4:00 → 4:05, shifting the terminal cluster 6:00 → 6:05
-    to make room) — is **not implemented**: the steady-state model is ramp-blind and the sim mis-scores
-    intermission exits (TOOLING, ROADMAP), so it can't be verified yet. (Note: the once-suspected "Vashj
-    wants 3 icons because an exit icon is *worth less*" is **not** real — it was a sim artifact; the
-    4-icon plan is correct. The exit effect is a *few-seconds shift*, not a drop.)
+    window opens right at an **exit** should dip a few seconds later onto **already-built AB stacks**
+    rather than the ramp (icon@4:00 → 4:05, shifting the terminal cluster 6:00 → 6:05) — is **not yet
+    produced by the model** (the steady-state model is ramp-blind, emits 240/360; that's W2,
+    `docs/PLAN.md`). **Caveat from the harness audit (TOOLING ★):** the sim harness currently *drops* an
+    on-cooldown press, so when the earlier "**+0.6** shift" was measured, *both* 240/360 and 245/365 were
+    silently firing only **3 of 4** icons — that number is therefore suspect and must be reconfirmed once
+    the drop is fixed (it may collapse toward 0 once both plans fire all four). (Note: the once-suspected
+    "Vashj wants 3 icons because an exit icon is worth less" was the **dropped-terminal artifact** — the
+    4-icon plan's *own* 6:00 icon was being deleted by the harness, not out-valued; with the drop fixed,
+    4 icons (**1576.6**) beat 3 (**1573.1**). The 4-icon plan stands.)
 - **AoE** phases score linearly in `targets` off the Arcane **Explosion** base (392 + 0.214·SP,
   instant, GCD-bound), NOT off Arcane Blast — so an N-target AoE is N× an AE cast, and the
   double-IV-over-AoE call on KT hinges on that AE-vs-AB weighting (a modeling assumption plain-AB

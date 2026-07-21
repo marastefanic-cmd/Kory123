@@ -80,12 +80,17 @@ begins already-buffed. Consequences the model must respect:
   now can push its next use past a window where it mattered more, or off the fight entirely (coupling,
   the align-vs-twice rule, RULES §4). "It's off-GCD, so more uses can't hurt" is the **wrong** inference:
   more uses never cost casts, but mis-*aligned* uses cost effective ABs. Evaluate by cast-counting.
-- **Corollary — a SIM trap.** If the sim shows a *free, off-GCD* buff as net-negative with **no**
-  alignment or cooldown reason (the other cooldowns don't move, it catches live casts, it has no cd
-  conflict), do **not** trust it — suspect a **harness artifact**, e.g. a fixed-time scheduled press
-  landing *mid-cast* rather than between casts (worst on the slow post-intermission ramp, where casts
-  are long). See `docs/TOOLING.md` (the fixed-offset-mid-cast trap) — the model's cast-counting is the
-  referee there, not the raw sim number.
+- **Corollary — a "negative free buff" is a flag to INVESTIGATE with the combat log, never to trust
+  raw.** If the sim shows a *free, off-GCD* buff as net-negative, open the `SIMLOG=1` combat log before
+  believing it. The usual cause is a **cooldown coupling the simple analysis missed**: the press
+  quantizes to the next cast boundary, its cooldown runs from that *late* fire-time, and a *later*
+  same-track use gets pushed off its window — or, per the **known harness bug** (`docs/TOOLING.md`),
+  **DROPPED entirely** (`APLActionSchedule` consumes the timing while the queued off-GCD cast is lost).
+  Either way the buff's *own* value is fine; a *later* use is what suffered. Confirm by finding where
+  each use actually fires in the log — e.g. the Vashj icon@4:00's "−4.2" was its *terminal* icon@6:00
+  being dropped, not the exit icon being worthless. Don't conclude "more uses can't help" from a raw
+  drop-a-press number on the (currently drop-buggy) schedule harness; prefer **count-preserving**
+  comparisons until the harness fix lands.
 
 ## 4. The driving equation: effective ABs cast
 
