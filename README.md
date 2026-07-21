@@ -131,6 +131,19 @@ it. Because the output is now deterministic, a given setup produces one exact sc
 plan carries its full setup (gear, enabled trinkets/cooldowns, pinned raid-call times) so it reproduces
 byte-for-byte.
 
+**Spellpower/damage buffs slide *forward* onto the richest overlap.** A spellpower buff (Icon, the
+Serpent-Coil gem) earns its bonus against the damage flux in its window, and that flux is highest
+where a damage *multiplier* already sits — Icon's +155 SP is multiplied by Arcane Power's +30%. The
+snap-to-pinned step only offers the *pinned* haste window (Bloodlust) as a magnet, so when the damage
+cooldown cluster is staggered a few seconds off the pin — Kael'Thas fires Bloodlust at 4:20 but Arcane
+Power/Berserking land at 4:45 — the richer spot is a *non-pinned* second the earlier passes never try,
+and the Icon gets parked on the pin. A final pass slides each damage/SP press *later* (dragging its
+own later uses forward to stay cooldown-legal) onto that cluster, keeping only strict gains with no
+extra clip. It's a small edge — measured at +0.3 DPS on Kael and +0.9 on the 4:00 multi-intermission,
+common-random-numbers clean across seeds — but it's free, so the planner takes it. (Forward only: an
+already-early buff has nothing better behind it, and a backward wiggle would just drift one onto the
+opener ramp for a phantom gain.)
+
 Three trust rules keep the plan readable: **Cold Snap materiality** — burning Cold Snap mid-fight must
 beat the best natural-cooldown plan by at least one effective cast, or the planner holds it and says
 so — with one exception: a reset whose extra Icy Veins is a **final clipped window** is spent for any
