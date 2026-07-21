@@ -49,7 +49,14 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   use — the "Berserking-in-Lust eviction") · ramp-hold (~1753) · earliest-on-ties (~1786, hard
   `nulled` veto ~1816) · snap-to-pinned (~1832) · **overlap-alignment for damage/SP** (~1861–1904,
   slides a spellpower/damage press forward onto a staggered damage cluster) · **sequential window-
-  packing** (~1913, see below) · squeak note · Cold-Snap materiality recursion (~1998).
+  packing** (~1913, see below) · **`coPressAlign`** (final, legibility) · squeak note · Cold-Snap
+  materiality recursion (~1998).
+- **`coPressAlign(s0)`** (defined just before `best = {s,val}`, applied there AND at the two Cold-Snap
+  resolves so the returned plan is aligned whichever path built it). Snaps a damage/SP press onto its
+  nearest **earlier haste** second **within 3s** when the model cost is **≤ `castVal/8`** — pulls a
+  macro'd burst onto one press when the model carries only a sub-cast (often artifactual) preference
+  for a 1s-late spot. The 3s window and sub-cast cap protect deliberate staggers (3:20 gem 5s off IV;
+  KT Icon-onto-AP ~20s off Lust). See `docs/ROADMAP.md` golden-review findings (7:20 W6, sim-gated).
 - **Sequential window-packing** (~1913, the RULES §4 move — LANDED). Runs as the last structural pass
   (nothing after it can re-floor the sequenced tail buff, so no defensive rework of the eviction /
   `nulled` vetoes was needed). For each raid-called **haste** buff (kind `mult`/`rating` — a damage/

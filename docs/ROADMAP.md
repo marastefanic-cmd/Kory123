@@ -111,14 +111,18 @@ exact-match suite; new fights are added by editing that one array.
 
 ## Golden-review findings (from the preset walkthrough — sim-verified)
 
-- **BUG — off-GCD damage cluster not co-pressed with its window anchor (fix this).** On 7:20, Window 6
-  emits Icon/Gem/AP at `6:21` while IV is at `6:20` (raw intents 381 vs 380). Scoring the cluster at
-  380 vs 381 is an **exact model tie** (Δ ≈ 1e-10 — under the back-to-back IV+CS→IV the casts are
-  IV-hasted throughout, so the 1s shift is worth nothing). The tie-break is supposed to pull a tied
-  cluster onto the anchor (it does in that plan's Window 4 at `200`) but leaves this one at 381. Fix:
-  when a bundled off-GCD damage press ties, snap it to the window's IV/anchor second — **but only for
-  un-annotated ties**; a *deliberate* stagger that claims a real gain (e.g. the 3:20 Window-2 gem at
-  `3:05`, "+565 dmg") must stay. This will re-lock the 7:20 golden (6:21 → 6:20), a free correction.
+- **FIXED — off-GCD burst now co-pressed on one second (7:20 Window 6: 6:21 → 6:20).** The burst
+  emitted IV at `6:20` but Icon/Gem/AP at `6:21`. Diagnosing it split the "cluster" into two cases:
+  Icon at 380 vs 381 was an **exact model tie** (Δ ≈ 1e-10 — the back-to-back IV+CS→IV keeps casts
+  IV-hasted throughout), but Gem/AP scored **+50 at 381** — *not* a tie. The macro-snap missed all of
+  them because `isAnchored(IV@380)` false-negatives when the Cold-Snap chain lets a −1s nudge drop the
+  chained IV@400, and the overlap-alignment pass then re-staggered them. **Sim resolved the +50: it is a
+  pure model artifact** — full-fight wowsims has all-at-6:20 == gem/AP-at-6:21 to the decimal (2565.8
+  var0, 2568.2 var10, seed 11, 250k). Fix: a final `coPressAlign` pass (runs on the returned schedule
+  AND the Cold-Snap chain candidates) snaps a damage/SP press onto its nearest earlier haste second
+  **within 3s** when the model cost is **≤ ⅛ cast**. The 3s window protects genuine staggers (the 3:20
+  gem sits 5s off its IV; the KT Icon-onto-AP slide ~20s off Lust — both untouched, both still green),
+  and the sub-cast cap rejects any real trade. Only the 7:20 golden moved; sim-gated free; re-locked.
 - **3:20 free-Cold-Snap is correctly unused (no change).** Reviewed the idea "spend the free CS to
   decouple IV2 so IV1 can leave 0:00." Sim (var 10, paired seeds 11/19, 200k): IV1@0:00 = 2651.2,
   IV1@0:10+CS = 2651.1 (**tie**), IV1@0:05+CS = 2645.3 (**−6**). The IV1@0:10 "+12.8" seen at fixed

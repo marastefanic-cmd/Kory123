@@ -1985,6 +1985,54 @@ function optimizeAsync(cfg, starts, onProgress) {
             if (bestRep) { s = bestRep; val = Math.max(val, bestRob); }
           }
         }
+        // ——— Co-press alignment (legibility). A bundled off-GCD damage/SP press
+        // sitting 1-3s AFTER a haste press in the same burst is macro'd together
+        // in-game; earlier passes (and the macro-snap's anchor test, which a Cold-Snap
+        // chain can fool) sometimes leave it a second late — e.g. 7:20 Window 6:
+        // Icon/Gem/AP at 6:21 while the cd-anchored IV is at 6:20, an EXACT score tie
+        // under the back-to-back IV+CS→IV. Snap each such press onto its nearest earlier
+        // haste second when doing so costs at most a sub-cast sliver (rr >= r0 -
+        // castVal/8). Two guards keep this honest: (1) the 3s window — only a press
+        // BUNCHED onto the haste burst is a macro member; a DELIBERATE stagger sits
+        // further out (the 3:20 gem is 5s off its IV; the KT Icon-onto-AP slide ~20s off
+        // Lust) and is never touched; (2) the sub-cast cap rejects any real trade. The
+        // model can carry a spurious sub-cast preference for the 1s-late spot (7:20 W6:
+        // gem/AP scored +50 at 6:21) that the SIM shows is an EXACT wash (all-at-6:20 ==
+        // staggered, var0 & var10) — so pulling the macro'd burst onto one second is
+        // free legibility. Applied on the final schedule AND on the Cold-Snap chain
+        // candidates below (built from the no-CS champion, they bypass this main path),
+        // so the returned plan is aligned whichever path produced it.
+        function coPressAlign(s0) {
+          let sx = cloneS(s0);
+          for (let round = 0; round < 4; round++) {
+            let moved = false;
+            const r0 = simulate(sx, cfg).robust;
+            const anchors = [];
+            for (const key in sx) { const kd = BUFFS[key].kind; if (kd === "mult" || kd === "rating") for (const t of sx[key]) anchors.push(Math.round(t)); }
+            for (const key in sx) {
+              if (cfg.fixed[key]) continue;
+              const kd = BUFFS[key].kind;
+              if (kd !== "dmg" && kd !== "sp") continue;
+              for (let i = 0; i < sx[key].length; i++) {
+                const cur = sx[key][i];
+                let target = null; // nearest earlier haste second within 3s
+                for (const a of anchors) if (a < cur - 1e-9 && cur - a <= 3 && (target === null || a > target)) target = a;
+                if (target === null) continue;
+                const cand = cloneS(sx); cand[key] = cand[key].slice();
+                cand[key][i] = target; cand[key].sort((a, b) => a - b);
+                const rep = repair(cand, cfg);
+                if (!sameCounts(counts(sx), counts(rep))) continue;
+                if (clipOf(rep) > clipOf(sx) + 1e-9) continue;
+                if (simulate(rep, cfg).robust >= r0 - castVal / 8) { sx = rep; moved = true; break; }
+              }
+              if (moved) break;
+            }
+            if (!moved) break;
+          }
+          return sx;
+        }
+        s = coPressAlign(s);
+        val = simulate(s, cfg).robust;
         best = { s, val };
         // a razor-timed variant may sim higher at EXACTLY the entered kill by
         // squeezing one last cast under the wire; the planner keeps the
@@ -2029,9 +2077,9 @@ function optimizeAsync(cfg, starts, onProgress) {
               const endChain = Math.max(...champ.s.icyVeins) > cfg.T - BUFFS.icyVeins.dur;
               const bar = endChain ? castVal / 8 : castVal;
               if (bestN.val >= champ.val - bar) {
-                resolve({ s: bestN.s, val: bestN.val, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote });
+                resolve({ s: coPressAlign(bestN.s), val: bestN.val, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote });
               } else {
-                resolve({ ...champ, csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote });
+                resolve({ ...champ, s: coPressAlign(champ.s), csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote });
               }
             });
             return;
