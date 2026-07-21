@@ -4,16 +4,17 @@
 
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
-2. **Next task = one of the SECONDARY FRONTS** (the placement workstream **LANDED**; the Icon-count
-   call is **RESOLVED — the sim was wrong, the 4-icon model plan is right**, no code change, see its
-   section below). Open fronts, in rough priority: **(a) fix the intermission-resume sim setup** — the
-   biggest unlock, because until the harness scores intermission-exit placement correctly, *no*
-   intermission theorycraft (the shift-into-built-stacks refinement, the 2:15 recheck, re-validating the
-   intermission goldens) can be sim-gated; **(b) coherent intermission/AoE** downtime-aware placement
-   (RULES §9, `dodgeDowntime` did the "don't begin in downtime" half); then **(c) the payoffs**
-   (haste-agnostic APL → setup comparison → EP calculator, "the goal" section). **Trust the model's
-   cast-counting over a contradicting sim number** (MECHANICS §3 corollary); sim-gate every golden that
-   moves, but audit the setup first when the sim fights the model.
+2. **Next task = `docs/PLAN.md` (approved): the RIGOROUS wowsims harness audit, then ramp-aware SP-buff
+   valuation.** The audit grounds the referee — trust-anchor vs canonical wowsims DPS, resolve the
+   offset/"collision" question **empirically** (two source traces contradicted each other), external-
+   buff modeling, a documented stats protocol — and **subsumes the intermission-resume fix** (its
+   dimension D, the biggest unlock: until the harness scores intermission-exit placement correctly, no
+   intermission theorycraft can be sim-gated). Then W2 (ramp: tie-break 2a first, scorer 2b only on
+   evidence). Remaining fronts after: coherent intermission/AoE placement (RULES §9; `dodgeDowntime`
+   did the "don't begin in downtime" half); then **the payoffs** (haste-agnostic APL → setup comparison
+   → EP calculator, "the goal" section). **Until the audit certifies the rig, trust the model's
+   cast-counting over a contradicting sim number** (MECHANICS §3 corollary); sim-gate every moved golden
+   on the corrected rig.
 3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 16/16).
 4. The sim harness (`runner` binary, gear export, `wowsims/tbc-new` source) persists in the session
    **scratchpad** and survives `/clear` *within the same session* — check it's there before rebuilding
