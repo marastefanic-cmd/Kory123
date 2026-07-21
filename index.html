@@ -439,7 +439,7 @@
 
   <section class="setup" id="setup">
     <div class="preset-strip golden-strip" id="golden-strip">
-      <span class="pslab" title="Sim-verified reference fights — this list is the exact-match regression suite. Click one to load its setup and run it.">Debugging presets</span>
+      <span class="pslab" title="Sim-verified reference fights — this list is the exact-match regression suite. Click one to load its input setup; press Find optimal overlay to compute the plan.">Debugging presets</span>
       <span class="pchips" id="golden-chips"></span>
     </div>
     <div class="preset-strip" id="preset-strip">
@@ -3089,10 +3089,10 @@ el("preset-name").addEventListener("keydown", e => { if (e.key === "Enter") { e.
 
 /* ═══════════════ debugging presets (baked-in, = the exact-match suite) ═══════════════ */
 // A preset carries ONLY a fight's INPUT setup (length, Lust pin, phases, gear, kit) —
-// never a precomputed plan. Clicking one loads the setup and then runs the real optimizer,
-// so the schedule you see is freshly CALCULATED by the rules; it should reproduce the
-// frozen golden exactly. This same list is the single source of truth for the regression
-// suite: tests/exact-match.mjs reads window.GOLDEN_PRESETS. A confirmed preset IS the test.
+// never a precomputed plan. Clicking one loads those inputs and STOPS; you press "Find
+// optimal overlay" to have the tool COMPUTE the schedule, which should reproduce the frozen
+// golden exactly. This same list is the single source of truth for the regression suite:
+// tests/exact-match.mjs reads window.GOLDEN_PRESETS. A confirmed preset IS the test.
 // Times are in seconds.
 const GOLDEN_DEFAULTS = {
   gear: { sp: 1387, crit: 38, haste: 0, coldSnap: true },
@@ -3145,16 +3145,17 @@ function renderGoldenPresets() {
   const host = el("golden-chips");
   if (!host) return;
   host.innerHTML = GOLDEN_PRESETS.map((p, i) =>
-    `<span class="pchip gchip" data-i="${i}" role="button" tabindex="0" title="Load this setup and run the optimizer — ${esc(p.name)}">${esc(p.name)}</span>`
+    `<span class="pchip gchip" data-i="${i}" role="button" tabindex="0" title="Load this fight's inputs — ${esc(p.name)} (then press Find optimal overlay)">${esc(p.name)}</span>`
   ).join("");
   host.querySelectorAll(".gchip").forEach(chip => {
     const load = () => {
-      applyState(goldenToState(GOLDEN_PRESETS[+chip.dataset.i])); // load inputs only
+      applyState(goldenToState(GOLDEN_PRESETS[+chip.dataset.i])); // load the fight's INPUTS only
       refreshPresets("");                                         // clear any active user preset
       clearGoldenActive();
       chip.classList.add("active");
-      el("btn-run").click();                                      // ← the tool computes the plan live
-      el("results").scrollIntoView({ behavior: "smooth", block: "start" });
+      el("setup").scrollIntoView({ behavior: "smooth", block: "start" });
+      // No auto-run: the preset fills the input side only. Press "Find optimal
+      // overlay" to have the tool COMPUTE the plan — nothing is preloaded.
     };
     chip.addEventListener("click", load);
     chip.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); load(); } });

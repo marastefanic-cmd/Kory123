@@ -67,8 +67,9 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
 `index.html` defines `GOLDEN_PRESETS` + `GOLDEN_DEFAULTS` (near the localStorage-preset section, tail
 of the file) and exposes them on `window`. This single array is the canonical fight list:
 - **UI:** the `#golden-strip` "Debugging presets" chips render from it; clicking one calls
-  `goldenToState(p)` → `applyState(...)` (loads inputs only) → `btn-run` (the optimizer **computes**
-  the plan live). Presets store setup, never a precomputed answer.
+  `goldenToState(p)` → `applyState(...)`, which loads the **input side only** (no auto-run — the
+  handler deliberately does not click `btn-run`). The user presses "Find optimal overlay" to have the
+  optimizer **compute** the plan. Presets store setup, never a precomputed answer.
 - **Tests (`tests/`):** `exact-match.mjs` loads `index.html` headless (playwright-core), reads
   `window.GOLDEN_PRESETS`/`GOLDEN_DEFAULTS` from the page (there is **no** `cases.json`), runs each
   through `optimizeAsync`, canonicalizes the plan (setup header + windows + per-press times +
