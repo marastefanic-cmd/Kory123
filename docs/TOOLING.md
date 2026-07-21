@@ -135,7 +135,7 @@ them. To sim a Drums/PI fight, enable those in the export first.
 
 ## ★ KNOWN HARNESS BUG — `APLActionSchedule` silently DROPS an on-cooldown press
 
-**This is the audit's headline finding, and it distorts intermission theorycraft. Fix pending (below).**
+**This is the audit's headline finding. It distorted intermission theorycraft; now FIXED (patch below).**
 The AB-gate/resume *ramp* is faithful (AB gates off during downtime, the gap scores zero, cooldowns
 tick through, casting resumes with a correct fresh-stack 2.5s cast). The bug is in how `genapl` fires
 the cooldowns: `APLActionSchedule` (`sim/core/apl_actions_timing.go`) advances its timing index the
@@ -155,30 +155,33 @@ Vashj-specific:** the same run also drops AP@360, and several IV/Zerk uses — t
 been **systematically under-executing back-to-back cooldowns**, so any sim-gating that involved a
 press landing on its own cd may be distorted (flag every intermission golden for re-check once fixed).
 
-**Once the drop is fixed, the golden is vindicated:** an icon-track-windowed prototype fires all four
-icons (terminal at 362.5) and scores **1576.6 (4 icons) > 1573.1 (3 icons)** — matching cast-counting
-and the user. The old "sim says 3 icons" was 100% this artifact. Also: the once-touted "4:05/6:05 shift
-= +0.6" was measured while **both** plans were dropping their terminal, so it is likely itself an
-artifact (once both fire 4 icons the edge collapses toward 0) — reconfirm on the fixed harness before
-building W2 around it.
+**THE FIX (LANDED) — `tools/wowsims-patches/apl-schedule-strict-ready.patch`.** Root cause:
+`APLActionCastSpell.IsReady` uses `spell.CanCastOrQueue` (queue-tolerant → true ~0.15s early). Patch:
+`APLActionSchedule` now remembers its inner castSpell's `spell` and adds `(innerSpell == nil ||
+innerSpell.IsReady(sim))` — STRICT `BothTimersReady`, no queue tolerance — to its `IsReady`. A press
+that collides with its own (drifted) cooldown now WAITS and fires when the cd truly clears, never
+dropping and never consuming the timing early. `genapl` is unchanged (still `schedule`); rebuild the
+runner from the patched source (`go build -tags with_db`). Buffs apply strictly **between casts**
+(snapshot at completion — the 242.50 cast used pre-icon SP 1386, the next 1541), and the patch keeps
+that (it only gates *when* a press fires, not what it hits).
 
-**The fix (scoped follow-up, NOT yet landed — needs careful debugging + full golden re-validation).**
-The planner already emits cooldown-legal schedules, so the sim should just *activate each buff at its
-planned second without a drop*. The engine-native way is `player.Cooldowns` — set each cooldown's `id`
-+ `timings:[seconds]` (`proto/common.proto` `Cooldown`) and drive them with one `autocastOtherCooldowns`
-APL action; the MCD manager's `numUsages` only advances on *actual* activation (`major_cooldown.go
-shouldActivateHelper`/`tryActivateHelper`), so a colliding use waits for the cd and fires late instead
-of vanishing. Two prototypes exist (scratch): a per-cooldown windowed `SpellIsReady` conditional, and
-the `Cooldowns.Timings`+autocast wiring — **both are still buggy** (the windowed one mis-fires AP at
-~196s; the timings one dropped Gem/BL/CS via ActionID mismatch and lost late uses), and there's an
-unexplained AP-at-~196 slip near the [165,180] exit common to both that must be root-caused. Buffs
-apply strictly **between casts** (snapshot at completion — the 242.50 cast used pre-icon SP 1386, the
-next used 1541), so exact-tick activation does not retroactively paint the in-progress cast — good, and
-it must stay that way through the fix.
+**Re-validated (all 16 goldens, fixed vs orig engine, var0 100k):** ZERO regressions. Plain goldens
++0.0..+0.8 (fix inert, or recovers one collided press). Intermission goldens were badly drop-distorted →
+big faithful recoveries: **4:00-multi +18.0, KaelThas +22.2, Vashj +25.8**. So the old schedule harness
+was systematically under-executing every intermission plan. Goldens' PLANS are unchanged (exact-match
+16/16) but their sim *baselines* jumped, so **any intermission conclusion previously sim-gated on the
+buggy harness should be re-checked** on the fixed rig. On the fixed engine the Vashj **4-icon plan is
+vindicated** (1594.3 > 3-icon 1587.2, +7.1 var0 / +6.9 var10) — the "3-icons-win" was 100% the dropped
+terminal. The 4:05/6:05 shift survives but small (**+0.8 var0 / +0.3 var10**, stable across far seeds).
 
-Until the drop is fixed, prefer **count-preserving** comparisons (they keep both sides on the same RNG
-stream and don't hinge on a colliding press), and do **not** overturn a user-confirmed plan on a raw
-"drop-a-press marginal."
+**Separate discovery — AP's cooldown is 195s, not 180 (model↔sim mismatch).** `sim/mage/arcane_power.go`
+starts AP's 180s cd in the aura's `OnExpire` (`CD.Use` at buff-END), so AP's real cadence is 15+180 =
+**195s**. The model uses cd 180, so it plans AP every 180s — infeasible in the sim (the 2nd use fires
+~195, a 3rd near a 360s mark is often past the kill). This is NOT the drop bug (it survives the patch);
+it affects any plan using AP <195s apart (Vashj, etc.). Whether TBC AP is truly 195 (a "cd starts on
+buff-fade" quirk) or 180 is a SOURCES question — the sim (referee) says 195. **Flag: decide whether to
+set the model's `BUFFS.arcanePower.cd` to 195, and re-gate the intermission goldens, as the immediate
+follow-up** (bigger than the +0.8 ramp shift).
 
 ## Traps that remain
 

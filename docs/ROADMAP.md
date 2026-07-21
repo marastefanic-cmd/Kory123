@@ -4,9 +4,10 @@
 
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
-2. **Next task = `docs/PLAN.md`: fix the HARNESS DROP BUG (W1.5), then re-validate all goldens, then
-   maybe ramp valuation (W2).** The rigorous harness audit (old W1) is **done** — findings are the
-   authoritative reference in `docs/TOOLING.md` (trust-anchor = runner==`wowsimcli` to the decimal;
+2. **Next task = `docs/PLAN.md` Follow-up A: resolve AP-cd (195 vs 180) + re-gate the intermission
+   goldens on the fixed engine; THEN W2 (the confirmed +0.8 ramp shift).** The harness audit (W1) AND
+   the drop-bug fix + full re-validation (W1.5) are **done** — findings are the authoritative reference
+   in `docs/TOOLING.md` (trust-anchor = runner==`wowsimcli` to the decimal;
    the off-GCD "collision" is a **myth**, drop the offsets; external buffs off-GCD single-application;
    stats protocol with the **seeds-11/19-are-the-same-sample** correction; `SIMLOG=1` combat log
    exists). The audit's **headline finding** (TOOLING ★): `APLActionSchedule` **silently DROPS an
@@ -45,13 +46,17 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
 ## Status (as of the current work)
 
 - Planner is deterministic, ~0.4%-accurate, with **16 sim-verified golden regression cases** (green).
-- **Done this session — the RIGOROUS wowsims harness audit** (was W1). Rig rebuilt from `ade9f39`
-  (`-tags with_db`, byte-identical to prior), trust-anchored to `wowsimcli`. Overturned two old claims
-  (the off-GCD "collision" is a myth → drop the offsets; `SIMLOG=1` combat log exists) and corrected the
-  stats protocol (seeds 11/19 are the same sample). **Headline: found a real harness DROP BUG** —
-  `APLActionSchedule` silently drops an on-cooldown press (TOOLING ★), which was the entire Vashj
-  "3-icons-win" (it deleted the 4-icon plan's terminal icon). Fix + full re-validation is now **W1.5**
-  (`docs/PLAN.md`), ahead of ramp valuation (W2, whose "+0.6" evidence is now suspect). Docs are the
+- **Done this session — the wowsims harness audit AND the drop-bug fix + full re-validation** (W1 +
+  W1.5). Rig rebuilt from `ade9f39` (`-tags with_db`), trust-anchored to `wowsimcli`. Overturned two old
+  claims (off-GCD "collision" is a myth → drop the offsets; `SIMLOG=1` combat log exists) and corrected
+  the stats protocol (seeds 11/19 are the same sample). **Headline: a real harness DROP BUG** —
+  `APLActionSchedule` silently dropped an on-cooldown press (TOOLING ★), the entire Vashj "3-icons-win"
+  (it deleted the 4-icon plan's terminal icon). **FIXED** (`tools/wowsims-patches/apl-schedule-strict-
+  ready.patch`: gate the schedule on strict `spell.IsReady`). Re-validated all 16 — zero regressions;
+  intermission goldens were badly under-executed and recovered **+18..+26** (4:00-multi/KT/Vashj); the
+  Vashj 4-icon plan is vindicated on the fixed engine. Exact-match still 16/16 (model untouched).
+  **Also found: AP's real cd is 195s, not 180** (`arcane_power.go` starts the cd on buff-expire) — a
+  model↔sim mismatch (see PLAN Follow-up A). Docs are the
   authoritative record; `index.html`/`genapl.mjs` unchanged, goldens still 16/16.
 - Recent landed work: cast-rate-integral scorer; timeline redesign; spellpower-overlap forward-slide;
   **known-kill planning** (half-cast kill window); **full docs set** so `/clear` is safe;

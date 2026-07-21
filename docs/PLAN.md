@@ -1,67 +1,56 @@
-# PLAN.md — harness drop-bug fix, then re-validate, then (maybe) ramp valuation
+# PLAN.md — harness drop-bug FIXED; next: AP-cd + intermission re-gate, then the ramp shift
 
-**Status: W1 AUDIT DONE. New top-priority workstream surfaced by it — the harness DROP BUG (W1.5).**
-The rigorous wowsims harness audit (old W1) is complete; its findings are folded into `docs/TOOLING.md`
-(now the authoritative harness reference) and `docs/ROADMAP.md`. The audit uncovered a real harness bug
-that reshapes the next steps — **fix it and re-validate before any ramp work (old W2).**
+**Status: W1 audit DONE. W1.5 drop-bug FIX landed + all goldens re-validated.** Two follow-ups the fix
+surfaced remain (below). Findings live in `docs/TOOLING.md` (authoritative harness reference, ★ section)
+and `docs/ROADMAP.md`.
 
 **Start here (fresh context):** `CLAUDE.md` → `docs/MECHANICS.md` → `docs/RULES.md` → this file →
-`docs/TOOLING.md` (esp. the ★ "KNOWN HARNESS BUG" section — that's the whole story) → `docs/ARCHITECTURE.md`.
-Baseline: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (16/16 — the model is
-untouched by all of this). Rebuild the runner per TOOLING (`go build -tags with_db`); harness lives in
-the session scratchpad.
+`docs/TOOLING.md` (esp. the ★ "KNOWN HARNESS BUG" section — the drop bug, its fix, and the AP-cd
+discovery) → `docs/ARCHITECTURE.md`. Baseline: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node
+exact-match.mjs` (16/16 — model untouched). Rebuild the runner from the **patched** wowsims source
+(apply `tools/wowsims-patches/apl-schedule-strict-ready.patch`, then `go build -tags with_db`).
 
-## What the audit settled (W1 — done; details in TOOLING)
-- **Trust anchor ✓** runner == upstream `wowsimcli` to the decimal (2264.9) — absolute sim numbers are
-  trustworthy, not just A/B deltas.
-- **Off-GCD "collision" is a MYTH ✓** the sub-second offset ritual is DPS-inert (executor loops,
-  `apl.go:445`); drop it. Co-scheduling at one second is safe.
-- **External buffs ✓** Bloodlust (and PI/Drums shape) bind off-GCD, single application, no mage GCD;
-  the export runs a full real Arcane raid set. Drums/PI aren't registered (no golden uses them).
-- **Stats protocol ✓** CRN via same seed; **nearby seeds 11/19 are the SAME sample** (contiguous
-  per-iter seeds) — use far-separated seeds or SEM for independent replicates; var0/var10 is a real
-  cross-check. Buffs snapshot at cast completion (apply strictly between casts — faithful).
-- **Combat log ✓** `SIMLOG=1` exists (old note said it didn't) — the tool that cracked the bug below.
+## DONE — W1 audit (see TOOLING for detail)
+Trust anchor (runner==`wowsimcli`), off-GCD "collision" is a myth (drop the offsets), `SIMLOG=1` combat
+log exists, external buffs off-GCD single-application, stats protocol (seeds 11/19 = same sample), buffs
+snapshot at cast completion (between casts).
 
-## W1.5 — FIX THE HARNESS DROP BUG, then re-validate everything *(TOP PRIORITY — see TOOLING ★)*
+## DONE — W1.5: the harness DROP BUG, fixed + re-validated
+- **Bug:** `APLActionSchedule` silently dropped an on-cooldown press (fired ~0.15s early via
+  `CanCastOrQueue`, advanced its timing index, lost the queued off-GCD cast). Systematic on back-to-back
+  cooldowns; worst at intermission exits.
+- **Fix (LANDED):** `tools/wowsims-patches/apl-schedule-strict-ready.patch` — the schedule now gates on
+  STRICT `spell.IsReady` (no queue tolerance); a colliding press waits and fires when its cd clears,
+  never dropped. `genapl` unchanged; trust anchor preserved (plain rotation identical).
+- **Re-validated (all 16, fixed vs orig):** zero regressions. Plain +0.0..+0.8; intermission goldens
+  recovered big — 4:00-multi **+18**, KaelThas **+22**, Vashj **+26** (they were badly under-executed).
+  Vashj 4-icon plan VINDICATED on the fixed engine (1594.3 > 3-icon 1587.2). Exact-match still 16/16.
 
-**The bug:** `APLActionSchedule` (`genapl`) **silently drops** a scheduled press that lands while its
-own cooldown is still up (the schedule consumes the timing on a premature cast-queue; the queued off-GCD
-cast is then lost). It bites any same-track presses ~a cooldown apart where one drifts — i.e. normal
-back-to-back cooldown use, worst at intermission exits. Proven: Vashj's "4-icon" golden was firing only
-**3** icons (terminal 6:00 icon dropped); that artifact — not "3>4 icons" — is the whole "−4.2". With
-the drop fixed (icon-track prototype), 4 icons **1576.6** beat 3 **1573.1**, vindicating the golden.
+## FOLLOW-UP A (do first — bigger than the ramp shift): AP-cd + intermission re-gate
+- **AP's real cadence is 195s, not 180** (`arcane_power.go` starts the 180s cd in the aura `OnExpire`,
+  = 15+180). The model's `BUFFS.arcanePower.cd = 180` plans AP infeasibly (every 180s). **Decide:** set
+  the model's AP cd to 195 (match the referee) after a SOURCES check of TBC AP behavior; then re-optimize
+  and re-gate the multi-AP goldens. (If TBC is genuinely 180, flag the sim instead — but the sim is the
+  referee, so default to 195.)
+- **Re-gate the intermission goldens** (Vashj/KT/4:00-multi/2:40-inter) on the FIXED engine: their old
+  sim-gating ran on the drop-buggy harness (baselines off by +18..+26), so re-confirm each plan is still
+  optimal vs its alternatives on the fixed rig; re-lock any that move. Plans are unchanged (exact-match
+  green) — this checks whether they're still *best*, now that the sim executes them faithfully.
 
-- **1.5a — implement a clean, faithful fix.** Preferred: engine-native `player.Cooldowns` `timings` +
-  one `autocastOtherCooldowns` APL action (the MCD manager only advances `numUsages` on *actual*
-  activation, so a colliding use fires late, never dropping). Two scratch prototypes exist and are
-  **both still buggy** — root-cause them first: (i) the windowed-`SpellIsReady` conditional mis-fires
-  AP at ~196s; (ii) the timings+autocast wiring dropped Gem/BL/CS (ActionID match — include tags for
-  Zerk/BL) and lost late uses; (iii) an unexplained AP-at-~196 slip near the [165,180] exit shows up in
-  BOTH — settle it with the combat log. Keep the between-casts snapshot (no retroactive mid-cast paint).
-  Consider a **per-press kill cap** (don't fire a use that lands after the kill) as a small robustness
-  guard — but NOT a blanket "fight X shorter" hedge (RULES §8 already rejected broad kill-variance
-  hedging: plan the known kill, react live).
-- **1.5b — re-validate ALL 16 goldens on the fixed harness.** The drop was systematic (it also dropped
-  AP/IV/Zerk uses in the Vashj run), so **any** golden whose sim-gating involved a press landing on its
-  own cd may have been mis-scored. Re-sim each golden's plan new(fixed)-vs-old and vs its documented
-  alternative; re-lock on the fixed rig at var0 **and** var10 with far-seed replicates for any
-  count-changing check. Exact-match stays the guardrail (model unchanged). Expect some goldens to move —
-  that's the point; re-lock on sim evidence.
-
-## W2 — Ramp-aware SP-buff valuation *(DEFERRED behind W1.5 — its evidence is now suspect)*
-
-The "+0.6 for the 4:05/6:05 shift" was measured while **both** 240/360 and 245/365 were dropping their
-terminal icon (3 of 4 firing), so it is **not** trustworthy. **Reconfirm on the fixed harness first:**
-once both plans fire all four icons, the shift's edge may collapse toward 0 — in which case the model's
-240/360 is already fine and W2 is unnecessary. Only if a real, clean ramp gain survives the fixed rig:
-- **2a — coherent-candidate tie-break** (slide an SP/damage cluster off an exit onto built stacks,
-  carrying its cd-linked terminal use) — no scorer change; sim-gate on the fixed rig.
-- **2b — deterministic ramp in the scorer** — only if 2a insufficient; haste-decoupled ramp deficit to
-  avoid the reverted phantom-opener incentive (`2c0387d`). Higher risk; defer unless needed.
+## W2 — Ramp-aware SP-buff shift (245/365) — CONFIRMED but sequence AFTER Follow-up A
+The 4:05/6:05 shift is real on the fixed engine but **small: +0.8 var0 / +0.3 var10** (stable across far
+seeds). Because the model's intermission scoring is only trustworthy AFTER Follow-up A (AP-cd fixed,
+baselines re-gated), and because generic ramp/SP-concentration tie-breaks have over-fired and been
+reverted twice (ROADMAP), build W2a on the corrected foundation, not before it.
+- **2a — coherent-candidate tie-break.** The "Let the stacks build" pass (`index.html` ~1777) already
+  slides icon@240→245 on a model tie, but `repair()` then cd-pushes the terminal icon@360→365 while gem
+  stays at 360 — a split cluster the kill-aware model rejects. Fix: carry the terminal use's co-pressed
+  damage/SP cluster (gem) with it so 6:05 stays coherent; accept only when the shifted window still
+  clears the next intermission. Sim-gate on the fixed rig; only Vashj should move; re-lock it to 245/365.
+- **2b — deterministic ramp in the scorer** — only if 2a insufficient; haste-decoupled to avoid the
+  reverted phantom-opener incentive (`2c0387d`). Defer unless needed.
 
 ## Verification / constraints
-- W1.5: fixed harness fires every planned cooldown use (no drops), no drift past intent, buffs still
-  between casts; all 16 goldens re-simmed and re-locked (or confirmed unchanged); exact-match 16/16.
+- Fixed harness fires every planned cooldown use (no drops), buffs between casts; exact-match 16/16.
 - Branch `claude/wow-arcane-cooldown-optimizer-vbm3as`; configured author/trailers; no identity/model-id
-  leaks in `index.html`; determinism preserved; keep docs current in the same commit.
+  leaks in `index.html`; determinism preserved; docs current in the same commit.
