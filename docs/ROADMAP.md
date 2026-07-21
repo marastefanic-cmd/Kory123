@@ -65,6 +65,24 @@ KaelThas → both-in-Lust; every changed golden sims ≥ old; the −0.7 "swap-o
 drives both the "Debugging presets" strip and the exact-match suite; clicking a preset computes the
 plan live and reproduces the golden. New fights are added by editing that one array.
 
+## Golden-review findings (from the preset walkthrough — sim-verified)
+
+- **BUG — off-GCD damage cluster not co-pressed with its window anchor (fix this).** On 7:20, Window 6
+  emits Icon/Gem/AP at `6:21` while IV is at `6:20` (raw intents 381 vs 380). Scoring the cluster at
+  380 vs 381 is an **exact model tie** (Δ ≈ 1e-10 — under the back-to-back IV+CS→IV the casts are
+  IV-hasted throughout, so the 1s shift is worth nothing). The tie-break is supposed to pull a tied
+  cluster onto the anchor (it does in that plan's Window 4 at `200`) but leaves this one at 381. Fix:
+  when a bundled off-GCD damage press ties, snap it to the window's IV/anchor second — **but only for
+  un-annotated ties**; a *deliberate* stagger that claims a real gain (e.g. the 3:20 Window-2 gem at
+  `3:05`, "+565 dmg") must stay. This will re-lock the 7:20 golden (6:21 → 6:20), a free correction.
+- **3:20 free-Cold-Snap is correctly unused (no change).** Reviewed the idea "spend the free CS to
+  decouple IV2 so IV1 can leave 0:00." Sim (var 10, paired seeds 11/19, 200k): IV1@0:00 = 2651.2,
+  IV1@0:10+CS = 2651.1 (**tie**), IV1@0:05+CS = 2645.3 (**−6**). The IV1@0:10 "+12.8" seen at fixed
+  length (`var 0`) was a **boundary artifact** — it collapsed under randomized kill. Two lessons
+  reaffirmed: (1) IV1@0:00 beats IV1@0:05-fully-in-Lust by ~6 because its first 5s sit *before* Lust,
+  unfloored (the floor rule, §RULES 2/7); (2) always confirm a fixed-length gap under `--var 10`. So
+  CS has no material use on a short 2-IV fight; the current golden stands.
+
 ## Open questions / known limitations
 
 - **Model mis-valuation (documented, not patched):** the scorer ranks the *partial* pack
