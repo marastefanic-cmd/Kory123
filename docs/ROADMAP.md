@@ -4,8 +4,9 @@
 
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
-2. **Next task = the PLACEMENT WORKSTREAM** (see "Golden-review findings" below — the user audited the
-   goldens and pinned it). Root: the planner banks/stacks by *start-second* when *containment* says a
+2. **Next task = the PLACEMENT WORKSTREAM — the step-by-step is in `docs/PLAN.md` (execute that).**
+   Evidence is in "Golden-review findings" below (the user audited the goldens and pinned it). Root:
+   the planner banks/stacks by *start-second* when *containment* says a
    range of placements are equivalent. Implement, sim-gating every golden that moves: **(a)** overlap =
    interval containment, not start-coincidence — containment-equivalent placements are ties, pick the
    consistent member (natural-cd tick / earliest / on the burst); **(b)** spend a free Cold Snap to
