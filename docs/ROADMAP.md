@@ -67,10 +67,20 @@ var10, seeds 11/19 identical). So the current `Vashj 6:30` golden is at a **sim-
 
 ## Also planned
 
-- **Far-Lust damage-use-sacrifice pack** (RULES §4 known limitation): when nothing sits on a late-early
-  Lust (e.g. 2:15 @0:25), packing the burst on costs Icon its cd-second, so `sameCounts` blocks it and
-  the plan stays burst-at-pull (**−34 to −50 DPS** vs packed). Needs a pack variant that *drops* a
-  damage-buff use to align the first onto Lust. Add 2:15 as a golden once it lands.
+- **Root cause behind BOTH the 2:15 far-Lust and the Vashj icon calls: the model over-values SP-buff
+  *count/uptime* vs *concentration*.** It prefers more SP-buff uses (more casts caught) over fewer uses
+  concentrated on the fastest AP+floored casts, where the sim says concentration wins. Nailed down this
+  session with controlled sims:
+  - 2:15 (Lust @0:25): sim says packed **1 icon on floored Lust+IV** beats **2 icons off-Lust** by
+    **+17–50 DPS** — and it holds **with a prestack** (opener at 3 stacks), so it is **not** the ramp;
+    the model still ranks burst@0 higher by **+1416** (it credits A's 2nd, non-AP icon's raw casts). So
+    a `sameCounts`-relaxing "damage-use-sacrifice pack" would **not** reach it — the model gates it out.
+  - Vashj 6:30: same shape (4 icons vs 3-on-IV), +5.4 DPS, model +874 the other way.
+  - The per-icon marginal valuation is **sound** (plain-fight test, 1.16 vs 1.20), so the bias is subtle
+    — in how the model combines *multiple* uses over floored / AP-overlapped windows. Fixing it is a
+    careful **scorer-accuracy** investigation (understand the mechanism first; sim-gate every golden);
+    both cases sit **within QTOL**, so it's a model-tie the alignment heuristic should break, not a place
+    to hack the SP crediting blind. Only then add 2:15 as a golden. Do NOT rush.
 - **Coherent intermission/AoE handling** (`RULES.md` §9): make placement/tie-break passes downtime-aware
   so a window doesn't *usually* begin in a dead zone — as a **strong default, not an invariant** (pressing
   early into downtime can be right when it's the only way to get a cooldown back for a bigger later window;
