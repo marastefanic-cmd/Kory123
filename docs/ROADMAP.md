@@ -5,11 +5,15 @@
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
 2. **Next task = one of the SECONDARY FRONTS** (the placement workstream **LANDED**; the Icon-count
-   tie-break was **diagnosed & deferred** — a generic version is too destabilizing, see its section
-   below). Open fronts, in rough priority: **coherent intermission/AoE** downtime-aware placement
-   (RULES §9 — this is also the correct vehicle for the Vashj icon-count fix, an intermission-ramp
-   effect); then the payoffs (haste-agnostic APL → setup comparison → EP calculator, "the goal"
-   section). Each stands or falls on its own sim — sim-gate every golden that moves.
+   call is **RESOLVED — the sim was wrong, the 4-icon model plan is right**, no code change, see its
+   section below). Open fronts, in rough priority: **(a) fix the intermission-resume sim setup** — the
+   biggest unlock, because until the harness scores intermission-exit placement correctly, *no*
+   intermission theorycraft (the shift-into-built-stacks refinement, the 2:15 recheck, re-validating the
+   intermission goldens) can be sim-gated; **(b) coherent intermission/AoE** downtime-aware placement
+   (RULES §9, `dodgeDowntime` did the "don't begin in downtime" half); then **(c) the payoffs**
+   (haste-agnostic APL → setup comparison → EP calculator, "the goal" section). **Trust the model's
+   cast-counting over a contradicting sim number** (MECHANICS §3 corollary); sim-gate every golden that
+   moves, but audit the setup first when the sim fights the model.
 3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 16/16).
 4. The sim harness (`runner` binary, gear export, `wowsims/tbc-new` source) persists in the session
    **scratchpad** and survives `/clear` *within the same session* — check it's there before rebuilding
@@ -48,59 +52,61 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
   a post-Lust intermission) and `Vashj 6:30 lust 5:45` (six intermissions); the `2:40 @150 haste`
   case was **removed** (the IV-slides-out breakpoint isn't pinned yet — don't lock it).
 
-## Icon-count / SP-alignment — DIAGNOSED, deferred into the intermission workstream (do NOT re-attempt solo)
+## Icon-count / SP-alignment — RESOLVED: the sim was WRONG, the 4-icon model plan is correct (user-confirmed)
 
-A spellpower buff wants the **fast** casts (RULES §3/§6), so fewer icons all on haste windows can beat
-more icons half on no-haste casts. **Sim-proven on Vashj 6:30:** 3 icons @ 0:00/3:00/6:00 (each on an IV
-window) beats the planner's 4 icons @ 0:00/2:00/4:00/6:00 by **+5.4 DPS** (wowsims 250k, var0 **and**
-var10, seeds 11/19 identical). So the current `Vashj 6:30` golden is at a **sim-suboptimal** 4-icon plan.
-**Status: the generic tie-break was tried and rejected — the fix belongs to the downtime-aware workstream
-(see the two bullets at the end of this section, and "Also planned" below).**
-- **Diagnosed (`tests/evalsched.mjs` + controlled sims): this is a sub-cast TIE, not a scorer bug.**
-  1. The scorer's SP valuation is **sound in general** — on a *plain* fight a marginal icon is worth
-     +10.7 DPS on an IV window vs +9.2 off it, ratio **1.16**, matching the model's predicted 1.20. No
-     global over-valuation. And plain 6:30 (no intermissions) still has the sim preferring 3-icon by only
-     **+1.5 DPS** (0.06%) — *within* the model's ~0.4% accuracy.
-  2. The model scores 4-icon higher by **+874**, but `QTOL` (one cast) ≈ **2242** — so the model treats
-     3-icon and 4-icon as a **tie**, lands on 4-icon inside the tie band, and the sim's preference is a
-     genuine *sub-cast* refinement (exactly the RULES §10 caveat).
-- **The obvious fix — a generic "concentrate SP on haste, within QTOL" tie-break — was TRIED and REJECTED
-  (this session, too destabilizing, as feared).** A finishing pass that relocated each *cold* SP use (one
-  overlapping no haste window) onto a haste burst — else dropped it — accepting any candidate that cut
-  cold SP-seconds and stayed within QTOL of the champion. It reached the Vashj 3-icon plan, but exact-match
-  showed it also moved **five other validated goldens** (5:00, 7:20, 6:00, 5:45, KaelThas), dropping their
-  legitimate mid-fight icons. **Why it over-fires:** on a *plain* fight a cold icon is worth ~**+9 DPS**
-  (real, per the plain-fight test) yet sits *within QTOL* in the model, so "drop it if within QTOL" throws
-  away real damage. The gate can't tell a *worthless* cold use from a *useful* one — that needs the very
-  ramp/flux knowledge the steady-state model deliberately omits (RULES §3). Reverted; not committed.
-- **The real signal is INTERMISSION-RAMP, not generic concentration.** Vashj's droppable icon@240 sits
-  **exactly at the [3:30–4:00] intermission exit**, so its casts are slow post-ramp casts the steady-state
-  model over-credits at full 3-stack value; icon@120 is plain-but-relocatable onto the free IV@3:00 burst.
-  That is why plain 6:30 barely prefers 3-icon (**+1.5**, a wash) but Vashj prefers it by **+5.4** — the gap
-  is the ramp. **So the correct vehicle is the downtime-aware placement workstream (below), not a generic SP
-  tie-break:** a use whose window *begins* at an intermission exit should be treated as catching ramp casts
-  (worth less), which naturally de-values icon@240 and pushes toward the 3-icon plan *without* touching the
-  useful cold icons on plain fights. Fold this into that workstream; do NOT re-attempt the generic tie-break.
-  The Vashj golden stays at its 4-icon plan until then (a known, documented sub-cast suboptimality, +5.4).
-  (Evidence reconfirmed this session: 3-icon 1569.1 vs 4-icon 1563.7 at var0, 1565.2 vs 1559.8 at var10,
-  seeds 11/19 identical — matches the original +5.4.)
+**Old belief (overturned):** "3 icons @ 0:00/3:00/6:00 beats the planner's 4 icons @ 0/2/4/6 by +5.4 on
+Vashj 6:30, so the golden is sim-suboptimal." **This is a HARNESS/SETUP ARTIFACT, not a real gap.** The
+`Vashj 6:30` golden's 4-icon plan is **correct** — confirmed by the user and by first-principles
+cast-counting. Do **not** re-open this as an optimizer task.
+
+- **Cast-counting settles it (the model's method; MECHANICS §3 "score by cast-counting").** Value each
+  icon by `(casts it catches) × (multipliers there)`, relative to a bare-window icon:
+  - **1 icon @3:00** rides IV@180 (+20% haste ⇒ more casts) **and** AP@180 (×1.30) — **and** Berserking@180
+    for the first half of its window (a further +10% haste those 10s, easy to miss). ≈ **~1.5–1.6×** a bare
+    icon.
+  - **2 icons @2:00 + @4:00** land on bare windows (no IV/AP): ≈ 1.0× + ~0.9× (the 4:00 one a hair fewer
+    casts on the post-intermission ramp) ≈ **~1.9×**.
+  - **1.9 > 1.6** ⇒ two icons catch more effective ABs. The model agrees: 4-icon scores **+874** over 3-icon
+    (≈ 0.39 cast, within `QTOL`). SP is **linear, not exponential** (`cast_damage = (base+SP·coef)·mult`),
+    so co-locating icon+gem at 3:00 does **not** super-linearly help — no tipping.
+- **So the sim's "3-icon +5.4" is bogus, and it hinges on a single artifact:** icon@4:00 posts a marginal
+  **−4.2** in the sim (dropping it *raises* DPS) where cast-counting says it should be **~+5**, like the
+  net-**+6.5** icon@2:00. An off-GCD, macro'd buff (fires *between* casts, never clips — MECHANICS §3)
+  **cannot** be net-negative with no alignment/cooldown reason. Ruled out this session: clip (ISC is
+  off-GCD/instant, wowsims source-confirmed it doesn't touch the hardcast), mana (900k avail, ~100k used),
+  cooldown coupling (icon@6:00 fires either way), shared trinket CD (gem uses its own timer), and
+  sub-second offset (swept .00→.15, all ≈ 1563.7). The residual is a **sim-setup bug at the intermission
+  resume** (how `genapl`'s AB-gating / the runner restarts casting at `seg.end`) — the runner has no
+  combat-log flag to pin it. **The model / cast-counting is the referee for intermission-exit placement,
+  not the raw sim.**
+- **Both prior "fix" attempts chased this artifact and were reverted** (nothing committed): (1) a generic
+  "concentrate SP within QTOL" tie-break — over-fired, moved five plain-fight goldens (dropping *useful*
+  cold icons worth ~+9 each); (2) a scoped `dropRampCold` "drop the exit-ramp icon" tie-break — reached the
+  (wrong) 3-icon plan cleanly but was fixing the artifact. Do not resurrect either.
+- **Real, minor, NOT-yet-actionable refinement (separate from the artifact).** There *is* a small true
+  gain in shifting a damage/SP cluster that lands right on an intermission-**exit** a few seconds later so
+  it dips into **already-built AB stacks** instead of the ramp — e.g. icon@4:00 → **4:05**, moving the
+  terminal icon+gem+AP 6:00 → **6:05** (the downstream absorbs it free), strictly raising that icon's
+  uptime over built stacks. The steady-state model is **ramp-blind** (can't see it) and the sim is
+  **unreliable at exits** (the bug above), so it can't be verified today. Revisit only with a ramp-aware
+  evaluation *or* a fixed intermission sim. Highly specific; do not prioritize.
 
 ## Also planned
 
-- **Root cause behind BOTH the 2:15 far-Lust and the Vashj icon calls: the model over-values SP-buff
-  *count/uptime* vs *concentration*.** It prefers more SP-buff uses (more casts caught) over fewer uses
-  concentrated on the fastest AP+floored casts, where the sim says concentration wins. Nailed down this
-  session with controlled sims:
-  - 2:15 (Lust @0:25): sim says packed **1 icon on floored Lust+IV** beats **2 icons off-Lust** by
-    **+17–50 DPS** — and it holds **with a prestack** (opener at 3 stacks), so it is **not** the ramp;
-    the model still ranks burst@0 higher by **+1416** (it credits A's 2nd, non-AP icon's raw casts). So
-    a `sameCounts`-relaxing "damage-use-sacrifice pack" would **not** reach it — the model gates it out.
-  - Vashj 6:30: same shape (4 icons vs 3-on-IV), +5.4 DPS, model +874 the other way.
-  - The per-icon marginal valuation is **sound** (plain-fight test, 1.16 vs 1.20), so the bias is subtle
-    — in how the model combines *multiple* uses over floored / AP-overlapped windows. Fixing it is a
-    careful **scorer-accuracy** investigation (understand the mechanism first; sim-gate every golden);
-    both cases sit **within QTOL**, so it's a model-tie the alignment heuristic should break, not a place
-    to hack the SP crediting blind. Only then add 2:15 as a golden. Do NOT rush.
+- **The "model over-values SP-count vs concentration" thesis is now DOUBTFUL — the Vashj leg collapsed.**
+  It was built on two "sim says fewer-concentrated-icons win, model says more" cases (Vashj 6:30, 2:15
+  far-Lust). Vashj is now **resolved the other way**: cast-counting + the user confirm the model's 4-icon
+  plan is **right** and the sim's 3-icon was a **harness artifact** (icon-count section above). So the
+  pattern may not be a *model* bias at all — it may be that the **sim** mis-scores "concentrated SP"
+  layouts (near intermissions/boundaries/floored windows), and the model's cast-counting is correct.
+  - **Re-examine 2:15 (Lust @0:25) with the same skepticism before trusting it.** The claim: sim says
+    **1 icon on floored Lust+IV** beats **2 icons off-Lust** by **+17–50 DPS**, model ranks 2-icon higher
+    by **+1416**. Given Vashj, do **not** treat that sim number as ground truth — first **cast-count** it
+    (1 icon on Lust+IV+AP ≈ its multiplier × casts, vs 2 bare icons' casts) and check whether the +17–50
+    survives a setup audit (offsets, floored-window scheduling, prestack). If cast-counting says 2-icon,
+    the model is right and 2:15 is *not* a golden-worthy suboptimality. Do NOT add 2:15 as a golden, and
+    do NOT touch the SP crediting, until this is redone. (Lesson: a sim result that contradicts clean
+    cast-counting is a **setup-audit trigger**, not a model bug — MECHANICS §3 corollary.)
 - **Coherent intermission/AoE handling** (`RULES.md` §9): make placement/tie-break passes downtime-aware
   so a window doesn't *usually* begin in a dead zone — as a **strong default, not an invariant** (pressing
   early into downtime can be right when it's the only way to get a cooldown back for a bigger later window;

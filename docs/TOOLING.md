@@ -53,7 +53,23 @@ node tools/genapl.mjs '<specA>' A.apl.json && ./runner --export gear.json --apl 
   fixed-length "+37" that was pure boundary luck (vanished under `--var 10`).
 - **Fixed-length boundary artifacts.** At an exact fight length, whose cast train ends flush at the
   buzzer can swing ±1 cast. If an A/B gap looks suspiciously large at one length, re-check under
-  `--var 10` (randomized kill) — a real effect survives, a boundary artifact collapses.
+  `--var 10` (randomized kill) — a real effect survives, a boundary artifact collapses. **But `--var`
+  only randomizes the KILL; intermission times are fixed**, so it does **not** clear an
+  intermission-boundary artifact (next trap).
+- **Intermission-resume mis-scoring — the subtle one (Vashj 6:30).** A press whose window opens at/just
+  after an intermission **exit** can score badly wrong. Concretely: a 4th Icon at 4:00 (the [3:30–4:00]
+  exit) posts a **−4.2 marginal** (dropping it *raises* DPS) where cast-counting says **~+5** — an
+  off-GCD, macro'd buff that fires *between* casts (MECHANICS §3) **cannot** be net-negative without an
+  alignment/cooldown reason, and there is none (icon@6:00 fires either way; no mana/cd/shared-CD; the
+  effect is **offset-insensitive**, swept .00→.15, and survives `--var 10` because the intermission is
+  fixed). So it is a **setup/harness bug at the resume** (how `genapl`'s AB-gate / the engine restarts
+  casting at `seg.end`), **not** a real effect. **The runner has no combat-log flag** to pin it (only
+  `--quiet`; without it you get one summary line, no per-cast log). **Rule: when the sim contradicts
+  clean cast-counting on an intermission-exit / floored-window placement, distrust the sim and audit the
+  setup — the model's cast-counting is the referee** (MECHANICS §3 corollary). This overturned the old
+  "Vashj wants 3 icons / the model over-values SP-count" belief (ROADMAP): the model's 4-icon plan is
+  correct. **Fixing this resume mis-scoring is the top harness task** — it blocks all intermission
+  theorycraft.
 - **Cold-Snap IV** — treat it simply as "once per fight, one IV ignores the cooldown." In the APL,
   schedule `CS` slightly before the cheated IV (the runner resets IV mid-schedule); since there's no
   second reset, the CS→IV must be the IV that breaks the 180s cd. You can otherwise ignore the fine
