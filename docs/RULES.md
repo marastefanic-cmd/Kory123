@@ -65,12 +65,15 @@ already-early buff has nothing better behind it).
 
 ## 7. Haste-on-haste overlap is a wash-to-loss (NOT a synergy)
 
-Two pure-haste buffs, overlap vs separate, at 0 gear haste: `overlap − separate ∝ (50% − (h_a+h_b))`.
-- Below the floor (sum < 50%, e.g. Lust+Berserking = 43%): overlap wins by `(a−1)(b−1)/1.5` per
-  second — tiny but positive.
-- At the floor (Lust+IV: 30%+20% = exactly 50%): **exact wash** — multiplicative gain exactly cancels
-  floor waste.
-- Above: separate wins. Any gear haste tips further toward separate.
+Two pure-haste buffs, overlap vs separate, at 0 gear haste: `overlap − separate ∝ (headroom − (h_a+h_b))`,
+where **headroom** = the *additive* haste that reaches the +50% floor = 0.5 at 0 gear (derivation in
+`docs/MECHANICS.md` §5.3). The threshold compares the buffs' **additive** percentages against that
+headroom — it is **not** their multiplicative product and **not** their combined haste: Lust×IV =
+`×1.56` = **+56%, genuinely over the floor** (haste never adds).
+- Below headroom (sum < 50%, e.g. Lust+Berserking = 30+10, `m=1.43`): overlap wins by a hair.
+- At headroom (Lust+IV: 30+20 = 50, `m=1.56`): **exact wash** — the multiplicative gain is exactly
+  cancelled by the ~4% the `×1.56` overlap spills past the floor.
+- Above, or with any gear haste (headroom shrinks to `1.5/g − 1`): separate wins.
 
 So the reason to put haste in Lust is **never** haste-stacking synergy — it's to make the *damage/SP*
 casts faster and to bank the value before an early kill. (A wowsims "+37 DPS" for Lust+IV overlap at

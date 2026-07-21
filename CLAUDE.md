@@ -77,7 +77,9 @@ Treat maintaining them as part of the work, not an afterthought:
 - Before a big change, re-read the relevant doc; after it, leave the docs describing reality.
 
 ## Pointers
-- `docs/RULES.md` — the theorycraft rules, each with its sim evidence.
+- `docs/MECHANICS.md` — **read first.** The verified game formulas (haste, cast time, damage per cast,
+  the cast-rate DPS equation) that everything else is derived from.
+- `docs/RULES.md` — the theorycraft rules, each with its sim evidence (derived from MECHANICS.md).
 - `docs/ARCHITECTURE.md` — `index.html` internals and the optimizer pass order.
 - `docs/TOOLING.md` — the wowsims sim harness (how to verify a plan) and its gotchas.
 - `docs/ROADMAP.md` — status, current work, and open questions.
