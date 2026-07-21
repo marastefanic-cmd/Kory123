@@ -2,10 +2,12 @@
 //
 // The optimizer is deterministic (fixed PRNG seed) and leftover haste snaps to the
 // earliest efficient spot, so one setup produces exactly one schedule. This runner
-// loads the real index.html in a headless browser, runs each case in cases.json
-// through the actual optimizer, canonicalises the resulting plan (setup header +
-// windows, exactly what "Copy as text" shows minus the cosmetic peak-haste/price
-// tags), and compares it to a frozen golden.
+// loads the real index.html in a headless browser, reads the fight table straight
+// from the page (window.GOLDEN_PRESETS — the SAME "Debugging presets" the UI shows,
+// so a preset you confirm in the tool IS the locked test), runs each through the
+// actual optimizer, canonicalises the resulting plan (setup header + windows, exactly
+// what "Copy as text" shows minus the cosmetic peak-haste/price tags), and compares
+// it to a frozen golden.
 //
 //   node exact-match.mjs             # check every case against tests/golden.json
 //   node exact-match.mjs --update    # regenerate the golden (after an INTENTIONAL change)
@@ -19,7 +21,7 @@ import { fileURLToPath } from 'url';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(__dir, '..');
-const spec = JSON.parse(fs.readFileSync(path.join(__dir, 'cases.json'), 'utf8'));
+let spec; // sourced from index.html's GOLDEN_PRESETS once the page loads (see below)
 const goldenPath = path.join(__dir, 'golden.json');
 const update = process.argv.includes('--update');
 const golden = fs.existsSync(goldenPath) ? JSON.parse(fs.readFileSync(goldenPath, 'utf8')) : {};
@@ -31,6 +33,15 @@ const page = await browser.newPage();
 let perr = null;
 page.on('pageerror', e => (perr = String(e)));
 await page.goto('file://' + path.join(REPO, 'index.html'));
+
+// Single source of truth: the fight table lives in index.html (window.GOLDEN_PRESETS),
+// the same list the "Debugging presets" strip renders. Read it straight from the page.
+spec = await page.evaluate(() => {
+  if (!Array.isArray(window.GOLDEN_PRESETS) || !window.GOLDEN_DEFAULTS)
+    throw new Error('window.GOLDEN_PRESETS / GOLDEN_DEFAULTS missing in index.html');
+  return { gear: window.GOLDEN_DEFAULTS.gear, kit: window.GOLDEN_DEFAULTS.kit, cases: window.GOLDEN_PRESETS };
+});
+if (perr) { console.error('PAGEERROR loading index.html:', perr); await browser.close(); process.exit(2); }
 
 const results = {};
 for (const c of spec.cases) {

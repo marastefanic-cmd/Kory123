@@ -17,8 +17,10 @@ CHROMIUM=/path/to/chromium node exact-match.mjs
 
 `CHROMIUM` should point at a Chromium/Chrome binary (the harness defaults to
 `/opt/pw-browsers/chromium`). The runner loads the real `../index.html` in a
-headless page, runs every case in `cases.json` through the actual optimizer, and
-compares the resulting plan to `golden.json`.
+headless page, reads the fight table straight from the page
+(`window.GOLDEN_PRESETS` — **the same "Debugging presets" the tool shows**), runs
+every one through the actual optimizer, and compares the resulting plan to
+`golden.json`.
 
 - **All green** → no placement changed.
 - **A FAIL** prints a `- expected / + got` diff for that case.
@@ -36,13 +38,21 @@ git diff golden.json          # read every changed line — is each move correct
 The golden is the frozen, sim-validated layout; `--update` should be a deliberate
 act, not a reflex.
 
-## Cases
+## Cases — single source of truth
 
-`cases.json` — top-level `gear` (SP / crit / haste rating / Cold Snap) and `kit`
-(enabled cooldowns) are the defaults; any case may override either (e.g. the
-`@150 haste rating` case). A case is `{ name, T, pins }`, optionally with
-`intermission: [from, to]` or a full `phases: [{type,from,to,mult,targets}]`
-list. `pins` are the fixed raid-call times (Bloodlust / Drums / PI).
+There is **no** `cases.json`. The case list lives in `../index.html` as
+`GOLDEN_PRESETS` (with `GOLDEN_DEFAULTS` for the shared gear/kit), which is the
+*same* list the tool renders as its **Debugging presets** strip. So "what you
+click in the tool" and "what this suite locks" are literally one array — a preset
+you confirm in the UI **is** the test. To add or change a case, edit
+`GOLDEN_PRESETS` in `index.html`.
+
+Each entry is `{ name, T, pins }`, optionally with `gear`/`kit` overrides (e.g. the
+`@150 haste rating` case), an `intermission: [from, to]`, or a full
+`phases: [{type,from,to}]` list. `pins` are the fixed raid-call times in seconds
+(Bloodlust / Drums / PI). A preset carries only the **input setup** — clicking it
+loads those inputs and the tool computes the plan live; the golden is just the
+frozen output that live result must reproduce.
 
 The canonical each case is compared on is the **Copy-as-text plan** — the setup
 header plus the windows with per-press times and Cold Snap markers — minus the

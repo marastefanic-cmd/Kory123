@@ -63,9 +63,18 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   tinted with ×N badges), buff-uptime lanes with press ticks. `scheduleRows`/`renderSchedule` build
   the window table; `btn-copy` emits the canonical copy-as-text plan the tests compare.
 
-## Tests (`tests/`)
-`exact-match.mjs` loads `index.html` headless (playwright-core), runs each `cases.json` fight through
-`optimizeAsync`, canonicalizes the plan (setup header + windows + per-press times + Cold-Snap
-markers, minus cosmetic peak-haste/price tags), diffs vs `golden.json`. `--update` regenerates.
-Harness supports `intermission`/`aoe`/`burn` phases. `cases.json` top-level `gear`/`kit` are defaults,
-per-case overridable.
+## Presets & tests — one shared fight table
+`index.html` defines `GOLDEN_PRESETS` + `GOLDEN_DEFAULTS` (near the localStorage-preset section, tail
+of the file) and exposes them on `window`. This single array is the canonical fight list:
+- **UI:** the `#golden-strip` "Debugging presets" chips render from it; clicking one calls
+  `goldenToState(p)` → `applyState(...)` (loads inputs only) → `btn-run` (the optimizer **computes**
+  the plan live). Presets store setup, never a precomputed answer.
+- **Tests (`tests/`):** `exact-match.mjs` loads `index.html` headless (playwright-core), reads
+  `window.GOLDEN_PRESETS`/`GOLDEN_DEFAULTS` from the page (there is **no** `cases.json`), runs each
+  through `optimizeAsync`, canonicalizes the plan (setup header + windows + per-press times +
+  Cold-Snap markers, minus cosmetic peak-haste/price tags), diffs vs `golden.json`. `--update`
+  regenerates. Supports `intermission`/`aoe`/`burn` phases. A preset entry is `{name, T, pins}` with
+  optional `gear`/`kit`/`intermission`/`phases` overrides.
+
+So "what you click in the tool" and "what the suite locks" are literally the same list — a confirmed
+preset is the exact-match test.

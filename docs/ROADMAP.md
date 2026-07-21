@@ -17,7 +17,10 @@
 - Recent landed work: cast-rate-integral scorer; timeline redesign (fluid, distinct phase bands,
   GCD-cap label, area-fill haste curve); spellpower-overlap forward-slide (Icon onto a staggered AP
   cluster); **known-kill planning** (kill window dropped to a half-cast — terminal bursts end at the
-  kill; the player reacts to early deaths live).
+  kill; the player reacts to early deaths live); **full docs set** (MECHANICS/RULES/ARCHITECTURE/
+  TOOLING/SOURCES/ROADMAP) so `/clear` is safe; **Debugging-presets UI** — every golden is a one-click
+  preset that loads the setup and **computes** the plan live, driven off the single `GOLDEN_PRESETS`
+  table in `index.html` that also feeds the exact-match suite (no more `cases.json`).
 
 ## Current top task — buff-into-Lust sequential packing (a SEARCH fix)
 
@@ -41,12 +44,12 @@ KaelThas → both-in-Lust; every changed golden sims ≥ old; the −0.7 "swap-o
 - **Coherent intermission/AoE handling** (`RULES.md` §9): enforce "no buff window begins in downtime"
   as an invariant (in `repair`) + make tie-break passes downtime-aware. Symptom to fix: a 2nd
   (Cold-Snap) IV landing 1s inside an intermission (1:19) instead of the clean post-ramp burst (1:40).
-- **Boss-preset UI = the golden set**: a one-click "debugging presets" library containing **every**
-  golden fight, driven off a single fight-definition table shared with `tests/cases.json`, so what
-  you click in the tool and what the exact-match suite locks are the same list. Confirmed presets are
-  the definitive exact-match tests (straight equality, not tolerance).
 - Add the **2:15** fight as a golden once packing lands; re-verify KaelThas/Vashj/2:15-family goldens
-  (they'll legitimately change — better, sim-proven).
+  (they'll legitimately change — better, sim-proven). Adding it = one entry in `GOLDEN_PRESETS`.
+
+**Done:** ~~Boss-preset UI = the golden set~~ — landed. The `GOLDEN_PRESETS` table in `index.html`
+drives both the "Debugging presets" strip and the exact-match suite; clicking a preset computes the
+plan live and reproduces the golden. New fights are added by editing that one array.
 
 ## Open questions / known limitations
 

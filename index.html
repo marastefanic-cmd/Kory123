@@ -238,6 +238,10 @@
   .pchip .pdel { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0 5px; line-height: 1; }
   .pchip .pdel:hover { color: var(--warn); }
   .pchips .pnone { color: var(--muted); font-size: 12.5px; }
+  .golden-strip { padding-bottom: 12px; margin-bottom: 12px; }
+  .golden-strip .pslab { color: var(--accent); }
+  .gchip { padding: 4px 13px; font-size: 12.5px; color: var(--ink-2); }
+  .gchip.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); color: var(--ink); }
   .psave { display: flex; gap: 6px; margin-left: auto; }
   .psave input { width: 130px; font-size: 13px; padding: 5px 9px; }
   .psave button {
@@ -434,6 +438,10 @@
   </header>
 
   <section class="setup" id="setup">
+    <div class="preset-strip golden-strip" id="golden-strip">
+      <span class="pslab" title="Sim-verified reference fights — this list is the exact-match regression suite. Click one to load its setup and run it.">Debugging presets</span>
+      <span class="pchips" id="golden-chips"></span>
+    </div>
     <div class="preset-strip" id="preset-strip">
       <span class="pslab">Boss presets</span>
       <span class="pchips" id="preset-chips"></span>
@@ -3079,13 +3087,89 @@ el("preset-save").addEventListener("click", () => {
 });
 el("preset-name").addEventListener("keydown", e => { if (e.key === "Enter") { e.preventDefault(); el("preset-save").click(); } });
 
+/* ═══════════════ debugging presets (baked-in, = the exact-match suite) ═══════════════ */
+// A preset carries ONLY a fight's INPUT setup (length, Lust pin, phases, gear, kit) —
+// never a precomputed plan. Clicking one loads the setup and then runs the real optimizer,
+// so the schedule you see is freshly CALCULATED by the rules; it should reproduce the
+// frozen golden exactly. This same list is the single source of truth for the regression
+// suite: tests/exact-match.mjs reads window.GOLDEN_PRESETS. A confirmed preset IS the test.
+// Times are in seconds.
+const GOLDEN_DEFAULTS = {
+  gear: { sp: 1387, crit: 38, haste: 0, coldSnap: true },
+  kit: ["icyVeins", "isc", "scb", "arcanePower", "berserking", "bloodlust"],
+};
+const GOLDEN_PRESETS = [
+  { name: "1:40 lust 0:05", T: 100, pins: { bloodlust: [5] } },
+  { name: "2:00 lust 0:05", T: 120, pins: { bloodlust: [5] } },
+  { name: "2:20 lust 0:05", T: 140, pins: { bloodlust: [5] } },
+  { name: "2:40 lust 0:05", T: 160, pins: { bloodlust: [5] } },
+  { name: "2:40 lust 0:07", T: 160, pins: { bloodlust: [7] } },
+  { name: "2:40 lust 0:07 intermission 1:30-2:10", T: 160, pins: { bloodlust: [7] }, intermission: [90, 130] },
+  { name: "3:20 lust 0:05", T: 200, pins: { bloodlust: [5] } },
+  { name: "4:00 lust 0:05", T: 240, pins: { bloodlust: [5] } },
+  { name: "5:00 lust 0:05", T: 300, pins: { bloodlust: [5] } },
+  { name: "5:40 lust 0:05", T: 340, pins: { bloodlust: [5] } },
+  { name: "7:20 lust 0:05", T: 440, pins: { bloodlust: [5] } },
+  { name: "KaelThas 6:00 lust 4:20", T: 360, pins: { bloodlust: [260] } },
+  { name: "Vashj 5:45 lust 4:20", T: 345, pins: { bloodlust: [260] } },
+  { name: "2:40 lust 0:07 @150 haste rating", T: 160, gear: { sp: 1387, crit: 38, haste: 150, coldSnap: true }, pins: { bloodlust: [7] } },
+  { name: "4:00 multi-intermission lust 0:06", T: 240, pins: { bloodlust: [6] }, phases: [
+    { type: "intermission", from: 65, to: 69 },
+    { type: "intermission", from: 95, to: 112 },
+    { type: "intermission", from: 154, to: 166 },
+    { type: "intermission", from: 208, to: 229 },
+  ] },
+];
+window.GOLDEN_PRESETS = GOLDEN_PRESETS;
+window.GOLDEN_DEFAULTS = GOLDEN_DEFAULTS;
+// Convert a preset's raw setup into the UI's applyState() shape (m:ss strings, buff toggles).
+function goldenToState(p) {
+  const g = { ...GOLDEN_DEFAULTS.gear, ...(p.gear || {}) };
+  const kit = p.kit || GOLDEN_DEFAULTS.kit;
+  const enabled = {};
+  for (const k in BUFFS) enabled[k] = kit.includes(k);
+  const times = {};
+  for (const [k, arr] of Object.entries(p.pins || {})) times[k] = arr.map(fmtT).join(", ");
+  const rawPhases = p.phases || (p.intermission ? [{ type: "intermission", from: p.intermission[0], to: p.intermission[1] }] : []);
+  const phases = rawPhases.map(x => ({ type: x.type, from: fmtT(x.from), to: fmtT(x.to), mult: x.mult || 2, targets: x.targets || 4 }));
+  return {
+    enabled, coldSnap: g.coldSnap !== false, times,
+    complicated: phases.length > 0, phases,
+    haste: String(g.haste || 0), len: fmtT(p.T), sp: String(g.sp), crit: String(g.crit),
+  };
+}
+function clearGoldenActive() {
+  document.querySelectorAll("#golden-chips .gchip.active").forEach(c => c.classList.remove("active"));
+}
+function renderGoldenPresets() {
+  const host = el("golden-chips");
+  if (!host) return;
+  host.innerHTML = GOLDEN_PRESETS.map((p, i) =>
+    `<span class="pchip gchip" data-i="${i}" role="button" tabindex="0" title="Load this setup and run the optimizer — ${esc(p.name)}">${esc(p.name)}</span>`
+  ).join("");
+  host.querySelectorAll(".gchip").forEach(chip => {
+    const load = () => {
+      applyState(goldenToState(GOLDEN_PRESETS[+chip.dataset.i])); // load inputs only
+      refreshPresets("");                                         // clear any active user preset
+      clearGoldenActive();
+      chip.classList.add("active");
+      el("btn-run").click();                                      // ← the tool computes the plan live
+      el("results").scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    chip.addEventListener("click", load);
+    chip.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); load(); } });
+  });
+}
+
 ["input", "change"].forEach(ev => el("setup").addEventListener(ev, e => {
   if (e.target.id === "preset-name") { updateSaveUI(); return; }
+  if (!applyingPreset) clearGoldenActive();
   markPresetDirty();
 }, true));
 buildBuffList();
 el("in-haste").dispatchEvent(new Event("input"));
 refreshPresets("");
+renderGoldenPresets();
 </script>
 </body>
 </html>

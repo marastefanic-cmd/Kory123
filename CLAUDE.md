@@ -28,9 +28,12 @@ The planner must be trustworthy before it can drive (2) and (3).
 ```
 cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs
 ```
-Loads the real `index.html` headless, runs every `cases.json` fight through the actual optimizer,
-compares the copy-as-text plan to `golden.json`. `--update` regenerates goldens (do this ONLY after
-an intentional change, and only when each changed plan sim-verifies ≥ the old — see `docs/TOOLING.md`).
+Loads the real `index.html` headless, reads the fight table from the page (`window.GOLDEN_PRESETS` —
+the same **Debugging presets** the tool shows), runs every one through the actual optimizer, compares
+the copy-as-text plan to `golden.json`. `--update` regenerates goldens (do this ONLY after an
+intentional change, and only when each changed plan sim-verifies ≥ the old — see `docs/TOOLING.md`).
+The preset list is defined once in `index.html` (`GOLDEN_PRESETS`) and drives both the UI and the
+suite, so a preset you confirm in the tool **is** the locked test.
 
 ## `index.html` at a glance
 
