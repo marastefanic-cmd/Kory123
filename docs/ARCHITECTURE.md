@@ -46,7 +46,13 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   ~1215–1280) · Pass 2 damage/SP cluster move (~1286–1401) · Pass 3 ±8 ensemble (~1406–1462) · macro
   snap · legibility merges (has a hard `nulled` veto ~1598) · downtime slide to `seg.end` (~1610).
 - **Finishing passes:** wasted-haste relocation (~1719–1752, evicts a marginal-≤`castVal*0.1` haste
-  use — the "Berserking-in-Lust eviction") · ramp-hold (~1753) · earliest-on-ties (~1786, hard
+  use — the "Berserking-in-Lust eviction") · **ramp-hold / "Let the stacks build" (~1766)** — slides a
+  damage/SP press stuck on the opener or a post-intermission-exit ramp out to `rampStart+5` on a model
+  tie (RULES §9). Now includes a **coherent-cluster carry**: when that slide forces a *later* same-track
+  use past its cooldown, it shifts that use's whole co-pressed damage/SP cluster together (icon+gem+AP
+  move; the burst's haste like IV stays put) so the terminal burst doesn't split — this is what lets
+  Vashj emit the sim-verified **4:05 / 6:05** layout (before, `repair()` orphaned gem/AP and the model
+  rejected the split). · earliest-on-ties (~1786, hard
   `nulled` veto ~1816) · snap-to-pinned (~1832) · **overlap-alignment for damage/SP** (~1861–1904,
   slides a spellpower/damage press forward onto a staggered damage cluster) · **sequential window-
   packing** (~1913, see below) · **`coPressAlign`** → **`spreadLoneHaste`** → **`dodgeDowntime`** (final

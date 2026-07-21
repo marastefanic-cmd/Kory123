@@ -56,7 +56,10 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
   intermission goldens were badly under-executed and recovered **+18..+26** (4:00-multi/KT/Vashj); the
   Vashj 4-icon plan is vindicated on the fixed engine. Exact-match still 16/16 (model untouched).
   **Also found: AP's real cd is 195s, not 180** (`arcane_power.go` starts the cd on buff-expire) — a
-  model↔sim mismatch (see PLAN Follow-up A). Docs are the
+  model↔sim mismatch (see PLAN Follow-up A). **And W2a LANDED:** a coherent-cluster carry in the "Let the
+  stacks build" pass now emits the ramp-aware **4:05 / 6:05** Vashj layout (icon@4:05, terminal
+  icon+gem+AP@6:05, IV@6:00 stays); only Vashj moved, sim-gated new ≥ old on the fixed engine (+0.8 var0
+  / +0.3 var10). So the post-ramp-exit shift (RULES §9, long "not implemented") is now real. Docs are the
   authoritative record; `index.html`/`genapl.mjs` unchanged, goldens still 16/16.
 - Recent landed work: cast-rate-integral scorer; timeline redesign; spellpower-overlap forward-slide;
   **known-kill planning** (half-cast kill window); **full docs set** so `/clear` is safe;

@@ -38,18 +38,23 @@ snapshot at cast completion (between casts).
   is vindicated (4-icon > 3-icon). Spot-check KT / 4:00-multi plans vs their documented alternatives on
   the fixed rig to confirm they're still *best* (plans are unchanged — exact-match green either way).
 
-## W2 — Ramp-aware SP-buff shift (245/365) — CONFIRMED but sequence AFTER Follow-up A
-The 4:05/6:05 shift is real on the fixed engine but **small: +0.8 var0 / +0.3 var10** (stable across far
-seeds). Because the model's intermission scoring is only trustworthy AFTER Follow-up A (AP-cd fixed,
-baselines re-gated), and because generic ramp/SP-concentration tie-breaks have over-fired and been
-reverted twice (ROADMAP), build W2a on the corrected foundation, not before it.
-- **2a — coherent-candidate tie-break.** The "Let the stacks build" pass (`index.html` ~1777) already
-  slides icon@240→245 on a model tie, but `repair()` then cd-pushes the terminal icon@360→365 while gem
-  stays at 360 — a split cluster the kill-aware model rejects. Fix: carry the terminal use's co-pressed
-  damage/SP cluster (gem) with it so 6:05 stays coherent; accept only when the shifted window still
-  clears the next intermission. Sim-gate on the fixed rig; only Vashj should move; re-lock it to 245/365.
-- **2b — deterministic ramp in the scorer** — only if 2a insufficient; haste-decoupled to avoid the
-  reverted phantom-opener incentive (`2c0387d`). Defer unless needed.
+## W2 — Ramp-aware SP-buff shift (245/365) — 2a DONE
+- **2a — coherent-cluster carry — LANDED.** The "Let the stacks build" pass (`index.html` ~1766) now,
+  when sliding a damage/SP press off a ramp forces a later same-track use past its cooldown, carries that
+  use's whole co-pressed damage/SP cluster with it (icon+gem+AP together; the burst's haste like IV@6:00
+  stays put). Vashj now emits **4:05 / 6:05**; **only Vashj moves** (other 15 byte-identical), sim-gated
+  new ≥ old on the FIXED engine (+0.8 var0 / +0.3 var10, stable across far seeds), golden re-locked.
+  Model stays deterministic and ramp-blind — this is a pure model-tie nudge, no scorer change, no phantom.
+- **2b — deterministic ramp in the scorer** — NOT needed (2a suffices for the known case). If a future
+  case needs it: haste-decoupled ramp deficit to avoid the reverted phantom-opener incentive (`2c0387d`).
+
+## Still open (not blocking)
+- **AP-cd** (Follow-up A above): the sim's 195s vs the model's 180s — needs a definitive TBC source; low
+  golden impact. Note the Vashj 6:05 cluster includes AP@365, which the sim doesn't actually fire (AP's
+  195s cd → only 0/196 fire); it's moot (AP@360 didn't fire either), a common factor — but if AP-cd is
+  ever set to 195 in the model, re-check that the model still wants the cluster at 365.
+- **Re-gate the other intermission goldens** (KT / 4:00-multi) on the fixed engine vs their alternatives
+  (plans validated no-regression; not yet checked for *optimality* on the fixed rig).
 
 ## Verification / constraints
 - Fixed harness fires every planned cooldown use (no drops), buffs between casts; exact-match 16/16.

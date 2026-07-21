@@ -1789,6 +1789,35 @@ function optimizeAsync(cfg, starts, onProgress) {
               cand[key].sort((a, b) => a - b);
             }
             if (!moved) continue;
+            // Coherent-cluster carry (RULES §9 post-ramp-exit shift). Sliding a damage/SP press off the
+            // ramp can push a LATER same-track use past its cooldown (e.g. icon@240→245 forces the next
+            // icon 360→365). Carry that use's whole CO-PRESSED damage/SP cluster with it so the terminal
+            // burst stays coherent (icon+gem+AP move together; the burst's haste, e.g. IV@360, stays put
+            // — it doesn't ramp). Without this, repair() would move only the cooldown-bound icon and
+            // orphan gem/AP, a split the kill-aware model scores worse and rejects — which is why the
+            // real +0.6–0.8 Vashj 4:05/6:05 shift never emerged. Resolve conflicts forward to a fixpoint.
+            {
+              const isSP = k => !cfg.fixed[k] && cand[k] && (BUFFS[k].kind === "sp" || BUFFS[k].kind === "dmg");
+              const spKeys = Object.keys(cand).filter(isSP);
+              let changed = true, guard = 0;
+              while (changed && guard++ < 24) {
+                changed = false;
+                for (const key of spKeys) {
+                  const u = cand[key];
+                  for (let i = 0; i + 1 < u.length; i++) {
+                    const need = u[i] + BUFFS[key].cd;
+                    if (u[i + 1] < need - 1e-9) {
+                      const from = u[i + 1];
+                      for (const k2 of spKeys) {
+                        cand[k2] = cand[k2].map(t => (Math.abs(t - from) < 1e-6 ? need : t));
+                        cand[k2].sort((a, b) => a - b);
+                      }
+                      changed = true;
+                    }
+                  }
+                }
+              }
+            }
             const rep = repair(cand, cfg);
             const r0 = simulate(s, cfg), r1 = simulate(rep, cfg);
             if (r1.robust >= r0.robust - 0.5 && r1.totalEarly >= r0.totalEarly - 0.5 && clipOf(rep) <= clipOf(s) + 1e-9) {
