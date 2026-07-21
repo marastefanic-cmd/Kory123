@@ -34,19 +34,29 @@ modeled as steady-state 3 stacks; modeling it explicitly was tried and made thin
 **Pack every buff into the Lust/damage window: spellpower (Icon, gem), Arcane Power, and haste — the
 haste buffs SEQUENTIALLY so they don't overcap the floor.** Where Lust sits on the timeline is
 irrelevant by itself; what matters is total buff-seconds landing on the fast, damage-buffed casts.
-- 2:15 fight (Lust @0:25): IV@0:25 + Berserking@0:45 (both inside the 40s Lust, sequential) beats
-  IV-parked-outside by **+47 DPS**.
-- KaelThas 6:00 (Lust @4:20): IV@4:20–4:40 **then** Berserking@4:41–4:51 (both in Lust) beats the old
-  "Berserking-in-Lust, IV out @3:20" by **+8.5 DPS**.
-- Swapping *which single* haste buff is in Lust is a wash (KaelThas IV-in-lust-alone = −0.7). The win
-  is getting the **second** haste buff in too — sequentially, because a haste buff *overlapping* the
-  already-floored IV window is worth exactly 0.
+- Late-Lust fights (Lust @4:20, 0 gear): pull the 3rd IV **onto** Lust @4:20 (floors the window so the
+  damage cluster rides its fastest casts) **then** Berserking @4:40 on the unfloored Lust tail. Beats
+  the old "Berserking-in-Lust, IV parked outside" layout by **+8.5 DPS** on the 6:00 test fight and
+  **+13.9 (var0) / +5.7 (var10) DPS** on the 5:45 test fight (wowsims, 150–250k iters, seeds 11/19,
+  collision-offset; both stable var0↔var10). These two plain fights are the locked packing regression.
+- Swapping *which single* haste buff is in Lust is a wash (IV-in-lust-alone ≈ −0.7). The win is getting
+  the **second** haste buff in too — sequentially, because a haste buff *overlapping* the already-
+  floored IV window is worth exactly 0 (verified: Berserking @4:20 **on top of** IV @4:20 = wash/loss).
+- **Implemented** (the search fix): a sequential window-packing move in `optimizeAsync` (runs last so
+  no later pass re-floors the sequenced tail buff) assembles the packed burst at each haste raid-call —
+  damage cluster on the window start, haste buffs on sequential slots (biggest-haste-first at the
+  anchor, the next at anchor+dur). See `docs/ARCHITECTURE.md`.
 - **Align-vs-twice breakpoint:** only pull a cooldown into Lust if it doesn't cost that cooldown its
   **second use**. If aligning would drop a use, keep the two uses instead — but *only* when the
-  sim says two-unaligned > one-aligned. This breakpoint should be pinned by sim per fight, not
-  assumed. (Model caveat: the model ranks the fully-packed layout highest — a **search** problem to
-  reach it — but mis-ranks the *partial* pack, IV-in-lust-alone, above "IV out"; so any packing logic
-  must produce the FULL pack, not stop half-way.)
+  sim says two-unaligned > one-aligned. The packing move enforces this automatically via `sameCounts`
+  (a pack that would drop a use is rejected). (Model caveat: the model ranks the fully-packed layout
+  highest — a **search** problem to reach it — but mis-ranks the *partial* pack, IV-in-lust-alone,
+  above "IV out"; so any packing logic must produce the FULL pack, not stop half-way.)
+- **Known limitation — far-Lust with a bare window (e.g. 2:15, Lust @0:25).** When *nothing* sits on a
+  late-early Lust, packing the burst onto it forces Icon's cooldown-second past the kill, so `sameCounts`
+  blocks the whole move and the plan stays burst-at-pull (sim ≈ **−34 to −50 DPS** vs packed). Reaching
+  it needs a *damage-use-sacrifice* pack (drop Icon's 2nd use to align the 1st onto Lust) — a more
+  aggressive move than the haste-only packing above. Not yet implemented.
 
 ## 5. Icy Veins slides out of Lust as haste gear grows
 

@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — `index.html` internals
 
-One self-contained file (~3091 lines): a DOM-free JS **engine** (through ~line 819), the
+One self-contained file (~3268 lines): a DOM-free JS **engine** (through ~line 819), the
 **optimizer**, then the **DOM/UI**. Line numbers drift as the file is edited — treat them as
 signposts, re-grep if they're off. Everything below is in `index.html` unless noted.
 
@@ -48,17 +48,23 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
 - **Finishing passes:** wasted-haste relocation (~1719–1752, evicts a marginal-≤`castVal*0.1` haste
   use — the "Berserking-in-Lust eviction") · ramp-hold (~1753) · earliest-on-ties (~1786, hard
   `nulled` veto ~1816) · snap-to-pinned (~1832) · **overlap-alignment for damage/SP** (~1861–1904,
-  slides a spellpower/damage press forward onto a staggered damage cluster) · squeak note ·
-  Cold-Snap materiality recursion (~1915).
-- **Known blockers to sequential haste-packing** (the current top optimizer task): no joint
-  "pull A onto burst while re-homing B" move; the eviction + `nulled` vetoes actively undo a packed
-  second haste buff; the packed win is sub-cast so tie-breaks can trade it away. See
-  `docs/ROADMAP.md`.
+  slides a spellpower/damage press forward onto a staggered damage cluster) · **sequential window-
+  packing** (~1913, see below) · squeak note · Cold-Snap materiality recursion (~1998).
+- **Sequential window-packing** (~1913, the RULES §4 move — LANDED). Runs as the last structural pass
+  (nothing after it can re-floor the sequenced tail buff, so no defensive rework of the eviction /
+  `nulled` vetoes was needed). For each raid-called **haste** buff (kind `mult`/`rating` — a damage/
+  burn anchor doesn't floor, so it's skipped), it assembles the packed burst at the anchor `A`: the
+  damage cluster's nearest use → `A`, and the planner haste buffs on **sequential slots** (sorted
+  biggest-haste-first: lead at `A`, next at `A+lead.dur`, …, capped by the anchor buff's duration). It
+  sweeps *which use* of the lead haste buff lands on `A` (front-load a fresh use vs bank one). Kept only
+  on a strict robust gain with `sameCounts` + no worse `clipOf` — so a pack that would cost a use, or
+  that doesn't gain (high-gear "IV slides out", RULES §5), is rejected. This is the joint "pull A onto
+  the burst while re-homing B" move the local ±45–90 passes lacked.
 
 ## Phases & rendering
-- `buildSegments(rows, T)` (~1932): turns phase rows into `{start,end,type,mult,targets}` segments;
+- `buildSegments(rows, T)` (~2063): turns phase rows into `{start,end,type,mult,targets}` segments;
   types `normal | intermission | burn | aoe`. Consumed by `simulate` and the renderer.
-- `renderTimeline(run)` (~2314): one inline SVG (fluid `width:100%`, no page horizontal scroll) —
+- `renderTimeline(run)` (~2445): one inline SVG (fluid `width:100%`, no page horizontal scroll) —
   haste step-curve + area fill, dashed GCD-cap line, phase bands (intermission hatched, AoE/burn
   tinted with ×N badges), buff-uptime lanes with press ticks. `scheduleRows`/`renderSchedule` build
   the window table; `btn-copy` emits the canonical copy-as-text plan the tests compare.

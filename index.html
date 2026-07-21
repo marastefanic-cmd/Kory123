@@ -1910,6 +1910,81 @@ function optimizeAsync(cfg, starts, onProgress) {
           }
           if (!opMoved) break;
         }
+        // ——— Sequential window-packing (RULES §4 — the central alignment move).
+        // The per-index local passes never ASSEMBLE a fully-packed burst on a
+        // raid-haste window: no single move pulls the damage cluster AND both
+        // haste buffs onto it at once. Here, at each raid-called HASTE buff
+        // (Lust/Drums/PI…), build the packed burst — the damage cluster on the
+        // window start, and the haste buffs laid SEQUENTIALLY (biggest haste
+        // first, so it floors the window and the damage buffs ride its fastest
+        // casts; the next on the buff's unfloored tail) so no second haste buff
+        // overcaps the GCD floor: haste stacked on an already-floored window is
+        // worth 0 (MECHANICS §5.1) and overlapping the two is a wash-to-loss
+        // (RULES §7). A damage/burn anchor does NOT floor, so its haste buffs
+        // prefer to overlap — those are left to the local passes. Every candidate
+        // is repaired and kept only on a STRICT robust gain with sameCounts, so
+        // packing that would cost a cooldown its 2nd use fails automatically (the
+        // align-vs-twice breakpoint, RULES §4), and where gear haste already nears
+        // the floor the pack simply doesn't gain and IV stays out (RULES §5).
+        // Runs last so no later pass re-floors the sequenced tail buff.
+        {
+          const hasteMag = k => BUFFS[k].kind === "mult" ? BUFFS[k].value : 1 + BUFFS[k].value / (GAME.HASTE_RATING_PER_PCT * 100);
+          const hasteKeys = [], dmgKeys = [];
+          for (const key in s) {
+            if (cfg.fixed[key]) continue;
+            const kd = BUFFS[key].kind;
+            if (kd === "mult" || kd === "rating") hasteKeys.push(key);
+            else if (kd === "dmg" || kd === "sp") dmgKeys.push(key);
+          }
+          hasteKeys.sort((a, b) => hasteMag(b) - hasteMag(a)); // flooring buff leads
+          const hasteAnchors = [];
+          for (const k in cfg.fixed) {
+            const kd = BUFFS[k].kind;
+            if (kd !== "mult" && kd !== "rating") continue; // only a HASTE raid-call floors the window
+            for (const t of cfg.fixed[k]) hasteAnchors.push({ at: Math.round(t), win: BUFFS[k].dur });
+          }
+          for (const { at: A, win } of hasteAnchors) {
+            if (!hasteKeys.length || A > cfg.T - 1) continue;
+            // sequential slots inside the window; drop a haste buff whose slot
+            // would fall past the window (it would just floor dead casts)
+            const slots = [];
+            let off = 0;
+            for (const hk of hasteKeys) {
+              if (slots.length && off + 1e-9 >= win) break;
+              slots.push({ key: hk, at: A + off });
+              off += BUFFS[hk].dur;
+            }
+            const lead = slots[0].key;
+            const base = cloneS(s);
+            let bestRep = null, bestRob = simulate(base, cfg).robust;
+            // sweep which USE of the leading haste buff lands on the window (front-
+            // load a fresh use vs bank one); nearest use for the damage cluster
+            // and the tail haste buffs
+            for (let li = 0; li < Math.max(1, base[lead].length); li++) {
+              const cand = cloneS(base);
+              for (const dk of dmgKeys) {
+                if (!cand[dk].length) continue;
+                let bi = 0, bd = Infinity;
+                cand[dk].forEach((t, j) => { const d = Math.abs(t - A); if (d < bd) { bd = d; bi = j; } });
+                cand[dk][bi] = A; cand[dk].sort((a, b) => a - b);
+              }
+              for (let si = 0; si < slots.length; si++) {
+                const sl = slots[si];
+                if (!cand[sl.key].length) continue;
+                let bi = 0, bd = Infinity;
+                if (si === 0) bi = Math.min(li, cand[sl.key].length - 1);
+                else cand[sl.key].forEach((t, j) => { const d = Math.abs(t - sl.at); if (d < bd) { bd = d; bi = j; } });
+                cand[sl.key][bi] = sl.at; cand[sl.key].sort((a, b) => a - b);
+              }
+              const rep = repair(cand, cfg);
+              if (!sameCounts(counts(base), counts(rep))) continue;
+              if (clipOf(rep) > clipOf(base) + 1e-9) continue;
+              const rr = simulate(rep, cfg);
+              if (rr.robust > bestRob + 0.5) { bestRob = rr.robust; bestRep = rep; }
+            }
+            if (bestRep) { s = bestRep; val = Math.max(val, bestRob); }
+          }
+        }
         best = { s, val };
         // a razor-timed variant may sim higher at EXACTLY the entered kill by
         // squeezing one last cast under the wire; the planner keeps the

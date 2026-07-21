@@ -4,9 +4,10 @@
 
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
-2. **Next task = "Current top task" below: sequential buff-into-Lust packing (a search fix).** After
-   that, Part 2 (intermission invariant), then Part 4 (re-verify + lock goldens, add the 2:15 fight).
-3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 15/15).
+2. **Next task = "Current top task" below.** Sequential buff-into-Lust packing **LANDED** (see Done);
+   the open front is now the **Icon-count / SP-alignment** call (sim-proven, below) and the
+   intermission invariant.
+3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 16/16).
 4. The sim harness (`runner` binary, gear export, `wowsims/tbc-new` source) persists in the session
    **scratchpad** and survives `/clear` *within the same session* — check it's there before rebuilding
    (`docs/TOOLING.md`); only a brand-new session needs a rebuild. Sim-gate every golden that moves.
@@ -27,43 +28,48 @@
 
 ## Status (as of the current work)
 
-- Planner is deterministic, ~0.4%-accurate, with **15 sim-verified golden regression cases** (green).
-- Recent landed work: cast-rate-integral scorer; timeline redesign (fluid, distinct phase bands,
-  GCD-cap label, area-fill haste curve); spellpower-overlap forward-slide (Icon onto a staggered AP
-  cluster); **known-kill planning** (kill window dropped to a half-cast — terminal bursts end at the
-  kill; the player reacts to early deaths live); **full docs set** (MECHANICS/RULES/ARCHITECTURE/
-  TOOLING/SOURCES/ROADMAP) so `/clear` is safe; **Debugging-presets UI** — every golden is a one-click
-  preset that loads the setup and **computes** the plan live, driven off the single `GOLDEN_PRESETS`
-  table in `index.html` that also feeds the exact-match suite (no more `cases.json`).
+- Planner is deterministic, ~0.4%-accurate, with **16 sim-verified golden regression cases** (green).
+- Recent landed work: cast-rate-integral scorer; timeline redesign; spellpower-overlap forward-slide;
+  **known-kill planning** (half-cast kill window); **full docs set** so `/clear` is safe;
+  **Debugging-presets UI** (every golden is a live-computed preset off the single `GOLDEN_PRESETS`
+  table that also feeds the exact-match suite); **sequential buff-into-Lust packing** (below).
+- **Golden set recurated** (this session, user-directed): the two mislabeled plain late-Lust fights are
+  now neutral `6:00 lust 4:20` / `5:45 lust 4:20` (kept as clean phase-free packing regressions); the
+  **real** encounters were added — `KaelThas 7:00 lust 4:20` (early intermissions + a 6-target AoE +
+  a post-Lust intermission) and `Vashj 6:30 lust 5:45` (six intermissions); the `2:40 @150 haste`
+  case was **removed** (the IV-slides-out breakpoint isn't pinned yet — don't lock it).
 
-## Current top task — buff-into-Lust sequential packing (a SEARCH fix)
+## Current top task — Icon-count / SP-alignment (a SEARCH fix, sim-proven)
 
-The rule (`docs/RULES.md` §4): pack every buff into the Lust/damage window; haste buffs
-**sequentially** (IV then Berserking after IV ends, both inside Lust) so they don't overcap the floor.
-Sim-verified: 2:15 **+47 DPS**, KaelThas **+8.5 DPS** over the current output. The model already ranks
-the fully-packed layout **highest** — the optimizer just never *generates* it (no cross-key joint
-"pull A onto the burst while re-homing B" move; `polish`/Pass-1 are local ±45–90).
-
-Fix shape (planned): add ONE window-packing move that, per burst, pulls each available haste buff onto
-the window in sequence and re-homes the displaced one, accepted on a strict robust gain with
-`sameCounts` (this auto-enforces the align-vs-twice breakpoint — packing that would cost a 2nd use
-fails `sameCounts`). Then **defend** it: make the eviction pass (~1719) and the `nulled` vetoes
-(~1598, ~1816) window-aware so an efficiently-packed haste buff isn't treated as "dead" (the packed
-win is sub-cast in the model's `QTOL` currency, so aesthetics can otherwise trade it away). Prefer to
-**consolidate** redundant passes rather than stack another. Validate: 2:15 → IV@0:25 + Berserking@0:45;
-KaelThas → both-in-Lust; every changed golden sims ≥ old; the −0.7 "swap-only" trap does not reappear.
+The planner presses Icon on **cooldown** (max uptime), but a spellpower buff wants the **fast** casts
+(RULES §3): fewer icons all on haste windows can beat more icons half on no-haste casts. **Sim-proven
+on Vashj 6:30:** 3 icons @ 0:00/3:00/6:00 (each on an IV window) beats the planner's 4 icons @
+0:00/2:00/4:00/6:00 by **+5.4 DPS** (wowsims 250k, var0 **and** var10, seeds 11/19 identical, intermissions
+modeled). So the current `Vashj 6:30` golden is locked at a **known-suboptimal** 4-icon plan — fix the
+planner to prefer the aligned-fewer layout, then re-lock (sim-gate). Open: does the *model* already rank
+3>4 (a pure search miss) or does it over-credit the extra SP-seconds (a valuation fix, riskier)? Check
+`simulate().robust` of both before choosing the approach.
 
 ## Also planned
 
+- **Far-Lust damage-use-sacrifice pack** (RULES §4 known limitation): when nothing sits on a late-early
+  Lust (e.g. 2:15 @0:25), packing the burst on costs Icon its cd-second, so `sameCounts` blocks it and
+  the plan stays burst-at-pull (**−34 to −50 DPS** vs packed). Needs a pack variant that *drops* a
+  damage-buff use to align the first onto Lust. Add 2:15 as a golden once it lands.
 - **Coherent intermission/AoE handling** (`RULES.md` §9): enforce "no buff window begins in downtime"
-  as an invariant (in `repair`) + make tie-break passes downtime-aware. Symptom to fix: a 2nd
-  (Cold-Snap) IV landing 1s inside an intermission (1:19) instead of the clean post-ramp burst (1:40).
-- Add the **2:15** fight as a golden once packing lands; re-verify KaelThas/Vashj/2:15-family goldens
-  (they'll legitimately change — better, sim-proven). Adding it = one entry in `GOLDEN_PRESETS`.
+  as an invariant (in `repair`) + make tie-break passes downtime-aware.
 
-**Done:** ~~Boss-preset UI = the golden set~~ — landed. The `GOLDEN_PRESETS` table in `index.html`
-drives both the "Debugging presets" strip and the exact-match suite; clicking a preset computes the
-plan live and reproduces the golden. New fights are added by editing that one array.
+**Done — sequential buff-into-Lust packing (the SEARCH fix).** A window-packing move in `optimizeAsync`
+(last structural pass, ~1913) assembles the packed burst at each haste raid-call: damage cluster on the
+window, haste buffs on sequential slots (IV @anchor, Berserking @anchor+20), sweeping which IV use lands
+on the anchor; kept only on a strict robust gain with `sameCounts`. Fixed `6:00 lust 4:20` (**+8.5 DPS**)
+and `5:45 lust 4:20` (**+13.9 var0 / +5.7 var10**), both sim-gated and re-locked; the 12 early-Lust
+goldens and the two real boss fights were **untouched** (their bursts were already on Lust). Placing it
+last meant no defensive rework of the eviction / `nulled` vetoes was needed (nothing runs after to undo
+it). See `docs/ARCHITECTURE.md` and RULES §4.
+
+**Done:** ~~Boss-preset UI = the golden set~~ — landed. `GOLDEN_PRESETS` drives both the UI strip and the
+exact-match suite; new fights are added by editing that one array.
 
 ## Golden-review findings (from the preset walkthrough — sim-verified)
 

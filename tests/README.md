@@ -47,12 +47,27 @@ click in the tool" and "what this suite locks" are literally one array — a pre
 you confirm in the UI **is** the test. To add or change a case, edit
 `GOLDEN_PRESETS` in `index.html`.
 
-Each entry is `{ name, T, pins }`, optionally with `gear`/`kit` overrides (e.g. the
-`@150 haste rating` case), an `intermission: [from, to]`, or a full
-`phases: [{type,from,to}]` list. `pins` are the fixed raid-call times in seconds
-(Bloodlust / Drums / PI). A preset carries only the **input setup** — clicking it
-loads those inputs and the tool computes the plan live; the golden is just the
-frozen output that live result must reproduce.
+Each entry is `{ name, T, pins }`, optionally with `gear`/`kit` overrides, an
+`intermission: [from, to]`, or a full `phases: [{type,from,to,targets}]` list (e.g.
+the real `KaelThas 7:00` fight — early intermissions, a 6-target AoE window, a
+post-Lust intermission). `pins` are the fixed raid-call times in seconds (Bloodlust
+/ Drums / PI). A preset carries only the **input setup** — clicking it loads those
+inputs and the tool computes the plan live; the golden is just the frozen output
+that live result must reproduce.
+
+## Ad-hoc probes (not tests)
+
+Two throwaway scopes drive the optimizer on *arbitrary* configs (not just the
+locked presets), for eyeballing a plan before deciding to lock it:
+
+```
+node plan.mjs  '[{"name":"…","T":135,"pins":{"bloodlust":[25]}}]'   # canonical copy-as-text plan
+node probe.mjs '[{"name":"…","T":135,"pins":{"bloodlust":[25]}}]'   # raw per-key press-time arrays + robust/total
+```
+
+Same case shape as `GOLDEN_PRESETS`. Use `plan.mjs` to check a plan reproduces
+before adding a preset; `probe.mjs` to read the raw schedule when building a
+wowsims APL to sim-verify a change.
 
 The canonical each case is compared on is the **Copy-as-text plan** — the setup
 header plus the windows with per-press times and Cold Snap markers — minus the
