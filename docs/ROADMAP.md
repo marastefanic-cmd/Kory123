@@ -133,16 +133,23 @@ exact-match suite; new fights are added by editing that one array.
   Lust — classic RULES §4 sequential packing, which the packing pass currently can't reach because it
   won't spend the free Cold Snap to decouple the terminal-constrained IV1. **Real optimizer gap** (see
   the consistency workstream below); the golden should change once the packer learns free-CS sequencing.
-- **DPS-neutral placement consistency (the "start-time overlap" issue the user named).** The optimizer
-  scores/tie-breaks overlays by *start-time coincidence*, not *duration-overlap*, so among DPS-EQUAL
-  placements it doesn't reliably slide a buff to the clean/tight/earliest second. Confirmed neutral:
-  4:00 Window 4 damage cluster at **3:20 vs 3:25 is an exact tie** (2693.2 = 2693.2 var10; 2698.1 ≈
-  2698.0 var0) — a 20s Icon over a 40s IV+CS→IV span is the same wherever it starts inside it. (A
-  further "IV2@3:05 / CS→IV@4:05, rest stays" note is the same class; fight not yet pinned to a preset.)
-  These are legibility/consistency, not DPS — but they matter for *trustworthy, repeatable* output.
-  **Fix as ONE coherent workstream** with the 3:20 gap above: teach placement to (a) use free CS to
-  sequence the opener when it gains, and (b) among ties, slide a buff within its same-quality haste
-  window to the consistent anchor/earliest second. NOT per-golden patches — generalisation is the goal.
+- **Overlap is CONTAINMENT, not start-coincidence (the "bigger issue" the user named — the fix spec).**
+  The optimizer scores/tie-breaks overlays by *start-time coincidence*, but two buffs fully overlap
+  whenever the shorter's window is **contained** in the longer's — which holds for a whole RANGE of
+  starts, not one second. A 10s buff fully overlaps a 15s buff for any start in a 5s window (longerStart
+  … longerStart+5); all those placements are one **equivalence class**, and the planner should pick the
+  consistent member (natural-cd tick / earliest / on the burst) instead of an arbitrary one. With 3+
+  buffs of differing durations the contained region shrinks to the **intersection** of the constraints,
+  but "duration is a factor; alignment ≠ same start-second" still holds. This is the generalisable rule
+  to implement (a consequence of the cast-rate integral: joint value depends on window *intersection*,
+  not start times — belongs in MECHANICS/RULES once coded).
+  - Confirmed cases (all wowsims, paired, var10): 4:00 W4 cluster 3:20 vs 3:25 = **exact tie**
+    (2693.2 = 2693.2); 5:00 IV2 banked-to-4:05 vs natural-3:05+CS→IV@4:05 = **+2.4** (2627.5 vs 2625.1)
+    — banking IVs back-to-back at the terminal is neutral-to-slightly-worse than spreading to cd ticks.
+  **Fix as ONE coherent placement workstream** with the 3:20 free-CS-sequencing gap above: teach the
+  planner to (a) treat containment-equivalent placements as ties and pick the consistent one, (b) spend
+  a free Cold Snap to sequence/spread IVs when it gains or is neutral, (c) sequence opener haste into
+  Lust instead of stacking it over the floor. NOT per-golden patches — generalisation is the whole goal.
 
 ## Open questions / known limitations
 
