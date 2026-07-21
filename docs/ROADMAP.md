@@ -86,11 +86,16 @@ cast-counting. Do **not** re-open this as an optimizer task.
 - **Real, minor, NOT-yet-actionable refinement (separate from the artifact; user-confirmed as the ideal).**
   There *is* a small true gain in shifting a damage/SP cluster that lands right on an intermission-**exit**
   a few seconds later so it dips into **already-built AB stacks** instead of the ramp — e.g. icon@4:00 →
-  **4:05**, moving the terminal **icon+gem+AP** 6:00 → **6:05** to make cd room (**the 6:00 IV stays put**;
-  the downstream absorbs the shift free), strictly raising that icon's uptime over built stacks. The
-  steady-state model is **ramp-blind** (can't see it) and the sim is **unreliable at exits** (the bug
-  above), so it can't be verified today. Revisit only with a ramp-aware
-  evaluation *or* a fixed intermission sim. Highly specific; do not prioritize.
+  **4:05** (= 245, so its 20s window still clears the next intermission at 4:25 — do NOT push to 248),
+  moving the terminal **icon+gem+AP** 6:00 → **6:05** to make cd room (**the 6:00 IV stays put**; the
+  downstream absorbs the shift free), strictly raising that icon's uptime over built stacks. **Sim-checked
+  this session (controlled G-vs-user, 50k):** the whole shift is **+0.6–0.7 DPS over the golden, stable
+  across var0 AND var10, seeds 11/19** — small but real and consistent, so it is NOT washed out by the
+  exit bug (both plans share the same resume; the shift is the only diff). The blocker is the **model**:
+  it's ramp-blind (steady 3 stacks), so it can't *see* that 4:00 sits on a rebuild ramp while 4:05 doesn't,
+  and can't produce the layout. Needs a **ramp-aware exit** tie-break (shift a damage/SP press off an
+  intermission-exit second onto built stacks when its window still clears the next downtime). Small
+  (+0.6); do not prioritize over the payoffs, but it's now a *verified* gain, not just a hypothesis.
 
 ## Planned refinement — placement REASONING annotations (user-requested, output-layer, low-risk)
 
