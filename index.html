@@ -618,13 +618,17 @@ function simulate(schedule, cfg, collect) {
   let ri = 0;
   const segs = cfg.segments || null; // "complicated fight" phases; null = plain fight, identical to the old model
   let si = 0;
-  // The kill never lands on the exact planned second: treat the kill time as
-  // uncertain by ±KILL_WINDOW seconds (uniform). Casting continues to
-  // T+KILL_WINDOW, and each cast counts by the probability the boss is still
-  // alive when it starts — full weight before T−W, half at T, zero at T+W.
-  // The optimizer maximizes this EXPECTED damage ("robust"); displays show
-  // the plain at-T total.
-  const KILL_WINDOW = 3;
+  // Plan for the KNOWN kill and give the sturdy, logical line — buffs snapped to
+  // fully cover their cluster and the terminal burst aligned to end at the kill.
+  // The continuous cast-rate integral already credits the final partial cast by its
+  // fraction (no cliff), so it accounts for the kill honestly on its own; a broad
+  // ±variance hedge on top only drags the tail a few seconds off its clean spot for
+  // a sub-cast gain the player never executes. So the window is kept to a half-cast
+  // (the last cast is partial in expectation) — enough to smooth the exact-second
+  // boundary, not enough to distort placement. Reacting to a boss that dies early is
+  // the player's live job (pop the cooldowns sooner), not something to bake in. The
+  // optimizer maximizes this near-total "robust"; displays show the at-T total.
+  const KILL_WINDOW = 0.5;
   // Steady-state assumption: Arcane Blast is modeled at a permanent 3 stacks
   // (1.5s base). Verified against a headless wowsims build: this steady-state model
   // reproduces the sim's overlay ranking to within ~0.4% at every fight length and

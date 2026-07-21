@@ -113,12 +113,14 @@ up), then one that **joins an existing press row**, then the one that **overlays
 windows** (compared coarsely — a few raw seconds of overlap is fake precision), then real expected
 damage, with floor-dead avoidance breaking exact value ties — stacked windows keep their value when
 the fight drifts a few seconds off last week's timing; perfectly-tiled ones don't. On plain fights
-the presses then snap to a 5-second grid phased by the raid calls. The only guarded currency in these
-trades is **expected damage under kill-time uncertainty**: per-second thresholds cliff by a whole cast
-when the cast train slides across a wire, so a razor-timed variant that sims higher at exactly the
-entered kill time is reported as a note ("only pays if the boss dies on schedule") instead of
-dictating the plan. The Pressboard shows **press moments** (one row = one macro press); when the
-buffs land on the next cast boundary, the row says so in words.
+the presses then snap to a 5-second grid phased by the raid calls. The plan is built for the **known
+kill time**: the continuous integral credits the final partial cast by its fraction, so the end of the
+fight is accounted for honestly without a broad ±variance hedge — which would only drag the terminal
+burst a few seconds off its clean spot for a sub-cast gain you'd never execute. So the output is the
+sturdy, logical line: damage/spellpower buffs snapped to fully cover their cluster, and the terminal
+Icy Veins + Icon aligned to **end at the kill**. Reacting to a boss that dies early is your live job
+(pop the burst sooner), not something baked into the plan. The Pressboard shows **press moments** (one
+row = one macro press); when the buffs land on the next cast boundary, the row says so in words.
 
 **Leftover haste goes to the earliest efficient spot.** Once every damage cooldown is spent, a haste
 buff with nothing left to overlay is pure haste — position-independent, so the score is flat across
