@@ -1,5 +1,19 @@
 # ROADMAP.md — status, current work, open questions
 
+## Resuming after a context clear (start here)
+
+1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
+   `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
+2. **Next task = "Current top task" below: sequential buff-into-Lust packing (a search fix).** After
+   that, Part 2 (intermission invariant), then Part 4 (re-verify + lock goldens, add the 2:15 fight).
+3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 15/15).
+4. The sim harness (`runner` binary, gear export, `wowsims/tbc-new` source) persists in the session
+   **scratchpad** and survives `/clear` *within the same session* — check it's there before rebuilding
+   (`docs/TOOLING.md`); only a brand-new session needs a rebuild. Sim-gate every golden that moves.
+5. Constraints (also in `CLAUDE.md`): commit to branch `claude/wow-arcane-cooldown-optimizer-vbm3as`
+   with the configured author/trailers; never leak identity or a model id into `index.html` or any
+   pushed artifact; no PR unless asked; keep determinism; keep these docs current in the same commit.
+
 ## The three-phase arc
 
 1. **Perfect the planner** (in progress) — its cooldown plan must be optimal at *any* gear/haste.
