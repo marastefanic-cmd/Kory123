@@ -3110,14 +3110,31 @@ const GOLDEN_PRESETS = [
   { name: "5:00 lust 0:05", T: 300, pins: { bloodlust: [5] } },
   { name: "5:40 lust 0:05", T: 340, pins: { bloodlust: [5] } },
   { name: "7:20 lust 0:05", T: 440, pins: { bloodlust: [5] } },
-  { name: "KaelThas 6:00 lust 4:20", T: 360, pins: { bloodlust: [260] } },
-  { name: "Vashj 5:45 lust 4:20", T: 345, pins: { bloodlust: [260] } },
-  { name: "2:40 lust 0:07 @150 haste rating", T: 160, gear: { sp: 1387, crit: 38, haste: 150, coldSnap: true }, pins: { bloodlust: [7] } },
+  { name: "6:00 lust 4:20", T: 360, pins: { bloodlust: [260] } },
+  { name: "5:45 lust 4:20", T: 345, pins: { bloodlust: [260] } },
   { name: "4:00 multi-intermission lust 0:06", T: 240, pins: { bloodlust: [6] }, phases: [
     { type: "intermission", from: 65, to: 69 },
     { type: "intermission", from: 95, to: 112 },
     { type: "intermission", from: 154, to: 166 },
     { type: "intermission", from: 208, to: 229 },
+  ] },
+  // Real boss encounters (phases + Lust timing from the actual fights).
+  { name: "KaelThas 7:00 lust 4:20", T: 420, pins: { bloodlust: [260] }, phases: [
+    { type: "intermission", from: 15, to: 30 },
+    { type: "intermission", from: 42, to: 55 },
+    { type: "intermission", from: 69, to: 80 },
+    { type: "intermission", from: 94, to: 105 },
+    { type: "aoe", from: 105, to: 145, targets: 6 },
+    { type: "intermission", from: 160, to: 205 },
+    { type: "intermission", from: 306, to: 346 },
+  ] },
+  { name: "Vashj 6:30 lust 5:45", T: 390, pins: { bloodlust: [345] }, phases: [
+    { type: "intermission", from: 50, to: 110 },
+    { type: "intermission", from: 140, to: 150 },
+    { type: "intermission", from: 165, to: 180 },
+    { type: "intermission", from: 210, to: 240 },
+    { type: "intermission", from: 265, to: 290 },
+    { type: "intermission", from: 310, to: 325 },
   ] },
 ];
 window.GOLDEN_PRESETS = GOLDEN_PRESETS;
