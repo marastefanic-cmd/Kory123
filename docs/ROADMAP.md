@@ -83,13 +83,36 @@ cast-counting. Do **not** re-open this as an optimizer task.
   "concentrate SP within QTOL" tie-break — over-fired, moved five plain-fight goldens (dropping *useful*
   cold icons worth ~+9 each); (2) a scoped `dropRampCold` "drop the exit-ramp icon" tie-break — reached the
   (wrong) 3-icon plan cleanly but was fixing the artifact. Do not resurrect either.
-- **Real, minor, NOT-yet-actionable refinement (separate from the artifact).** There *is* a small true
-  gain in shifting a damage/SP cluster that lands right on an intermission-**exit** a few seconds later so
-  it dips into **already-built AB stacks** instead of the ramp — e.g. icon@4:00 → **4:05**, moving the
-  terminal icon+gem+AP 6:00 → **6:05** (the downstream absorbs it free), strictly raising that icon's
-  uptime over built stacks. The steady-state model is **ramp-blind** (can't see it) and the sim is
-  **unreliable at exits** (the bug above), so it can't be verified today. Revisit only with a ramp-aware
+- **Real, minor, NOT-yet-actionable refinement (separate from the artifact; user-confirmed as the ideal).**
+  There *is* a small true gain in shifting a damage/SP cluster that lands right on an intermission-**exit**
+  a few seconds later so it dips into **already-built AB stacks** instead of the ramp — e.g. icon@4:00 →
+  **4:05**, moving the terminal **icon+gem+AP** 6:00 → **6:05** to make cd room (**the 6:00 IV stays put**;
+  the downstream absorbs the shift free), strictly raising that icon's uptime over built stacks. The
+  steady-state model is **ramp-blind** (can't see it) and the sim is **unreliable at exits** (the bug
+  above), so it can't be verified today. Revisit only with a ramp-aware
   evaluation *or* a fixed intermission sim. Highly specific; do not prioritize.
+
+## Planned refinement — placement REASONING annotations (user-requested, output-layer, low-risk)
+
+Replace the copy-as-text / schedule tags that quote raw damage deltas — `deliberate: +N dmg vs one press
+at T`, `locked here by its cooldown` (`pressPlan`, `index.html` ~3082) — with a short **why-here reason**
+per press. Those deltas don't help the reader; the reasoning does (it's the "trustworthy" goal). This is
+**output-only** and the exact-match suite ignores these tags (it rebuilds the plan from `scheduleRows`,
+setup+windows+times only — `tests/exact-match.mjs` ~63–78), so **it does not touch goldens**. Reason
+categories, from the user's Vashj 6:30 worked example (map each press to one):
+- **Cooldown-timed** — "used here so the cooldown comes back in time" (for the 3:00 / 6:00 burst). For a
+  press whose second is set by its own cd feeding a later scheduled use (opener IV / AP / Zerk / Icon).
+- **Alignment** — "used here to align with the other buffs [of this burst]." For a press co-located onto a
+  burst it strengthens (the opener gem).
+- **Count-vs-align tradeoff** — "2 unaligned uses here and @4:00 beat one at 3:00." State the spread call
+  the planner resolved (the icon-count decision).
+- **Flexible / earliest** — "can be pressed anytime from now to X:YZ." When a press is bound only by "be
+  ready for the next use," report the slack; `X:YZ = nextScheduledUse − cd` (clamped ≥ now). Not triggered
+  on Vashj, but the general case (RULES §10 earliest tie-break) should say so.
+Keep the Cold-Snap `csNote` (held / spent) and the squeak note — those already read as reasons. Infer the
+category **post-hoc** from the schedule + cooldown structure (co-pressed? is its cd the binding constraint
+on a later use? does it have slack before its next use?). Grounding: `pressPlan` ~3082, `scheduleRows`
+~2757, copy-text handler ~2819, on-page render `renderSchedule` ~2795.
 
 ## Also planned
 
