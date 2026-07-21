@@ -97,7 +97,8 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/ARCHITECTURE.md` — `index.html` internals and the optimizer pass order.
 - `docs/TOOLING.md` — the wowsims sim harness (how to verify a plan) and its gotchas.
 - `docs/ROADMAP.md` — status, current work, and open questions.
-- `docs/PLAN.md` — **the current executable plan** (next phase: the placement workstream). Delete it
-  once that lands; absent = no plan in flight.
+- `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
+  (create it before a big multi-step change, delete it once that change lands, folding anything lasting
+  into ROADMAP). None right now — the placement workstream landed.
 - `docs/SOURCES.md` — where WoW facts come from (TBC is a solved game — look up + cite, don't
   re-derive) and the verified-facts ledger of the constants the model uses.

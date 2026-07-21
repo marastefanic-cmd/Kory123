@@ -1943,44 +1943,67 @@ function optimizeAsync(cfg, starts, onProgress) {
             if (kd !== "mult" && kd !== "rating") continue; // only a HASTE raid-call floors the window
             for (const t of cfg.fixed[k]) hasteAnchors.push({ at: Math.round(t), win: BUFFS[k].dur });
           }
+          // permutations of the haste-buff sequencing order (bounded: >4 keys
+          // keeps only the biggest-first sort — the window can't hold that many).
+          const permute = arr => {
+            if (arr.length <= 1) return [arr.slice()];
+            if (arr.length > 4) return [arr.slice()];
+            const out = [];
+            const rec = (cur, rest) => {
+              if (!rest.length) { out.push(cur); return; }
+              for (let j = 0; j < rest.length; j++) rec([...cur, rest[j]], [...rest.slice(0, j), ...rest.slice(j + 1)]);
+            };
+            rec([], arr);
+            return out;
+          };
           for (const { at: A, win } of hasteAnchors) {
             if (!hasteKeys.length || A > cfg.T - 1) continue;
-            // sequential slots inside the window; drop a haste buff whose slot
-            // would fall past the window (it would just floor dead casts)
-            const slots = [];
-            let off = 0;
-            for (const hk of hasteKeys) {
-              if (slots.length && off + 1e-9 >= win) break;
-              slots.push({ key: hk, at: A + off });
-              off += BUFFS[hk].dur;
-            }
-            const lead = slots[0].key;
             const base = cloneS(s);
             let bestRep = null, bestRob = simulate(base, cfg).robust;
-            // sweep which USE of the leading haste buff lands on the window (front-
-            // load a fresh use vs bank one); nearest use for the damage cluster
-            // and the tail haste buffs
-            for (let li = 0; li < Math.max(1, base[lead].length); li++) {
-              const cand = cloneS(base);
-              for (const dk of dmgKeys) {
-                if (!cand[dk].length) continue;
-                let bi = 0, bd = Infinity;
-                cand[dk].forEach((t, j) => { const d = Math.abs(t - A); if (d < bd) { bd = d; bi = j; } });
-                cand[dk][bi] = A; cand[dk].sort((a, b) => a - b);
+            // Sweep the ORDER the haste buffs sequence across the window. Biggest-
+            // first floors it so the damage cluster rides the fastest casts (the
+            // usual best), but leading with a SHORTER buff pushes the flooring buff
+            // later — which can keep a tail buff's 2nd cd-tick before the kill that
+            // the biggest-first order would clip. The +3.6 opener on 3:20 needs this:
+            // Zerk (10s) leads inside Lust, IV (20s) sequences after it at A+10, and
+            // the free Cold Snap re-homes IV's terminal use — a layout biggest-first
+            // (IV@A, Zerk@A+20) can't reach without dropping Zerk's 2nd use.
+            for (const order of permute(hasteKeys)) {
+              // sequential slots inside the window; drop a haste buff whose slot
+              // would fall past the window (it would just floor dead casts)
+              const slots = [];
+              let off = 0;
+              for (const hk of order) {
+                if (slots.length && off + 1e-9 >= win) break;
+                slots.push({ key: hk, at: A + off });
+                off += BUFFS[hk].dur;
               }
-              for (let si = 0; si < slots.length; si++) {
-                const sl = slots[si];
-                if (!cand[sl.key].length) continue;
-                let bi = 0, bd = Infinity;
-                if (si === 0) bi = Math.min(li, cand[sl.key].length - 1);
-                else cand[sl.key].forEach((t, j) => { const d = Math.abs(t - sl.at); if (d < bd) { bd = d; bi = j; } });
-                cand[sl.key][bi] = sl.at; cand[sl.key].sort((a, b) => a - b);
+              const lead = slots[0].key;
+              // sweep which USE of the leading haste buff lands on the window (front-
+              // load a fresh use vs bank one); nearest use for the damage cluster
+              // and the tail haste buffs
+              for (let li = 0; li < Math.max(1, base[lead].length); li++) {
+                const cand = cloneS(base);
+                for (const dk of dmgKeys) {
+                  if (!cand[dk].length) continue;
+                  let bi = 0, bd = Infinity;
+                  cand[dk].forEach((t, j) => { const d = Math.abs(t - A); if (d < bd) { bd = d; bi = j; } });
+                  cand[dk][bi] = A; cand[dk].sort((a, b) => a - b);
+                }
+                for (let si = 0; si < slots.length; si++) {
+                  const sl = slots[si];
+                  if (!cand[sl.key].length) continue;
+                  let bi = 0, bd = Infinity;
+                  if (si === 0) bi = Math.min(li, cand[sl.key].length - 1);
+                  else cand[sl.key].forEach((t, j) => { const d = Math.abs(t - sl.at); if (d < bd) { bd = d; bi = j; } });
+                  cand[sl.key][bi] = sl.at; cand[sl.key].sort((a, b) => a - b);
+                }
+                const rep = repair(cand, cfg);
+                if (!sameCounts(counts(base), counts(rep))) continue;
+                if (clipOf(rep) > clipOf(base) + 1e-9) continue;
+                const rr = simulate(rep, cfg);
+                if (rr.robust > bestRob + 0.5) { bestRob = rr.robust; bestRep = rep; }
               }
-              const rep = repair(cand, cfg);
-              if (!sameCounts(counts(base), counts(rep))) continue;
-              if (clipOf(rep) > clipOf(base) + 1e-9) continue;
-              const rr = simulate(rep, cfg);
-              if (rr.robust > bestRob + 0.5) { bestRob = rr.robust; bestRep = rep; }
             }
             if (bestRep) { s = bestRep; val = Math.max(val, bestRob); }
           }
@@ -2031,7 +2054,57 @@ function optimizeAsync(cfg, starts, onProgress) {
           }
           return sx;
         }
-        s = coPressAlign(s);
+        // ——— Containment spread (the placement normalizer, RULES §3/§11). A haste
+        // buff whose window overlaps NO damage/SP buff is position-independent
+        // (MECHANICS §3): it banks the same fractional casts wherever it sits, so
+        // parking it late — past a free natural cd tick — picks an arbitrary member
+        // of a DPS-equivalent class. Slide each such LONE use back onto its earliest
+        // free natural cd tick (the canonical, repeatable member), leaving the uses
+        // that ride a damage burst pinned. On 5:00 the Cold-Snap chain banks the free
+        // IV at 4:25 (lone, right after the 4:05 burst-IV); this pulls it onto its
+        // 3:05 natural tick, which re-homes the burst-IV assignment onto 4:05 — model
+        // tie (position-independence), sim +2.4, and far cleaner. Applied on the final
+        // schedule AND on the Cold-Snap resolves (which bank the chained IV), so the
+        // returned plan is normalized whichever path built it. Model-neutral gate + the
+        // usual sameCounts / no-worse-clip guards keep it honest.
+        function spreadLoneHaste(s0) {
+          let sx = cloneS(s0);
+          for (const key in sx) {
+            if (cfg.fixed[key]) continue;
+            const kd = BUFFS[key].kind;
+            if (kd !== "mult" && kd !== "rating") continue; // haste buffs only
+            const dur = BUFFS[key].dur, cd = BUFFS[key].cd;
+            const isLone = use => !Object.keys(sx).some(k2 => {
+              if (BUFFS[k2].kind !== "dmg" && BUFFS[k2].kind !== "sp") return false;
+              return sx[k2].some(t2 => t2 < use + dur - 1e-9 && t2 + BUFFS[k2].dur > use + 1e-9);
+            });
+            let moved = true, guard = 0;
+            while (moved && guard++ < 8) {
+              moved = false;
+              const uses = sx[key].slice().sort((a, b) => a - b);
+              if (uses.length < 2) break;
+              const ticks = [];
+              for (let tk = Math.round(uses[0] + cd); tk <= cfg.T - 1; tk += cd) ticks.push(tk);
+              const r0 = simulate(sx, cfg).robust;
+              for (const use of uses) {
+                if (!isLone(use)) continue;              // a burst-riding use is pinned
+                for (const tick of ticks) {
+                  if (tick >= use - 1e-9) continue;      // only pull EARLIER (spread)
+                  if (uses.some(u => Math.abs(u - tick) < dur - 1e-9)) continue; // slot taken
+                  const cand = cloneS(sx);
+                  cand[key] = cand[key].filter(t => Math.abs(t - use) > 1e-9).concat(tick).sort((a, b) => a - b);
+                  const rep = repair(cand, cfg);
+                  if (!sameCounts(counts(sx), counts(rep))) continue;
+                  if (clipOf(rep) > clipOf(sx) + 1e-9) continue;
+                  if (simulate(rep, cfg).robust >= r0 - 0.5) { sx = rep; moved = true; break; }
+                }
+                if (moved) break;
+              }
+            }
+          }
+          return sx;
+        }
+        s = spreadLoneHaste(coPressAlign(s));
         val = simulate(s, cfg).robust;
         best = { s, val };
         // a razor-timed variant may sim higher at EXACTLY the entered kill by
@@ -2075,11 +2148,18 @@ function optimizeAsync(cfg, starts, onProgress) {
               // "always press what's ready when the fight is ending" — burn it
               // for any real gain; a mid-fight reset must be worth a full cast
               const endChain = Math.max(...champ.s.icyVeins) > cfg.T - BUFFS.icyVeins.dur;
-              const bar = endChain ? castVal / 8 : castVal;
+              // CS that only REPOSITIONS the IVs — same count as the best no-CS plan,
+              // because the fight can't fit an extra IV either way — buys nothing
+              // scarce, so it's a FREE sequence/spread gated by a sub-cast sliver, not
+              // the full "is the extra IV worth burning CS" bar. Only CS that genuinely
+              // ADDS a use keeps that bar. (3:20: CS frees IV1 off 0:00 to sequence into
+              // Lust, same 2-IV count as natural — a +3.6 opener the full bar would veto.)
+              const csAddsUse = (champ.s.icyVeins || []).length > ivsN.length;
+              const bar = (endChain || !csAddsUse) ? castVal / 8 : castVal;
               if (bestN.val >= champ.val - bar) {
-                resolve({ s: coPressAlign(bestN.s), val: bestN.val, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote });
+                resolve({ s: spreadLoneHaste(coPressAlign(bestN.s)), val: bestN.val, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote });
               } else {
-                resolve({ ...champ, s: coPressAlign(champ.s), csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote });
+                resolve({ ...champ, s: spreadLoneHaste(coPressAlign(champ.s)), csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote });
               }
             });
             return;

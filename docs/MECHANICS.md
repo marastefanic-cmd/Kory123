@@ -119,7 +119,16 @@ Directly from §4, each **sim-corroborated**:
 4. **Damage per cast is stack-independent** ⇒ ramp position doesn't change a haste buff's banked value
    (haste is ~position-independent among max-stack windows), but a **damage/SP** buff still wants the
    post-ramp fast casts (fewer, slower casts during the ramp = less flux).
+5. **Joint value depends on the window INTERSECTION, not the start-seconds.** Since the integrand is a
+   product of the buff multipliers active at `t`, two buffs contribute their combined value only over
+   the seconds they actually **overlap** — and a shorter buff `d` fully overlaps a longer buff `D`
+   whenever it's *contained* in it, which holds for a **range** of starts (`[Dstart, Dend−d]`), not one
+   second. ⇒ *many placements are exactly DPS-equivalent (a containment equivalence class), so the
+   planner must pick the consistent member — "aligned" means contained, not "same start-second."* And a
+   **lone** buff (intersecting nothing) is position-independent (pt 3/4): its whole valid range is one
+   tie. This is the placement rule (RULES §11); with 3+ differing-duration buffs the equivalent region
+   is the **intersection** of the pairwise constraints.
 
 The strategic rules in `docs/RULES.md` (buff-into-Lust packing, align-vs-twice, known-kill planning,
-etc.) are these consequences applied to real fights and pinned down by sim. If a rule ever seems to
-contradict §1–§4, re-derive from here and re-check against wowsims.
+placement/containment, etc.) are these consequences applied to real fights and pinned down by sim. If a
+rule ever seems to contradict §1–§4, re-derive from here and re-check against wowsims.

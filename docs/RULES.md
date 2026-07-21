@@ -120,9 +120,46 @@ kill. If a specific fight ever shows a real overlap gain, trust the sim and reco
 - **Cold Snap** = "**once per fight, one Icy Veins ignores its cooldown**." Mechanically it resets IV's
   480s cd, but the simplest correct model is: exactly one extra IV per fight, and because there's no way
   to reset again, the *cheated* IV must be the one that skips the cooldown (schedule the cheat **before**
-  the extra IV). It's the only way two IVs sit <180s apart. Burning it must beat the best
-  natural-cooldown plan by ≥ ~one effective cast, else hold it; a clipped final IV (back up before the
-  boss dies) is free damage and is pressed.
+  the extra IV). It's the only way two IVs sit <180s apart. A clipped final IV (back up before the boss
+  dies) is free damage and is pressed.
+- **Materiality has two regimes — "adds a use" vs "just repositions" (sim-verified this project).** When
+  Cold Snap lets you fit an **extra** IV (more IVs than the fight fits on natural cd), burning it must
+  beat the best natural-cd plan by ≥ ~one effective cast, else hold it (the extra IV is the scarce thing
+  you're spending on). But when the fight fits the **same** number of IVs either way, Cold Snap adds no
+  scarce use — it only **repositions** the IVs you already have — so it's **free**, gated by nothing more
+  than a sub-cast sliver. Two free-reposition wins the full-cast bar used to veto:
+  - **3:20 opener (+3.6):** the natural plan triple-stacks IV+Zerk over the +50% floor at the pull
+    (×1.72). Spending the free CS frees IV1 off 0:00 so the opener **sequences into Lust** — `Zerk@0:05`
+    inside Lust (unfloored ×1.43), `IV@0:15` after it, `CS→IV2@3:00` — same 2-IV count as natural, but
+    the haste no longer overcaps the floor (wowsims var10 2654.7 vs 2651.1, var0 +10.7, seeds 11/19).
+  - **5:00 spread (+2.4):** see §11 — the free CS's IV rides the 4:05 burst while the banked IV spreads
+    to its 3:05 natural tick.
+
+## 11. Overlap is interval CONTAINMENT, not start-coincidence (placement) *(sim-verified this project)*
+
+Two buffs fully overlap whenever the shorter's window is **contained** in the longer's — which holds for
+a whole **range** of start-seconds, not one. So many placements are **DPS-equivalent**, and the planner
+must pick the **consistent** member of that equivalence class, not an arbitrary one (a consequence of the
+cast-rate integral: joint value depends on window **intersection**, MECHANICS §5 pt 5). Two concrete
+forms, both sim-verified:
+- **Position-independent haste spreads to natural cd ticks.** A haste buff whose window overlaps **no**
+  damage/SP buff is position-independent (§3): it banks the same fractional casts wherever it sits, so
+  parking it late past a free natural cd tick is an arbitrary member of a tie. Slide such a **lone** use
+  back onto its earliest natural tick; leave the uses that ride a damage burst pinned (moving those off
+  the burst *changes* the overlap — a different quality). **5:00:** the free Cold-Snap IV banked at 4:25
+  (lone, right after the 4:05 burst-IV) spreads to its **3:05 natural tick**, which re-homes the
+  burst-IV assignment onto **4:05** — model tie, wowsims **+2.4** (var10 2627.5 vs 2625.1; var0 +11.6;
+  seeds 11/19). The naive spreads *lose* ~8 DPS (`[5,185,205]`/`[5,185,265]` leave the 4:05 burst with
+  **no** IV) — the burst must keep its IV; only the **lone** IV moves.
+- **Damage/SP cluster inside a longer haste span is a tie across its containment range.** A 20s Icon over
+  a 40s IV+CS→IV span scores the same wherever it starts inside it (**4:00 W4: 3:20 == 3:25**, exact sim
+  tie 2693.2). Canonical member by priority: **co-press a haste anchor → natural cd tick → earliest**
+  (4:00 already emits 3:25, co-pressing CS→IV+Berserking — so it's untouched). A deliberate stagger that
+  sits **outside** the containment range (the KT Icon-onto-AP slide ~20s off Lust, §6) genuinely changes
+  overlap and stays.
+
+The through-line: **duration is a factor; "aligned" ≠ "same start-second."** With 3+ buffs of differing
+durations the contained region shrinks to the **intersection** of the constraints, but the rule holds.
 
 ## 9. Intermissions & AoE
 

@@ -4,16 +4,11 @@
 
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
-2. **Next task = the PLACEMENT WORKSTREAM — the step-by-step is in `docs/PLAN.md` (execute that).**
-   Evidence is in "Golden-review findings" below (the user audited the goldens and pinned it). Root:
-   the planner banks/stacks by *start-second* when *containment* says a
-   range of placements are equivalent. Implement, sim-gating every golden that moves: **(a)** overlap =
-   interval containment, not start-coincidence — containment-equivalent placements are ties, pick the
-   consistent member (natural-cd tick / earliest / on the burst); **(b)** spend a free Cold Snap to
-   sequence/spread IVs when it gains or ties; **(c)** sequence opener haste into Lust, not over the
-   floor. Sim-proven gains waiting: 3:20 **+3.6**, 5:00 **+2.4**; plus DPS-neutral consistency (4:00 W4).
-   Expect several goldens (3:20, 4:00, 5:00, and any same-pattern fights) to re-lock better. Secondary
-   fronts after: the **Icon-count / SP-alignment** call and the intermission invariant.
+2. **Next task = one of the SECONDARY FRONTS** (the placement workstream **LANDED** — see the Done entry
+   below). Open fronts, in rough priority: the **Icon-count / SP-alignment** sub-cast tie-break (Vashj
+   6:30, top task below); **coherent intermission/AoE** downtime-aware placement (RULES §9); then the
+   payoffs (haste-agnostic APL → setup comparison → EP calculator, "the goal" section). Each stands or
+   falls on its own sim — sim-gate every golden that moves.
 3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 16/16).
 4. The sim harness (`runner` binary, gear export, `wowsims/tbc-new` source) persists in the session
    **scratchpad** and survives `/clear` *within the same session* — check it's there before rebuilding
@@ -44,7 +39,8 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
 - Recent landed work: cast-rate-integral scorer; timeline redesign; spellpower-overlap forward-slide;
   **known-kill planning** (half-cast kill window); **full docs set** so `/clear` is safe;
   **Debugging-presets UI** (every golden is a live-computed preset off the single `GOLDEN_PRESETS`
-  table that also feeds the exact-match suite); **sequential buff-into-Lust packing** (below).
+  table that also feeds the exact-match suite); **sequential buff-into-Lust packing** (below); **the
+  placement / containment workstream** (below — 3:20 +3.6, 5:00 +2.4, both sim-gated & re-locked).
 - **Golden set recurated** (this session, user-directed): the two mislabeled plain late-Lust fights are
   now neutral `6:00 lust 4:20` / `5:45 lust 4:20` (kept as clean phase-free packing regressions); the
   **real** encounters were added — `KaelThas 7:00 lust 4:20` (early intermissions + a 6-target AoE +
@@ -94,6 +90,26 @@ var10, seeds 11/19 identical). So the current `Vashj 6:30` golden is at a **sim-
   the effective-AB count decides). Amplifies the icon tie-break above (intermission ramps make off-haste
   SP-buff windows even weaker).
 
+**Done — the PLACEMENT / containment workstream (this session).** Overlap is interval **containment**,
+not start-coincidence (RULES §11, MECHANICS §5 pt 5). Three surgical, sim-gated changes to `optimizeAsync`;
+**only the two intended goldens moved** (14 byte-identical), each re-locked on wowsims new ≥ old at var0
+**and** var10, seeds 11/19, 250k:
+- **`permute` in sequential window-packing (~1948):** sweeps the *order* the haste buffs sequence across
+  the window (not just biggest-first). Leading with the shorter buff keeps a tail buff's 2nd cd-tick
+  before the kill. **3:20** → `Zerk@0:05` in Lust, `IV@0:15` after, `CS→IV2@3:00` (**+3.6** var10 / +10.7
+  var0; golden 2651.1 reproduced exactly).
+- **Cold-Snap materiality `csAddsUse` gate (~2157):** CS that only **repositions** the same IV count (vs
+  the best no-CS plan) is **free** (sub-cast bar), not held behind the full "≥ one cast" bar — that was
+  what vetoed the 3:20 opener. CS that genuinely **adds** an IV keeps the full bar. RULES §8.
+- **`spreadLoneHaste` normalizer (~2070):** a *lone* haste use (intersecting no damage/SP buff) is
+  position-independent → slides back to its earliest natural cd tick, model-neutral. **5:00** → the free
+  CS IV banked at 4:25 spreads to its 3:05 natural tick, re-homing the burst-IV onto 4:05 (**+2.4** var10
+  / +11.6 var0; golden 2625.1 reproduced exactly). The naive spread *loses* ~8 DPS (leaves the 4:05
+  burst with no IV) — only the lone IV moves; burst-riding IVs stay pinned.
+**4:00 W4** was already at its canonical spot (cluster @3:25 co-presses CS→IV+Berserking, an exact sim
+tie with 3:20) — untouched, confirming the normalizer is DPS-neutral by construction. See RULES §8/§11,
+MECHANICS §5 pt 5, ARCHITECTURE finishing passes.
+
 **Done — sequential buff-into-Lust packing (the SEARCH fix).** A window-packing move in `optimizeAsync`
 (last structural pass, ~1913) assembles the packed burst at each haste raid-call: damage cluster on the
 window, haste buffs on sequential slots (IV @anchor, Berserking @anchor+20), sweeping which IV use lands
@@ -130,33 +146,14 @@ exact-match suite; new fights are added by editing that one array.
   **within 3s** when the model cost is **≤ ⅛ cast**. The 3s window protects genuine staggers (the 3:20
   gem sits 5s off its IV; the KT Icon-onto-AP slide ~20s off Lust — both untouched, both still green),
   and the sub-cast cap rejects any real trade. Only the 7:20 golden moved; sim-gated free; re-locked.
-- **3:20 opener — free-CS SEQUENCING is a real +3.6 DPS gap (corrects an earlier wrong call).** The
-  golden triple-stacks the opener: IV@0:00 + Berserking@0:00 + Lust@0:05 → ×1.72 = +72% haste, far over
-  the +50% floor, so most of the IV/Zerk haste is overcapped. First pass tested only *moving IV1* and
-  found a wash (IV1@0:10 = 2651.0 ≈ golden 2651.1; the "+12.8" at `var 0` was a boundary artifact), so
-  it was wrongly filed "CS unused." But the user's fuller proposal ALSO sequences Berserking: **Zerk@0:05
-  (into Lust) + IV@0:15 (after it) + CS→IV2@3:00** scores **2654.7 vs 2651.1 = +3.6 DPS** (var 10, seeds
-  11 & 19 identical). The win is avoiding the IV×Zerk mutual overlap AND putting Berserking fully inside
-  Lust — classic RULES §4 sequential packing, which the packing pass currently can't reach because it
-  won't spend the free Cold Snap to decouple the terminal-constrained IV1. **Real optimizer gap** (see
-  the consistency workstream below); the golden should change once the packer learns free-CS sequencing.
-- **Overlap is CONTAINMENT, not start-coincidence (the "bigger issue" the user named — the fix spec).**
-  The optimizer scores/tie-breaks overlays by *start-time coincidence*, but two buffs fully overlap
-  whenever the shorter's window is **contained** in the longer's — which holds for a whole RANGE of
-  starts, not one second. A 10s buff fully overlaps a 15s buff for any start in a 5s window (longerStart
-  … longerStart+5); all those placements are one **equivalence class**, and the planner should pick the
-  consistent member (natural-cd tick / earliest / on the burst) instead of an arbitrary one. With 3+
-  buffs of differing durations the contained region shrinks to the **intersection** of the constraints,
-  but "duration is a factor; alignment ≠ same start-second" still holds. This is the generalisable rule
-  to implement (a consequence of the cast-rate integral: joint value depends on window *intersection*,
-  not start times — belongs in MECHANICS/RULES once coded).
-  - Confirmed cases (all wowsims, paired, var10): 4:00 W4 cluster 3:20 vs 3:25 = **exact tie**
-    (2693.2 = 2693.2); 5:00 IV2 banked-to-4:05 vs natural-3:05+CS→IV@4:05 = **+2.4** (2627.5 vs 2625.1)
-    — banking IVs back-to-back at the terminal is neutral-to-slightly-worse than spreading to cd ticks.
-  **Fix as ONE coherent placement workstream** with the 3:20 free-CS-sequencing gap above: teach the
-  planner to (a) treat containment-equivalent placements as ties and pick the consistent one, (b) spend
-  a free Cold Snap to sequence/spread IVs when it gains or is neutral, (c) sequence opener haste into
-  Lust instead of stacking it over the floor. NOT per-golden patches — generalisation is the whole goal.
+- **FIXED — the whole placement / containment workstream landed** (3:20 free-CS opener sequencing +3.6,
+  5:00 lone-IV spread +2.4, 4:00 W4 confirmed already-canonical). Overlap is interval **containment**, not
+  start-coincidence: the planner now (a) treats containment-equivalent placements as ties and picks the
+  consistent member (`spreadLoneHaste`), (b) spends a **free** Cold Snap to sequence/spread IVs when it
+  gains-or-ties (`csAddsUse` materiality gate), (c) sequences opener haste into Lust via a haste-buff
+  **order sweep** (`permute`) instead of stacking it over the floor. Generalised, not per-golden — only
+  the two intended goldens moved, both sim-gated new ≥ old (var0 & var10, seeds 11/19). See the **Done**
+  entry above, **RULES §8/§11**, **MECHANICS §5 pt 5**, and ARCHITECTURE finishing passes.
 
 ## Open questions / known limitations
 

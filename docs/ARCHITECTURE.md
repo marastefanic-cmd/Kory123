@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — `index.html` internals
 
-One self-contained file (~3268 lines): a DOM-free JS **engine** (through ~line 819), the
+One self-contained file (~3396 lines): a DOM-free JS **engine** (through ~line 819), the
 **optimizer**, then the **DOM/UI**. Line numbers drift as the file is edited — treat them as
 signposts, re-grep if they're off. Everything below is in `index.html` unless noted.
 
@@ -49,29 +49,44 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   use — the "Berserking-in-Lust eviction") · ramp-hold (~1753) · earliest-on-ties (~1786, hard
   `nulled` veto ~1816) · snap-to-pinned (~1832) · **overlap-alignment for damage/SP** (~1861–1904,
   slides a spellpower/damage press forward onto a staggered damage cluster) · **sequential window-
-  packing** (~1913, see below) · **`coPressAlign`** (final, legibility) · squeak note · Cold-Snap
-  materiality recursion (~1998).
-- **`coPressAlign(s0)`** (defined just before `best = {s,val}`, applied there AND at the two Cold-Snap
-  resolves so the returned plan is aligned whichever path built it). Snaps a damage/SP press onto its
-  nearest **earlier haste** second **within 3s** when the model cost is **≤ `castVal/8`** — pulls a
-  macro'd burst onto one press when the model carries only a sub-cast (often artifactual) preference
-  for a 1s-late spot. The 3s window and sub-cast cap protect deliberate staggers (3:20 gem 5s off IV;
-  KT Icon-onto-AP ~20s off Lust). See `docs/ROADMAP.md` golden-review findings (7:20 W6, sim-gated).
+  packing** (~1913, see below) · **`coPressAlign`** then **`spreadLoneHaste`** (final normalizers) ·
+  squeak note · Cold-Snap materiality recursion (~2119).
+- **`coPressAlign(s0)`** (~2028, applied at the main resolve AND both Cold-Snap resolves so the plan is
+  aligned whichever path built it). Snaps a damage/SP press onto its nearest **earlier haste** second
+  **within 3s** when the model cost is **≤ `castVal/8`** — pulls a macro'd burst onto one press when the
+  model carries only a sub-cast (often artifactual) preference for a 1s-late spot. The 3s window and
+  sub-cast cap protect deliberate staggers (3:20 gem 5s off IV; KT Icon-onto-AP ~20s off Lust). See
+  `docs/ROADMAP.md` golden-review findings (7:20 W6, sim-gated).
+- **`spreadLoneHaste(s0)`** (~2070, the RULES §11 placement normalizer, applied at the same three resolve
+  points as `coPressAlign`, right after it). A haste use whose window intersects **no** damage/SP buff is
+  a *lone* use — position-independent (MECHANICS §3/§5 pt 5), so banking it late past a free natural cd
+  tick is an arbitrary member of a tie. It slides each lone use back onto its **earliest free natural cd
+  tick** (`uses[0]+k·cd`), leaving burst-riding uses pinned. Model-neutral gate (`robust ≥ r0−0.5`, an
+  exact tie by position-independence) + `sameCounts` + no worse `clipOf`. On **5:00** this pulls the
+  Cold-Snap IV banked at 4:25 onto its 3:05 natural tick, re-homing the burst-IV onto 4:05 (sim +2.4).
+  Kept separate from `coPressAlign` (different concern: haste→tick spreading vs damage→haste snapping).
 - **Sequential window-packing** (~1913, the RULES §4 move — LANDED). Runs as the last structural pass
   (nothing after it can re-floor the sequenced tail buff, so no defensive rework of the eviction /
   `nulled` vetoes was needed). For each raid-called **haste** buff (kind `mult`/`rating` — a damage/
   burn anchor doesn't floor, so it's skipped), it assembles the packed burst at the anchor `A`: the
-  damage cluster's nearest use → `A`, and the planner haste buffs on **sequential slots** (sorted
-  biggest-haste-first: lead at `A`, next at `A+lead.dur`, …, capped by the anchor buff's duration). It
-  sweeps *which use* of the lead haste buff lands on `A` (front-load a fresh use vs bank one). Kept only
-  on a strict robust gain with `sameCounts` + no worse `clipOf` — so a pack that would cost a use, or
-  that doesn't gain (high-gear "IV slides out", RULES §5), is rejected. This is the joint "pull A onto
-  the burst while re-homing B" move the local ±45–90 passes lacked.
+  damage cluster's nearest use → `A`, and the planner haste buffs on **sequential slots**. It sweeps
+  **both** which *use* of the lead haste buff lands on `A` (front-load vs bank) **and — via `permute`
+  (~1948) — the ORDER** the haste buffs sequence across the window. Biggest-first floors it for the
+  damage cluster (the usual best), but leading with a **shorter** buff pushes the flooring buff later,
+  which can keep a tail buff's 2nd cd-tick before the kill that biggest-first would clip — the **3:20**
+  opener (`Zerk@0:05` in Lust, `IV@0:15` after, `CS→IV2@3:00`, +3.6) needs the Zerk-lead order, which
+  biggest-first (IV@A, Zerk@A+20) can't reach without dropping Zerk's 2nd use. Permutation bounded to
+  ≤4 keys (else biggest-first only). Kept on strict robust gain + `sameCounts` + no worse `clipOf`.
+- **Cold-Snap materiality** (~2119) now distinguishes two regimes (RULES §8). `csAddsUse` (~2157) =
+  the CS champ has **more** IVs than the best no-CS plan. When CS genuinely **adds** a use the full
+  "≥ one cast" bar applies (`bar = castVal`); when it only **repositions** the same IV count (or the
+  chain ends the fight) it's a **free** move gated by a sub-cast sliver (`bar = castVal/8`). This is
+  what lets 3:20 spend the free CS to sequence the opener (+3.6, same 2-IV count) instead of vetoing it.
 
 ## Phases & rendering
-- `buildSegments(rows, T)` (~2063): turns phase rows into `{start,end,type,mult,targets}` segments;
+- `buildSegments(rows, T)` (~2191): turns phase rows into `{start,end,type,mult,targets}` segments;
   types `normal | intermission | burn | aoe`. Consumed by `simulate` and the renderer.
-- `renderTimeline(run)` (~2445): one inline SVG (fluid `width:100%`, no page horizontal scroll) —
+- `renderTimeline(run)` (~2573): one inline SVG (fluid `width:100%`, no page horizontal scroll) —
   haste step-curve + area fill, dashed GCD-cap line, phase bands (intermission hatched, AoE/burn
   tinted with ×N badges), buff-uptime lanes with press ticks. `scheduleRows`/`renderSchedule` build
   the window table; `btn-copy` emits the canonical copy-as-text plan the tests compare.
