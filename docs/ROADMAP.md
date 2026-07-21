@@ -45,10 +45,14 @@ The planner presses Icon on **cooldown** (max uptime), but a spellpower buff wan
 (RULES §3): fewer icons all on haste windows can beat more icons half on no-haste casts. **Sim-proven
 on Vashj 6:30:** 3 icons @ 0:00/3:00/6:00 (each on an IV window) beats the planner's 4 icons @
 0:00/2:00/4:00/6:00 by **+5.4 DPS** (wowsims 250k, var0 **and** var10, seeds 11/19 identical, intermissions
-modeled). So the current `Vashj 6:30` golden is locked at a **known-suboptimal** 4-icon plan — fix the
-planner to prefer the aligned-fewer layout, then re-lock (sim-gate). Open: does the *model* already rank
-3>4 (a pure search miss) or does it over-credit the extra SP-seconds (a valuation fix, riskier)? Check
-`simulate().robust` of both before choosing the approach.
+modeled). So the current `Vashj 6:30` golden is locked at a **known-suboptimal** 4-icon plan.
+- **Diagnosed: this is a VALUATION issue, not a search miss** (`tests/evalsched.mjs`). The model scores
+  the 4-icon plan **higher** (robust 443442 vs 442568, **+874**) — the exact opposite of the sim. It
+  over-credits the two extra icons' SP-seconds on the no-haste windows (it counts casts-caught, blind to
+  the fact those casts are slow / low-value relative to an IV-window icon). So the optimizer *correctly*
+  produces 4 for its scorer; fixing it means devaluing off-haste SP-flux in the scorer — the "floored-
+  flux crediting" the Open-questions section flags as risky to touch (it can shift the validated
+  goldens). Do it carefully, sim-gate EVERY golden, and don't rush it into the same pass as a search fix.
 
 ## Also planned
 
