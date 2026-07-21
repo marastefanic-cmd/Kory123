@@ -123,13 +123,26 @@ exact-match suite; new fights are added by editing that one array.
   **within 3s** when the model cost is **≤ ⅛ cast**. The 3s window protects genuine staggers (the 3:20
   gem sits 5s off its IV; the KT Icon-onto-AP slide ~20s off Lust — both untouched, both still green),
   and the sub-cast cap rejects any real trade. Only the 7:20 golden moved; sim-gated free; re-locked.
-- **3:20 free-Cold-Snap is correctly unused (no change).** Reviewed the idea "spend the free CS to
-  decouple IV2 so IV1 can leave 0:00." Sim (var 10, paired seeds 11/19, 200k): IV1@0:00 = 2651.2,
-  IV1@0:10+CS = 2651.1 (**tie**), IV1@0:05+CS = 2645.3 (**−6**). The IV1@0:10 "+12.8" seen at fixed
-  length (`var 0`) was a **boundary artifact** — it collapsed under randomized kill. Two lessons
-  reaffirmed: (1) IV1@0:00 beats IV1@0:05-fully-in-Lust by ~6 because its first 5s sit *before* Lust,
-  unfloored (the floor rule, §RULES 2/7); (2) always confirm a fixed-length gap under `--var 10`. So
-  CS has no material use on a short 2-IV fight; the current golden stands.
+- **3:20 opener — free-CS SEQUENCING is a real +3.6 DPS gap (corrects an earlier wrong call).** The
+  golden triple-stacks the opener: IV@0:00 + Berserking@0:00 + Lust@0:05 → ×1.72 = +72% haste, far over
+  the +50% floor, so most of the IV/Zerk haste is overcapped. First pass tested only *moving IV1* and
+  found a wash (IV1@0:10 = 2651.0 ≈ golden 2651.1; the "+12.8" at `var 0` was a boundary artifact), so
+  it was wrongly filed "CS unused." But the user's fuller proposal ALSO sequences Berserking: **Zerk@0:05
+  (into Lust) + IV@0:15 (after it) + CS→IV2@3:00** scores **2654.7 vs 2651.1 = +3.6 DPS** (var 10, seeds
+  11 & 19 identical). The win is avoiding the IV×Zerk mutual overlap AND putting Berserking fully inside
+  Lust — classic RULES §4 sequential packing, which the packing pass currently can't reach because it
+  won't spend the free Cold Snap to decouple the terminal-constrained IV1. **Real optimizer gap** (see
+  the consistency workstream below); the golden should change once the packer learns free-CS sequencing.
+- **DPS-neutral placement consistency (the "start-time overlap" issue the user named).** The optimizer
+  scores/tie-breaks overlays by *start-time coincidence*, not *duration-overlap*, so among DPS-EQUAL
+  placements it doesn't reliably slide a buff to the clean/tight/earliest second. Confirmed neutral:
+  4:00 Window 4 damage cluster at **3:20 vs 3:25 is an exact tie** (2693.2 = 2693.2 var10; 2698.1 ≈
+  2698.0 var0) — a 20s Icon over a 40s IV+CS→IV span is the same wherever it starts inside it. (A
+  further "IV2@3:05 / CS→IV@4:05, rest stays" note is the same class; fight not yet pinned to a preset.)
+  These are legibility/consistency, not DPS — but they matter for *trustworthy, repeatable* output.
+  **Fix as ONE coherent workstream** with the 3:20 gap above: teach placement to (a) use free CS to
+  sequence the opener when it gains, and (b) among ties, slide a buff within its same-quality haste
+  window to the consistent anchor/earliest second. NOT per-golden patches — generalisation is the goal.
 
 ## Open questions / known limitations
 
