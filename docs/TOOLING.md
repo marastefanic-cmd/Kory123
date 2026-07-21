@@ -14,9 +14,12 @@ wowsims and reading the DPS. This file documents that workflow and its traps.
   mana-gem use). Supports `_intermission:[a,z]` / `_intermissions:[[a,z],…]` (AB gated off during
   downtime) and `_prestack:N` (prepull AB casts to remove the opener ramp). Spell/item IDs are in the
   file header.
-- **`runner`** (NOT in repo — an ~18MB compiled Go binary): a headless wowsims-tbc sim. Build it from
-  the wowsims-tbc source (the `sim/` tree; a small `main` that reads an individual export + an
-  optional `--apl` override and prints a TSV result line). Flags: `--export <gear.json> --apl <a.apl>
+- **`runner`** (NOT in repo — an ~18MB compiled Go binary): a headless sim built from the **wowsims
+  TBC source with APL support — the `wowsims/tbc-new` repo** (Go module `github.com/wowsims/tbc`; the
+  APL/`APLActionSchedule` machinery lives under `sim/core/`). The `runner` is a small `main` that
+  reads an individual gear export, applies an optional `--apl` rotation override, and prints one TSV
+  result line. (In this environment the repo is fetched through the configured git proxy; clone
+  `wowsims/tbc-new` from wherever it's hosted for you.) Flags: `--export <gear.json> --apl <a.apl>
   --dur <sec> --var <sec> --iter <N> --seed <n> --mana <flat> --haste <rating> --tag <label> --quiet`.
   Output TSV columns: `tag  dur  var  iter  meanDPS  stdev  col7  time` — **column 5 is mean DPS**.
 - **Gear export** (NOT in repo — user-provided): the player's wowsims individual-export JSON

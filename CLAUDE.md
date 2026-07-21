@@ -60,6 +60,22 @@ changing the model or the passes**, and keep it updated as the living theorycraf
 - Commit to the designated feature branch provided at session start; follow the session's configured
   commit author/trailers; don't open a PR unless asked.
 
+## Keep this documentation alive (do this, every session)
+
+These files are the project's memory across context clears — they are only useful if kept **current**.
+Treat maintaining them as part of the work, not an afterthought:
+
+- **Update in the same commit as the change.** If you add/refine/overturn a rule → edit
+  `docs/RULES.md` (with its sim evidence). If you change the model or pass order → `docs/ARCHITECTURE.md`
+  (re-grep the line ranges; they drift). If work lands or priorities move → `docs/ROADMAP.md`. If the
+  sim workflow changes → `docs/TOOLING.md`. If the goal or conventions shift → this file.
+- **Add or remove docs as the project evolves** — when a new subsystem appears (e.g. the EP
+  calculator), give it its own `docs/*.md` and link it below; delete or merge docs that go stale. The
+  file list below is not fixed.
+- **Prune, don't just append.** When a rule is overturned or a task finishes, edit/remove the old
+  text so the docs never describe a state that no longer exists. Stale docs are worse than none.
+- Before a big change, re-read the relevant doc; after it, leave the docs describing reality.
+
 ## Pointers
 - `docs/RULES.md` — the theorycraft rules, each with its sim evidence.
 - `docs/ARCHITECTURE.md` — `index.html` internals and the optimizer pass order.
