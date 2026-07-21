@@ -69,6 +69,19 @@ Same case shape as `GOLDEN_PRESETS`. Use `plan.mjs` to check a plan reproduces
 before adding a preset; `probe.mjs` to read the raw schedule when building a
 wowsims APL to sim-verify a change.
 
+For the sim side, `evalsched.mjs` prints the **model** score (`simulate().robust`)
+of explicit schedules, and `simsweep.sh` runs a batch of named APL specs through
+the wowsims runner and prints a DPS table:
+
+```
+RUNNER=/path/to/runner GEAR=/path/to/gear.json ./simsweep.sh <dur> <var> <iter> <seed> specs.tsv
+```
+
+The runner binary + gear export live in the ephemeral session scratchpad (see
+`docs/TOOLING.md`), so both are passed via env vars — nothing session-specific is
+committed. Each spec line is `NAME<TAB>{genapl-json}`; remember the collision
+offsets (TOOLING) so bundled off-GCD presses don't share a tick.
+
 The canonical each case is compared on is the **Copy-as-text plan** — the setup
 header plus the windows with per-press times and Cold Snap markers — minus the
 cosmetic peak-haste line and price tags (those are annotations, not placements).
