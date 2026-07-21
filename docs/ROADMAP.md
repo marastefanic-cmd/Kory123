@@ -106,6 +106,15 @@ var10, seeds 11/19 identical). So the current `Vashj 6:30` golden is at a **sim-
   early into downtime can be right when it's the only way to get a cooldown back for a bigger later window;
   the effective-AB count decides). Amplifies the icon tie-break above (intermission ramps make off-haste
   SP-buff windows even weaker).
+  - **Half DONE — the "don't *begin* in the dead zone" half landed** (`dodgeDowntime`, this session). A
+    final normalizer slides any press whose window begins inside an intermission to the exit, model-neutral;
+    4:00-multi's Cold-Snap IV 3:47 → 3:49 (var0 exact wash, var10 +0.2, seeds 11/19; only mover). See RULES
+    §9 / ARCHITECTURE.
+  - **Still open — the post-ramp-EXIT devaluation** (the harder, delicate half): a press *at* an
+    intermission exit catches slow ramp casts the steady-state model over-credits. This is the real Vashj
+    icon-count fix (icon@4:00 sits on the [3:30–4:00] exit ramp). Needs a downtime-ramp-aware tie-break,
+    sim-gated on every intermission golden — the generic SP-concentration tie-break is the wrong tool (it
+    over-fires on plain fights; see the Icon-count section).
 
 **Done — the PLACEMENT / containment workstream (this session).** Overlap is interval **containment**,
 not start-coincidence (RULES §11, MECHANICS §5 pt 5). Three surgical, sim-gated changes to `optimizeAsync`;

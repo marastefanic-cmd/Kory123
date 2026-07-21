@@ -49,8 +49,8 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   use — the "Berserking-in-Lust eviction") · ramp-hold (~1753) · earliest-on-ties (~1786, hard
   `nulled` veto ~1816) · snap-to-pinned (~1832) · **overlap-alignment for damage/SP** (~1861–1904,
   slides a spellpower/damage press forward onto a staggered damage cluster) · **sequential window-
-  packing** (~1913, see below) · **`coPressAlign`** then **`spreadLoneHaste`** (final normalizers) ·
-  squeak note · Cold-Snap materiality recursion (~2119).
+  packing** (~1913, see below) · **`coPressAlign`** → **`spreadLoneHaste`** → **`dodgeDowntime`** (final
+  normalizers, applied in that order) · squeak note · Cold-Snap materiality recursion (~2150).
 - **`coPressAlign(s0)`** (~2028, applied at the main resolve AND both Cold-Snap resolves so the plan is
   aligned whichever path built it). Snaps a damage/SP press onto its nearest **earlier haste** second
   **within 3s** when the model cost is **≤ `castVal/8`** — pulls a macro'd burst onto one press when the
@@ -65,6 +65,15 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   exact tie by position-independence) + `sameCounts` + no worse `clipOf`. On **5:00** this pulls the
   Cold-Snap IV banked at 4:25 onto its 3:05 natural tick, re-homing the burst-IV onto 4:05 (sim +2.4).
   Kept separate from `coPressAlign` (different concern: haste→tick spreading vs damage→haste snapping).
+- **`dodgeDowntime(s0)`** (~2107, the RULES §9 downtime normalizer, applied outermost at the same three
+  resolve points). The groom loop's downtime-slide (~1618) runs before the Cold-Snap chain and the two
+  normalizers above, so those late passes can still leave a press whose window *begins* inside an
+  intermission. This slides each such press to the intermission **exit** (`seg.end`). Its dead early
+  seconds score zero wherever it sits, so a `robust ≥ r0−0.5` + `sameCounts` gate keeps it honest — and
+  it deliberately has **no `clipOf` guard** (sliding to the exit ends the window later, so `clipOf` rises,
+  but the *live* portion is unchanged — the clip is the wrong metric here). On **4:00 multi-intermission**
+  the Cold-Snap IV at 3:47 (2s inside [3:28–3:49]) → 3:49 (var0 exact wash). Only the "don't *begin* in
+  downtime" half of RULES §9; the post-ramp-exit devaluation (Vashj) is still open.
 - **Sequential window-packing** (~1913, the RULES §4 move — LANDED). Runs as the last structural pass
   (nothing after it can re-floor the sequenced tail buff, so no defensive rework of the eviction /
   `nulled` vetoes was needed). For each raid-called **haste** buff (kind `mult`/`rating` — a damage/

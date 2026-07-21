@@ -2104,7 +2104,42 @@ function optimizeAsync(cfg, starts, onProgress) {
           }
           return sx;
         }
-        s = spreadLoneHaste(coPressAlign(s));
+        // ——— Downtime dodge (RULES §9). The Cold-Snap chain and the spread/tick
+        // normalizers run after the groom loop's downtime-slide, so they can still
+        // leave a press whose window BEGINS inside an intermission (its first seconds
+        // are dead — boss untargetable, they score zero). Those seconds are wasted
+        // wherever the window sits, so the press is worth the same slid to the
+        // intermission EXIT — where it reads as "press on the pull of the next phase"
+        // instead of a confusing mid-downtime press, and its whole duration lands on
+        // live casts (4:00 multi-intermission: the Cold-Snap IV at 3:47, 2s inside the
+        // [3:28–3:49] dead zone, → 3:49). Model-neutral gate + sameCounts. No clip
+        // guard: sliding to the exit ends the window later (more past-kill seconds)
+        // but the LIVE portion is unchanged — clipOf would wrongly veto a pure wash.
+        function dodgeDowntime(s0) {
+          if (!cfg.segments) return s0;
+          const ims = cfg.segments.filter(sg => sg.type === "intermission");
+          if (!ims.length) return s0;
+          let sx = cloneS(s0), moved = true, guard = 0;
+          while (moved && guard++ < 8) {
+            moved = false;
+            const r0 = simulate(sx, cfg).robust;
+            for (const key in sx) {
+              if (cfg.fixed[key]) continue;
+              for (let i = 0; i < sx[key].length; i++) {
+                const t = sx[key][i];
+                const seg = ims.find(sg => t > sg.start + 1e-9 && t < sg.end - 1e-9);
+                if (!seg) continue;
+                const cand = cloneS(sx); cand[key] = cand[key].slice(); cand[key][i] = Math.round(seg.end); cand[key].sort((a, b) => a - b);
+                const rep = repair(cand, cfg);
+                if (!sameCounts(counts(sx), counts(rep))) continue;
+                if (simulate(rep, cfg).robust >= r0 - 0.5) { sx = rep; moved = true; break; }
+              }
+              if (moved) break;
+            }
+          }
+          return sx;
+        }
+        s = dodgeDowntime(spreadLoneHaste(coPressAlign(s)));
         val = simulate(s, cfg).robust;
         best = { s, val };
         // a razor-timed variant may sim higher at EXACTLY the entered kill by
@@ -2157,9 +2192,9 @@ function optimizeAsync(cfg, starts, onProgress) {
               const csAddsUse = (champ.s.icyVeins || []).length > ivsN.length;
               const bar = (endChain || !csAddsUse) ? castVal / 8 : castVal;
               if (bestN.val >= champ.val - bar) {
-                resolve({ s: spreadLoneHaste(coPressAlign(bestN.s)), val: bestN.val, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote });
+                resolve({ s: dodgeDowntime(spreadLoneHaste(coPressAlign(bestN.s))), val: bestN.val, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote });
               } else {
-                resolve({ ...champ, s: spreadLoneHaste(coPressAlign(champ.s)), csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote });
+                resolve({ ...champ, s: dodgeDowntime(spreadLoneHaste(coPressAlign(champ.s))), csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote });
               }
             });
             return;

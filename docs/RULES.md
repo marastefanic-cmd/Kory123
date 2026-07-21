@@ -172,6 +172,15 @@ durations the contained region shrinks to the **intersection** of the constraint
   zone). But it's a default, not a law: pressing a cooldown *earlier* (even into downtime) can win if
   that's the only way to get it **back off cooldown in time** for a bigger later window. The effective-
   AB count decides; don't hardcode "never fire in downtime".
+  - **Enforced (the `dodgeDowntime` normalizer, ARCHITECTURE).** The groom loop's downtime-slide runs
+    before the Cold-Snap chain and the spread/tick normalizers, so those late passes could still leave a
+    press whose window *begins* in a dead zone. A final normalizer slides any such press to the
+    intermission **exit** — its dead early seconds score zero wherever it sits, so the slide is
+    **model-neutral** and it reads as "press on the pull of the next phase." **4:00 multi-intermission:**
+    the Cold-Snap IV at 3:47 (2s inside the [3:28–3:49] dead zone) → **3:49** (wowsims var0 exact wash
+    2079.1 = 2079.1; the live window 3:49–4:00 is identical, so DPS-neutral, legibility-positive). This
+    is only the "don't *begin* in the dead zone" half of the default — the subtler post-ramp-exit
+    devaluation (Vashj icon@4:00, ROADMAP) is still open.
 - **AoE** phases score linearly in `targets` off the Arcane **Explosion** base (392 + 0.214·SP,
   instant, GCD-bound), NOT off Arcane Blast — so an N-target AoE is N× an AE cast, and the
   double-IV-over-AoE call on KT hinges on that AE-vs-AB weighting (a modeling assumption plain-AB
