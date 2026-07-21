@@ -63,6 +63,30 @@ Haste **rating** converts to a percentage, then percentage buffs stack **multipl
   Crit is the **same for every cast**, so it **cancels** in any overlay comparison — it changes total
   DPS but never *which* schedule wins.
 
+### On-use buffs are off-GCD and fire BETWEEN casts — so score them by cast-counting, never by "GCD cost"
+
+Every on-use cooldown (Icy Veins, Icon, gem, Arcane Power, Berserking, trinkets) is **off the global
+cooldown** and is macro'd into the cast spam — `/cast Icy Veins /use 13 /cast Arcane Blast`, pressed
+repeatedly as the *previous* cast finishes, so the buffs pop **between casts** and the next Arcane Blast
+begins already-buffed. Consequences the model must respect:
+- **A buff press never clips or delays a cast and costs no GCD.** It is *free* to press. So its value is
+  purely the **effective ABs it buys**: `(added SP · coef, or the damage_mult) × (# casts inside its
+  window) × (overlapping AP/haste multipliers)`. Count casts, not clocks. A window with AP + haste holds
+  **more, ×1.3-richer** casts, so one buff there can beat two on bare windows — compare
+  `casts_X · mult_X` against `casts_Y + casts_Z`, ceteris paribus. (This is the whole objective, §4: the
+  planner aligns every cooldown across all permutations to maximize the ABs effectively cast.)
+- **A free press can still be net-NEGATIVE — but only through ALIGNMENT or COOLDOWN COUPLING, never a
+  cast cost.** Pressing a buff here can forgo pressing it on a better-buffed window (alignment), or a use
+  now can push its next use past a window where it mattered more, or off the fight entirely (coupling,
+  the align-vs-twice rule, RULES §4). "It's off-GCD, so more uses can't hurt" is the **wrong** inference:
+  more uses never cost casts, but mis-*aligned* uses cost effective ABs. Evaluate by cast-counting.
+- **Corollary — a SIM trap.** If the sim shows a *free, off-GCD* buff as net-negative with **no**
+  alignment or cooldown reason (the other cooldowns don't move, it catches live casts, it has no cd
+  conflict), do **not** trust it — suspect a **harness artifact**, e.g. a fixed-time scheduled press
+  landing *mid-cast* rather than between casts (worst on the slow post-intermission ramp, where casts
+  are long). See `docs/TOOLING.md` (the fixed-offset-mid-cast trap) — the model's cast-counting is the
+  referee there, not the raw sim number.
+
 ## 4. The driving equation: effective ABs cast
 
 Put §1–§3 together. Instantaneous DPS at time `t` is one cast's damage divided by how long that cast
