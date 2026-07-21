@@ -4,11 +4,12 @@
 
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
-2. **Next task = one of the SECONDARY FRONTS** (the placement workstream **LANDED** — see the Done entry
-   below). Open fronts, in rough priority: the **Icon-count / SP-alignment** sub-cast tie-break (Vashj
-   6:30, top task below); **coherent intermission/AoE** downtime-aware placement (RULES §9); then the
-   payoffs (haste-agnostic APL → setup comparison → EP calculator, "the goal" section). Each stands or
-   falls on its own sim — sim-gate every golden that moves.
+2. **Next task = one of the SECONDARY FRONTS** (the placement workstream **LANDED**; the Icon-count
+   tie-break was **diagnosed & deferred** — a generic version is too destabilizing, see its section
+   below). Open fronts, in rough priority: **coherent intermission/AoE** downtime-aware placement
+   (RULES §9 — this is also the correct vehicle for the Vashj icon-count fix, an intermission-ramp
+   effect); then the payoffs (haste-agnostic APL → setup comparison → EP calculator, "the goal"
+   section). Each stands or falls on its own sim — sim-gate every golden that moves.
 3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 16/16).
 4. The sim harness (`runner` binary, gear export, `wowsims/tbc-new` source) persists in the session
    **scratchpad** and survives `/clear` *within the same session* — check it's there before rebuilding
@@ -47,12 +48,14 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
   a post-Lust intermission) and `Vashj 6:30 lust 5:45` (six intermissions); the `2:40 @150 haste`
   case was **removed** (the IV-slides-out breakpoint isn't pinned yet — don't lock it).
 
-## Current top task — Icon-count / SP-alignment (a sub-cast TIE-BREAK, handle carefully)
+## Icon-count / SP-alignment — DIAGNOSED, deferred into the intermission workstream (do NOT re-attempt solo)
 
 A spellpower buff wants the **fast** casts (RULES §3/§6), so fewer icons all on haste windows can beat
 more icons half on no-haste casts. **Sim-proven on Vashj 6:30:** 3 icons @ 0:00/3:00/6:00 (each on an IV
 window) beats the planner's 4 icons @ 0:00/2:00/4:00/6:00 by **+5.4 DPS** (wowsims 250k, var0 **and**
 var10, seeds 11/19 identical). So the current `Vashj 6:30` golden is at a **sim-suboptimal** 4-icon plan.
+**Status: the generic tie-break was tried and rejected — the fix belongs to the downtime-aware workstream
+(see the two bullets at the end of this section, and "Also planned" below).**
 - **Diagnosed (`tests/evalsched.mjs` + controlled sims): this is a sub-cast TIE, not a scorer bug.**
   1. The scorer's SP valuation is **sound in general** — on a *plain* fight a marginal icon is worth
      +10.7 DPS on an IV window vs +9.2 off it, ratio **1.16**, matching the model's predicted 1.20. No
@@ -61,12 +64,26 @@ var10, seeds 11/19 identical). So the current `Vashj 6:30` golden is at a **sim-
   2. The model scores 4-icon higher by **+874**, but `QTOL` (one cast) ≈ **2242** — so the model treats
      3-icon and 4-icon as a **tie**, lands on 4-icon inside the tie band, and the sim's preference is a
      genuine *sub-cast* refinement (exactly the RULES §10 caveat).
-- **So the fix is a conservative TIE-BREAK, not a scorer change:** among plans the model can't tell apart
-  (within QTOL), prefer the one that concentrates SP-buff windows on the fastest (haste/AP) casts over the
-  one that maximizes SP-buff *count*. Do NOT hack the SP-flux crediting — the plain-fight test shows it's
-  sound, and changing it trades the planner's *generalisability* (the actual goal) for a sub-cast win on
-  one fight. Sim-gate EVERY golden; a tie-break that shifts a validated plan for < the sim margin is a
-  regression. If it proves too destabilizing for a sub-cast payoff, documenting it and moving on is fine.
+- **The obvious fix — a generic "concentrate SP on haste, within QTOL" tie-break — was TRIED and REJECTED
+  (this session, too destabilizing, as feared).** A finishing pass that relocated each *cold* SP use (one
+  overlapping no haste window) onto a haste burst — else dropped it — accepting any candidate that cut
+  cold SP-seconds and stayed within QTOL of the champion. It reached the Vashj 3-icon plan, but exact-match
+  showed it also moved **five other validated goldens** (5:00, 7:20, 6:00, 5:45, KaelThas), dropping their
+  legitimate mid-fight icons. **Why it over-fires:** on a *plain* fight a cold icon is worth ~**+9 DPS**
+  (real, per the plain-fight test) yet sits *within QTOL* in the model, so "drop it if within QTOL" throws
+  away real damage. The gate can't tell a *worthless* cold use from a *useful* one — that needs the very
+  ramp/flux knowledge the steady-state model deliberately omits (RULES §3). Reverted; not committed.
+- **The real signal is INTERMISSION-RAMP, not generic concentration.** Vashj's droppable icon@240 sits
+  **exactly at the [3:30–4:00] intermission exit**, so its casts are slow post-ramp casts the steady-state
+  model over-credits at full 3-stack value; icon@120 is plain-but-relocatable onto the free IV@3:00 burst.
+  That is why plain 6:30 barely prefers 3-icon (**+1.5**, a wash) but Vashj prefers it by **+5.4** — the gap
+  is the ramp. **So the correct vehicle is the downtime-aware placement workstream (below), not a generic SP
+  tie-break:** a use whose window *begins* at an intermission exit should be treated as catching ramp casts
+  (worth less), which naturally de-values icon@240 and pushes toward the 3-icon plan *without* touching the
+  useful cold icons on plain fights. Fold this into that workstream; do NOT re-attempt the generic tie-break.
+  The Vashj golden stays at its 4-icon plan until then (a known, documented sub-cast suboptimality, +5.4).
+  (Evidence reconfirmed this session: 3-icon 1569.1 vs 4-icon 1563.7 at var0, 1565.2 vs 1559.8 at var10,
+  seeds 11/19 identical — matches the original +5.4.)
 
 ## Also planned
 
