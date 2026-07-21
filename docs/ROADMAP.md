@@ -4,9 +4,15 @@
 
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
-2. **Next task = "Current top task" below.** Sequential buff-into-Lust packing **LANDED** (see Done);
-   the open front is now the **Icon-count / SP-alignment** call (sim-proven, below) and the
-   intermission invariant.
+2. **Next task = the PLACEMENT WORKSTREAM** (see "Golden-review findings" below — the user audited the
+   goldens and pinned it). Root: the planner banks/stacks by *start-second* when *containment* says a
+   range of placements are equivalent. Implement, sim-gating every golden that moves: **(a)** overlap =
+   interval containment, not start-coincidence — containment-equivalent placements are ties, pick the
+   consistent member (natural-cd tick / earliest / on the burst); **(b)** spend a free Cold Snap to
+   sequence/spread IVs when it gains or ties; **(c)** sequence opener haste into Lust, not over the
+   floor. Sim-proven gains waiting: 3:20 **+3.6**, 5:00 **+2.4**; plus DPS-neutral consistency (4:00 W4).
+   Expect several goldens (3:20, 4:00, 5:00, and any same-pattern fights) to re-lock better. Secondary
+   fronts after: the **Icon-count / SP-alignment** call and the intermission invariant.
 3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 16/16).
 4. The sim harness (`runner` binary, gear export, `wowsims/tbc-new` source) persists in the session
    **scratchpad** and survives `/clear` *within the same session* — check it's there before rebuilding
