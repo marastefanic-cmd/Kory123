@@ -108,7 +108,12 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
   **Cooldown-timed** (next use ~exactly one cd later), **Cold Snap** (extra IV window), else **Positioned**
   (no slack). Verified across fights (opener, on-Lust-window, CS chains, flexible gem, cooldown-cycled
   bursts). Output-only → exact-match 25/25.
-- **Phase 3 is complete** (all 6 tasks). `docs/PLAN.md` can be deleted, folding anything lasting here.
+- **Follow-up (user-directed): the haste trend is now proc-free.** The timeline curve + the schedule's
+  peak-haste / AB-cast / at-GCD-floor readouts use the **deterministic** haste (`multNoAti`/`capDn`/`castDn`
+  — no averaged Ashtongue), and a **second GCD-floor line "cap if Ashtongue"** (≈+40.8%) shows where a live
+  proc reaches the cap. ATI stays in the *scored* effective-AB count; this is display-only (RULES §14/§15,
+  ARCHITECTURE). exact-match 25/25.
+- **Phase 3 is complete** (all 6 tasks + the proc-free-trend follow-up). `docs/PLAN.md` deleted.
 
 ## Done — gear-haste + haste-trinket correctness (this session, user-directed)
 

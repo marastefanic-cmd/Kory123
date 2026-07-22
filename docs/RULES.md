@@ -326,14 +326,25 @@ sub-cast ties are NOT drawn** — moving those costs a later alignment or a whol
 free leeway). This is the useful, general form of the user's "some timings have leeway" idea (react to adds,
 dodges, or a proc), and it feeds the action-plan **Flexible/earliest** reasoning tag (§ ROADMAP task 6).
 
+**The haste trend does NOT average the proc in (user-directed).** Because the proc is random, the timeline
+curve and the schedule's peak-haste / AB-cast / at-GCD-floor readouts use the **deterministic** haste (gear +
+on-use buffs only — `multNoAti`/`capDn`/`castDn` off the cast list, display-only; scoring is unchanged). ATI
+shows only via its own uptime lane and a **second GCD-floor line, "cap if Ashtongue"** (§15). It stays folded
+into the *scored* effective-AB count exactly as before — this is a display change, not a scoring one.
+
 ## 15. Haste breakpoints — the GCD floor and the Frostbolt filler soft cap *(marked on the timeline)*
 
-Two haste levels the timeline marks as horizontal reference lines on the total-haste curve (informational —
-neither changes the score):
+Haste levels the timeline marks as horizontal reference lines on the (deterministic) haste curve
+(informational — none change the score):
 - **AB GCD floor = +50% haste** (the orange "GCD cap" line). A 3-stack Arcane Blast is a 1.5s cast; at
   ×1.5 haste it hits the 1.0s GCD floor, so **above +50% extra haste buys no more AB casts** during that
   window (it only helps by riding a damage buff for flux, or below the floor). This is why a haste buff
   stacked onto an already-floored window is worth ~0 (§2, §5, §7).
+- **GCD cap if Ashtongue aligns = +50% − 145/15.77 ≈ +40.8%** (the "cap if Ashtongue" line, only when ATI is
+  enabled). A live 145-rating proc adds ≈+9.2% haste, so 3-stack AB reaches the 1.0s floor at that much lower
+  *base* (deterministic) haste. Between this line and the +50% cap you are floored **only while a proc is
+  up**; above +50%, always. Since the curve is now proc-free (§14), this line is how the proc's cap effect is
+  shown without smearing its average into the trend.
 - **Frostbolt filler soft cap = +25% *passive* haste** (the cyan "4× FB" line, ≈**394 gear rating** =
   25 × 15.77). With Improved Frostbolt 5/5 a Frostbolt is a 2.5s cast; at +25% it casts in **2.0s**, so
   **four Frostbolts exactly fill the 8s Arcane Blast debuff** — the conserve-filler cadence goes from 3

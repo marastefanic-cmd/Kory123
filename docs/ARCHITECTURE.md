@@ -135,10 +135,13 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
 - `buildSegments(rows, T)` (~2191): turns phase rows into `{start,end,type,mult,targets}` segments;
   types `normal | intermission | burn | aoe`. Consumed by `simulate` and the renderer.
 - `renderTimeline(run)` (~2573): one inline SVG (fluid `width:100%`, no page horizontal scroll) —
-  haste step-curve + area fill, dashed GCD-cap line, phase bands (intermission hatched, AoE/burn
-  tinted with ×N badges), buff-uptime lanes with press ticks, **plus dashed "press anywhere here"
-  leeway bands** (`run.leeway`, from `leewayZones` — RULES §14). `scheduleRows`/`renderSchedule` build
-  the window table; `btn-copy` emits the canonical copy-as-text plan the tests compare.
+  **deterministic** haste step-curve (`multNoAti` — no averaged Ashtongue proc, RULES §14) + area fill,
+  three reference lines (**+50% GCD cap**, **"cap if Ashtongue" ≈ +40.8%** when ATI on, **+25% "4× FB"**
+  filler soft cap — RULES §15), phase bands (intermission hatched, AoE/burn tinted with ×N badges),
+  buff-uptime lanes with press ticks, **plus dashed "press anywhere here" leeway bands** (`run.leeway`,
+  from `leewayZones` — RULES §14). `scheduleRows`/`renderSchedule` build the window table (peak-haste /
+  AB-cast / floor also read the deterministic `multNoAti`/`castDn`/`capDn`); `btn-copy` emits the
+  canonical copy-as-text plan the tests compare.
 - `leewayZones(run)` (just before `renderTimeline`): per mobile press, the maximal contiguous interval
   whose robust score TIES the current placement (scan ±1s until it drops; `repair`-relocation guarded;
   Cold-Snap-chained IV pairs skipped). Position-independent presses get a wide interval; burst-riders

@@ -777,6 +777,10 @@ function simulate(schedule, cfg, collect) {
       t, interval, cast: pUp * up.cast + (1 - pUp) * dn.cast, gcd: pUp * up.gcd + (1 - pUp) * dn.gcd,
       mult: pUp * multUp + (1 - pUp) * multDn, dmg, stacks,
       capped: (pUp >= 0.5 ? up : dn).capped, pUp, ae: isAoe,
+      // deterministic (no-Ashtongue) haste for the DISPLAY — the proc is random, so its average is
+      // NOT smeared into the trend curve/readouts; ATI is shown only via its own lane + the "if it
+      // aligns" cap line (renderTimeline). These are display-only; scoring uses the rateAt integral.
+      multNoAti: multDn, capDn: dn.capped, castDn: dn.cast, gcdDn: dn.gcd,
     });
     if (atiOn) {
       // proc chance of THIS cast: any target's crit can trigger the 50% roll
@@ -2784,8 +2788,9 @@ function renderTimeline(run) {
   const PH = { intermission: "#b06a95", aoe: "#2ba6a0", burn: "#e0973e" };
   const bandLabel = s => s.type === "intermission" ? "Intermission" : s.type === "burn" ? `Burn ×${s.mult}` : `AoE ×${s.targets}`;
 
-  // haste % samples from the actual cast list
-  const samples = optR.casts.map(c => ({ t: c.t, pct: (c.mult - 1) * 100, capped: c.capped }));
+  // haste % samples from the actual cast list — DETERMINISTIC haste only (no averaged Ashtongue proc;
+  // the proc is random, so it's shown via its own lane + the "if it aligns" cap line, not the trend)
+  const samples = optR.casts.map(c => ({ t: c.t, pct: ((c.multNoAti ?? c.mult) - 1) * 100, capped: c.capDn ?? c.capped }));
   const maxPct = Math.max(60, Math.ceil((samples.length ? Math.max(...samples.map(s => s.pct)) : 0) / 10) * 10 + 5);
   const y = p => PADT + CURVE_H - (Math.min(p, maxPct) / maxPct) * CURVE_H;
 
@@ -2831,6 +2836,19 @@ function renderTimeline(run) {
   if (maxPct > FB_PCT + 3) {
     sv += `<line x1="${PADL}" y1="${y(FB_PCT).toFixed(1)}" x2="${VW - PADR}" y2="${y(FB_PCT).toFixed(1)}" stroke="${fbFrost}" stroke-width="1" stroke-dasharray="2 4" opacity="0.7"><title>+${FB_PCT.toFixed(0)}% passive haste (~${Math.round(FB_PCT * GAME.HASTE_RATING_PER_PCT)} rating): Frostbolt hits 2.0s, so 4 fill the 8s Arcane Blast debuff — the conserve-filler soft cap.</title></line>`;
     sv += `<text x="${PADL - 8}" y="${(y(FB_PCT) + 4).toFixed(1)}" fill="${fbFrost}" font-size="10.5" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">4× FB</text>`;
+  }
+  // Second GCD-floor line — "GCD cap if Ashtongue aligns". A live 145-rating proc adds ≈+9.2% haste
+  // (145/15.77), so 3-stack AB reaches the 1.0s floor at that much LOWER *base* (deterministic) haste.
+  // The trend curve is now proc-free, so this line shows where an aligned proc puts you at the cap:
+  // between it and the +50% line you're floored ONLY during a proc; above +50% you're always floored.
+  if (cfg.enabled.ati) {
+    const atiCapPct = 50 - ATI.rating / GAME.HASTE_RATING_PER_PCT;   // ≈ 40.8%
+    if (atiCapPct > 2 && maxPct > atiCapPct + 3) {
+      const atiCol = colorOf("ati");
+      sv += `<line x1="${PADL}" y1="${y(atiCapPct).toFixed(1)}" x2="${VW - PADR}" y2="${y(atiCapPct).toFixed(1)}" stroke="${atiCol}" stroke-width="1.2" stroke-dasharray="4 3" opacity="0.8"><title>GCD cap if an Ashtongue proc aligns: at +${atiCapPct.toFixed(0)}% base haste a live 145-rating proc reaches the 1.0s Arcane Blast floor. Above this, procs are (partly) wasted to the cap.</title></line>`;
+      // label at the RIGHT edge (the left gutter already holds GCD cap / total haste / 4× FB), below the line
+      sv += `<text x="${VW - PADR - 4}" y="${(y(atiCapPct) + 12).toFixed(1)}" fill="${atiCol}" font-size="10.5" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">cap if Ashtongue</text>`;
+    }
   }
   // haste step-curve
   let path = "";
@@ -2887,8 +2905,9 @@ function renderTimeline(run) {
     box.appendChild(ph);
   }
   el("viz-note").innerHTML =
-    `<b style="color:${ink}">White line</b> total spell haste per cast (gear ${(cfg.hasteRating / GAME.HASTE_RATING_PER_PCT).toFixed(1)}%` +
-    (cfg.enabled.ati ? ` + Ashtongue avg` : "") + `) · <b style="color:${warn}">dashed</b> GCD cap (+50%) · ` +
+    `<b style="color:${ink}">White line</b> deterministic spell haste per cast (gear ${(cfg.hasteRating / GAME.HASTE_RATING_PER_PCT).toFixed(1)}%` +
+    ` + on-use buffs — Ashtongue's random proc is NOT averaged in) · <b style="color:${warn}">dashed</b> GCD cap (+50%) · ` +
+    (cfg.enabled.ati ? `<b style="color:${colorOf("ati")}">╌╌</b> GCD cap if an Ashtongue proc aligns · ` : ``) +
     `<b style="color:#5cc6e6">·····</b> +25% = 4-Frostbolt filler cap (~394 rating) · ` +
     `bars are buff uptime, ticks are presses · <span style="color:${PH.intermission}">▨ intermission</span> · ` +
     `<span style="color:${PH.aoe}">■ AoE</span> · <span style="color:${PH.burn}">■ burn</span>` +
@@ -2953,10 +2972,10 @@ function scheduleRows(run) {
   for (const w of windows) {
     const wEnd = Math.max(...w.acts.map(a => a.t + BUFFS[a.k].dur));
     const casts = optR.casts.filter(c => c.t >= w.start && c.t < wEnd);
-    if (casts.length) {
-      w.peakHaste = Math.max(...casts.map(c => (c.mult - 1) * 100));
-      w.minCast = Math.min(...casts.map(c => Math.max(c.cast, c.gcd)));
-      w.capped = casts.some(c => c.capped);
+    if (casts.length) { // deterministic (no averaged Ashtongue) — matches the trend curve
+      w.peakHaste = Math.max(...casts.map(c => ((c.multNoAti ?? c.mult) - 1) * 100));
+      w.minCast = Math.min(...casts.map(c => Math.max(c.castDn ?? c.cast, c.gcdDn ?? c.gcd)));
+      w.capped = casts.some(c => c.capDn ?? c.capped);
     }
     // Target mana to AB-spam the whole burst span (deterministic, gear-free). AB FlatCost 195,
     // ×(1 + 0.75·stacks) per Arcane Charge, +30% under Arcane Power — all PowerCost_Pct mods that
