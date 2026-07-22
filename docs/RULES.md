@@ -94,10 +94,15 @@ damage-buffed casts — Lust is the usual vehicle, not the objective.
 
 ## 5. Icy Veins slides out of Lust as haste gear grows *(now REALIZED in the search, sim-verified)*
 
-At ~0 haste, IV belongs in Lust (packed, per #4). As passive haste rating rises, Lust alone
-approaches the floor, so Lust+IV wastes more and more — past a breakpoint (~h200 in testing on the
-reference gear) IV is worth more **outside** Lust while the **damage cluster stays ON Lust** (its
-fastest casts). No hard breakpoint to hardcode — it emerges from the floor math.
+At ~0 haste, IV belongs in Lust (packed, per #4). This isn't received mage-forum wisdom taken on faith —
+it's **verified in this project from first principles**: brute-enumeration (`tools/explore.mjs` `iv-icon`,
+h0: IV-in-Lust 65.294 > IV-pre 65.122 effective ABs) and the sim (IV@5-in-Lust beats IV@0 by +0.07% on the
+1:40 opener, prestack 0), and the *reason* is the flux coupling — the damage buffs sit in Lust, and IV
+flooring those casts makes each damage-buffed second worth more. As passive haste rating rises, Lust alone
+approaches the floor, so Lust+IV wastes more and more — past a breakpoint (**~15 rating** in the isolated
+IV+Icon case; pushed to **~80** when Arcane Power joins the Lust cluster, because the SP payout rewards
+overcapping a little — RULES §16) IV is worth more **outside** Lust while the **damage cluster stays ON
+Lust** (its fastest casts). No hard breakpoint to hardcode — it emerges from the floor math.
 - **Realized (this session).** The sequential window-packing pass (RULES §4, ARCHITECTURE) now generates
   **exit** candidates — the damage cluster on the Lust anchor, the haste buffs sequenced/stacked **just
   past** the window (`exitSeq` / `exitStack`) — alongside the usual pack-into-the-window layout. Kept only

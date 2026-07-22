@@ -23,7 +23,7 @@ function sched(times, id){
 // spec: { IV:[..], AP:[..], CS:[..], Zerk:[..], BL:[..], Icon:[..], Gem:[..], _prestack:N }
 export function build(spec){
   const pl = [];
-  const prestack = spec._prestack || 1;  // number of prepull AB casts (stacks)
+  const prestack = spec._prestack ?? 1;  // number of prepull AB casts (stacks); 0 = open cold from 0 stacks
   // Cold Snap first so its IV-reset lands before the IV schedule evaluates.
   if (spec.CS?.length)   pl.push(sched(spec.CS, IDS.CS));
   if (spec.BL?.length)   pl.push(sched(spec.BL, IDS.BL));

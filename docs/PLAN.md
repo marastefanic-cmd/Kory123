@@ -14,19 +14,36 @@ autonomously (RULES §3/§5/§7/§16): damage buffs place greedily (no breakpoin
 breakpoints — **but SP buffs shift those breakpoints** (AP in-Lust moved IV's exit from ~15→~80 rating), so
 the decomposition is *coupled*, not separable. `--sim` cross-checks ramp-sensitive winners against wowsims.
 
-**measure · Quantify the ramp-blindness ranking error** — **in progress.** Use A to answer: does the model's
-flat-3-stacks (ramp-blind) scoring ever flip a *ranking* decision vs the sim? Early signal: **probably not.**
-The ramp *evens out* for cast count (RULES §3, proven + sim-confirmed), the constant ramp deficit cancels
-between layouts, and every model-vs-sim gap found so far traced to a **sim-setup artifact** (a haste buff
-jammed at the fight end) or an effect the model already captures (Lust-stacking floor waste) — **not** a
-model error. Still to stress: a scenario where a *damage* buff could want the pull (the one direction the
-model would over-credit); the current scenarios never put a damage buff there. If that stays clean → **skip B**.
+**measure · Quantify the ramp-blindness ranking error** — **DONE, answer: the error is real but small.**
+Haste placement is ramp-indifferent (proven + sim-confirmed); the genuine gap is **damage buffs on a ramp**:
+the blind model ties "damage on the ramp" with "damage past it" while the sim prefers past it (+0.1% at a
+Lust-pull, +0.39% at an intermission exit; the user's ≥394-haste "Icon eats the ramp" case measured ≤0.1%).
+Self-limiting in DPS but produces wrong-*looking* plans, and the user chose to fix the physics (→ B).
 
-**B · De-ramp-blind the scorer** — **gated on `measure`.** Only if the data shows a real ranking error (most
-likely: damage buffs over-credited at the pull, feeding degenerate "stack everything at 0:00" plans). Scope it
-to exactly that differential; keep the constant-offset cancellation; sim-gate every golden that moves. This is
-the *one* change that can destabilize the goldens (why the ramp was left out originally — `index.html:684`),
-so it does not start until A has measured it and C is not yet touched.
+**B · De-ramp-blind the scorer** — **GREENLIT (user-directed) and in flight; WIP patch = `tools/ramp-dock.wip.patch`**
+(apply with `git apply tools/ramp-dock.wip.patch`; the no-op `scanAt`/`intervalAt` refactor it builds on is
+landed). The user chose full de-ramp-blinding over a tie-break: the ramp is a real fight mechanic, and fixing
+the physics keeps the "earliest possible" rule clean. Decisions locked: **pull starts at 0 stacks, no prestack
+modeling** (a start-intermission input already covers delayed openers); intermission exits always re-ramp.
+- **Design (the WIP dock):** keep `interval` (cast-count/haste valuation) UNTOUCHED — the ramp's cast-count
+  cost is exactly 1.333 casts per ramp-start, haste-independent below the floor, so haste placement-
+  independence (RULES §3) is preserved *exactly* (verified 0.0000% pre-vs-post at h0–200). Dock only the
+  DAMAGE of the phantom casts, sampled at each ramp cast's **completion time** (damage lands on completion;
+  midpoint sampling re-created the phantom "haste compresses the ramp" credit and was sim-refuted — the
+  IV@0-vs-IV@5 pull flip, sim says IV@5 by +0.07%).
+- **Sim scoreboard so far** (prestack 0, 80k iters, 2 seeds): exit-ramp damage delay **+0.39% CONFIRMED**;
+  bare-pull (late-Lust) cluster 0:00→0:06 delay **+0.10% CONFIRMED**; early-Lust opener does NOT move
+  (golden confirmed at exact 6.5s boundary); "haste-first" opener (Zerk@5, IV+cluster@15, from the 4:00 /
+  Solarian movers) **−0.20% REFUTED** — the deficit heuristic overcharges when a single ramp completion sits
+  inside an early damage window.
+- **Golden triage under the dock** (25 cases): 10 byte-identical, **9 model-driven movers** (sim-gate each
+  class), **4 SEARCH MISSES** (1:40 −34, Morogrim −97, 2:40 −97, 5:40 −915 robust: the search returns plans
+  *worse than the old golden re-scored* — C-fragility exposed by the new landscape), **2 tie-drifts**
+  (Lurker, 2:40-intermission: equal score, different canonical text).
+- **Next for B:** replace the deficit heuristic with the **exact discrete ramp** — integrate `[rampStart,
+  rampEnd)` as the sum of the 3 real completions instead of rate×time (kills the (b) overcharge by
+  construction), re-triage, sim-gate the surviving movers, and only then `--update` those goldens. The 4
+  search misses + 2 tie-drifts must be fixed (C) before the suite can go green — **B and C land together.**
 
 **C · Optimizer robustness (haste-monotonicity)** — the original Phase 4, now **last** (it must tune the
 search to the *final* scoring model). Acceptance: `tests/monotonicity.mjs` = **0 violations**, exact-match

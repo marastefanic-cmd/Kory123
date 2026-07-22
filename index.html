@@ -811,7 +811,9 @@ function simulate(schedule, cfg, collect) {
   // so it couldn't see sub-cast alignment — that blindness produced the phantom
   // "press 2s before lust" gains and the lust-position-dependent placement.
   const KW = KILL_WINDOW;
-  const rateAt = (tt, segB) => {
+  // deterministic buff state at time tt: the haste multiplier (no ATI) and the per-cast damage. Shared by
+  // the rate integrand (rateAt) and the ramp-deficit dock (below), so both read one consistent state.
+  const scanAt = (tt, segB) => {
     let rating2 = cfg.hasteRating, mult2 = 1, dmgMult2 = 1, sp2 = cfg.sp;
     let blA = false, piA = false;
     for (let i = 0; i < active.length; i++) {
@@ -826,23 +828,27 @@ function simulate(schedule, cfg, collect) {
     if (piA && !blA) mult2 *= BUFFS.powerInfusion.value;
     const multDn2 = mult2 * (1 + rating2 / (g.HASTE_RATING_PER_PCT * 100));
     const aoe = !!(segB && segB.type === "aoe");
-    const intervalOf = m => {
-      const gcd = Math.max(g.GCD_FLOOR, g.GCD_BASE / m);
-      return aoe ? gcd : Math.max((g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * g.AB.MAX_STACKS) / m, gcd);
-    };
     let dmg2;
     if (aoe) dmg2 = (g.AE.AVG_BASE_DMG + g.AE.COEF * sp2) * segB.targets * critFactor * dmgMult2 * aoeCritAmp(segB.targets, crit);
     else { dmg2 = (g.AB.AVG_BASE_DMG + g.AB.COEF * sp2) * critFactor * dmgMult2; if (segB && segB.type === "burn") dmg2 *= segB.mult; }
+    return { multDn2, mult2, dmg2, aoe };
+  };
+  const intervalAt = (m, aoe, stacks) => {
+    const gcd = Math.max(g.GCD_FLOOR, g.GCD_BASE / m);
+    return aoe ? gcd : Math.max((g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * stacks) / m, gcd);
+  };
+  const rateAt = (tt, segB) => {
+    const { multDn2, mult2, dmg2, aoe } = scanAt(tt, segB);
     if (atiOn) {
       // Ashtongue: blend the proc-up / proc-down haste states by the steady-state
       // probability the proc is up at the local cast rate (E[rate], not rate at E[state])
-      const intDn = intervalOf(multDn2);
+      const intDn = intervalAt(multDn2, aoe, g.AB.MAX_STACKS);
       const q = aoe ? 1 - Math.pow(1 - crit * ATI.procChance, segB.targets) : crit * ATI.procChance;
       const pUp2 = 1 - Math.pow(1 - q, ATI.dur / intDn);
-      const intUp = intervalOf(multDn2 + mult2 * atiScale);
+      const intUp = intervalAt(multDn2 + mult2 * atiScale, aoe, g.AB.MAX_STACKS);
       return dmg2 * (pUp2 / intUp + (1 - pUp2) / intDn);
     }
-    return dmg2 / intervalOf(multDn2);
+    return dmg2 / intervalAt(multDn2, aoe, g.AB.MAX_STACKS);
   };
   // integrate over piecewise-constant segments: buff state changes only at window
   // edges / phase boundaries / the kill window, so a few dozen breakpoints are exact
