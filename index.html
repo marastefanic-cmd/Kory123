@@ -2670,6 +2670,7 @@ el("btn-run").addEventListener("click", async () => {
 
 function render(run) {
   followReset();
+  run.leeway = leewayZones(run); // free "press anywhere" intervals (RULES §14) — used by the timeline + action plan
   const wb = el("warnbar");
   wb.hidden = !run.cfg.warnings.length;
   wb.innerHTML = run.cfg.warnings.map(w => `<div>${esc(w)}</div>`).join("");
@@ -2706,6 +2707,50 @@ function renderTiles({ cfg, baseline, naiveR, optR }) {
 }
 
 /* timeline: haste curve + buff lanes */
+// Free-leeway zones (RULES §14): a press that can be moved across an interval for the SAME
+// effective-AB result — the position-independent presses (RULES §3), a lone haste/utility use
+// bound only by its own cooldown, not riding a damage burst. For each, the maximal contiguous
+// interval whose robust score TIES the current placement (near-exact). Presses that ride a burst
+// score-drop the moment they move, so their interval collapses and they are not drawn. Shown on
+// the timeline as a dotted "press anywhere here" band and reported by the Flexible/earliest tag.
+function leewayZones(run) {
+  const { cfg, best } = run;
+  const castVal = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + (cfg.critPct / 100) * (GAME.CRIT_MULT - 1));
+  const TIE = Math.max(1, 0.01 * castVal);      // "same result" = tie within ~1% of a cast (float-noise slack)
+  const MINW = 3, STEP = 1;                     // only an interval >= 3s is worth calling free leeway; scan at 1s
+  const countsOf = s => { const o = {}; for (const k in s) o[k] = s[k].length; return o; };
+  const base = countsOf(best.s);
+  const sameCounts = c => Object.keys(base).every(k => (c[k] || 0) === base[k]);
+  const zones = [];
+  for (const k in best.s) {
+    if (cfg.fixed[k] || !BUFFS[k] || BUFFS[k].kind === "proc") continue; // pinned raid call / proc: not ours to move
+    const arr = best.s[k].slice().sort((a, b) => a - b);
+    const cd = BUFFS[k].cd;
+    for (let i = 0; i < arr.length; i++) {
+      const t0 = arr[i];
+      // a Cold-Snap-chained Icy Veins pair sits < cd apart — moving one relative to the other is not free
+      if ((i > 0 && t0 - arr[i - 1] < cd - 1e-6) || (i < arr.length - 1 && arr[i + 1] - t0 < cd - 1e-6)) continue;
+      const lo0 = i > 0 ? arr[i - 1] + cd : 0;                 // feasible range keeping the OTHER uses of this buff fixed
+      const hi0 = i < arr.length - 1 ? arr[i + 1] - cd : cfg.T;
+      if (hi0 - lo0 < MINW) continue;
+      const scoreAt = t2 => {
+        if (t2 < lo0 - 1e-6 || t2 > hi0 + 1e-6) return -Infinity;
+        const cand = cloneS(best.s); cand[k] = arr.slice(); cand[k][i] = t2;
+        const rep = repair(cand, cfg);
+        if (!sameCounts(countsOf(rep))) return -Infinity;                 // dropped/added a use → not the same line
+        if (!(rep[k] || []).some(x => Math.abs(x - t2) < 0.5)) return -Infinity; // repair relocated it → score is for a different spot
+        return simulate(rep, cfg).robust;
+      };
+      const ref = scoreAt(t0);
+      if (!isFinite(ref)) continue;
+      let lo = t0, hi = t0;
+      for (let t = t0 - STEP; t >= lo0 - 1e-6; t -= STEP) { const tt = Math.max(lo0, t); if (scoreAt(tt) >= ref - TIE) lo = tt; else break; }
+      for (let t = t0 + STEP; t <= hi0 + 1e-6; t += STEP) { const tt = Math.min(hi0, t); if (scoreAt(tt) >= ref - TIE) hi = tt; else break; }
+      if (hi - lo >= MINW) zones.push({ k, t: t0, lo: Math.round(lo), hi: Math.round(hi) });
+    }
+  }
+  return zones;
+}
 function renderTimeline(run) {
   const { cfg, best, optR } = run;
   el("viz").hidden = false;
@@ -2811,6 +2856,14 @@ function renderTimeline(run) {
         sv += `<rect x="${x(t).toFixed(1)}" y="${ly}" width="${bw.toFixed(1)}" height="${LANE_H}" fill="${col}" rx="4"><title>${def.name} @ ${fmtT(t)}</title></rect>`;
         sv += `<line x1="${x(t).toFixed(1)}" y1="${ly - 1}" x2="${x(t).toFixed(1)}" y2="${ly + LANE_H + 1}" stroke="${ink}" stroke-width="1.5" opacity="0.9"/>`;
       }
+      // free-leeway band (RULES §14): a dashed frame over the interval where this press can slide
+      // for the SAME result — "press anywhere here" (react to adds/dodges, or align a live Ashtongue proc)
+      for (const z of (run.leeway || [])) {
+        if (z.k !== k) continue;
+        const zx = x(z.lo), zw = Math.max(6, x(z.hi) - x(z.lo));
+        sv += `<rect x="${zx.toFixed(1)}" y="${(ly - 3).toFixed(1)}" width="${zw.toFixed(1)}" height="${LANE_H + 6}" fill="none" stroke="${col}" stroke-width="1.3" stroke-dasharray="2 3" rx="5" opacity="0.95"><title>${def.name}: press anywhere ${fmtT(z.lo)}–${fmtT(z.hi)} — same result</title></rect>`;
+        sv += `<line x1="${zx.toFixed(1)}" y1="${(ly + LANE_H / 2).toFixed(1)}" x2="${(zx + zw).toFixed(1)}" y2="${(ly + LANE_H / 2).toFixed(1)}" stroke="${col}" stroke-width="1" stroke-dasharray="2 3" opacity="0.7"/>`;
+      }
     }
   });
   sv += `</svg>`;
@@ -2827,7 +2880,8 @@ function renderTimeline(run) {
     `<b style="color:${ink}">White line</b> total spell haste per cast (gear ${(cfg.hasteRating / GAME.HASTE_RATING_PER_PCT).toFixed(1)}%` +
     (cfg.enabled.ati ? ` + Ashtongue avg` : "") + `) · <b style="color:${warn}">dashed</b> GCD cap · ` +
     `bars are buff uptime, ticks are presses · <span style="color:${PH.intermission}">▨ intermission</span> · ` +
-    `<span style="color:${PH.aoe}">■ AoE</span> · <span style="color:${PH.burn}">■ burn</span>`;
+    `<span style="color:${PH.aoe}">■ AoE</span> · <span style="color:${PH.burn}">■ burn</span>` +
+    ((run.leeway && run.leeway.length) ? ` · <span style="border:1.3px dashed ${ink2};border-radius:3px;padding:0 4px">dashed box</span> press-anywhere leeway (same result)` : "");
   hookTooltip(run, { PADL, PADR, VW, plotW, samples });
 }
 function hookTooltip(run, geo) {
@@ -3087,6 +3141,7 @@ function renderAssumptions({ cfg }) {
     <li>The kill time is planned as <em>known</em>, with a half-cast (0.5s) of smoothing at the buzzer: the continuous model credits the final partial cast by its fraction, so terminal bursts are placed to end right at the kill instead of gambling on squeezing one more cast under the wire. Dying early is your live call — pop the remaining cooldowns sooner. A razor-timed line that would sim higher at exactly the entered second is shown as a note, not baked into the plan; the damage tiles show the plain at-kill total.</li>
     <li>Ties break toward the natural, overlaid line: when spots are within one expected cast, the planner prefers a window that completes before the kill, then a press anchored to something you can see (the pull, a raid call, a co-press, a buff ending, a cooldown lighting back up), then one that avoids floor-dead seconds, then one that joins an existing press row, then the one that overlays the most other buff windows — stacked windows keep their value when the fight drifts a few seconds off plan; perfectly-tiled ones don't. Anything deliberately scattered carries a price tag saying what the grouped press would cost. A Cold Snap whose reset only buys a clipped final Icy Veins is still spent: a ready cooldown near the kill is free damage. So is a free reset that only <em>re-sequences</em> the same Icy Veins uses for a real gain — letting the opener lay its haste buffs sequentially inside Bloodlust (instead of stacking them over the floor), or spreading a banked Icy Veins back onto its natural cooldown tick — since on a fight with no better use for it, any real gain beats holding it. A reset that <em>adds</em> an extra mid-fight Icy Veins window must clear a full cast to be worth the scarce cooldown.</li>
     <li>Power Infusion does not stack with Bloodlust (Bloodlust wins while both are up). Skull of Gul’dan and Mind Quickening Gem share the offensive-trinket lockout: using one locks the other for the used buff’s duration. Drums obey Anniversary Tinnitus (one drum buff per 2 min); Bloodlust obeys Anniversary Sated (raid-wide, one per 10 min of a pull, resets on boss kill).</li>
+    <li>The Ashtongue Talisman is <em>passive</em>, not a scheduled press: it grants 145 haste for 5s on a spell crit (~50% chance), and the model already folds its steady-state uptime into every window's haste (it's <em>counted, not planned</em> — you can't pool a proc). What you <em>can</em> react to is <b>leeway</b>: when a press is freely movable across an interval for the same result, the timeline marks that zone with a <b>dotted band — press anywhere in it</b>. Aligning that press with a live Ashtongue proc (or any moment you like) inside the band is always safe — same schedule value, never a loss — so it's free upside if a proc is up. Narrow, non-free timings are never marked: moving those costs a later alignment or a whole use.</li>
     <li>Rotation is modeled as continuous AB spam. Real play conserves (AB×3 + Frostbolt filler) between windows — that changes absolute DPS, not which overlay wins, so the schedule stands either way.</li>
     <li>Arcane Blast is modeled at a steady 3 stacks (1.5s base). The opening/post-gap ramp — the first few casts at 0/1/2 stacks — is measured to be worth zero extra casts below ~400 haste rating and a single quantized cast only far past the GCD floor, and every candidate plan pays it equally, so it never changes which overlay wins. Dropping it keeps the plans natural (no phantom “triple-stack the pull for the ramp” incentive) while the real lever — not parking a multiplicative haste buff on already-floored casts (e.g. Icy Veins inside Bloodlust once geared) — is fully kept.</li>
     <li>Complicated fights: intermissions score zero damage (cooldowns and buff durations keep ticking — the planner holds cooldowns to recover through downtime); Burn phases multiply Arcane Blast damage; AoE phases switch to Arcane Explosion spam — instant, GCD-bound (haste pays to the 1.0s floor) and damage scaling with target count. Phases apply per cast start.</li>

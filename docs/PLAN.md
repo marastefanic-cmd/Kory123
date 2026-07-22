@@ -29,7 +29,13 @@ both up — already coded, `simulate` ~712). Plan:
   spacing**, **two haste buffs colliding on the floor** (sequential, not overlapped). Tighten anything off.
 - Add 1–2 Drums/PI cases to the exact-match suite once confirmed.
 
-### 3. Ashtongue Talisman — decide the model
+### 3. Ashtongue Talisman — decide the model — ✅ DONE (→ free-leeway zones)
+**Decided (user-refined): keep ATI passively scored; depict LEEWAY, don't schedule the proc.** Not option
+(a) or (b) as written — the better synthesis: `leewayZones` finds each press's maximal contiguous interval
+that ties its placement (position-independent presses, §3), the timeline draws a dotted **"press anywhere
+here"** band over it, and aligning a live proc inside the band is never anti-synergous so no verdict is
+computed. Verified byte-flat inside / drop-or-infeasible outside. RULES §14. The action-plan Flexible/earliest
+tag reporting the same interval is folded into task 6. (Original spec below, superseded.)
 Currently steady-state proc-uptime for *scoring* (`simulate` `atiOn`, ~715/797) — fine for the DPS number,
 but it doesn't tell you *when to react*. It's a **145-haste, 5s proc on spell crit**; in-game you pool it
 into windows. Two deliverables to choose from (spec both, pick with the user):

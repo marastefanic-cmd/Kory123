@@ -83,8 +83,17 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
   the direct `.AttachMultiplyCastSpeed` so it still stacks). Locked 2 Debugging goldens (`3:20 … drums`,
   `3:20 … PI`); exact-match **25/25** (23 existing byte-identical). No fresh end-to-end APL sim — no blind
   spot on a plain fight, physics anchored (RULES §13, SOURCES, TOOLING).
-- Remaining: task 3 (Ashtongue model), task 4 (mana tooltip), task 5 (haste breakpoints), task 6
-  (placement-reasoning action-plan tags).
+- **Task 3 — Ashtongue model → LEEWAY ZONES (user-refined): in progress.** Kept ATI **passive** (steady-state
+  proc-uptime folded into window haste — real DPS; excluding from scoring rejected). No scheduled press / no
+  proc verdict: the scorer averages the proc, and within a true free-leeway interval aligning a press with a
+  proc is **never anti-synergous** (user's call), so the honest depiction is just the interval. **Building:**
+  `leewayZones` computes, per mobile press, the maximal contiguous interval where moving it ties the champion
+  within `QTOL` (position-independent presses only — §3); the timeline draws a **dotted "press anywhere here"
+  band** over it; the action-plan Flexible/earliest tag (task 6) reports the same interval. Narrow/sub-cast
+  ties are not drawn (§10 tie-break ≠ free leeway). RULES §14. Output-only (timeline + tags) → exact-match
+  unaffected.
+- Remaining: finish task 3 (leewayZones + timeline band), task 4 (mana tooltip), task 5 (haste breakpoints),
+  task 6 (placement-reasoning action-plan tags, incl. the leeway/Flexible-earliest interval).
 
 ## Done — gear-haste + haste-trinket correctness (this session, user-directed)
 

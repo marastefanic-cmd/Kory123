@@ -303,3 +303,25 @@ differently, and that difference is **source-verified against wowsims**, not ass
   plain single-target fight, so the model's cast-count is the arbiter (MECHANICS §3) — a fresh end-to-end
   APL sim wasn't required to certify these (the physics is anchored by the rating trust-anchor + the PI
   source read above).
+
+## 14. Ashtongue Talisman → leeway zones (passive proc; depict the freedom, don't schedule it) *(decided this project)*
+
+The Ashtongue Talisman of Insight (145 haste rating, 5s, ~50% on a spell crit) is modeled as **steady-state
+proc-uptime folded into every window's haste** (`simulate` `atiOn`, ~662) — real DPS, in the effective-AB
+count and setup comparison. It is **not** given a scheduled press: the scorer averages the proc into a
+constant haste bump, so there is nothing to align a press *against* in the model, and you can't pool a proc.
+Excluding it from *scoring* was also rejected (biases the effective-AB count + every setup comparison by a
+real, always-present contribution).
+
+**What the tool surfaces instead is LEEWAY (user-directed).** Many presses are *freely movable across an
+interval for the same effective-AB result* — the position-independent ones (§3): a lone haste/utility press
+bounded only by its own cooldown feeding a later use, not riding a damage burst. For those, the timeline
+draws a **dotted band over the movable interval — "press anywhere here"** (`leewayZones`, ARCHITECTURE;
+computed by scanning the press across its feasible range and taking the maximal contiguous sub-interval whose
+robust score ties the champion within `QTOL`). **No proc verdict is computed:** aligning such a press with a
+live Ashtongue proc (or any moment the player likes) inside the band is **never anti-synergous** — every
+position in the band already scores identically, so overlapping a proc is at worst neutral (a floored proc is
+wasted, not a loss) and at best free upside. So the honest, minimal depiction is the band itself. **Narrow /
+sub-cast ties are NOT drawn** — moving those costs a later alignment or a whole use (§10 is a *tie-break*, not
+free leeway). This is the useful, general form of the user's "some timings have leeway" idea (react to adds,
+dodges, or a proc), and it feeds the action-plan **Flexible/earliest** reasoning tag (§ ROADMAP task 6).
