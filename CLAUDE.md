@@ -109,8 +109,10 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/ROADMAP.md` — status, current work, and open questions.
 - `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
-  into ROADMAP). **No plan in flight** — the finite-mana / conserve stat-weight phase landed (`docs/EP.md`
-  finite-mana section, RULES §12, `tests/ep-finite.mjs`).
+  into ROADMAP). **In flight:** the **proactive mana planner** — a finite-mana *mode* (beta toggle) that
+  inputs Innervate/Mana-Tide/etc. and schedules the conserve rotation; the infinite-mana engine stays
+  untouched (`docs/PLAN.md`). (The finite-mana *stat-weight* phase already landed — `docs/EP.md`,
+  `tests/ep-finite.mjs`.)
 - `docs/SOURCES.md` — where WoW facts come from (TBC is a solved game — look up + cite, don't
   re-derive) and the verified-facts ledger of the constants the model uses.
 - `docs/EP.md` — stat weights **two contexts**: the infinite-mana **layout** EP (closed-form model

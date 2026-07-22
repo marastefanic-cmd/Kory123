@@ -4,11 +4,15 @@
 
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
-2. **No plan in flight — `docs/PLAN.md` is deleted; its workstreams all landed.** The harness audit
-   (W1), the drop-bug fix + full re-validation (W1.5), and the ramp-aware SP shift (W2a → Vashj emits
-   **4:05 / 6:05**) are **done**, and the AP-cd question is **resolved** (real TBC AP = 180s
-   cd-on-activation, user-confirmed — the model was right; the sim's 195s is a wowsims quirk, so the
-   sim is a known blind spot for multi-AP timing; SOURCES / TOOLING ★). Findings are the authoritative
+2. **Plan in flight = `docs/PLAN.md`: the proactive mana planner** (finite-mana *mode*, beta toggle —
+   input Innervate/Mana-Tide/pot/gem/Evocation, schedule the conserve rotation so bursts are fuelled and
+   you end ~empty). **Do NOT touch the infinite-mana engine** (exact-match 23/23). Already done and behind
+   it: the harness audit (W1), drop-bug fix (W1.5), ramp-aware SP shift (W2a → Vashj **4:05/6:05**), AP-cd
+   **resolved** (real TBC AP = 180s cd-on-activation; sim's 195s is a wowsims quirk — a known blind spot
+   for multi-AP timing; SOURCES / TOOLING ★), the **AoE Potency amplification** (modeled + sim-validated),
+   **EP** two-route cross-check + `portfolio-ep`, the **Boss presets** (10 real encounters, tested), and
+   the **finite-mana stat weights** (`docs/EP.md`: SP≈Int>Haste 0.96>Crit>MP5>Spirit≫Mana — haste is NOT
+   folklore-weak). Findings are the authoritative
    reference in `docs/TOOLING.md` — read its **Methodology** section (model = objective/arbiter, sim =
    calibration) and the ★ drop-bug + stats protocol. The intermission re-gate is **done** (KT +
    4:00-multi both re-confirmed ≥ their alternatives on the fixed rig — see Status). The **AoE crit-proc
