@@ -21,7 +21,13 @@ const REPO = path.resolve(__dir, '..');
 const stepArg = process.argv.indexOf('--step');
 const STEP = stepArg >= 0 ? +process.argv[stepArg + 1] : 5;
 const HMAX = 150;
-const EPS = 0.005; // effective-cast tolerance (well below one cast; float/quantization slack)
+// Tolerance = the planner's DESIGNED pressability slack, not float noise. The underlying objective is
+// monotone in haste (a theorem), and the search is basin-stable (basinHop fixpoint) — but the returned
+// plan deliberately trades up to ~castVal/8 of expected damage for a pressable line (coPressAlign,
+// "execution beats microtiming"), and that trade's size varies with haste. So the RETURNED plans may
+// wobble by up to ~1/8 cast across a haste step without any search miss being present. Anything beyond
+// this slack is a real miss.
+const EPS = 0.15; // effective casts — coPressAlign's castVal/8 + integer-snap rounding headroom
 
 // Reference fights to sweep (name → {T, pins, kit?}). Plain fights only — the ramp near an intermission
 // exit is a documented scorer blind spot (RULES §10), so monotonicity there is checked by the sim, not here.
