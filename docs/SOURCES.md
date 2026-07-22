@@ -47,7 +47,8 @@ Cross-check these against the sources above whenever they're touched; update the
 | Serpent-Coil Braid + mana-gem | +225 SP 15s on gem use; ≤3 gem charges | Wowhead (SCB set + Mana Emerald) | verified |
 | Cold Snap | resets Icy Veins; cd 480s | Wowhead + wowsims | verified |
 | Crit damage multiplier | `CRIT_MULT = 1.8175` (avg crit factor incl. base 1.5× + Arcane "Spell Power" talent + Chaotic Skyfire meta) | needs exact composition confirmed vs wowsims mage crit calc | **verify** |
-| Arcane Explosion (AoE) base | 392 + 0.214·SP, instant, GCD-bound | Wowhead (AE rank) + wowsims — **re-check rank/coef** | **verify** |
+| Arcane Explosion (AoE) base | 392 (roll 377–407) + 0.214·SP, instant, GCD-bound, linear per-target | wowsims `arcane_explosion.go` (spell 27082) — exact | **verified** — base roll 377–407 (avg **392**) and `BonusCoefficient` **0.214** match the source to the digit; `GCDDefault` (GCD-bound), `CalcAndDealAoeDamage` = full damage to each target (linear in N), `DamageMultiplier 1`. Sim-cross-checked via the `--targets N` runner flag (see TOOLING). |
+| AoE crit-proc amplification (Clearcasting→Arcane Potency) | effective crit rises with target count | wowsims `mage/talents.go` | **verified mechanic, not yet modeled** — Arcane Concentration procs **per hit** (`OnSpellHitDealt`, 2%·rank), so an N-target AE cast gets N proc rolls → Clearcasting uptime, hence Arcane Potency's **+10%·rank crit** on the next cast, scales with N. Measured +8.6% per-target damage at 6 tgt (Potency ≈ half, generalizable; the rest gear procs like Tirisfal 4pc, transient). See ROADMAP (next task). |
 
 When you add a rule to `docs/RULES.md`, add its underlying numbers here with a source. When you
 confirm or correct a `verify` row, update its status and cite where you checked.

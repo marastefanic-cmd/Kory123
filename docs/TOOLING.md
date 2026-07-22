@@ -231,9 +231,35 @@ correct in the model; the sim doesn't fire it, but it's a common factor that can
   must be the IV that breaks the 180s cd. Otherwise ignore the fine timing — it's one bonus IV.
 - **Fixed-length boundary artifacts.** At an exact fight length, whose cast train ends flush at the
   buzzer swings ±1 cast. Re-check any suspiciously large fixed-length gap under `--var 10`.
-- **AoE isn't modeled by AB-spam.** The runner casts Arcane Blast; it can't value a real 6-target AoE
-  phase. Calls hinging on AoE weighting (KT double-IV-over-AoE) are model assumptions the sim can't
-  confirm — flag them.
+- **AoE — the runner CAN value it now (`--targets N`).** See the AoE section below. A full-fight sim
+  still can't switch target-count mid-fight (encounters are fixed-N), so an AoE *phase* is valued in
+  **isolation** (short fight, N targets, AE-spam); a full boss sim treats an AoE window as 1-target AB
+  (a common factor that cancels when the varied presses are outside the AoE window — how the KT re-gate
+  stayed valid).
+
+## Evaluating AoE phases (`--targets N` + AE-spam)
+
+Two additions let the runner value an Arcane-Explosion AoE phase (the model's `type:"aoe"` segment):
+- **`runner --targets N`** duplicates `encounter.targets[0]` to N mobs (config protos are read-only, so
+  the pointer is shared; each becomes its own Unit). `0` = keep the export's count.
+- **`tools/genae.mjs`** (scratchpad) builds an **Arcane Explosion (27082) spam** APL, same cooldown-
+  schedule interface as `genapl.mjs`. Run a short isolation fight (e.g. `--dur 40 --targets 6`).
+
+**Validated (this session), model vs sim:** the model's AE constants are **exact** — base roll 377–407
+(avg 392), `BonusCoefficient` 0.214, instant + GCD-bound, `DamageMultiplier 1`, full per-target damage
+(`arcane_explosion.go`, spell 27082). Sim spot-checks: AP over AoE ≈ **×1.30** (dmgMult), IV over AoE ≈
+**×1.18–1.20** (haste, unfloored), steady 6-target AE flux ≈ **2.25×** a single-target AB cast — so a
+6-target AoE cast is worth ~2.25× an AB, which is why the KT **double-IV-over-AoE** call is robust (IV
+adds ~+20% casts to a window worth ~2.25× — a landslide vs the same IV on single-target).
+
+**Known super-linearity the model does NOT yet capture (next task, ROADMAP).** 6-target AE is **+8.6%
+per-target** above linear (measured: ×1.024 @2t, ×1.086 @6t, ×1.119 @10t) because on-**crit** procs fire
+more when a cast rolls crit on N targets: **Clearcasting→Arcane Potency** (`talents.go`: Arcane
+Concentration procs **per hit**, 2%·rank; Potency then gives +10%·rank crit on the next cast — this is
+**always-present** and generalisable, ≈ half the effect) plus **gear procs** (e.g. Tirisfal 4pc +70 SP
+on crit — **transient**, excluded). The model treats crit as a constant that cancels, so it currently
+**under-weights AoE** (conservative — it can't over-invest in AoE). Modeling the Potency component
+(derivable from the user's crit input + N + talent ranks — no gear tuning) is the next planned change.
 
 ## Verifying a golden change
 

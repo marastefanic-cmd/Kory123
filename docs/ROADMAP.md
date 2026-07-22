@@ -10,12 +10,11 @@
    cd-on-activation, user-confirmed — the model was right; the sim's 195s is a wowsims quirk, so the
    sim is a known blind spot for multi-AP timing; SOURCES / TOOLING ★). Findings are the authoritative
    reference in `docs/TOOLING.md` — read its **Methodology** section (model = objective/arbiter, sim =
-   calibration) and the ★ drop-bug + stats protocol. **Next work = the payoffs** (haste-agnostic APL →
-   setup comparison → EP calculator, below). One optional low-priority follow-up remains (see Open
-   questions): spot-check the KT / 4:00-multi intermission plans for *optimality* on the fixed rig
-   (their plans are unchanged and validated no-regression, just not re-confirmed *best* since the
-   baselines jumped). **The model / cast-counting was RIGHT on Vashj; the sim was wrong because of the
-   drop bug — fix the sim, don't distrust the model.**
+   calibration) and the ★ drop-bug + stats protocol. The intermission re-gate is **done** (KT +
+   4:00-multi both re-confirmed ≥ their alternatives on the fixed rig — see Status). **Next task = the
+   AoE crit-proc amplification model** (below); after that, the payoffs (haste-agnostic APL → setup
+   comparison → EP calculator). **The model / cast-counting was RIGHT on Vashj; the sim was wrong
+   because of the drop bug — fix the sim, don't distrust the model.**
 3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 16/16).
 4. The sim harness (`runner` binary, gear export, `wowsims/tbc-new` source) persists in the session
    **scratchpad** and survives `/clear` *within the same session* — check it's there before rebuilding
@@ -39,6 +38,29 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
    its own ideal plan (base gear → planner → forced-schedule APL via `tools/genapl.mjs` → sim → DPS;
    then `gear+Δ` → re-run planner → new APL → sim → `Δdps/Δstat`). Corrects wowsims' `statweight.go`,
    which freezes the rotation across perturbations (dragging haste's EP down).
+
+## Next task — AoE crit-proc amplification (the model under-weights AoE phases)
+
+The runner can now value AoE (`--targets N` + `tools/genae.mjs` AE-spam — TOOLING). Validation this
+session: the model's AE scoring core is **exact** (base 392 / coef 0.214 / instant-GCD-bound / linear
+per-target / AP ×1.30, all matching `arcane_explosion.go`). **But** the sim shows 6-target AE is **+8.6%
+per-target above linear** (×1.024 @2t, ×1.086 @6t, ×1.119 @10t) — on-**crit** procs fire more when a cast
+crits on N targets. Decomposition:
+- **Generalisable (always present) — Clearcasting → Arcane Potency.** Arcane Concentration procs **per
+  hit** (`talents.go`, 2%·rank), so an N-target AE cast rolls it N times → Clearcasting uptime → Arcane
+  Potency's **+10%·rank crit** on the next cast scales with N. ≈ half the +8.6% at 6t. **This is what to
+  model** — it's derivable from the user's **crit input × N × talent ranks**, no gear tuning (the tool is
+  gear-agnostic; crit is a user input).
+- **Transient (gear) — on-crit SP procs** (e.g. Tirisfal 4pc +70 SP). The user won't always have these →
+  **exclude** from the general model (document as an unmodeled, conservative omission).
+
+**Plan (deterministic, generalisable, sim-gated):** add a Clearcasting/Potency effective-crit term to the
+scorer — per-cast Clearcasting rate `q(N)=1−(1−0.02·AC)^N`, effective crit `= crit + q(N)·(0.10·AP)`, fed
+into the damage `critFactor` per segment. Single-target (N=1) gets a **constant** crit bump → cancels in
+single-target comparisons (**no plain golden moves**); AoE (N=targets) gets the N-scaled bump → AoE
+correctly worth more. Expose Arcane-Concentration / Arcane-Potency ranks as inputs (default 5/2). New
+model constant needs a `docs/PLAN.md`; sim-gate KT and any AoE golden on the fixed rig. (Impact: KT's
+double-IV-over-AoE only gets **more** justified; likely no plan move, but the *reason* becomes real.)
 
 ## Status (as of the current work)
 
@@ -267,11 +289,11 @@ exact-match suite; new fights are added by editing that one array.
   validated goldens. Revisit only if a case needs it.
 - **Align-vs-twice breakpoint** should be pinned by sim per fight, not assumed (when does "two
   unaligned uses" beat "one Lust-aligned use"?).
-- **Intermission-golden optimality re-gate (optional, low priority — from the retired PLAN.md).** The
-  drop-bug fix jumped the intermission goldens' sim baselines +18..+26; re-validation showed no
-  regressions and the Vashj 4-icon plan is vindicated, but the KT / 4:00-multi plans haven't been
-  re-confirmed *best* vs their documented alternatives on the fixed rig. Their plans are unchanged
-  (exact-match green either way), so this is a spot-check for peace of mind, not a suspected bug.
+- ~~Intermission-golden optimality re-gate~~ **DONE** (this session, fixed rig). **4:00-multi:** golden
+  (icon2@186, CS→IV@229) = 2096.9 ≥ icon2@180 (2095.6) and == CS→IV@227 (exact wash — confirms
+  `dodgeDowntime` is legibility-neutral). **KaelThas:** golden (280/400) = 1718.7 vs TOOL 260/396 (1718.5)
+  and 280/402 (1718.2) — a 3-way tie within CRN noise (containment-equivalent icon timings), no
+  regression. Both plans stand.
 - **KT AoE valuation** (double-IV over the 6-target phase) rests on Arcane-Explosion-vs-Blast
   weighting that plain-AB sims can't confirm — a standing model assumption.
 - Sim harness (`runner`, gear export, wowsims source) lives in the ephemeral scratchpad — see

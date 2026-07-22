@@ -198,9 +198,16 @@ durations the contained region shrinks to the **intersection** of the constraint
     artifact** — the 4-icon plan's *own* 6:00 icon was deleted by the harness, not out-valued; with the
     drop fixed 4 icons beat 3. The 4-icon plan stands; the 4:05/6:05 refinement rides on top of it.)
 - **AoE** phases score linearly in `targets` off the Arcane **Explosion** base (392 + 0.214·SP,
-  instant, GCD-bound), NOT off Arcane Blast — so an N-target AoE is N× an AE cast, and the
-  double-IV-over-AoE call on KT hinges on that AE-vs-AB weighting (a modeling assumption plain-AB
-  sims can't fully verify — flag it).
+  instant, GCD-bound), NOT off Arcane Blast — so an N-target AoE is N× an AE cast. **Now sim-verified**
+  (`--targets N` AE-spam, TOOLING): the constants match `arcane_explosion.go` exactly, and a 6-target AE
+  cast sims ~**2.25×** an AB cast — so **double-IV-over-AoE (KT)** is real, not an assumption (IV adds
+  ~+20% casts to a window worth ~2.25×, a landslide vs the same IV on single-target). One refinement is
+  open: the sim shows AoE is **super-linear** (+8.6% per-target at 6 tgt) because on-crit procs
+  (Clearcasting→Arcane Potency, always-present; plus transient gear procs) fire more when a cast crits on
+  N targets — the model treats crit as a canceling constant and so **under-weights AoE** (conservative).
+  Modeling the generalisable Potency component (from crit input × N × talent ranks) is the next task
+  (ROADMAP). The AoE **weighting** is a lower bound the sim now confirms — no longer "flag it, can't
+  verify."
 
 ## 10. Determinism / tie-breaks
 
