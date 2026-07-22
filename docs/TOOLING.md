@@ -159,8 +159,18 @@ registration is what makes 2825 castable by the APL; the APL `schedule→castSpe
 it. They are the **same single Lust**, not two. Verified in the combat log: Bloodlust aura gained
 exactly **once**, no stray autocast, **no mage GCD spent** (the AB train is uninterrupted). Power
 Infusion (10060/-1) and Drums (35476/-1) are the same off-GCD-MCD shape but are **not registered** in
-the current export (it lacks `player.buffs.powerInfusions` / `partyBuffs.drums`); no current golden uses
-them. To sim a Drums/PI fight, enable those in the export first.
+the current export (it lacks `player.buffs.powerInfusions` / `partyBuffs.drums`). To run an end-to-end
+Drums/PI sim, enable those in the export first.
+
+**Two model-side goldens now DO use them** (`3:20 lust 0:05 drums` / `... PI`), locked without a fresh
+end-to-end sim on purpose: their physics is already **anchored** — Drums is +80 haste *rating*, additive
+into the same `(1+rating/1577)` pool the gear-haste trust-anchor certified at h0 (Drums 80 is named there),
+and the one genuinely uncertain bit, **PI-not-stacking-with-BL, is verified straight from the wowsims
+source** (BL & PI share the `"MultiplyCastSpeed"` ExclusiveCategory, highest-priority wins — SOURCES /
+RULES §13), which is a stronger anchor than a ~100-DPS-noise A/B. A plain single-target Drums/PI fight has
+**no blind spot** (no ramp/mana/AoE/multi-AP), so the model's cast-count is the arbiter (methodology, top of
+this file). Re-run an actual APL sim only if a Drums/PI case ever lands on a blind spot (e.g. an
+intermission-exit or AoE phase).
 
 ## Statistical protocol (read this — the old "seeds 11/19" habit was wrong)
 

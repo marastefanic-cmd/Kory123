@@ -276,3 +276,30 @@ it exists to get the **gearing** stat weights the infinite-mana layout EP can't 
   are in `docs/EP.md` + `docs/TOOLING.md`; locked numbers in `tests/finite-weights.json`. **A schedule-only
   conserve APL must include `autocastOtherCooldowns`** or it silently drops Innervate + Mana Tide (−6% DPS,
   starved weights) — see TOOLING ★.
+
+## 13. Raid-haste externals: Drums & Power Infusion *(model sim-source-verified this project)*
+
+The raid-controlled haste calls the mage plans **around** (pinnable; RAID_PINNABLE). Both are haste, both
+ride damage bursts for flux (§4/§6), both obey the GCD floor (§2) — but they enter the haste product
+differently, and that difference is **source-verified against wowsims**, not assumed:
+- **Drums of Battle = +80 haste RATING, 30s, 2-min Tinnitus.** Rating, so it's **additive** into the same
+  `(1 + rating/1577)` pool as gear/MQG/Skull — the exact path trust-anchored at h0 (ROADMAP gear-haste).
+  It **stacks with everything**. Tinnitus = its own 120s `cd` (spacing enforced by `repair`/`sepFilter`).
+- **Power Infusion = ×1.20 haste MULT, 15s — does NOT stack with Bloodlust (BL wins while both up).**
+  This is real TBC, confirmed in the wowsims source: BL (`multiplyCastSpeedEffect 1.3`) and PI
+  (`multiplyCastSpeedEffect 1.2`) both register in the **same `"MultiplyCastSpeed"` ExclusiveCategory**;
+  within a category only the **highest-priority** effect is active (`sim/core/exclusive_effect.go`), so PI
+  (1.2) is suppressed whenever BL (1.3) is up and takes over the instant BL ends. **Icy Veins is different**
+  — it uses `.AttachMultiplyCastSpeed(1.2)` (a *direct* multiplier, not the exclusive wrapper), so IV
+  **does** stack with BL. The model matches exactly: `if (piActive && !blActive) mult *= 1.20`
+  (`simulate` ~746/821), IV/Berserking multiply unconditionally. Verified instant-by-instant (PI ⊂ BL adds
+  **0**; PI partly past BL gains only the non-overlap tail).
+- **Placement is the planner's** (unpinned Drums/PI are scheduled like any cooldown). Confirmed optimal, not
+  just legal: at the opener PI@0 rides the AP burst even though its 180cd forces it to overlap BL for a few
+  seconds (dropping it loses ~1.6k; the overlap is intrinsic to also catching the next AP burst); when the
+  cd allows, PI lands **just after** BL (5:00 case: PI@0:45). Drums rides bursts for flux even when
+  near-floored (beats a bare-window Drums), and sequences off the floor at high gear haste. Locked as
+  exact-match cases **"3:20 lust 0:05 drums"** and **"3:20 lust 0:05 PI"**. No blind spot is in play on a
+  plain single-target fight, so the model's cast-count is the arbiter (MECHANICS §3) — a fresh end-to-end
+  APL sim wasn't required to certify these (the physics is anchored by the rating trust-anchor + the PI
+  source read above).

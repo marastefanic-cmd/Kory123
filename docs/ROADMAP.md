@@ -67,6 +67,25 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
    by the **summed weighted absolute derivatives, normalized to SP once** (NOT averaged per-fight EPs —
    that mis-weights short fights). Awaiting the user's 10 phase-fight inputs to produce the phase EP.
 
+## Phase 3 progress (in flight — `docs/PLAN.md`)
+
+- **Task 1 — remove mage-managed-cooldown pinning: DONE.** Only the raid calls (Bloodlust, Drums, Power
+  Infusion — `RAID_PINNABLE`) expose a pin control now; every mage cooldown (IV/AP/gem/Zerk/Icon/haste
+  trinkets) is the planner's to schedule. `buildBuffList` + `readCfg` both gate on the set (stale
+  mage-cooldown times in a saved preset are ignored). Optimizer unchanged, presets pin only bloodlust →
+  exact-match unaffected. See ARCHITECTURE "Inputs" note.
+- **Task 2 — test + tighten Drums + Power Infusion: DONE (verify + lock; no tighten needed — the model
+  was already correct).** Verified deterministically (PI ⊂ BL adds 0 haste, PI-past-BL gains only the tail,
+  Drums additive) and at the optimizer level (Tinnitus ≥120s spacing, burst-riding for flux, off-floor
+  sequencing at high haste; PI@0's intrinsic BL overlap and Drums-on-near-floored-opener both **proven
+  optimal** vs alternatives, not search misses). **The one uncertain mechanic — PI not stacking with BL —
+  is sim-source-verified** (wowsims `"MultiplyCastSpeed"` ExclusiveCategory, BL prio 1.3 > PI 1.2; IV uses
+  the direct `.AttachMultiplyCastSpeed` so it still stacks). Locked 2 Debugging goldens (`3:20 … drums`,
+  `3:20 … PI`); exact-match **25/25** (23 existing byte-identical). No fresh end-to-end APL sim — no blind
+  spot on a plain fight, physics anchored (RULES §13, SOURCES, TOOLING).
+- Remaining: task 3 (Ashtongue model), task 4 (mana tooltip), task 5 (haste breakpoints), task 6
+  (placement-reasoning action-plan tags).
+
 ## Done — gear-haste + haste-trinket correctness (this session, user-directed)
 
 The user redirected off the in-tool finite-mana idea (dropped) to **verify the planner is correct with

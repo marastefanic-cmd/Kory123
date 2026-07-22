@@ -11,14 +11,14 @@ overlays.
 
 ## Tasks
 
-### 1. Remove pinning on the mage-managed cooldowns (quick, first)
+### 1. Remove pinning on the mage-managed cooldowns (quick, first) — ✅ DONE
 IV / AP / Icon / gem / Berserking / Cold Snap are the tool's to schedule — pinning them fights the
 optimizer and is the untested "lock 2+ timings" edge case. **Only the raid-controlled buffs (Bloodlust,
 Drums, Power Infusion) stay pinnable.** Drop the per-time input UI for the mage-managed cooldowns; keep
 `fixed`/pins only for the raid buffs. Presets don't pin mage cooldowns, so goldens are unaffected — verify
 exact-match 23/23 after. (Also removes a class of inputs we never validated.)
 
-### 2. Test + tighten Drums + Power Infusion
+### 2. Test + tighten Drums + Power Infusion — ✅ DONE (verify + lock; no tighten needed)
 Both are raid **haste** buffs already in `BUFFS` but under-exercised. Drums = **+80 haste rating, 30s,
 2-min Tinnitus**; Power Infusion = **×1.20 haste mult, 15s, does NOT stack with Bloodlust** (BL wins while
 both up — already coded, `simulate` ~712). Plan:

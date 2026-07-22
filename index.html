@@ -3445,6 +3445,10 @@ const GOLDEN_PRESETS = [
   { name: "2:40 lust 0:07", T: 160, pins: { bloodlust: [7] } },
   { name: "2:40 lust 0:07 intermission 1:30-2:10", T: 160, pins: { bloodlust: [7] }, intermission: [90, 130] },
   { name: "3:20 lust 0:05", T: 200, pins: { bloodlust: [5] } },
+  // Drums (+80 haste rating, 30s, 2-min Tinnitus) and Power Infusion (×1.20 haste, 15s, does NOT
+  // stack with Bloodlust — sim-source-verified, RULES §13) locked as raid-haste regression cases.
+  { name: "3:20 lust 0:05 drums", T: 200, pins: { bloodlust: [5] }, kit: ["icyVeins", "isc", "scb", "arcanePower", "berserking", "bloodlust", "drums"] },
+  { name: "3:20 lust 0:05 PI", T: 200, pins: { bloodlust: [5] }, kit: ["icyVeins", "isc", "scb", "arcanePower", "berserking", "bloodlust", "powerInfusion"] },
   { name: "4:00 lust 0:05", T: 240, pins: { bloodlust: [5] } },
   { name: "5:00 lust 0:05", T: 300, pins: { bloodlust: [5] } },
   { name: "5:40 lust 0:05", T: 340, pins: { bloodlust: [5] } },
