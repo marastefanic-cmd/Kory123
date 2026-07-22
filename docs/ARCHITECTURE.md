@@ -148,6 +148,12 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   over its burst span (`GAME.AB.MANA_FLAT 195 × (1 + 0.75·stacks) + 30% under AP`, per-cast real stacks,
   AoE casts excluded — SOURCES). Shown as the blue `.manatag` chip with a net-of-regen tooltip. Pure
   read over the existing cast list; **mana never feeds the optimizer** (layout-first). Display-only.
+- **Placement-reasoning tags** (`pressPlan`, ~3271): each press row gets a *why-here* reason (not a raw
+  damage delta) inferred structurally — **Alignment** (co-pressed with a raid call / first burst on the
+  Lust window), **Flexible** (a `run.leeway` interval → "press anytime X–Y"), **Cooldown-timed** (next
+  same-buff use is ~exactly one cd later), **Cold Snap** (`a.coldSnap`), else **Positioned** (no slack).
+  Feeds the schedule `.whytag` + copy-text. Output-only (exact-match rebuilds from `scheduleRows`, not
+  these tags — `tests/exact-match.mjs`), so goldens are untouched.
 
 ## Presets & tests — two baked strips, both the fight table
 `index.html` defines **two** baked preset arrays + `GOLDEN_DEFAULTS` (near the localStorage-preset

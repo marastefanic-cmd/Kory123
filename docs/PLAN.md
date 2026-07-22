@@ -56,7 +56,7 @@ stops buying AB casts) and the **Frostbolt-in-conserve** breakpoint (fit 4 Frost
 window ⇒ Frostbolt ≤ 2.0s ⇒ ~+25% haste ≈ **~394 rating before raid buffs** — LOOK UP / verify the exact
 number and any others). Informational ticks/labels on `renderTimeline`, no scorer effect.
 
-### 6. Placement-reasoning tags in the action plan (output-layer, was ROADMAP "Planned refinement")
+### 6. Placement-reasoning tags in the action plan (output-layer) — ✅ DONE
 `pressPlan` (`index.html` ~3176) still tags mobile presses with the **raw damage delta** —
 `deliberate: +N dmg vs one press at T` (~3229) and `locked here by its cooldown` (~3225). Those deltas
 don't help the reader; the *reasoning* does (it's the "trustworthy" goal). Replace them with a short

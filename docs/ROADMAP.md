@@ -102,7 +102,14 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
   Frostbolt filler soft cap (≈394 gear rating): at +25% passive haste a 2.5s Frostbolt casts in 2.0s, so
   4 fill the 8s AB debuff (filler 3→4). Verified vs Icy-Veins TBC theory + the project's Frostbolt/AB-debuff
   sources (RULES §15, SOURCES). Informational only (the planner never casts Frostbolt) → exact-match 25/25.
-- Remaining: task 6 (placement-reasoning action-plan tags, incl. the leeway/Flexible-earliest interval).
+- **Task 6 — placement-reasoning action-plan tags: DONE.** `pressPlan` no longer quotes raw damage deltas
+  (`deliberate: +N dmg` / `locked here by its cooldown`); every press row now carries a *why-here* reason
+  inferred structurally — **Alignment** (press with the raid call / first burst on the Lust window),
+  **Flexible** (a `run.leeway` interval → "press anytime X–Y", + the ATI nudge when enabled),
+  **Cooldown-timed** (next use ~exactly one cd later), **Cold Snap** (extra IV window), else **Positioned**
+  (no slack). Verified across fights (opener, on-Lust-window, CS chains, flexible gem, cooldown-cycled
+  bursts). Output-only → exact-match 25/25.
+- **Phase 3 is complete** (all 6 tasks). `docs/PLAN.md` can be deleted, folding anything lasting here.
 
 ## Done — gear-haste + haste-trinket correctness (this session, user-directed)
 
@@ -280,13 +287,15 @@ the drop was systematic, it also lost AP/IV/Zerk uses; no golden regressed, exac
   intermission-exit second onto built stacks when its window still clears the next downtime). Small
   (+0.6); do not prioritize over the payoffs, but it's now a *verified* gain, not just a hypothesis.
 
-## Planned refinement — placement REASONING annotations (user-requested, output-layer, low-risk)
+## DONE — placement REASONING annotations (Phase 3 task 6)
 
-**Now folded into Phase 3 as task 6 (`docs/PLAN.md`)** — still not done; `pressPlan` still emits the raw
-`deliberate: +N dmg` / `locked here by its cooldown` deltas. Full spec kept here; the Phase 3 task links
-it to the Ashtongue leeway rule (task 3a) and the mana tooltip (task 4), which annotate the same rows.
+**Landed.** `pressPlan` (~3271) now emits *why-here* reasons — Alignment / Flexible (leeway) /
+Cooldown-timed / Cold Snap / Positioned — replacing the raw `deliberate: +N dmg` / `locked here by its
+cooldown` deltas. The Flexible reason reuses the `leewayZones` interval (task 3), and the ATI "nudge onto a
+proc" rider appears on flexible rows when Ashtongue is enabled. Output-only (exact-match rebuilds from
+`scheduleRows`), goldens untouched. Original spec kept below for reference.
 
-Replace the copy-as-text / schedule tags that quote raw damage deltas — `deliberate: +N dmg vs one press
+Replaced the copy-as-text / schedule tags that quoted raw damage deltas — `deliberate: +N dmg vs one press
 at T`, `locked here by its cooldown` (`pressPlan`, `index.html` ~3082) — with a short **why-here reason**
 per press. Those deltas don't help the reader; the reasoning does (it's the "trustworthy" goal). This is
 **output-only** and the exact-match suite ignores these tags (it rebuilds the plan from `scheduleRows`,

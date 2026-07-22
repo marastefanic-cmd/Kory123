@@ -3282,58 +3282,52 @@ function pressPlan(run) {
     else rows.push({ t: Math.round(a.intent), items: [a] });
   }
   const isPinned = a => (cfg.fixed[a.k] || []).some(ft => Math.abs(ft - a.intent) < 0.5);
-  const sig = JSON.stringify(best.s);
-  // price every row against BOTH adjacent rows (up to 30s away), from the plan's
-  // CURRENT value (not the search maximum), and speak in at-kill damage when
-  // that's the bigger truth — a lone press with no nearby row still owes the
-  // reader its justification
-  const r0full = simulate(best.s, cfg);
+  // Explain WHY each mobile row sits where it does — a *reason*, not a raw damage delta.
+  // Inferred post-hoc from the schedule + cooldown structure + the free-leeway zones (RULES §10/§14):
+  //   • Alignment      — co-pressed onto a burst/raid-call it strengthens
+  //   • Flexible        — a genuine free-leeway interval (leewayZones): press anywhere in it
+  //   • Cooldown-timed — pressed now so its cooldown is back for a later scheduled use
+  //   • Positioned      — no slack: moving it loses casts (it's riding a damage/haste window)
+  // Rows that CONTAIN a pinned raid call are left for the "press with the … call" note below.
+  // a pinned raid buff whose WINDOW covers t (so a burst riding Lust reads "on the Bloodlust window")
+  const pinWin = t => { for (const k in cfg.fixed) for (const ft of cfg.fixed[k]) if (t >= ft - 2 && t < ft + BUFFS[k].dur) return BUFFS[k].name; return null; };
+  const leewayFor = (k, t) => (run.leeway || []).find(z => z.k === k && Math.abs(z.t - t) < 0.6);
+  const firstUse = (k, t) => !(best.s[k] || []).some(u => u < t - 1e-6);                 // no earlier use of this buff
+  const nextSameUse = (k, t) => (best.s[k] || []).filter(u => u > t + 1e-6).sort((x, y) => x - y)[0];
+  const cdGates = (k, t) => { const n = nextSameUse(k, t); return n !== undefined && Math.abs(n - t - BUFFS[k].cd) <= 3 ? n : null; }; // next use is ~exactly one cooldown later
+  const atiNudge = cfg.enabled.ati ? `; nudge onto an Ashtongue proc if one is up` : ``;
   for (const r of rows) {
     const mobile = r.items.filter(a => !isPinned(a));
-    if (!mobile.length) continue;
-    if (r.items.some(isPinned)) continue; // anchored to the raid call — the note below explains it
-    const nbs = rows.filter(o => o !== r && Math.abs(o.t - r.t) <= 30)
-      .sort((x, y) => Math.abs(x.t - r.t) - Math.abs(y.t - r.t)).slice(0, 2);
-    let bestAlt = null, locked = false;
-    for (const nb of nbs) {
-      const cand = cloneS(best.s);
-      let changed = false;
-      for (const a of mobile) {
-        const arr = cand[a.k];
-        const idx = arr.findIndex(t => Math.abs(t - a.intent) < 1e-6);
-        if (idx < 0) continue;
-        const d = Math.round(nb.t) - arr[idx];
-        if (Math.abs(d) < 1e-9) continue;
-        // shift the press AND its same-buff followers, so the price reflects the
-        // press itself rather than dragging its whole cooldown chain off-beat
-        for (let j = idx; j < arr.length; j++) arr[j] += d;
-        changed = true;
-      }
-      if (!changed) continue; // same press intent — the row only differs by boundary deferral
-      const rep = repair(cand, cfg);
-      if (JSON.stringify(rep) === sig) { locked = true; continue; }
-      const rr = simulate(rep, cfg);
-      const dRob = r0full.robust - rr.robust, dAtk = r0full.total - rr.total;
-      // the tag quotes the CHEAPEST regrouping — "even the best merge costs you this"
-      if (!bestAlt || Math.max(dRob, dAtk) < Math.max(bestAlt.dRob, bestAlt.dAtk)) bestAlt = { nb, dRob, dAtk };
+    if (!mobile.length || r.items.some(isPinned)) continue; // pinned-row → "press with the … call" note
+    const onPin = pinWin(r.t);
+    if (mobile.length >= 2) { // a grouped burst — these press together so their windows overlap (containment, §11)
+      r.tag = mobile.every(a => firstUse(a.k, a.intent))
+        ? `first burst — press these together${onPin ? ` on the ${onPin} window` : ``}`
+        : `grouped burst — its cooldowns come back up here; press them together`;
+      continue;
     }
-    if (!bestAlt) { if (locked) r.tag = `locked here by its cooldown`; continue; }
-    const worth = Math.max(bestAlt.dRob, bestAlt.dAtk);
-    if (worth <= 0.5) continue;
-    const num = bestAlt.dAtk > bestAlt.dRob ? `${Math.round(bestAlt.dAtk)} dmg at the kill` : `${Math.round(bestAlt.dRob)} dmg`;
-    r.tag = `deliberate: +${num} vs one press at ${fmtT(bestAlt.nb.t)}`;
+    const a = mobile[0], name = BUFFS[a.k].name, lz = leewayFor(a.k, a.intent), nxt = cdGates(a.k, a.intent);
+    if (a.coldSnap) r.tag = `Cold Snap → an extra ${name} window here`;
+    else if (lz && lz.hi - lz.lo >= 3) r.tag = `flexible — press anytime ${fmtT(lz.lo)}–${fmtT(lz.hi)} for the same result${atiNudge}`;
+    else if (nxt !== null) r.tag = `on cooldown — pressed now so ${name} is back for ${fmtT(nxt)}`;
+    else if (onPin) r.tag = `aligned on the ${onPin} window`;
+    else r.tag = `positioned here — moving it loses casts`;
   }
-  // when the buffs land on the next cast boundary after the press (or a
-  // cooldown lights up a beat into the spam), say so in words — the row time
-  // stays the moment you press
+  // Rows that INCLUDE a pinned raid call: press the mobile cooldowns together with the call
+  // (its Alignment reason). Buffs macroed after the press land on your next AB — say so when deferred.
   for (const r of rows) {
     if (r.tag) continue;
     const late = r.items.filter(a => !isPinned(a) && a.t - a.intent > 0.7);
-    if (!late.length) continue;
     const pinnedHere = r.items.find(isPinned);
-    if (pinnedHere) { r.tag = `press with the ${BUFFS[pinnedHere.k].name} call — the rest fires on your next AB`; continue; }
-    const nbPin = rows.find(o => o !== r && o.items.some(isPinned) && Math.abs(o.t - r.t) <= 1.2);
-    if (nbPin) r.tag = `press with ${BUFFS[nbPin.items[0].k].name} — it fires on your next AB`;
+    if (pinnedHere) {
+      if (!r.items.some(a => !isPinned(a))) continue; // just the raid call itself — nothing to align
+      r.tag = `press this burst with the ${BUFFS[pinnedHere.k].name} call${late.length ? ` — buffs land on your next AB` : ``}`;
+      continue;
+    }
+    if (late.length) {
+      const nbPin = rows.find(o => o !== r && o.items.some(isPinned) && Math.abs(o.t - r.t) <= 1.2);
+      if (nbPin) r.tag = `press with ${BUFFS[nbPin.items[0].k].name} — it fires on your next AB`;
+    }
   }
   // annotate presses whose window is clipped by the kill, with what they earn
   for (const r of rows) {
