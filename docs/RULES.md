@@ -250,6 +250,21 @@ Caveat found this project: the tie tolerance is one full cast (`QTOL = castVal`)
 win (e.g. the +8.5 packed KaelThas ≈ 0.6 cast in model currency) sits inside the "tie" band and can
 be traded away by aesthetics — packing wins must be **defended** (window-aware eviction/veto passes).
 
+**`slideEarliest` — earliest-possible canonicalization (this project, user-directed).** The search + align
+passes could leave a press (or a whole co-pressed burst) LATER than the earliest spot that scores the same
+— the opener Icon/AP/Berserking cluster sitting 10s into Lust when the pull ties, a Cold-Snap Icy Veins
+parked mid-fight when it ties all the way back to where it first fits. A final normalizer pulls each mobile
+press **second** (co-pressed rows move together, and *only* when **every** member can follow — a cd-bound
+Cold-Snap IV that can't move keeps its burst intact, no split) as early as it still ties within a hair
+(`robust ≥ r0 − 0.5`, sameCounts, no worse clip). Purely model-neutral → the effective-AB count is
+unchanged; it just makes the plan "press it at the first moment it's as good." **Gated OFF for
+intermission fights:** after a downtime gap the stacks rebuild, so a press pulled to the exit lands on the
+RAMP, which the steady-state scorer (§3, the damage integral uses `MAX_STACKS`) calls a tie but the sim
+does **not** — Vashj's 4:05/6:05 ramp-aware layout is sim-verified over 4:00/6:00, so those are left to the
+ramp-aware search + `dodgeDowntime`. In a plain fight the only ramp is the pull, which is negligible
+(§ MECHANICS, ~0 casts) and where pressing everything together is exactly what's wanted. Runs before
+`dodgeDowntime`. Moved 7 plain goldens earlier (model-neutral; DPS identical, timings earlier).
+
 ## 12. Mana & the conserve rotation — the real gearing weights *(sim-computed this project)*
 
 The planner is **infinite-mana / layout-first** by design (§ nothing here changes that — mana never feeds

@@ -2225,7 +2225,48 @@ function optimizeAsync(cfg, starts, onProgress) {
           }
           return sx;
         }
-        s = dodgeDowntime(spreadLoneHaste(coPressAlign(s)));
+        // ——— Earliest-possible canonicalization (RULES §10). The search/align passes can leave a press
+        // (or a whole co-pressed burst) LATER than the earliest spot that scores the same — e.g. the opener
+        // Icon/AP/Berserking cluster sitting 10s into Lust when the pull ties, or a Cold-Snap Icy Veins
+        // parked mid-interval when it ties all the way back to where it first fits. Pull each mobile press
+        // SECOND (co-pressed rows move together, so grouping/alignment is preserved) as early as it still
+        // ties within a hair — purely model-neutral (robust ≥ r0 − 0.5, sameCounts, no worse clip), so the
+        // effective-AB count is unchanged; it only makes the plan follow "press it at the first moment it's
+        // as good." Runs BEFORE dodgeDowntime so the downtime-exit slide keeps the final word.
+        function slideEarliest(s0) {
+          // Skip fights with intermissions: after a downtime gap the stacks rebuild, so a press pulled to
+          // the exit lands on the RAMP — which the steady-state scorer calls a tie but the sim does not
+          // (Vashj's 4:05/6:05 ramp-aware layout is sim-verified over 4:00/6:00). Leave those to the
+          // ramp-aware search + dodgeDowntime. In a plain fight the only ramp is the pull, which is
+          // negligible (~0 casts, MECHANICS) and where pressing everything together is exactly what's wanted.
+          if (cfg.segments && cfg.segments.some(sg => sg.type === "intermission")) return s0;
+          let sx = cloneS(s0), moved = true, guard = 0;
+          while (moved && guard++ < 16) {
+            moved = false;
+            const secs = [...new Set(Object.keys(sx).filter(k => !cfg.fixed[k]).flatMap(k => sx[k].map(t => Math.round(t))))].sort((a, b) => a - b);
+            for (const sec of secs) {
+              if (sec <= 0) continue;
+              const keysHere = Object.keys(sx).filter(k => !cfg.fixed[k] && sx[k].some(t => Math.round(t) === sec));
+              if (!keysHere.length) continue;
+              const r0 = simulate(sx, cfg).robust;
+              const shift = d => { const c = cloneS(sx); for (const k of keysHere) c[k] = sx[k].map(t => Math.round(t) === sec ? t - d : t).sort((a, b) => a - b); return c; };
+              let bestDelta = 0;
+              for (let d = 1; d <= sec; d++) {
+                const rep = repair(shift(d), cfg);
+                if (!sameCounts(counts(sx), counts(rep)) || clipOf(rep) > clipOf(sx) + 1e-9) break;
+                // the WHOLE co-pressed row must actually move to sec−d — if a cd-bound member (e.g. a
+                // Cold-Snap Icy Veins) can't follow, repair would clamp it and SPLIT the burst; don't. This
+                // keeps damage/SP presses on their haste window (containment, §11) instead of exploiting a
+                // floored-flux model tie to peel them off.
+                if (!keysHere.every(k => rep[k].some(t => Math.abs(Math.round(t) - (sec - d)) < 0.6))) break;
+                if (simulate(rep, cfg).robust >= r0 - 0.5) bestDelta = d; else break; // stop at the first second that isn't a tie
+              }
+              if (bestDelta > 0) { sx = repair(shift(bestDelta), cfg); moved = true; }
+            }
+          }
+          return sx;
+        }
+        s = dodgeDowntime(slideEarliest(spreadLoneHaste(coPressAlign(s))));
         val = simulate(s, cfg).robust;
         best = { s, val };
         // a razor-timed variant may sim higher at EXACTLY the entered kill by
@@ -2297,9 +2338,9 @@ function optimizeAsync(cfg, starts, onProgress) {
               }
               const bar = (endChain || !csAddsUse) ? castVal / 8 : castVal;
               if (bestN.val >= champ.val - bar) {
-                resolve({ s: dodgeDowntime(spreadLoneHaste(coPressAlign(bestN.s))), val: bestN.val, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote });
+                resolve({ s: dodgeDowntime(slideEarliest(spreadLoneHaste(coPressAlign(bestN.s)))), val: bestN.val, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote });
               } else {
-                resolve({ ...champ, s: dodgeDowntime(spreadLoneHaste(coPressAlign(champ.s))), csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote });
+                resolve({ ...champ, s: dodgeDowntime(slideEarliest(spreadLoneHaste(coPressAlign(champ.s)))), csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote });
               }
             });
             return;
@@ -2733,14 +2774,13 @@ function leewayZones(run) {
     const cd = BUFFS[k].cd;
     for (let i = 0; i < arr.length; i++) {
       const t0 = arr[i];
-      // a Cold-Snap-chained Icy Veins pair sits < cd apart — moving one relative to the other is not free
-      if ((i > 0 && t0 - arr[i - 1] < cd - 1e-6) || (i < arr.length - 1 && arr[i + 1] - t0 < cd - 1e-6)) continue;
-      const lo0 = i > 0 ? arr[i - 1] + cd : 0;                 // feasible range keeping the OTHER uses of this buff fixed
-      const hi0 = i < arr.length - 1 ? arr[i + 1] - cd : cfg.T;
-      if (hi0 - lo0 < MINW) continue;
+      // Feasibility is decided by repair + the guards below (so a Cold-Snap Icy Veins — previous use < cd
+      // away — is handled correctly, not skipped): move THIS use by value, keep the rest, and require the
+      // count to hold and the press to actually land where we put it. Scan the whole fight; expand-until-
+      // break stops at the tie/feasible edges on each side.
       const scoreAt = t2 => {
-        if (t2 < lo0 - 1e-6 || t2 > hi0 + 1e-6) return -Infinity;
-        const cand = cloneS(best.s); cand[k] = arr.slice(); cand[k][i] = t2;
+        if (t2 < -1e-6 || t2 > cfg.T + 1e-6) return -Infinity;
+        const cand = cloneS(best.s); cand[k] = arr.map((t, j) => j === i ? t2 : t).sort((a, b) => a - b);
         const rep = repair(cand, cfg);
         if (!sameCounts(countsOf(rep))) return -Infinity;                 // dropped/added a use → not the same line
         if (!(rep[k] || []).some(x => Math.abs(x - t2) < 0.5)) return -Infinity; // repair relocated it → score is for a different spot
@@ -2749,8 +2789,8 @@ function leewayZones(run) {
       const ref = scoreAt(t0);
       if (!isFinite(ref)) continue;
       let lo = t0, hi = t0;
-      for (let t = t0 - STEP; t >= lo0 - 1e-6; t -= STEP) { const tt = Math.max(lo0, t); if (scoreAt(tt) >= ref - TIE) lo = tt; else break; }
-      for (let t = t0 + STEP; t <= hi0 + 1e-6; t += STEP) { const tt = Math.min(hi0, t); if (scoreAt(tt) >= ref - TIE) hi = tt; else break; }
+      for (let t = t0 - STEP; t >= -1e-6; t -= STEP) { const tt = Math.max(0, t); if (scoreAt(tt) >= ref - TIE) lo = tt; else break; }
+      for (let t = t0 + STEP; t <= cfg.T + 1e-6; t += STEP) { const tt = Math.min(cfg.T, t); if (scoreAt(tt) >= ref - TIE) hi = tt; else break; }
       if (hi - lo >= MINW) zones.push({ k, t: t0, lo: Math.round(lo), hi: Math.round(hi) });
     }
   }
@@ -2834,20 +2874,18 @@ function renderTimeline(run) {
   const FB_PCT = (2.5 / (GAME.AB.DEBUFF_DUR / 4) - 1) * 100;      // 2.5s FB → 2.0s at +25%
   const fbFrost = "#5cc6e6";
   if (maxPct > FB_PCT + 3) {
-    sv += `<line x1="${PADL}" y1="${y(FB_PCT).toFixed(1)}" x2="${VW - PADR}" y2="${y(FB_PCT).toFixed(1)}" stroke="${fbFrost}" stroke-width="1" stroke-dasharray="2 4" opacity="0.7"><title>+${FB_PCT.toFixed(0)}% passive haste (~${Math.round(FB_PCT * GAME.HASTE_RATING_PER_PCT)} rating): Frostbolt hits 2.0s, so 4 fill the 8s Arcane Blast debuff — the conserve-filler soft cap.</title></line>`;
-    sv += `<text x="${PADL - 8}" y="${(y(FB_PCT) + 4).toFixed(1)}" fill="${fbFrost}" font-size="10.5" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">4× FB</text>`;
+    sv += `<line x1="${PADL}" y1="${y(FB_PCT).toFixed(1)}" x2="${VW - PADR}" y2="${y(FB_PCT).toFixed(1)}" stroke="${fbFrost}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85"><title>+${FB_PCT.toFixed(0)}% passive haste (~${Math.round(FB_PCT * GAME.HASTE_RATING_PER_PCT)} rating): Frostbolt hits 2.0s, so 4 fill the 8s Arcane Blast debuff — the conserve-filler soft cap.</title></line>`;
+    sv += `<text x="${PADL - 8}" y="${(y(FB_PCT) + 4).toFixed(1)}" fill="${fbFrost}" font-size="11" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">4× FB</text>`;
   }
-  // Second GCD-floor line — "GCD cap if Ashtongue aligns". A live 145-rating proc adds ≈+9.2% haste
-  // (145/15.77), so 3-stack AB reaches the 1.0s floor at that much LOWER *base* (deterministic) haste.
-  // The trend curve is now proc-free, so this line shows where an aligned proc puts you at the cap:
-  // between it and the +50% line you're floored ONLY during a proc; above +50% you're always floored.
+  // Second GCD-floor line — "cap +ATI". A live 145-rating proc adds ≈+9.2% haste (145/15.77), so 3-stack AB
+  // reaches the 1.0s floor at that much LOWER *base* (deterministic) haste. The trend is proc-free, so this
+  // shows where an aligned proc puts you at the cap: between it and +50% you're floored ONLY during a proc.
   if (cfg.enabled.ati) {
     const atiCapPct = 50 - ATI.rating / GAME.HASTE_RATING_PER_PCT;   // ≈ 40.8%
     if (atiCapPct > 2 && maxPct > atiCapPct + 3) {
       const atiCol = colorOf("ati");
-      sv += `<line x1="${PADL}" y1="${y(atiCapPct).toFixed(1)}" x2="${VW - PADR}" y2="${y(atiCapPct).toFixed(1)}" stroke="${atiCol}" stroke-width="1.2" stroke-dasharray="4 3" opacity="0.8"><title>GCD cap if an Ashtongue proc aligns: at +${atiCapPct.toFixed(0)}% base haste a live 145-rating proc reaches the 1.0s Arcane Blast floor. Above this, procs are (partly) wasted to the cap.</title></line>`;
-      // label at the RIGHT edge (the left gutter already holds GCD cap / total haste / 4× FB), below the line
-      sv += `<text x="${VW - PADR - 4}" y="${(y(atiCapPct) + 12).toFixed(1)}" fill="${atiCol}" font-size="10.5" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">cap if Ashtongue</text>`;
+      sv += `<line x1="${PADL}" y1="${y(atiCapPct).toFixed(1)}" x2="${VW - PADR}" y2="${y(atiCapPct).toFixed(1)}" stroke="${atiCol}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85"><title>GCD cap if an Ashtongue proc aligns: at +${atiCapPct.toFixed(0)}% base haste a live 145-rating proc reaches the 1.0s Arcane Blast floor. Above this, procs are (partly) wasted to the cap.</title></line>`;
+      sv += `<text x="${PADL - 8}" y="${(y(atiCapPct) + 4).toFixed(1)}" fill="${atiCol}" font-size="11" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">cap +ATI</text>`;
     }
   }
   // haste step-curve
@@ -2864,8 +2902,7 @@ function renderTimeline(run) {
   }
   sv += `<path d="${path}" fill="none" stroke="${ink}" stroke-width="2" stroke-linejoin="round"/>`;
   sv += `<text x="${PADL - 8}" y="${(y(0) + 4).toFixed(1)}" fill="${muted}" font-size="11" text-anchor="end">0%</text>`;
-  sv += `<text x="${PADL - 8}" y="${(y(maxPct) + 10).toFixed(1)}" fill="${muted}" font-size="11" text-anchor="end">+${maxPct}%</text>`;
-  sv += `<text x="${PADL - 8}" y="${PADT + CURVE_H / 2}" fill="${ink2}" font-size="11.5" text-anchor="end">total haste</text>`;
+  // (dropped the "+max%" and "total haste" gutter labels — the reference lines already carry the scale)
 
   // buff lanes: uptime bar + a press tick at the activation moment
   lanes.forEach((k, li) => {
@@ -3003,7 +3040,7 @@ function renderSchedule(run) {
     const regenBack = 100 * (w.spanDur || 0);            // ≈100 mana/s casting, raid-buffed (SOURCES) — a typical-case read, not a gear input
     const net = Math.max(0, (w.mana || 0) - regenBack);
     const manaTip = w.mana
-      ? `AB-spamming this ${w.spanDur}s window costs about ${w.mana.toLocaleString()} mana (${w.manaCasts} casts · 195 base × (1 + 0.75·stacks), +30% while Arcane Power is up). Casting regen (≈100/s raid-buffed) returns ~${regenBack.toLocaleString()}, so your pool drops ~${net.toLocaleString()} — enter the window with at least that much banked. If that is more than your mana pool it's a mana-gem / Evocation window (or start it topped off). Manage-to target only — mana never affects the layout.`
+      ? `${w.mana.toLocaleString()} mana to spam this window (${w.manaCasts} AB, ${w.spanDur}s). Casting regen ~${regenBack.toLocaleString()} back → pool drops ~${net.toLocaleString()}; have that banked, or a mana gem / Evocation ready.`
       : "";
     const manaTxt = w.mana ? ` · <span class="manatag" title="${esc(manaTip)}">~${(Math.round(w.mana / 100) / 10).toFixed(1)}k mana</span>` : "";
     const stats = (w.peakHaste != null
@@ -3301,52 +3338,29 @@ function pressPlan(run) {
     else rows.push({ t: Math.round(a.intent), items: [a] });
   }
   const isPinned = a => (cfg.fixed[a.k] || []).some(ft => Math.abs(ft - a.intent) < 0.5);
-  // Explain WHY each mobile row sits where it does — a *reason*, not a raw damage delta.
-  // Inferred post-hoc from the schedule + cooldown structure + the free-leeway zones (RULES §10/§14):
-  //   • Alignment      — co-pressed onto a burst/raid-call it strengthens
-  //   • Flexible        — a genuine free-leeway interval (leewayZones): press anywhere in it
-  //   • Cooldown-timed — pressed now so its cooldown is back for a later scheduled use
-  //   • Positioned      — no slack: moving it loses casts (it's riding a damage/haste window)
-  // Rows that CONTAIN a pinned raid call are left for the "press with the … call" note below.
-  // a pinned raid buff whose WINDOW covers t (so a burst riding Lust reads "on the Bloodlust window")
-  const pinWin = t => { for (const k in cfg.fixed) for (const ft of cfg.fixed[k]) if (t >= ft - 2 && t < ft + BUFFS[k].dur) return BUFFS[k].name; return null; };
+  // A short why-here reason per press — ONLY when it's non-obvious. Anything implied by the schedule
+  // (that a cluster presses together, that an untagged press goes at the time shown) carries no tag.
+  // Kept: the free-leeway interval (leewayZones §14), a cooldown-feeds-the-next-use press, a Cold Snap
+  // window, and the "buffs land on your next AB" boundary note.
   const leewayFor = (k, t) => (run.leeway || []).find(z => z.k === k && Math.abs(z.t - t) < 0.6);
-  const firstUse = (k, t) => !(best.s[k] || []).some(u => u < t - 1e-6);                 // no earlier use of this buff
   const nextSameUse = (k, t) => (best.s[k] || []).filter(u => u > t + 1e-6).sort((x, y) => x - y)[0];
   const cdGates = (k, t) => { const n = nextSameUse(k, t); return n !== undefined && Math.abs(n - t - BUFFS[k].cd) <= 3 ? n : null; }; // next use is ~exactly one cooldown later
-  const atiNudge = cfg.enabled.ati ? `; nudge onto an Ashtongue proc if one is up` : ``;
+  const atiNudge = cfg.enabled.ati ? `; align an Ashtongue proc if one is up` : ``;
   for (const r of rows) {
     const mobile = r.items.filter(a => !isPinned(a));
-    if (!mobile.length || r.items.some(isPinned)) continue; // pinned-row → "press with the … call" note
-    const onPin = pinWin(r.t);
-    if (mobile.length >= 2) { // a grouped burst — these press together so their windows overlap (containment, §11)
-      r.tag = mobile.every(a => firstUse(a.k, a.intent))
-        ? `first burst — press these together${onPin ? ` on the ${onPin} window` : ``}`
-        : `grouped burst — its cooldowns come back up here; press them together`;
-      continue;
-    }
+    if (!mobile.length || r.items.some(isPinned)) continue; // pinned-row → boundary note below
+    if (mobile.length >= 2) continue;                       // a burst cluster — the grouping is obvious from the schedule
     const a = mobile[0], name = BUFFS[a.k].name, lz = leewayFor(a.k, a.intent), nxt = cdGates(a.k, a.intent);
-    if (a.coldSnap) r.tag = `Cold Snap → an extra ${name} window here`;
-    else if (lz && lz.hi - lz.lo >= 3) r.tag = `flexible — press anytime ${fmtT(lz.lo)}–${fmtT(lz.hi)} for the same result${atiNudge}`;
-    else if (nxt !== null) r.tag = `on cooldown — pressed now so ${name} is back for ${fmtT(nxt)}`;
-    else if (onPin) r.tag = `aligned on the ${onPin} window`;
-    else r.tag = `positioned here — moving it loses casts`;
+    if (a.coldSnap) r.tag = `Cold Snap → an extra ${name} window`;
+    else if (lz && lz.hi - lz.lo >= 3) r.tag = `press anytime ${fmtT(lz.lo)}–${fmtT(lz.hi)} for the same result${atiNudge}`;
+    else if (nxt !== null) r.tag = `pressed now so it's back for ${fmtT(nxt)}`;
+    // else: no tag — press at the time shown
   }
-  // Rows that INCLUDE a pinned raid call: press the mobile cooldowns together with the call
-  // (its Alignment reason). Buffs macroed after the press land on your next AB — say so when deferred.
+  // Rows with a pinned raid call: only the non-obvious bit — buffs macroed after the press land on your next AB.
   for (const r of rows) {
     if (r.tag) continue;
     const late = r.items.filter(a => !isPinned(a) && a.t - a.intent > 0.7);
-    const pinnedHere = r.items.find(isPinned);
-    if (pinnedHere) {
-      if (!r.items.some(a => !isPinned(a))) continue; // just the raid call itself — nothing to align
-      r.tag = `press this burst with the ${BUFFS[pinnedHere.k].name} call${late.length ? ` — buffs land on your next AB` : ``}`;
-      continue;
-    }
-    if (late.length) {
-      const nbPin = rows.find(o => o !== r && o.items.some(isPinned) && Math.abs(o.t - r.t) <= 1.2);
-      if (nbPin) r.tag = `press with ${BUFFS[nbPin.items[0].k].name} — it fires on your next AB`;
-    }
+    if (late.length && r.items.some(a => !isPinned(a))) r.tag = `buffs land on your next AB`;
   }
   // annotate presses whose window is clipped by the kill, with what they earn
   for (const r of rows) {

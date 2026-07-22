@@ -83,6 +83,13 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   but the *live* portion is unchanged — the clip is the wrong metric here). On **4:00 multi-intermission**
   the Cold-Snap IV at 3:47 (2s inside [3:28–3:49]) → 3:49 (var0 exact wash). Only the "don't *begin* in
   downtime" half of RULES §9; the post-ramp-exit devaluation (Vashj) is still open.
+- **`slideEarliest(s0)`** (between `spreadLoneHaste` and `dodgeDowntime`, RULES §10): earliest-possible
+  canonicalization. Pulls each mobile press **second** (co-pressed rows move together, and only when
+  **every** member can follow — a cd-bound Cold-Snap IV that can't move keeps its burst intact, no split)
+  as early as it still ties (`robust ≥ r0−0.5`, sameCounts, no worse clip). Model-neutral. **Returns `s0`
+  unchanged for intermission fights** (the exit ramp is a scorer blind spot the sim disagrees with — Vashj
+  4:05). Fixes the opener cluster sitting off the pull and Cold-Snap IVs parked mid-fight; moved 7 plain
+  goldens earlier (same DPS).
 - **Sequential window-packing** (~1975, the RULES §4/§5 move — LANDED). Runs as the last structural pass
   (nothing after it can re-floor the sequenced tail buff, so no defensive rework of the eviction /
   `nulled` vetoes was needed). For each raid-called **haste** buff (kind `mult`/`rating` — a damage/
@@ -143,20 +150,24 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   AB-cast / floor also read the deterministic `multNoAti`/`castDn`/`capDn`); `btn-copy` emits the
   canonical copy-as-text plan the tests compare.
 - `leewayZones(run)` (just before `renderTimeline`): per mobile press, the maximal contiguous interval
-  whose robust score TIES the current placement (scan ±1s until it drops; `repair`-relocation guarded;
-  Cold-Snap-chained IV pairs skipped). Position-independent presses get a wide interval; burst-riders
-  collapse to nothing. Computed once in `render` → `run.leeway`, drawn by the timeline and (task 6) the
-  Flexible/earliest tag. Output-only — not in the golden canonicalization.
+  whose robust score TIES the current placement (move the use by VALUE over the whole fight, scan ±1s until
+  it drops; `repair` + sameCounts + relocation guards decide feasibility, so a Cold-Snap Icy Veins is
+  handled — not skipped). Since `slideEarliest` (RULES §10) already sits each press at its earliest tie, the
+  band naturally extends rightward ("you can delay to X"). Position-independent presses get a wide interval;
+  burst-riders collapse to nothing. Computed once in `render` → `run.leeway`, drawn by the timeline and the
+  Flexible reasoning tag. Output-only — not in the golden canonicalization.
 - **Per-window target mana** (`scheduleRows`, ~2939): each window carries `w.mana` = the AB-spam spend
   over its burst span (`GAME.AB.MANA_FLAT 195 × (1 + 0.75·stacks) + 30% under AP`, per-cast real stacks,
   AoE casts excluded — SOURCES). Shown as the blue `.manatag` chip with a net-of-regen tooltip. Pure
   read over the existing cast list; **mana never feeds the optimizer** (layout-first). Display-only.
-- **Placement-reasoning tags** (`pressPlan`, ~3271): each press row gets a *why-here* reason (not a raw
-  damage delta) inferred structurally — **Alignment** (co-pressed with a raid call / first burst on the
-  Lust window), **Flexible** (a `run.leeway` interval → "press anytime X–Y"), **Cooldown-timed** (next
-  same-buff use is ~exactly one cd later), **Cold Snap** (`a.coldSnap`), else **Positioned** (no slack).
-  Feeds the schedule `.whytag` + copy-text. Output-only (exact-match rebuilds from `scheduleRows`, not
-  these tags — `tests/exact-match.mjs`), so goldens are untouched.
+- **Placement-reasoning tags** (`pressPlan`, ~3271): a *why-here* reason on a press row **only when it's
+  non-obvious** — **Flexible** (a `run.leeway` interval → "press anytime X–Y", + the ATI-proc nudge),
+  **Cooldown-timed** ("pressed now so it's back for X", next use ~one cd later), **Cold Snap**
+  (`a.coldSnap`), and the boundary note "buffs land on your next AB" for a deferred pinned-row press.
+  Anything implied by the schedule (a cluster presses together; an untagged press goes at the time shown)
+  gets **no tag** — the earlier "first burst / grouped burst / positioned" tags were dropped as noise.
+  Feeds the schedule `.whytag` + copy-text. Output-only (exact-match rebuilds from `scheduleRows`), goldens
+  untouched.
 
 ## Presets & tests — two baked strips, both the fight table
 `index.html` defines **two** baked preset arrays + `GOLDEN_DEFAULTS` (near the localStorage-preset
