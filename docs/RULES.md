@@ -90,14 +90,15 @@ fastest casts). No hard breakpoint to hardcode — it emerges from the floor mat
   23/23) and self-selects above the breakpoint. Before this, the opener could get glued off-Lust at high
   gear haste (cluster following IV off the fast casts) — a search miss the scorer already ranked below
   cluster-on-Lust.
-- **Sim-verified:** at h250 (4:00 fight) cluster-on-Lust + IV-off beats cluster-glued-off-Lust by **+61
-  DPS var0 / +54 var10** (250k, seed 11 — both variances agree, so it's the real flux gain of putting the
-  damage buffs on Lust's fast casts, not a fixed-length boundary artifact). The physics is anchored: rating
-  trinkets + gear haste run the SAME `(1+rating/1577)·∏%buffs` / GCD-floor path trust-anchored at h0.
-- **Known residual:** a narrow band (~h200 on the 4:00 fight) still glues the opener — its winning exit
-  layout needs Cold Snap and `repair()` snaps the CS-spaced IV back before the CS-materiality gate weighs
-  it (ROADMAP). Neighbours are correct; verify with the sim at your exact target gear before trusting a
-  near-h200 opener.
+- **Sim-verified:** cluster-on-Lust + IV-off beats cluster-glued-off-Lust by **+61 DPS var0 / +54 var10**
+  at h250 and **+53 / +55** at h200 (250k, seed 11 — both variances agree, so it's the real flux gain of
+  putting the damage buffs on Lust's fast casts, not a fixed-length boundary artifact). The physics is
+  anchored: rating trinkets + gear haste run the SAME `(1+rating/1577)·∏%buffs` / GCD-floor path
+  trust-anchored at h0.
+- **Consistent across the WHOLE gear-haste range now** (h50…h300, 4:00 fight: opener cluster on Lust at
+  every level). The last hold-out — a narrow ~h200 band where the exit layout needs Cold Snap and the
+  CS-materiality gate mis-vetoed it as "adds a use" — is **fixed** by measuring adds-use by **value not
+  count** (§8, last bullet). No per-haste rule; it falls out of the floor math + the value-based CS gate.
 
 ## 6. Spellpower × Arcane Power is multiplicative
 
@@ -154,6 +155,19 @@ novel finding — verify it per the TOOLING methodology, then record it here.)
     the haste no longer overcaps the floor (wowsims var10 2654.7 vs 2651.1, var0 +10.7, seeds 11/19).
   - **5:00 spread (+2.4):** see §11 — the free CS's IV rides the 4:05 burst while the banked IV spreads
     to its 3:05 natural tick.
+- **"Adds a use" is measured by VALUE, not by IV count (this session — the high-gear-haste fix).** The two
+  regimes are distinguished by *how much the extra IV is worth*, not just whether the count rose. At high
+  gear haste the CS-champion can carry an **incidental** extra IV parked on the near-floored Lust window
+  (worth ~0 — the window is already at the GCD floor, §5), while CS's *real* job is to slide a **different**
+  IV fully OFF Lust so the damage cluster keeps Lust's fast casts. Counting IVs mis-reads that as
+  "adds a use" → applies the full-cast bar → vetoes the whole layout back to the glued no-CS plan (cluster
+  dragged off Lust). Fix: trim the champion to the no-CS IV count by dropping its **least-valuable** IV; if
+  that costs **< one cast**, the extra IV is incidental and CS is really **repositioning** — the sub-cast
+  regime — so keep it. **h200 4:00 opener:** 3-IV CS champ (476318) vs glued no-CS (475101); the extra IV
+  on floored Lust is worth ~+44, so the +1173 is repositioning → keep cluster-on-Lust. **Sim-verified
+  +53 DPS var0 / +55 var10** (h200, 250k) — both variances agree. Exact-match 23/23 (h0 goldens unaffected:
+  there the exit layout doesn't win, so the trim never fires). This is what makes RULES §5 work at *every*
+  gear-haste level, not just where the exit IV happens to land ≥180s from the terminal.
 
 ## 11. Overlap is interval CONTAINMENT, not start-coincidence (placement) *(sim-verified this project)*
 

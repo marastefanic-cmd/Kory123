@@ -77,7 +77,7 @@ passive gear haste and haste-rating trinkets, and improve it where it isn't.** F
 - **Haste trinkets place correctly.** The model **avoids** stacking MQG/Skull on the floored opener Lust
   (MQG-in-Lust −9.6k vs the model plan) and instead rides MQG on the **2nd damage burst** (speeding its
   SCB/AP casts — flux, MECHANICS §5 pt 2), beating a lone bare-window MQG (+2.4k). No trinket-placement bug.
-- **The one FIX — the "IV slides out of Lust as gear haste grows" layout now EMERGES** (RULES §5, long
+- **FIX 1 — the "IV slides out of Lust as gear haste grows" layout now EMERGES** (RULES §5, long
   documented as theory, not realized in the search). As passive rating pushes Lust itself near the GCD
   floor, a haste buff stacked ON Lust overcaps (worth ~0) while the DAMAGE cluster still wants Lust's fast
   casts — so the win is **cluster-on-Lust, IV sequenced/stacked just past it.** The sequential
@@ -85,15 +85,18 @@ passive gear haste and haste-rating trinkets, and improve it where it isn't.** F
   tail, `exitStack` overlapped at the window end to keep each buff's 2nd cd-tick before the kill) in
   addition to the usual `packIn`. Kept only on a strict robust gain, so **inert at h0** (IV-in-Lust wins →
   goldens byte-identical, exact-match **23/23**) and self-selecting above the breakpoint — no per-haste
-  rule. **Sim-verified:** cluster-on-Lust vs glued-off-Lust at h250 = **+61 DPS var0 / +54 var10** (both
-  agree → real, not a boundary artifact). Improves h150/h250/h300 in model score, monotonic (only adds
-  candidates). See RULES §5, ARCHITECTURE (packing pass modes).
-- **Known residual — a narrow h200 island.** On the 4:00 fight at ~h200 specifically, the opener stays
-  glued off-Lust (~0.25% under its own potential); the winning exit layout there **requires Cold Snap**
-  (IV@0:45 + CS→IV@3:40) and `repair()` snaps the CS-spaced IV back to the no-CS glued spacing before the
-  CS-materiality logic can weigh it. Neighbours (h150, h250) are correct. Fixing it means repair/CS surgery
-  (risks the goldens) for a narrow band — deferred; documented here. If the user's real gear sits at ~h200,
-  revisit with a repair-level change that lets an intentionally-CS-spaced IV survive legalization.
+  rule. Improves the whole high-haste range in model score, monotonic (only adds candidates).
+- **FIX 2 — CS materiality by VALUE not COUNT (what closed the last hold-out, the ~h200 band).** At high
+  gear haste the CS-champion carries an **incidental** extra IV parked on the near-floored Lust (worth ~0)
+  while CS's real job is to slide a *different* IV fully OFF Lust — but the gate counted IVs, saw the count
+  rise, applied the full "adds a use" bar, and vetoed the whole cluster-on-Lust layout back to the glued
+  no-CS plan. Fix: trim the champ to the no-CS IV count by dropping its **least-valuable** IV; if that
+  costs **< a cast**, the extra IV is incidental → CS is really **repositioning** (sub-cast regime) → keep
+  it (RULES §8 last bullet, ARCHITECTURE CS-materiality). **Result: cluster-on-Lust is now consistent at
+  EVERY gear-haste level** (h50…h300, 4:00: opener isc@5 throughout; no h200 island). **Sim-verified:
+  cluster-on-Lust vs glued = +61/+54 DPS at h250, +53/+55 at h200** (var0/var10, 250k — both agree).
+  Exact-match **23/23** (h0 goldens unaffected — the trim only fires where the exit layout wins). See
+  RULES §5/§8, ARCHITECTURE (packing modes + CS-materiality value gate).
 
 ## Done — finite-mana / conserve-rotation stat weights (this session, user-requested)
 

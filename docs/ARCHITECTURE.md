@@ -107,11 +107,20 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   **inert at h0** (IV-in-Lust wins → goldens byte-identical) and **self-select above the gear-haste
   breakpoint** (sim-verified +2% at h250; RULES §5). Known residual: a narrow ~h200 band whose exit layout
   needs Cold Snap that `repair()` un-spaces (ROADMAP).
-- **Cold-Snap materiality** (~2119) now distinguishes two regimes (RULES §8). `csAddsUse` (~2157) =
-  the CS champ has **more** IVs than the best no-CS plan. When CS genuinely **adds** a use the full
-  "≥ one cast" bar applies (`bar = castVal`); when it only **repositions** the same IV count (or the
-  chain ends the fight) it's a **free** move gated by a sub-cast sliver (`bar = castVal/8`). This is
-  what lets 3:20 spend the free CS to sequence the opener (+3.6, same 2-IV count) instead of vetoing it.
+- **Cold-Snap materiality** (~2229) distinguishes two regimes (RULES §8). `csAddsUse` starts as "the CS
+  champ has **more** IVs than the best no-CS plan"; when CS genuinely **adds** a use the full "≥ one cast"
+  bar applies (`bar = castVal`); when it only **repositions** the same IV count (or the chain ends the
+  fight) it's a **free** move gated by a sub-cast sliver (`bar = castVal/8`). This is what lets 3:20 spend
+  the free CS to sequence the opener (+3.6, same 2-IV count) instead of vetoing it.
+  - **Adds-use is now measured by VALUE, not count (~2267).** A count-only test mis-fires at high gear
+    haste: the CS champ can carry an **incidental** extra IV parked on the near-floored Lust (worth ~0)
+    while CS's real job is sliding a *different* IV OFF Lust so the damage cluster keeps the fast casts
+    (RULES §5). Before scoring the bar, the gate trims the champ to the no-CS count by dropping its
+    **least-valuable** IV (try each removal, keep the highest re-`simulate`d `robust`); if the champ loses
+    **< `castVal`**, the extra IV is incidental → `csAddsUse = false` → sub-cast bar → keep the
+    cluster-on-Lust champ instead of vetoing it back to the glued no-CS `bestN`. This closed the last
+    high-haste hold-out (~h200, sim-verified +53 DPS); h0 goldens never trim (exit layout doesn't win
+    there), so exact-match stays 23/23.
 
 ## Phases & rendering
 - `buildSegments(rows, T)` (~2191): turns phase rows into `{start,end,type,mult,targets}` segments;

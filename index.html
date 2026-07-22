@@ -2264,7 +2264,26 @@ function optimizeAsync(cfg, starts, onProgress) {
               // the full "is the extra IV worth burning CS" bar. Only CS that genuinely
               // ADDS a use keeps that bar. (3:20: CS frees IV1 off 0:00 to sequence into
               // Lust, same 2-IV count as natural — a +3.6 opener the full bar would veto.)
-              const csAddsUse = (champ.s.icyVeins || []).length > ivsN.length;
+              // "Adds a use" is measured by VALUE, not count: at high gear haste CS's real
+              // job can be to slide an IV fully OFF a near-floored Lust (RULES §5) while
+              // the count incidentally rises by a barely-useful IV parked on the floored
+              // window (marginal value ~0). Trim champ to the no-CS count by dropping its
+              // least-valuable IV; if that costs < a cast, the extra IV is incidental and
+              // CS is really REPOSITIONING — the sub-cast regime — so holding it back to
+              // the worse no-CS LAYOUT (bestN, e.g. the cluster glued off Lust) would
+              // forfeit a real gain. (h200 4:00 opener: 3-IV champ 476318 vs glued 475101;
+              // its extra IV on floored Lust is worth ~+44, so the +1173 is repositioning.)
+              let csAddsUse = (champ.s.icyVeins || []).length > ivsN.length;
+              if (csAddsUse && (champ.s.icyVeins || []).length > 1) {
+                const ivc = champ.s.icyVeins;
+                let bestTrim = 0;
+                for (let di = 0; di < ivc.length; di++) {
+                  const cand = cloneS(champ.s);
+                  cand.icyVeins = ivc.filter((_, j) => j !== di);
+                  bestTrim = Math.max(bestTrim, simulate(repair(cand, cfg), cfg).robust);
+                }
+                if (champ.val - bestTrim < castVal) csAddsUse = false; // the extra IV isn't worth a use → repositioning regime
+              }
               const bar = (endChain || !csAddsUse) ? castVal / 8 : castVal;
               if (bestN.val >= champ.val - bar) {
                 resolve({ s: dodgeDowntime(spreadLoneHaste(coPressAlign(bestN.s))), val: bestN.val, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote });
