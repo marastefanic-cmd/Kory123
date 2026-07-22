@@ -238,8 +238,9 @@
   .pchip .pdel { background: none; border: none; color: var(--muted); cursor: pointer; font-size: 14px; padding: 0 5px; line-height: 1; }
   .pchip .pdel:hover { color: var(--warn); }
   .pchips .pnone { color: var(--muted); font-size: 12.5px; }
-  .golden-strip { padding-bottom: 12px; margin-bottom: 12px; }
-  .golden-strip .pslab { color: var(--accent); }
+  .golden-strip, .boss-strip { padding-bottom: 12px; margin-bottom: 12px; }
+  .boss-strip .pslab { color: var(--accent); }
+  .golden-strip .pslab { color: var(--muted); }
   .gchip { padding: 4px 13px; font-size: 12.5px; color: var(--ink-2); }
   .gchip.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); color: var(--ink); }
   .psave { display: flex; gap: 6px; margin-left: auto; }
@@ -438,17 +439,22 @@
     <b>cooldowns</b> you bring, and <b>pin</b> anything the raid controls — Bloodlust, Drums, Power Infusion — to the
     second it's called. Turn on <b>Complicated fight</b> to lay out intermissions, burn, or AoE phases. Then
     <b>Find optimal overlay</b>: the planner schedules every <em>unpinned</em> cooldown for maximum damage and prints
-    the press-by-press plan, a burn timeline, and a copy-as-text line to follow in the raid. The <b>Debugging presets</b>
-    up top load sim-verified reference fights to explore.</p>
+    the press-by-press plan, a burn timeline, and a copy-as-text line to follow in the raid. The <b>Boss presets</b>
+    up top load the real current-phase encounters; <b>Debugging presets</b> are sim-verified reference fights, and you
+    can save your own as <b>Custom presets</b>.</p>
   </header>
 
   <section class="setup" id="setup">
+    <div class="preset-strip boss-strip" id="boss-strip">
+      <span class="pslab" title="The real current-phase raid bosses — fight length, Lust timing and phases from the actual pulls. Click one to load its input setup; press Find optimal overlay to compute the plan.">Boss presets</span>
+      <span class="pchips" id="boss-chips"></span>
+    </div>
     <div class="preset-strip golden-strip" id="golden-strip">
       <span class="pslab" title="Sim-verified reference fights — this list is the exact-match regression suite. Click one to load its input setup; press Find optimal overlay to compute the plan.">Debugging presets</span>
       <span class="pchips" id="golden-chips"></span>
     </div>
     <div class="preset-strip" id="preset-strip">
-      <span class="pslab">Boss presets</span>
+      <span class="pslab">Custom presets</span>
       <span class="pchips" id="preset-chips"></span>
       <span class="psave">
         <input id="preset-name" type="text" placeholder="Save as…" aria-label="Preset name">
@@ -3406,14 +3412,39 @@ const GOLDEN_PRESETS = [
   { name: "7:20 lust 0:05", T: 440, pins: { bloodlust: [5] } },
   { name: "6:00 lust 4:20", T: 360, pins: { bloodlust: [260] } },
   { name: "5:45 lust 4:20", T: 345, pins: { bloodlust: [260] } },
-  { name: "4:00 multi-intermission lust 0:06", T: 240, pins: { bloodlust: [6] }, phases: [
+];
+window.GOLDEN_PRESETS = GOLDEN_PRESETS;
+
+/* ═══════════════ boss presets (baked-in, = the real phase encounters, also exact-match tested) ═══════════════ */
+// The actual current-phase raid bosses (fight length, Lust timing, and phases/AoE from the real
+// pulls — the user's logs). Same shape and same load-input-only behaviour as the debugging presets;
+// tests/exact-match.mjs locks these too. Times in seconds.
+const BOSS_PRESETS = [
+  { name: "Hydross the Unstable", T: 100, pins: { bloodlust: [7] } },
+  { name: "The Lurker Below", T: 160, pins: { bloodlust: [7] }, intermission: [90, 130] },
+  { name: "Leotheras the Blind", T: 135, pins: { bloodlust: [25] }, phases: [
+    { type: "intermission", from: 10, to: 15 },
+    { type: "intermission", from: 70, to: 80 },
+  ] },
+  { name: "Fathom-lord Karathress", T: 120, pins: { bloodlust: [5] } },
+  { name: "Morogrim Tidewalker", T: 165, pins: { bloodlust: [5] } },
+  { name: "Lady Vashj", T: 390, pins: { bloodlust: [345] }, phases: [
+    { type: "intermission", from: 50, to: 110 },
+    { type: "intermission", from: 140, to: 150 },
+    { type: "intermission", from: 165, to: 180 },
+    { type: "intermission", from: 210, to: 240 },
+    { type: "intermission", from: 265, to: 290 },
+    { type: "intermission", from: 310, to: 325 },
+  ] },
+  { name: "Al'ar", T: 240, pins: { bloodlust: [6] }, phases: [
     { type: "intermission", from: 65, to: 69 },
     { type: "intermission", from: 95, to: 112 },
     { type: "intermission", from: 154, to: 166 },
     { type: "intermission", from: 208, to: 229 },
   ] },
-  // Real boss encounters (phases + Lust timing from the actual fights).
-  { name: "KaelThas 7:00 lust 4:20", T: 420, pins: { bloodlust: [260] }, phases: [
+  { name: "Void Reaver", T: 145, pins: { bloodlust: [10] } },
+  { name: "High Astromancer Solarian", T: 75, pins: { bloodlust: [5] }, intermission: [50, 55] },
+  { name: "Kael'thas Sunstrider", T: 420, pins: { bloodlust: [260] }, phases: [
     { type: "intermission", from: 15, to: 30 },
     { type: "intermission", from: 42, to: 55 },
     { type: "intermission", from: 69, to: 80 },
@@ -3422,16 +3453,8 @@ const GOLDEN_PRESETS = [
     { type: "intermission", from: 160, to: 205 },
     { type: "intermission", from: 306, to: 346 },
   ] },
-  { name: "Vashj 6:30 lust 5:45", T: 390, pins: { bloodlust: [345] }, phases: [
-    { type: "intermission", from: 50, to: 110 },
-    { type: "intermission", from: 140, to: 150 },
-    { type: "intermission", from: 165, to: 180 },
-    { type: "intermission", from: 210, to: 240 },
-    { type: "intermission", from: 265, to: 290 },
-    { type: "intermission", from: 310, to: 325 },
-  ] },
 ];
-window.GOLDEN_PRESETS = GOLDEN_PRESETS;
+window.BOSS_PRESETS = BOSS_PRESETS;
 window.GOLDEN_DEFAULTS = GOLDEN_DEFAULTS;
 // Convert a preset's raw setup into the UI's applyState() shape (m:ss strings, buff toggles).
 function goldenToState(p) {
@@ -3450,23 +3473,23 @@ function goldenToState(p) {
   };
 }
 function clearGoldenActive() {
-  document.querySelectorAll("#golden-chips .gchip.active").forEach(c => c.classList.remove("active"));
+  document.querySelectorAll("#golden-chips .gchip.active, #boss-chips .gchip.active").forEach(c => c.classList.remove("active"));
 }
-function renderGoldenPresets() {
-  const host = el("golden-chips");
+// Render a baked preset array (Boss or Debugging) into a chip strip. Both load the fight's
+// INPUTS only (no auto-run); press "Find optimal overlay" to COMPUTE the plan — nothing preloaded.
+function renderBakedPresets(presets, hostId) {
+  const host = el(hostId);
   if (!host) return;
-  host.innerHTML = GOLDEN_PRESETS.map((p, i) =>
+  host.innerHTML = presets.map((p, i) =>
     `<span class="pchip gchip" data-i="${i}" role="button" tabindex="0" title="Load this fight's inputs — ${esc(p.name)} (then press Find optimal overlay)">${esc(p.name)}</span>`
   ).join("");
   host.querySelectorAll(".gchip").forEach(chip => {
     const load = () => {
-      applyState(goldenToState(GOLDEN_PRESETS[+chip.dataset.i])); // load the fight's INPUTS only
+      applyState(goldenToState(presets[+chip.dataset.i]));       // load the fight's INPUTS only
       refreshPresets("");                                         // clear any active user preset
       clearGoldenActive();
       chip.classList.add("active");
       el("setup").scrollIntoView({ behavior: "smooth", block: "start" });
-      // No auto-run: the preset fills the input side only. Press "Find optimal
-      // overlay" to have the tool COMPUTE the plan — nothing is preloaded.
     };
     chip.addEventListener("click", load);
     chip.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); load(); } });
@@ -3481,7 +3504,8 @@ function renderGoldenPresets() {
 buildBuffList();
 el("in-haste").dispatchEvent(new Event("input"));
 refreshPresets("");
-renderGoldenPresets();
+renderBakedPresets(BOSS_PRESETS, "boss-chips");
+renderBakedPresets(GOLDEN_PRESETS, "golden-chips");
 </script>
 </body>
 </html>

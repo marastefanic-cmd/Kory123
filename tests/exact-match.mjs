@@ -39,7 +39,9 @@ await page.goto('file://' + path.join(REPO, 'index.html'));
 spec = await page.evaluate(() => {
   if (!Array.isArray(window.GOLDEN_PRESETS) || !window.GOLDEN_DEFAULTS)
     throw new Error('window.GOLDEN_PRESETS / GOLDEN_DEFAULTS missing in index.html');
-  return { gear: window.GOLDEN_DEFAULTS.gear, kit: window.GOLDEN_DEFAULTS.kit, cases: window.GOLDEN_PRESETS };
+  // Two baked strips are locked: the real Boss presets and the abstract Debugging presets.
+  return { gear: window.GOLDEN_DEFAULTS.gear, kit: window.GOLDEN_DEFAULTS.kit,
+           cases: [...(window.BOSS_PRESETS || []), ...window.GOLDEN_PRESETS] };
 });
 if (perr) { console.error('PAGEERROR loading index.html:', perr); await browser.close(); process.exit(2); }
 

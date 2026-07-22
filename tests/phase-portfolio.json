@@ -1,0 +1,17 @@
+{
+  "gear": {"sp":1387,"crit":38,"haste":0,"coldSnap":true},
+  "kit": ["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],
+  "weights": null,
+  "fights": [
+    {"name":"Hydross the Unstable","T":100,"pins":{"bloodlust":[7]}},
+    {"name":"The Lurker Below","T":160,"pins":{"bloodlust":[7]},"intermission":[90,130]},
+    {"name":"Leotheras the Blind","T":135,"pins":{"bloodlust":[25]},"phases":[{"type":"intermission","from":10,"to":15},{"type":"intermission","from":70,"to":80}]},
+    {"name":"Fathom-lord Karathress","T":120,"pins":{"bloodlust":[5]}},
+    {"name":"Morogrim Tidewalker","T":165,"pins":{"bloodlust":[5]}},
+    {"name":"Lady Vashj","T":390,"pins":{"bloodlust":[345]},"phases":[{"type":"intermission","from":50,"to":110},{"type":"intermission","from":140,"to":150},{"type":"intermission","from":165,"to":180},{"type":"intermission","from":210,"to":240},{"type":"intermission","from":265,"to":290},{"type":"intermission","from":310,"to":325}]},
+    {"name":"Al'ar","T":240,"pins":{"bloodlust":[6]},"phases":[{"type":"intermission","from":65,"to":69},{"type":"intermission","from":95,"to":112},{"type":"intermission","from":154,"to":166},{"type":"intermission","from":208,"to":229}]},
+    {"name":"Void Reaver","T":145,"pins":{"bloodlust":[10]}},
+    {"name":"High Astromancer Solarian","T":75,"pins":{"bloodlust":[5]},"intermission":[50,55]},
+    {"name":"Kael'thas Sunstrider","T":420,"pins":{"bloodlust":[260]},"phases":[{"type":"intermission","from":15,"to":30},{"type":"intermission","from":42,"to":55},{"type":"intermission","from":69,"to":80},{"type":"intermission","from":94,"to":105},{"type":"aoe","from":105,"to":145,"targets":6},{"type":"intermission","from":160,"to":205},{"type":"intermission","from":306,"to":346}]}
+  ]
+}

@@ -39,13 +39,14 @@ Additional payoffs the same engine unlocks (nice-to-haves, not the point):
 ```
 cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs
 ```
-Loads the real `index.html` headless, reads the fight table from the page (`window.GOLDEN_PRESETS` —
-the same **Debugging presets** the tool shows), runs every one through the actual optimizer, compares
-the copy-as-text plan to `golden.json`. `--update` regenerates goldens (do this ONLY after an
-intentional change, and only when each changed plan improves the effective-ABs count — sim-verified
-when a blind spot is in play, per the methodology in `docs/TOOLING.md`).
-The preset list is defined once in `index.html` (`GOLDEN_PRESETS`) and drives both the UI and the
-suite, so a preset you confirm in the tool **is** the locked test.
+Loads the real `index.html` headless, reads the fight tables from the page (`window.BOSS_PRESETS` — the
+real phase encounters — and `window.GOLDEN_PRESETS` — the abstract **Debugging presets**), runs every
+one through the actual optimizer, compares the copy-as-text plan to `golden.json` (23 cases). `--update`
+regenerates goldens (do this ONLY after an intentional change, and only when each changed plan improves
+the effective-ABs count — sim-verified when a blind spot is in play, per the methodology in
+`docs/TOOLING.md`). The two preset arrays are defined once in `index.html` (`BOSS_PRESETS` +
+`GOLDEN_PRESETS`) and drive both the UI (the "Boss presets" / "Debugging presets" strips) and the suite,
+so a preset you confirm in the tool **is** the locked test.
 
 ## `index.html` at a glance
 

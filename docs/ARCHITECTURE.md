@@ -109,19 +109,23 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   tinted with ×N badges), buff-uptime lanes with press ticks. `scheduleRows`/`renderSchedule` build
   the window table; `btn-copy` emits the canonical copy-as-text plan the tests compare.
 
-## Presets & tests — one shared fight table
-`index.html` defines `GOLDEN_PRESETS` + `GOLDEN_DEFAULTS` (near the localStorage-preset section, tail
-of the file) and exposes them on `window`. This single array is the canonical fight list:
-- **UI:** the `#golden-strip` "Debugging presets" chips render from it; clicking one calls
-  `goldenToState(p)` → `applyState(...)`, which loads the **input side only** (no auto-run — the
-  handler deliberately does not click `btn-run`). The user presses "Find optimal overlay" to have the
-  optimizer **compute** the plan. Presets store setup, never a precomputed answer.
-- **Tests (`tests/`):** `exact-match.mjs` loads `index.html` headless (playwright-core), reads
-  `window.GOLDEN_PRESETS`/`GOLDEN_DEFAULTS` from the page (there is **no** `cases.json`), runs each
-  through `optimizeAsync`, canonicalizes the plan (setup header + windows + per-press times +
-  Cold-Snap markers, minus cosmetic peak-haste/price tags), diffs vs `golden.json`. `--update`
-  regenerates. Supports `intermission`/`aoe`/`burn` phases. A preset entry is `{name, T, pins}` with
-  optional `gear`/`kit`/`intermission`/`phases` overrides.
+## Presets & tests — two baked strips, both the fight table
+`index.html` defines **two** baked preset arrays + `GOLDEN_DEFAULTS` (near the localStorage-preset
+section, tail of the file) and exposes them on `window`:
+- **`BOSS_PRESETS`** — the real current-phase raid encounters (Hydross … Kael'thas), boss-named, with
+  the actual fight length / Lust timing / phases from the pulls.
+- **`GOLDEN_PRESETS`** — the abstract regression fights (short-length variants, `6:00/5:45` packing,
+  `3:20/5:00` containment) that exercise engine edge cases the bosses don't.
+Both use the same shape (`{name, T, pins}` + optional `gear`/`kit`/`intermission`/`phases`) and load
+**input side only** (no auto-run). Three UI strips: **`#boss-strip`** "Boss presets" (accent) and
+**`#golden-strip`** "Debugging presets" (muted) render the two baked arrays via `renderBakedPresets(arr,
+hostId)` → `goldenToState(p)` → `applyState(...)`; **`#preset-strip`** "Custom presets" is the
+localStorage user-saved strip (was "Boss presets"). The user presses "Find optimal overlay" to
+**compute** the plan — presets store setup, never a precomputed answer.
+- **Tests (`tests/`):** `exact-match.mjs` reads **both** `window.BOSS_PRESETS` and
+  `window.GOLDEN_PRESETS` (+ `GOLDEN_DEFAULTS`) headless, runs each through `optimizeAsync`,
+  canonicalizes the plan (setup header + windows + per-press times + Cold-Snap markers, minus cosmetic
+  peak-haste/price tags), diffs vs `golden.json` (23 cases: 10 boss + 13 debug). `--update` regenerates.
 
-So "what you click in the tool" and "what the suite locks" are literally the same list — a confirmed
-preset is the exact-match test.
+So "what you click in the tool" and "what the suite locks" are still the same lists — a confirmed
+preset (boss or debug) is the exact-match test.

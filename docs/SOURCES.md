@@ -25,6 +25,11 @@ errors get baked into the model.
    leads to verify against sources 1–3, not as citations themselves.
 5. **In-game tooltips / a character export** — for the player's actual gear values and talented
    numbers; the wowsims individual-export JSON already encodes the character.
+6. **The player's own raid logs** — the `BOSS_PRESETS` (fight length, Lust timing, intermission/AoE
+   phases) and the gear baseline are modeled from the player's actual current-phase pulls:
+   `fresh.warcraftlogs.com/character/eu/spineshatter/pinkstructor` (a JS app — not machine-scraped;
+   the per-fight inputs are transcribed by the user). Keep this out of the shareable `index.html`
+   (identity hygiene); it belongs only in these internal docs.
 
 **Verification rule of thumb:** a fact is "verified" when it agrees across **wowsims source + one of
 {Wowhead, Warcraft Wiki}**. If a value only appears in one place, or a forum, mark it `unverified`
