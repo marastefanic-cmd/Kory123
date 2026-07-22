@@ -44,7 +44,35 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
    route**, `tests/ep-sim.sh` + `runner --sp/--crit/--haste`). **Validated** on `6:00 lust 4:20`: crit EP
    **0.697 vs 0.687** (~1.5%), haste EP **1.43–1.47 vs 1.51** (~5%, model lower by the deliberate
    ramp-blindness; the re-opt value moves toward the sim — this setup is on a haste breakpoint). Full
-   derivation, envelope-theorem argument, and caveats in **`docs/EP.md`**.
+   derivation, envelope-theorem argument, and caveats in **`docs/EP.md`**. **Portfolio EP over a fight
+   set** (`tests/portfolio-ep.mjs`): runs the model route over N fights at your real gear and aggregates
+   by the **summed weighted absolute derivatives, normalized to SP once** (NOT averaged per-fight EPs —
+   that mis-weights short fights). Awaiting the user's 10 phase-fight inputs to produce the phase EP.
+
+## Planned (next phase, after /clear) — finite-mana / conserve-rotation model (beta), user-requested
+
+Keep the current model **infinite-mana (layout-first)** as the default; add a **separate** finite-mana
+model behind a big input toggle ("infinite mana" vs "finite mana (beta)") — a **second engine**, not a
+patch (the current tool's elegance is that infinite-mana AB-spam makes the cast rate purely
+haste-determined; finite mana makes the cast *sequence* + mana *state* matter over time — a stateful,
+coupled optimization). Goal: model the **conserve rotation** and compute the **value of mana** (⇒
+spirit / mp5 / mana EP, and a realistic haste EP for mana-bound fights).
+- **Researched mechanics (grounded, wowsims `ade9f39`):** Frostbolt (`frostbolt.go`) — coef **0.814**
+  (>AB's 0.714), base 600–647 (~623), **330 flat mana**, **3.0s** base cast (→2.5 with Imp Frostbolt),
+  cast-time-limited so haste is pure gain (no GCD floor). Arcane Blast — FlatCost **195** × per-stack
+  power-cost increase (`arcane_charge.go`, the +75%/stack), fast 1.5s, GCD-floored. Mana regen —
+  `SpiritRegenRateCasting += 0.1·ArcaneMeditation` (spirit regen *while casting*), + mp5, Evocation
+  (`evocation.go`), Mana-Emerald gems (`mana_gems.go`). Conserve = interleave cheap Frostbolts to hold
+  mana while keeping some fast ABs (user's play: FB until the AB-stack debuff is about to fall, clip a
+  fast AB to refresh, repeat).
+- **Options to decide when planning:** (A) full finite-mana engine in the tool (biggest — burn/conserve/
+  Evocate scheduling coupled with cooldown placement, a mana-budget optimization over the timeline);
+  (B) leverage wowsims (build a conserve-rotation APL, read the sim's mana/spirit/mp5 EP — it already
+  models all of this, like we did for EP); (C) a **light marginal mana-value calc** — value of mana ≈ the
+  **AB-vs-Frostbolt damage-per-mana gap** at the conserve margin (spirit/mp5 EP without a full rotation
+  sim). Lean: (C) for the mana-*value* number + (B) as the sim cross-check; (A) only if an interactive
+  in-tool conserve planner is wanted. Must NOT let mana feed back into the infinite-mana layout model
+  (the layout-first principle, `docs/EP.md`).
 
 ## Done — AoE crit-proc amplification (Clearcasting → Arcane Potency)
 
