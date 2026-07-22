@@ -1,9 +1,44 @@
 # TOOLING.md — the wowsims sim harness (how to verify a plan)
 
-The planner's model is a proxy; the **ground truth is wowsims** (the TBC combat sim). Every golden and
-every non-obvious rule in `docs/RULES.md` was verified by forcing a cooldown schedule into wowsims and
-reading the DPS. This file documents that workflow, the **trust anchor** that certifies it, and the
-traps. It was rewritten after a full end-to-end harness audit (see the audit summary at the bottom).
+This file documents the wowsims workflow, the **trust anchor** that certifies it, the statistical
+protocol, and the traps. It was rewritten after a full end-to-end harness audit (see the ★ section and
+the audit summary). **Read the methodology below first — it says what the sim is *for*.**
+
+## Methodology — the model is the objective, the sim calibrates it
+
+The planner already knows, deterministically, every cast, every buff window, and every timing in a
+plan — so it computes **effective ABs cast** (`docs/MECHANICS.md §4`) exactly, and **that count is the
+arbiter for comparing two lines.** The tool is, by construction, a maximization function over that
+number; ranking lines is *its* job. The sim's role is **calibration**, three specific uses:
+
+1. **Anchor the physics.** Certify the formulas/constants the count is built on — the trust anchor
+   (runner == `wowsimcli` to the decimal, below) and any constant that changes. Get the equation right
+   *once*, then trust the count.
+2. **Cover the count's blind spots.** The count is ramp-blind (steady 3 stacks), mana-blind, AoE-blind,
+   and can disagree with the sim on a *mechanic* (the AP 195-vs-180 cd, ★ below). Where a blind spot is
+   in play the sim is ground truth; where it isn't, the count is.
+3. **Verify a suspicious or novel finding** before trusting or locking it — a first-time result, a
+   counter-intuitive delta, a new *kind* of move.
+
+**The sim is not a routine per-golden gate.** Re-simming every plan on every change is slow and, worse,
+invites treating a raw sim delta as ground truth even when a clean cast-count already settles the line.
+
+**A caveat the audit earned (the user's correction): the sim was rarely *wrong* — we were often using it
+improperly.** The Vashj "3-icons-win", the "off-GCD collision", the "−4.2 exit icon" were all **our
+harness/usage faults** (the drop bug ★, cargo-cult offsets, a count-changing A/B measured on nearby
+seeds), not the sim lying. So when the sim contradicts a clean cast-count with **no blind spot in play**,
+that is a **sim-setup audit trigger** — open the `SIMLOG=1` combat log and find the usage fault — *not*
+evidence the model is wrong. Distrust our *setup* before distrusting either the model or the sim.
+
+**Guard against the self-confirming oracle.** If the model is the arbiter and the sim only ever confirms
+it, we can drift. Two habits keep it honest: **proactively sim the known blind spots** (ramp, mana, AoE,
+multi-AP timing) rather than waiting for a golden to look wrong, and **periodically re-anchor** — re-run
+the trust anchor and a couple of representative goldens end-to-end.
+
+**Scorer vs optimizer — two separate axes.** This settles the *scorer*: the effective-ABs count is the
+objective and the arbiter. It says nothing about the *optimizer's* search-completeness — whether the
+passes actually *find* the count-maximizing plan is a different question (the packing/containment work
+was all search, not scoring). Don't conflate "the count is right" with "the search reached it."
 
 ## Pieces
 
@@ -203,7 +238,11 @@ at the fight's end (3:20 AP@185→~200 at its 200s kill → +0.0). Practically i
 ## Verifying a golden change
 
 After an intentional model/optimizer change: rebuild (`-tags with_db`), run `tests/exact-match.mjs`,
-and for **every** golden whose plan moved, sim new-vs-old with the SAME seed, `--var 0`, ≥150k, and
-confirm under `--var 10` too; if the change adds/removes a press, add a far-seed replicate. Accept only
-if new ≥ old. Then `node exact-match.mjs --update` and eyeball the diff. The model is the search
-heuristic; the sim is the referee.
+and for every golden whose plan moved, first read off the **effective-ABs count** — that's the arbiter
+for whether the new line is better. **Sim-verify** the move when a blind spot is in play (a ramp/
+intermission-exit shift, an AoE or multi-AP-timing call) or the finding is novel/suspicious: new-vs-old
+with the SAME seed, `--var 0`, ≥150k, confirm under `--var 10` too; if the change adds/removes a press,
+add a far-seed replicate (nearby seeds share the sample — see the statistical protocol). Accept only if
+the count improves and any sim check is new ≥ old. Then `node exact-match.mjs --update` and eyeball the
+diff. **The count is the objective and the arbiter; the sim calibrates it and covers its blind spots
+(the methodology at the top).**

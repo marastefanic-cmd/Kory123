@@ -42,7 +42,8 @@ cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs
 Loads the real `index.html` headless, reads the fight table from the page (`window.GOLDEN_PRESETS` —
 the same **Debugging presets** the tool shows), runs every one through the actual optimizer, compares
 the copy-as-text plan to `golden.json`. `--update` regenerates goldens (do this ONLY after an
-intentional change, and only when each changed plan sim-verifies ≥ the old — see `docs/TOOLING.md`).
+intentional change, and only when each changed plan improves the effective-ABs count — sim-verified
+when a blind spot is in play, per the methodology in `docs/TOOLING.md`).
 The preset list is defined once in `index.html` (`GOLDEN_PRESETS`) and drives both the UI and the
 suite, so a preset you confirm in the tool **is** the locked test.
 
@@ -68,9 +69,17 @@ changing the model or the passes**, and keep it updated as the living theorycraf
   or model ids. The user's Discord handle is the only acceptable attribution.
 - **Determinism is a feature.** Any change must keep one-setup-⇒-one-schedule, or the exact-match
   tests become meaningless. Don't add `Date.now()`/`Math.random()` outside the seeded PRNG.
-- **Sim before you freeze.** A golden only changes when wowsims (fixed kill, common random numbers,
-  ≥100k iters) confirms the new plan ≥ the old. The model is ~0.4%-accurate; trust the sim over the
-  model on sub-cast calls. See the collision-offset trap in `docs/TOOLING.md`.
+- **The model is the objective; the sim calibrates it.** The one number to maximize is **effective
+  ABs cast** (`docs/MECHANICS.md §4`), and the planner computes it deterministically from the casts,
+  buff windows, and timing it already knows — so **that count is the arbiter for comparing two lines.**
+  The tool is, by construction, a maximization function over it. The sim's role is narrower: (1)
+  **anchor the physics** — certify the formulas/constants the count is built on (trust-anchor to
+  `wowsimcli`, ~0.4% absolute agreement); (2) cover the count's **blind spots** — the stack ramp near
+  the pull/intermission exits, mana, AoE weighting, multi-AP-timing (the AP 195-vs-180 cd); (3)
+  **verify a suspicious or novel finding** before it's locked. It is **not** a routine per-golden gate.
+  When a clean cast-count and a sim number disagree with **no blind spot in play**, that's a **sim-setup
+  audit trigger**, not a model bug — the sim is rarely *wrong*, we've usually *used it wrong* (the Vashj
+  drop bug is the cautionary tale). See the methodology in `docs/TOOLING.md`.
 - Commit to the designated feature branch provided at session start; follow the session's configured
   commit author/trailers; don't open a PR unless asked.
 

@@ -1,9 +1,13 @@
 # RULES.md — the theorycraft the planner encodes
 
-Living record of the TBC Arcane cooldown rules, each with its **sim evidence** (wowsims, fixed kill,
-common random numbers, high iters). The model in `index.html` is an ~0.4%-accurate proxy for these;
-when model and sim disagree on a sub-cast call, **the sim wins**. Update this file when a rule is
-added, refined, or overturned.
+Living record of the TBC Arcane cooldown rules, each with the **evidence** it was checked against. The
+one quantity to maximize is **effective ABs cast** (§1 / `MECHANICS §4`), which the planner computes
+deterministically — so the **cast-count is the arbiter** when comparing two lines. The **sim
+calibrates** that count (anchors the physics — the model is a ~0.4%-accurate proxy — covers its blind
+spots: ramp / mana / AoE / multi-AP timing, and verifies novel findings); the sim evidence cited under
+each rule is exactly that calibration, not a routine per-line referee. When a clean cast-count and a
+sim number disagree with **no blind spot in play**, audit the sim *setup* before either — see
+`docs/TOOLING.md`. Update this file when a rule is added, refined, or overturned.
 
 **Read every rule below as a *method*, not a law.** There is exactly one thing to maximize — the
 **effective ABs cast** (`docs/MECHANICS.md §4`: each cast scored by its multiplier vs a plain AB,
@@ -107,7 +111,8 @@ So the reason to put haste on Lust is **flux** (speeding the *damage/SP* casts, 
 before an early kill — *not* a haste-stacking synergy, which doesn't exist. And the reason to **sequence**
 two haste buffs (rather than overlap) is to keep each under the floor, not to chase a product. (A wowsims
 "+37 DPS" for Lust+IV overlap at one fixed length was a boundary artifact — it vanished under randomized
-kill. If a specific fight ever shows a real overlap gain, trust the sim and record it here.)
+kill. If a specific fight ever shows an overlap gain that survives the var0↔var10 cross-check, that's a
+novel finding — verify it per the TOOLING methodology, then record it here.)
 
 ## 8. Known-kill planning + Cold Snap
 

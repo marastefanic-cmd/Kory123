@@ -219,6 +219,20 @@ of haste-on-Lust is *flux* (speeding damage/SP casts) or banking before an early
 (RULES §7, MECHANICS §5.3). The planner already sequences correctly, so no code change — a doc/mental-model
 correctness fix in service of generalisability.
 
+**Done — model↔sim relationship reconciled (this session, user-directed).** The planner knows every
+cast/buff/timing deterministically, so it computes **effective ABs cast** exactly — that count is the
+**objective and the arbiter** for comparing two lines; the tool is a maximization function over it. The
+sim's role is **calibration**: anchor the physics (trust-anchor), cover the count's blind spots (ramp /
+mana / AoE / multi-AP timing), and verify novel/suspicious findings — **not** a routine per-golden gate.
+Replaced the stale "trust the sim over the model / the sim wins / the sim is the referee" wording across
+`CLAUDE.md`, `docs/TOOLING.md` (new **Methodology** section up top), and `RULES.md`. Per the user's
+correction, the framing is explicit that **the sim was rarely *wrong* — we often used it improperly**
+(the drop bug, cargo-cult offsets, count-changing A/Bs on nearby seeds were *our* faults); a clean
+cast-count vs a contradicting sim number with no blind spot in play is a **sim-setup audit trigger**.
+Also flagged the **self-confirming-oracle** risk (proactively sim the blind spots + periodically
+re-anchor) and the **scorer-vs-optimizer** distinction (this settles the scorer; search-completeness is
+a separate axis). Docs-only, no code/golden change.
+
 **Done:** ~~Boss-preset UI = the golden set~~ — landed. `GOLDEN_PRESETS` drives both the UI strip and the
 exact-match suite; new fights are added by editing that one array.
 
