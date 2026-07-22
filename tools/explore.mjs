@@ -63,6 +63,18 @@ const SCENARIOS = [
     haste: [0, 10, 20, 40, 80, 150, 250],
   },
   {
+    // The B-gate test: put Lust at the PULL so the fast window overlaps the opening ramp, then place a
+    // pure damage buff (Icon). The model is ramp-blind (flat 3 stacks), so it scores Icon@0 (over the ramp)
+    // and Icon@20 (past it) identically — a TIE. The sim has the real ramp (slower opening casts), so it
+    // should prefer Icon@20. The SIZE of that model-tie-vs-sim-preference gap decides whether B is worth it:
+    // small (<~0.3%) → the ramp-blindness never mis-ranks in practice → skip B.
+    name: 'icon-ramp',
+    desc: 'Lust@0:00 (pull IS the fast window). Over-credit test: does the ramp-blind model wrongly tie a damage buff over the ramp with one past it?',
+    T: 80, pins: { bloodlust: [0] },
+    place: [{ key: 'isc', at: [0, 20, 40] }],
+    haste: [0, 100, 200],
+  },
+  {
     name: 'iv-zerk',
     desc: '1:20, Lust@0:20. Two haste buffs (IV 20s + Berserking 10s). How do they share the GCD floor?',
     T: 80, pins: { bloodlust: [20] },
