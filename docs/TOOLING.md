@@ -47,15 +47,29 @@ was all search, not scoring). Don't conflate "the count is right" with "the sear
   `node tools/genapl.mjs '{"IV":[105,125,396],"AP":[105,285],"Icon":[0,125,260,396],"Gem":[105,285,405],"Zerk":[105,285],"CS":[124],"BL":[260]}' out.apl.json`.
   Keys: `IV AP CS Zerk BL Icon Gem`. Supports `_intermission:[a,z]` / `_intermissions:[[a,z],…]` (AB
   gated off during downtime) and `_prestack:N` (prepull AB casts to seed the opener stack). Spell/item
-  IDs in the file header.
+  IDs in the file header. **This is the INFINITE-mana harness** (AB-spam forever) — pair it with
+  `--mana 900000` for layout work.
+- **`tools/genconserve.mjs`** (durable): the **FINITE-mana / conserve** harness (for the real gearing
+  stat weights, `docs/EP.md`). Same cooldown-schedule interface as `genapl`, but the *filler* is
+  mana-managed: **Arcane Blast while burning** (Bloodlust/Arcane-Power/Icy-Veins aura up, or a
+  `_burnWindows:[[a,z]]`) **or above a `_conserve` mana-% threshold; else Frostbolt** (27072 — cheap,
+  ≈ mana-neutral with JoW+regen); **Evocation** below `_evo`; and — **critically** — an
+  `autocastOtherCooldowns` action that fires the **external** mana CDs the APL would otherwise suppress
+  (Innervate, Mana Tide). Robust to the threshold (DPS flat across `_conserve` 0.2–0.6). Trust-anchored:
+  its DPS is within **2.7%** of the export's own native wowsims Arcane rotation. `_noEvo`/`_noAutocast`
+  toggle those off. See the **finite-mana harness** section below.
 - **`runner`** (NOT in repo — ~16MB compiled Go binary): a headless single-player sim built from the
   **wowsims TBC-with-APL source** (`wowsims/tbc-new`, module `github.com/wowsims/tbc`, pinned at commit
   **`ade9f39`**). `cmd/runner/main.go` reads an individual gear export, applies an optional `--apl`
   override, injects flat mana/haste via `bonusStats`, builds a `RaidSimRequest` via
   `core.SinglePlayerRaidProto`, and runs `core.RunRaidSimConcurrent`. Flags: `--export --apl --dur --var
-  --iter --seed --mana --haste --tag --quiet --dumpreq --targets --crit --sp`. (The last three were added
+  --iter --seed --mana --haste --tag --quiet --dumpreq --targets --crit --sp --int --spirit --mp5`. (Added
   this project: `--targets N` duplicates the encounter target for AoE; `--crit`/`--sp` inject
-  SpellCritRating / SpellDamage via bonusStats — for AoE isolation and EP finite-differences, `docs/EP.md`.)
+  SpellCritRating / SpellDamage; **`--int`/`--spirit`/`--mp5` inject Intellect / Spirit / MP5** via
+  bonusStats — for AoE isolation and EP finite-differences incl. the **finite-mana** stat weights,
+  `docs/EP.md`.) **The full `cmd/runner/main.go` is saved at `tools/wowsims-patches/runner-main.go`** — it
+  is entirely our own harness file (not upstream), so a fresh container restores the runner from it +
+  `apl-schedule-strict-ready.patch`, then `go build -tags with_db`.
   Output TSV: `tag  dur  var  iter  meanDPS
   stdev  maxDPS  avgFightSec` — **column 5 is mean DPS**.
 - **Gear export** (NOT in repo — user-provided): the player's wowsims individual-export JSON. Point
@@ -266,6 +280,44 @@ more Clearcasting ⇒ more Potency-boosted casts. Because it depends only on **c
 (no gear), the planner models it — `aoeCritAmp(N,crit)` (`index.html` `TALENTS`), crediting **~75–80%** of
 the measured effect (conservative; right crit-direction; single-target untouched, exact-match 16/16). New
 runner flag used here: **`--crit R`** adds SpellCritRating via bonusStats (negative to suppress crit).
+
+## The finite-mana / conserve harness (real gearing stat weights)
+
+The infinite-mana harness (`genapl` + `--mana 900000`) gives the **layout** EP; the **gearing** EP needs
+a mana-managed rotation at **real mana** (`docs/EP.md`). Pieces: `tools/genconserve.mjs` (the conserve
+APL), `tests/ep-finite.mjs` (the sim finite-difference), `tests/mana-value.mjs` (the analytic value-of-
+mana cross-check), `tests/finite-weights.json` (the locked numbers). Reproduce:
+`node tests/ep-finite.mjs --dur 300 --iter 45000 --seed 11 --inf` (add `--native` to finite-difference
+the export's OWN wowsims rotation as a cross-check; `--dur 145/420` for fight-length).
+
+**★ TRAP — the APL silently SUPPRESSES external mana cooldowns unless you add `autocastOtherCooldowns`.**
+Innervate and Mana Tide are auto-managed `CooldownTypeMana` MCDs (`registerInnervateCD`/
+`registerManaTideTotemCD`, `sim/core/buffs.go`). In APL mode wowsims **removes MCDs referenced by the
+APL** from the autocast set and fires the rest **only via** an `autocastOtherCooldowns` action — so a
+schedule-only APL fires *none* of the un-referenced ones. **Without it the mage loses Innervate + Mana
+Tide entirely (−6% DPS, 1806→1916 at 300s) and its stat weights are biased toward mana-starvation.**
+`genconserve` includes the action; it is safe because APL-referenced CDs (our scheduled IV/AP/Icon/Gem/
+Zerk/Evocation) are excluded, so nothing double-fires (verified: exact scheduled fire-counts unchanged).
+Confirm any new mana harness fires them: `grep 29166` (Innervate) `16190` (Mana Tide) in a `SIMLOG` log.
+
+**The sim already models the whole raid mana economy on the export — do NOT reimplement it.** Verified
+firing on the reference export: regen ticks (`OtherID:2` — mana-spring mp5 + **Shadow-Priest/Vampiric-
+Touch = +250 mp5** permanent (`ShadowPriestDPSManaAura` = `dps·0.25`) + `spirit·√int·0.009327·0.30`-
+casting), **JoW** (27164, 74/hit), **Mana Tide** (16190, `0.06·MaxMana`/tick×4 at ~40s), **Innervate**
+(29166 — `ForceFullSpiritRegen` + `SpiritRegenMultiplier×5` for 20s), **Evocation** (12051, `0.15·MaxMana`
+×4), **Mana-Emerald gem** (22044). Armor is **Molten** (crit), not Mage (regen) — the player's real
+choice. This is why option **(B)** (leverage wowsims) beats reimplementing: the validated engine already
+does innervate/manatide/VT/JoW/evocation/regen correctly, on the player's real raid setup.
+
+**Findings (sim finite-difference, cross-validated 3 ways).** Real gearing weights (300s, SP=1):
+**SP 1.00 · Int 1.08 · Haste 0.96 · Crit 0.79 · MP5 0.66 · Spirit 0.54 · Mana ~0** — vs the infinite
+ceiling on the *same* schedule (Haste 1.44, MP5/Spirit **exactly 0**, Int 0.56). The **conserve rotation
+and the native wowsims rotation agree** (haste 0.96 vs 1.00), and the analytic value-of-mana (~2.2
+dmg/mana) brackets MP5 — so this is not a harness artifact. **The "haste is weak for Arcane" folklore is
+about the OOM-idle rotation** (pure-spam haste EP **0.03**); a Frostbolt-conserving mage keeps haste ≈
+0.96 (never idles). Full table + fight-length + intermission numbers: `docs/EP.md`, `finite-weights.json`.
+This is a mana **blind-spot** finding (the count is mana-blind) so the sim is ground truth here; it does
+**not** touch the planner (the infinite-mana engine stays default; exact-match 23/23).
 
 ## Verifying a golden change
 

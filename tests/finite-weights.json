@@ -1,0 +1,33 @@
+{
+  "_comment": "FINITE-MANA (real gearing) stat weights for the reference Arcane setup, computed by wowsims finite-difference on a mana-managed CONSERVE rotation (tools/genconserve.mjs). This is the REAL gearing EP (docs/EP.md), distinct from the infinite-mana LAYOUT ceiling (tests/ep-model.mjs / ep-sim.sh). Reproduce: source scratchpad env, then `node tests/ep-finite.mjs --dur 300 --iter 45000 --seed 11 --inf` (and `--native`, and `--dur 145/420`). All EP normalized to SpellPower=1.",
+  "method": {
+    "route": "wowsims finite-difference (docs/PLAN.md option B), central diff, var0, CRN-desynced so relies on large N",
+    "rotation": "conserve: AB-spam in burn windows (BL/AP/IV up), Frostbolt filler below a mana threshold, Evocation deep-low, autocastOtherCooldowns fires Innervate+ManaTide (tools/genconserve.mjs)",
+    "mana_sources_modeled": "wowsims engine on the real export: regen (mana-spring mp5 + ShadowPriest/Vampiric-Touch +250 mp5 + spirit*sqrt(int)*0.30 casting), JoW 74/hit, ManaTide 6%/tick x4, Innervate (5x spirit, ForceFullSpiritRegen), Evocation 15%x4, Mana-Emerald gem. Molten Armor (not Mage Armor).",
+    "runner": "extended with --int/--spirit/--mp5 bonusStats injection (cmd/runner/main.go)",
+    "gear": "reference Arcane raid export, 13376 mana pool, ~38% crit, Molten Armor, full raid buffs"
+  },
+  "weights_SP_eq": {
+    "300s_conserve_realMana": { "SP":1.000, "Int":1.076, "Haste":0.962, "Crit":0.789, "MP5":0.658, "Spirit":0.535, "Mana":0.008, "baseDPS":1915.7, "note":"the headline gearing weights" },
+    "300s_native_realMana":   { "SP":1.000, "Int":1.133, "Haste":1.001, "Crit":0.760, "MP5":0.890, "Spirit":0.550, "Mana":0.008, "baseDPS":1969.3, "note":"cross-check: export's OWN wowsims Arcane rotation; agrees with conserve" },
+    "300s_conserve_infiniteMana": { "SP":1.000, "Int":0.557, "Haste":1.439, "Crit":0.689, "MP5":0.000, "Spirit":0.000, "Mana":0.006, "baseDPS":2569.1, "note":"the LAYOUT ceiling on the SAME schedule: haste inflated, regen=0, int=throughput-only (0.557 matches the EP.md closed form 0.29+0.317*0.689)" },
+    "145s_conserve_realMana": { "SP":1.000, "Int":1.135, "Haste":0.800, "Crit":0.781, "MP5":0.564, "Spirit":0.676, "Mana":0.008, "baseDPS":2159.8 },
+    "420s_conserve_realMana": { "SP":1.000, "Int":0.992, "Haste":1.021, "Crit":0.800, "MP5":0.696, "Spirit":0.491, "Mana":0.006, "baseDPS":1787.8 },
+    "420s_intermission60s":   { "Haste":0.923, "MP5":0.843, "note":"60s downtime: dilutes haste (less casting), boosts regen (bank-and-burst)" }
+  },
+  "haste_vs_fightlength_abs": {
+    "_comment": "absolute DPS per haste-rating (conserve, real mana): haste is MOST valuable on SHORT fights in raw DPS; the EP ratio inverts only because SP scales even harder",
+    "40s":0.975, "60s":0.585, "90s":0.656, "120s":0.684, "200s":0.788, "300s":0.767, "420s":0.774
+  },
+  "value_of_mana_analytic": {
+    "dmg_per_mana": 2.21,
+    "derivation": "(DPS_AB_3stack 2242 - DPS_FB 1404) / (drain_AB 458 - drain_FB 79 mana/s, JoW-adjusted) at the conserve margin",
+    "MP5_EP_derived": "0.49-0.55 (0.2 mana/s * 2.21 / SP_weight) -> brackets the sim's 0.66 (docs/PLAN.md option C, tests/mana-value.mjs)"
+  },
+  "trust_anchors": {
+    "conserve_vs_native_DPS": "1916 vs 1969 (-2.7%) — the simple threshold controller reproduces wowsims' own Arcane rotation",
+    "pure_OOM_haste_EP": "0.03 — the naive AB-spam-until-OOM-then-idle rotation (the 'haste is weak' folklore case); conserve play recovers haste to ~0.96",
+    "infinite_int_vs_closedform": "0.557 measured vs 0.51 EP.md closed form (0.29*SP + 0.317*crit) — validates the harness against the model route"
+  },
+  "ordering_realGearing": "SP ~= Int > Haste > Crit > MP5 > Spirit >> Mana  (300s single-target; short fights push haste down in EP terms, intermissions push regen up)"
+}

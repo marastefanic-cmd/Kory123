@@ -82,6 +82,23 @@ The runner binary + gear export live in the ephemeral session scratchpad (see
 committed. Each spec line is `NAME<TAB>{genapl-json}`; remember the collision
 offsets (TOOLING) so bundled off-GCD presses don't share a tick.
 
+## Stat weights (EP) — two contexts
+
+- **Layout EP (infinite mana)** — `ep-model.mjs "<preset>"` (closed-form partials of
+  the effective-damage integral, on the page) and `ep-sim.sh '<genapl-spec>'` (wowsims
+  finite-diff on the optimal AB-spam schedule); `portfolio-ep.mjs` aggregates over a
+  fight set. See `docs/EP.md`.
+- **Gearing EP (finite mana)** — the **real** weights, on a mana-managed conserve
+  rotation (`../tools/genconserve.mjs`):
+  ```
+  node ep-finite.mjs --dur 300 --iter 45000 --seed 11 --inf   # finite vs infinite ceiling
+  node ep-finite.mjs --dur 300 --iter 18000 --seed 11 --native # x-check: export's own rotation
+  node mana-value.mjs --dur 300                                 # analytic value-of-mana (option C)
+  ```
+  Needs `RUNNER`/`GEAR`/`MYSP` env + the runner rebuilt with `--int/--spirit/--mp5`
+  (`../tools/wowsims-patches/runner-main.go`). Locked numbers: `finite-weights.json`.
+  Result: **SP ≈ Int > Haste > Crit > MP5 > Spirit ≫ Mana** (`docs/EP.md`, RULES §12).
+
 The canonical each case is compared on is the **Copy-as-text plan** — the setup
 header plus the windows with per-press times and Cold Snap markers — minus the
 cosmetic peak-haste line and price tags (those are annotations, not placements).

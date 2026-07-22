@@ -12,13 +12,14 @@
    reference in `docs/TOOLING.md` — read its **Methodology** section (model = objective/arbiter, sim =
    calibration) and the ★ drop-bug + stats protocol. The intermission re-gate is **done** (KT +
    4:00-multi both re-confirmed ≥ their alternatives on the fixed rig — see Status). The **AoE crit-proc
-   amplification** (Clearcasting → Arcane Potency) is now **modeled** (below). **Next task = the
-   finite-mana / conserve-rotation model (beta) — `docs/PLAN.md`.** It gives the *real* gearing stat
-   weights: the infinite-mana layout EP is a ceiling that **deflates haste** (real Arcane ≈ 0.4–0.6, not
-   ~1.4) and **zeros the regen stats** — both are the mana constraint the layout model can't see
-   (`docs/EP.md`). Payoffs after (setup comparison already falls out of absolute-damage; EP is done as
-   the two-route cross-check). **The model / cast-counting was RIGHT on Vashj; the sim was wrong because
-   of the drop bug — fix the sim, don't distrust the model.**
+   amplification** (Clearcasting → Arcane Potency) is now **modeled** (below). **The finite-mana /
+   conserve-rotation stat weights are now DONE** (`docs/PLAN.md` deleted; below + `docs/EP.md`): the real
+   gearing weights are **computed** via a wowsims finite-difference on a conserve rotation — **SP ≈ Int >
+   Haste > Crit > MP5 > Spirit ≫ Mana**. The infinite-mana layout EP is a ceiling; the mana constraint
+   **inflates the regen stats** (MP5 0→0.66, Spirit 0→0.54) and **deflates haste, but only to ≈ 0.96**
+   (not the folklore 0.4–0.6 — that's the OOM-idle rotation; a Frostbolt-conserving mage never idles).
+   **No plan in flight.** **The model / cast-counting was RIGHT on Vashj; the sim was wrong because of the
+   drop bug — fix the sim, don't distrust the model.**
 3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 16/16).
 4. The sim harness (`runner` binary, gear export, `wowsims/tbc-new` source) persists in the session
    **scratchpad** and survives `/clear` *within the same session* — check it's there before rebuilding
@@ -53,30 +54,31 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
    by the **summed weighted absolute derivatives, normalized to SP once** (NOT averaged per-fight EPs —
    that mis-weights short fights). Awaiting the user's 10 phase-fight inputs to produce the phase EP.
 
-## Planned (next phase, after /clear) — finite-mana / conserve-rotation model (beta), user-requested
+## Done — finite-mana / conserve-rotation stat weights (this session, user-requested)
 
-Keep the current model **infinite-mana (layout-first)** as the default; add a **separate** finite-mana
-model behind a big input toggle ("infinite mana" vs "finite mana (beta)") — a **second engine**, not a
-patch (the current tool's elegance is that infinite-mana AB-spam makes the cast rate purely
-haste-determined; finite mana makes the cast *sequence* + mana *state* matter over time — a stateful,
-coupled optimization). Goal: model the **conserve rotation** and compute the **value of mana** (⇒
-spirit / mp5 / mana EP, and a realistic haste EP for mana-bound fights).
-- **Researched mechanics (grounded, wowsims `ade9f39`):** Frostbolt (`frostbolt.go`) — coef **0.814**
-  (>AB's 0.714), base 600–647 (~623), **330 flat mana**, **3.0s** base cast (→2.5 with Imp Frostbolt),
-  cast-time-limited so haste is pure gain (no GCD floor). Arcane Blast — FlatCost **195** × per-stack
-  power-cost increase (`arcane_charge.go`, the +75%/stack), fast 1.5s, GCD-floored. Mana regen —
-  `SpiritRegenRateCasting += 0.1·ArcaneMeditation` (spirit regen *while casting*), + mp5, Evocation
-  (`evocation.go`), Mana-Emerald gems (`mana_gems.go`). Conserve = interleave cheap Frostbolts to hold
-  mana while keeping some fast ABs (user's play: FB until the AB-stack debuff is about to fall, clip a
-  fast AB to refresh, repeat).
-- **Options to decide when planning:** (A) full finite-mana engine in the tool (biggest — burn/conserve/
-  Evocate scheduling coupled with cooldown placement, a mana-budget optimization over the timeline);
-  (B) leverage wowsims (build a conserve-rotation APL, read the sim's mana/spirit/mp5 EP — it already
-  models all of this, like we did for EP); (C) a **light marginal mana-value calc** — value of mana ≈ the
-  **AB-vs-Frostbolt damage-per-mana gap** at the conserve margin (spirit/mp5 EP without a full rotation
-  sim). Lean: (C) for the mana-*value* number + (B) as the sim cross-check; (A) only if an interactive
-  in-tool conserve planner is wanted. Must NOT let mana feed back into the infinite-mana layout model
-  (the layout-first principle, `docs/EP.md`).
+The real **gearing** stat weights, computed (options **B + C** of the deleted `docs/PLAN.md`; the
+infinite-mana layout engine stays default and untouched — exact-match **23/23**). We did **not** build the
+in-tool second engine (option A) — the plan gated it on wanting an interactive conserve planner, which
+wasn't requested; the deliverable is the *numbers*, cross-validated, + the harness + docs.
+- **Harness:** `tools/genconserve.mjs` (conserve APL — AB-spam in burn windows, Frostbolt filler below a
+  mana threshold, Evocation, and **`autocastOtherCooldowns`** so Innervate + Mana Tide actually fire), the
+  runner extended with **`--int/--spirit/--mp5`** (`tools/wowsims-patches/runner-main.go`),
+  `tests/ep-finite.mjs` (sim finite-difference, option B), `tests/mana-value.mjs` (analytic value-of-mana,
+  option C), `tests/finite-weights.json` (locked numbers).
+- **Result (300s single-target, SP=1):** **SP 1.00 · Int 1.08 · Haste 0.96 · Crit 0.79 · MP5 0.66 ·
+  Spirit 0.54 · Mana ~0** — vs the infinite ceiling on the *same* schedule (Haste 1.44, MP5/Spirit **0**,
+  Int 0.56). **Order: SP ≈ Int > Haste > Crit > MP5 > Spirit ≫ Mana** (`docs/EP.md`, RULES §12).
+- **The headline correction:** haste is **not** the weak stat for a *conserving* mage — the "0.4–0.6"
+  folklore is the **OOM-idle** rotation (pure-spam haste EP **0.03**); with Frostbolt filler the mage never
+  idles and haste stays **≈ 0.96**. Cross-validated three ways: the conserve rotation and the export's
+  **own native wowsims rotation agree** (haste 0.96 vs 1.00; DPS 1916 vs 1969, −2.7%), and the analytic
+  value-of-mana (**~2.2 dmg/mana**) brackets MP5. Fight-length: haste EP 0.80→0.96→1.02 (145/300/420s) in
+  EP terms, but **absolute** DPS/rating is highest on short fights; intermissions push haste ↓, regen ↑.
+- **The mana economy is the SIM's, not reimplemented** (option B's whole point): JoW, Mana Tide, Innervate
+  (5× spirit), Evocation, Vampiric-Touch (+250 mp5), regen — all fire on the player's real export
+  (verified in the combat log). The one gotcha: a schedule-only APL suppresses the external mana CDs unless
+  it includes `autocastOtherCooldowns` (−6% DPS if missing; TOOLING ★). **Mana never feeds back into the
+  infinite-mana layout optimizer** (the layout-first principle holds; this is a sim *reading*).
 
 ## Done — AoE crit-proc amplification (Clearcasting → Arcane Potency)
 

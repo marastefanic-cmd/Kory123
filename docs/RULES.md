@@ -220,3 +220,30 @@ goes to the **earliest** efficient (non-floored) second. This makes one setup �
 Caveat found this project: the tie tolerance is one full cast (`QTOL = castVal`), so a *real* sub-cast
 win (e.g. the +8.5 packed KaelThas ≈ 0.6 cast in model currency) sits inside the "tie" band and can
 be traded away by aesthetics — packing wins must be **defended** (window-aware eviction/veto passes).
+
+## 12. Mana & the conserve rotation — the real gearing weights *(sim-computed this project)*
+
+The planner is **infinite-mana / layout-first** by design (§ nothing here changes that — mana never feeds
+back into the layout optimizer). But real Arcane play is **mana-bound**: pure AB-spam OOMs hard (420s,
+real mana: **945 DPS** vs 2264 infinite). So you **conserve** — AB-spam the burn windows (Lust/cooldowns),
+**Frostbolt filler** below a mana threshold, Evocate in the deep — spending the budget *to the margin*.
+This is a separate sim **reading** (`tools/genconserve.mjs` + `tests/ep-finite.mjs`), not a tool feature;
+it exists to get the **gearing** stat weights the infinite-mana layout EP can't see (`docs/EP.md`).
+- **Value of mana ≈ 2.2 dmg/mana** at the conserve margin (the AB-over-Frostbolt substitution: Frostbolt
+  is coef 0.814, cost 272, ≈ mana-neutral with JoW+regen, so it fills gaps almost for free). This makes
+  the regen stats real: **MP5 ≈ 0.66, Spirit ≈ 0.54** EP (Spirit lifted by Innervate's 5×), while the raw
+  **mana pool ≈ 0** (the reservoir cycles; it only scales Mana-Tide/Evocation).
+- **Haste is NOT the weak stat for a conserving mage.** The "haste ≈ 0.4–0.6, mana kills it" folklore is
+  the **OOM-then-idle** rotation (pure-spam haste EP **0.03**). Because Frostbolt keeps the mage casting,
+  haste stays **≈ 0.96** at real mana (vs 1.44 infinite) — it deflates by only ⅓. Cross-validated: the
+  conserve rotation and the export's **own native wowsims rotation agree** (0.96 vs 1.00). In **absolute**
+  DPS/rating haste is highest on **short** fights (time-limited) — the EP *ratio* only inverts because SP
+  scales even harder there. Intermissions push haste down (less casting) and regen up (bank-and-burst).
+- **Intellect ≈ co-#1 with SP** (finite ≈ 1.08): throughput (`0.29·SP_EP + 0.317·crit_EP`, Mind Mastery +
+  int→crit, validated at infinite mana = 0.56) **plus** its mana value (int→pool + `√int` spirit regen).
+- **Real-gearing order: SP ≈ Int > Haste > Crit > MP5 > Spirit ≫ Mana.** Full derivation, the infinite-vs-
+  finite table, the analytic cross-check, and the mana-economy the sim models (JoW / Mana Tide / Innervate
+  / Vampiric-Touch +250 mp5 / Evocation / gem — **all from wowsims on the real export**, not reimplemented)
+  are in `docs/EP.md` + `docs/TOOLING.md`; locked numbers in `tests/finite-weights.json`. **A schedule-only
+  conserve APL must include `autocastOtherCooldowns`** or it silently drops Innervate + Mana Tide (−6% DPS,
+  starved weights) — see TOOLING ★.
