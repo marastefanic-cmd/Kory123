@@ -55,9 +55,19 @@ optimizer reported the schedule changing under ±100 haste), exactly the envelop
 ## Practical notes / caveats
 - **Trust-anchor the APL first** (build it, sim it, confirm the DPS matches the tool's expectation)
   before trusting weights — same discipline as any sim gating (`TOOLING`).
-- The rig is **infinite-mana, AB-only**, so these are **overlay + throughput** weights: mana stats
-  (spirit / mp5) read ~0 and crit/haste are burn-window values, not a mana-constrained full rotation.
-  Consistent with the planner's own assumptions.
+- **Layout-first, mana-free (design principle, user-set).** The model optimizes the cooldown **layout**
+  assuming mana isn't the binding constraint; mana management is **downstream** — you manage mana to
+  realize the layout, never the reverse. So the model route weighs only the **layout / throughput** stats
+  (SP, crit, haste, + the AoE Potency term). **Sustain** stats (spirit / mp5 / Int-for-mana) have real
+  value but *only* through mana, which the model deliberately ignores — so they read ~0 here **by
+  construction**; keep them a separate sustain check ("enough to chain-cast the burn windows, then stop"),
+  never folded into the layout weights. Justified because for realistic fights (short, or long with
+  intermission downtime / conservation) mana isn't binding in the high-value windows anyway, so the
+  infinite-mana layout is also the realizable one. A genuinely mana-bound fight is the exception —
+  spot-check that *one* with a real-mana sim; don't re-model the tool. (Measured worst case, for scale:
+  the same optimal schedule at real vs infinite mana moved haste EP 0.35 → 1.52 — mana, not cooldowns,
+  is what a naïve full-mana-constrained sim like wowsims' default rotation is really pricing when it
+  reports haste ≈ 0.)
 - **Setup comparison** falls out of the same machinery — plan each setup, then compare on **absolute**
   at-kill damage (or each setup's optimal-APL sim DPS), **not** the effective-casts count (that's
   normalised per-setup, so it hides flat SP/crit throughput; it's the *within*-setup objective only).
