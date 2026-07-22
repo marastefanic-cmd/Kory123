@@ -677,22 +677,18 @@ function simulate(schedule, cfg, collect) {
   // the player's live job (pop the cooldowns sooner), not something to bake in. The
   // optimizer maximizes this near-total "robust"; displays show the at-T total.
   const KILL_WINDOW = 0.5;
-  // Steady-state assumption: Arcane Blast is modeled at a permanent 3 stacks
-  // (1.5s base). Verified against a headless wowsims build: this steady-state model
-  // reproduces the sim's overlay ranking to within ~0.4% at every fight length and
-  // Bloodlust position (rank 1 of 101 on the Kael late-Lust case, within 0.4% on
-  // Vashj). Modelling the opening ramp explicitly is worse, not better — opener
-  // haste buffs compress the ramp, so an explicit ramp OVER-credits a pull-time
-  // burst and destabilises the long-fight search. The only residual is the pull-Lust
-  // opener, and the sim shows it FLIPS with gear: at ~0 haste the burst wants to open
-  // inside Bloodlust (+~0.9%), but once geared (~150+ rating) Lust alone starts
-  // flooring the cast, so Icy Veins is worth more BEFORE Lust and the whole burst
-  // wants the pull (opening in Lust then loses ~2%). This model already lands on the
-  // geared-correct answer (open at the pull); it is only slightly conservative at 0
-  // haste. Because the crossover is haste-dependent, it is surfaced as a Bloodlust-
-  // overlay rule for the player rather than a fixed score correction that would be
-  // wrong at the other end. See the README / notes panel.
-  let t = 0, stacks = g.AB.MAX_STACKS, total = 0, totalEarly = 0, robust = 0, gcdCappedTime = 0, castCount = 0;
+  // Ramp-aware board: the mage opens COLD (0 stacks at the first Arcane Blast — no prestack
+  // modeled; a start-intermission input expresses a delayed opener) and re-ramps 0→3 after every
+  // AB gap ≥ DEBUFF_DUR (intermissions; AoE phases cast Arcane Explosion, which neither builds nor
+  // refreshes the AB debuff). Ramp casts run at their true 2.5/2.17/1.83s lengths, so the press
+  // boundaries during a ramp are SPARSE and locked to the ramp — a press landing mid-ramp-cast
+  // fires at that cast's real END (sim-log-verified: intent 5 in a fresh opener lands at 6.5), so
+  // its effective start snaps there. At STEADY state boundaries are dense and phase-uniform, so
+  // the phase-averaged effective start IS the press moment (see the firing block below) — that
+  // part is unchanged. Scoring: ramp casts are scored DISCRETELY (damage around each completion),
+  // the cast-rate integral covers everything else — see the scoring section.
+  let t = 0, stacks = 0, lastCastStart = -Infinity, prevCastRamp = false, total = 0, totalEarly = 0, robust = 0, gcdCappedTime = 0, castCount = 0;
+  const boardRamp = []; // ramp casts recorded for the scorer: {s: start, c: completion, e: next boundary}
   const casts = collect ? [] : null;
   while (t < cfg.T + KILL_WINDOW) {
     let seg = null;
@@ -718,12 +714,17 @@ function simulate(schedule, cfg, collect) {
         if (lastTrinket && lastTrinket.key !== e.key && OFF_TRINKETS.includes(e.key)) minStart = Math.max(minStart, lastTrinket.end);
         if (minStart > t) continue; // slipped past this boundary — try again later
         // Effective start = the PRESS moment (a self-buff macro applies its buff to
-        // the same press's Arcane Blast). We deliberately do NOT snap to the exact
-        // next cast boundary: which boundary you land on is set by opener timing and
-        // latency (a fraction of a GCD, uniformly), so the phase-averaged start the
-        // scoring integral wants IS the press moment. Snapping instead coupled every
-        // window's start to the whole cast cadence and re-introduced phase artifacts.
+        // the same press's Arcane Blast). At STEADY state we deliberately do NOT snap
+        // to the exact next cast boundary: which boundary you land on is set by opener
+        // timing and latency (a fraction of a GCD, uniformly), so the phase-averaged
+        // start the scoring integral wants IS the press moment. Snapping instead coupled
+        // every window's start to the whole cast cadence and re-introduced phase
+        // artifacts. DURING A RAMP the boundaries are sparse and DETERMINISTIC (locked
+        // to the ramp start, no phase freedom), so phase-averaging is invalid there —
+        // a press landing mid-ramp-cast snaps to that cast's real end, exactly where
+        // the macro fires it (sim-log-verified: intent 5 in a fresh opener lands 6.5).
         eff = Math.max(minStart, e.ts);
+        if (prevCastRamp && e.ts < prevCastEnd - 1e-9) eff = Math.max(minStart, prevCastEnd);
       }
       e.fired = true;
       active.push({ key: e.key, def: e.def, start: eff });
@@ -755,6 +756,7 @@ function simulate(schedule, cfg, collect) {
     }
     const multUp = atiOn ? multDn + mult * atiScale : multDn;
     const isAoe = !!(seg && seg.type === "aoe");
+    if (!isAoe && t - lastCastStart >= g.AB.DEBUFF_DUR) stacks = 0; // AB debuff fell off during the gap — re-ramp
     const stepFor = m => {
       const gcd = Math.max(g.GCD_FLOOR, g.GCD_BASE / m);
       if (isAoe) return { cast: 0, gcd, interval: gcd, capped: g.GCD_BASE / m <= g.GCD_FLOOR };
@@ -791,6 +793,9 @@ function simulate(schedule, cfg, collect) {
     // remainder (and all of an instant AE's interval) is free press time
     const castLen = pUp * up.cast + (1 - pUp) * dn.cast;
     prevCastEnd = t + Math.min(interval, castLen);
+    prevCastRamp = !isAoe && stacks < g.AB.MAX_STACKS;
+    if (prevCastRamp) boardRamp.push({ s: t, c: prevCastEnd, e: t + interval }); // a true ramp cast — scored discretely
+    if (!isAoe) { lastCastStart = t; if (stacks < g.AB.MAX_STACKS) stacks++; }
     t += interval;
   }
   // ═══════════ continuous cast-rate integral — THE scoring model ═══════════
@@ -850,11 +855,52 @@ function simulate(schedule, cfg, collect) {
     }
     return dmg2 / intervalAt(multDn2, aoe, g.AB.MAX_STACKS);
   };
+  // ═══════════ exact discrete ramp — the opener & every post-gap re-engage ═══════════
+  // The first MAX_STACKS Arcane Blasts after every cold start (the pull at 0 stacks — no prestack
+  // modeled — and the exit of every AB gap long enough to drop the debuff) are SLOWER than the
+  // steady 3-stack cast. Model them EXACTLY: inside each ramp span the rate integral is suppressed
+  // and replaced by the discrete casts, each dealing its damage around its COMPLETION (damage lands
+  // on completion — sim-verified sampling; midpoint sampling re-created the phantom "haste
+  // compresses the ramp" credit). Cast speed is set at cast START (in-flight casts keep speed).
+  // Haste placement-independence (RULES §3) is preserved: haste shortens a span but never changes
+  // its cast COUNT, and the span hands off to the integral exactly — so haste gains nothing from
+  // covering the ramp, while a damage buff is credited for exactly the completions it truly covers.
+  // Each completion is phase-averaged over a ±half-GCD press/latency fuzz (RAMP_JITTER) so no
+  // knife-edge step enters the score (the optimizer can't game an exact boundary, and a completion
+  // sliding across a window edge as haste rises moves the score smoothly, not in cliffs).
+  const nonAB = s => !!s && (s.type === "intermission" || s.type === "aoe");
+  const segAt = tt => { if (!segs) return null; for (let i = 0; i < segs.length; i++) { const sg = segs[i]; if (tt >= sg.start && tt < sg.end) return sg; } return null; };
+  const RAMP_JITTER = g.GCD_FLOOR;
+  const rampCastDmg = tc => {
+    const a = Math.max(0, tc - RAMP_JITTER / 2), b = tc + RAMP_JITTER / 2;
+    const edges = new Set([a, b]);
+    for (const w of active) { if (w.start > a && w.start < b) edges.add(w.start); const we = w.start + w.def.dur; if (we > a && we < b) edges.add(we); }
+    if (segs) for (const sg of segs) { if (sg.start > a && sg.start < b) edges.add(sg.start); if (sg.end > a && sg.end < b) edges.add(sg.end); }
+    const es = [...edges].sort((x, y) => x - y);
+    let acc = 0;
+    for (let i = 0; i < es.length - 1; i++) {
+      const m = (es[i] + es[i + 1]) / 2, sg = segAt(m);
+      acc += (nonAB(sg) ? 0 : scanAt(m, sg).dmg2) * (es[i + 1] - es[i]); // gap slices of the fuzz score 0
+    }
+    return acc / (b - a);
+  };
+  // The ramp spans/casts come straight from the board loop's recorded ramp casts — ONE source of
+  // truth: the same slow casts that set the sparse press boundaries are the ones scored discretely.
+  // Each cast's span [start, next boundary) suppresses the integral; its damage lands around its
+  // completion (jitter-smoothed above).
+  const rampSpans = [], rampCasts = [];
+  for (const rc of boardRamp) {
+    const e2 = Math.min(rc.e, cfg.T + KW);
+    if (rampSpans.length && Math.abs(rampSpans[rampSpans.length - 1][1] - rc.s) < 1e-9) rampSpans[rampSpans.length - 1][1] = e2;
+    else rampSpans.push([rc.s, e2]);
+    rampCasts.push({ tc: rc.c, dmg: rampCastDmg(rc.c) });
+  }
   // integrate over piecewise-constant segments: buff state changes only at window
   // edges / phase boundaries / the kill window, so a few dozen breakpoints are exact
   const bpS = new Set([0, cfg.T, Math.max(0, cfg.T - KW), cfg.T + KW]);
   for (let i = 0; i < active.length; i++) { const w = active[i]; if (w.start > 0) bpS.add(w.start); bpS.add(w.start + w.def.dur); }
   if (segs) for (const sg of segs) { bpS.add(sg.start); bpS.add(sg.end); }
+  for (const [ra, rb] of rampSpans) { if (ra > 0) bpS.add(ra); bpS.add(rb); }
   const bps = [...bpS].filter(x => x >= 0 && x <= cfg.T + KW).sort((a, b) => a - b);
   total = 0; totalEarly = 0; robust = 0;
   let sj = 0;
@@ -862,6 +908,7 @@ function simulate(schedule, cfg, collect) {
     const a = bps[i], b = bps[i + 1], len = b - a;
     if (len < 1e-9) continue;
     const mid = (a + b) / 2;
+    if (rampSpans.some(([ra, rb]) => mid > ra && mid < rb)) continue; // discrete ramp casts score this span
     let segB = null;
     if (segs) {
       while (sj < segs.length - 1 && mid >= segs[sj].end) sj++;
@@ -872,6 +919,12 @@ function simulate(schedule, cfg, collect) {
     if (b <= cfg.T + 1e-9) total += contrib;
     if (b <= cfg.T - KW + 1e-9) totalEarly += contrib;
     robust += contrib * Math.min(1, Math.max(0, (cfg.T + KW - mid) / (2 * KW)));
+  }
+  // the discrete ramp casts' damage (suppressed spans above), kill-window-weighted like the integral
+  for (const c of rampCasts) {
+    if (c.tc <= cfg.T + 1e-9) total += c.dmg;
+    if (c.tc <= cfg.T - KW + 1e-9) totalEarly += c.dmg;
+    robust += c.dmg * Math.min(1, Math.max(0, (cfg.T + KW - c.tc) / (2 * KW)));
   }
   return { total, totalEarly, robust, castCount, gcdCappedTime, casts, actEff, dps: total / cfg.T };
 }
@@ -1009,7 +1062,9 @@ function mulberry32(a) {
     return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
   };
 }
-const SHIFTS = [-90, -45, -20, -10, -5, -2, -1, 1, 2, 5, 10, 20, 45, 90];
+// ±3/±6 land on ramp-cast boundaries (the press-snap makes 6.5-type offsets real basins);
+// ±30/±60 fill the 20→45→90 gaps so a terminal burst can slide a partial-cooldown hop.
+const SHIFTS = [-90, -60, -45, -30, -20, -10, -6, -5, -3, -2, -1, 1, 2, 3, 5, 6, 10, 20, 30, 45, 60, 90];
 function polish(seed, cfg) {
   let s = seed, val = simulate(s, cfg).robust;
   for (let pass = 0; pass < 40; pass++) {
@@ -1043,6 +1098,27 @@ function polish(seed, cfg) {
       }
     }
     if (!improved) {
+      // joint window move: a co-pressed cluster at one moment moves TOGETHER. Per-use
+      // moves can't cross the valley between two press windows (each buff alone loses
+      // value until the others follow), so once single moves dry up, shift every
+      // planner-owned use sharing a press second as one block.
+      outerW:
+      for (const X of [...new Set(Object.entries(s).flatMap(([k, ts]) => cfg.fixed[k] ? [] : ts.map(Math.round)))]) {
+        for (const d of SHIFTS) {
+          const cand = cloneS(s);
+          let moved = 0;
+          for (const key in cand) {
+            if (cfg.fixed[key]) continue;
+            for (let i = 0; i < cand[key].length; i++) if (Math.round(cand[key][i]) === X) { cand[key][i] += d; moved++; }
+          }
+          if (moved < 2) continue; // lone uses are the per-key loop's job
+          const rep = repair(cand, cfg);
+          const v = simulate(rep, cfg).robust;
+          if (v > val + 1e-7) { s = rep; val = v; improved = true; break outerW; }
+        }
+      }
+    }
+    if (!improved) {
       // escape move: drop one use and relocate a sibling in the same step —
       // fewer, better-placed uses can beat more of them (e.g. one AP inside
       // a 6-target AoE beats two APs on ordinary casts), but the two changes
@@ -1071,6 +1147,33 @@ function polish(seed, cfg) {
 }
 
 // async multi-start so the UI can breathe between starts
+// Basin-hop the polished champion: press-windows are magnets, and local shift moves can't carry a
+// whole cluster across the dead valley between two magnets. Deterministically teleport each window
+// block to every OTHER window's anchor (and the kill anchor), re-polish, keep strict improvements,
+// repeat to fixpoint. This is the self-consistency guard of docs/PLAN.md: the search never returns
+// a plan worse than one reachable by re-basing its own windows on its own anchors.
+function basinHop(champ, cfg) {
+  let bestS = champ.s, bestV = champ.val, guard = 0, again = true;
+  while (again && guard++ < 5) {
+    again = false;
+    const windows = [...new Set(Object.entries(bestS).flatMap(([k, ts]) => cfg.fixed[k] ? [] : ts.map(Math.round)))];
+    const anchors = new Set([Math.max(0, Math.round(cfg.T) - 1)]);
+    for (const k in bestS) for (const t of bestS[k]) anchors.add(Math.round(t));
+    for (const X of windows) {
+      for (const A of anchors) {
+        if (A === X) continue;
+        const cand = cloneS(bestS);
+        for (const key in cand) {
+          if (cfg.fixed[key]) continue;
+          for (let i = 0; i < cand[key].length; i++) if (Math.round(cand[key][i]) === X) cand[key][i] += A - X;
+        }
+        const p = polish(repair(cand, cfg), cfg);
+        if (p.val > bestV + 1e-7) { bestS = p.s; bestV = p.val; again = true; }
+      }
+    }
+  }
+  return { s: bestS, val: bestV };
+}
 function optimizeAsync(cfg, starts, onProgress) {
   return new Promise(resolve => {
     const rand = mulberry32(1337);
@@ -1104,6 +1207,20 @@ function optimizeAsync(cfg, starts, onProgress) {
       }
       seeds.push(repair(s, cfg));
     }
+    // kill-anchored seed: each track's LAST use as late as it still fully runs, siblings packed
+    // BACKWARD by cooldown from there. Forward-packing (naive/packed/pin seeds) can strand the
+    // terminal burst a whole cooldown short of the kill, across a valley the shift ladder skips —
+    // the known-kill terminal basin needs its own start (RULES §8).
+    {
+      const s = {};
+      for (const key of scheduledKeys(cfg)) {
+        if (cfg.fixed[key]) { s[key] = cfg.fixed[key].slice(); continue; }
+        const n = Math.min(maxUses(key, cfg), 64);
+        const last = Math.max(0, cfg.T - BUFFS[key].dur);
+        s[key] = Array.from({ length: n }, (_, i) => Math.max(0, last - (n - 1 - i) * BUFFS[key].cd));
+      }
+      seeds.push(repair(s, cfg));
+    }
     while (seeds.length < starts) seeds.push(randomSchedule(cfg, rand));
     const results = [];
     let best = null, i = 0;
@@ -1116,11 +1233,12 @@ function optimizeAsync(cfg, starts, onProgress) {
         // its full value. Keep the best INTEGER plan.
         results.sort((a, b) => b.val - a.val);
         best = null;
-        for (const cand of results.slice(0, 4)) {
+        for (const cand of results.slice(0, 6)) {
           const snapped = repair(Object.fromEntries(Object.entries(cand.s).map(([k, ts]) => [k, ts.map(Math.round)])), cfg);
           const p = polish(snapped, cfg);
           if (!best || p.val > best.val) best = p;
         }
+        best = basinHop(best, cfg); // window-teleport guard — see basinHop
         // ——— tie-breaks among damage-equal plans (never lose damage: v ≥ val−EPS) ———
         let s = best.s, val = best.val;
         const EPS = 0.5;

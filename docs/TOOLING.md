@@ -246,20 +246,32 @@ buggy harness should be re-checked** on the fixed rig. On the fixed engine the V
 vindicated** (1594.3 > 3-icon 1587.2, +7.1 var0 / +6.9 var10) — the "3-icons-win" was 100% the dropped
 terminal. The 4:05/6:05 shift survives but small (**+0.8 var0 / +0.3 var10**, stable across far seeds).
 
-**Separate discovery — RESOLVED: AP's cooldown is 180s (the sim's 195s is a wowsims quirk).**
-`sim/mage/arcane_power.go` starts AP's 180s cd in the aura's `OnExpire` (`CD.Use` at buff-END), so the
-sim's cadence is 15+180 = **195s**. The model uses cd 180 and plans AP every 180s. This looked like an
-unsettled model↔sim discrepancy; **the user (domain authority) confirmed real TBC AP is 100% a standard
-3-min cooldown that starts on activation — 180s.** So the **model is right** (`BUFFS.arcanePower.cd = 180`,
-unchanged) and the sim's `cd-from-buff-fade` is a **wowsims modeling quirk, not real TBC** — a textbook
-"mechanic where the model wins and the sim is the blind spot" (Methodology, top of file). This is NOT the
-drop bug (it survives the patch). **Consequence: the sim is an unreliable referee for multi-AP *timing***
-(like AoE-not-modeled) — a 2nd AP use the model plans at 180s often won't fire in the sim (it thinks 195),
-so **don't sim-gate a "use AP a 2nd time here vs there" call**; trust the model's cast-count there. Impact
-on current goldens is nil: the model already plans at 180 (no plan moves), and in every A/B that gated a
-golden AP is a **common factor** (same schedule both sides → cancels), so the sim's mis-timing of a 2nd
-AP never distorted a comparison. (E.g. Vashj's 6:05 cluster includes AP@365 = 185+180, feasible and
-correct in the model; the sim doesn't fire it, but it's a common factor that cancels.)
+**AP's cooldown is 180s — and the harness is now PATCHED to match (`tools/wowsims-patches/ap-cd-at-cast.patch`).**
+Upstream `sim/mage/arcane_power.go` re-set AP's 180s cd in the aura's `OnExpire` (`CD.Use` at buff-END),
+making the sim's cadence 15+180 = **195s**. **The user (domain authority) confirmed real TBC AP is a
+standard 3-min cooldown starting on activation — 180s** — the model was always right
+(`BUFFS.arcanePower.cd = 180`). The patch deletes the `OnExpire` re-set (core already consumes the cd at
+cast via `triggerCooldown`), so the patched runner fires AP on the true 180s cadence — verified
+(`AP@[0,180]` both fire). **This closed the "multi-AP timing" blind spot**: the sim is now a valid referee
+for AP cadence. Cautionary tale: before the patch, a layout whose 2nd AP sat exactly 180s after the 1st
+was silently penalized ~1% in gates (the press dropped/slid) — it manufactured a fake "refutation" of a
+correct model preference (the haste-first opener) until the contamination was found.
+
+**★ RUNNER PROVENANCE — one true binary.** The canonical runner is built from the scratchpad `wowsims`
+clone (`ade9f39` + `apl-schedule-strict-ready.patch` + `ap-cd-at-cast.patch`):
+`go build -tags with_db -o runner-ap180 ./cmd/runner`. A stale pre-patch binary once sat at the
+scratchpad root and **poisoned a whole day of gates** (every drop-bug distortion re-introduced). Before
+ANY gating session: rebuild or verify the binary is the patched one (check
+`grep -c innerSpell sim/core/apl_actions_timing.go` = 3 and no `CD.Use` in `arcane_power.go`).
+
+**Scheduled presses fire at APL decision points — during a ramp that is the NEXT SLOW-CAST BOUNDARY.**
+Sim-log-verified: with a cold opener, presses scheduled at 5 land at **6.5** (the 0→3 ramp's cast
+boundaries are 2.5/4.667/6.5 — sparse and locked to the pull, no phase freedom). The model now matches
+this exactly (the press-snap rule, RULES §3). Related artifact: **externals (Bloodlust/PI/Drums) routed
+through the mage's APL also land at the boundary** — but in the real game the *shaman* presses at the
+call time, so the model keeps externals at intent time. When an opener gate disagrees with the model by
+~0.1-0.3%, check whether the sim's late-landing BL (its Lust window sliding ~1.5s later into the fight)
+accounts for it before blaming the model.
 
 ## Traps that remain
 

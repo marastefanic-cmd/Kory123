@@ -1,0 +1,13 @@
+--- /tmp/ap.orig	2026-07-22 22:36:19.777090035 +0000
++++ sim/mage/arcane_power.go	2026-07-22 22:36:19.929390581 +0000
+@@ -39,7 +39,9 @@
+ 		OnExpire: func(_ *core.ExclusiveEffect, sim *core.Simulation) {
+ 			arcanePowerCostMod.Deactivate()
+ 			arcanePowerDmgMod.Deactivate()
+-			arcanePowerSpell.CD.Use(sim)
++			// AP-cd-at-cast patch: real TBC starts AP's 180s cooldown at CAST. Upstream re-set the
++			// timer here at aura END (cast+195) — a wowsims quirk; core already consumed the cd at
++			// cast (triggerCooldown), so removing the re-set restores the true 180s cadence.
+ 		},
+ 	})
+ 

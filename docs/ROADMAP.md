@@ -115,29 +115,34 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
   ARCHITECTURE). exact-match 25/25.
 - **Phase 3 is complete** (all 6 tasks + the proc-free-trend follow-up).
 
-## Phase 4 — understand the optimum, then make the search find it *(in flight, `docs/PLAN.md`)*
+## Phase 4 — understand the optimum, then make the search find it *(A+measure+B LANDED; C's guard landed, monotonicity check pending)*
 
-Reframed this session. The trigger is still the **non-robust multi-start search** (70→71 haste: 71-optimum
-205479 < the 70-plan re-scored at 71 = 205597 — a pure SEARCH miss, since for a fixed layout the score is a
-**theorem**-level monotone function of haste). But instead of hardening the search blind, the sequence is now
-**A → measure → B(gated) → C**, forced by dependencies (`docs/PLAN.md`):
+Ran as **A → measure → B → C** (the plan that lived in `docs/PLAN.md`):
 - **A · exploration harness** (`tools/explore.mjs`) — **DONE.** Brute-scores every placement of a small buff
-  set over a gear-haste sweep (no search → exact optimum), the oracle + rule-finder for the rest. It
-  reproduced the theorycraft autonomously (RULES §16) and pinned the coupling the user flagged: **damage
-  buffs place greedily, haste buffs carry the breakpoints — but SP buffs SHIFT those breakpoints** (AP moved
-  IV's exit-Lust from ~15→~80 rating). Cap thresholds nailed: 243 (Lust caps) / 394 (IV window caps) / 789
-  (all capped). `--sim` cross-checks ramp-sensitive winners.
-- **measure** — is the ramp-blind scorer ever *ranking*-wrong vs the sim? Early signal: **likely no.** The
-  ramp evens out for cast count (RULES §3, proven + sim-confirmed, incl. **IV pre-Lust ≡ post-Lust to 0.00%**
-  interior); the only gaps found were a **sim-setup artifact** (buff jammed at the fight end) or Lust-stacking
-  floor waste the model already sees. Still to stress: a *damage* buff that could want the pull. If clean → skip B.
-- **B (gated)** — de-ramp-blind the scorer only if `measure` finds a real ranking error; scoped + sim-gated.
-- **C** — the monotonicity fix itself, **last** (tunes the search to the *final* model). Acceptance:
-  `tests/monotonicity.mjs` = 0 violations, exact-match green. Canonical seeding + self-consistency guard +
-  tie-canonicalization; kill degenerate `IcyVeins:[0]` candidates.
+  set over a gear-haste sweep (no search → exact optimum), the oracle + rule-finder for the rest. Reproduced
+  the theorycraft autonomously (RULES §16) and pinned the coupling: **damage buffs place greedily, haste
+  buffs carry the breakpoints — but SP buffs SHIFT those breakpoints** (AP moved IV's exit-Lust from
+  ~15→~80 rating). Cap thresholds nailed: 243 / 394 / 789.
+- **measure — DONE.** The real ramp gaps: (i) damage buffs on a ramp (model tied, sim docked ≤0.4%), and
+  (ii) press timing during ramps (sparse deterministic boundaries — phase-averaging invalid there). Haste
+  placement stays ramp-indifferent (theorem + sim, 0.00%).
+- **B — LANDED, compromise-less** (user-directed). The exact discrete ramp: cold 0-stack opener + post-gap
+  re-ramps, true cast lengths on the board (single source of truth), ramp casts scored discretely at their
+  completions (jitter-smoothed), press-snap to real ramp boundaries, integral everywhere else. Haste
+  indifference preserved exactly; fixed-layout haste sweep still 0 drops. Full physics battery vs the sim in
+  RULES §3. **Harness had to be fixed to gate it**: `ap-cd-at-cast.patch` (real AP-180 in the sim) + the
+  runner-provenance trap — see TOOLING; two "refutations" turned out to be harness contamination.
+- **C — guard machinery LANDED**: `basinHop` (window-teleport self-consistency guard: the champion's window
+  blocks re-based on each other's anchors + the kill anchor, re-polished to fixpoint), a joint window-move
+  in `polish` (co-pressed clusters cross valleys together), a kill-anchored seed, a denser shift ladder
+  (±3/±6 ramp-boundary hops, ±30/±60), top-6 final snaps. **Golden triage: 19 model-driven improvements,
+  6 ties, 0 search misses** — the search never returns worse than the previous tool's plan; all mover
+  classes sim-confirmed on the fixed rig (+0.10% to +2.8%). Goldens regenerated, exact-match **25/25**.
+  Remaining: `tests/monotonicity.mjs` = 0 violations (being verified), and a known fractional-basin
+  headroom (~0.1 casts on 5:40 — the polished-old basin sits slightly deeper than the integer champion).
 
-**UI deferred:** the leeway "press anywhere" bands and the action-plan reasoning tags were removed this
-session (restore from git when the search is airtight); the haste-graph reference lines stay.
+**UI deferred:** the leeway "press anywhere" bands and the action-plan reasoning tags (removed; logic in
+git history — restore once monotonicity is certified airtight); the haste-graph reference lines stay.
 
 ## Done — gear-haste + haste-trinket correctness (this session, user-directed)
 

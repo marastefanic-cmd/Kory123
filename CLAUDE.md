@@ -75,12 +75,14 @@ changing the model or the passes**, and keep it updated as the living theorycraf
   buff windows, and timing it already knows — so **that count is the arbiter for comparing two lines.**
   The tool is, by construction, a maximization function over it. The sim's role is narrower: (1)
   **anchor the physics** — certify the formulas/constants the count is built on (trust-anchor to
-  `wowsimcli`, ~0.4% absolute agreement); (2) cover the count's **blind spots** — the stack ramp near
-  the pull/intermission exits, mana, AoE weighting, multi-AP-timing (the AP 195-vs-180 cd); (3)
+  `wowsimcli`, ~0.4% absolute agreement); (2) cover the count's **blind spots** — mana and AoE-phase
+  weighting (the stack ramp and AP-timing were blind spots but are CLOSED: the ramp is modeled exactly
+  in the count — RULES §3 — and the harness's AP cadence is patched to real-TBC 180s — TOOLING); (3)
   **verify a suspicious or novel finding** before it's locked. It is **not** a routine per-golden gate.
   When a clean cast-count and a sim number disagree with **no blind spot in play**, that's a **sim-setup
   audit trigger**, not a model bug — the sim is rarely *wrong*, we've usually *used it wrong* (the Vashj
-  drop bug is the cautionary tale). See the methodology in `docs/TOOLING.md`.
+  drop bug, the stale unpatched runner, and the AP-195 quirk are the cautionary tales). See the
+  methodology in `docs/TOOLING.md`.
 - Commit to the designated feature branch provided at session start; follow the session's configured
   commit author/trailers; don't open a PR unless asked.
 

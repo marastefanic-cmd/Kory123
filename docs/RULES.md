@@ -39,8 +39,28 @@ stacking: `(1+ratingHaste) × 1.30 Lust × 1.20 IcyVeins × 1.10 Berserking …`
 A pure-haste buff is ~position-independent: it "banks" the extra fractional casts to the end, so
 moving Berserking around a steady window gives the same total (proved: Berserking@0 = @50 = @100 in
 isolation). A **damage/SP** buff is NOT position-independent — it wants **post-ramp, max-stack, fast
-casts**, so it should sit on the fastest part of the window. (The opener/post-intermission ramp is
-modeled as steady-state 3 stacks; modeling it explicitly was tried and made things worse.)
+casts**, so it should sit on the fastest part of the window.
+- **The ramp is now modeled EXACTLY** (landed this project; an earlier per-cast ramp model was dropped for
+  over-crediting — the difference is this one never touches the interval/count valuation). The mage opens
+  **cold (0 stacks, no prestack** — a start-intermission expresses a delayed opener**)** and re-ramps after
+  every AB gap ≥ 8s. The first 3 casts run at their true lengths and are scored **discretely** — each cast's
+  damage lands around its **completion** (jitter-smoothed ±½ GCD so no knife-edge enters the score); the
+  cast-rate integral covers everything else. Haste placement-independence is preserved *exactly* (verified
+  0.0000% pre-vs-post-Lust, h0–200): haste shortens the ramp but never changes its cast count.
+- **Press-snap during ramps (sim-log-verified).** A press landing mid-ramp-cast fires at that cast's real
+  END — the "/cast Buff /cast AB" macro can only land on a boundary, and during a ramp the boundaries are
+  SPARSE and locked to the ramp start (no phase freedom): intent 0:05 in a cold opener fires at **6.5**.
+  At steady state boundaries are dense and phase-uniform, so the phase-averaged effective start is the
+  press moment (unchanged). Consequence, sim-confirmed **+2.4–2.8%**: with Lust at 0:07, pressing the
+  burst at **0:05** (fires 6.5) beats pressing at 0:07 (fires 8.0) — the planner now emits the earlier
+  press on its own.
+- **Damage buffs step off the ramp (sim-confirmed on the fixed rig).** A damage window covering slow ramp
+  casts hits fewer completions, so: at an intermission exit, haste at the exit + damage delayed past the
+  re-ramp = **+0.39%**; at a bare (no-Lust) pull, the cluster delayed past the IV-compressed ramp =
+  **+0.10–0.17%**; and a SPLIT is optimal when window lengths differ — 20s Icon covers the whole ramp
+  from 0:00 while 15s gem/AP + Berserking step to the ramp's last boundary (**+0.44%**, the Vashj-class
+  opener). Haste buffs stay put (position-independent). All of this now emerges from the score — no rule
+  is hardcoded.
 - **Why haste is position-independent (the exact statement).** A haste buff `×h` for duration `D` saves
   `D·(h−1)` of base cast-time **wherever it sits** — whatever casts fall in the window, their total base
   cast-time is exactly what fills `D` at the hastened rate, so the ramp's slower casts don't change the
