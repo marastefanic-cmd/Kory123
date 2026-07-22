@@ -12,9 +12,13 @@
    reference in `docs/TOOLING.md` — read its **Methodology** section (model = objective/arbiter, sim =
    calibration) and the ★ drop-bug + stats protocol. The intermission re-gate is **done** (KT +
    4:00-multi both re-confirmed ≥ their alternatives on the fixed rig — see Status). The **AoE crit-proc
-   amplification** (Clearcasting → Arcane Potency) is now **modeled** (below). **Next task = the payoffs**
-   (haste-agnostic APL → setup comparison → EP calculator). **The model / cast-counting was RIGHT on
-   Vashj; the sim was wrong because of the drop bug — fix the sim, don't distrust the model.**
+   amplification** (Clearcasting → Arcane Potency) is now **modeled** (below). **Next task = the
+   finite-mana / conserve-rotation model (beta) — `docs/PLAN.md`.** It gives the *real* gearing stat
+   weights: the infinite-mana layout EP is a ceiling that **deflates haste** (real Arcane ≈ 0.4–0.6, not
+   ~1.4) and **zeros the regen stats** — both are the mana constraint the layout model can't see
+   (`docs/EP.md`). Payoffs after (setup comparison already falls out of absolute-damage; EP is done as
+   the two-route cross-check). **The model / cast-counting was RIGHT on Vashj; the sim was wrong because
+   of the drop bug — fix the sim, don't distrust the model.**
 3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 16/16).
 4. The sim harness (`runner` binary, gear export, `wowsims/tbc-new` source) persists in the session
    **scratchpad** and survives `/clear` *within the same session* — check it's there before rebuilding

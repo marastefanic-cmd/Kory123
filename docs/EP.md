@@ -52,6 +52,28 @@ reverted "phantom triple-stack the pull" incentive; RULES §3, `index.html` foot
 model haste (1.471 > frozen 1.432) moves *toward* the sim — this setup sits on a haste breakpoint (the
 optimizer reported the schedule changing under ±100 haste), exactly the envelope-theorem case above.
 
+## The model's layout EP is an INFINITE-MANA ceiling — real Arcane weights differ
+
+The model route (and the sim route on the AB-spam APL) assume infinite mana, so its weights are the
+**layout / time-limited** EP. Real Arcane play is **mana-managed** (conserve with Frostbolt filler to
+never OOM = spending the mana budget *to the margin*), and the mana constraint moves weights **two ways
+the infinite-mana model can't see** — the same coin, both faces:
+- **It deflates haste.** When mana binds, `total casts = mana_budget / mana_per_cast`, which haste
+  doesn't change — more haste just spends the budget faster and idles sooner (~0 net casts). Haste only
+  pays in the **time-limited burn windows** (AB-spammed regardless of mana). So real haste ≈ **0.4–0.6**,
+  not the model's ~1.4 ceiling (matches generalised Arcane wisdom that haste is the weak stat; sim
+  anchors: 0.35 real-mana-OOM ↔ 1.38 infinite). Short fights that are genuinely time-limited keep haste
+  high; long/conserve fights don't.
+- **It inflates the mana/regen stats** (§ sustain bullet): +1 mana buys AB-over-Frostbolt uptime (~1.5
+  dmg/mana), so mp5/spirit/int-pool are modestly-to-solidly positive, not ~0.
+
+**Best-guess real-play weights (mana-managed Arcane, per rating, SP=1.0):** SP 1.00 · **Int 0.6–0.9**
+(Mind Mastery SP + crit + mana pool — top-tier) · **Crit 0.7–0.85** · **Haste 0.4–0.6** · MP5 0.2–0.4 ·
+Spirit 0.15–0.3 · Mana 0.1–0.2 → **SP > Int ≈ Crit > MP5 ≈ Haste > Spirit > Mana.** These are guesstimates;
+the **finite-mana model** (ROADMAP / `docs/PLAN.md`) computes them. The layout EP is still correct for
+what it's for — ranking *cooldown layouts* and *throughput* gear where mana isn't the swing factor; it
+just isn't the gearing EP for a mana-limited spec.
+
 ## Practical notes / caveats
 - **Trust-anchor the APL first** (build it, sim it, confirm the DPS matches the tool's expectation)
   before trusting weights — same discipline as any sim gating (`TOOLING`).

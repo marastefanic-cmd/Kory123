@@ -109,7 +109,9 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/ROADMAP.md` — status, current work, and open questions.
 - `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
-  into ROADMAP). **None in flight now** (the harness audit + ramp-aware SP-buff valuation landed).
+  into ROADMAP). **In flight (next phase, post-/clear):** the **finite-mana / conserve-rotation model**
+  (beta) for real stat weights — the infinite-mana layout model deflates haste and zeros regen; see
+  `docs/PLAN.md`.
 - `docs/SOURCES.md` — where WoW facts come from (TBC is a solved game — look up + cite, don't
   re-derive) and the verified-facts ledger of the constants the model uses.
 - `docs/EP.md` — stat weights two ways (closed-form model partials + wowsims finite-difference on the
