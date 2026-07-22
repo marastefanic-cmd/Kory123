@@ -1,6 +1,6 @@
 # ARCHITECTURE.md — `index.html` internals
 
-One self-contained file (~3396 lines): a DOM-free JS **engine** (through ~line 819), the
+One self-contained file (~3500 lines): a DOM-free JS **engine** (through ~line 935), the
 **optimizer**, then the **DOM/UI**. Line numbers drift as the file is edited — treat them as
 signposts, re-grep if they're off. Everything below is in `index.html` unless noted.
 
@@ -14,32 +14,44 @@ damage in `simulate`, single-target returns 1 — sim-validated, RULES §9). `BU
 `kind` (`mult` haste-multiplier, `rating` haste-rating, `dmg` damage-mult, `sp` spellpower, `proc`),
 `value`, `dur`, `cd`. `KILL_WINDOW = 0.5` (inside `simulate`, ~631) — half-cast kill smoothing.
 
-## `simulate(schedule, cfg, collect)` — the scorer (~586–819)
+## `simulate(schedule, cfg, collect)` — the scorer (~634–934)
 Returns `{total, totalEarly, robust, castCount, gcdCappedTime, casts, actEff, dps}`.
 - A discrete cast loop builds the press board / activation times (does NOT accumulate damage);
-  intermissions fast-forward (`t = seg.end`).
-- **Damage is a separate cast-rate integral** (~795–817): `rateAt(t)` = `dmg2 / intervalOf(multDn2)`
-  integrated over piecewise-constant breakpoints (buff-window edges, phase edges, T±KW). `intervalOf`
-  (~777) applies the **GCD floor** `max(1.5/m, 1.0)`; it's stateless (recomputed per breakpoint, so a
-  floored sub-window never contaminates a later one). `total` counts casts ≤ T; `robust` tapers casts
-  in the last half-cast by P(alive) — the optimizer maximizes `robust`.
-- AoE segments: `dmg` uses AE base × `targets`, interval = GCD only.
+  intermissions fast-forward (`t = seg.end`). **Ramp-aware (RULES §3):** stacks open at 0 (no prestack)
+  and re-ramp after every ≥8s AB gap (`lastCastStart` + `DEBUFF_DUR`; AE casts neither build nor
+  refresh); ramp casts run at true lengths and are recorded to `boardRamp`. **Press-snap:** an
+  activation landing mid-ramp-cast fires at that cast's real end (`prevCastRamp`/`prevCastEnd`);
+  steady-state presses keep the phase-averaged intent time. Externals (BL/PI/Drums) always land at
+  intent (someone else presses them).
+- **Damage = cast-rate integral + discrete ramp casts** (~853–934): `rateAt(t)` = `dmg2 /
+  intervalAt(multDn2)` integrated over piecewise-constant breakpoints (buff-window edges, phase edges,
+  T±KW, ramp-span edges) — but each `boardRamp` span is EXCLUDED from the integral and scored as its
+  discrete cast instead: damage sampled around the completion, jitter-smoothed ±½ GCD (`rampCastDmg`,
+  no knife-edges). `scanAt` (~817) is the shared deterministic buff-state scan; `intervalAt` applies
+  the **GCD floor** `max(cast/m, 1.0)` statelessly. `total` counts ≤ T; `robust` tapers the last
+  half-cast — the optimizer maximizes `robust`.
+- AoE segments: `dmg` uses AE base × `targets` × `aoeCritAmp`, interval = GCD only.
 
-## `repair(schedule, cfg)` — feasibility projector (~838–916)
+## `repair(schedule, cfg)` — feasibility projector (~949–1027)
 Legalizes any raw schedule: per-track cooldown spacing (`trackRule`), `maxUses` cap, `lastFor = T−1`
 cutoff, **Icy Veins + Cold Snap chaining** (~888–901 — the only way two IVs sit <180s apart; a use
 inside cd is allowed only if Cold Snap is ready, then burns it), and the OFF_TRINKETS shared lockout
 (skull/mqg/isc). Called after **every** candidate move — this is what makes "packing would cost a 2nd
 use" fail automatically (via `sameCounts`).
 
-## `optimizeAsync(cfg, starts, onProgress)` — the search (~1012–1958)
+## `optimizeAsync(cfg, starts, onProgress)` — the search (~1177+)
 Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ deterministic.
-- **Seeds** (~1019–1049): all-at-0, backward-packed, phase-anchored (`seg.start` / intermission
-  `seg.end`), and **pinned-raid-call anchored** (stacks every track on each Lust/Drums/PI second —
-  the one place different haste tracks start co-located; local search then pulls the floored one out).
-- **`polish`** hill-climb (~955–1013): `SHIFTS` ±90, per-index + suffix-shift + add-a-use + a
-  drop-one/relocate escape. **No cross-key joint move** — this is the gap that blocks sequential
-  haste-packing.
+- **Seeds** (~1180–1225): all-at-0, backward-packed, phase-anchored (`seg.start` / intermission
+  `seg.end`), **pinned-raid-call anchored** (stacks every track on each Lust/Drums/PI second), and a
+  **kill-anchored seed** (each track's last use as late as it fully runs, siblings packed backward by
+  cd — the terminal-burst basin forward-packing can't reach).
+- **`polish`** hill-climb (~1068): `SHIFTS` ±1..±90 incl. ±3/±6 (ramp-boundary hops) and ±30/±60,
+  per-index + suffix-shift + add-a-use + a **joint window move** (all uses sharing a press second shift
+  as one block — co-pressed clusters cross valleys together) + a drop-one/relocate escape.
+- **`basinHop`** (~1155, runs on the champion after the top-6 integer snaps): window-teleport
+  self-consistency guard — re-bases each press-window block on every other window's anchor + the kill
+  anchor, re-polishes, keeps strict improvements, to fixpoint. This is what guarantees "never worse
+  than a plan reachable from the search's own anchors" (the Phase-4 misses all fell to it).
 - Tie-break helpers (local closures): `anchored` ~1087, `overlapOf` ~1103, `joinsRow` ~1116,
   `counts`/`sameCounts` ~1122/1123, `clipOf` ~1126. `castVal`/`QTOL` ~1077/1078 (tie tolerance = one
   cast).
@@ -48,10 +60,12 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
 - **Groom loop** ×3 (~1208): Pass 1 haste-actives local search (±45, `nulled`/floored tie-break,
   ~1215–1280) · Pass 2 damage/SP cluster move (~1286–1401) · Pass 3 ±8 ensemble (~1406–1462) · macro
   snap · legibility merges (has a hard `nulled` veto ~1598) · downtime slide to `seg.end` (~1610).
-- **Finishing passes:** wasted-haste relocation (~1719–1752, evicts a marginal-≤`castVal*0.1` haste
-  use — the "Berserking-in-Lust eviction") · **ramp-hold / "Let the stacks build" (~1766)** — slides a
-  damage/SP press stuck on the opener or a post-intermission-exit ramp out to `rampStart+5` on a model
-  tie (RULES §9). Now includes a **coherent-cluster carry**: when that slide forces a *later* same-track
+- **Finishing passes:** wasted-haste relocation (evicts a marginal-≤`castVal*0.1` haste
+  use — the "Berserking-in-Lust eviction") · **ramp-hold / "Let the stacks build"** — slides a
+  damage/SP press stuck on the opener or a post-intermission-exit ramp out past the ramp on a model
+  tie (RULES §9). *(Since Phase 4·B the scorer prices the ramp itself, so stepping damage off a ramp is
+  a strict score win the ordinary passes find on their own — this tie-gated pass is now a mostly-inert
+  belt-and-suspenders normalizer.)* Now includes a **coherent-cluster carry**: when that slide forces a *later* same-track
   use past its cooldown, it shifts that use's whole co-pressed damage/SP cluster together (icon+gem+AP
   move; the burst's haste like IV stays put) so the terminal burst doesn't split — this is what lets
   Vashj emit the sim-verified **4:05 / 6:05** layout (before, `repair()` orphaned gem/AP and the model

@@ -373,11 +373,12 @@ on a later use? does it have slack before its next use?). Grounding: `pressPlan`
     final normalizer slides any press whose window begins inside an intermission to the exit, model-neutral;
     4:00-multi's Cold-Snap IV 3:47 → 3:49 (var0 exact wash, var10 +0.2, seeds 11/19; only mover). See RULES
     §9 / ARCHITECTURE.
-  - **Still open — the post-ramp-EXIT devaluation** (the harder, delicate half): a press *at* an
-    intermission exit catches slow ramp casts the steady-state model over-credits. This is the real Vashj
-    icon-count fix (icon@4:00 sits on the [3:30–4:00] exit ramp). Needs a downtime-ramp-aware tie-break,
-    sim-gated on every intermission golden — the generic SP-concentration tie-break is the wrong tool (it
-    over-fires on plain fights; see the Icon-count section).
+  - **DONE (Phase 4·B) — the post-ramp-EXIT devaluation, solved in the PHYSICS, not a tie-break:** the
+    exact discrete ramp scores the slow exit casts truthfully (damage at completions) and the press-snap
+    lands exit presses on the real sparse boundaries — so a damage window on an exit ramp is docked for
+    exactly the completions it misses, automatically. The regenerated Vashj golden (its damage buffs
+    stepping past the exit boundaries, +0.9 effective casts) is this fix landing; the exit-delay class is
+    sim-confirmed +0.39% on the fixed rig. See RULES §3.
 
 **Done — the PLACEMENT / containment workstream (this session).** Overlap is interval **containment**,
 not start-coincidence (RULES §11, MECHANICS §5 pt 5). Three surgical, sim-gated changes to `optimizeAsync`;
