@@ -111,3 +111,5 @@ Treat maintaining them as part of the work, not an afterthought:
   into ROADMAP). **None in flight now** (the harness audit + ramp-aware SP-buff valuation landed).
 - `docs/SOURCES.md` — where WoW facts come from (TBC is a solved game — look up + cite, don't
   re-derive) and the verified-facts ledger of the constants the model uses.
+- `docs/EP.md` — stat weights two ways (closed-form model partials + wowsims finite-difference on the
+  planner's optimal APL), the envelope-theorem argument, and the sim-validated cross-check.

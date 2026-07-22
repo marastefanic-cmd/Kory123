@@ -31,13 +31,20 @@ packing, haste sequencing, downtime avoidance) is a *consequence* of that object
 rule — keeping that framing is what makes it generalise to future phases/trinkets/gear/haste.
 
 Payoffs the same engine then unlocks (secondary — the planner's correctness comes first):
-1. **Haste-agnostic ideal APL** — emit a cooldown plan that adapts per gear set.
-2. **Setup comparison** — plan each setup with its *own* ideal cooldown usage, then compare
-   effective-AB totals to decide which trinkets/gear to bring.
-3. **EP / stat-weight calculator** — finite-difference where each `gear ± Δstat` is re-optimized with
-   its own ideal plan (base gear → planner → forced-schedule APL via `tools/genapl.mjs` → sim → DPS;
-   then `gear+Δ` → re-run planner → new APL → sim → `Δdps/Δstat`). Corrects wowsims' `statweight.go`,
-   which freezes the rotation across perturbations (dragging haste's EP down).
+1. **Haste-agnostic ideal APL** — emit a cooldown plan that adapts per gear set (the tool already
+   re-optimizes per input; this is the live/conditional-APL form).
+2. **Setup comparison — NO dedicated feature needed** (user-directed). Run each setup; compare on the
+   **absolute** at-kill damage (or the wowsims DPS of each setup's optimal APL), **not** the
+   effective-casts count — effective-casts is normalized to *each setup's own* plain AB (it divides out
+   flat SP/crit to isolate scheduling), so it's the right *within*-setup objective but hides raw SP/crit
+   throughput *across* setups.
+3. **EP / stat weights — DONE as two lightweight cross-checking routes** (user-directed; no bespoke
+   calculator). The EP is closed-form partials of the effective-damage integral (**model route**,
+   `tests/ep-model.mjs`) AND a finite-difference of wowsims on the planner's optimal schedule (**sim
+   route**, `tests/ep-sim.sh` + `runner --sp/--crit/--haste`). **Validated** on `6:00 lust 4:20`: crit EP
+   **0.697 vs 0.687** (~1.5%), haste EP **1.43–1.47 vs 1.51** (~5%, model lower by the deliberate
+   ramp-blindness; the re-opt value moves toward the sim — this setup is on a haste breakpoint). Full
+   derivation, envelope-theorem argument, and caveats in **`docs/EP.md`**.
 
 ## Done — AoE crit-proc amplification (Clearcasting → Arcane Potency)
 

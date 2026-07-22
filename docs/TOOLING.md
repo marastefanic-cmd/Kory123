@@ -53,7 +53,10 @@ was all search, not scoring). Don't conflate "the count is right" with "the sear
   **`ade9f39`**). `cmd/runner/main.go` reads an individual gear export, applies an optional `--apl`
   override, injects flat mana/haste via `bonusStats`, builds a `RaidSimRequest` via
   `core.SinglePlayerRaidProto`, and runs `core.RunRaidSimConcurrent`. Flags: `--export --apl --dur --var
-  --iter --seed --mana --haste --tag --quiet --dumpreq`. Output TSV: `tag  dur  var  iter  meanDPS
+  --iter --seed --mana --haste --tag --quiet --dumpreq --targets --crit --sp`. (The last three were added
+  this project: `--targets N` duplicates the encounter target for AoE; `--crit`/`--sp` inject
+  SpellCritRating / SpellDamage via bonusStats — for AoE isolation and EP finite-differences, `docs/EP.md`.)
+  Output TSV: `tag  dur  var  iter  meanDPS
   stdev  maxDPS  avgFightSec` — **column 5 is mean DPS**.
 - **Gear export** (NOT in repo — user-provided): the player's wowsims individual-export JSON. Point
   `--export` at it; don't hardcode its path in committed files (user data). The canonical export used
