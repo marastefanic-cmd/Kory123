@@ -11,10 +11,10 @@
    sim is a known blind spot for multi-AP timing; SOURCES / TOOLING ★). Findings are the authoritative
    reference in `docs/TOOLING.md` — read its **Methodology** section (model = objective/arbiter, sim =
    calibration) and the ★ drop-bug + stats protocol. The intermission re-gate is **done** (KT +
-   4:00-multi both re-confirmed ≥ their alternatives on the fixed rig — see Status). **Next task = the
-   AoE crit-proc amplification model** (below); after that, the payoffs (haste-agnostic APL → setup
-   comparison → EP calculator). **The model / cast-counting was RIGHT on Vashj; the sim was wrong
-   because of the drop bug — fix the sim, don't distrust the model.**
+   4:00-multi both re-confirmed ≥ their alternatives on the fixed rig — see Status). The **AoE crit-proc
+   amplification** (Clearcasting → Arcane Potency) is now **modeled** (below). **Next task = the payoffs**
+   (haste-agnostic APL → setup comparison → EP calculator). **The model / cast-counting was RIGHT on
+   Vashj; the sim was wrong because of the drop bug — fix the sim, don't distrust the model.**
 3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 16/16).
 4. The sim harness (`runner` binary, gear export, `wowsims/tbc-new` source) persists in the session
    **scratchpad** and survives `/clear` *within the same session* — check it's there before rebuilding
@@ -39,28 +39,25 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
    then `gear+Δ` → re-run planner → new APL → sim → `Δdps/Δstat`). Corrects wowsims' `statweight.go`,
    which freezes the rotation across perturbations (dragging haste's EP down).
 
-## Next task — AoE crit-proc amplification (the model under-weights AoE phases)
+## Done — AoE crit-proc amplification (Clearcasting → Arcane Potency)
 
-The runner can now value AoE (`--targets N` + `tools/genae.mjs` AE-spam — TOOLING). Validation this
-session: the model's AE scoring core is **exact** (base 392 / coef 0.214 / instant-GCD-bound / linear
-per-target / AP ×1.30, all matching `arcane_explosion.go`). **But** the sim shows 6-target AE is **+8.6%
-per-target above linear** (×1.024 @2t, ×1.086 @6t, ×1.119 @10t) — on-**crit** procs fire more when a cast
-crits on N targets. Decomposition:
-- **Generalisable (always present) — Clearcasting → Arcane Potency.** Arcane Concentration procs **per
-  hit** (`talents.go`, 2%·rank), so an N-target AE cast rolls it N times → Clearcasting uptime → Arcane
-  Potency's **+10%·rank crit** on the next cast scales with N. ≈ half the +8.6% at 6t. **This is what to
-  model** — it's derivable from the user's **crit input × N × talent ranks**, no gear tuning (the tool is
-  gear-agnostic; crit is a user input).
-- **Transient (gear) — on-crit SP procs** (e.g. Tirisfal 4pc +70 SP). The user won't always have these →
-  **exclude** from the general model (document as an unmodeled, conservative omission).
-
-**Plan (deterministic, generalisable, sim-gated):** add a Clearcasting/Potency effective-crit term to the
-scorer — per-cast Clearcasting rate `q(N)=1−(1−0.02·AC)^N`, effective crit `= crit + q(N)·(0.10·AP)`, fed
-into the damage `critFactor` per segment. Single-target (N=1) gets a **constant** crit bump → cancels in
-single-target comparisons (**no plain golden moves**); AoE (N=targets) gets the N-scaled bump → AoE
-correctly worth more. Expose Arcane-Concentration / Arcane-Potency ranks as inputs (default 5/2). New
-model constant needs a `docs/PLAN.md`; sim-gate KT and any AoE golden on the fixed rig. (Impact: KT's
-double-IV-over-AoE only gets **more** justified; likely no plan move, but the *reason* becomes real.)
+The runner can now value AoE (`--targets N` + `tools/genae.mjs` AE-spam; `--crit` to sweep crit — see
+TOOLING). Findings, all sim-measured on the fixed rig:
+- The model's AE scoring **core is exact** (base 392 / coef 0.214 / instant-GCD-bound / linear per-target
+  / AP ×1.30, matching `arcane_explosion.go`).
+- 6-target AE is **super-linear** — **+8.6% per-target at crit 38%** (and it *falls* as crit rises: +11%
+  @10% crit → +7.7% @55%). **Talent-isolation (zero Arcane Concentration/Potency) makes it VANISH**
+  (gear on-crit SP procs — Tirisfal 4pc etc. — add ~0), so the effect is **entirely Clearcasting →
+  Arcane Potency**, which is **always-present and gear-agnostic** (depends only on crit × N × fixed
+  talent ranks). Arcane Concentration procs **per hit** (`talents.go`), 3/3 Potency = **+30% crit**
+  (sim-confirmed via the combat log), so more targets ⇒ more Clearcasting ⇒ Potency up on more casts.
+- **Implemented** (`index.html`): `TALENTS = {arcaneConcentration:5, arcanePotency:3}` + `aoeCritAmp(N,
+  crit)` = `critMult(crit + qCC(N)·0.30) / critMult(crit + qCC(1)·0.30)`, `qCC(N)=1−0.9^N`; applied only
+  in the AoE damage branches (`simulate` ~734/795). Single-target returns amp 1 (**no plain golden
+  moves**; exact-match 16/16, KT unchanged). It credits **~75–80%** of the sim's measured amplification
+  across the realistic crit range — right magnitude, right crit-direction, **never over-credits** (the
+  ~20% shortfall is second-order proc-chain dynamics, kept as a conservative margin). Gear on-crit SP
+  procs stay unmodeled (negligible for AoE weighting, and transient).
 
 ## Status (as of the current work)
 

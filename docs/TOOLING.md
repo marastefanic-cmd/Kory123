@@ -252,14 +252,17 @@ Two additions let the runner value an Arcane-Explosion AoE phase (the model's `t
 6-target AoE cast is worth ~2.25× an AB, which is why the KT **double-IV-over-AoE** call is robust (IV
 adds ~+20% casts to a window worth ~2.25× — a landslide vs the same IV on single-target).
 
-**Known super-linearity the model does NOT yet capture (next task, ROADMAP).** 6-target AE is **+8.6%
-per-target** above linear (measured: ×1.024 @2t, ×1.086 @6t, ×1.119 @10t) because on-**crit** procs fire
-more when a cast rolls crit on N targets: **Clearcasting→Arcane Potency** (`talents.go`: Arcane
-Concentration procs **per hit**, 2%·rank; Potency then gives +10%·rank crit on the next cast — this is
-**always-present** and generalisable, ≈ half the effect) plus **gear procs** (e.g. Tirisfal 4pc +70 SP
-on crit — **transient**, excluded). The model treats crit as a constant that cancels, so it currently
-**under-weights AoE** (conservative — it can't over-invest in AoE). Modeling the Potency component
-(derivable from the user's crit input + N + talent ranks — no gear tuning) is the next planned change.
+**Super-linearity — measured, isolated, and now modeled.** 6-target AE is **+8.6% per-target** above
+linear at crit 38% (×1.024 @2t, ×1.086 @6t, ×1.119 @10t; and it **falls as crit rises** — +11% @10% crit,
++7.7% @55%, once the artificial `--crit -1500` floor point is excluded). **Talent-isolation nails the
+cause:** zero Arcane Concentration/Potency in the export and the super-linearity **vanishes** (`--crit`
+sweep + a talent-zeroed export: NOTAL amp6 ≈ 1.00), so it is **entirely Clearcasting → Arcane Potency** —
+gear on-crit SP procs (Tirisfal 4pc etc.) add ~0. Mechanism: Arcane Concentration procs **per hit**
+(`talents.go`), 3/3 Potency = **+30% crit** (combat-log-confirmed) on the next cast, so more targets ⇒
+more Clearcasting ⇒ more Potency-boosted casts. Because it depends only on **crit × N × fixed talents**
+(no gear), the planner models it — `aoeCritAmp(N,crit)` (`index.html` `TALENTS`), crediting **~75–80%** of
+the measured effect (conservative; right crit-direction; single-target untouched, exact-match 16/16). New
+runner flag used here: **`--crit R`** adds SpellCritRating via bonusStats (negative to suppress crit).
 
 ## Verifying a golden change
 

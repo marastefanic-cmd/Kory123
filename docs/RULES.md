@@ -201,13 +201,15 @@ durations the contained region shrinks to the **intersection** of the constraint
   instant, GCD-bound), NOT off Arcane Blast — so an N-target AoE is N× an AE cast. **Now sim-verified**
   (`--targets N` AE-spam, TOOLING): the constants match `arcane_explosion.go` exactly, and a 6-target AE
   cast sims ~**2.25×** an AB cast — so **double-IV-over-AoE (KT)** is real, not an assumption (IV adds
-  ~+20% casts to a window worth ~2.25×, a landslide vs the same IV on single-target). One refinement is
-  open: the sim shows AoE is **super-linear** (+8.6% per-target at 6 tgt) because on-crit procs
-  (Clearcasting→Arcane Potency, always-present; plus transient gear procs) fire more when a cast crits on
-  N targets — the model treats crit as a canceling constant and so **under-weights AoE** (conservative).
-  Modeling the generalisable Potency component (from crit input × N × talent ranks) is the next task
-  (ROADMAP). The AoE **weighting** is a lower bound the sim now confirms — no longer "flag it, can't
-  verify."
+  ~+20% casts to a window worth ~2.25×, a landslide vs the same IV on single-target). **Super-linearity —
+  now modeled.** AoE is super-linear in the sim (**+8.6% per-target at 6 tgt, crit 38%**, falling as crit
+  rises). A talent-isolation run pins the cause: it's **entirely Clearcasting → Arcane Potency** (zero the
+  talents and it vanishes; gear on-crit SP procs add ~0). Arcane Concentration procs **per hit**, so more
+  targets ⇒ more Clearcasting ⇒ Potency's +30% crit lands on more casts. This is always-present and
+  gear-agnostic (crit × N × talent ranks), so the planner credits it via `aoeCritAmp(N,crit)` on the AoE
+  damage only (ARCHITECTURE / `index.html` `TALENTS`) — ~75–80% of the measured effect, conservative,
+  single-target untouched. Crit thus **no longer fully cancels for AoE** (MECHANICS §4). Gear on-crit SP
+  procs stay unmodeled (negligible + transient).
 
 ## 10. Determinism / tie-breaks
 

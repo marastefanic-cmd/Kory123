@@ -7,7 +7,10 @@ signposts, re-grep if they're off. Everything below is in `index.html` unless no
 ## Constants (~547–583)
 `GAME`: `AB {BASE_CAST 2.5, STACK_CAST_REDUCTION 1/3, MAX_STACKS 3, AVG_BASE_DMG 720, COEF 2.5/3.5}`,
 `AE {AVG_BASE_DMG 392, COEF 0.214}` (Arcane Explosion, AoE), `GCD_BASE 1.5`, `GCD_FLOOR 1.0`,
-`HASTE_RATING_PER_PCT 15.77`, `CRIT_MULT 1.8175`, `COLD_SNAP_CD 480`. `BUFFS` (~560–572): each buff's
+`HASTE_RATING_PER_PCT 15.77`, `CRIT_MULT 1.8175`, `COLD_SNAP_CD 480`. `TALENTS {arcaneConcentration 5,
+arcanePotency 3}` + `aoeCritAmp(N, crit)` (just after `GAME`): the AoE-only Clearcasting→Arcane Potency
+crit amplification (per-hit Arcane Concentration ⇒ target-scaled Potency crit; applied only to AoE
+damage in `simulate`, single-target returns 1 — sim-validated, RULES §9). `BUFFS` (~560–572): each buff's
 `kind` (`mult` haste-multiplier, `rating` haste-rating, `dmg` damage-mult, `sp` spellpower, `proc`),
 `value`, `dur`, `cd`. `KILL_WINDOW = 0.5` (inside `simulate`, ~631) — half-cast kill smoothing.
 

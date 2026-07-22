@@ -61,7 +61,12 @@ Haste **rating** converts to a percentage, then percentage buffs stack **multipl
 - **`crit_factor` = `1 + crit · (CRIT_MULT − 1)`.** `CRIT_MULT ≈ 1.8175` (a crit's damage vs a normal
   hit, incl. base 1.5× + Arcane talents + meta gem — exact composition flagged `verify` in SOURCES).
   Crit is the **same for every cast**, so it **cancels** in any overlay comparison — it changes total
-  DPS but never *which* schedule wins.
+  DPS but never *which* schedule wins. **One exception, in AoE only:** Clearcasting → Arcane Potency
+  raises effective crit on a *target-scaled* fraction of casts (Arcane Concentration procs per hit, so
+  more targets ⇒ more Clearcasting ⇒ Potency's +30% crit on more casts). That makes an AoE cast worth
+  more per target as the target count grows — a real, sim-verified super-linearity the planner credits
+  via `aoeCritAmp(N, crit)` (§4, `RULES §9`). It's derivable from crit × N × fixed talent ranks, so crit
+  still "cancels" for single-target; it just doesn't fully cancel *across* an AoE-vs-single-target choice.
 
 ### On-use buffs are off-GCD and fire BETWEEN casts — so score them by cast-counting, never by "GCD cost"
 

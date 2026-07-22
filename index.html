@@ -570,6 +570,28 @@ const GAME = {
   CRIT_MULT: 1.8175,
   COLD_SNAP_CD: 480,
 };
+// Always-present Arcane raiding talents (a mage always has these; gear is not assumed).
+const TALENTS = { arcaneConcentration: 5, arcanePotency: 3 }; // 5/5 CC = 2%/rank per-HIT proc; 3/3 Potency = +10% crit/rank on the next cast (Anniversary 3-rank → +30%, sim-confirmed)
+// AoE crit amplification — Clearcasting → Arcane Potency. Arcane Concentration procs PER HIT
+// (wowsims sim/mage/talents.go, OnSpellHitDealt), so an N-target Arcane Explosion cast rolls it N times
+// ⇒ Clearcasting uptime, hence Potency's +crit on the *next* cast, rises with the target count. This is
+// why AoE is super-linear in the sim, and a talent-isolation run confirmed it: with the talents zeroed
+// the super-linearity vanishes (gear on-crit SP procs like Tirisfal 4pc add ~0), so this Potency term is
+// the WHOLE generalisable effect — no gear tuning, only crit (a user input) × N × fixed talent ranks.
+// This model credits ~75-80% of the sim's measured amplification across the realistic crit range (it
+// tracks the right magnitude and the right crit-direction — the amp falls as crit rises; the ~20%
+// shortfall is second-order proc-chain dynamics, left as a conservative margin, never an over-credit).
+// Single-target (N=1) returns amp = 1, so all AB/burn scoring is untouched. See docs/RULES.md §9,
+// docs/MECHANICS.md §4, docs/SOURCES.md.
+function aoeCritAmp(targets, crit) {
+  const N = Math.max(1, targets | 0);
+  const accProc = 0.02 * TALENTS.arcaneConcentration;         // per-HIT Clearcasting proc chance (0.10 at 5/5)
+  const potencyCrit = 0.10 * TALENTS.arcanePotency;           // +crit on the cast after a Clearcasting proc (0.20 at 2/2)
+  const qCC = n => 1 - Math.pow(1 - accProc, n);              // per-CAST Clearcasting rate (any of n hits procs)
+  const critMultAt = c => 1 + Math.min(1, c) * (GAME.CRIT_MULT - 1);
+  const effCrit = n => crit + qCC(n) * potencyCrit;          // Potency lifts effective crit on ~qCC(n) of casts
+  return critMultAt(effCrit(N)) / critMultAt(effCrit(1));     // amplification vs the single-target Potency baseline
+}
 const BUFFS = {
   bloodlust:     { name: "Bloodlust",            kind: "mult",   value: 1.30, dur: 40, cd: 600, color: "var(--c-bloodlust)",   stat: "+30% haste · 40s", src: "shaman" },
   icyVeins:      { name: "Icy Veins",            kind: "mult",   value: 1.20, dur: 20, cd: 180, color: "var(--c-icyveins)",    stat: "+20% haste · 20s · 3m" },
@@ -731,7 +753,7 @@ function simulate(schedule, cfg, collect) {
     const interval = pUp * up.interval + (1 - pUp) * dn.interval;
     let dmg;
     if (isAoe) {
-      dmg = (g.AE.AVG_BASE_DMG + g.AE.COEF * sp) * seg.targets * critFactor * dmgMult;
+      dmg = (g.AE.AVG_BASE_DMG + g.AE.COEF * sp) * seg.targets * critFactor * dmgMult * aoeCritAmp(seg.targets, crit);
     } else {
       dmg = (g.AB.AVG_BASE_DMG + g.AB.COEF * sp) * critFactor * dmgMult;
       if (seg && seg.type === "burn") dmg *= seg.mult;
@@ -792,7 +814,7 @@ function simulate(schedule, cfg, collect) {
       return aoe ? gcd : Math.max((g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * g.AB.MAX_STACKS) / m, gcd);
     };
     let dmg2;
-    if (aoe) dmg2 = (g.AE.AVG_BASE_DMG + g.AE.COEF * sp2) * segB.targets * critFactor * dmgMult2;
+    if (aoe) dmg2 = (g.AE.AVG_BASE_DMG + g.AE.COEF * sp2) * segB.targets * critFactor * dmgMult2 * aoeCritAmp(segB.targets, crit);
     else { dmg2 = (g.AB.AVG_BASE_DMG + g.AB.COEF * sp2) * critFactor * dmgMult2; if (segB && segB.type === "burn") dmg2 *= segB.mult; }
     if (atiOn) {
       // Ashtongue: blend the proc-up / proc-down haste states by the steady-state
@@ -3013,7 +3035,7 @@ function renderAssumptions({ cfg }) {
     <li>Haste stacking: all haste rating adds first (${GAME.HASTE_RATING_PER_PCT} rating = 1% at 70), then multiplies with each %-speed buff: (1+rating%) × 1.30<small>BL</small> × 1.20<small>IV</small> × 1.10<small>Zerk</small>.</li>
     <li>Ashtongue Talisman is tracked per cast: the chance the 145-haste proc is up right now comes from your actual casts in the last 5s (procs cluster inside fast windows), and the GCD floor is applied separately to the proc-up and proc-down cases before averaging — not smeared into a flat average.</li>
     <li>Serpent-Coil Braid: the Mana Emerald is conjured pre-combat with 3 charges — at most 3 gem windows per fight, 2 minutes apart (re-conjuring mid-fight isn’t modeled; not worth the mana).</li>
-    <li>The objective is equivalent to maximizing <em>effective casts</em>: each cast counts 1.0, ×1.3 under Arcane Power, ×(720+0.714·(SP+bonus))/(720+0.714·SP) under a spellpower active (the bonus flows through the spell coefficient, so +225 ≈ ×1.10 at 1150 SP, not ×1.20), and ×N in Burn phases. Crit multiplies every cast equally and cancels out. AoE casts are counted in the same plain-AB unit.</li>
+    <li>The objective is equivalent to maximizing <em>effective casts</em>: each cast counts 1.0, ×1.3 under Arcane Power, ×(720+0.714·(SP+bonus))/(720+0.714·SP) under a spellpower active (the bonus flows through the spell coefficient, so +225 ≈ ×1.10 at 1150 SP, not ×1.20), and ×N in Burn phases. Crit multiplies every cast equally and cancels out — <em>except</em> in AoE, where Clearcasting → Arcane Potency procs more often (Arcane Concentration rolls per hit, so more targets ⇒ more procs ⇒ Potency's crit bonus is up more), giving a small target-scaled damage boost the planner credits from your crit input. AoE casts are otherwise counted in the same plain-AB unit; gear on-crit spellpower procs (e.g. Tirisfal 4pc) are left unmodeled.</li>
     <li>Going past the 50% GCD floor is not treated as a mistake — the planner simulates actual casts, so it will happily overcap a window (especially under Arcane Power) when that beats staying under the line. The floor line just marks where extra haste stops adding casts.</li>
     <li>Any pinned times are hard anchors: a buff with times entered fires at exactly those times (validated against its cooldown, Sated/Tinnitus, Cold Snap, and the trinket lockout) and the planner schedules everything unpinned around them. Blank = the planner owns that buff.</li>
     <li>Full durations are preferred — the sim naturally slides a press earlier when that covers the same casts and finishes before the kill — but a cooldown that's back up before the boss dies is always pressed: a clipped final window is free damage, and the schedule tags its real uptime and worth. Raid-called times are used exactly as entered.</li>
