@@ -122,6 +122,15 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
     high-haste hold-out (~h200, sim-verified +53 DPS); h0 goldens never trim (exit layout doesn't win
     there), so exact-match stays 23/23.
 
+## Inputs → `cfg` (`readCfg`, buff rows)
+- **Only raid calls are pinnable.** `RAID_PINNABLE = {bloodlust, drums, powerInfusion}` (the "Raid
+  externals" group). `buildBuffList` renders a pin control **only** for those keys; every mage-managed
+  cooldown (IV / AP / gem / Berserking / Icon / on-use haste trinkets) is the planner's to schedule, so
+  it has no pin UI. `readCfg` mirrors the same set — it only reads `state.times[key]` into `cfg.fixed`
+  for a `RAID_PINNABLE` key, so a stale mage-cooldown time in a saved/custom preset is ignored. The
+  optimizer still treats any `cfg.fixed[key]` as an immovable anchor (unchanged), and presets only ever
+  pin `bloodlust`, so goldens are untouched.
+
 ## Phases & rendering
 - `buildSegments(rows, T)` (~2191): turns phase rows into `{start,end,type,mult,targets}` segments;
   types `normal | intermission | burn | aoe`. Consumed by `simulate` and the renderer.

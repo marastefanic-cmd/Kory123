@@ -621,6 +621,12 @@ const GROUPS = [
   { title: "Trinkets", keys: TRINKETS, trinket: true },
   { title: "Raid externals", keys: ["bloodlust", "powerInfusion", "drums"] },
 ];
+// Only the RAID-controlled buffs may be pinned to an exact second — those are called
+// by someone else and the mage works around them. Every mage-managed cooldown
+// (IV / AP / gem / Berserking / Icon / the on-use haste trinkets) is the planner's to
+// SCHEDULE: pinning it fights the optimizer, so the tool owns its timing. Matches the
+// "Raid externals" group.
+const RAID_PINNABLE = new Set(["bloodlust", "drums", "powerInfusion"]);
 const ATI = { rating: 145, dur: 5, procChance: 0.5 };
 
 /* ═══════════════ engine ═══════════════ */
@@ -2391,7 +2397,7 @@ function buildBuffList() {
     const host = gi === 0 ? hosts.spells : group.trinket ? hosts.trinkets : hosts.ext;
     for (const key of group.keys) {
       const def = BUFFS[key];
-      const pinnable = def.kind !== "proc";
+      const pinnable = RAID_PINNABLE.has(key); // only raid calls get a pin control
       const wrap = document.createElement("div");
       const row = document.createElement("div");
       row.className = "buff" + (state.enabled[key] ? " on" : "");
@@ -2555,11 +2561,12 @@ function readCfg() {
   const T = parseLen(el("in-len").value);
   const coldSnap = state.coldSnap && state.enabled.icyVeins;
   const fixed = {}, warnings = [];
-  // Any activatable can be pinned. Separation rules: Bloodlust = Sated (10 min),
-  // Drums = Tinnitus (2 min), everything else = its own cooldown; Icy Veins
-  // pins may chain through Cold Snap.
+  // Only the raid-controlled calls can be pinned (RAID_PINNABLE) — mage-managed
+  // cooldowns are the planner's to schedule. Separation rules: Bloodlust = Sated
+  // (10 min), Drums = Tinnitus (2 min), Power Infusion = its own cooldown. (The guard
+  // also ignores any stale mage-cooldown times left in a saved/custom preset.)
   for (const key in BUFFS) {
-    if (BUFFS[key].kind === "proc" || !state.enabled[key]) continue;
+    if (!RAID_PINNABLE.has(key) || !state.enabled[key]) continue;
     const raw = state.times[key] || "";
     if (!raw.trim()) continue;
     const name = BUFFS[key].name;
