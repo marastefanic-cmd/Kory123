@@ -4,21 +4,18 @@
 
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
-2. **Next task = `docs/PLAN.md` Follow-up A: resolve AP-cd (195 vs 180) + re-gate the intermission
-   goldens on the fixed engine; THEN W2 (the confirmed +0.8 ramp shift).** The harness audit (W1) AND
-   the drop-bug fix + full re-validation (W1.5) are **done** — findings are the authoritative reference
-   in `docs/TOOLING.md` (trust-anchor = runner==`wowsimcli` to the decimal;
-   the off-GCD "collision" is a **myth**, drop the offsets; external buffs off-GCD single-application;
-   stats protocol with the **seeds-11/19-are-the-same-sample** correction; `SIMLOG=1` combat log
-   exists). The audit's **headline finding** (TOOLING ★): `APLActionSchedule` **silently DROPS an
-   on-cooldown press** — Vashj's "4-icon" golden was really firing **3** icons (terminal dropped), which
-   is the entire "−4.2 / 3-icons-win"; fix the drop and 4 icons (1576.6) beat 3 (1573.1), vindicating
-   the golden. So: **W1.5 = implement a clean drop-free fix (`Cooldowns.Timings`+autocast) and
-   re-validate every golden** (the drop was systematic — it also lost AP/IV/Zerk uses), then **W2 only
-   if the "+0.6 shift" survives the fixed rig** (it was measured while both plans dropped terminals, so
-   it's suspect). Payoffs after (haste-agnostic APL → setup comparison → EP calculator). **The model /
-   cast-counting was RIGHT on Vashj; the sim was wrong because of the drop bug — fix the sim, don't
-   distrust the model.**
+2. **No plan in flight — `docs/PLAN.md` is deleted; its workstreams all landed.** The harness audit
+   (W1), the drop-bug fix + full re-validation (W1.5), and the ramp-aware SP shift (W2a → Vashj emits
+   **4:05 / 6:05**) are **done**, and the AP-cd question is **resolved** (real TBC AP = 180s
+   cd-on-activation, user-confirmed — the model was right; the sim's 195s is a wowsims quirk, so the
+   sim is a known blind spot for multi-AP timing; SOURCES / TOOLING ★). Findings are the authoritative
+   reference in `docs/TOOLING.md` — read its **Methodology** section (model = objective/arbiter, sim =
+   calibration) and the ★ drop-bug + stats protocol. **Next work = the payoffs** (haste-agnostic APL →
+   setup comparison → EP calculator, below). One optional low-priority follow-up remains (see Open
+   questions): spot-check the KT / 4:00-multi intermission plans for *optimality* on the fixed rig
+   (their plans are unchanged and validated no-regression, just not re-confirmed *best* since the
+   baselines jumped). **The model / cast-counting was RIGHT on Vashj; the sim was wrong because of the
+   drop bug — fix the sim, don't distrust the model.**
 3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 16/16).
 4. The sim harness (`runner` binary, gear export, `wowsims/tbc-new` source) persists in the session
    **scratchpad** and survives `/clear` *within the same session* — check it's there before rebuilding
@@ -55,8 +52,10 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
   ready.patch`: gate the schedule on strict `spell.IsReady`). Re-validated all 16 — zero regressions;
   intermission goldens were badly under-executed and recovered **+18..+26** (4:00-multi/KT/Vashj); the
   Vashj 4-icon plan is vindicated on the fixed engine. Exact-match still 16/16 (model untouched).
-  **Also found: AP's real cd is 195s, not 180** (`arcane_power.go` starts the cd on buff-expire) — a
-  model↔sim mismatch (see PLAN Follow-up A). **And W2a LANDED:** a coherent-cluster carry in the "Let the
+  **Also found + now RESOLVED: AP's cadence in the sim is ~195s** (`arcane_power.go` starts the cd on
+  buff-expire), but **real TBC AP is 180s cd-on-activation** (user-confirmed) — the **model was right**
+  (cd180, unchanged); the sim's 195 is a wowsims quirk, so the sim is a known blind spot for multi-AP
+  timing (SOURCES / TOOLING ★). **And W2a LANDED:** a coherent-cluster carry in the "Let the
   stacks build" pass now emits the ramp-aware **4:05 / 6:05** Vashj layout (icon@4:05, terminal
   icon+gem+AP@6:05, IV@6:00 stays); only Vashj moved, sim-gated new ≥ old on the fixed engine (+0.8 var0
   / +0.3 var10). So the post-ramp-exit shift (RULES §9, long "not implemented") is now real. Docs are the
@@ -86,8 +85,8 @@ the user and cast-counting always said — and the *fix is in the sim, not the m
 **Old belief (overturned):** "3 icons @ 0/3/6 beats 4 icons @ 0/2/4/6, so the golden is sim-suboptimal."
 Wrong: the sim was deleting the 4-icon plan's terminal icon. Do **not** re-open this as an optimizer
 task. (Note the earlier "RNG-desync" hypothesis for the +4.8 was *also* wrong — far seeds proved it
-stable/deterministic; it's the dropped use.) Fixing the drop + re-validating every golden is **W1.5**
-(`docs/PLAN.md`) — the drop was systematic (it also lost AP/IV/Zerk uses), so other goldens may move.
+stable/deterministic; it's the dropped use.) The drop was fixed + every golden re-validated (W1.5, done —
+the drop was systematic, it also lost AP/IV/Zerk uses; no golden regressed, exact-match still 16/16).
 
 - **Cast-counting settles it (the model's method; MECHANICS §3 "score by cast-counting").** Value each
   icon by `(casts it catches) × (multipliers there)`, relative to a bare-window icon:
@@ -268,6 +267,11 @@ exact-match suite; new fights are added by editing that one array.
   validated goldens. Revisit only if a case needs it.
 - **Align-vs-twice breakpoint** should be pinned by sim per fight, not assumed (when does "two
   unaligned uses" beat "one Lust-aligned use"?).
+- **Intermission-golden optimality re-gate (optional, low priority — from the retired PLAN.md).** The
+  drop-bug fix jumped the intermission goldens' sim baselines +18..+26; re-validation showed no
+  regressions and the Vashj 4-icon plan is vindicated, but the KT / 4:00-multi plans haven't been
+  re-confirmed *best* vs their documented alternatives on the fixed rig. Their plans are unchanged
+  (exact-match green either way), so this is a spot-check for peace of mind, not a suspected bug.
 - **KT AoE valuation** (double-IV over the 6-target phase) rests on Arcane-Explosion-vs-Blast
   weighting that plain-AB sims can't confirm — a standing model assumption.
 - Sim harness (`runner`, gear export, wowsims source) lives in the ephemeral scratchpad — see

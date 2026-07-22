@@ -209,20 +209,20 @@ buggy harness should be re-checked** on the fixed rig. On the fixed engine the V
 vindicated** (1594.3 > 3-icon 1587.2, +7.1 var0 / +6.9 var10) — the "3-icons-win" was 100% the dropped
 terminal. The 4:05/6:05 shift survives but small (**+0.8 var0 / +0.3 var10**, stable across far seeds).
 
-**Separate discovery — AP's cooldown is 195s, not 180 (model↔sim mismatch).** `sim/mage/arcane_power.go`
-starts AP's 180s cd in the aura's `OnExpire` (`CD.Use` at buff-END), so AP's real cadence is 15+180 =
-**195s**. The model uses cd 180, so it plans AP every 180s — infeasible in the sim (the 2nd use fires
-~195, a 3rd near a 360s mark is often past the kill). This is NOT the drop bug (it survives the patch).
-wowsims models this **intentionally** (a deliberate `CD.Use` in `OnExpire`, not an accident); SOURCES.md
-claims AP `cd180` "verified". That is a genuine **model↔sim discrepancy** neither side can settle from
-here — real TBC AP is *probably* 180 (standard cd-on-activation), which would make the sim's 195 a quirk,
-but wowsims' deliberate choice suggests the "cd-from-buff-fade" behavior may be real. **Do NOT change the
-model's `BUFFS.arcanePower.cd` on a guess** — it needs a definitive TBC source (patch notes / private-
-server test). Impact on current goldens is **low**: AP is a *common factor* in the A/B comparisons that
-gate them (both sides use the same AP schedule, so it cancels), and the infeasible 2nd uses often land
-at the fight's end (3:20 AP@185→~200 at its 200s kill → +0.0). Practically it makes the sim an
-**unreliable referee for multi-AP *timing* specifically** (like AoE-not-modeled) — don't sim-gate a
-"use AP a 2nd time here vs there" call without accounting for the 195s cd.
+**Separate discovery — RESOLVED: AP's cooldown is 180s (the sim's 195s is a wowsims quirk).**
+`sim/mage/arcane_power.go` starts AP's 180s cd in the aura's `OnExpire` (`CD.Use` at buff-END), so the
+sim's cadence is 15+180 = **195s**. The model uses cd 180 and plans AP every 180s. This looked like an
+unsettled model↔sim discrepancy; **the user (domain authority) confirmed real TBC AP is 100% a standard
+3-min cooldown that starts on activation — 180s.** So the **model is right** (`BUFFS.arcanePower.cd = 180`,
+unchanged) and the sim's `cd-from-buff-fade` is a **wowsims modeling quirk, not real TBC** — a textbook
+"mechanic where the model wins and the sim is the blind spot" (Methodology, top of file). This is NOT the
+drop bug (it survives the patch). **Consequence: the sim is an unreliable referee for multi-AP *timing***
+(like AoE-not-modeled) — a 2nd AP use the model plans at 180s often won't fire in the sim (it thinks 195),
+so **don't sim-gate a "use AP a 2nd time here vs there" call**; trust the model's cast-count there. Impact
+on current goldens is nil: the model already plans at 180 (no plan moves), and in every A/B that gated a
+golden AP is a **common factor** (same schedule both sides → cancels), so the sim's mis-timing of a 2nd
+AP never distorted a comparison. (E.g. Vashj's 6:05 cluster includes AP@365 = 185+180, feasible and
+correct in the model; the sim doesn't fire it, but it's a common factor that cancels.)
 
 ## Traps that remain
 
