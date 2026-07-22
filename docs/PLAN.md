@@ -1,79 +1,59 @@
-# PLAN.md — Phase 4: optimizer robustness (haste-monotonicity)
+# PLAN.md — Phase 4: understand the optimum, then make the search find it
 
-**Status: planned (user-directed).** The scorer physics and the Phase-3 helpers are solid; the gap the
-user found is **search robustness** — tiny input changes flip the layout and occasionally *lose* effective
-casts. This phase makes the optimizer honour the monotonicity invariant. UI flair (leeway bands, reasoning
-tags) is **deferred** until this is airtight (both removed from `index.html` this session; restore from git).
+**Status: in flight (user-directed).** The original Phase 4 was "kill the 70→71 non-monotonicity" (a pure
+search bug). It's now reframed: before hardening the search we **build the instrument** that finds the true
+optimum without a search and **measure** whether the model even needs fixing. Three workstreams, in a forced
+order (each is a prerequisite for the next):
 
-## The invariant (proven this session — it is a theorem, not a heuristic)
+## The sequence (locked): A → measure → B(gated) → C
 
-**With infinite mana, adding spell haste can only raise (or, at the GCD floor, hold) the effective-AB count
-— for the SAME layout. Therefore the optimum is non-decreasing in haste, and any decrease is a SEARCH MISS,
-not a model breakpoint.**
+**A · Exploration harness** (`tools/explore.mjs`) — **DONE this session.** Brute-scores every placement of a
+small buff set on the model over a gear-haste sweep; the winner is exact by construction (no search), so it's
+both a ground-truth **oracle** for the search and a **rule-finder**. It reproduced the theorycraft
+autonomously (RULES §3/§5/§7/§16): damage buffs place greedily (no breakpoint), haste buffs carry the
+breakpoints — **but SP buffs shift those breakpoints** (AP in-Lust moved IV's exit from ~15→~80 rating), so
+the decomposition is *coupled*, not separable. `--sim` cross-checks ramp-sensitive winners against wowsims.
 
-Proof, in our model: for a fixed layout the score is the cast-rate integral `∫ dmg/interval dt`, with
-`interval = max(cast/m, gcd(m))`. `dmg` is haste-independent; `interval` only shrinks as the haste
-multiplier `m` grows (or holds at the floor); the buff windows are anchored at **intent times** — the
-scorer deliberately does **not** snap them to the moving cast boundary, so no button-press quantization
-enters the score (`simulate`, `eff = e.ts`); a layout feasible at low haste stays feasible at high haste
-(cooldown spacing is in fixed seconds). Non-decreasing integrand over fixed bounds ⇒ non-decreasing
-integral. **Verified empirically** (`fixedmono` scratch test): three fixed layouts, robust non-decreasing
-across haste 0–250 at 1-rating resolution, zero drops. So the model has **no weird breakpoints** — even
-through buff activation (the *display*'s effective times snap to cast boundaries and shift with haste, but
-that is cosmetic and never enters the score or the optimizer's objective).
+**measure · Quantify the ramp-blindness ranking error** — **in progress.** Use A to answer: does the model's
+flat-3-stacks (ramp-blind) scoring ever flip a *ranking* decision vs the sim? Early signal: **probably not.**
+The ramp *evens out* for cast count (RULES §3, proven + sim-confirmed), the constant ramp deficit cancels
+between layouts, and every model-vs-sim gap found so far traced to a **sim-setup artifact** (a haste buff
+jammed at the fight end) or an effect the model already captures (Lust-stacking floor waste) — **not** a
+model error. Still to stress: a scenario where a *damage* buff could want the pull (the one direction the
+model would over-credit); the current scenarios never put a damage buff there. If that stays clean → **skip B**.
 
-## The bug (measured this session)
+**B · De-ramp-blind the scorer** — **gated on `measure`.** Only if the data shows a real ranking error (most
+likely: damage buffs over-credited at the pull, feeding degenerate "stack everything at 0:00" plans). Scope it
+to exactly that differential; keep the constant-offset cancellation; sim-gate every golden that moves. This is
+the *one* change that can destabilize the goldens (why the ramp was left out originally — `index.html:684`),
+so it does not start until A has measured it and C is not yet touched.
 
-The multi-start search misses the monotone optimum on some inputs:
-- **71 vs 70 haste (1:40):** 71-optimum robust **205479**, but the 70-plan re-scored at 71 = **205597**.
-  The search found something *worse than a plan it already had*. The 71-plan even had `IcyVeins:[0, 47]`
-  (an IV pressed at t=0) — a degenerate candidate the local search didn't clean up.
-- **Haste sweep (1:40, step 5):** 2 "worse-than-prev-plan" misses (h=25, h=75), each ~**0.02–0.03**
-  effective casts. Small in DPS (~0.03%) but each flips the LAYOUT visibly (opener cluster 0:07↔0:17,
-  Berserking 0:07↔0:27), which is what reads as broken and erodes trust.
-- **10 haste (1:40):** cluster parked at 0:17 with Berserking overcapping at 0:07, when the clean plan
-  (cluster 0:07, Berserking spread to 0:27) ties it. `slideEarliest` can't fix this — it only pulls
-  earlier; it can't spread Berserking later, and the two moves are jointly optimal.
+**C · Optimizer robustness (haste-monotonicity)** — the original Phase 4, now **last** (it must tune the
+search to the *final* scoring model). Acceptance: `tests/monotonicity.mjs` = **0 violations**, exact-match
+stays green. With A providing the oracle + canonical seeds and the coupling rule understood (§16), seed the
+multi-start with the structured optima (packed / IV-out / SP-coupled variants), add a self-consistency guard
+(never return worse than an obvious candidate or than the lower-haste plan re-scored), and canonicalize ties.
 
-## Acceptance criterion (the test — already written)
+## Why this order (the dependencies are forced)
+- **A first:** it's the instrument for B and C, low-risk (pure tooling, can't touch a golden), and it turns
+  "the search misbehaves" into "here is the exact optimum it should have found."
+- **A gates B:** you can only trust a ramp model if you can prove it matches the sim across placements — that
+  *is* A.
+- **B before C:** C tunes the search to the model; changing the model after would mean redoing C.
 
-`tests/monotonicity.mjs` sweeps haste over plain fights and asserts effcasts is (a) non-decreasing and
-(b) never worse than the previous-haste plan re-scored at the current haste. **Currently fails; target = 0
-violations.** Add `--step 1` for the fine 70→71 class. Plain fights only (intermission ramps are a
-model-vs-sim topic, not monotonicity — RULES §10).
-
-## Approach (investigate in order; each is model-neutral or sim-gated)
-
-1. **Monotone / canonical seeding.** Seed the multi-start with strong structured candidates so the search
-   can't miss the obvious optimum: the canonical "all cooldowns packed at the earliest burst, haste buffs
-   spread off the GCD floor" layout, plus the "IV-out-of-Lust" high-haste variant (RULES §5). If the true
-   optimum for each haste regime is among the seeds, the local search finds it consistently.
-2. **Self-consistency guard (cheap, deterministic, directly enforces the invariant).** After
-   `optimizeAsync`, evaluate a small fixed set of reference layouts (canonical + the champion) at the
-   current cfg and keep the best. Guarantees "never worse than an obvious candidate." Could also compare
-   against the plan the tool produces at a slightly lower haste (the invariant says it must be beatable).
-3. **Tie-canonicalization beyond `slideEarliest`.** The visible flips are largely *tied* plans chosen
-   inconsistently. `slideEarliest` canonicalizes cluster POSITION (earliest); we also need the haste-buff
-   SPREAD canonicalized (Berserking off the floored opener → its natural later tick) so tied plans look the
-   same across haste. Extend/replace `spreadLoneHaste`.
-4. **Kill degenerate candidates + deepen search.** Diagnose the `IcyVeins:[0]`-type artifacts (how the
-   search produces them and why the local passes don't clean them up); widen starts / strengthen local
-   moves where a specific haste band misses.
-
-## Diagnostic leads (scratch harnesses exist under the session scratchpad)
-
-`h7071.mjs` (search-miss cross-check), `monosweep.mjs` / `tests/monotonicity.mjs` (sweep), `fixedmono.mjs`
-(model monotonicity proof), `h10probe.mjs` (tie structure). Reuse these.
+## The invariant C enforces (proven — a theorem, not a heuristic)
+With infinite mana, adding spell haste can only raise (or, at the GCD floor, hold) the effective-AB count for
+the **same** layout (`interval` only shrinks; buff windows scored at intent times; a low-haste layout stays
+feasible). So the optimum is non-decreasing in haste and **any decrease is a SEARCH MISS**. Verified
+empirically 0–250 rating, zero drops. The measured misses (71-vs-70 on 1:40; ~0.02–0.03-cast sweep misses)
+are the search returning worse than a plan it already had — a search-quality bug, not a model breakpoint.
 
 ## Guardrails
-- exact-match **25/25** throughout (any golden that moves must be model-neutral, or sim-gated if a blind
-  spot is in play — but this phase should mostly *tighten* the search, not change optima).
+- exact-match **25/25** throughout; any golden that moves is model-neutral or sim-gated (a blind spot in play).
 - Determinism preserved (seeded PRNG; no `Date.now`/`Math.random` outside it).
-- Don't touch the scorer physics — it's proven monotone. This is a **search** phase.
-- Keep docs current (RULES §10 / a new "optimizer robustness" note; ROADMAP) in the same commit.
+- Don't touch the scorer physics except in B, and only if `measure` warrants it. Keep docs current in the same
+  commit (RULES §3/§16, TOOLING, ROADMAP).
 
 ## Deferred this session (restore when the search is airtight)
-- The timeline **leeway "press anywhere" bands** and the action-plan **reasoning tags** — both removed from
-  `index.html` (the logic — `leewayZones`, the tag inference — is in git history). They diluted focus and
-  could mislead while the search still mis-places. The haste-graph reference LINES stay (they harm nothing).
-- `leewayZones()` remains defined but unused; re-wire it (or delete) when the leeway UI returns.
+- Timeline **leeway "press anywhere" bands** + action-plan **reasoning tags** (removed from `index.html`;
+  logic in git history). The haste-graph reference LINES stay.

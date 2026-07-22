@@ -79,6 +79,16 @@ was all search, not scoring). Don't conflate "the count is right" with "the sear
   Arcane Power, Berserking, Bloodlust).
 - **wowsims-tbc source + `runner`** live in the **session scratchpad** (ephemeral — cleared with the
   container, though it survives `/clear` within a session). Only `tools/genapl.mjs` persists in the repo.
+- **`tools/explore.mjs`** (durable): the **exploration harness** — brute-scores every placement of a small
+  buff set on the model over a gear-haste sweep, reports winners + breakpoints, and flags ramp-sensitive
+  winners. `--sim` cross-checks the flagged winners against the runner (needs `RUNNER=… GEAR=…`), building
+  the schedules through `genapl` and comparing the model's ordering to the sim's. It's the measuring
+  instrument for Phase 4 (find the true optimum without a search; measure model-vs-sim ranking gaps). See
+  RULES §16.
+  - **Sim-setup gotcha it surfaced:** a *fixed-duration* APL that jams a haste buff against the fight **end**
+    shows a spurious loss vs an interior placement (the sim drops the truncated tail casts; the model credits
+    them proportionally). When cross-checking placement, keep the buff **interior** (lengthen `--dur`) or the
+    fight-end masquerades as a real placement effect. Verified: IV pre-Lust ≡ post-Lust to 0.00% once interior.
 
 ## Building the runner (do this once per fresh session)
 

@@ -115,21 +115,29 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
   ARCHITECTURE). exact-match 25/25.
 - **Phase 3 is complete** (all 6 tasks + the proc-free-trend follow-up).
 
-## Phase 4 — optimizer robustness (haste-monotonicity) *(in flight, `docs/PLAN.md`)*
+## Phase 4 — understand the optimum, then make the search find it *(in flight, `docs/PLAN.md`)*
 
-The user stress-tested the planner across haste and found the **multi-start search is not robust**: tiny
-input changes flip the layout and occasionally *lose* effective casts (70→71 haste: 71-optimum robust
-205479 < the 70-plan re-scored at 71 = 205597). This violates a **theorem**: with infinite mana, for a
-*fixed* layout the score is monotone in haste (`interval = max(cast/m, gcd)` only shrinks; buff windows are
-scored at intent times, not cast boundaries, so no button-press quantization; a low-haste layout stays
-feasible high) — **verified** (fixed layouts, robust non-decreasing 0–250 haste, zero drops). So the model
-has **no breakpoints**; every violation is a pure SEARCH miss. Acceptance test `tests/monotonicity.mjs`
-(sweep, assert non-decreasing + never-worse-than-prev-plan) — currently fails, target 0. Approach: canonical
-/ monotone seeding, a self-consistency guard ("never worse than an obvious candidate"), tie-canonicalization
-beyond `slideEarliest` (spread the haste buffs too), kill degenerate candidates (`IcyVeins:[0]` at 71).
+Reframed this session. The trigger is still the **non-robust multi-start search** (70→71 haste: 71-optimum
+205479 < the 70-plan re-scored at 71 = 205597 — a pure SEARCH miss, since for a fixed layout the score is a
+**theorem**-level monotone function of haste). But instead of hardening the search blind, the sequence is now
+**A → measure → B(gated) → C**, forced by dependencies (`docs/PLAN.md`):
+- **A · exploration harness** (`tools/explore.mjs`) — **DONE.** Brute-scores every placement of a small buff
+  set over a gear-haste sweep (no search → exact optimum), the oracle + rule-finder for the rest. It
+  reproduced the theorycraft autonomously (RULES §16) and pinned the coupling the user flagged: **damage
+  buffs place greedily, haste buffs carry the breakpoints — but SP buffs SHIFT those breakpoints** (AP moved
+  IV's exit-Lust from ~15→~80 rating). Cap thresholds nailed: 243 (Lust caps) / 394 (IV window caps) / 789
+  (all capped). `--sim` cross-checks ramp-sensitive winners.
+- **measure** — is the ramp-blind scorer ever *ranking*-wrong vs the sim? Early signal: **likely no.** The
+  ramp evens out for cast count (RULES §3, proven + sim-confirmed, incl. **IV pre-Lust ≡ post-Lust to 0.00%**
+  interior); the only gaps found were a **sim-setup artifact** (buff jammed at the fight end) or Lust-stacking
+  floor waste the model already sees. Still to stress: a *damage* buff that could want the pull. If clean → skip B.
+- **B (gated)** — de-ramp-blind the scorer only if `measure` finds a real ranking error; scoped + sim-gated.
+- **C** — the monotonicity fix itself, **last** (tunes the search to the *final* model). Acceptance:
+  `tests/monotonicity.mjs` = 0 violations, exact-match green. Canonical seeding + self-consistency guard +
+  tie-canonicalization; kill degenerate `IcyVeins:[0]` candidates.
+
 **UI deferred:** the leeway "press anywhere" bands and the action-plan reasoning tags were removed this
-session (restore from git when the search is airtight); the haste-graph reference lines stay. Details +
-diagnostic leads in `docs/PLAN.md`.
+session (restore from git when the search is airtight); the haste-graph reference lines stay.
 
 ## Done — gear-haste + haste-trinket correctness (this session, user-directed)
 

@@ -41,6 +41,21 @@ moving Berserking around a steady window gives the same total (proved: Berserkin
 isolation). A **damage/SP** buff is NOT position-independent — it wants **post-ramp, max-stack, fast
 casts**, so it should sit on the fastest part of the window. (The opener/post-intermission ramp is
 modeled as steady-state 3 stacks; modeling it explicitly was tried and made things worse.)
+- **Why haste is position-independent (the exact statement).** A haste buff `×h` for duration `D` saves
+  `D·(h−1)` of base cast-time **wherever it sits** — whatever casts fall in the window, their total base
+  cast-time is exactly what fills `D` at the hastened rate, so the ramp's slower casts don't change the
+  bookkeeping. It converts to the same extra casts anywhere **below the GCD floor**. Confirmed three ways:
+  the ramp-aware toy counter, and the **real sim** — IV@pull vs IV@mid = **equal** at h0/h400, and
+  **IV pre-Lust ≡ IV post-Lust to 0.00%** once both are interior (100s/140s fights, `tools/explore.mjs`
+  cross-check). Above the floor the pull gains only via floor headroom (its ramp casts sit further from
+  the cap).
+- **Sim-setup caveat (a trap, not a model gap).** In a *fixed-duration* sim, a haste buff jammed against
+  the fight **end** (e.g. IV@1:00 in a strict 1:20 fight) shows a spurious ~1.4% loss vs pull, because the
+  sim doesn't credit the truncated tail casts proportionally. The **model is right** to score pre≈post as
+  a tie (its kill-window integral *does* credit the tail proportionally); the gap is a sim-setup artifact
+  (cf. the Vashj drop bug, `docs/TOOLING.md`). Verified: extend the fight so the buff is interior → the gap
+  vanishes to 0.00%. (AB damage is **stack-independent** — re-confirmed at source, `arcane_blast.go:55/58`
+  — so this is pure cast-count, not a stack-damage effect.)
 
 ## 4. Buff-into-Lust packing — the usual method for maximizing effective ABs *(sim-verified this project)*
 
@@ -367,3 +382,29 @@ Haste levels the timeline marks as horizontal reference lines on the (determinis
   general TBC theory and SOURCES' Frostbolt row). Read your **trough** (no-cooldown, gear-only) haste
   against this line: above it, your filler is a Frostbolt tighter. The planner never casts Frostbolt — this
   is a gearing/conserve reference, consistent with the layout-first, mana-out-of-the-model design.
+
+## 16. Placement structure & the GCD-cap thresholds *(exploration harness, `tools/explore.mjs`)*
+
+`tools/explore.mjs` brute-scores **every** placement of a tiny buff set over a gear-haste sweep (no search
+— the winner is exact by construction) and reports where the winning layout flips. Run it to *see* the
+rules of §3/§5/§7 fall out, and to flag which winners lean on the ramp-blind assumption (`--sim` cross-checks
+those). What it confirms:
+- **The decomposition (structure, not a clean separation).** Damage buffs (Icon, AP, gem) have **no haste
+  breakpoint** — they always chase the highest-cast-rate window. **Haste buffs carry all the breakpoints**
+  (floor-avoidance: leave Lust once stacking overcaps). Verified: in `iv-icon`, Icon is ALWAYS in-Lust
+  across the whole sweep; only IV flips.
+- **⚠ But SP buffs SHIFT the haste breakpoints — the decomposition is coupled, not independent.** A haste
+  buff can be worth **overcapping a little** if doing so speeds an SP/damage buff's window enough that the
+  SP payout beats the wasted haste. Measured: adding Arcane Power in-Lust pushed IV's exit-Lust breakpoint
+  from **~15 → ~80 rating** (`iv-icon` vs `iv-icon-ap`). So "place haste first, damage greedy after" is a
+  *heuristic*, not a proof — the haste placement must account for the SP payout it enables. This coupling is
+  the crux of what makes the search (Phase 4·C) non-trivial.
+- **The GCD-cap thresholds** (cap = +50% haste, 15.77 rating/%), the meaningful sweep points:
+  - **243 rating** — Lust alone caps (`passive·1.30 ≥ 1.50`). Beyond here IV *must* leave Lust (in-Lust IV is
+    100% wasted). The actual exit breakpoint is **far earlier** (~15 on the reference gear); 243 is the latest
+    it can possibly be.
+  - **394 rating** — the IV *window* also caps (`passive·1.20 ≥ 1.50`). Icon becomes **indifferent between the
+    Lust window and the IV window** (both capped) — but **not outside both**. IV *outside* Lust still gains
+    (it lifts a bare window to the cap); IV is only wasted *inside* Lust. (Also the Frostbolt 4× soft cap, §15.)
+  - **789 rating** — passive alone caps (`passive ≥ 1.50`). Everything is floored; all placement is irrelevant
+    beyond "use Icon at all." **Sweeping past 789 is useless** — the harness caps there.
