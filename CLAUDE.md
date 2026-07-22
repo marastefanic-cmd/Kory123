@@ -109,10 +109,12 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/ROADMAP.md` — status, current work, and open questions.
 - `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
-  into ROADMAP). **No plan in flight — Phase 3 landed** (raid-buff/proc tightening + deterministic mana &
-  haste helpers: only-raid-pinnable, Drums/PI verified, Ashtongue→leeway zones, per-window mana chip,
-  the 4×-Frostbolt haste breakpoint, why-here action-plan reasons — all in ROADMAP). The heavy in-tool
-  finite-mana *mode* stays **dropped**; the infinite-mana planner is the product.
+  into ROADMAP). **Phase 4 plan in flight: optimizer robustness (haste-monotonicity).** The user found the
+  multi-start search occasionally *loses* effective casts as haste rises (e.g. 70→71) — a violation of a
+  **proven** invariant (for a fixed layout the score is monotone in haste; the model has no breakpoints, so
+  every violation is a SEARCH miss). Acceptance test: `tests/monotonicity.mjs` → 0 violations. UI flair
+  (leeway "press anywhere" bands + action-plan reasoning tags) is **deferred** — both removed from
+  `index.html` this session until the search is airtight; the haste-graph reference lines stay.
 - `docs/SOURCES.md` — where WoW facts come from (TBC is a solved game — look up + cite, don't
   re-derive) and the verified-facts ledger of the constants the model uses.
 - `docs/EP.md` — stat weights **two contexts**: the infinite-mana **layout** EP (closed-form model

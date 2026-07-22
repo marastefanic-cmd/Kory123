@@ -113,7 +113,23 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
   — no averaged Ashtongue), and a **second GCD-floor line "cap if Ashtongue"** (≈+40.8%) shows where a live
   proc reaches the cap. ATI stays in the *scored* effective-AB count; this is display-only (RULES §14/§15,
   ARCHITECTURE). exact-match 25/25.
-- **Phase 3 is complete** (all 6 tasks + the proc-free-trend follow-up). `docs/PLAN.md` deleted.
+- **Phase 3 is complete** (all 6 tasks + the proc-free-trend follow-up).
+
+## Phase 4 — optimizer robustness (haste-monotonicity) *(in flight, `docs/PLAN.md`)*
+
+The user stress-tested the planner across haste and found the **multi-start search is not robust**: tiny
+input changes flip the layout and occasionally *lose* effective casts (70→71 haste: 71-optimum robust
+205479 < the 70-plan re-scored at 71 = 205597). This violates a **theorem**: with infinite mana, for a
+*fixed* layout the score is monotone in haste (`interval = max(cast/m, gcd)` only shrinks; buff windows are
+scored at intent times, not cast boundaries, so no button-press quantization; a low-haste layout stays
+feasible high) — **verified** (fixed layouts, robust non-decreasing 0–250 haste, zero drops). So the model
+has **no breakpoints**; every violation is a pure SEARCH miss. Acceptance test `tests/monotonicity.mjs`
+(sweep, assert non-decreasing + never-worse-than-prev-plan) — currently fails, target 0. Approach: canonical
+/ monotone seeding, a self-consistency guard ("never worse than an obvious candidate"), tie-canonicalization
+beyond `slideEarliest` (spread the haste buffs too), kill degenerate candidates (`IcyVeins:[0]` at 71).
+**UI deferred:** the leeway "press anywhere" bands and the action-plan reasoning tags were removed this
+session (restore from git when the search is airtight); the haste-graph reference lines stay. Details +
+diagnostic leads in `docs/PLAN.md`.
 
 ## Done — gear-haste + haste-trinket correctness (this session, user-directed)
 
