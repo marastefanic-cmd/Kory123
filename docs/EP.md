@@ -55,12 +55,24 @@ optimizer reported the schedule changing under ±100 haste), exactly the envelop
 ## Practical notes / caveats
 - **Trust-anchor the APL first** (build it, sim it, confirm the DPS matches the tool's expectation)
   before trusting weights — same discipline as any sim gating (`TOOLING`).
+- **Intellect is THROUGHPUT for Arcane, not sustain — value it off SP/crit EP.** `1 int` gives, at 5/5
+  Mind Mastery + 5/5 Arcane Mind (`sim/mage/talents.go`): `×1.15` int (Arcane Mind), then **+0.29 spell
+  power** (Mind Mastery `0.05·rank` SP/int) **and +0.317 crit rating** (int→crit `0.0125%`/int, `mana.go`,
+  ×1.15). So **`int EP ≈ 0.29·SP_EP + 0.317·crit_EP`** (+ a ~0 mana part when not mana-bound) — e.g. this
+  phase (SP_EP 1.0, crit_EP 0.72) → **≈ 0.52**. (A mana-bound sim adds a big mana chunk on top: wowsims'
+  default-rotation Int 1.42 = ~0.29 SP + ~0.24 crit + ~0.89 mana — the mana part vanishes for
+  not-mana-bound fights.) Don't file int with the sustain stats.
 - **Layout-first, mana-free (design principle, user-set).** The model optimizes the cooldown **layout**
   assuming mana isn't the binding constraint; mana management is **downstream** — you manage mana to
   realize the layout, never the reverse. So the model route weighs only the **layout / throughput** stats
-  (SP, crit, haste, + the AoE Potency term). **Sustain** stats (spirit / mp5 / Int-for-mana) have real
+  (SP, crit, haste, + the AoE Potency term). **Sustain** stats (spirit / mp5 / raw mana pool) have real
   value but *only* through mana, which the model deliberately ignores — so they read ~0 here **by
-  construction**; keep them a separate sustain check ("enough to chain-cast the burn windows, then stop"),
+  construction**. They are **not literally zero in reality**, though: a player who never OOMs but still
+  *conserves* (Frostbolt filler on non-burn stretches, rather than pure AB-spam) sits at the mana margin,
+  where +1 mana buys AB-over-Frostbolt uptime worth ~**1.5 dmg/mana** (the AB-vs-Frostbolt gap). So for
+  such play, guesstimate mp5 ~0.12–0.25 EP / spirit ~0.08–0.18 (throttled ~30% while casting) / raw mana
+  ~0.03–0.08 — bigger on long/low-downtime fights, ~0 on ones you AB-spam start to finish. Keep them a
+  separate sustain check ("enough to chain-cast the burn windows, then stop"),
   never folded into the layout weights. Justified because for realistic fights (short, or long with
   intermission downtime / conservation) mana isn't binding in the high-value windows anyway, so the
   infinite-mana layout is also the realizable one. A genuinely mana-bound fight is the exception —
