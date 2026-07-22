@@ -2030,15 +2030,28 @@ function optimizeAsync(cfg, starts, onProgress) {
             // Zerk (10s) leads inside Lust, IV (20s) sequences after it at A+10, and
             // the free Cold Snap re-homes IV's terminal use — a layout biggest-first
             // (IV@A, Zerk@A+20) can't reach without dropping Zerk's 2nd use.
+            // Where the haste buffs go relative to the anchor window. "packIn" is the
+            // usual layout — a flooring buff rides the window so the damage cluster gets
+            // its fastest casts. The two EXIT modes are the RULES §5 "IV slides out of
+            // Lust as gear haste grows" layout: once passive rating pushes Lust itself
+            // near the GCD floor, a haste buff stacked ON Lust overcaps (worth ~0) while
+            // the DAMAGE cluster still wants Lust's fast casts — so the win is
+            // cluster-on-window, haste past it. "exitSeq" sequences the haste on the
+            // unfloored tail (each buff stays unfloored, but a later cd-tick can clip the
+            // kill); "exitStack" overlaps them all at the window end (a wash off the floor,
+            // RULES §7, but it keeps every buff's cd-tick as EARLY as possible, so a 2nd
+            // use before the kill survives — the h200 opener). Each is only a candidate,
+            // kept on a strict gain, so all of this is inert below the breakpoint (h0:
+            // IV-in-Lust wins) and self-selects above it — no per-haste-level rule.
+            const modes = win > 1e-9 ? ["packIn", "exitSeq", "exitStack"] : ["packIn"];
+            for (const mode of modes)
             for (const order of permute(hasteKeys)) {
-              // sequential slots inside the window; drop a haste buff whose slot
-              // would fall past the window (it would just floor dead casts)
               const slots = [];
-              let off = 0;
+              let off = mode === "packIn" ? 0 : win;
               for (const hk of order) {
-                if (slots.length && off + 1e-9 >= win) break;
+                if (mode === "packIn" && slots.length && off + 1e-9 >= win) break; // packing in: don't spill past the window (dead floored casts)
                 slots.push({ key: hk, at: A + off });
-                off += BUFFS[hk].dur;
+                off += mode === "exitStack" ? 0 : BUFFS[hk].dur; // exitStack overlaps at the window end; the others sequence
               }
               const lead = slots[0].key;
               // sweep which USE of the leading haste buff lands on the window (front-

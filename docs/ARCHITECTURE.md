@@ -83,18 +83,30 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   but the *live* portion is unchanged — the clip is the wrong metric here). On **4:00 multi-intermission**
   the Cold-Snap IV at 3:47 (2s inside [3:28–3:49]) → 3:49 (var0 exact wash). Only the "don't *begin* in
   downtime" half of RULES §9; the post-ramp-exit devaluation (Vashj) is still open.
-- **Sequential window-packing** (~1913, the RULES §4 move — LANDED). Runs as the last structural pass
+- **Sequential window-packing** (~1975, the RULES §4/§5 move — LANDED). Runs as the last structural pass
   (nothing after it can re-floor the sequenced tail buff, so no defensive rework of the eviction /
   `nulled` vetoes was needed). For each raid-called **haste** buff (kind `mult`/`rating` — a damage/
-  burn anchor doesn't floor, so it's skipped), it assembles the packed burst at the anchor `A`: the
-  damage cluster's nearest use → `A`, and the planner haste buffs on **sequential slots**. It sweeps
-  **both** which *use* of the lead haste buff lands on `A` (front-load vs bank) **and — via `permute`
-  (~1948) — the ORDER** the haste buffs sequence across the window. Biggest-first floors it for the
-  damage cluster (the usual best), but leading with a **shorter** buff pushes the flooring buff later,
-  which can keep a tail buff's 2nd cd-tick before the kill that biggest-first would clip — the **3:20**
-  opener (`Zerk@0:05` in Lust, `IV@0:15` after, `CS→IV2@3:00`, +3.6) needs the Zerk-lead order, which
-  biggest-first (IV@A, Zerk@A+20) can't reach without dropping Zerk's 2nd use. Permutation bounded to
-  ≤4 keys (else biggest-first only). Kept on strict robust gain + `sameCounts` + no worse `clipOf`.
+  burn anchor doesn't floor, so it's skipped), it assembles the burst at the anchor `A`: the damage
+  cluster's nearest use → `A`, and the planner haste buffs on slots whose **origin** is one of three
+  **modes** (`~2010`):
+  - **`packIn`** — haste sequenced from `A` **into** the window (the usual RULES §4 pack: a flooring buff
+    floors the window so the damage cluster rides its fastest casts; tail buffs on the unfloored remainder,
+    a buff spilling past the window is dropped).
+  - **`exitSeq` / `exitStack`** — haste sequenced from **`A + win`** (just PAST the window), the RULES §5
+    "IV slides out of Lust as gear haste grows" layout: once passive rating pushes Lust itself near the GCD
+    floor, a haste buff on Lust overcaps (worth ~0) while the damage cluster still wants Lust's fast casts.
+    `exitSeq` sequences the exiting haste on the tail (each buff unfloored, but a later cd-tick can clip the
+    kill); `exitStack` overlaps them all at the window end (a wash off the floor, RULES §7, but keeps every
+    buff's cd-tick as EARLY as possible so a 2nd use survives before the kill — the high-haste opener).
+  It sweeps the mode, which *use* of the lead haste buff lands on the origin (front-load vs bank), **and —
+  via `permute` (~2010) — the ORDER** the haste buffs sequence. Biggest-first floors `packIn` for the
+  damage cluster (the usual best); leading with a **shorter** buff pushes the flooring buff later, keeping
+  a tail buff's 2nd cd-tick before the kill — the **3:20** opener (`Zerk@0:05` in Lust, `IV@0:15` after,
+  `CS→IV2@3:00`, +3.6) needs the Zerk-lead order. Permutation bounded to ≤4 keys (else biggest-first only).
+  Every candidate kept on strict robust gain + `sameCounts` + no worse `clipOf`, so the exit modes are
+  **inert at h0** (IV-in-Lust wins → goldens byte-identical) and **self-select above the gear-haste
+  breakpoint** (sim-verified +2% at h250; RULES §5). Known residual: a narrow ~h200 band whose exit layout
+  needs Cold Snap that `repair()` un-spaces (ROADMAP).
 - **Cold-Snap materiality** (~2119) now distinguishes two regimes (RULES §8). `csAddsUse` (~2157) =
   the CS champ has **more** IVs than the best no-CS plan. When CS genuinely **adds** a use the full
   "≥ one cast" bar applies (`bar = castVal`); when it only **repositions** the same IV count (or the

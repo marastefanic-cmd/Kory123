@@ -4,10 +4,16 @@
 
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
-2. **Plan in flight = `docs/PLAN.md`: the proactive mana planner** (finite-mana *mode*, beta toggle —
-   input Innervate/Mana-Tide/pot/gem/Evocation, schedule the conserve rotation so bursts are fuelled and
-   you end ~empty). **Do NOT touch the infinite-mana engine** (exact-match 23/23). Already done and behind
-   it: the harness audit (W1), drop-bug fix (W1.5), ramp-aware SP shift (W2a → Vashj **4:05/6:05**), AP-cd
+2. **No plan in flight** (`docs/PLAN.md` absent). The once-planned **in-tool finite-mana mode was DROPPED
+   by the user** — the finite-mana *stat weights* (`docs/EP.md`) already answer the mana question, and an
+   interactive conserve planner would have meant a whole second engine + gear-stat inputs they didn't want.
+   The **infinite-mana planner is the product**; keep it that way (exact-match 23/23). **Current focus
+   (user-directed): haste correctness — passive gear haste + haste trinkets.** Done this session: verified
+   the tool is correct across gear haste (physics trust-anchored at non-zero rating; the "IV slides out of
+   Lust" layout, RULES §5, now EMERGES from the packing pass and sim-verifies **+2%** at h250) and that
+   haste trinkets place correctly (MQG/Skull avoid the floored Lust, ride a damage burst for flux). See the
+   **Done — gear-haste** entry below. Already done and behind all this: the harness audit (W1), drop-bug
+   fix (W1.5), ramp-aware SP shift (W2a → Vashj **4:05/6:05**), AP-cd
    **resolved** (real TBC AP = 180s cd-on-activation; sim's 195s is a wowsims quirk — a known blind spot
    for multi-AP timing; SOURCES / TOOLING ★), the **AoE Potency amplification** (modeled + sim-validated),
    **EP** two-route cross-check + `portfolio-ep`, the **Boss presets** (10 real encounters, tested), and
@@ -57,6 +63,37 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
    set** (`tests/portfolio-ep.mjs`): runs the model route over N fights at your real gear and aggregates
    by the **summed weighted absolute derivatives, normalized to SP once** (NOT averaged per-fight EPs —
    that mis-weights short fights). Awaiting the user's 10 phase-fight inputs to produce the phase EP.
+
+## Done — gear-haste + haste-trinket correctness (this session, user-directed)
+
+The user redirected off the in-tool finite-mana idea (dropped) to **verify the planner is correct with
+passive gear haste and haste-rating trinkets, and improve it where it isn't.** Findings + the one change:
+
+- **Physics is anchored at non-zero gear haste.** Rating trinkets (Drums 80 / Skull 175 / MQG 330 / ATI
+  145-proc) and passive `hasteRating` share **one** path — additive in the `(1 + rating/1577)` factor,
+  then × the %-haste buffs (Lust/IV/Berserking), floored by `intervalOf` — the **same formula
+  trust-anchored at h0** (runner plain-AB h0 = 2264.9/944.4, exact). So trinket + gear haste is correct by
+  construction; a `--haste N` sweep confirms the interval/floor scale as expected.
+- **Haste trinkets place correctly.** The model **avoids** stacking MQG/Skull on the floored opener Lust
+  (MQG-in-Lust −9.6k vs the model plan) and instead rides MQG on the **2nd damage burst** (speeding its
+  SCB/AP casts — flux, MECHANICS §5 pt 2), beating a lone bare-window MQG (+2.4k). No trinket-placement bug.
+- **The one FIX — the "IV slides out of Lust as gear haste grows" layout now EMERGES** (RULES §5, long
+  documented as theory, not realized in the search). As passive rating pushes Lust itself near the GCD
+  floor, a haste buff stacked ON Lust overcaps (worth ~0) while the DAMAGE cluster still wants Lust's fast
+  casts — so the win is **cluster-on-Lust, IV sequenced/stacked just past it.** The sequential
+  window-packing pass now generates two **exit** modes (haste after the window: `exitSeq` sequenced on the
+  tail, `exitStack` overlapped at the window end to keep each buff's 2nd cd-tick before the kill) in
+  addition to the usual `packIn`. Kept only on a strict robust gain, so **inert at h0** (IV-in-Lust wins →
+  goldens byte-identical, exact-match **23/23**) and self-selecting above the breakpoint — no per-haste
+  rule. **Sim-verified:** cluster-on-Lust vs glued-off-Lust at h250 = **+61 DPS var0 / +54 var10** (both
+  agree → real, not a boundary artifact). Improves h150/h250/h300 in model score, monotonic (only adds
+  candidates). See RULES §5, ARCHITECTURE (packing pass modes).
+- **Known residual — a narrow h200 island.** On the 4:00 fight at ~h200 specifically, the opener stays
+  glued off-Lust (~0.25% under its own potential); the winning exit layout there **requires Cold Snap**
+  (IV@0:45 + CS→IV@3:40) and `repair()` snaps the CS-spaced IV back to the no-CS glued spacing before the
+  CS-materiality logic can weigh it. Neighbours (h150, h250) are correct. Fixing it means repair/CS surgery
+  (risks the goldens) for a narrow band — deferred; documented here. If the user's real gear sits at ~h200,
+  revisit with a repair-level change that lets an intentionally-CS-spaced IV survive legalization.
 
 ## Done — finite-mana / conserve-rotation stat weights (this session, user-requested)
 

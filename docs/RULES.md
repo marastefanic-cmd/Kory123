@@ -77,12 +77,27 @@ damage-buffed casts — Lust is the usual vehicle, not the objective.
   it needs a *damage-use-sacrifice* pack (drop Icon's 2nd use to align the 1st onto Lust) — a more
   aggressive move than the haste-only packing above. Not yet implemented.
 
-## 5. Icy Veins slides out of Lust as haste gear grows
+## 5. Icy Veins slides out of Lust as haste gear grows *(now REALIZED in the search, sim-verified)*
 
 At ~0 haste, IV belongs in Lust (packed, per #4). As passive haste rating rises, Lust alone
-approaches the floor, so Lust+IV wastes more and more — past a breakpoint (~150+ rating in testing)
-IV is worth more **outside** Lust, and the whole opener can prefer the pull. No hard breakpoint to
-hardcode — it emerges from the floor math; verify with the sim at the target gear.
+approaches the floor, so Lust+IV wastes more and more — past a breakpoint (~h200 in testing on the
+reference gear) IV is worth more **outside** Lust while the **damage cluster stays ON Lust** (its
+fastest casts). No hard breakpoint to hardcode — it emerges from the floor math.
+- **Realized (this session).** The sequential window-packing pass (RULES §4, ARCHITECTURE) now generates
+  **exit** candidates — the damage cluster on the Lust anchor, the haste buffs sequenced/stacked **just
+  past** the window (`exitSeq` / `exitStack`) — alongside the usual pack-into-the-window layout. Kept only
+  on a strict robust gain, so it's inert at h0 (IV-in-Lust wins; goldens byte-identical, exact-match
+  23/23) and self-selects above the breakpoint. Before this, the opener could get glued off-Lust at high
+  gear haste (cluster following IV off the fast casts) — a search miss the scorer already ranked below
+  cluster-on-Lust.
+- **Sim-verified:** at h250 (4:00 fight) cluster-on-Lust + IV-off beats cluster-glued-off-Lust by **+61
+  DPS var0 / +54 var10** (250k, seed 11 — both variances agree, so it's the real flux gain of putting the
+  damage buffs on Lust's fast casts, not a fixed-length boundary artifact). The physics is anchored: rating
+  trinkets + gear haste run the SAME `(1+rating/1577)·∏%buffs` / GCD-floor path trust-anchored at h0.
+- **Known residual:** a narrow band (~h200 on the 4:00 fight) still glues the opener — its winning exit
+  layout needs Cold Snap and `repair()` snaps the CS-spaced IV back before the CS-materiality gate weighs
+  it (ROADMAP). Neighbours are correct; verify with the sim at your exact target gear before trusting a
+  near-h200 opener.
 
 ## 6. Spellpower × Arcane Power is multiplicative
 
