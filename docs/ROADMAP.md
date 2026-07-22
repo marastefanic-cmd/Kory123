@@ -4,14 +4,13 @@
 
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
-2. **Phase 3 plan in flight** (`docs/PLAN.md`): raid-buff/proc tightening + **deterministic mana & haste
-   helpers** — remove mage-managed-cooldown pinning, test/tighten Drums + Power Infusion, decide the
-   Ashtongue model, add a per-window "target mana" tooltip + haste breakpoints on the timeline. The heavy
-   **in-tool finite-mana *mode* stays DROPPED by the user** — the finite-mana *stat weights* (`docs/EP.md`)
-   already answer the mana question, and an interactive conserve planner would have meant a whole second
-   engine + gear-stat inputs they didn't want. The **infinite-mana planner is the product**; keep it that
-   way (exact-match 23/23), and **Phase 3 must not touch the scorer/optimizer core** (UI + already-modeled
-   buffs + informational overlays only). Done last session: verified
+2. **No plan in flight — Phase 3 landed** (`docs/PLAN.md` deleted; see "Phase 3 progress" below). Phase 3
+   = raid-buff/proc tightening + **deterministic mana & haste helpers**, all shipped without touching the
+   scorer/optimizer core (exact-match **25/25**): only-raid-pinnable cooldowns, Drums/PI verified +
+   sim-source-anchored, Ashtongue → free-leeway "press anywhere" zones, per-window target-mana chip, the
+   4×-Frostbolt haste breakpoint on the timeline, and why-here action-plan reasons. The heavy **in-tool
+   finite-mana *mode* stays DROPPED** — the finite-mana *stat weights* (`docs/EP.md`) already answer the
+   mana question. The **infinite-mana planner is the product**; keep it that way. Also done earlier: verified
    the tool is correct across gear haste (physics trust-anchored at non-zero rating; the "IV slides out of
    Lust" layout, RULES §5, now EMERGES from the packing pass and sim-verifies **+2%** at h250) and that
    haste trinkets place correctly (MQG/Skull avoid the floored Lust, ride a damage burst for flux). See the

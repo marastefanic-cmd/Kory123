@@ -109,13 +109,10 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/ROADMAP.md` — status, current work, and open questions.
 - `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
-  into ROADMAP). **Phase 3 plan in flight:** raid-buff/proc tightening + deterministic mana & haste
-  helpers — remove mage-managed-cooldown pinning, test/tighten Drums + Power Infusion, decide the
-  Ashtongue model, add a per-window "target mana" tooltip and haste breakpoints on the timeline. The
-  heavy **in-tool finite-mana *mode*** stays **dropped** (the finite-mana *stat weights* in `docs/EP.md`
-  already answer the mana question; a full conserve engine would mean a second engine + gear-stat inputs
-  the user didn't want). The infinite-mana planner stays the product; Phase 3 is UI + already-modeled
-  buffs + informational overlays, **not** a second scorer.
+  into ROADMAP). **No plan in flight — Phase 3 landed** (raid-buff/proc tightening + deterministic mana &
+  haste helpers: only-raid-pinnable, Drums/PI verified, Ashtongue→leeway zones, per-window mana chip,
+  the 4×-Frostbolt haste breakpoint, why-here action-plan reasons — all in ROADMAP). The heavy in-tool
+  finite-mana *mode* stays **dropped**; the infinite-mana planner is the product.
 - `docs/SOURCES.md` — where WoW facts come from (TBC is a solved game — look up + cite, don't
   re-derive) and the verified-facts ledger of the constants the model uses.
 - `docs/EP.md` — stat weights **two contexts**: the infinite-mana **layout** EP (closed-form model
