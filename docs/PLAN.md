@@ -50,7 +50,7 @@ so compute **"enter this window with ≥ N mana to AB-spam it clean"** and show 
 schedule annotation. That's the conserve *target* the player manages to — no rotation optimizer, no mana
 sim. Constants in `docs/SOURCES.md`; pure function over the existing schedule + `buildSegments`.
 
-### 5. Haste breakpoints on the timeline
+### 5. Haste breakpoints on the timeline — ✅ DONE
 Mark the meaningful haste breakpoints on the haste curve: the **GCD-floor** points (where extra haste
 stops buying AB casts) and the **Frostbolt-in-conserve** breakpoint (fit 4 Frostbolts in the 8s AB-debuff
 window ⇒ Frostbolt ≤ 2.0s ⇒ ~+25% haste ≈ **~394 rating before raid buffs** — LOOK UP / verify the exact

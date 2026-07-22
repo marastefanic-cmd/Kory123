@@ -97,8 +97,12 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
   stacks; AoE casts excluded — SOURCES/wowsims). Tooltip gives casts, the ≈100/s casting-regen offset,
   the net pool-drop to bank, and the gem/Evocation note when it exceeds a pool. Pure read over the
   existing cast list; **mana never feeds the optimizer.** Display-only → exact-match 25/25. ARCHITECTURE.
-- Remaining: task 5 (haste breakpoints), task 6 (placement-reasoning action-plan tags, incl. the
-  leeway/Flexible-earliest interval).
+- **Task 5 — haste breakpoints on the timeline: DONE.** The haste curve now marks two reference lines:
+  the existing **+50% GCD cap** (3-stack AB hits the 1.0s floor) and a new **+25% "4× FB"** line — the
+  Frostbolt filler soft cap (≈394 gear rating): at +25% passive haste a 2.5s Frostbolt casts in 2.0s, so
+  4 fill the 8s AB debuff (filler 3→4). Verified vs Icy-Veins TBC theory + the project's Frostbolt/AB-debuff
+  sources (RULES §15, SOURCES). Informational only (the planner never casts Frostbolt) → exact-match 25/25.
+- Remaining: task 6 (placement-reasoning action-plan tags, incl. the leeway/Flexible-earliest interval).
 
 ## Done — gear-haste + haste-trinket correctness (this session, user-directed)
 

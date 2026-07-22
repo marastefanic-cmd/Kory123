@@ -325,3 +325,19 @@ wasted, not a loss) and at best free upside. So the honest, minimal depiction is
 sub-cast ties are NOT drawn** — moving those costs a later alignment or a whole use (§10 is a *tie-break*, not
 free leeway). This is the useful, general form of the user's "some timings have leeway" idea (react to adds,
 dodges, or a proc), and it feeds the action-plan **Flexible/earliest** reasoning tag (§ ROADMAP task 6).
+
+## 15. Haste breakpoints — the GCD floor and the Frostbolt filler soft cap *(marked on the timeline)*
+
+Two haste levels the timeline marks as horizontal reference lines on the total-haste curve (informational —
+neither changes the score):
+- **AB GCD floor = +50% haste** (the orange "GCD cap" line). A 3-stack Arcane Blast is a 1.5s cast; at
+  ×1.5 haste it hits the 1.0s GCD floor, so **above +50% extra haste buys no more AB casts** during that
+  window (it only helps by riding a damage buff for flux, or below the floor). This is why a haste buff
+  stacked onto an already-floored window is worth ~0 (§2, §5, §7).
+- **Frostbolt filler soft cap = +25% *passive* haste** (the cyan "4× FB" line, ≈**394 gear rating** =
+  25 × 15.77). With Improved Frostbolt 5/5 a Frostbolt is a 2.5s cast; at +25% it casts in **2.0s**, so
+  **four Frostbolts exactly fill the 8s Arcane Blast debuff** — the conserve-filler cadence goes from 3
+  Frostbolts to 4 between AB refreshes (Arcane's well-known passive-haste soft cap; verified vs Icy-Veins /
+  general TBC theory and SOURCES' Frostbolt row). Read your **trough** (no-cooldown, gear-only) haste
+  against this line: above it, your filler is a Frostbolt tighter. The planner never casts Frostbolt — this
+  is a gearing/conserve reference, consistent with the layout-first, mana-out-of-the-model design.
