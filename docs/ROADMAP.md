@@ -92,8 +92,13 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
   band** over it; the action-plan Flexible/earliest tag (task 6) reports the same interval. Narrow/sub-cast
   ties are not drawn (§10 tie-break ≠ free leeway). RULES §14. Output-only (timeline + tags) → exact-match
   unaffected.
-- Remaining: finish task 3 (leewayZones + timeline band), task 4 (mana tooltip), task 5 (haste breakpoints),
-  task 6 (placement-reasoning action-plan tags, incl. the leeway/Flexible-earliest interval).
+- **Task 4 — per-window "target mana": DONE.** Each schedule window shows a blue `~N.Nk mana` chip =
+  the AB-spam spend over its burst span (195 base × (1 + 0.75·stacks) + 30% under AP, per-cast real
+  stacks; AoE casts excluded — SOURCES/wowsims). Tooltip gives casts, the ≈100/s casting-regen offset,
+  the net pool-drop to bank, and the gem/Evocation note when it exceeds a pool. Pure read over the
+  existing cast list; **mana never feeds the optimizer.** Display-only → exact-match 25/25. ARCHITECTURE.
+- Remaining: task 5 (haste breakpoints), task 6 (placement-reasoning action-plan tags, incl. the
+  leeway/Flexible-earliest interval).
 
 ## Done — gear-haste + haste-trinket correctness (this session, user-directed)
 

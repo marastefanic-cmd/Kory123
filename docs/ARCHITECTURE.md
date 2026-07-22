@@ -136,8 +136,18 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   types `normal | intermission | burn | aoe`. Consumed by `simulate` and the renderer.
 - `renderTimeline(run)` (~2573): one inline SVG (fluid `width:100%`, no page horizontal scroll) —
   haste step-curve + area fill, dashed GCD-cap line, phase bands (intermission hatched, AoE/burn
-  tinted with ×N badges), buff-uptime lanes with press ticks. `scheduleRows`/`renderSchedule` build
+  tinted with ×N badges), buff-uptime lanes with press ticks, **plus dashed "press anywhere here"
+  leeway bands** (`run.leeway`, from `leewayZones` — RULES §14). `scheduleRows`/`renderSchedule` build
   the window table; `btn-copy` emits the canonical copy-as-text plan the tests compare.
+- `leewayZones(run)` (just before `renderTimeline`): per mobile press, the maximal contiguous interval
+  whose robust score TIES the current placement (scan ±1s until it drops; `repair`-relocation guarded;
+  Cold-Snap-chained IV pairs skipped). Position-independent presses get a wide interval; burst-riders
+  collapse to nothing. Computed once in `render` → `run.leeway`, drawn by the timeline and (task 6) the
+  Flexible/earliest tag. Output-only — not in the golden canonicalization.
+- **Per-window target mana** (`scheduleRows`, ~2939): each window carries `w.mana` = the AB-spam spend
+  over its burst span (`GAME.AB.MANA_FLAT 195 × (1 + 0.75·stacks) + 30% under AP`, per-cast real stacks,
+  AoE casts excluded — SOURCES). Shown as the blue `.manatag` chip with a net-of-regen tooltip. Pure
+  read over the existing cast list; **mana never feeds the optimizer** (layout-first). Display-only.
 
 ## Presets & tests — two baked strips, both the fight table
 `index.html` defines **two** baked preset arrays + `GOLDEN_DEFAULTS` (near the localStorage-preset

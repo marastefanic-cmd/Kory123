@@ -44,7 +44,7 @@ into windows. Two deliverables to choose from (spec both, pick with the user):
   bounded, deterministic rule (worst case = press at X) that captures react-to-proc without RNG in the plan.
 - **(b) Exclude + tips:** drop ATI from the model, add a short "pool procs into IV/AP windows" note.
 
-### 4. Mana tooltip — "target mana here" (deterministic, no engine)
+### 4. Mana tooltip — "target mana here" (deterministic, no engine) — ✅ DONE
 For each cooldown **burst window**, we already know the AB mana cost (195·1.75^stacks) and the cast rate,
 so compute **"enter this window with ≥ N mana to AB-spam it clean"** and show it as a per-window tooltip /
 schedule annotation. That's the conserve *target* the player manages to — no rotation optimizer, no mana

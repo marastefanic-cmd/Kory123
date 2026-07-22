@@ -301,6 +301,7 @@
   td .chip { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 7px; vertical-align: baseline; }
   td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
   td .warntag { color: var(--warn); font-size: 12px; }
+  td .manatag { color: #6ea8ff; font-size: 12px; cursor: help; border-bottom: 1px dotted #6ea8ff66; }
   tr.window-head td { background: var(--panel); color: var(--gold-dim); font-size: 12.5px; }
 
   .assump {
@@ -567,7 +568,7 @@ const GAME = {
   HASTE_RATING_PER_PCT: 15.77,
   GCD_BASE: 1.5,
   GCD_FLOOR: 1.0,
-  AB: { BASE_CAST: 2.5, STACK_CAST_REDUCTION: 1/3, MAX_STACKS: 3, AVG_BASE_DMG: 720, COEF: 2.5/3.5, DEBUFF_DUR: 8 },
+  AB: { BASE_CAST: 2.5, STACK_CAST_REDUCTION: 1/3, MAX_STACKS: 3, AVG_BASE_DMG: 720, COEF: 2.5/3.5, DEBUFF_DUR: 8, MANA_FLAT: 195 },
   AE: { AVG_BASE_DMG: 392, COEF: 0.214 }, // Arcane Explosion r8 (377-407), instant, GCD-bound
   // 1 + (1.5×1.03 − 1)×1.5: base 150% crit, ×1.03 Chaotic Skyfire Diamond (assumed —
   // everyone wears it), bonus portion ×1.5 from 2/2 Spell Power. A constant factor on
@@ -2936,6 +2937,9 @@ function scheduleRows(run) {
     else windows.push({ start: a.t, end: a.t, acts: [a] });
   }
   // window stats from cast data
+  const apT = (optR.actEff && optR.actEff.arcanePower) || best.s.arcanePower || [];
+  const apDur = BUFFS.arcanePower.dur;
+  const underAP = t => apT.some(s => t >= s - 1e-9 && t < s + apDur);
   for (const w of windows) {
     const wEnd = Math.max(...w.acts.map(a => a.t + BUFFS[a.k].dur));
     const casts = optR.casts.filter(c => c.t >= w.start && c.t < wEnd);
@@ -2944,6 +2948,19 @@ function scheduleRows(run) {
       w.minCast = Math.min(...casts.map(c => Math.max(c.cast, c.gcd)));
       w.capped = casts.some(c => c.capped);
     }
+    // Target mana to AB-spam the whole burst span (deterministic, gear-free). AB FlatCost 195,
+    // ×(1 + 0.75·stacks) per Arcane Charge, +30% under Arcane Power — all PowerCost_Pct mods that
+    // SUM (wowsims arcane_blast/arcane_charge/arcane_power.go, SOURCES). Uses each cast's real
+    // stacks (so the opener ramp is honest). AoE casts (Arcane Explosion) are a different spell,
+    // excluded. This is the SPEND ceiling: bank it entering the window and your casting regen only
+    // adds slack — never a feedback into the layout model (mana stays out of the optimizer).
+    let mana = 0, nAB = 0;
+    for (const c of casts) {
+      if (c.ae) continue;
+      mana += GAME.AB.MANA_FLAT * (1 + 0.75 * c.stacks + (underAP(c.t) ? 0.30 : 0));
+      nAB++;
+    }
+    if (nAB) { w.mana = Math.round(mana); w.manaCasts = nAB; w.spanDur = Math.max(1, Math.round(wEnd - w.start)); }
   }
   return windows;
 }
@@ -2954,9 +2971,15 @@ function renderSchedule(run) {
   const tagged = new Set();
   let html = `<table><thead><tr><th>Time</th><th>Use</th><th>Window</th></tr></thead><tbody>`;
   windows.forEach((w, wi) => {
-    const stats = w.peakHaste != null
-      ? `peak haste +${w.peakHaste.toFixed(0)}% · AB ${w.minCast.toFixed(2)}s` + (w.capped ? ` · <span class="warntag">at GCD floor</span>` : "")
+    const regenBack = 100 * (w.spanDur || 0);            // ≈100 mana/s casting, raid-buffed (SOURCES) — a typical-case read, not a gear input
+    const net = Math.max(0, (w.mana || 0) - regenBack);
+    const manaTip = w.mana
+      ? `AB-spamming this ${w.spanDur}s window costs about ${w.mana.toLocaleString()} mana (${w.manaCasts} casts · 195 base × (1 + 0.75·stacks), +30% while Arcane Power is up). Casting regen (≈100/s raid-buffed) returns ~${regenBack.toLocaleString()}, so your pool drops ~${net.toLocaleString()} — enter the window with at least that much banked. If that is more than your mana pool it's a mana-gem / Evocation window (or start it topped off). Manage-to target only — mana never affects the layout.`
       : "";
+    const manaTxt = w.mana ? ` · <span class="manatag" title="${esc(manaTip)}">~${(Math.round(w.mana / 100) / 10).toFixed(1)}k mana</span>` : "";
+    const stats = (w.peakHaste != null
+      ? `peak haste +${w.peakHaste.toFixed(0)}% · AB ${w.minCast.toFixed(2)}s` + (w.capped ? ` · <span class="warntag">at GCD floor</span>` : "")
+      : "") + manaTxt;
     html += `<tr class="window-head"><td class="t">${fmtT(Math.min(...w.acts.map(x => Math.round(x.intent))))}</td><td>Window ${wi + 1}</td><td class="num">${stats}</td></tr>`;
     for (const a of w.acts) {
       const def = BUFFS[a.k];
@@ -2991,7 +3014,7 @@ el("btn-copy").addEventListener("click", () => {
   const ctags = new Map((lastRun.pressRows || []).filter(r => r.tag).map(r => [Math.round(r.t), r.tag]));
   const ctagged = new Set();
   windows.forEach((w, wi) => {
-    out += `\n[Window ${wi + 1} @ ${fmtT(Math.min(...w.acts.map(x => Math.round(x.intent))))}]` + (w.peakHaste != null ? ` peak +${w.peakHaste.toFixed(0)}% haste` : "") + "\n";
+    out += `\n[Window ${wi + 1} @ ${fmtT(Math.min(...w.acts.map(x => Math.round(x.intent))))}]` + (w.peakHaste != null ? ` peak +${w.peakHaste.toFixed(0)}% haste` : "") + (w.mana ? ` · ~${(Math.round(w.mana / 100) / 10).toFixed(1)}k mana to spam` : "") + "\n";
     for (const a of w.acts) {
       const sec = Math.round(a.intent);
       const tg = !ctagged.has(sec) && ctags.get(sec);
