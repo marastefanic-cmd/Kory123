@@ -20,20 +20,51 @@ the best plan at H when you run it in wowsims, or would a plan built for a diffe
 
 The instrument is a **holdout cross-validation matrix** (`tools/xval.mjs`):
 
-1. Seed-draw a random fight: length (1:30–7:00), Bloodlust time, and 2 of {Icon, Serpent-Coil,
-   Skull, MQG}. Deterministic mulberry32 from the seed, so every run is reproducible.
-2. Optimize a plan at passive haste **0/100/200/300/400** (dedup identical plans).
-3. Sim **every plan at every haste** → a 5×5 DPS matrix. Rows = the haste a plan was optimized FOR;
+1. Seed-draw a random fight: length (by fight-CLASS, see below), Bloodlust time, and 2 of {Icon,
+   Serpent-Coil, Skull, MQG}. Deterministic mulberry32 from the seed, so every run is reproducible.
+2. Optimize a plan at each haste in a **kit-specific, breakpoint-straddling haste set** (see
+   "Granularity" below) — NOT a fixed 0/100/200/300/400 grid.
+3. Sim **every plan at every haste** → an N×N DPS matrix. Rows = the haste a plan was optimized FOR;
    columns = the haste it's SIMMED at. The **diagonal** is each plan run at its native haste.
-4. Check two properties:
-   - **(a) Monotonicity** — each row increases left→right (more passive haste ⇒ more DPS). Trivial
-     physics, but a good tripwire for a broken sim setup.
-   - **(b) Diagonal dominance** — in every column, the native (diagonal) plan sims ≥ every plan
-     borrowed from another haste, within sim noise. **This is the real test.** If a borrowed plan
-     ever beats the native one, the model mis-adapted at that haste.
+4. Two readings:
+   - **(a) Haste-monotonicity is INFORMATIONAL, not pass/fail.** "More passive haste ⇒ more DPS" is
+     **not strictly true**: Arcane Blast has ~0.6–1.5% **GCD-floor dead-zone dips** at haste
+     breakpoints (a real TBC mechanic — verified with pure AB spam: h130→h160 dips 2809→2792). The
+     harness reports the worst dip's magnitude; a sub-2% dip is expected physics, not a bug.
+   - **(b) Diagonal dominance is THE model test.** In every column the native (diagonal) plan should
+     sim ≥ every plan borrowed from another haste. A **>1% deficit** means a borrowed plan really
+     out-simmed the native one → the model mis-adapted; triage per §3.
 
-Run it: `CHROMIUM=… RUNNER=…/runner-ap180 EXPORT_BASE=…/export.json node tools/xval.mjs <seed>`.
-It prints the matrix and `(a)/(b) PASS|FAIL` + an `XVAL-DONE … monoOK=… diagOK=…` line.
+Run it: `CHROMIUM=… RUNNER=…/runner-ap180 EXPORT_BASE=…/export.json [KIT=a,b TCLASS=short
+HASTES=0,30,…] node tools/xval.mjs <seed>`. Prints the matrix and an `XVAL-DONE … diagDeficit=…%
+verdict=CLEAN|ok(noise)|CONCERN` line. Verdict tiers: ≤0.3% CLEAN, ≤1.0% within
+AB-breakpoint/pressability noise, >1.0% CONCERN.
+
+### Granularity — the haste set (user-directed)
+The informative haste points are **not** a uniform grid; they **straddle each kit's layout
+breakpoints** (from the RULES §16 ladders), because band interiors give identical plans (trivial
+ties) and the breakpoints are the only place a mis-adaptation shows. Rule: `{0, 400}` endpoints ∪
+`{breakpoint−15, breakpoint+15}` for each merged breakpoint (breakpoints within 40 collapsed —
+plateau-twin wobbles aren't real transitions), then dedup any two points within 20 (keep the
+breakpoint-straddle, drop the round anchor). ~7–11 points per kit:
+| kit | haste set |
+|-----|-----------|
+| mqg+skull | 0,30,70,100,160,190,235,265,295,400 |
+| isc+scb   | 0,20,65,95,140,165,195,215,245,400 |
+| isc+skull | 0,20,40,70,100,130,155,185,230,260,400 |
+| isc+mqg   | 0,20,40,70,110,140,230,260,305,400 |
+| scb+skull | 0,30,60,90,210,240,260,290,400 |
+| scb+mqg   | 0,20,75,105,235,265,400 |
+(Regenerate with the snippet in `scratchpad/haste-sets.json`'s builder if the ladders change.)
+
+### Fight-length classes (user-directed; 2-min = skull/scb/isc, 3-min = IV/AP/Zerk, 5-min = mqg; CS→IV grants IV +1)
+| class | rule | length band (s) |
+|-------|------|------|
+| short | each CD once | 75–115 |
+| medium | 2-min ×2, 3-min ×1 | 150–195 |
+| medlong | both 2- and 3-min ×2 | 205–255 |
+| long | 2-min ×3, 3-min ×2 | 265–375 |
+| xl | 3-min ×3 (mqg ×2) | 385–460 |
 
 ### Sim protocol locked in (do NOT deviate — each cost us a real bug once)
 - **`--mana 100000000` (infinite).** ★ The model is layout-first; mana is excluded by design. A gate
@@ -45,9 +76,13 @@ It prints the matrix and `(a)/(b) PASS|FAIL` + an `XVAL-DONE … monoOK=… diag
 - **`--iter 10000`.** A fixed-length fight's variance is tiny; 10k resolves the ~1–60 DPS signal with
   a ~1–2 DPS mean stdev. Do NOT use 250k (wasteful) — user-directed.
 - The AP-180 patched runner (`runner-ap180`), not stock wowsims (AP cadence quirk, TOOLING ★).
-- **Trinket swap:** the gear export wears Icon+something; `xval.mjs` swaps equipment slots 12/13 to
-  the drawn pair's item IDs (Icon 29370, Serpent-Coil-gem 22044, Skull 32483, MQG 19339) so the
-  on-use effects are available. `genapl.mjs` now emits Skull/MQG schedules. Passive trinket stats
+- **Trinket swap:** the gear export wears Icon+Serpent-Coil; `xval.mjs` swaps equipment array
+  **indices 12/13** (0-indexed) to the drawn pair's item IDs. ★ Those indices are the wowsims proto
+  `ItemSlotTrinket1=12`/`ItemSlotTrinket2=13` — i.e. **in-game trinket slots 13/14** (1-indexed);
+  the array is 0-based and positional, so 12/13 is correct (verified against `common.pb.go`, the
+  export's own equipped trinkets at 12/13, and the on-use auras firing). Item IDs: Icon **29370**,
+  Serpent-Coil Braid **30720** (the equipped trinket; its +225 SP fires when a Mana Emerald, itemId
+  **22044**, is cast — see §4.6), Skull **32483**, MQG **19339**. `genapl.mjs` now emits Skull/MQG schedules. Passive trinket stats
   differ from the model's fixed sp=1387 — this is fine: SP is a flat multiplier that can't change
   layout ranking (RULES §6), and within a column every plan uses the identical character, so it
   cancels. Only `--haste` (which reshapes layouts) is swept, exactly as the model intends.
@@ -130,6 +165,16 @@ exhaustive ground truth above ~h150 for those kits**. **Fix candidate:** a 1s-re
 narrowed window around the grid optimum (not full 1s enumeration — 8M×5^4 is too big), or an analytic
 optimum from the closed-form cast-rate integral. Needed before any high-haste claim for those kits
 can be called "certified" rather than "tool ≥ coarse grid."
+
+### 4.7 Arcane Blast is non-monotone in haste (GCD-floor dead zone — physics, not a bug)
+Verified with pure AB spam (no haste buffs): DPS dips ~0.6–1.5% at haste breakpoints near the GCD
+floor (e.g. h130→h160: 2809→2792 on an 80s fight). This is the real TBC "haste breakpoint" — a
+region where a little more haste shortens the cast but you haven't yet cleared the boundary that
+fits an extra cast, so you're momentarily worse than slightly-less-haste. The model already encodes
+this (GCD floor + the +25% "4-Frostbolt" reference line). **Consequence for the cross-val:** the
+monotonicity property (a) is INFORMATIONAL only, and the diagonal-dominance verdict uses a ~1%
+tolerance so these dips (and adjacent-band model-tie wobble) don't read as false failures. A diagonal
+deficit must exceed ~1% to count as a real mis-adaptation.
 
 ### 4.3 The press-boundary phase blind spot (~0.1%)
 The scorer phase-averages the sub-GCD press-to-boundary offset at steady state (deliberately — it's a
