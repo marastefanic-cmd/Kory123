@@ -653,6 +653,14 @@ transition plateau edge, inside the designed 0.15 pressability slack)*:
       endgame; stable through h300. (Adjacent bands often tie within ~0.01 casts — the "changes"
       at h120/h260/h270 are plateau wobbles between damage-twins, not new physics; the seven bands
       above are the real structure.)
+    **Sim-gated (pre-registered predictions, AP-180 rig, paired seeds, --mana ∞, var0+var10):**
+    ramp-hug@h150 model +0.28% → sim var10 **+0.47%** (var0 −0.08%, the documented fixed-length
+    quantization trap — var10 is the protocol read); back-bridge@h185 model +0.61% → var10
+    **+0.69%**; endgame-Zerk-to-pull@h250 model +0.97% → var10 **+0.96%** (agreement to 0.01%).
+    All three counterintuitive band claims CONFIRMED. Cautionary tale renewed: the first gate run
+    omitted `--mana 100000000` and returned −4% "refutations" — on real mana an 80s h150 full burn
+    is dry by 0:25 (34 ABs instead of 64) and the arms OOM differently. The model is layout-first
+    by design; sim gates MUST run infinite mana or they measure mana, not layout.
   - **Every 2-trinket kit certified (user-directed; `brute-grid --pair --tool`).** All six pairs
     from {Icon, Serpent-Coil, Skull, MQG} — including the shared-lockout pairs — full-grid-bruted
     at h∈{0, 40, 160, 240} (T=80, Lust@20) against the real optimizer: **20/20 PASS, zero misses.**

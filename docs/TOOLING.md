@@ -48,7 +48,10 @@ was all search, not scoring). Don't conflate "the count is right" with "the sear
   Keys: `IV AP CS Zerk BL Icon Gem`. Supports `_intermission:[a,z]` / `_intermissions:[[a,z],…]` (AB
   gated off during downtime) and `_prestack:N` (prepull AB casts to seed the opener stack). Spell/item
   IDs in the file header. **This is the INFINITE-mana harness** (AB-spam forever) — pair it with
-  `--mana 900000` for layout work.
+  `--mana 900000` for layout work. **★ Forgetting `--mana` silently turns a layout gate into a mana
+  test** (burned us in the band-gate audit: −4% phantom "refutations"; at h150 an 80s burn is dry by
+  0:25, 34 ABs instead of 64, and A/B arms OOM differently). If a layout A/B disagrees with the model
+  by >1%, check `--mana` FIRST.
 - **`tools/genconserve.mjs`** (durable): the **FINITE-mana / conserve** harness (for the real gearing
   stat weights, `docs/EP.md`). Same cooldown-schedule interface as `genapl`, but the *filler* is
   mana-managed: **Arcane Blast while burning** (Bloodlust/Arcane-Power/Icy-Veins aura up, or a
