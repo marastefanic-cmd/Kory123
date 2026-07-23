@@ -126,15 +126,42 @@ plan beat native, by X%). **Trust a deficit by fight length (§3.0), not by mono
 < ~1% = UNCONFIRMED (plan-to-plan boundary quantization); long/XL, or a deficit that grows with
 length, = REAL. A confirmed real deficit graduates to §4.5.
 
-### 2.1 Campaign results  ← paste `node tools/xval-collect.mjs tools/xval-results` output here
-_Being gathered (`tools/xval-campaign.sh`, 2-concurrent). Live pattern so far: every table
-monoDip = 0.00% (cold open holding); short/medium fights show sub-1% deficits (0.16–0.77%,
-UNCONFIRMED per §3.0); the first medlong (T=220) came back CLEAN — consistent with deficits shrinking
-as fights lengthen. Final table + per-kit rollup drop in here when the campaign + boss runs finish._
+### 2.1 Campaign results — LIVE / PARTIAL (regenerate with `node tools/xval-collect.mjs tools/xval-results`)
+**Status: 9/30 fight-class tables committed to `tools/xval-results/` + boss runs pending.** Completed
+tables are flushed to that durable dir as they land (the scratchpad is ephemeral), so this ledger is
+never ahead of what's on disk. Headline: **monoDip = 0.00% on every table** (the §1(a) cold-open
+invariant holds — measurement is correct). All diagonal deficits are **sub-1%**. The two completed
+kits show **different** deficit signatures — do NOT summarize them as one "shrinks with length" trend:
 
-| kit | class | T | band | monoDip | diag | worst-cell | trust |
-|-----|-------|---|------|---------|------|-----------|-------|
-| _(collector fills)_ | | | | | | | |
+| kit | class | T | band | monoDip | diag deficit | deficit cell (borrowed plan > native) |
+|-----|-------|---|------|---------|--------------|----------------------------------------|
+| mqg+skull | short   | 110 | short   | 0.00% | 0.22% | @sim70: plan@100 > native@70 |
+| mqg+skull | medium  | 178 | medium  | 0.00% | 0.16% | @sim30: plan@70 > native@30 |
+| mqg+skull | medlong | 226 | medlong | 0.00% | 0.19% | @sim70: plan@0 > native@70 |
+| mqg+skull | long    | 283 | long    | 0.00% | 0.38% | @sim70: plan@100 > native@70 |
+| mqg+skull | xl      | 395 | xl      | 0.00% | 0.32% | @sim30: plan@70 > native@30 |
+| isc+scb   | short   | 98  | short   | 0.00% | 0.55% | @sim140: plan@245 > native@140 |
+| isc+scb   | medium  | 184 | medium  | 0.00% | 0.77% | @sim20: plan@0 > native@20 |
+| isc+scb   | medlong | 220 | medlong | 0.00% | **CLEAN** | — |
+| isc+scb   | long    | 300 | long    | 0.00% | 0.05% | @sim20: plan@0 > native@20 |
+
+**Two distinct signatures (the reason this matters):**
+- **mqg+skull → the §4.1 low-haste basin, sim-confirmed.** EVERY deficit — at all five lengths — lands
+  at **sim-haste 30 or 70**, won by a plan built for a *neighboring higher* haste. That is exactly the
+  documented **§4.1 "h≈40 straddle-basin slack"** (30–70 rating, the IV-part-way-into-Lust basin no
+  `basinHop` anchor reaches). It does **NOT** shrink with fight length (long 0.38%, xl 0.32%), which
+  *rules out* pure boundary quantization and *rules in* §4.1: the tool's h30–70 plan is genuinely a
+  hair (~0.2–0.4% DPS) under optimal, and a neighbor-haste plan happens to sit closer to the true
+  optimum there. **This is not a new finding — it's the sim end-to-end confirmation of a known,
+  priced, fix-candidate'd model slack.** Next-pass triage: confirm the winning borrowed plan differs
+  from native only in the IV-into-Lust straddle; if so, §4.1's "half-into-Lust anchor" fix addresses it.
+- **isc+scb → mostly clean.** medlong CLEAN, long 0.05% (one cast at h20, ≈ noise). The short/medium
+  deficits (0.55% @h140, 0.77% @h20) are on short fights and inside the plan-to-plan quantization band
+  (§3.0) — UNCONFIRMED; the h140 short one (a plan built for h245 winning) is the odd one out and gets
+  explicit triage next pass.
+
+_Remaining: isc+scb xl, the four other kits (isc+skull started — short 0.43%), and the boss shapes.
+This table + a per-kit rollup finalize when the campaign completes; the raw matrices are the record._
 
 ### 2.2 Earlier COARSE 5-point runs (0/100/200/300/400) — superseded, kept only as sanity context
 Pre-cold-open-fix, pre-breakpoint-grid, loose "no >6 DPS deficit" labeling. NOT authoritative (they
@@ -190,7 +217,8 @@ plan. Before believing it's a model bug, rule out the usual suspects in this ord
 ## 4. Findings & open items
 
 **§4.6 and §4.7 are harness bugs FOUND + FIXED this pass** (scb equip; the prepull cast-loss — the big
-one). §4.5 collects confirmed model mis-adaptations from the campaign (none yet). §4.1–4.4 are
+one). §4.5 collects confirmed NEW model mis-adaptations from the campaign (none yet — the one
+persistent deficit found so far is the known §4.1 basin, sim-confirmed, not new). §4.1–4.4 are
 pre-existing "the tool sits a hair under the true optimum / we lack ground truth" gaps — known,
 priced, model-level, deferred. §4.8 is the Phase-7 Ashtongue defer.
 
@@ -203,6 +231,11 @@ seconds, cd-ticks, kill, ramp exits; this basin is none of those). Inside the 0.
 = monotonicity EPS, so it never trips a gate, but it's the one place the search is demonstrably
 sub-optimal. **Fix candidate:** add a "half-into-Lust" straddle anchor for IV (Lust.start +
 {5,10,15}) to basinHop's anchor set, gated on it not regressing the 25 goldens. Cheap to try.
+**Sim-confirmed end-to-end (Phase-6 campaign, §2.1):** the `mqg+skull` cross-val shows a diagonal
+deficit at **every** fight length, always at **sim-haste 30–70**, won by a neighbor-higher-haste plan
+— worth **~0.2–0.4% DPS**, and length-independent (so not boundary quantization). That is this basin
+manifesting in the real sim, not just in the eff-cast count vs the brute grid. It raises the priority
+of the half-into-Lust anchor fix (still deferred to a fix pass; this pass only gathers).
 
 ### 4.2 The 5s-grid isn't converged at high haste (no ground truth there)
 In the three kits where the SP trinket is free/absent (scb+skull, scb+mqg, skull+mqg), the tool sims
@@ -230,10 +263,15 @@ finite-mana model was explicitly rejected before) and needs its own design, not 
 _A CONFIRMED diagonal deficit — one that survives the §3 triage AND is trustworthy by length (§3.0:
 long/XL, or persists/grows with fight length; not a sub-1% short-fight quantization artifact) — goes
 here with: seed, fight, kit, the sim-haste it fails at, the borrowed plan that beat native, the
-misplaced track, and the RULES §16 band edge the model put on the wrong side._ **Nothing confirmed
-yet.** Campaign in progress; the deficits seen so far are sub-1% and shrink with fight length (short/
-medium 0.16–0.77% → long 0.05–0.38%), i.e. consistent with boundary quantization, not model error —
-but that is a provisional read, to be confirmed by the collector rollup + adversarial pass.
+misplaced track, and the RULES §16 band edge the model put on the wrong side._ **Nothing NEW confirmed
+yet, but the campaign has sim-confirmed an EXISTING finding:** every `mqg+skull` deficit (all five
+lengths, §2.1) localizes to **sim-haste 30–70** with a neighbor-higher-haste plan winning, and does
+**not** shrink with length (long 0.38%, xl 0.32%) — which is the end-to-end sim signature of the
+already-documented **§4.1 low-haste straddle basin**, not a new mis-adaptation. Do NOT count it here as
+a fresh Phase-6 finding; its home and fix candidate are §4.1. (Correction to an earlier provisional
+read: the deficits do NOT uniformly "shrink with length" — that held for `isc+scb` but not for
+`mqg+skull`, whose §4.1-basin deficit is length-independent.) The `isc+scb` short/medium deficits
+(0.55% @h140, 0.77% @h20) remain sub-1% short-fight, UNCONFIRMED (§3.0) pending triage.
 
 ### 4.6 Harness bug (FIXED) — scb needs the Serpent-Coil TRINKET equipped, not the Mana Emerald
 The cross-val's first scb runs crashed the sim: `SIM ERROR: No item with id: 22044`. Root cause was
