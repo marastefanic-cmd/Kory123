@@ -34,7 +34,11 @@ const fmtT = x => `${Math.floor(x/60)}:${String(x%60).padStart(2,'0')}`;
 console.log(`seed=${SEED}  fight=${fmtT(T)} (${T}s)  Lust@${fmtT(LUST)}  trinkets=${PAIR.join('+')}`);
 
 // trinket → {itemId, genapl key}
-const TMETA = { isc: { item: 29370, key: 'Icon' }, scb: { item: 22044, key: 'Gem' }, skull: { item: 32483, key: 'Skull' }, mqg: { item: 19339, key: 'MQG' } };
+// item = the EQUIPPABLE item that provides the on-use (goes in a trinket slot); key = the genapl
+// action that FIRES it. scb is the subtle one: the equipped item is Serpent-Coil Braid (30720, a
+// trinket), but its +225 SP "Mana Surge" is granted by CASTING a Mana Emerald (itemId 22044, what
+// genapl's "Gem" fires) while SCB is worn — so equip 30720, fire 22044.
+const TMETA = { isc: { item: 29370, key: 'Icon' }, scb: { item: 30720, key: 'Gem' }, skull: { item: 32483, key: 'Skull' }, mqg: { item: 19339, key: 'MQG' } };
 // build the trinket-swapped export
 const exp = JSON.parse(fs.readFileSync(EXPORT_BASE, 'utf8'));
 exp.player.equipment.items[12] = { id: TMETA[PAIR[0]].item };
