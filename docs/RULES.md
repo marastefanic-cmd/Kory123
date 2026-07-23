@@ -551,6 +551,20 @@ transition plateau edge, inside the designed 0.15 pressability slack)*:
   rides it — the fight is fast from 0:10 to 1:00 instead of only inside Lust. Zerk∩Lust = 0: the user's
   predicted second transition, except the damage leaves with it. **Sim-verified at h160: portable beats
   cluster-on-Lust by +1.2% var0 / +0.6% var10** — a real, novel layout class, not a model artifact.
+  - **The window is a BRIDGE, and it has a mirror twin (user-constructed, full-grid-certified).** The
+    payoff cluster straddles a Lust edge: 10s on the IV×Zerk stack (beats Lust) + the remainder on Lust
+    (beats bare IV) — expressible at Lust's FRONT edge (cluster@~5–10 off IV₁+Zerk, then into Lust) or
+    its BACK edge (Icon@50, gem/AP@55, IV₂+Zerk@60 — the user's construction). The two are
+    second-for-second identical in multiplier profile and TIE EXACTLY in the model at every haste
+    (sim: dead tie var0, front +0.1% var10 — the usual banking tilt; press the early one on an
+    uncertain kill).
+  - **Full-grid certification** (`tools/brute-grid.mjs`: the complete 5s grid, ~7.9M cells/haste, no
+    staging — runs in <1 min): at **h220 the bridge twins ARE the exact global optimum** (83.381,
+    nothing above them). At **h160 the true optimum hugs the ramp exit** — cluster@5, one more fast
+    cast, **+0.026** over both bridges — a placement the staged brute AND the tool both missed (a
+    descent valley between 10 and 5; inside the 0.15 pressability slack, recorded as known search
+    headroom). Lesson: staged/local refinement can sit 0.02–0.03 casts off the enumerated optimum;
+    the full grid is cheap at this fight size — use it when exactness matters.
 - **~225+ (just before Lust self-floors at 243): the cluster returns to Lust** (its window value catches
   the self-made one as it nears the floor — pure flux, no help needed), Zerk retires to the pull ramp
   (the last uncapped casts), IV keeps bracketing. Every step is the same three laws composing: flux, the
