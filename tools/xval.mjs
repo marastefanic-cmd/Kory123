@@ -1,12 +1,19 @@
 // Holdout cross-validation of the planner's haste-adaptation, end to end from one seed.
 //   node tools/xval.mjs <seed>
-// (1) seed-draws a random fight (length, Lust time, 2 trinkets); (2) optimizes a plan at passive
-// haste 0/100/200/300/400 (dedup identical); (3) sims every plan at every haste (∞ mana, var10,
-// paired seed = CRN); (4) prints the DPS matrix and checks the two properties:
-//   (a) monotonicity — each plan sims higher as passive haste rises (rows increasing);
-//   (b) diagonal dominance — at each haste, the plan optimized FOR that haste sims ≥ every plan
-//       borrowed from another haste (native plan wins its own column, within sim noise EPS).
-// Env: CHROMIUM, RUNNER (default scratchpad runner-ap180), EXPORT_BASE (a gear export to trinket-swap).
+// (1) seed-draws a random fight (length by TCLASS, Lust time, 2 trinkets — or KIT/BOSS overrides);
+// (2) optimizes a plan at each passive haste in HASTES (the kit's breakpoint-straddle set — default
+// the coarse 0/100/200/300/400 if unset; dedup identical); (3) sims every plan at every haste
+// (COLD OPEN — _prestack:0, the model never prepulls; ∞ mana; var10; paired seed = CRN); (4) prints
+// the DPS matrix and reports two readings:
+//   (a) haste-monotonicity — a REGRESSION CANARY. With ∞ mana more haste never sims a fixed plan
+//       worse, so every row must be non-decreasing; monoDip must be ~0.00% (cold open, PHASE6 §4.7).
+//       A nonzero dip ⇒ a prepull crept back in or a new harness bug — stop and fix, don't gather.
+//   (b) diagonal dominance — the model test. At each haste, does the plan optimized FOR that haste
+//       sim ≥ every plan borrowed from another haste? CLEAN = native wins every column; DEFICIT X% =
+//       a borrowed plan won somewhere. NO tolerance is applied — weigh a deficit by fight length
+//       (short/medium sub-1% = plan-to-plan boundary quantization, unconfirmed; long/XL = real).
+// Env: CHROMIUM, RUNNER (default scratchpad runner-ap180), EXPORT_BASE (a gear export to trinket-swap),
+//      KIT=a,b, TCLASS=short|…|xl, HASTES=…, BOSS="Lady Vashj"|…, ITER, SCRATCH.
 import { createRequire } from 'module';
 import { execFileSync } from 'child_process';
 import fs from 'fs';
@@ -126,7 +133,8 @@ for (const ph of HASTES) console.log(String(ph).padEnd(8) + ' ' + HASTES.map(sh 
 
 // DATA-GATHERING pass — report raw observations, draw NO conclusions:
 // (a) haste-monotonicity: the worst "more haste sims LOWER" dip across any fixed plan's row.
-//     Reported raw; NOT interpreted (cause under review — PHASE6 §4.7).
+//     REGRESSION CANARY — must be ~0 since the cold-open fix (PHASE6 §4.7 RESOLVED); a nonzero dip
+//     means a prepull crept back in or a new harness bug. Reported raw; do not soften.
 // (b) diagonal dominance: did ANY borrowed plan out-sim the native plan in its own column?
 //     CLEAN = no (native is the max in every column). DEFICIT = yes, by diagWorst% at the named cell.
 //     No tolerance applied — a deficit is a deficit; what (if anything) to do about it is NEXT pass.
