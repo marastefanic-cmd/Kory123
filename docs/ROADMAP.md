@@ -294,14 +294,20 @@ TOOLING). Findings, all sim-measured on the fixed rig:
   crunches, Copy works under load. The remaining slowness axis is the **optimizer's own runtime**
   (minutes on 6-intermission fights, basinHop dominates — a known backlog item; the page now stays
   fully interactive throughout).
-  **Sensitivity panel reworked (user-directed).** The "if the kill runs longer" lines are now read
-  off the ACTUAL plan, not the from-zero cadence — two honest event kinds per cooldown: a clipped
-  final window RUNS FULL at `lastUse+dur`, and a genuinely NEW use fits at `lastUse+cd+dur` (with
-  the press moment named). The old "a 4th Icy Veins fits at 6:40" was misleading when the plan
-  already pressed that use clipped (Vashj). The Cold-Snap note's end-chain branch no longer claims
-  "doing real work" for a kill-clipped chain — it now always reads "spent on the kill: press it"
-  (the "real work" wording is reserved for a genuine extra mid-fight window). The banks-on line is
-  unchanged (user-approved).
+  **Sensitivity panel reworked twice (user-directed, iterating live).** First pass made the
+  "kill runs longer" lines plan-anchored ("the final IV runs its full 20s" instead of the
+  misleading "a 4th fits") — user: still obvious; what they want is **the next breakpoint where
+  the way you press buttons CHANGES**. Now: arithmetic only NOMINATES candidate lengths (plan-
+  anchored un-clip/new-use thresholds ∪ from-zero cadence unlocks — the latter catch the "2nd AP
+  fits at 3:15 if AP1 moves earlier" class); the aux worker RE-OPTIMIZES at each candidate (same
+  start count as the main run, so plans are search-comparable) and the panel reports the actual
+  **plan diff**, filtered for structure: new presses and pre-terminal moves ≥3s ("the plan
+  restructures: Skull moves 0:00 → 0:20; a 2nd Arcane Power fits (3:00)"); terminal-burst
+  slide-with-the-kill is suppressed as expected. No structural change within +60s ⇒ says the plan
+  is press-stable outright. The banks-on line is unchanged (user-approved). **The Cold Snap
+  commentary note is REMOVED entirely** (panel + copy text; user decision — the schedule's
+  "Cold Snap → IV" rows carry the action; the engine's materiality logic that DECIDES the spend
+  is untouched).
 - **`basinHop` ramp-exit anchors landed** (the backlog headroom item): h160-class ramp-exit-hug basin
   CLOSED; **Kael'thas moved** to a strictly better plan (+354 robust, `IV@106/126/380`,
   `AP@120/380`, cluster mirrors) and was re-locked. h40/h50 straddle residuals (≤0.033, inside

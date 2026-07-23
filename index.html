@@ -3350,7 +3350,7 @@ el("btn-copy").addEventListener("click", () => {
       out += `  ${fmtT(a.sec)}  ${a.coldSnap ? "Cold Snap -> " : ""}${BUFFS[a.k].name}${tg ? `  (${tg})` : ""}\n`;
     }
   });
-  if (lastRun.best.csNote?.held) out += `\nCold Snap held in pocket — natural Icy Veins cooldowns cover this fight.\n`;
+  // (Cold Snap commentary removed from the copy text too — user decision; the CS→IV rows carry it)
   const done = ok => {
     el("btn-copy").textContent = ok ? "Copied" : "Copy failed — select the table instead";
     setTimeout(() => el("btn-copy").textContent = "Copy as text", ok ? 1200 : 2600);
@@ -3406,62 +3406,81 @@ function renderSensitivity(run) {
   const th = unlockThresholds(cfg);
   const below = th.filter(x => x.T <= cfg.T + 1e-6 && cfg.T - x.T <= 20);
   const lines = [];
-  // ——— what changes if the kill runs LONGER — read off the ACTUAL plan (anchored on the real
-  // last press), not the from-zero cadence. The old "a 4th Icy Veins fits at 6:40" line was
-  // misleading whenever the plan ALREADY pressed that use clipped (Vashj's CS-IV at 6:20: the
-  // 4th IV exists — 6:40 only lets it run full). Two honest event kinds, per cooldown:
-  //   · a clipped final window RUNS FULL at lastUse+dur
-  //   · a genuinely NEW use fits at lastUse+cd+dur (and the press moment is lastUse+cd)
-  const events = [];
+  // ——— "when does the way you press buttons change?" (user-directed). Arithmetic only NOMINATES
+  // candidate kill lengths where the plan could restructure (a clipped final window un-clips at
+  // lastUse+dur; a genuinely new use fits at lastUse+cd+dur — un-clipping alone was reported
+  // before and the user rightly called it obvious). Whether the plan actually changes there is
+  // decided by RE-OPTIMIZING at the candidate length in the aux worker and DIFFING the plans.
+  // The expected effects are filtered out (the terminal burst always re-anchors to the kill, so
+  // moves of presses in the last ~45s are "the burst slides with the kill", not news); what gets
+  // reported is structural — a new press appearing, or an earlier press moving ≥3s. The first
+  // candidate with a structural change is shown; none within +60s ⇒ the plan is press-stable
+  // against kill drift, which is worth saying outright.
+  // Two nomination sources, verified by the probe either way: the plan-anchored thresholds
+  // (un-clip at lastUse+dur; new use at lastUse+cd+dur — the LATEST a change can land given the
+  // presses as planned), and the from-zero cadence unlocks (`th` — the EARLIEST a restructure
+  // could fit an extra use by also moving earlier presses; the "2nd AP at 3:15 if AP1 goes
+  // earlier" class the plan-anchored view can't see).
+  const candTs = th.filter(x => x.T > cfg.T + 1e-6).map(x => x.T);
   for (const key in run.best.s) {
     if (cfg.fixed[key] || !run.best.s[key].length || BUFFS[key].kind === "proc") continue;
     const def = BUFFS[key];
     const uses = run.best.s[key].map(t => Math.round(t)).sort((a, b) => a - b);
     const last = uses[uses.length - 1];
     const clipEnd = last + def.dur;
-    if (clipEnd > cfg.T + 1e-6) {
-      events.push({ T: clipEnd, html: `the final ${def.name} runs its full ${def.dur}s instead of being cut at the kill` });
-    } else if (uses.length < maxUses(key, cfg)) {
-      const nextPress = last + def.cd;
-      const T2 = nextPress + def.dur;
-      if (T2 > cfg.T + 1e-6) events.push({ T: T2, html: `a ${ordinal(uses.length + 1)} ${def.name} fits — press it as it lights up at ${fmtT(nextPress)}` });
-    }
+    if (clipEnd > cfg.T + 1e-6) candTs.push(clipEnd);
+    else if (uses.length < maxUses(key, cfg)) candTs.push(last + def.cd + def.dur);
   }
-  events.sort((a, b) => a.T - b.T);
-  const near = events.filter(e => e.T - cfg.T <= 60).slice(0, 2);
-  for (const [gi, e] of near.entries()) {
-    lines.push(`<div class="up">If the kill runs past <b>${fmtT(e.T)}</b> (+${Math.round(e.T - cfg.T)}s), ${e.html}.${gi === near.length - 1 ? '<span id="sense-gain"></span>' : ""}</div>`);
-  }
+  const probes = [...new Set(candTs.map(Math.round))].filter(t => t > cfg.T && t - cfg.T <= 60).sort((a, b) => a - b).slice(0, 2);
+  if (probes.length) lines.push(`<div class="up" id="sense-next">Checking in the background whether a longer kill changes the plan…</div>`);
   if (below.length) {
     const b = below[below.length - 1];
     const grp = below.filter(x => Math.abs(x.T - b.T) < 1e-6);
     lines.push(`<div class="down">This plan banks on the fight reaching <b>${fmtT(b.T)}</b> for ${grp.map(g => `the ${ordinal(g.uses)} ${g.name}`).join(" and ")} — if the kill might be faster, re-run with the shorter time.</div>`);
   }
   if (run.best.squeakNote) lines.push(`<div class="down">A razor-timed variant sims +${run.best.squeakNote.delta} damage at exactly ${fmtT(run.cfg.T)} by squeezing one last cast under the wire — it only pays if the boss dies right on schedule, so the planner keeps the pressable line.</div>`);
-  const cs = run.best.csNote;
-  if (cs) {
-    if (cs.held) lines.push(`<div class="cs">Cold Snap held in pocket: the natural Icy Veins cooldowns cover this fight — burning it ${cs.delta <= 0 ? "is actually worse here" : `buys only +${cs.delta} damage (under one cast)`}. Keep it for a wipe recovery or a faster kill next week.</div>`);
-    else if (cs.unused) lines.push(`<div class="cs">Cold Snap not needed at this fight length — the natural Icy Veins cooldown covers every window.</div>`);
-    else if (cs.endChain) lines.push(`<div class="cs">Cold Snap spent on the kill: the reset squeezes one last clipped Icy Veins in before the fight ends${cs.delta > 0 ? ` (+${cs.delta} damage)` : ""}. It's ready and the fight is ending — press it.</div>`);
-    else lines.push(`<div class="cs">Cold Snap is doing real work here: it buys a whole extra mid-fight Icy Veins window — without it the best plan loses <b>${cs.delta}</b> damage (≈ ${(cs.delta / cs.castVal).toFixed(1)} casts).</div>`);
-  }
+  // (The Cold Snap commentary note is REMOVED — user decision: the schedule's "Cold Snap → Icy
+  // Veins" rows are the actionable part, and "Cold Snap did something" is almost always true.
+  // The engine's csNote/materiality logic stays — it decides whether CS is SPENT, which shapes
+  // the plan itself.)
   host.hidden = !lines.length;
   host.innerHTML = lines.join("");
-  // quantify the upside with a real optimization at T2 — in the AUX WORKER, never in-page:
-  // this used to call optimizeAsync on the main thread after every run, which kept the page
-  // frozen for minutes on long fights while the results were already showing (Copy dead, etc.)
-  if (near.length) {
+  // Probe the candidates with REAL optimizations at T2 — in the AUX WORKER, never in-page (this
+  // used to run on the main thread after every render, freezing the page for minutes). Same
+  // start count as the main run so the two plans are search-comparable (a sloppier aux search
+  // would show phantom "restructures" that are just polish noise).
+  if (probes.length) {
     const tok = ++renderSensitivity.seq; // stale-result guard: a newer run wins
-    const t2 = Math.round(near[near.length - 1].T);
-    const cfg2 = { ...cfg, T: t2, fixed: { ...cfg.fixed } };
     const curGain = run.optR.robust / run.baseline.robust - 1;
-    runOptimizeAux(cfg2, 10).then(b2 => {
-      if (!b2 || tok !== renderSensitivity.seq) return;
-      const base2 = simulate({}, cfg2).robust;
-      const d = (b2.val / base2 - 1 - curGain) * 100;
-      const span = el("sense-gain");
-      if (span && d > 0.15) span.textContent = ` (≈ +${d.toFixed(1)}% more overlay gain at that length)`;
-    });
+    const eff1 = {};
+    for (const k in run.optR.actEff) eff1[k] = run.optR.actEff[k].map(x => Math.floor(x + 1e-9));
+    (async () => {
+      for (const t2 of probes) {
+        const cfg2 = { ...cfg, T: t2, fixed: { ...cfg.fixed } };
+        const b2 = await runOptimizeAux(cfg2, 14);
+        if (!b2 || tok !== renderSensitivity.seq) return;
+        const r2 = simulate(b2.s, cfg2, true);
+        const items = [];
+        for (const key of new Set([...Object.keys(eff1), ...Object.keys(r2.actEff)])) {
+          if (cfg.fixed[key] || !BUFFS[key] || BUFFS[key].kind === "proc") continue;
+          const a = eff1[key] || [], b = (r2.actEff[key] || []).map(x => Math.floor(x + 1e-9));
+          const name = BUFFS[key].name;
+          if (b.length > a.length) { items.push(`a ${ordinal(b.length)} ${name} fits (${fmtT(b[b.length - 1])})`); continue; }
+          for (let i = 0; i < Math.min(a.length, b.length); i++) {
+            if (Math.abs(b[i] - a[i]) >= 3 && a[i] < cfg.T - 45) items.push(`${name} moves ${fmtT(a[i])} → ${fmtT(b[i])}`);
+          }
+        }
+        const span = el("sense-next");
+        if (!span) return;
+        if (items.length) {
+          const d = (b2.val / simulate({}, cfg2).robust - 1 - curGain) * 100;
+          span.innerHTML = `If the kill runs past <b>${fmtT(t2)}</b> (+${Math.round(t2 - cfg.T)}s), the plan restructures: ${items.slice(0, 3).join("; ")}${items.length > 3 ? "; …" : ""}.${d > 0.15 ? ` (≈ +${d.toFixed(1)}% more overlay gain at that length)` : ""}`;
+          return;
+        }
+      }
+      const span = el("sense-next");
+      if (span && tok === renderSensitivity.seq) span.innerHTML = `Kill running long changes nothing structural within +60s — the final windows just run fuller. Press the plan as written.`;
+    })();
   }
 }
 function renderCapSheet(cfg) {
