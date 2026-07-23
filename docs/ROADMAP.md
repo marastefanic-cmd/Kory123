@@ -317,7 +317,16 @@ TOOLING). Findings, all sim-measured on the fixed rig:
   corrupt them; both pooled and sequential paths share the cache, so tests speed up too).
   Container (2 pool workers): KT 285.7s → 201s (pool) → **134.4s** (pool+cache); scales with
   cores (~45–60s expected on a typical 8-core). Remaining depth if ever needed: parallelizing
-  polish's inner shift ladder; a simulate()-level memo.
+  polish's inner shift ladder; a simulate()-level memo. The pool commit is suite-certified
+  (25/25, byte-identical goldens).
+- **Honest progress display (user: "at least make the loading bar accurate").** onProgress now
+  carries a **stage label**; the engine emits real within-stage fractions banded by the measured
+  cost profile (Trying N starts (k/N) → Snapping to whole seconds → Basin-hop (main sweep, real
+  sweep fraction) → Grooming → Re-hop & canonicalize (round r, halving bands)), and the
+  **No-Cold-Snap comparison** — a genuine second full run — reports as its own labeled pass with
+  an honestly RESTARTED bar (the UI resets its monotone clamp on a label change) instead of
+  stalling near-done for its whole duration. The stage label rides the Run button's text.
+  Display-only; the exact-match harness passes a no-op callback.
 - **`basinHop` ramp-exit anchors landed** (the backlog headroom item): h160-class ramp-exit-hug basin
   CLOSED; **Kael'thas moved** to a strictly better plan (+354 robust, `IV@106/126/380`,
   `AP@120/380`, cluster mirrors) and was re-locked. h40/h50 straddle residuals (≤0.033, inside

@@ -1352,16 +1352,21 @@ function optimizeAsync(cfg, starts, onProgress) {
     (async () => {
       // ——— seed phase: each seed's polish is independent, so the pool runs them all at once
       // (order of `results` is by seed index either way — identical to the sequential loop)
+      // ——— honest progress (user-directed): labeled stages with real within-stage fractions,
+      // banded by the MEASURED cost profile (seeds ~4%, hop dominates, fixpoint rounds mostly
+      // cache-served). The label rides the progress callback; the Cold-Snap comparison reports
+      // as its own labeled pass with a restarted bar — truthful, instead of a bar stalled at 97%
+      // for a second run as long as the first.
       if (POOL) {
         const rs = await poolMap(seeds, s => ({ kind: "polish", cfg, s }),
-          (d, t) => onProgress(d / (seeds.length + 1)));
+          (d, t) => onProgress(0.10 * d / t, `Trying ${t} starts (${d}/${t})`));
         for (const p of rs) { results.push(p); if (!best || p.val > best.val) best = p; }
       } else {
         for (let si = 0; si < seeds.length; si++) {
           const r = polish(seeds[si], cfg);
           results.push(r);
           if (!best || r.val > best.val) best = r;
-          onProgress((si + 1) / (seeds.length + 1));
+          onProgress(0.10 * (si + 1) / seeds.length, `Trying ${seeds.length} starts (${si + 1}/${seeds.length})`);
           await new Promise(rr => setTimeout(rr, 0)); // per-seed yield (page fallback keeps breathing)
         }
       }
@@ -1401,30 +1406,28 @@ function optimizeAsync(cfg, starts, onProgress) {
             const snapped = repair(Object.fromEntries(Object.entries(top[ci].s).map(([k, ts]) => [k, ts.map(Math.round)])), cfg);
             const p = polish(snapped, cfg);
             if (!best || p.val > best.val) best = p;
-            onProgress((seeds.length + 0.5 * (ci + 1) / top.length) / (seeds.length + 1));
+            onProgress(0.10 + 0.04 * (ci + 1) / top.length, "Snapping to whole seconds");
             await tick();
           }
         }
-        // progress past the top-6 snap: basinHop reports real fractions (clamped monotone across
-        // its fixpoint rounds); the tie-break passes after it have no meaningful total, so breathe()
-        // creeps the bar asymptotically toward done while yielding the thread at loop boundaries.
-        let prog = 0.5;
+        // Stage-banded progress from here on: `stage` names the pass and its bar band; basinHop
+        // calls report REAL within-sweep fractions into the band, and breathe() creeps toward the
+        // band's top for the passes with no meaningful total (tie-breaks/normalizers). prog is
+        // monotone within the whole main run.
+        let prog = 0.14;
+        const stage = { lo: 0.14, hi: 0.72, label: "Basin-hop (main sweep)" };
+        const setStage = (lo, hi, label) => { stage.lo = lo; stage.hi = hi; stage.label = label; prog = Math.max(prog, lo); onProgress(prog, label); };
+        const stageFrac = f => { prog = Math.max(prog, stage.lo + (stage.hi - stage.lo) * Math.min(1, f)); onProgress(prog, stage.label); };
         const breathe = async () => {
           if (!(await tick())) return; // throttled — no yield, no bar update
-          prog = Math.min(0.97, prog + (0.97 - prog) * 0.04);
-          onProgress((seeds.length + prog) / (seeds.length + 1));
+          prog = Math.min(stage.hi, prog + (stage.hi - prog) * 0.04);
+          onProgress(prog, stage.label);
         };
-        {
-          let hf = 0;
-          best = await basinHop(best, cfg, async f => {
-            hf = Math.max(hf, Math.min(1, f));
-            prog = Math.max(prog, 0.5 + 0.25 * hf);
-            onProgress((seeds.length + prog) / (seeds.length + 1));
-            await tick();
-          });
-        }
+        setStage(0.14, 0.72, "Basin-hop (main sweep)");
+        best = await basinHop(best, cfg, async f => { stageFrac(f); await tick(); });
         // ——— tie-breaks among damage-equal plans (never lose damage: v ≥ val−EPS) ———
         let s = best.s, val = best.val;
+        setStage(0.72, 0.82, "Grooming (ties & legibility)");
         const EPS = 0.5;
         // Execution beats microtiming: expected-damage differences under ONE
         // effective cast are below real-world execution noise (movement, the
@@ -2604,7 +2607,12 @@ function optimizeAsync(cfg, starts, onProgress) {
         // canonicalization never reaches the user; no intent-level re-snap is needed.)
         const normalize = async sx => dodgeDowntime(await slideEarliest(await spreadLoneHaste(await coPressAlign(sx))));
         for (let fx = 0; fx < 3; fx++) {
-          const hop2 = await basinHop({ s, val: simulate(s, cfg).robust }, cfg, breathe);
+          // halving bands: round 1 [0.82,0.91], round 2 [0.91,0.955], round 3 [0.955,0.98] — rounds
+          // past the first are mostly cache-served, so they fill their (smaller) band quickly
+          const lo = 0.82 + 0.16 * (1 - Math.pow(0.5, fx));
+          const hi = 0.82 + 0.16 * (1 - Math.pow(0.5, fx + 1));
+          setStage(lo, hi, `Re-hop & canonicalize (round ${fx + 1})`);
+          const hop2 = await basinHop({ s, val: simulate(s, cfg).robust }, cfg, async f => { stageFrac(f * 0.7); await tick(); });
           const s2 = await normalize(hop2.s);
           const v2 = simulate(s2, cfg).robust;
           const stable = hop2.val <= simulate(s, cfg).robust + 1e-7;
@@ -2629,7 +2637,9 @@ function optimizeAsync(cfg, starts, onProgress) {
           let consumed = false, cdReady = 0;
           for (const t of ivs) { if (t < cdReady - 1e-6) { consumed = true; break; } cdReady = t + BUFFS.icyVeins.cd; }
           if (consumed) {
-            optimizeAsync({ ...cfg, coldSnap: false }, starts, p => onProgress(0.5 + p / 2)).then(async bestN => {
+            // second full pass, honestly labeled — the bar RESTARTS for it (the UI resets its
+            // monotone clamp on a label change) instead of stalling near-done for its duration
+            optimizeAsync({ ...cfg, coldSnap: false }, starts, (p, lbl) => onProgress(p, `No-Cold-Snap comparison — ${lbl || "optimizing"}`)).then(async bestN => {
               // deterministically offer the end-chain on the no-CS champion —
               // last IV back on its natural tick with a reset-chained IV
               // appended as that window ends — so the "spend the reset on the
@@ -3062,7 +3072,7 @@ function makeEngineWorker(flavor) {
       "  if (e.data.type === 'pool-ports') { poolInit(e.data.ports); return; }" +
       "  const { cfg, starts } = e.data;" +
       "  try {" +
-      "    const best = await optimizeAsync(cfg, starts, f => self.postMessage({ type: 'progress', f }));" +
+      "    const best = await optimizeAsync(cfg, starts, (f, label) => self.postMessage({ type: 'progress', f, label }));" +
       "    self.postMessage({ type: 'done', best });" +
       "  } catch (err) { self.postMessage({ type: 'error', message: String((err && err.stack) || err) }); }" +
       "};";
@@ -3097,7 +3107,7 @@ function runOptimize(cfg, starts, onProgress) {
       engineWorkerBusy = true;
       w.onmessage = ev => {
         const m = ev.data;
-        if (m.type === "progress") onProgress(m.f);
+        if (m.type === "progress") onProgress(m.f, m.label);
         else if (m.type === "done") { engineWorkerBusy = false; resolve(m.best); }
         else if (m.type === "error") { console.error("engine worker:", m.message); engineWorkerBusy = false; engineWorker = null; try { w.terminate(); } catch (_) {} fallback(); }
       };
@@ -3128,8 +3138,15 @@ el("btn-run").addEventListener("click", async () => {
   const naive = naiveSchedule(cfg);
   const naiveR = simulate(naive, cfg);
   const starts = 14;
-  let pMax = 0; // the Cold Snap dual-run remaps progress — never let the bar move backwards
-  const best = await runOptimize(cfg, starts, p => { pMax = Math.max(pMax, p); bar.style.width = (pMax * 100).toFixed(0) + "%"; });
+  // the bar is monotone WITHIN a labeled pass and restarts on a pass change (the no-Cold-Snap
+  // comparison is a genuine second run — an honest restart beats a bar stalled at 97%); the
+  // button text carries the stage label so the wait is legible
+  let pMax = 0, pLabel = null;
+  const best = await runOptimize(cfg, starts, (p, label) => {
+    if (label !== pLabel) { pLabel = label; pMax = 0; btn.textContent = label || "Optimizing…"; }
+    pMax = Math.max(pMax, p || 0);
+    bar.style.width = (pMax * 100).toFixed(0) + "%";
+  });
   const optR = simulate(best.s, cfg, true);
   lastRun = { cfg, baseline, naive, naiveR, best, optR };
   render(lastRun);
