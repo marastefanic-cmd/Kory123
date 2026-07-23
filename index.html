@@ -1162,6 +1162,45 @@ function polish(seed, cfg) {
 // block to every OTHER window's anchor (and the kill anchor), re-polish, keep strict improvements,
 // repeat to fixpoint. This is the self-consistency guard of docs/PLAN.md: the search never returns
 // a plan worse than one reachable by re-basing its own windows on its own anchors.
+/* ═══ worker-pool plumbing (engine-side) ═══
+   POOL is null on the page (tests, cheap scoring, fallback) and inside pool workers themselves;
+   the MAIN engine worker receives transferred MessagePorts — one per pool worker — via poolInit,
+   and optimizeAsync's hot loops then fan polish() evaluations across CPU cores. Profiling (KT): basinHop's teleport-polishes are ~93% of a 285s run, and the
+   evaluations between two ACCEPTED improvements are independent — so the pooled reduction is
+   FIRST-ACCEPT-IN-ITERATION-ORDER, which reproduces the sequential search step for step: the
+   pool changes only WHERE a candidate is polished, never which candidate is accepted next.
+   Pooled and sequential paths therefore return byte-identical plans (verified), and determinism
+   ("one setup ⇒ one schedule") is untouched. One in-flight job per port; jobs are stateless. */
+let POOL = null;
+function poolInit(ports) {
+  if (!ports || !ports.length) return;
+  const idle = [], queue = [];
+  const pump = () => {
+    while (idle.length && queue.length) {
+      const w = idle.shift(), job = queue.shift();
+      w.onmessage = ev => { idle.push(w); job.resolve(ev.data); pump(); };
+      w.postMessage(job.msg);
+    }
+  };
+  for (const p of ports) idle.push(p);
+  POOL = { n: ports.length, run: msg => new Promise(resolve => { queue.push({ msg, resolve }); pump(); }) };
+}
+// map items → results (kept in ITEM order — the reduction below depends on it) across the pool
+async function poolMap(items, itemMsg, onOne) {
+  const out = new Array(items.length);
+  let done = 0;
+  await Promise.all(items.map((it, i) => POOL.run(itemMsg(it, i)).then(r => { out[i] = r; done++; if (onOne) onOne(done, items.length); })));
+  return out;
+}
+// the pool worker's job kinds (also used inline by the sequential path so both stay one code path)
+function jobPolishTeleport(baseS, cfg, pr) {
+  const cand = cloneS(baseS);
+  for (const key in cand) {
+    if (cfg.fixed[key]) continue;
+    for (let i = 0; i < cand[key].length; i++) if (Math.round(cand[key][i]) === pr.X) cand[key][i] += pr.A - pr.X;
+  }
+  return polish(repair(cand, cfg), cfg);
+}
 // Async: each window×anchor teleport costs a polish() (seconds on long fights), and the hop can run
 // dozens of them — `onStep` (optional) is awaited between teleports so the caller can yield the main
 // thread / report progress. Awaits only reschedule; the computation sequence is unchanged.
@@ -1192,17 +1231,31 @@ async function basinHop(champ, cfg, onStep) {
         }
       }
     }
-    let hopStep = 0;
-    const hopTotal = Math.max(1, windows.length * anchors.size);
-    for (const X of windows) {
-      for (const A of anchors) {
-        if (A === X) continue;
-        const cand = cloneS(bestS);
-        for (const key in cand) {
-          if (cfg.fixed[key]) continue;
-          for (let i = 0; i < cand[key].length; i++) if (Math.round(cand[key][i]) === X) cand[key][i] += A - X;
-        }
-        const p = polish(repair(cand, cfg), cfg);
+    const pairs = [];
+    for (const X of windows) for (const A of anchors) if (A !== X) pairs.push({ X, A });
+    const hopTotal = Math.max(1, pairs.length);
+    if (POOL) {
+      // Pooled sweep with sequential-equivalent reduction: evaluate the remaining pairs against
+      // the CURRENT champion in parallel, then walk the results in iteration order and accept the
+      // FIRST improvement — exactly what the sequential loop would have accepted — then restart
+      // the fan-out from the next pair against the updated champion. Evaluations past the accepted
+      // pair are discarded (they were made against a stale base); acceptances are rare, so the
+      // waste is small and the final (no-improvement) sweep parallelizes with zero waste.
+      let i = 0;
+      while (i < pairs.length) {
+        const base = bestS;
+        const results = await poolMap(pairs.slice(i), pr => ({ kind: "teleport", baseS: base, cfg, pr }),
+          (d, t) => { if (onStep) onStep(Math.min(1, (i + d) / hopTotal)); });
+        let j = -1;
+        for (let k = 0; k < results.length; k++) if (results[k].val > bestV + 1e-7) { j = k; break; }
+        if (j < 0) break;
+        bestS = results[j].s; bestV = results[j].val; again = true;
+        i += j + 1;
+      }
+    } else {
+      let hopStep = 0;
+      for (const pr of pairs) {
+        const p = jobPolishTeleport(bestS, cfg, pr);
         if (p.val > bestV + 1e-7) { bestS = p.s; bestV = p.val; again = true; }
         if (onStep) await onStep(++hopStep / hopTotal);
       }
@@ -1259,19 +1312,34 @@ function optimizeAsync(cfg, starts, onProgress) {
     }
     while (seeds.length < starts) seeds.push(randomSchedule(cfg, rand));
     const results = [];
-    let best = null, i = 0;
-    (function step() {
-      if (i >= seeds.length) {
+    let best = null;
+    (async () => {
+      // ——— seed phase: each seed's polish is independent, so the pool runs them all at once
+      // (order of `results` is by seed index either way — identical to the sequential loop)
+      if (POOL) {
+        const rs = await poolMap(seeds, s => ({ kind: "polish", cfg, s }),
+          (d, t) => onProgress(d / (seeds.length + 1)));
+        for (const p of rs) { results.push(p); if (!best || p.val > best.val) best = p; }
+      } else {
+        for (let si = 0; si < seeds.length; si++) {
+          const r = polish(seeds[si], cfg);
+          results.push(r);
+          if (!best || r.val > best.val) best = r;
+          onProgress((si + 1) / (seeds.length + 1));
+          await new Promise(rr => setTimeout(rr, 0)); // per-seed yield (page fallback keeps breathing)
+        }
+      }
+      {
         // Execution pass: the plan must be in whole seconds (a player can't
         // press a button at 502.14s). Snap and re-polish the TOP candidates,
         // not just the max — rounding a fractional winner can cost real damage
         // and land in a worse basin, while an already-integer runner-up keeps
         // its full value. Keep the best INTEGER plan.
         // This whole finishing stage is heavy (polish ×6 + the basinHop fixpoint can be tens of
-        // seconds on long fights) — run it ASYNC with yields between the chunks, or the browser's
-        // main thread blocks long enough to trip the "Page Unresponsive" kill (user-reported crash).
-        // Yields only reschedule; every computation is unchanged, so determinism is untouched.
-        (async () => {
+        // seconds on long fights) — it runs inside the enclosing async runner with yields between
+        // the chunks, or (in the page-fallback case) the browser's main thread would block long
+        // enough to trip the "Page Unresponsive" kill (user-reported crash). Yields only
+        // reschedule; every computation is unchanged, so determinism is untouched.
         // Throttled yield: give the main thread back ~every 40ms of compute. performance.now() here
         // gates ONLY when the thread yields — no computed value, comparison, or ordering ever reads
         // it, so one-setup-⇒-one-schedule determinism is untouched (the computation sequence is
@@ -2587,14 +2655,7 @@ function optimizeAsync(cfg, starts, onProgress) {
           best.csNote = { unused: true };
         }
         resolve(best);
-        })(); // end of the async finishing stage — resolve() fires inside it
-        return;
       }
-      const r = polish(seeds[i], cfg);
-      results.push(r);
-      if (!best || r.val > best.val) best = r;
-      i++; onProgress(i / (seeds.length + 1));
-      setTimeout(step, 0);
     })();
   });
 }
@@ -2945,23 +3006,57 @@ el("in-haste").addEventListener("input", () => {
 // If Worker/Blob construction fails anywhere exotic, fall back to the in-page engine — the
 // throttled yields inside optimizeAsync keep the page alive in that mode too, just laggier.
 let engineWorker = null, engineWorkerBusy = false;
-function makeEngineWorker() {
-  const src = document.getElementById("engine-src").textContent +
-    "\nself.onmessage = async e => {" +
-    "  const { cfg, starts } = e.data;" +
-    "  try {" +
-    "    const best = await optimizeAsync(cfg, starts, f => self.postMessage({ type: 'progress', f }));" +
-    "    self.postMessage({ type: 'done', best });" +
-    "  } catch (err) { self.postMessage({ type: 'error', message: String((err && err.stack) || err) }); }" +
-    "};";
-  return new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+// Two worker flavors built from the same engine source. "main" runs optimizeAsync on demand and
+// additionally accepts a pool-ports handoff (poolInit is engine-side); "pool" workers are dumb
+// polish servers — each transferred MessagePort carries one job at a time ({kind:'polish'|'teleport'})
+// and answers with the polished {s, val}. Both flavors share byte-identical engine code, so a
+// candidate polished anywhere returns the same bits — see the POOL comment in the engine block.
+function makeEngineWorker(flavor) {
+  const harness = flavor === "pool"
+    ? "\nself.onmessage = e => {" +
+      "  if (e.data.type !== 'pool-port') return;" +
+      "  for (const port of e.data.ports) {" +
+      "    port.onmessage = ev => {" +
+      "      const j = ev.data;" +
+      "      port.postMessage(j.kind === 'teleport' ? jobPolishTeleport(j.baseS, j.cfg, j.pr) : polish(repair(j.s, j.cfg), j.cfg));" +
+      "    };" +
+      "  }" +
+      "};"
+    : "\nself.onmessage = async e => {" +
+      "  if (e.data.type === 'pool-ports') { poolInit(e.data.ports); return; }" +
+      "  const { cfg, starts } = e.data;" +
+      "  try {" +
+      "    const best = await optimizeAsync(cfg, starts, f => self.postMessage({ type: 'progress', f }));" +
+      "    self.postMessage({ type: 'done', best });" +
+      "  } catch (err) { self.postMessage({ type: 'error', message: String((err && err.stack) || err) }); }" +
+      "};";
+  return new Worker(URL.createObjectURL(new Blob([document.getElementById("engine-src").textContent + harness], { type: "text/javascript" })));
+}
+// One shared pool of polish servers, sized to the machine (leave headroom for the orchestrating
+// worker and the UI thread). Each optimize worker (main or aux) gets its own fresh set of ports
+// onto the same pool; a terminated orchestrator just leaves dead ports behind (harmless).
+let poolWorkers = null;
+function attachPool(target) {
+  try {
+    if (!poolWorkers) {
+      const n = Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 4) - 2));
+      poolWorkers = Array.from({ length: n }, () => makeEngineWorker("pool"));
+    }
+    const ports = [];
+    for (const pw of poolWorkers) {
+      const ch = new MessageChannel();
+      pw.postMessage({ type: "pool-port", ports: [ch.port1] }, [ch.port1]);
+      ports.push(ch.port2);
+    }
+    target.postMessage({ type: "pool-ports", ports }, ports);
+  } catch (err) { console.error("pool unavailable (sequential search instead):", err); }
 }
 function runOptimize(cfg, starts, onProgress) {
   return new Promise(resolve => {
     const fallback = () => optimizeAsync(cfg, starts, onProgress).then(resolve);
     try {
       if (engineWorker && engineWorkerBusy) { engineWorker.terminate(); engineWorker = null; }
-      if (!engineWorker) engineWorker = makeEngineWorker();
+      if (!engineWorker) { engineWorker = makeEngineWorker("main"); attachPool(engineWorker); }
       const w = engineWorker;
       engineWorkerBusy = true;
       w.onmessage = ev => {
@@ -2975,28 +3070,10 @@ function runOptimize(cfg, starts, onProgress) {
     } catch (err) { console.error("worker unavailable, running in-page:", err); engineWorker = null; fallback(); }
   });
 }
-// Auxiliary, throwaway worker for follow-up analyses (the sensitivity panel's "what if the kill
-// runs longer" re-optimization). Separate from the main worker so it can't collide with a
-// user-initiated run; a new call terminates the previous aux run (its result would be stale
-// anyway). Resolves null on any failure — callers treat the answer as optional garnish, and it
-// must NEVER fall back to the in-page engine (that main-thread compute after every run is
-// exactly the "results are up but the page is frozen and Copy does nothing" bug).
-let auxWorker = null;
-function runOptimizeAux(cfg, starts) {
-  return new Promise(resolve => {
-    try {
-      if (auxWorker) { auxWorker.terminate(); auxWorker = null; }
-      const w = auxWorker = makeEngineWorker();
-      w.onmessage = ev => {
-        const m = ev.data;
-        if (m.type === "done") { if (auxWorker === w) { w.terminate(); auxWorker = null; } resolve(m.best); }
-        else if (m.type === "error") { console.error("aux worker:", m.message); if (auxWorker === w) { w.terminate(); auxWorker = null; } resolve(null); }
-      };
-      w.onerror = err => { console.error("aux worker:", err.message || err); if (auxWorker === w) { w.terminate(); auxWorker = null; } resolve(null); };
-      w.postMessage({ cfg, starts });
-    } catch (err) { console.error("aux worker unavailable:", err); resolve(null); }
-  });
-}
+// (The auxiliary "what changes if the kill runs longer" worker — a full re-optimization at a
+// hypothetical length after every run — is REMOVED, user decision: not worth the background CPU.
+// The sensitivity panel keeps only the cheap arithmetic banks-on line. Nothing computes after
+// the results render.)
 let lastRun = null, lastGeo = null;
 const colorOf = k => getComputedStyle(document.documentElement).getPropertyValue(BUFFS[k].color.slice(4, -1)).trim() || "#888";
 el("btn-run").addEventListener("click", async () => {
@@ -3399,40 +3476,16 @@ function unlockThresholds(cfg) {
   return out.sort((a, b) => a.T - b.T);
 }
 function ordinal(n) { return n === 2 ? "2nd" : n === 3 ? "3rd" : n + "th"; }
-renderSensitivity.seq = 0;
 function renderSensitivity(run) {
   const { cfg } = run;
   const host = el("sense");
   const th = unlockThresholds(cfg);
   const below = th.filter(x => x.T <= cfg.T + 1e-6 && cfg.T - x.T <= 20);
   const lines = [];
-  // ——— "when does the way you press buttons change?" (user-directed). Arithmetic only NOMINATES
-  // candidate kill lengths where the plan could restructure (a clipped final window un-clips at
-  // lastUse+dur; a genuinely new use fits at lastUse+cd+dur — un-clipping alone was reported
-  // before and the user rightly called it obvious). Whether the plan actually changes there is
-  // decided by RE-OPTIMIZING at the candidate length in the aux worker and DIFFING the plans.
-  // The expected effects are filtered out (the terminal burst always re-anchors to the kill, so
-  // moves of presses in the last ~45s are "the burst slides with the kill", not news); what gets
-  // reported is structural — a new press appearing, or an earlier press moving ≥3s. The first
-  // candidate with a structural change is shown; none within +60s ⇒ the plan is press-stable
-  // against kill drift, which is worth saying outright.
-  // Two nomination sources, verified by the probe either way: the plan-anchored thresholds
-  // (un-clip at lastUse+dur; new use at lastUse+cd+dur — the LATEST a change can land given the
-  // presses as planned), and the from-zero cadence unlocks (`th` — the EARLIEST a restructure
-  // could fit an extra use by also moving earlier presses; the "2nd AP at 3:15 if AP1 goes
-  // earlier" class the plan-anchored view can't see).
-  const candTs = th.filter(x => x.T > cfg.T + 1e-6).map(x => x.T);
-  for (const key in run.best.s) {
-    if (cfg.fixed[key] || !run.best.s[key].length || BUFFS[key].kind === "proc") continue;
-    const def = BUFFS[key];
-    const uses = run.best.s[key].map(t => Math.round(t)).sort((a, b) => a - b);
-    const last = uses[uses.length - 1];
-    const clipEnd = last + def.dur;
-    if (clipEnd > cfg.T + 1e-6) candTs.push(clipEnd);
-    else if (uses.length < maxUses(key, cfg)) candTs.push(last + def.cd + def.dur);
-  }
-  const probes = [...new Set(candTs.map(Math.round))].filter(t => t > cfg.T && t - cfg.T <= 60).sort((a, b) => a - b).slice(0, 2);
-  if (probes.length) lines.push(`<div class="up" id="sense-next">Checking in the background whether a longer kill changes the plan…</div>`);
+  // (The "what changes if the kill runs longer" analysis — a background re-optimization at
+  // hypothetical lengths, diffed against the plan — is REMOVED, user decision: a full extra
+  // optimization per render wasn't worth the cost. Only the cheap arithmetic banks-on line
+  // below survives; nothing computes after the results render.)
   if (below.length) {
     const b = below[below.length - 1];
     const grp = below.filter(x => Math.abs(x.T - b.T) < 1e-6);
@@ -3445,43 +3498,6 @@ function renderSensitivity(run) {
   // the plan itself.)
   host.hidden = !lines.length;
   host.innerHTML = lines.join("");
-  // Probe the candidates with REAL optimizations at T2 — in the AUX WORKER, never in-page (this
-  // used to run on the main thread after every render, freezing the page for minutes). Same
-  // start count as the main run so the two plans are search-comparable (a sloppier aux search
-  // would show phantom "restructures" that are just polish noise).
-  if (probes.length) {
-    const tok = ++renderSensitivity.seq; // stale-result guard: a newer run wins
-    const curGain = run.optR.robust / run.baseline.robust - 1;
-    const eff1 = {};
-    for (const k in run.optR.actEff) eff1[k] = run.optR.actEff[k].map(x => Math.floor(x + 1e-9));
-    (async () => {
-      for (const t2 of probes) {
-        const cfg2 = { ...cfg, T: t2, fixed: { ...cfg.fixed } };
-        const b2 = await runOptimizeAux(cfg2, 14);
-        if (!b2 || tok !== renderSensitivity.seq) return;
-        const r2 = simulate(b2.s, cfg2, true);
-        const items = [];
-        for (const key of new Set([...Object.keys(eff1), ...Object.keys(r2.actEff)])) {
-          if (cfg.fixed[key] || !BUFFS[key] || BUFFS[key].kind === "proc") continue;
-          const a = eff1[key] || [], b = (r2.actEff[key] || []).map(x => Math.floor(x + 1e-9));
-          const name = BUFFS[key].name;
-          if (b.length > a.length) { items.push(`a ${ordinal(b.length)} ${name} fits (${fmtT(b[b.length - 1])})`); continue; }
-          for (let i = 0; i < Math.min(a.length, b.length); i++) {
-            if (Math.abs(b[i] - a[i]) >= 3 && a[i] < cfg.T - 45) items.push(`${name} moves ${fmtT(a[i])} → ${fmtT(b[i])}`);
-          }
-        }
-        const span = el("sense-next");
-        if (!span) return;
-        if (items.length) {
-          const d = (b2.val / simulate({}, cfg2).robust - 1 - curGain) * 100;
-          span.innerHTML = `If the kill runs past <b>${fmtT(t2)}</b> (+${Math.round(t2 - cfg.T)}s), the plan restructures: ${items.slice(0, 3).join("; ")}${items.length > 3 ? "; …" : ""}.${d > 0.15 ? ` (≈ +${d.toFixed(1)}% more overlay gain at that length)` : ""}`;
-          return;
-        }
-      }
-      const span = el("sense-next");
-      if (span && tok === renderSensitivity.seq) span.innerHTML = `Kill running long changes nothing structural within +60s — the final windows just run fuller. Press the plan as written.`;
-    })();
-  }
 }
 function renderCapSheet(cfg) {
   el("capsheet").hidden = false;

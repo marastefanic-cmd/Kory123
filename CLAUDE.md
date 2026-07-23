@@ -52,8 +52,10 @@ so a preset you confirm in the tool **is** the locked test.
 
 Two script blocks: `<script id="engine-src">` — the pure DOM-free engine + optimizer — then the
 DOM/UI script. The UI runs the heavy optimization in a **Blob Web Worker** built from the engine
-tag's own text (`runOptimize`; single-file preserved, main thread never computes, byte-identical
-plans), while the page keeps its engine copy for cheap scoring and the headless tests. Core pieces:
+tag's own text (`runOptimize`; single-file preserved, main thread never computes), fanned across a
+**pool of polish-server workers** sized to the machine's cores with a first-accept-in-order
+reduction — pooled and sequential paths return **byte-identical plans** — while the page keeps its
+engine copy for cheap scoring and the headless tests (which run the sequential path). Core pieces:
 `simulate()` (the cast-rate-integral scorer) · `repair()` (legalizes a schedule: cooldowns, Cold
 Snap, use caps) · `optimizeAsync()` (multi-start search + a stack of finishing passes) ·
 `renderTimeline()` (the SVG burn chart). Displayed plan times are **fire times** (floored seconds),

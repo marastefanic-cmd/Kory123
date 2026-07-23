@@ -9,12 +9,17 @@ page (cheap one-off `simulate()`/`scheduleRows()` for rendering, and the headles
 main thread never computes; byte-identical code ⇒ byte-identical plans, worker-vs-page verified). A
 run already in flight is terminated before a new one starts (no stale-result races); if Worker/Blob
 construction ever fails, `runOptimize` falls back to the in-page engine, which stays alive via the
-throttled yields. A second, throwaway **aux worker** (`runOptimizeAux`) carries follow-up analyses —
-today the sensitivity panel's "what if the kill runs longer" re-optimization, which used to run
-`optimizeAsync` on the MAIN thread after every render (the "results are up but the page is frozen
-and Copy is dead" bug); it never falls back in-page (its answer is optional garnish), and a new call
-terminates the previous aux run. Line numbers drift as the file is edited — treat them as
-signposts, re-grep if they're off. Everything below is in `index.html` unless noted.
+throttled yields. **The search is also parallelized across CPU cores** (`attachPool` / engine-side
+`poolInit`/`poolMap`): the page builds `min(8, cores−2)` "pool" workers (dumb polish servers) from
+the same engine source and hands the main worker one MessagePort per pool worker; `optimizeAsync`
+fans its two dominant costs — the seed polishes and `basinHop`'s teleport evaluations (~93% of a
+285s KT run, measured) — across them with a **first-accept-in-iteration-order** reduction that
+reproduces the sequential search step for step, so pooled and sequential paths return
+**byte-identical plans** (verified; tests run the page's sequential path, `POOL` stays null there).
+Nothing runs after the results render — the old post-render "what if the kill runs longer"
+re-optimization (aux worker) is REMOVED (user decision: not worth the background CPU). Line
+numbers drift as the file is edited — treat them as signposts, re-grep if they're off. Everything
+below is in `index.html` unless noted.
 
 ## Constants (~547–583)
 `GAME`: `AB {BASE_CAST 2.5, STACK_CAST_REDUCTION 1/3, MAX_STACKS 3, AVG_BASE_DMG 720, COEF 2.5/3.5}`,

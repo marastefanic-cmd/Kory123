@@ -294,20 +294,25 @@ TOOLING). Findings, all sim-measured on the fixed rig:
   crunches, Copy works under load. The remaining slowness axis is the **optimizer's own runtime**
   (minutes on 6-intermission fights, basinHop dominates — a known backlog item; the page now stays
   fully interactive throughout).
-  **Sensitivity panel reworked twice (user-directed, iterating live).** First pass made the
-  "kill runs longer" lines plan-anchored ("the final IV runs its full 20s" instead of the
-  misleading "a 4th fits") — user: still obvious; what they want is **the next breakpoint where
-  the way you press buttons CHANGES**. Now: arithmetic only NOMINATES candidate lengths (plan-
-  anchored un-clip/new-use thresholds ∪ from-zero cadence unlocks — the latter catch the "2nd AP
-  fits at 3:15 if AP1 moves earlier" class); the aux worker RE-OPTIMIZES at each candidate (same
-  start count as the main run, so plans are search-comparable) and the panel reports the actual
-  **plan diff**, filtered for structure: new presses and pre-terminal moves ≥3s ("the plan
-  restructures: Skull moves 0:00 → 0:20; a 2nd Arcane Power fits (3:00)"); terminal-burst
-  slide-with-the-kill is suppressed as expected. No structural change within +60s ⇒ says the plan
-  is press-stable outright. The banks-on line is unchanged (user-approved). **The Cold Snap
-  commentary note is REMOVED entirely** (panel + copy text; user decision — the schedule's
-  "Cold Snap → IV" rows carry the action; the engine's materiality logic that DECIDES the spend
-  is untouched).
+  **Sensitivity panel iterated three times live, then largely REMOVED (user decisions).** The
+  "kill runs longer" lines went arithmetic → plan-anchored → probe-diff (re-optimize at candidate
+  lengths in an aux worker, report the actual plan restructure) — and then the user cut the whole
+  aux-worker analysis: **"remove the second 'alternative plans' worker altogether — not worth the
+  cost."** What remains: the cheap arithmetic **banks-on** line (user-approved) + the squeak note;
+  nothing computes after the results render. **The Cold Snap commentary note is also REMOVED
+  entirely** (panel + copy text; the schedule's "Cold Snap → IV" rows carry the action; the
+  engine's materiality logic that DECIDES the spend is untouched). If a restructure-breakpoint
+  feature is ever wanted again, the probe-diff design is in git history (commit 21791d2).
+- **Search parallelized across CPU cores (user: "make it faster without losing quality").**
+  Profiled KT: 285.7s total, **`basinHop` teleport-polishes = 265.5s (93%)**, seed phase ~10s,
+  5.7M simulate calls. Now the page spawns `min(8, cores−2)` pool workers (dumb polish servers on
+  transferred MessagePorts; engine-side `poolInit`/`poolMap`) and `optimizeAsync` fans the seed
+  polishes and hop teleports across them with a **first-accept-in-iteration-order** reduction —
+  reproduces the sequential accept sequence exactly, so pooled ≡ sequential **byte-identical**
+  (verified on 2:45 and KT: val 617033.2, identical plan; exact-match suite runs the sequential
+  page path and is untouched). Container (2 pool workers): KT 285.7s → 201s; scales with cores
+  (~60–90s expected on a typical 8-core). Remaining depth: parallelizing polish's inner shift
+  ladder — only if still needed.
 - **`basinHop` ramp-exit anchors landed** (the backlog headroom item): h160-class ramp-exit-hug basin
   CLOSED; **Kael'thas moved** to a strictly better plan (+354 robust, `IV@106/126/380`,
   `AP@120/380`, cluster mirrors) and was re-locked. h40/h50 straddle residuals (≤0.033, inside
