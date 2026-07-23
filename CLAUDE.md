@@ -107,8 +107,15 @@ Treat maintaining them as part of the work, not an afterthought:
 - **Add or remove docs as the project evolves** — when a new subsystem appears (e.g. the EP
   calculator), give it its own `docs/*.md` and link it below; delete or merge docs that go stale. The
   file list below is not fixed.
-- **Prune, don't just append.** When a rule is overturned or a task finishes, edit/remove the old
-  text so the docs never describe a state that no longer exists. Stale docs are worse than none.
+- **Prune, don't just append — BUT only the LIVING docs.** When a rule is overturned or a task
+  finishes, edit/remove the old text in `RULES.md`/`ARCHITECTURE.md`/`MECHANICS.md`/`EP.md`/`ROADMAP.md`
+  so they never describe a state that no longer exists. Stale living docs are worse than none.
+- **The HISTORICAL record is append-only — never prune it.** `docs/DIARY.md` (the what/why/when +
+  the "believed→disproved" corrections ledger), the `PHASE*.md` phase docs, and `docs/archive/` (the
+  recovered per-phase plans) are the project's memory of the road taken. When a phase closes, **archive
+  its plan doc into `docs/archive/` (chronological, numbered) — do NOT delete it** — and add its arc +
+  any corrections to `DIARY.md`. This reverses the old "delete PLAN.md once it lands" habit (which lost
+  Phases 1–5 to git history; they've been recovered into `docs/archive/`).
 - Before a big change, re-read the relevant doc; after it, leave the docs describing reality.
 
 ## Pointers
@@ -118,6 +125,14 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/ARCHITECTURE.md` — `index.html` internals and the optimizer pass order.
 - `docs/TOOLING.md` — the wowsims sim harness (how to verify a plan) and its gotchas.
 - `docs/ROADMAP.md` — status, current work, and open questions.
+- `docs/ACCEPTANCE.md` — **the standing completion test.** The holdout haste-adaptation cross-val the
+  model must pass FULLY before it's called complete (monoDip=0 everywhere + no length-persistent
+  diagonal deficit). Re-run after every fix/upgrade phase. Currently NOT passing (a low-haste slack).
+- `docs/DIARY.md` — **append-only history** of how the tool evolved: the phase arc + the
+  believed→disproved corrections ledger. Read to avoid re-litigating settled mistakes.
+- `docs/archive/` — recovered per-phase plan docs (Phases 1–5 = the deleted `PLAN.md` versions),
+  chronological with a README index. Historical snapshots; append when a phase closes.
+- `docs/PHASE6.md` — the current in-flight phase (haste-adaptation cross-val). Archive it when it closes.
 - `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
   into ROADMAP). **No plan in flight. Phase 5 (AoE phases) is COMPLETE** — verdict: an AoE phase is a
