@@ -13,6 +13,8 @@ const IDS = {
   BL:   {spellId:2825, tag:-1},
   Icon: {itemId:29370},
   Gem:  {itemId:22044},
+  Skull:{itemId:32483},   // Skull of Gul'dan (+175 haste on-use, spell 40396)
+  MQG:  {itemId:19339},   // Mind Quickening Gem (+330 haste on-use, spell 23723)
 };
 const fmt = arr => (arr||[]).map(t=>`${t}s`).join(', ');
 
@@ -31,6 +33,8 @@ export function build(spec){
   if (spec.AP?.length)   pl.push(sched(spec.AP, IDS.AP));
   if (spec.Icon?.length) pl.push(sched(spec.Icon, IDS.Icon));
   if (spec.Gem?.length)  pl.push(sched(spec.Gem, IDS.Gem));
+  if (spec.Skull?.length) pl.push(sched(spec.Skull, IDS.Skull));
+  if (spec.MQG?.length)  pl.push(sched(spec.MQG, IDS.MQG));
   if (spec.Zerk?.length) pl.push(sched(spec.Zerk, IDS.Zerk));
   // Arcane Blast spam — optionally gated OFF during an intermission window
   // (boss untargetable: no casting, but cooldowns keep ticking).
