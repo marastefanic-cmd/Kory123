@@ -138,28 +138,46 @@ are gathering (post-restart resume driver).** The per-row table is mechanically 
 collector (it goes stale as tables land, so it is NOT frozen in here — run the collector). What IS
 recorded here is the **headline + the interpretation that needs judgment:**
 
-**Headline (18/30):**
-- **monoDip = 0.00% on EVERY table.** The §1(a) cold-open invariant holds — the measurement is correct.
-- Every diagonal deficit is **sub-1%** (worst so far 0.77%). 1 table CLEAN, 17 sub-1% DEFICIT.
-- **Deficit loci:** 13 land at **low passive haste (≤70)**, 4 at **mid/high haste**. Both kits and all
-  fight lengths show the low-haste cluster; it does NOT vanish on long/XL (e.g. mqg+skull long 0.38%,
-  xl 0.32%) — so it is NOT pure boundary quantization.
+**Headline (18/30), adversarially re-verified against the raw grids (agent recomputed every cell):**
+- **monoDip = 0.00% on EVERY table** — invariant A holds; a fresh row-by-row scan of all 18 files found
+  **zero** downward steps anywhere. NOTE: this is *necessary, not sufficient* — it proves haste is never
+  harmful (the §4.7 prepull regression is gone), NOT that the absolute DPS is calibrated. It is a
+  regression canary, not a proof of correctness.
+- Every diagonal deficit is **sub-1%** (worst 0.77%, isc+scb medium) — every reported `diagWorst`
+  matches an independent recompute from the printed cells. 1 table CLEAN, 17 sub-1% DEFICIT.
+- **Deficit loci (by worst cell):** 13 at **low passive haste (≤70)**, 4 at mid/high.
 
-**Interpretation — corrected, do not overstate (this is the part I got wrong first):**
-- The low-haste deficits are **real but tiny (~0.1–0.6% DPS) micro-placement sub-optimalities**, and
-  their **mechanism is HETEROGENEOUS — NOT a single cause.** Spot-checking three cases (native plan vs
-  the borrowed plan that beat it) found *different* small differences each time: mqg+skull long (sim70)
-  differs in the **late IV/Skull cluster spacing** (native 262 vs borrowed 240 — no IV near Lust@160);
-  isc+mqg medium (sim70) differs in **AP timing** (native AP@118 vs borrowed@23, Lust@93); isc+skull
-  medlong (sim20) differs in **Zerk/Lust alignment** (native Zerk@60 vs borrowed@47=Lust) and **IV
-  front-vs-back clustering**. This is consistent with §4.1's *general* observation ("the search is a
-  hair sub-optimal at low haste") but is **broader than §4.1's specific IV-into-Lust basin** — do NOT
-  label these "the §4.1 basin, sim-confirmed." Attributing each to a mechanism (and separating genuine
-  micro-mis-adaptation from short-fight boundary quantization) is **next-pass triage** (§4.5).
-- The 4 mid/high-haste deficits: **3 are on short fights** (isc+scb short @h140, isc+skull short @h130,
-  isc+mqg short @h140 — all a very-high-haste plan winning; inside the short-fight quantization band,
-  UNCONFIRMED §3.0). **1 is on a long fight** — isc+mqg long (T=281) @sim110, plan@0 wins by 0.21% —
-  the single mid-haste-on-a-long-fight case, the cleanest genuine triage candidate.
+**Interpretation — corrected twice; do not overstate (I got two things wrong here, both walked back):**
+- **The mechanism is HETEROGENEOUS** (not the single §4.1 IV-into-Lust basin). Spot-checks + the
+  adversarial diffs show *different* differing tracks case to case — late IV/Skull cluster spacing
+  (mqg+skull long), AP timing (isc+mqg medium), Zerk/Lust alignment (isc+skull medlong), whole-layout
+  swaps (isc+mqg long @110). **IV/Cold-Snap sequencing is the most *recurring* differing track**, but
+  it is genuinely not all one cause. Consistent with §4.1's *general* "search is a hair sub-optimal at
+  low haste," broader than §4.1's specific basin. Per-deficit attribution is **next-pass triage** (§4.5).
+- **"Length-persistent ⇒ not quantization" is a `mqg+skull`-ONLY property — I wrongly generalized it.**
+  Per kit, worst deficit by length:
+  - `mqg+skull`: 0.22 → 0.16 → 0.19 → **0.38 → 0.32** (short→xl). Does NOT shrink; grows onto long/XL.
+    **This kit's low-haste slack is real** (quantization would shrink), and it is the one that keeps the
+    acceptance test open.
+  - `isc+scb`: 0.77 (medium) → **CLEAN (medlong)** → 0.05 (long). **Reverses to CLEAN as the fight
+    lengthens** — the fingerprint of boundary quantization, NOT persistent slack.
+  - `isc+mqg`: low-haste deficit is gone by the long fight (its long-fight deficit is a separate
+    mid-haste cell).
+  So do NOT say "the low-haste deficit persists across kits" — only mqg+skull persists.
+- **The worst deficit (`isc+scb` medium, 0.77%) is NOT a "low-haste micro-placement" nudge** — the
+  adversary showed the tool emits **one plateau plan across haste 20–245** and **both** endpoint plans
+  beat it (plan@400 out-sims that plateau in all 10 columns; plan@0 wins at sim20). It's a **whole-band
+  plateau suboptimality**, surfacing as a low-haste worst-cell. (Disposition still "unconfirmed": it
+  reverses to CLEAN on the longer medlong fight, so quantization-consistent — but the *label* was wrong.)
+- **The single-worst-cell summary hides secondary structure.** Across the 18 files there are ~78
+  borrowed-plan-wins columns behind the 17 reported worst-cells. Most are sub-worst, but at least one is
+  **length-robust**: `isc+scb` **xl** has plan@65 beating native at sim140/165/215 — a low-haste plan
+  winning at mid haste on the LONGEST fight, buried under diagWorst=0.17%. The collector should be
+  upgraded to report the full deficit-column set, not just the worst (§7).
+- **Plateau caveat.** Where the tool emits one byte-identical plan across most of a kit's haste band
+  (isc+scb medium: sim20–245 identical; medlong: sim0–245 identical), the cross-val is barely testing
+  *adaptation* there — only the plateau vs the two differing endpoints. A CLEAN plateau ≠ verified fine
+  adaptation.
 
 _The remaining 12 fight-class tables + 6 boss tables finalize this section; the raw matrices under
 `tools/xval-results/` are the record, and the collector output is the authoritative row-by-row table._
@@ -272,25 +290,30 @@ long/XL, or persists/grows with fight length; not a sub-1% short-fight quantizat
 here with: seed, fight, kit, the sim-haste it fails at, the borrowed plan that beat native, the
 misplaced track, and the RULES §16 band edge the model put on the wrong side._
 
-**Nothing CONFIRMED yet — but the campaign has surfaced a clear pattern to triage (18/30):** 13 of 17
-sub-1% deficits sit at **low passive haste (≤70)**, kit-universal and length-independent (so not pure
-boundary quantization). I initially called these "the §4.1 basin, sim-confirmed" — **that was too
-strong.** Spot-checking the native-vs-borrowed plan diffs shows a **heterogeneous** mechanism, not a
-single cause:
-- `mqg+skull` long (sim70, 0.38%): native vs borrowed differ in the **late IV/Skull cluster spacing**
-  (native IV/Skull at 262 vs borrowed 240) — *no* IV near Lust@160, so NOT the IV-into-Lust straddle.
-- `isc+mqg` medium (sim70, 0.26%): differ in **AP timing** (native AP@118 vs borrowed@23, Lust@93).
-- `isc+skull` medlong (sim20, 0.57%): differ in **Zerk/Lust alignment** (native Zerk@60 vs borrowed@47
-  =Lust) and **IV front-vs-back clustering**.
+**Nothing CONFIRMED-and-locked yet — but the campaign + an adversarial re-check have narrowed it (18/30).**
+Two of my earlier reads were **too strong and are walked back** (see the DIARY corrections ledger):
+1. NOT "the §4.1 basin, sim-confirmed" — the mechanism is **heterogeneous** (late IV/Skull cluster
+   spacing on mqg+skull long; AP timing on isc+mqg medium; Zerk/Lust alignment on isc+skull medlong;
+   whole-layout swaps on isc+mqg long). IV/Cold-Snap sequencing recurs most, but it's not one cause.
+2. NOT "length-persistent across kits" — that holds for **`mqg+skull` only**.
 
-So the honest status: a real, tiny (~0.1–0.6% DPS), low-haste, **multi-mechanism** search-slack — in
-the *spirit* of §4.1 (the search is a hair sub-optimal at low haste) but **broader than** its specific
-IV-into-Lust basin. **Next-pass triage** (per deficit): classify the differing track, split genuine
-micro-mis-adaptation from short-fight quantization, and route each to §4.1 (if IV-into-Lust) or a new
-finding (if a different track). **Correction to an earlier provisional read:** the deficits do NOT
-uniformly "shrink with length" (true for `isc+scb`, not for `mqg+skull`); and they are NOT all the
-§4.1 basin. The one mid-haste-on-a-long-fight case — `isc+mqg` long (T=281) @sim110, plan@0 wins
-0.21% — is the cleanest standalone triage candidate.
+**What actually needs the fix pass, ranked:**
+- **`mqg+skull` low-haste slack — the real one.** Worst deficit GROWS with length (0.22→0.16→0.19→
+  **0.38→0.32** short→xl), so it's not quantization. ~0.2–0.4% DPS, at sim-haste 30–70, a neighbor-
+  higher-haste plan winning. This is what keeps `docs/ACCEPTANCE.md` invariant B open. Triage: diff the
+  IV/CS sequencing native-vs-winner at each length and localize the misplaced track.
+- **`isc+scb` medium (0.77%, the campaign worst) — a PLATEAU suboptimality, not low-haste micro.** The
+  tool emits one plan across haste 20–245 and BOTH endpoints beat it (plan@400 wins all 10 columns).
+  Reverses to CLEAN on medlong ⇒ quantization-consistent, so *disposition* is unconfirmed — but the
+  plateau-is-coarse signal is worth a look (does the band need a finer breakpoint there?).
+- **`isc+scb` xl hidden length-robust deficit.** plan@65 beats native at sim140/165/215 on the LONGEST
+  fight (buried under diagWorst=0.17%). A low-haste plan winning at mid haste on an xl fight is exactly
+  the kind of length-robust signal the worst-cell summary hides — check it explicitly.
+- **`isc+mqg` long @sim110** (plan@0 wins 0.21%): a whole-layout swap on a long fight — standalone candidate.
+
+`isc+scb`/`isc+mqg` low-haste short/medium deficits **reverse or vanish with length** ⇒ boundary
+quantization, not model error. This pass gathers + localizes; the FIX pass classifies each track and
+routes it to §4.1 (if IV-into-Lust) or a new finding.
 
 ### 4.6 Harness bug (FIXED) — scb needs the Serpent-Coil TRINKET equipped, not the Mana Emerald
 The cross-val's first scb runs crashed the sim: `SIM ERROR: No item with id: 22044`. Root cause was
@@ -412,17 +435,23 @@ KT's AoE window is simmed as downtime with a flag, §4.8-adjacent limitation); c
    three boss shapes (`BOSS="Lady Vashj"|"Al'ar"|"Kael'thas Sunstrider" node tools/xval.mjs <seed>`).
    Commit the raw matrices to `tools/xval-results/`.
 2. **Assemble the ledger** (§2.1) from `xval-collect.mjs`; confirm every `monoDip≈0`.
-3. **Triage the trustworthy deficits** (§3; long/XL or length-persistent only) → §4.5. Finding so far:
-   a sub-1%, low-haste (≤70), length-persistent cluster with a HETEROGENEOUS mechanism (spot-checked:
-   late-cluster spacing, AP timing, Zerk/Lust alignment — NOT uniformly the §4.1 IV-into-Lust basin).
-   Per-deficit, classify the differing track and route to §4.1 or a new finding. Do NOT assume §4.1.
-4. **Adversarial pass**: an agent tries to refute the "clean diagonal" claim against the raw matrices.
-5. **KT AoE**: to sim KT's AoE phase properly, genapl needs Arcane-Explosion emission during AoE
+3. **Triage the trustworthy deficits** (§3; long/XL or length-persistent only) → §4.5. Finding so far
+   (adversary-refined): the real one is **`mqg+skull`'s low-haste slack** (grows onto long/XL — not
+   quantization; heterogeneous mechanism, IV/CS sequencing recurs); `isc+scb`/`isc+mqg` low-haste
+   deficits reverse/vanish with length (quantization). Also chase `isc+scb` xl's hidden length-robust
+   deficit (plan@65 wins mid-haste columns). Classify each differing track; route to §4.1 or a new finding.
+4. **Adversarial pass — DONE (18/30).** An agent recomputed every cell and refuted two overstatements
+   (the "length-persistent across kits" generalization and the `isc+scb`-medium "low-haste" label);
+   confirmed monoDip=0 and sub-1% everywhere. Folded into §2.1/§4.5. **Re-run on the full 30+6 set.**
+5. **Upgrade the collector to report the FULL deficit-column set, not just the worst cell** — the
+   adversary found ~78 borrowed-plan-wins columns behind 17 worst-cells, including a length-robust one
+   the single-number summary hid. Report all deficit columns per table and flag length-robust ones.
+6. **KT AoE**: to sim KT's AoE phase properly, genapl needs Arcane-Explosion emission during AoE
    windows (currently simmed as downtime — KT numbers exclude AoE damage). Small addition; do before
    trusting KT.
-6. **(Optional, next pass) length-independent metric** — total damage over a fixed cast count, or the
+7. **(Optional, next pass) length-independent metric** — total damage over a fixed cast count, or the
    model's effective-AB count — would erase the short-fight quantization caveat entirely (§3.0).
-7. **Phase 7**: fold in Ashtongue (§4.8).
+8. **Phase 7**: fold in Ashtongue (§4.8).
 
 ## 8. Guardrails (do not regress)
 - **Determinism:** one setup ⇒ one plan. No `Date.now`/`Math.random` outside the seeded PRNG. The
