@@ -355,20 +355,14 @@ on a later use? does it have slack before its next use?). Grounding: `pressPlan`
 
 ## Also planned
 
-- **The "model over-values SP-count vs concentration" thesis is now DOUBTFUL — the Vashj leg collapsed.**
-  It was built on two "sim says fewer-concentrated-icons win, model says more" cases (Vashj 6:30, 2:15
-  far-Lust). Vashj is now **resolved the other way**: cast-counting + the user confirm the model's 4-icon
-  plan is **right** and the sim's 3-icon was a **harness artifact** (icon-count section above). So the
-  pattern may not be a *model* bias at all — it may be that the **sim** mis-scores "concentrated SP"
-  layouts (near intermissions/boundaries/floored windows), and the model's cast-counting is correct.
-  - **Re-examine 2:15 (Lust @0:25) with the same skepticism before trusting it.** The claim: sim says
-    **1 icon on floored Lust+IV** beats **2 icons off-Lust** by **+17–50 DPS**, model ranks 2-icon higher
-    by **+1416**. Given Vashj, do **not** treat that sim number as ground truth — first **cast-count** it
-    (1 icon on Lust+IV+AP ≈ its multiplier × casts, vs 2 bare icons' casts) and check whether the +17–50
-    survives a setup audit (offsets, floored-window scheduling, prestack). If cast-counting says 2-icon,
-    the model is right and 2:15 is *not* a golden-worthy suboptimality. Do NOT add 2:15 as a golden, and
-    do NOT touch the SP crediting, until this is redone. (Lesson: a sim result that contradicts clean
-    cast-counting is a **setup-audit trigger**, not a model bug — MECHANICS §3 corollary.)
+- **RESOLVED — the "model over-values SP-count vs concentration" thesis: the bias was RAMP-BLINDNESS,
+  and Phase 4·B fixed it.** The 2:15 far-Lust case re-examined on the fixed rig with the exact-ramp
+  model: the model now agrees with the (old, correct-in-direction) sim — 1 aligned icon beats 2 naive
+  icons (model +0.16 casts; sim +0.1% var0 / +0.2% var10) because the naive icon@0 sat on the pull ramp
+  the blind model over-credited. Better still, the tool's own output — a **double-dip** (both icon+gem
+  uses, opener + terminal, Lust left mostly bare) — beats BOTH by **+0.4% var10, sim-verified**. Vashj's
+  4-icon side of the thesis had already resolved as a harness artifact. Case closed: SP crediting is
+  correct, no tie-break needed, and the old §4 far-Lust "limitation" is retired (RULES §4).
 - **Coherent intermission/AoE handling** (`RULES.md` §9): make placement/tie-break passes downtime-aware
   so a window doesn't *usually* begin in a dead zone — as a **strong default, not an invariant** (pressing
   early into downtime can be right when it's the only way to get a cooldown back for a bigger later window;

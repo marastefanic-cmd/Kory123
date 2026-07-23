@@ -106,11 +106,13 @@ damage-buffed casts — Lust is the usual vehicle, not the objective.
   (a pack that would drop a use is rejected). (Model caveat: the model ranks the fully-packed layout
   highest — a **search** problem to reach it — but mis-ranks the *partial* pack, IV-in-lust-alone,
   above "IV out"; so any packing logic must produce the FULL pack, not stop half-way.)
-- **Known limitation — far-Lust with a bare window (e.g. 2:15, Lust @0:25).** When *nothing* sits on a
-  late-early Lust, packing the burst onto it forces Icon's cooldown-second past the kill, so `sameCounts`
-  blocks the whole move and the plan stays burst-at-pull (sim ≈ **−34 to −50 DPS** vs packed). Reaching
-  it needs a *damage-use-sacrifice* pack (drop Icon's 2nd use to align the 1st onto Lust) — a more
-  aggressive move than the haste-only packing above. Not yet implemented.
+- **RESOLVED — the far-Lust "limitation" was a drop-bug-rig artifact (2:15, Lust @0:25).** The old note
+  claimed packing the burst onto a far Lust beats burst-at-pull by ~34–50 DPS and the tool couldn't reach
+  it. Re-examined on the FIXED rig with the exact-ramp model: the tool's **double-dip** plan (both
+  Icon+gem uses — opener + terminal — IV split 0/CS-115, AP+Zerk on the opener, Lust left mostly bare)
+  **beats** the one-aligned-on-Lust pack by **+0.4% var10** (and one-aligned beats naive two-icons by
+  +0.1–0.2% — model and sim now agree on that ordering too, see the §7-era icon-count history in
+  ROADMAP). Nothing to implement: the current optimizer emits the winning plan on its own.
 
 ## 5. Icy Veins slides out of Lust as haste gear grows *(now REALIZED in the search, sim-verified)*
 
@@ -147,6 +149,11 @@ AP window, not merely on a haste window. Real but small (KaelThas/KT: +0.3–0.9
 seeds). Matters when the AP cluster is *staggered* off the pinned Lust (KT: Lust @4:20, AP @4:45) —
 the spellpower buff should slide onto AP, which a pinned-only snap misses. Forward-slide only (an
 already-early buff has nothing better behind it).
+- **SP buffs never compete with each other.** SP is additive (`base + coef·(sp+Δ₁+Δ₂)`), so a second
+  SP buff dilutes nothing — Icon+gem BOTH on the fastest window beats any split at every haste level
+  (measured: both-fast 52.018 vs best split 51.662 at h0, +0.36 casts; same ordering at h150/h300).
+  Concentrate every SP buff on the single highest-flux window; only cooldown spacing ever separates
+  them.
 
 ## 7. Haste-on-haste IS a multiplicative synergy below the floor — the floor decides when to split
 *(REWRITTEN — the old "wash" version was a fixed-rig artifact; see the correction note at the end.)*
@@ -158,19 +165,57 @@ worth ×1.2 its outside value; inside Lust, ×1.3. Verified exactly, model AND s
 Zerk-in-IV beats Zerk-outside by **+0.13 casts / +0.37%**; Zerk-in-Lust beats Zerk-after-Lust by
 **+0.20 casts (model +0.42%, sim +0.6%)** — the pure `10·(1.43−1.30)/1.5 − 10·0.10/1.5` arithmetic.
 Stacking position is otherwise free (pull-stack ≡ interior-stack to 0.0000, §3).
+- **Why model +0.42% vs sim +0.6% (user asked — decomposed exactly):** the sim runs var10, and a LATE
+  buff window (Zerk@45 on a 60s fight, draws 50–70) is CLIPPED on short draws while an early one never
+  is. Re-run at T=80 var10 where the @45 slot can't clip: sim = **+0.3%** = the model's fixed-kill
+  number exactly (+0.2 casts / ~63; SE ≈ 0.008%, noise ruled out). So model = fixed-kill effect;
+  sim-var10 adds a real "late windows carry kill-variance risk" premium the model prices only inside
+  its half-cast kill window BY DESIGN (§8 — hedging a wobbly kill is the player's live call). When
+  sim-gating, match the question: use fights long enough that no window clips, or expect the late-slot
+  penalty on top of the model's number.
 
 **The IV+Berserking playbook** (isolated pair, 1:00 fight, brute-enumerated over 0–789 rating —
 `tools/explore.mjs iv-zerk-solo`):
 - **0–215 rating: STACK.** The ×1.2 premium is free — the stacked ×1.32 stays under the floor
   (cap-touch = `(1.5/1.32 − 1)·1577 ≈ 215`).
-- **215–~263: STILL STACK.** The answer to "split the moment you touch the cap?" is **no — a bit
-  after**: the growing overcap waste has to eat the whole 20% premium first. Measured crossover:
-  **~263 rating** (spread−stack: −0.042 at 250, −0.011 at 260, +0.006 at 265, +0.022 at 270).
-- **~263–~700: SPREAD.** Waste exceeds premium; the spread advantage peaks ~+0.55 casts around 574
+- **215–~264: STILL STACK.** The answer to "split the moment you touch the cap?" is **no — a bit
+  after**: the growing overcap waste has to eat the whole 20% premium first. Model crossover at
+  1-rating resolution: **264**. Flat-world algebra says 243; the extra ~21 is the opener ramp's floor
+  headroom (the slow ramp casts absorb overcap — which is also why, near the crossover, stacking **on
+  the pull** beats an interior stack: Zk@0 48.669 > Zk@10 48.609 at h240).
+- **~264–~700: SPREAD.** Waste exceeds premium; the spread advantage peaks ~+0.55 casts around 574
   (where solo-Berserking itself nears its cap) and shrinks after.
 - **~700+: STACK ON THE PULL (academic).** Everything is floored except the three slow ramp casts —
   the last place haste still buys anything — so both buffs pile onto the opener ramp. Unreachable
   in-game; the exact-ramp model produces it automatically.
+- **Sim precision (fixed rig, var10, 300k):** the sim confirms the far sides (stack +0.2% at 200,
+  spread −0.2% at 320) and brackets the crossover in **[200, 290]** — the knife-edge deltas
+  (<0.15%) sit at the sim's noise/quantization floor, so treat the model's 264 as **±~25**. Same for
+  every crossover below: the model pins the integer, the sim certifies the band.
+
+**The Lust+Berserking band** (same sweep with Lust pinned): premium flat at **+0.20 casts** until
+cap-touch **~77** (`1.5/1.43`), then decays; crossover **~139** (sim: stack +0.6% at 60, +0.3% at
+120, tie at 160, spread at 200 — model's 139 inside the sim tie-band). So Zerk rides Lust from 0 to
+~139 rating — well past cap-touch.
+
+**Rating buffs obey the same premium law** (Drums +80 rating · 30s, in-Lust vs out): a rating buff
+under a multiplier is worth ×(multiplier) its solo value, and the algebra transfers exactly —
+cap-touch at `242.7 − 80 ≈ 163` gear rating (measured: IN wins through 160, OUT by 200). Two RATING
+buffs (Drums+Skull) have **no mutual synergy** — rating is additive — so they still each chase the
+multiplier windows, never each other.
+
+**No partial overlaps — ever.** Value is linear in overlap seconds within a regime, so the optimum is
+bang-bang: fully stacked or fully spread (measured at h240: full 48.669 > any partial 48.60–48.61 >
+disjoint 48.595). Never park a haste buff half-in.
+
+**The pure-haste trio (Lust + IV + Zerk, no damage buffs) — who takes the Lust slot?**
+- **0 gear: BOTH, sequentially, IV first over the opener ramp** (seqIn 50.367 > all): IV's ×1.56
+  overcap is absorbed by the slow ramp casts, and Zerk's ×1.43 fits the remaining headroom. This
+  re-derives §4's sequential packing from pure cast-count — no damage-buff flux needed.
+- **Any real gear haste (≥~50): the SMALLER buff keeps Lust, IV exits** (zkIn wins 50–250): Zerk
+  ×1.1 still fits under Lust's shrinking headroom, IV ×1.2 doesn't. **General law: fill a haste
+  window with the largest haste buff that still fits under the cap.** (With damage buffs present the
+  flux coupling §16 holds IV in Lust much longer — pure haste is the floor-only limit.)
 
 **Why Lust+IV still sequences (§4/§5 unchanged):** Lust×IV = 1.56 is over the 1.5 cap at ZERO gear
 haste — at exactly h0 the premium and the waste cancel to a wash (IV-in-Lust = IV-out = 2.67 casts,

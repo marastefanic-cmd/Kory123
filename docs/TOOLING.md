@@ -204,6 +204,13 @@ intermission-exit or AoE phase).
   real effect survives both; var10 is a genuinely different sample, so var0-and-var10 agreement is a
   real cross-check — unlike seeds 11/19). var10 does **not** clear an intermission-boundary effect
   (intermissions stay fixed).
+- **var10 penalizes LATE windows near the end — decide which question you're asking.** A buff window
+  inside the last `var` seconds gets clipped on short draws, so var10's A/B adds a real "late-slot
+  kill-variance premium" on top of the fixed-kill effect (measured: Zerk-in-Lust vs after = +0.6% at
+  T=60 var10 but exactly the model's +0.3% at T=80 var10 where nothing clips — RULES §7). The model
+  prices only a half-cast of kill variance BY DESIGN (RULES §8), so when gating a model preference,
+  either use a fight long enough that no compared window sits in the variance zone, or expect the sim
+  to exceed the model by the clip premium.
 
 ## ★ KNOWN HARNESS BUG — `APLActionSchedule` silently DROPS an on-cooldown press
 
