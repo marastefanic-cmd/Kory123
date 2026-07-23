@@ -1,10 +1,14 @@
 # PHASE 6 — Haste-adaptation cross-validation & the open soft spots
 
-**Status:** IN FLIGHT (this doc is the handoff for whoever cracks the items in §4). Phases 4 (search
+**Status:** IN FLIGHT — **campaign BLOCKED on a measurement anomaly (§4.7).** Phases 4 (search
 robustness) and 5 (AoE) are CLOSED; the six-kit ladder campaign (RULES §16) certified the search
 against exhaustive enumeration across every trinket pair and the full haste range. Phase 6 asks the
 next question: **does the planner's haste-ADAPTATION hold up in the real sim, end to end, on random
-fights it has never seen — and where are the remaining cracks?**
+fights it has never seen — and where are the remaining cracks?** The instrument, granularity, and
+fight-classes are built and validated, and several harness bugs were found+fixed — but the sim
+currently produces a **physically-impossible result** (a fixed rotation losing a cast as haste rises,
+§4.7), so **no cross-val verdict is trustworthy until that measurement is fixed.** This pass's job is
+to make the data correct and record it; the next pass decides model changes. **Start at §4.7.**
 
 Read `CLAUDE.md` → `docs/MECHANICS.md` → `docs/RULES.md` (esp. §16) → `docs/TOOLING.md` (the sim
 methodology + the ★ mana trap) before touching anything here.
@@ -27,16 +31,19 @@ The instrument is a **holdout cross-validation matrix** (`tools/xval.mjs`):
 3. Sim **every plan at every haste** → an N×N DPS matrix. Rows = the haste a plan was optimized FOR;
    columns = the haste it's SIMMED at. The **diagonal** is each plan run at its native haste.
 4. Two readings:
-   - **(a) Haste-monotonicity — OBSERVED, not interpreted.** "More passive haste ⇒ more DPS" is
-     **observed to NOT hold strictly** in the sim at fine granularity (a fixed plan can sim lower at
-     higher haste by up to ~1.5% around certain haste values). **Cause not yet determined** — see the
-     open observations in §4.7. The harness reports the worst dip's raw magnitude and draws no
-     conclusion. Do NOT assume it's benign until §4.7 is resolved.
+   - **(a) Haste-monotonicity — a strict invariant, used as a DATA-QUALITY canary.** With ∞ mana,
+     more haste ⇒ ≥ casts ⇒ ≥ damage; haste is *never* harmful, so a fixed plan's row MUST be
+     non-decreasing. Any observed dip is therefore **not physics and not the model — it is a broken
+     measurement** (§4.7: the sim currently fits *fewer* casts at higher haste, an impossible result).
+     The harness reports the worst dip's magnitude as the per-table **noise floor** — but until §4.7
+     is fixed, a nonzero floor means the whole table is suspect, not merely imprecise.
    - **(b) Diagonal dominance — the model test.** In every column, does the native (diagonal) plan
      sim ≥ every plan borrowed from another haste? The harness reports **CLEAN** (native is the max
      in every column) or **DEFICIT X%** (a borrowed plan out-simmed the native somewhere, by X% at
-     the named cell). No tolerance is applied — a deficit is a deficit; deciding what to do about a
-     small one is the NEXT pass, not this one.
+     the named cell). No tolerance is applied in the label — but a deficit **below that table's
+     monotonicity noise floor (a) is not trustworthy** (it can't be told apart from quantization).
+     A deficit *above* the floor is a real signal. Deciding what to do about a real one is the NEXT
+     pass.
 
 Run it: `CHROMIUM=… RUNNER=…/runner-ap180 EXPORT_BASE=…/export.json [KIT=a,b TCLASS=short
 HASTES=0,30,…] node tools/xval.mjs <seed>`. Prints the matrix and an `XVAL-DONE … monoDip=…%
@@ -73,11 +80,15 @@ breakpoint-straddle, drop the round anchor). ~7–11 points per kit:
 - **`--mana 100000000` (infinite).** ★ The model is layout-first; mana is excluded by design. A gate
   without infinite mana measures MANA, not layout (see §4.4 and the −4% phantom in TOOLING). This is
   the single most important flag.
-- **`--var 10`** (not var0). var0 is the fixed-length quantization trap: a razor-edge tie can flip on
-  a whole-cast boundary. var10 smooths it. (Gate 1 in RULES §16 read −0.08% at var0, +0.47% at var10.)
-- **Paired `--seed 11`** across every cell → common-random-numbers, so A/B differences aren't seed noise.
-- **`--iter 10000`.** A fixed-length fight's variance is tiny; 10k resolves the ~1–60 DPS signal with
-  a ~1–2 DPS mean stdev. Do NOT use 250k (wasteful) — user-directed.
+- **`--var 10`** (not var0). var0 is a razor-edge tie trap (a flip on a whole-cast boundary); var10
+  softens that. **BUT** var does NOT fix the short-fight quantization floor (§4.7 — it's length, not
+  variance, that shrinks it), and more variance can itself blur a diagonal comparison (user caution).
+  So var10 is the current choice, not a settled one — revisit alongside the §4.7 metric decision.
+- **Paired `--seed 11`** across every cell → common-random-numbers. Note (§4.7): varying `--seed`
+  appears not to vary the sample here, so cross-cell spread is deterministic quantization, not
+  statistical noise — which is *good* (reproducible) but means "add iterations to beat noise" won't
+  shrink the floor; only a better metric or a longer fight will.
+- **`--iter 10000`.** Deterministic-enough per config that 10k is plenty; do NOT use 250k (wasteful).
 - The AP-180 patched runner (`runner-ap180`), not stock wowsims (AP cadence quirk, TOOLING ★).
 - **Trinket swap:** the gear export wears Icon+Serpent-Coil; `xval.mjs` swaps equipment array
   **indices 12/13** (0-indexed) to the drawn pair's item IDs. ★ Those indices are the wowsims proto
@@ -94,21 +105,32 @@ breakpoint-straddle, drop the round anchor). ~7–11 points per kit:
 
 ## 2. Results ledger
 
-| seed | fight | Lust | kit | (a) mono | (b) diagonal | notes |
-|------|-------|------|-----|----------|--------------|-------|
-| 20260723 | 3:10 | 1:16 | mqg+skull | PASS | PASS | reference; DPS falls off monotonically with distance from diagonal both ways |
-| 7 | 1:33 | 0:03 | mqg+skull | PASS | PASS | self-contained xval.mjs validation |
-| 5 | 5:18 | 3:34 | isc+skull | PASS | PASS | agent |
-| 9 | 2:35 | 1:37 | isc+mqg | PASS | PASS | agent |
-| 2 | 5:33 | 1:35 | scb+skull | _rerun_ | | harness bug §4.6 fixed, re-running |
-| 3 | 5:28 | 0:11 | isc+scb | _rerun_ | | harness bug §4.6 fixed, re-running |
-| 8 | 2:21 | 1:03 | scb+mqg | _rerun_ | | harness bug §4.6 fixed, re-running |
+**Two grids were run. Read the caveats — the coarse grid predates the fixes/labeling.**
 
-**4/4 non-scb kits PASS both properties** (mqg+skull ×2, isc+skull, isc+mqg). The three scb kits hit
-a **harness** bug (not a model bug) — see §4.6 — now fixed and re-running.
+**(i) Coarse 5-point grid (0/100/200/300/400), earlier "no >6 DPS deficit" labeling — pre-quantization-finding.** All seven kits showed the native plan winning its column with the
+now-familiar fall-off away from the diagonal. Treat as *encouraging but not authoritative* (loose
+label; the short-fight ones are inside the §4.7 quantization floor):
 
-Reference matrix (seed 20260723), for the shape a healthy result has — native bold, penalty grows
-with distance from the diagonal in both directions:
+| seed | fight | kit | note |
+|------|-------|-----|------|
+| 20260723 | 3:10 | mqg+skull | reference matrix below |
+| 7 | 1:33 | mqg+skull | SHORT — inside quantization floor, discount |
+| 5 | 5:18 | isc+skull | long — meaningful |
+| 9 | 2:35 | isc+mqg | medium |
+| 2 | 5:33 | scb+skull | long — meaningful (scb fix §4.6) |
+| 3 | 5:28 | isc+scb | long — meaningful (scb fix §4.6) |
+| 8 | 2:21 | scb+mqg | medium (scb fix §4.6) |
+
+**(ii) Breakpoint-straddle grid + CLEAN/DEFICIT labeling + fight-classes — the REAL campaign: NOT
+YET RUN.** Blocked on the §4.7 metric decision (short/medium fights are quantization-limited, so
+their DEFICIT labels aren't trustworthy as-is). The harness (`tools/xval.mjs`), the per-kit haste
+sets (§1), and the fight classes are all ready; launch once the metric question is resolved. Fill
+this table then, one row per (kit × fight-class × boss-preset), with the fight length shown so each
+row's noise floor is visible.
+
+Reference matrix (seed 20260723, coarse grid), for the *shape* a healthy result has — native bold,
+penalty grows with distance from the diagonal in both directions (this shape is real; the sub-1%
+magnitudes on this 3:10 fight are partly quantization):
 
 ```
 plan\sim     0      100      200      300      400
@@ -121,12 +143,17 @@ plan\sim     0      100      200      300      400
 
 ---
 
-## 3. If a diagonal violation shows up — how to read it
+## 3. If a diagonal DEFICIT shows up — how to read it
 
-A FAIL on (b) means: at some sim-haste H, a plan optimized for a *different* haste out-sims the
-native plan by more than noise. Before believing it's a model bug, rule out the usual suspects in
-this order (the methodology's "sim is rarely wrong, we usually used it wrong"):
+A DEFICIT means: at some sim-haste H, a plan optimized for a *different* haste out-simmed the native
+plan. Before believing it's a model bug, rule out the usual suspects in this order (the methodology's
+"sim is rarely wrong, we usually used it wrong"):
 
+0. **Quantization floor (§4.7) — check FIRST.** Is the deficit smaller than this table's monotonicity
+   dip (the noise floor the harness prints)? On a short/medium fight that floor is ~1–3%. If the
+   deficit is under it, it is **not trustworthy** — it's indistinguishable from the fixed-length DPS
+   cutoff artifact. Only deficits ABOVE the floor are real signal. (This is the change that made the
+   earlier 0.62% short-fight "deficit" a non-finding.)
 1. **Mana.** Re-confirm `--mana 100000000` actually applied (grep the log for OOM / regen-wait). This
    has bitten us twice.
 2. **Fixed-length tail artifact.** A plan with a buff jammed against the kill sims low because the sim
@@ -135,7 +162,7 @@ this order (the methodology's "sim is rarely wrong, we usually used it wrong"):
 3. **Cold-Snap mapping.** `xval.mjs` marks an IV inside the 180s cd as a CS use and emits a `CS`
    schedule. If the plan has 3 IVs but the APL only fired 2, the CS didn't reset — check the combat
    log for the Cold Snap cast and the second IV aura.
-4. **Only then**, if it survives all three: it's a genuine **model mis-adaptation** — the model built
+4. **Only then**, if it survives all four: it's a genuine **model mis-adaptation** — the model built
    the wrong layout for that haste. THIS is a Phase-6 finding. Localize it: which track is misplaced?
    Compare the native plan's layout to the winning borrowed plan's, map it to the RULES §16 band
    structure, and figure out which band edge the model put on the wrong side. Document it in §4, don't
@@ -143,11 +170,11 @@ this order (the methodology's "sim is rarely wrong, we usually used it wrong"):
 
 ---
 
-## 4. The open soft spots (candidates to crack — DOCUMENTED, deliberately UNFIXED)
+## 4. Findings & open items
 
-These are known, priced, and inside tolerance today, but they're where the next real improvement
-lives. None is a correctness bug; each is a "the tool sits a hair under the true optimum" or "we lack
-ground truth" gap.
+**§4.7 is a MEASUREMENT-CORRECTNESS BLOCKER — start there.** §4.6 is a harness bug found+fixed this
+pass. The rest (§4.1–4.4) are pre-existing "the tool sits a hair under the true optimum / we lack
+ground truth" gaps — known, priced, model-level, deferred. §4.8 is the Phase-7 Ashtongue defer.
 
 ### 4.1 The h≈40 straddle-basin slack (kit-universal)
 Around 30–70 gear rating, in every trinket kit, the tool's plan sits up to **0.14 eff casts under**
@@ -169,26 +196,6 @@ narrowed window around the grid optimum (not full 1s enumeration — 8M×5^4 is 
 optimum from the closed-form cast-rate integral. Needed before any high-haste claim for those kits
 can be called "certified" rather than "tool ≥ coarse grid."
 
-### 4.7 OBSERVATION (unexplained) — the sim's haste-monotonicity is not clean at fine granularity
-**Status: OBSERVED, cause NOT determined. Do not act on a theory until this pass verifies the data.**
-Raw observations gathered while dialing in the harness (NOT conclusions):
-- A fixed plan can sim **lower at higher passive haste** by up to ~1.5% at some haste values.
-- It reproduces in **pure Arcane Blast spam with zero buffs** (var10, 150k iters): e.g. 2419 (h120)
-  → 2434 (h130) → **2379 (h140)** → 2393 (h150) → 2408 (h160) → 2422 (h170) — a ~2.3% trough at
-  h140. So it's a property of the **sim's AB casting under `--haste` injection**, not of our plans.
-- var0 shows a similarly jagged non-monotone curve (2411/2452/2370/2411/2412/2413 at h120–170).
-- **`--seed 7`, `42`, `99` produced BYTE-IDENTICAL DPS** for the same setup — so varying `--seed`
-  did NOT vary the sample here (the runner may be deterministic per config, or these seeds collide;
-  note TOOLING already flags "seeds 11/19 are the same sample"). This affects how we reason about
-  "sim noise" — the cross-cell differences may be deterministic quantization, not statistical spread.
-
-Candidate explanations NOT yet tested (for the next pass): a real TBC GCD/rounding breakpoint; a
-`--haste` bonusStats injection quirk; a fixed-duration truncation × cast-quantization interaction;
-an AB-stack-timing artifact. **Until this is pinned, treat monotonicity dips as unexplained data and
-weigh diagonal-dominance deficits cautiously** — a "small" diagonal deficit could be the same
-quantization rather than a model error. Whichever it is, it must be understood before the cross-val's
-verdicts are trustworthy. That resolution is the FIRST task of the next pass.
-
 ### 4.3 The press-boundary phase blind spot (~0.1%)
 The scorer phase-averages the sub-GCD press-to-boundary offset at steady state (deliberately — it's a
 uniform fraction of a GCD set by opener/latency). Near a ramp exit the boundaries are sparse and this
@@ -201,10 +208,11 @@ The planner is layout-first; the per-window mana chip is the mana UX ceiling. Th
 a bug — a scope boundary. If a future phase wants mana-aware *layout*, it's a large piece (the whole
 finite-mana model was explicitly rejected before) and needs its own design, not a patch here.
 
-### 4.5 (placeholder) Phase-6 findings from the cross-val sweep
-_To be filled as the agent matrices come in. Any confirmed diagonal violation (survived the §3
-triage) goes here with: seed, fight, kit, the haste it fails at, the misplaced track, and the band
-edge the model got wrong._ So far: 4/4 non-scb kits PASS; scb kits re-running after the §4.6 fix.
+### 4.5 (placeholder) Model mis-adaptations from the cross-val sweep
+_Empty until §4.7 is resolved and the campaign runs. A confirmed diagonal deficit (exceeds its
+table's noise floor AND survives the §3 triage) goes here with: seed, fight, kit, the haste it fails
+at, the misplaced track, and the band edge the model got wrong._ Nothing recorded yet — the coarse
+runs in §2(i) are not authoritative and the real campaign (§2(ii)) is blocked on §4.7.
 
 ### 4.6 Harness bug (FIXED) — scb needs the Serpent-Coil TRINKET equipped, not the Mana Emerald
 The cross-val's first scb runs crashed the sim: `SIM ERROR: No item with id: 22044`. Root cause was
@@ -231,6 +239,46 @@ because scb is genuinely different from the other three:
   (fire Icon and the gem in the same second; confirm both buffs land) before it's called certified.
 
 ---
+
+### 4.7 ★ CRITICAL OPEN ANOMALY — the sim fits FEWER casts at higher haste (measurement is WRONG; block the campaign on this)
+Haste-monotonicity is a **hard invariant**: with ∞ mana, on a FIXED-length fight with a FIXED
+rotation, more haste ⇒ each cast is ≤ as long ⇒ **≥ casts fit ⇒ ≥ damage**. Worst case equal (the
+extra haste didn't buy a cast). It can **never decrease.** The sim violates this:
+
+**Smoking gun (pure AB spam, var0, dur80, deterministic single iter, ∞ mana):**
+| haste | AB casts | total AB dmg | last cast completes |
+|---|---|---|---|
+| **130** | **53** | 202398 | 79.93s |
+| **140** | **52** | 197681 | 79.00s |
+
+More haste (140 > 130) fits **one FEWER cast** and does **less** damage — implied per-cast spacing
+1.519s at h140 vs 1.508s at h130, i.e. the sim's AB casts are *slower at higher haste* around here.
+That is physically impossible for a correct measurement, so **the data is not yet trustworthy** — my
+earlier "fixed-length DPS quantization" note was wrong (quantization gives a flat step, never a
+*decrease* / a *lost cast*). This is the anomaly, unexplained.
+
+Candidate causes to test NEXT pass (do not assume): cast-time / GCD **rounding to a discrete tick**
+that a small haste bump pushes across a boundary the wrong way; a real-TBC haste-breakpoint rounding
+mechanic (which normally makes a monotone staircase, not a decrease — so a decrease would still be
+suspect); the opener-ramp (0→3 stack) cast-time interaction with the fixed end; or a `--haste`
+bonusStats injection quirk. Also observed and relevant: **`--seed 7/42/99` gave byte-identical DPS**
+→ `--seed` does not vary the sample (deterministic per config), so this is not statistical noise —
+it's a reproducible, deterministic wrong-direction result.
+
+**This BLOCKS the campaign.** Until a fixed-rotation haste sweep is verified strictly non-decreasing
+(cast count and total damage), diagonal-dominance deficits cannot be trusted — a "deficit" could be
+this same lost-cast artifact rather than a model mis-adaptation. **First task of the next pass:
+resolve this** (fix the measurement, or switch to a metric that is provably monotone in haste — e.g.
+total damage over a fixed CAST COUNT rather than a fixed fight length, or the model's own effective-AB
+count), then gather the campaign.
+
+### 4.8 (Phase 7) Ashtongue Talisman of Insight is NOT in the cross-val kits
+The cross-val covers the six pairs of {Icon, Serpent-Coil, Skull, MQG} only. **Ashtongue (`ati`, the
+random 145-rating/5s on-crit proc) is excluded** — deliberately deferred to Phase 7. It's a *random
+proc*, not an on-use, so it needs a different treatment (its haste is stochastic; the model already
+carries a deterministic-average `ati` haste curve, RULES §14, which would itself need sim-validation).
+Fold it in when Phase 7 opens; note it also interacts with the trinket lockout differently (it's a
+passive proc, so it can coexist with an on-use trinket).
 
 ## 5. Instruments (where they are, how to run)
 
@@ -262,11 +310,25 @@ fresh session, see §6).
 2. Trust-anchor: a bare-rotation run reproduces the baseline DPS to the decimal (TOOLING §trust).
 3. The gear export is user data (NOT in repo). `xval.mjs` trinket-swaps a copy; never commit an export.
 
-## 7. Guardrails (do not regress)
+## 7. Next-pass task list (in order)
+1. **Resolve §4.7 (BLOCKER).** Verify a fixed-rotation, ∞-mana haste sweep is strictly non-decreasing
+   in cast count AND total damage. Find why the sim currently loses a cast (h130=53 → h140=52).
+   Likely: switch the cross-val metric to something provably monotone in haste — total damage over a
+   fixed CAST COUNT, or the model's own effective-AB count — rather than DPS over a fixed fight length.
+   Do NOT proceed until a monotone sweep is demonstrated.
+2. **Run the campaign** (§2(ii)): 6 kits × 5 fight-classes + Vashj / Kael'thas / Al'ar boss shapes, on
+   the per-kit breakpoint grids (§1), ∞ mana, honest CLEAN/DEFICIT labeling. Boss shapes need `xval.mjs`
+   extended to load a preset's T/Lust/segments (it currently builds `segments:null`).
+3. **Triage every real deficit** (§3) → record confirmed model mis-adaptations in §4.5.
+4. **Adversarial pass**: an agent tries to refute the campaign's clean-diagonal claims against the raw
+   matrices before anything is called certified.
+5. **Phase 7**: fold in Ashtongue (§4.8).
+
+## 8. Guardrails (do not regress)
 - **Determinism:** one setup ⇒ one plan. No `Date.now`/`Math.random` outside the seeded PRNG. The
   pool/cache/memo speedups are all purity-preserving — keep them so.
 - **Exact-match 25/25** at every commit that touches the engine (`cd tests && node exact-match.mjs`).
-- **Sim-gate novel findings** (infinite mana, var10, paired seed, pre-registered model prediction) —
-  and run an **adversarial refutation pass** (an agent that tries to break the claim against the raw
-  data) before locking anything into RULES. Both earned their keep this session.
+- **Sim protocol:** ∞ mana (§4.4 trap), the AP-180 runner, trinket indices 12/13 (§1). Sim-gate novel
+  findings against a pre-registered model prediction; run an **adversarial refutation pass** before
+  locking anything into RULES.
 - **Never leak identity/model ids** into `index.html` or any pushed artifact. Discord handle only.
