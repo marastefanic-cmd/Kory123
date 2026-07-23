@@ -317,6 +317,9 @@ fresh session, see §6).
   `$XVDIR/<kit>-<class>.txt`, seeds each class deterministically (`1000 + cksum(kit)%9000 + classIdx`).
 - **`tools/xval-campaign.sh`** — runs all six kits (`xval-kit.sh` each), 2-concurrent, `ITER=6000`.
   The whole fight-class campaign in one command.
+- **`tools/xval-boss.sh`** — the boss-shape cross-val: each boss preset's real T/Lust/phases (via
+  `xval.mjs` BOSS mode) × representative kits. Default set = Vashj + Al'ar + KT × {mqg,skull; isc,scb}.
+  Vashj/Al'ar sim cleanly (intermission-only); KT's AoE phase is simmed as downtime (flagged).
 - **`tools/xval-collect.mjs`** — reads a directory of `xval` outputs → the §2.1 CLEAN/DEFICIT ledger
   markdown (`node tools/xval-collect.mjs tools/xval-results`); asserts every `monoDip ≈ 0`.
 - **`tools/brute-grid.mjs`** — full 5s-grid exhaustive brute. `--pair a,b` (any 2 trinkets), `--tool`
