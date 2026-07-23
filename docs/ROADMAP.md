@@ -287,6 +287,13 @@ TOOLING). Findings, all sim-measured on the fixed rig:
   "0:05", co-rowed with a 0:05 Lust call (this also killed the "0:05 Bloodlust printed above 0:04
   Icon" row-order bug, and replaced the short-lived `snapRampIntent` intent re-snap with something
   strictly simpler).
+  **Follow-up (user: "still incredibly slow, can't even copy"):** the sensitivity panel's "what if
+  the kill runs longer" hint ran a SECOND full `optimizeAsync` on the main thread after every render
+  — minutes of frozen-while-looking-done on long fights. Moved to a throwaway **aux worker**
+  (`runOptimizeAux`; never falls back in-page). Verified: main-thread latency ~4ms while the aux
+  crunches, Copy works under load. The remaining slowness axis is the **optimizer's own runtime**
+  (minutes on 6-intermission fights, basinHop dominates — a known backlog item; the page now stays
+  fully interactive throughout).
 - **`basinHop` ramp-exit anchors landed** (the backlog headroom item): h160-class ramp-exit-hug basin
   CLOSED; **Kael'thas moved** to a strictly better plan (+354 robust, `IV@106/126/380`,
   `AP@120/380`, cluster mirrors) and was re-locked. h40/h50 straddle residuals (≤0.033, inside

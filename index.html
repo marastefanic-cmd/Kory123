@@ -2945,22 +2945,23 @@ el("in-haste").addEventListener("input", () => {
 // If Worker/Blob construction fails anywhere exotic, fall back to the in-page engine — the
 // throttled yields inside optimizeAsync keep the page alive in that mode too, just laggier.
 let engineWorker = null, engineWorkerBusy = false;
+function makeEngineWorker() {
+  const src = document.getElementById("engine-src").textContent +
+    "\nself.onmessage = async e => {" +
+    "  const { cfg, starts } = e.data;" +
+    "  try {" +
+    "    const best = await optimizeAsync(cfg, starts, f => self.postMessage({ type: 'progress', f }));" +
+    "    self.postMessage({ type: 'done', best });" +
+    "  } catch (err) { self.postMessage({ type: 'error', message: String((err && err.stack) || err) }); }" +
+    "};";
+  return new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+}
 function runOptimize(cfg, starts, onProgress) {
   return new Promise(resolve => {
     const fallback = () => optimizeAsync(cfg, starts, onProgress).then(resolve);
     try {
       if (engineWorker && engineWorkerBusy) { engineWorker.terminate(); engineWorker = null; }
-      if (!engineWorker) {
-        const src = document.getElementById("engine-src").textContent +
-          "\nself.onmessage = async e => {" +
-          "  const { cfg, starts } = e.data;" +
-          "  try {" +
-          "    const best = await optimizeAsync(cfg, starts, f => self.postMessage({ type: 'progress', f }));" +
-          "    self.postMessage({ type: 'done', best });" +
-          "  } catch (err) { self.postMessage({ type: 'error', message: String((err && err.stack) || err) }); }" +
-          "};";
-        engineWorker = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
-      }
+      if (!engineWorker) engineWorker = makeEngineWorker();
       const w = engineWorker;
       engineWorkerBusy = true;
       w.onmessage = ev => {
@@ -2972,6 +2973,28 @@ function runOptimize(cfg, starts, onProgress) {
       w.onerror = err => { console.error("engine worker:", err.message || err); engineWorkerBusy = false; engineWorker = null; try { w.terminate(); } catch (_) {} fallback(); };
       w.postMessage({ cfg, starts });
     } catch (err) { console.error("worker unavailable, running in-page:", err); engineWorker = null; fallback(); }
+  });
+}
+// Auxiliary, throwaway worker for follow-up analyses (the sensitivity panel's "what if the kill
+// runs longer" re-optimization). Separate from the main worker so it can't collide with a
+// user-initiated run; a new call terminates the previous aux run (its result would be stale
+// anyway). Resolves null on any failure — callers treat the answer as optional garnish, and it
+// must NEVER fall back to the in-page engine (that main-thread compute after every run is
+// exactly the "results are up but the page is frozen and Copy does nothing" bug).
+let auxWorker = null;
+function runOptimizeAux(cfg, starts) {
+  return new Promise(resolve => {
+    try {
+      if (auxWorker) { auxWorker.terminate(); auxWorker = null; }
+      const w = auxWorker = makeEngineWorker();
+      w.onmessage = ev => {
+        const m = ev.data;
+        if (m.type === "done") { if (auxWorker === w) { w.terminate(); auxWorker = null; } resolve(m.best); }
+        else if (m.type === "error") { console.error("aux worker:", m.message); if (auxWorker === w) { w.terminate(); auxWorker = null; } resolve(null); }
+      };
+      w.onerror = err => { console.error("aux worker:", err.message || err); if (auxWorker === w) { w.terminate(); auxWorker = null; } resolve(null); };
+      w.postMessage({ cfg, starts });
+    } catch (err) { console.error("aux worker unavailable:", err); resolve(null); }
   });
 }
 let lastRun = null, lastGeo = null;
@@ -3405,14 +3428,16 @@ function renderSensitivity(run) {
   }
   host.hidden = !lines.length;
   host.innerHTML = lines.join("");
-  // quantify the upside in the background with a real optimization at T2
+  // quantify the upside with a real optimization at T2 — in the AUX WORKER, never in-page:
+  // this used to call optimizeAsync on the main thread after every run, which kept the page
+  // frozen for minutes on long fights while the results were already showing (Copy dead, etc.)
   if (groupTs.length) {
     const tok = ++renderSensitivity.seq; // stale-result guard: a newer run wins
     const t2 = groupTs[groupTs.length - 1];
     const cfg2 = { ...cfg, T: t2, fixed: { ...cfg.fixed } };
     const curGain = run.optR.robust / run.baseline.robust - 1;
-    optimizeAsync(cfg2, 10, () => {}).then(b2 => {
-      if (tok !== renderSensitivity.seq) return;
+    runOptimizeAux(cfg2, 10).then(b2 => {
+      if (!b2 || tok !== renderSensitivity.seq) return;
       const base2 = simulate({}, cfg2).robust;
       const d = (b2.val / base2 - 1 - curGain) * 100;
       const span = el("sense-gain");
