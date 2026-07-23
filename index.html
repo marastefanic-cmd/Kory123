@@ -487,7 +487,8 @@
             <input id="in-crit" type="number" value="25" min="0" max="100" step="0.5">
           </div>
         </div>
-        <span class="hint">Damage model weighs haste vs. Arcane Power; crit drives Ashtongue uptime.</span>
+        <label class="check use" style="margin-top:6px"><input id="ck-t5" type="checkbox"> Tirisfal 2-piece (Arcane Blast +20% damage &amp; mana)</label>
+        <span class="hint">Damage model weighs haste vs. Arcane Power; crit drives Ashtongue uptime. T5-2pc boosts only Arcane Blast (additive with Arcane Power), so its main effect is re-pricing AoE phases vs. blasting.</span>
       </div>
 
       <div class="scol">
@@ -561,7 +562,7 @@
   <footer class="assump" id="assump" hidden></footer>
 </div>
 
-<script>
+<script id="engine-src">
 "use strict";
 /* ═══════════════ game constants (TBC 2.4.3 — see README for sources) ═══════════════ */
 const GAME = {
@@ -635,6 +636,15 @@ function simulate(schedule, cfg, collect) {
   const g = GAME;
   const crit = Math.min(1, Math.max(0, cfg.critPct / 100));
   const critFactor = 1 + crit * (g.CRIT_MULT - 1);
+  // Tirisfal 2-piece (T5): Arcane Blast ONLY, +20% damage (and +20% mana — the chip handles that).
+  // Pooled ADDITIVELY with Arcane Power (AB under AP+T5 = ×1.5, not 1.3×1.2) — RESOLVED per the user's
+  // ruling ("trust wowsims if unsure"): no public 2.4.3 source decides it, both effects are percent-
+  // damage aura modifiers which SUM in the client's modifier pool, and wowsims implements exactly that
+  // (both `SpellMod_DamageDone_Flat`, one additive pool — SOURCES). Consequences: a plain (no-AP) AB is
+  // ×1.2 (the plain-AB normalizations include it, so no-AP casts count 1.0); AP's relative premium on a
+  // T5'd AB dilutes to ×1.25 (still the full ×1.30 on AE — T5 doesn't touch AE); every RULES §9 AoE
+  // N-threshold shifts ×1.2. AoE re-pricing remains the toggle's dominant effect.
+  const t5add = cfg.t5two ? 0.2 : 0;
   // Activations fire at real press opportunities only: the pull (t=0), a cast
   // boundary (the "/cast Buff /cast Arcane Blast" macro on the next spam
   // press), or any moment you aren't casting (intermissions). A scheduled
@@ -770,7 +780,7 @@ function simulate(schedule, cfg, collect) {
     if (isAoe) {
       dmg = (g.AE.AVG_BASE_DMG + g.AE.COEF * sp) * seg.targets * critFactor * dmgMult * aoeCritAmp(seg.targets, crit);
     } else {
-      dmg = (g.AB.AVG_BASE_DMG + g.AB.COEF * sp) * critFactor * dmgMult;
+      dmg = (g.AB.AVG_BASE_DMG + g.AB.COEF * sp) * critFactor * (dmgMult + t5add);
       if (seg && seg.type === "burn") dmg *= seg.mult;
     }
     if (t < cfg.T) castCount++; // discrete press count (board/UI); damage is scored by the integral below
@@ -835,7 +845,7 @@ function simulate(schedule, cfg, collect) {
     const aoe = !!(segB && segB.type === "aoe");
     let dmg2;
     if (aoe) dmg2 = (g.AE.AVG_BASE_DMG + g.AE.COEF * sp2) * segB.targets * critFactor * dmgMult2 * aoeCritAmp(segB.targets, crit);
-    else { dmg2 = (g.AB.AVG_BASE_DMG + g.AB.COEF * sp2) * critFactor * dmgMult2; if (segB && segB.type === "burn") dmg2 *= segB.mult; }
+    else { dmg2 = (g.AB.AVG_BASE_DMG + g.AB.COEF * sp2) * critFactor * (dmgMult2 + t5add); if (segB && segB.type === "burn") dmg2 *= segB.mult; }
     return { multDn2, mult2, dmg2, aoe };
   };
   const intervalAt = (m, aoe, stacks) => {
@@ -1152,14 +1162,20 @@ function polish(seed, cfg) {
 // block to every OTHER window's anchor (and the kill anchor), re-polish, keep strict improvements,
 // repeat to fixpoint. This is the self-consistency guard of docs/PLAN.md: the search never returns
 // a plan worse than one reachable by re-basing its own windows on its own anchors.
-function basinHop(champ, cfg) {
+// Async: each window×anchor teleport costs a polish() (seconds on long fights), and the hop can run
+// dozens of them — `onStep` (optional) is awaited between teleports so the caller can yield the main
+// thread / report progress. Awaits only reschedule; the computation sequence is unchanged.
+async function basinHop(champ, cfg, onStep) {
   let bestS = champ.s, bestV = champ.val, guard = 0, again = true;
   while (again && guard++ < 5) {
     again = false;
     const windows = [...new Set(Object.entries(bestS).flatMap(([k, ts]) => cfg.fixed[k] ? [] : ts.map(Math.round)))];
-    // anchors: the plan's own press seconds, the kill, and each track's NATURAL NEXT TICK (use + cd —
-    // the cadence slot a re-based window wants, e.g. the "2nd burst at opener+cd" basin). Snapped to a
-    // 5s grid and deduped to bound the polish count — the polish's own ±1/±2 shifts cover the rest.
+    // anchors: the plan's own press seconds, the kill, each track's NATURAL NEXT TICK (use + cd —
+    // the cadence slot a re-based window wants, e.g. the "2nd burst at opener+cd" basin), and every
+    // RAMP-EXIT boundary (the first full-stack cast after each cold start — the "hug the ramp exit"
+    // basin sits exactly there, one fast cast earlier than any 5s-grid anchor; it was the h160-class
+    // descent-valley miss the full-grid brute exposed). Snapped to a 5s grid (except the exact ramp
+    // exits) and deduped to bound the polish count — polish's own ±1/±2 shifts cover the rest.
     const anchors = new Set([Math.max(0, Math.round(cfg.T) - 1)]);
     const grid = x => Math.max(0, Math.min(Math.round(cfg.T) - 1, Math.round(x / 5) * 5));
     for (const k in bestS) for (const t of bestS[k]) {
@@ -1167,6 +1183,17 @@ function basinHop(champ, cfg) {
       const tick = t + BUFFS[k].cd;
       if (tick < cfg.T - 1) anchors.add(grid(tick));
     }
+    {
+      const board = simulate(bestS, cfg, true).casts;
+      if (board) for (let i = 1; i < board.length; i++) {
+        if (board[i].stacks === GAME.AB.MAX_STACKS && board[i - 1].stacks < GAME.AB.MAX_STACKS) {
+          const a = Math.round(board[i].t);
+          if (a > 0 && a < cfg.T - 1) anchors.add(a);
+        }
+      }
+    }
+    let hopStep = 0;
+    const hopTotal = Math.max(1, windows.length * anchors.size);
     for (const X of windows) {
       for (const A of anchors) {
         if (A === X) continue;
@@ -1177,6 +1204,7 @@ function basinHop(champ, cfg) {
         }
         const p = polish(repair(cand, cfg), cfg);
         if (p.val > bestV + 1e-7) { bestS = p.s; bestV = p.val; again = true; }
+        if (onStep) await onStep(++hopStep / hopTotal);
       }
     }
   }
@@ -1239,14 +1267,58 @@ function optimizeAsync(cfg, starts, onProgress) {
         // not just the max — rounding a fractional winner can cost real damage
         // and land in a worse basin, while an already-integer runner-up keeps
         // its full value. Keep the best INTEGER plan.
+        // This whole finishing stage is heavy (polish ×6 + the basinHop fixpoint can be tens of
+        // seconds on long fights) — run it ASYNC with yields between the chunks, or the browser's
+        // main thread blocks long enough to trip the "Page Unresponsive" kill (user-reported crash).
+        // Yields only reschedule; every computation is unchanged, so determinism is untouched.
+        (async () => {
+        // Throttled yield: give the main thread back ~every 40ms of compute. performance.now() here
+        // gates ONLY when the thread yields — no computed value, comparison, or ordering ever reads
+        // it, so one-setup-⇒-one-schedule determinism is untouched (the computation sequence is
+        // identical however the yields land). MessageChannel (or scheduler.yield) instead of
+        // setTimeout dodges the browser's 4ms nested-timer clamp, which would otherwise multiply
+        // thousands of yields into minutes of dead time.
+        const tick = (() => {
+          const yieldNow = (typeof scheduler !== "undefined" && scheduler.yield) ? () => scheduler.yield()
+            : () => new Promise(r => { const ch = new MessageChannel(); ch.port1.onmessage = () => r(); ch.port2.postMessage(0); });
+          let last = performance.now();
+          return async () => {
+            if (performance.now() - last < 40) return false;
+            await yieldNow();
+            last = performance.now();
+            return true;
+          };
+        })();
         results.sort((a, b) => b.val - a.val);
         best = null;
-        for (const cand of results.slice(0, 6)) {
-          const snapped = repair(Object.fromEntries(Object.entries(cand.s).map(([k, ts]) => [k, ts.map(Math.round)])), cfg);
-          const p = polish(snapped, cfg);
-          if (!best || p.val > best.val) best = p;
+        {
+          const top = results.slice(0, 6);
+          for (let ci = 0; ci < top.length; ci++) {
+            const snapped = repair(Object.fromEntries(Object.entries(top[ci].s).map(([k, ts]) => [k, ts.map(Math.round)])), cfg);
+            const p = polish(snapped, cfg);
+            if (!best || p.val > best.val) best = p;
+            onProgress((seeds.length + 0.5 * (ci + 1) / top.length) / (seeds.length + 1));
+            await tick();
+          }
         }
-        best = basinHop(best, cfg); // window-teleport guard — see basinHop
+        // progress past the top-6 snap: basinHop reports real fractions (clamped monotone across
+        // its fixpoint rounds); the tie-break passes after it have no meaningful total, so breathe()
+        // creeps the bar asymptotically toward done while yielding the thread at loop boundaries.
+        let prog = 0.5;
+        const breathe = async () => {
+          if (!(await tick())) return; // throttled — no yield, no bar update
+          prog = Math.min(0.97, prog + (0.97 - prog) * 0.04);
+          onProgress((seeds.length + prog) / (seeds.length + 1));
+        };
+        {
+          let hf = 0;
+          best = await basinHop(best, cfg, async f => {
+            hf = Math.max(hf, Math.min(1, f));
+            prog = Math.max(prog, 0.5 + 0.25 * hf);
+            onProgress((seeds.length + prog) / (seeds.length + 1));
+            await tick();
+          });
+        }
         // ——— tie-breaks among damage-equal plans (never lose damage: v ≥ val−EPS) ———
         let s = best.s, val = best.val;
         const EPS = 0.5;
@@ -1258,7 +1330,7 @@ function optimizeAsync(cfg, starts, onProgress) {
         // the exact entered wire is priced by the robust objective (it only
         // exists if the boss dies on schedule) and reported as a note, not
         // allowed to dictate a razor-timed plan.
-        const castVal = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + (cfg.critPct / 100) * (GAME.CRIT_MULT - 1));
+        const castVal = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + (cfg.critPct / 100) * (GAME.CRIT_MULT - 1)) * (cfg.t5two ? 1.2 : 1);
         const QTOL = castVal;
         // The ONLY guarded currency is expected (kill-uncertainty-weighted)
         // damage — the objective itself. Sharp per-second thresholds (at-T,
@@ -1313,7 +1385,7 @@ function optimizeAsync(cfg, starts, onProgress) {
         // every raid call, at every burn/AoE window (with one extra use offered),
         // and the last use de-clipped to T−dur or its natural cooldown tick.
         // Improvement-only; the aesthetic passes below re-groom the result.
-        const challengePass = () => {
+        const challengePass = async () => {
           const anchors = new Set([0]);
           for (const k2 in cfg.fixed) for (const t of cfg.fixed[k2]) anchors.add(Math.round(t));
           if (cfg.segments) for (const seg of cfg.segments) {
@@ -1321,6 +1393,7 @@ function optimizeAsync(cfg, starts, onProgress) {
             if (seg.type === "intermission" && seg.end < cfg.T) anchors.add(Math.round(seg.end));
           }
           for (let round2 = 0; round2 < 2; round2++) {
+            await breathe();
             let improved2 = false;
             // judge candidates against the CURRENT plan, not the running max —
             // aesthetics may sit a hair below the best-ever value, and a real
@@ -1380,7 +1453,7 @@ function optimizeAsync(cfg, starts, onProgress) {
             if (!improved2) break;
           }
         };
-        challengePass();
+        await challengePass();
         // Pass 1: haste actives — among equal-damage spots, minimize the seconds
         // of the buff's own window spent on floor-locked casts (its haste does
         // nothing there — don't park Berserking inside an already-capped
@@ -1393,9 +1466,10 @@ function optimizeAsync(cfg, starts, onProgress) {
         // the structured alternatives get a second hearing once grooming has
         // reshaped the plan — a chain that lost against the raw snap can win
         // against the groomed line (and vice versa)
-        if (groom > 0) challengePass();
+        if (groom > 0) await challengePass();
         for (let sweep = 0, sweptMoved = true; sweep < 8 && sweptMoved; sweep++) {
         sweptMoved = false;
+        await breathe();
         for (const key in s) {
           if (cfg.fixed[key]) continue;
           const kind = BUFFS[key].kind;
@@ -1468,6 +1542,7 @@ function optimizeAsync(cfg, starts, onProgress) {
         // uniform full-speed cast rate: "pop the burst macro as soon as the haste
         // buffs are up and stacks are rolling", never on the low part of the curve.
         for (let round = 0; round < 10; round++) {
+          await breathe();
           const acts = [];
           for (const key in s) {
             if (cfg.fixed[key]) continue;
@@ -1650,6 +1725,7 @@ function optimizeAsync(cfg, starts, onProgress) {
         // IV at its chain point) snaps to co-start with it when damage-equal,
         // so the plan reads as one press instead of scattered seconds.
         for (let snapRound = 0; snapRound < 6; snapRound++) {
+          await breathe();
           const acts = [];
           for (const key in s) {
             if (cfg.fixed[key]) continue;
@@ -1717,6 +1793,7 @@ function optimizeAsync(cfg, starts, onProgress) {
         // on purpose, off capped seconds). Strictly reduces press count, so it
         // terminates and cannot oscillate.
         for (let round = 0; round < 8; round++) {
+          await breathe();
           const press = new Map();
           for (const key in s) {
             if (cfg.fixed[key]) continue;
@@ -1854,6 +1931,7 @@ function optimizeAsync(cfg, starts, onProgress) {
             return out;
           };
           for (let round5 = 0; round5 < 8; round5++) {
+            await breathe();
             let snapped5 = false;
             const rCurRob = simulate(s, cfg).robust;
             const press5 = new Map();
@@ -1899,7 +1977,7 @@ function optimizeAsync(cfg, starts, onProgress) {
         // the structured alternatives get one FINAL hearing against the fully
         // groomed plan — the last groom cycle's merges are otherwise never
         // re-challenged, and the Cold Snap end-chain can be lost to path order
-        challengePass();
+        await challengePass();
         // ——— Wasted-haste relocation. A haste buff whose whole window sits on the
         // GCD floor (already there from Lust+Icy Veins) adds LITERALLY nothing —
         // the integral values its marginal damage at zero. Grouping it into the
@@ -1919,6 +1997,7 @@ function optimizeAsync(cfg, starts, onProgress) {
             const kind = BUFFS[key].kind;
             if (kind !== "mult" && kind !== "rating") continue;
             for (let i = 0; i < s[key].length; i++) {
+              await breathe();
               const without = cloneS(s); without[key] = without[key].slice(); without[key].splice(i, 1);
               if (robNow - simulate(repair(without, cfg), cfg).robust > MARG) continue; // this use does real work
               let bestRep = null, bestRob = robNow;
@@ -2014,6 +2093,7 @@ function optimizeAsync(cfg, starts, onProgress) {
             if (cfg.fixed[key]) continue;
             if (BUFFS[key].kind !== "mult" && BUFFS[key].kind !== "rating") continue;
             for (let i = 0; i < s[key].length; i++) {
+              await breathe();
               const cur = s[key][i];
               let inBurst = false;
               for (const k2 in s) { const kd = BUFFS[k2].kind; if (kd !== "dmg" && kd !== "sp") continue; if (s[k2].some(t => Math.abs(t - cur) <= 1.5)) { inBurst = true; break; } }
@@ -2044,6 +2124,7 @@ function optimizeAsync(cfg, starts, onProgress) {
         // haste buff that would just floor there, an un-clip that needs the pull) stays.
         for (const L of [...new Set(Object.values(cfg.fixed).flat().map(Math.round))]) {
           for (let ap = 0; ap < 3; ap++) {
+            await breathe();
             let apMoved = false;
             for (const key in s) {
               if (cfg.fixed[key]) continue;
@@ -2090,6 +2171,7 @@ function optimizeAsync(cfg, starts, onProgress) {
             const kd = BUFFS[key].kind;
             if (kd !== "dmg" && kd !== "sp") continue;
             for (let i = 0; i < s[key].length; i++) {
+              await breathe();
               const cur = s[key][i];
               const r0 = simulate(s, cfg).robust;
               let bestR = r0 + 0.5, bestRep = null;
@@ -2163,6 +2245,7 @@ function optimizeAsync(cfg, starts, onProgress) {
           };
           for (const { at: A, win } of hasteAnchors) {
             if (!hasteKeys.length || A > cfg.T - 1) continue;
+            await breathe();
             const base = cloneS(s);
             let bestRep = null, bestRob = simulate(base, cfg).robust;
             // Sweep the ORDER the haste buffs sequence across the window. Biggest-
@@ -2243,9 +2326,10 @@ function optimizeAsync(cfg, starts, onProgress) {
         // free legibility. Applied on the final schedule AND on the Cold-Snap chain
         // candidates below (built from the no-CS champion, they bypass this main path),
         // so the returned plan is aligned whichever path produced it.
-        function coPressAlign(s0) {
+        async function coPressAlign(s0) {
           let sx = cloneS(s0);
           for (let round = 0; round < 4; round++) {
+            await breathe();
             let moved = false;
             const r0 = simulate(sx, cfg).robust;
             const anchors = [];
@@ -2285,9 +2369,10 @@ function optimizeAsync(cfg, starts, onProgress) {
         // schedule AND on the Cold-Snap resolves (which bank the chained IV), so the
         // returned plan is normalized whichever path built it. Model-neutral gate + the
         // usual sameCounts / no-worse-clip guards keep it honest.
-        function spreadLoneHaste(s0) {
+        async function spreadLoneHaste(s0) {
           let sx = cloneS(s0);
           for (const key in sx) {
+            await breathe();
             if (cfg.fixed[key]) continue;
             const kd = BUFFS[key].kind;
             if (kd !== "mult" && kd !== "rating") continue; // haste buffs only
@@ -2333,12 +2418,13 @@ function optimizeAsync(cfg, starts, onProgress) {
         // [3:28–3:49] dead zone, → 3:49). Model-neutral gate + sameCounts. No clip
         // guard: sliding to the exit ends the window later (more past-kill seconds)
         // but the LIVE portion is unchanged — clipOf would wrongly veto a pure wash.
-        function dodgeDowntime(s0) {
+        async function dodgeDowntime(s0) {
           if (!cfg.segments) return s0;
           const ims = cfg.segments.filter(sg => sg.type === "intermission");
           if (!ims.length) return s0;
           let sx = cloneS(s0), moved = true, guard = 0;
           while (moved && guard++ < 8) {
+            await breathe();
             moved = false;
             const r0 = simulate(sx, cfg).robust;
             for (const key in sx) {
@@ -2365,7 +2451,7 @@ function optimizeAsync(cfg, starts, onProgress) {
         // ties within a hair — purely model-neutral (robust ≥ r0 − 0.5, sameCounts, no worse clip), so the
         // effective-AB count is unchanged; it only makes the plan follow "press it at the first moment it's
         // as good." Runs BEFORE dodgeDowntime so the downtime-exit slide keeps the final word.
-        function slideEarliest(s0) {
+        async function slideEarliest(s0) {
           // Skip fights with intermissions: after a downtime gap the stacks rebuild, so a press pulled to
           // the exit lands on the RAMP — which the steady-state scorer calls a tie but the sim does not
           // (Vashj's 4:05/6:05 ramp-aware layout is sim-verified over 4:00/6:00). Leave those to the
@@ -2378,6 +2464,7 @@ function optimizeAsync(cfg, starts, onProgress) {
             const secs = [...new Set(Object.keys(sx).filter(k => !cfg.fixed[k]).flatMap(k => sx[k].map(t => Math.round(t))))].sort((a, b) => a - b);
             for (const sec of secs) {
               if (sec <= 0) continue;
+              await breathe();
               const keysHere = Object.keys(sx).filter(k => !cfg.fixed[k] && sx[k].some(t => Math.round(t) === sec));
               if (!keysHere.length) continue;
               const r0 = simulate(sx, cfg).robust;
@@ -2408,9 +2495,13 @@ function optimizeAsync(cfg, starts, onProgress) {
         // hop finds nothing, so the RETURNED plan is both basin-stable and canonical. (The plan may
         // still sit up to ~castVal/8 below the raw basin optimum — coPressAlign's designed
         // pressability trade — which is why the monotonicity guard tolerates that slack.)
+        // (Intent seconds inside a ramp snap band are display-equivalent — every one fires at the
+        // same cast END — and the DISPLAY prints the fire time, so slideEarliest's earliest-member
+        // canonicalization never reaches the user; no intent-level re-snap is needed.)
+        const normalize = async sx => dodgeDowntime(await slideEarliest(await spreadLoneHaste(await coPressAlign(sx))));
         for (let fx = 0; fx < 3; fx++) {
-          const hop2 = basinHop({ s, val: simulate(s, cfg).robust }, cfg);
-          const s2 = dodgeDowntime(slideEarliest(spreadLoneHaste(coPressAlign(hop2.s))));
+          const hop2 = await basinHop({ s, val: simulate(s, cfg).robust }, cfg, breathe);
+          const s2 = await normalize(hop2.s);
           const v2 = simulate(s2, cfg).robust;
           const stable = hop2.val <= simulate(s, cfg).robust + 1e-7;
           s = s2; val = v2;
@@ -2434,7 +2525,7 @@ function optimizeAsync(cfg, starts, onProgress) {
           let consumed = false, cdReady = 0;
           for (const t of ivs) { if (t < cdReady - 1e-6) { consumed = true; break; } cdReady = t + BUFFS.icyVeins.cd; }
           if (consumed) {
-            optimizeAsync({ ...cfg, coldSnap: false }, starts, p => onProgress(0.5 + p / 2)).then(bestN => {
+            optimizeAsync({ ...cfg, coldSnap: false }, starts, p => onProgress(0.5 + p / 2)).then(async bestN => {
               // deterministically offer the end-chain on the no-CS champion —
               // last IV back on its natural tick with a reset-chained IV
               // appended as that window ends — so the "spend the reset on the
@@ -2486,16 +2577,18 @@ function optimizeAsync(cfg, starts, onProgress) {
               }
               const bar = (endChain || !csAddsUse) ? castVal / 8 : castVal;
               if (bestN.val >= champ.val - bar) {
-                resolve({ s: dodgeDowntime(slideEarliest(spreadLoneHaste(coPressAlign(bestN.s)))), val: bestN.val, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote });
+                resolve({ s: await normalize(bestN.s), val: bestN.val, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote });
               } else {
-                resolve({ ...champ, s: dodgeDowntime(slideEarliest(spreadLoneHaste(coPressAlign(champ.s)))), csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote });
+                resolve({ ...champ, s: await normalize(champ.s), csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote });
               }
             });
             return;
           }
           best.csNote = { unused: true };
         }
-        resolve(best); return;
+        resolve(best);
+        })(); // end of the async finishing stage — resolve() fires inside it
+        return;
       }
       const r = polish(seeds[i], cfg);
       results.push(r);
@@ -2505,7 +2598,12 @@ function optimizeAsync(cfg, starts, onProgress) {
     })();
   });
 }
-
+</script>
+<!-- Everything above (constants → optimizeAsync) is the pure, DOM-free engine. It runs TWICE:
+     here on the page (cheap one-off scoring for rendering, and the headless test suites drive it
+     directly), and inside a Blob Web Worker built from this tag's textContent (the heavy
+     optimizeAsync run — see runOptimize below), so the UI thread never does minutes of compute. -->
+<script>
 /* ═══════════════ UI state ═══════════════ */
 const el = id => document.getElementById(id);
 const esc = s => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
@@ -2825,6 +2923,7 @@ function readCfg() {
     hasteRating: Math.max(0, +el("in-haste").value || 0),
     sp: Math.max(0, +el("in-sp").value || 0),
     critPct: Math.min(100, Math.max(0, +el("in-crit").value || 0)),
+    t5two: el("ck-t5").checked,
     enabled: { ...state.enabled },
     fixed, warnings, segments,
     coldSnap,
@@ -2836,6 +2935,45 @@ el("in-haste").addEventListener("input", () => {
 });
 
 /* ═══════════════ run + render ═══════════════ */
+// The heavy optimizeAsync run happens OFF the main thread, in a Web Worker built from the
+// engine <script id="engine-src"> tag's own text (single-file constraint preserved — no second
+// file, no server; a Blob URL works from file://). The page keeps its copy of the engine for
+// the cheap one-off simulate()/scheduleRows() calls rendering needs, and the worker gets a
+// byte-identical copy, so determinism is unchanged (same code, same seeded PRNG, same result).
+// A run already in flight is terminated before a new one starts — a stale worker's late "done"
+// must never resolve a newer run (and this is what finally makes re-running mid-optimize safe).
+// If Worker/Blob construction fails anywhere exotic, fall back to the in-page engine — the
+// throttled yields inside optimizeAsync keep the page alive in that mode too, just laggier.
+let engineWorker = null, engineWorkerBusy = false;
+function runOptimize(cfg, starts, onProgress) {
+  return new Promise(resolve => {
+    const fallback = () => optimizeAsync(cfg, starts, onProgress).then(resolve);
+    try {
+      if (engineWorker && engineWorkerBusy) { engineWorker.terminate(); engineWorker = null; }
+      if (!engineWorker) {
+        const src = document.getElementById("engine-src").textContent +
+          "\nself.onmessage = async e => {" +
+          "  const { cfg, starts } = e.data;" +
+          "  try {" +
+          "    const best = await optimizeAsync(cfg, starts, f => self.postMessage({ type: 'progress', f }));" +
+          "    self.postMessage({ type: 'done', best });" +
+          "  } catch (err) { self.postMessage({ type: 'error', message: String((err && err.stack) || err) }); }" +
+          "};";
+        engineWorker = new Worker(URL.createObjectURL(new Blob([src], { type: "text/javascript" })));
+      }
+      const w = engineWorker;
+      engineWorkerBusy = true;
+      w.onmessage = ev => {
+        const m = ev.data;
+        if (m.type === "progress") onProgress(m.f);
+        else if (m.type === "done") { engineWorkerBusy = false; resolve(m.best); }
+        else if (m.type === "error") { console.error("engine worker:", m.message); engineWorkerBusy = false; engineWorker = null; try { w.terminate(); } catch (_) {} fallback(); }
+      };
+      w.onerror = err => { console.error("engine worker:", err.message || err); engineWorkerBusy = false; engineWorker = null; try { w.terminate(); } catch (_) {} fallback(); };
+      w.postMessage({ cfg, starts });
+    } catch (err) { console.error("worker unavailable, running in-page:", err); engineWorker = null; fallback(); }
+  });
+}
 let lastRun = null, lastGeo = null;
 const colorOf = k => getComputedStyle(document.documentElement).getPropertyValue(BUFFS[k].color.slice(4, -1)).trim() || "#888";
 el("btn-run").addEventListener("click", async () => {
@@ -2855,7 +2993,7 @@ el("btn-run").addEventListener("click", async () => {
   const naiveR = simulate(naive, cfg);
   const starts = 14;
   let pMax = 0; // the Cold Snap dual-run remaps progress — never let the bar move backwards
-  const best = await optimizeAsync(cfg, starts, p => { pMax = Math.max(pMax, p); bar.style.width = (pMax * 100).toFixed(0) + "%"; });
+  const best = await runOptimize(cfg, starts, p => { pMax = Math.max(pMax, p); bar.style.width = (pMax * 100).toFixed(0) + "%"; });
   const optR = simulate(best.s, cfg, true);
   lastRun = { cfg, baseline, naive, naiveR, best, optR };
   render(lastRun);
@@ -2890,7 +3028,7 @@ function renderTiles({ cfg, baseline, naiveR, optR }) {
   // Blast — an AP cast counts 1.3, a gem cast (720+0.714·(SP+225))/(720+0.714·SP),
   // etc. Same objective the optimizer maximizes, in readable units.
   const crit = Math.min(1, Math.max(0, cfg.critPct / 100));
-  const plainCast = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + crit * (GAME.CRIT_MULT - 1));
+  const plainCast = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + crit * (GAME.CRIT_MULT - 1)) * (cfg.t5two ? 1.2 : 1);
   const effCasts = optR.total / plainCast;
   tiles.innerHTML = `
     <div class="tile gain"><div class="k">Damage gain vs no cooldowns</div><div class="v">+${gain.toFixed(1)}<small>%</small></div></div>
@@ -3082,6 +3220,11 @@ function scheduleRows(run) {
     const intents = best.s[k].slice().sort((a, b) => a - b);
     intents.forEach((ti, j) => acts.push({ t: eff && eff[k] && eff[k][j] !== undefined ? eff[k][j] : ti, intent: ti, k }));
   }
+  // rows print (and therefore sort by) the ACTUAL fire time, floored to the whole second — during a
+  // ramp a press snaps to the covering cast's END (user-directed display: intent 0:04 that fires at
+  // 5.4 reads as "activated 0:05", co-rowed with a Lust call at 5.0). At steady state fire == press
+  // moment, so nothing changes there. `a.sec` is the printed second everywhere below.
+  for (const a of acts) a.sec = Math.floor(a.t + 1e-9);
   acts.sort((a, b) => a.t - b.t || LANE_ORDER.indexOf(a.k) - LANE_ORDER.indexOf(b.k));
   // annotate icy veins activations that need Cold Snap
   if (cfg.coldSnap && best.s.icyVeins) {
@@ -3119,7 +3262,7 @@ function scheduleRows(run) {
     let mana = 0, nAB = 0;
     for (const c of casts) {
       if (c.ae) continue;
-      mana += GAME.AB.MANA_FLAT * (1 + 0.75 * c.stacks + (underAP(c.t) ? 0.30 : 0));
+      mana += GAME.AB.MANA_FLAT * (1 + 0.75 * c.stacks + (underAP(c.t) ? 0.30 : 0) + (cfg.t5two ? 0.20 : 0)); // T5-2pc: +20% AB mana (set bonus, arcane_blast.go hasTristfal)
       nAB++;
     }
     if (nAB) { w.mana = Math.round(mana); w.manaCasts = nAB; w.spanDur = Math.max(1, Math.round(wEnd - w.start)); }
@@ -3142,13 +3285,13 @@ function renderSchedule(run) {
     const stats = (w.peakHaste != null
       ? `peak haste +${w.peakHaste.toFixed(0)}% · AB ${w.minCast.toFixed(2)}s` + (w.capped ? ` · <span class="warntag">at GCD floor</span>` : "")
       : "") + manaTxt;
-    html += `<tr class="window-head"><td class="t">${fmtT(Math.min(...w.acts.map(x => Math.round(x.intent))))}</td><td>Window ${wi + 1}</td><td class="num">${stats}</td></tr>`;
+    html += `<tr class="window-head"><td class="t">${fmtT(Math.min(...w.acts.map(x => x.sec)))}</td><td>Window ${wi + 1}</td><td class="num">${stats}</td></tr>`;
     for (const a of w.acts) {
       const def = BUFFS[a.k];
-      const sec = Math.round(a.intent);
+      const sec = a.sec;
       const tg = !tagged.has(sec) && tags.get(sec);
       if (tg) tagged.add(sec);
-      html += `<tr><td class="t">${fmtT(Math.round(a.intent))}</td>
+      html += `<tr><td class="t">${fmtT(a.sec)}</td>
         <td>${iconOf(a.k, 22)}${a.coldSnap ? "Cold Snap → " : ""}${def.name}${a.k === "scb" ? " (Mana Emerald)" : ""}${tg ? `<span class="whytag">${esc(tg)}</span>` : ""}</td>
         <td class="num">${def.kind === "mult" ? "+" + Math.round((def.value - 1) * 100) + "% haste" : def.kind === "rating" ? "+" + def.value + " haste" : def.kind === "dmg" ? "+" + Math.round((def.value - 1) * 100) + "% damage" : "+" + def.value + " spell dmg"} for ${def.dur}s</td></tr>`;
     }
@@ -3176,12 +3319,12 @@ el("btn-copy").addEventListener("click", () => {
   const ctags = new Map((lastRun.pressRows || []).filter(r => r.tag).map(r => [Math.round(r.t), r.tag]));
   const ctagged = new Set();
   windows.forEach((w, wi) => {
-    out += `\n[Window ${wi + 1} @ ${fmtT(Math.min(...w.acts.map(x => Math.round(x.intent))))}]` + (w.peakHaste != null ? ` peak +${w.peakHaste.toFixed(0)}% haste` : "") + (w.mana ? ` · ~${(Math.round(w.mana / 100) / 10).toFixed(1)}k mana to spam` : "") + "\n";
+    out += `\n[Window ${wi + 1} @ ${fmtT(Math.min(...w.acts.map(x => x.sec)))}]` + (w.peakHaste != null ? ` peak +${w.peakHaste.toFixed(0)}% haste` : "") + (w.mana ? ` · ~${(Math.round(w.mana / 100) / 10).toFixed(1)}k mana to spam` : "") + "\n";
     for (const a of w.acts) {
-      const sec = Math.round(a.intent);
+      const sec = a.sec;
       const tg = !ctagged.has(sec) && ctags.get(sec);
       if (tg) ctagged.add(sec);
-      out += `  ${fmtT(Math.round(a.intent))}  ${a.coldSnap ? "Cold Snap -> " : ""}${BUFFS[a.k].name}${tg ? `  (${tg})` : ""}\n`;
+      out += `  ${fmtT(a.sec)}  ${a.coldSnap ? "Cold Snap -> " : ""}${BUFFS[a.k].name}${tg ? `  (${tg})` : ""}\n`;
     }
   });
   if (lastRun.best.csNote?.held) out += `\nCold Snap held in pocket — natural Icy Veins cooldowns cover this fight.\n`;
@@ -3424,14 +3567,15 @@ function pressPlan(run) {
   const { cfg, best } = run;
   const acts = [];
   for (const w of scheduleRows(run)) for (const a of w.acts) acts.push(a);
-  // the board is a to-do list: rows are PRESS moments (the planner's intent),
-  // not the cast boundary where the buff lands — one row per macro press
-  acts.sort((x, y) => x.intent - y.intent || x.t - y.t);
+  // the board is a to-do list: rows are ACTIVATION moments (fire time floored to the second,
+  // same as the schedule table — user-directed) — one row per macro press. During a ramp every
+  // intent in the covering cast fires at its end, so pressing at the printed second is exact.
+  acts.sort((x, y) => x.t - y.t);
   const rows = [];
   for (const a of acts) {
     const r = rows[rows.length - 1];
-    if (r && Math.round(a.intent) === r.t) r.items.push(a);
-    else rows.push({ t: Math.round(a.intent), items: [a] });
+    if (r && a.sec === r.t) r.items.push(a);
+    else rows.push({ t: a.sec, items: [a] });
   }
   // Placement-reasoning tags and leeway "press anywhere" bands are PERMANENTLY REJECTED (user decision):
   // a plateau tie for one press is conditional on everything else staying put — moving it shifts other

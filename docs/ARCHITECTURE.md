@@ -1,8 +1,16 @@
 # ARCHITECTURE.md — `index.html` internals
 
-One self-contained file (~3500 lines): a DOM-free JS **engine** (through ~line 935), the
-**optimizer**, then the **DOM/UI**. Line numbers drift as the file is edited — treat them as
-signposts, re-grep if they're off. Everything below is in `index.html` unless noted.
+One self-contained file (~3600 lines), now in **two script blocks**:
+`<script id="engine-src">` — the pure, DOM-free **engine + optimizer** (constants →
+`optimizeAsync`) — and a second `<script>` with the **DOM/UI**. The engine runs **twice**: on the
+page (cheap one-off `simulate()`/`scheduleRows()` for rendering, and the headless test suites
+`page.evaluate` it directly) and inside a **Blob Web Worker** built from the engine tag's own
+`textContent` (`runOptimize`, in the UI block — the heavy `optimizeAsync` run happens there, so the
+main thread never computes; byte-identical code ⇒ byte-identical plans, worker-vs-page verified). A
+run already in flight is terminated before a new one starts (no stale-result races); if Worker/Blob
+construction ever fails, `runOptimize` falls back to the in-page engine, which stays alive via the
+throttled yields. Line numbers drift as the file is edited — treat them as signposts, re-grep if
+they're off. Everything below is in `index.html` unless noted.
 
 ## Constants (~547–583)
 `GAME`: `AB {BASE_CAST 2.5, STACK_CAST_REDUCTION 1/3, MAX_STACKS 3, AVG_BASE_DMG 720, COEF 2.5/3.5}`,
@@ -39,8 +47,17 @@ inside cd is allowed only if Cold Snap is ready, then burns it), and the OFF_TRI
 (skull/mqg/isc). Called after **every** candidate move — this is what makes "packing would cost a 2nd
 use" fail automatically (via `sameCounts`).
 
-## `optimizeAsync(cfg, starts, onProgress)` — the search (~1177+)
+## `optimizeAsync(cfg, starts, onProgress)` — the search (~1224+)
 Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ deterministic.
+- **The whole finishing stage runs inside an `async` IIFE with throttled yields** (crash fix — on long
+  fights it used to block the browser main thread for minutes, tripping the "Page Unresponsive" kill).
+  A `tick()` helper (top of the IIFE) yields via `scheduler.yield()`/`MessageChannel` (dodging the 4ms
+  nested-`setTimeout` clamp) at most every ~40ms of compute; `breathe()` wraps it with progress-bar
+  creep and is awaited at every heavy loop boundary (`challengePass` rounds, groom sweeps, per-use
+  scans, `basinHop` teleports, the four normalizers). `performance.now()` gates ONLY when the thread
+  yields — no computed value reads it, so one-setup-⇒-one-schedule is untouched. `basinHop`,
+  `challengePass`, `coPressAlign`, `spreadLoneHaste`, `slideEarliest`, `dodgeDowntime` are `async` for
+  this reason alone; their logic is unchanged.
 - **Seeds** (~1180–1225): all-at-0, backward-packed, phase-anchored (`seg.start` / intermission
   `seg.end`), **pinned-raid-call anchored** (stacks every track on each Lust/Drums/PI second), and a
   **kill-anchored seed** (each track's last use as late as it fully runs, siblings packed backward by
@@ -48,10 +65,13 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
 - **`polish`** hill-climb (~1068): `SHIFTS` ±1..±90 incl. ±3/±6 (ramp-boundary hops) and ±30/±60,
   per-index + suffix-shift + add-a-use + a **joint window move** (all uses sharing a press second shift
   as one block — co-pressed clusters cross valleys together) + a drop-one/relocate escape.
-- **`basinHop`** (~1155, runs on the champion after the top-6 integer snaps): window-teleport
-  self-consistency guard — re-bases each press-window block on every other window's anchor + the kill
-  anchor, re-polishes, keeps strict improvements, to fixpoint. This is what guarantees "never worse
-  than a plan reachable from the search's own anchors" (the Phase-4 misses all fell to it).
+- **`basinHop`** (~1170, runs on the champion after the top-6 integer snaps): window-teleport
+  self-consistency guard — re-bases each press-window block on every other window's anchor, each
+  track's natural next cd-tick, every **ramp-exit boundary** (the first full-stack cast after each
+  cold start, read from the champion's own board — the h160-class descent-valley basin sits exactly
+  there, one fast cast off any 5s-grid anchor) + the kill anchor, re-polishes, keeps strict
+  improvements, to fixpoint. This is what guarantees "never worse than a plan reachable from the
+  search's own anchors" (the Phase-4 misses all fell to it).
 - Tie-break helpers (local closures): `anchored` ~1087, `overlapOf` ~1103, `joinsRow` ~1116,
   `counts`/`sameCounts` ~1122/1123, `clipOf` ~1126. `castVal`/`QTOL` ~1077/1078 (tie tolerance = one
   cast).
@@ -104,6 +124,16 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   unchanged for intermission fights** (the exit ramp is a scorer blind spot the sim disagrees with — Vashj
   4:05). Fixes the opener cluster sitting off the pull and Cold-Snap IVs parked mid-fight; moved 7 plain
   goldens earlier (same DPS).
+- **Displayed times are FIRE times, not intents (user-directed — RULES §3).** During the opener cold
+  ramp the press boundaries are sparse, so every intent second inside one ramp cast fires at that
+  cast's END — a whole band of intents is exactly equivalent, and `slideEarliest` canonicalizes the
+  tie to its *earliest* member ("0:04" for a burst that fires at 5.4s — reads as ramp-blind, which
+  the engine is not). Rather than re-canonicalizing intents, the schedule table, copy-text, and
+  press board all print (and sort/group by) `a.sec = Math.floor(effective fire time)` from `actEff`
+  (`scheduleRows`); the intent stays internal. Pressing at the printed second is exact — any press
+  inside the band fires at the same boundary. Scoped to the opener ramp only (post-intermission presses stay on the phase exit,
+  `dodgeDowntime`'s legible anchor). Runs OUTSIDE the fixpoint so it can't ping-pong with
+  `slideEarliest`.
 - **Sequential window-packing** (~1975, the RULES §4/§5 move — LANDED). Runs as the last structural pass
   (nothing after it can re-floor the sequenced tail buff, so no defensive rework of the eviction /
   `nulled` vetoes was needed). For each raid-called **haste** buff (kind `mult`/`rating` — a damage/
@@ -144,6 +174,10 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
     there), so exact-match stays 23/23.
 
 ## Inputs → `cfg` (`readCfg`, buff rows)
+- **`ck-t5` — Tirisfal 2-piece gear checkbox** → `cfg.t5two`: ×1.2 on Arcane Blast damage only (a `t5`
+  factor in `simulate`'s two AB damage sites + both plain-AB normalizations, so single-target output is
+  exactly invariant; its whole effect is the AoE exchange rate — RULES §9) and +20% AB mana in the
+  per-window chip. Default off; presets don't touch it.
 - **Only raid calls are pinnable.** `RAID_PINNABLE = {bloodlust, drums, powerInfusion}` (the "Raid
   externals" group). `buildBuffList` renders a pin control **only** for those keys; every mage-managed
   cooldown (IV / AP / gem / Berserking / Icon / on-use haste trinkets) is the planner's to schedule, so
@@ -160,8 +194,9 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   three reference lines (**+50% GCD cap**, **"cap if Ashtongue" ≈ +40.8%** when ATI on, **+25% "4× FB"**
   filler soft cap — RULES §15), phase bands (intermission hatched, AoE/burn tinted with ×N badges),
   buff-uptime lanes with press ticks. `scheduleRows`/`renderSchedule` build the window table (peak-haste /
-  AB-cast / floor also read the deterministic `multNoAti`/`castDn`/`capDn`); `btn-copy` emits the
-  canonical copy-as-text plan the tests compare. (The dashed leeway bands that used to overlay the lanes
+  AB-cast / floor also read the deterministic `multNoAti`/`castDn`/`capDn`); rows print, sort, and group by
+  the **fire-time second** `a.sec` (see the display bullet in the optimizer section); `btn-copy` emits the
+  canonical copy-as-text plan the tests compare (`exact-match.mjs` mirrors the same `a.sec` convention). (The dashed leeway bands that used to overlay the lanes
   are **permanently rejected** — user decision, RULES §14; `leewayZones()` is deleted.)
 - **Per-window target mana** (`scheduleRows`, ~2939): each window carries `w.mana` = the AB-spam spend
   over its burst span (`GAME.AB.MANA_FLAT 195 × (1 + 0.75·stacks) + 30% under AP`, per-cast real stacks,

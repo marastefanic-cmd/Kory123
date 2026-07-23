@@ -50,11 +50,14 @@ so a preset you confirm in the tool **is** the locked test.
 
 ## `index.html` at a glance
 
-Pure-JS engine (DOM-free through ~line 819), then the optimizer, then DOM/UI. Core pieces:
+Two script blocks: `<script id="engine-src">` — the pure DOM-free engine + optimizer — then the
+DOM/UI script. The UI runs the heavy optimization in a **Blob Web Worker** built from the engine
+tag's own text (`runOptimize`; single-file preserved, main thread never computes, byte-identical
+plans), while the page keeps its engine copy for cheap scoring and the headless tests. Core pieces:
 `simulate()` (the cast-rate-integral scorer) · `repair()` (legalizes a schedule: cooldowns, Cold
 Snap, use caps) · `optimizeAsync()` (multi-start search + a stack of finishing passes) ·
-`renderTimeline()` (the SVG burn chart). Full internals + current line ranges in
-`docs/ARCHITECTURE.md`.
+`renderTimeline()` (the SVG burn chart). Displayed plan times are **fire times** (floored seconds),
+not press intents. Full internals + current line ranges in `docs/ARCHITECTURE.md`.
 
 ## The rules that make it correct
 

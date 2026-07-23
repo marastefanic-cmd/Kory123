@@ -174,6 +174,12 @@ Ran as **A → measure → B → C** (the plan that lived in `docs/PLAN.md`):
   the symmetry toward early, and the sim tilts the same way under kill variance (+0.3% var10) — so the
   earliest-canonical choice (`slideEarliest`) is also the sim-preferred one.
   Search cost: ~20–40s per plan headless (basinHop dominates) — optimize later if the UI feels it.
+  **Headroom follow-up (backlog, landed):** `basinHop` gained **ramp-exit anchors** (the first full-stack
+  cast after each cold start, read off the champion's own board) — the h160-class "hug the ramp exit"
+  descent-valley miss is CLOSED (tool 80.659 > the 5s-grid brute's 80.618: the 1s polish around the exact
+  exit out-resolves the grid). Remaining known residuals: the h40/h50 **straddle basins** (IV part-way
+  into Lust trading overcap for cluster coupling — a lone-track mid-gap basin no anchor reaches),
+  ≤0.033 casts, inside the pressability slack; chase only if a real fight ever lands on that edge.
 
 **UI: leeway bands + reasoning tags PERMANENTLY REJECTED (user decision, post-certification).** A plateau
 tie for one press is conditional on every other press staying put — moving it shifts other optima — so
@@ -265,6 +271,26 @@ TOOLING). Findings, all sim-measured on the fixed rig:
 
 ## Status (as of the current work)
 
+- **Crash fix (user-reported "Page Unresponsive" kills): the engine now runs in a Web Worker (latest,
+  user-directed).** The finishing stage of `optimizeAsync` (top-6 polish, `basinHop` fixpoint,
+  tie-break/normalizer stack) ran **synchronously on the browser main thread** — ~minutes on long
+  fights (KT), which trips the browser's page-kill. Two layers of fix (ARCHITECTURE):
+  (1) the finishing stage is an async IIFE with **throttled yields** (`scheduler.yield` /
+  `MessageChannel`, ≤ every ~40ms of compute; `performance.now()` gates only WHEN the thread yields,
+  never any computed value — determinism untouched); (2) the file is split into
+  `<script id="engine-src">` (pure engine) + UI script, and `runOptimize` runs the heavy call in a
+  **Blob Web Worker** built from the engine tag's own text — single-file preserved, main thread never
+  computes, in-flight runs are terminated on re-run, in-page fallback if workers are unavailable.
+  Worker-vs-page plans verified **byte-identical**. Same commit, display honesty (user-directed,
+  RULES §3): the schedule/copy-text/press-board print, sort, and group by the **fire-time second**
+  (`floor(actEff)`) instead of the intent — an opener burst with intent 0:04 firing at 5.4s now reads
+  "0:05", co-rowed with a 0:05 Lust call (this also killed the "0:05 Bloodlust printed above 0:04
+  Icon" row-order bug, and replaced the short-lived `snapRampIntent` intent re-snap with something
+  strictly simpler).
+- **`basinHop` ramp-exit anchors landed** (the backlog headroom item): h160-class ramp-exit-hug basin
+  CLOSED; **Kael'thas moved** to a strictly better plan (+354 robust, `IV@106/126/380`,
+  `AP@120/380`, cluster mirrors) and was re-locked. h40/h50 straddle residuals (≤0.033, inside
+  pressability slack) stay documented, not chased.
 - Planner is deterministic, ~0.4%-accurate, with **16 sim-verified golden regression cases** (green).
 - **Done this session — the wowsims harness audit AND the drop-bug fix + full re-validation** (W1 +
   W1.5). Rig rebuilt from `ade9f39` (`-tags with_db`), trust-anchored to `wowsimcli`. Overturned two old
@@ -506,14 +532,17 @@ exact-match suite; new fights are added by editing that one array.
   `dodgeDowntime` is legibility-neutral). **KaelThas:** golden (280/400) = 1718.7 vs TOOL 260/396 (1718.5)
   and 280/402 (1718.2) — a 3-way tie within CRN noise (containment-equivalent icon timings), no
   regression. Both plans stand.
-- **Tirisfal-2pc as a tool input? (user call.)** T5-2pc (+20% AB damage, worn by the reference export)
-  shifts every RULES §9 AoE threshold ×1.2 (`M_eff = M/1.2`) and dilutes AP to +25% relative on AB (in
-  wowsims' additive pooling). The model is deliberately gear-agnostic; a "T5 2pc" kit toggle would make
-  the AoE knife-edge cases (N≈3–5) exact for T5 wearers. No golden is affected either way (KT's N=6 is
-  past every band). Decide before the next AoE-heavy phase.
-- **AP × T5-2pc: additive or multiplicative in real 2.4.3? (user authority.)** wowsims pools both as
-  flat damage-done mods (×1.5 together, measured — TOOLING ★). If the real game multiplied (×1.56),
-  that's another wowsims quirk to patch before trusting AP-marginal gates on T5 exports; if additive is
-  real, sim gates on this export are already faithful. Cf. the AP-195 precedent.
+- **Tirisfal-2pc as a tool input — RESOLVED (user call): implemented as the `ck-t5` gear checkbox.**
+  Applies ×1.2 to Arcane Blast only (damage sites + both plain-AB normalizations, so single-target plans
+  AND effective-AB counts are exactly INVARIANT — verified: identical plan, identical 87.596 count on/off)
+  and +20% AB mana in the per-window chip (the real set bonus raises cost too). Its main effect is
+  re-pricing AoE phases (`M_eff = M/1.2`): verified at the N=3 knife-edge — the toggle flips
+  cluster-on-AoE (+0.607) to cluster-on-Lust (−0.052). Default off; goldens untouched. Pooling with AP:
+  ADDITIVE (resolved below).
+- **AP × T5-2pc pooling — RESOLVED: ADDITIVE (user ruling).** Googled/searched: no public 2.4.3 source
+  decides it; the mechanics argument (both are percent-damage aura modifiers, which SUM in the client's
+  modifier pool) matches wowsims' implementation, and the user ruled "trust wowsims if unsure." The
+  model's T5 toggle pools additively (`dmgMult + t5add` in `simulate`); sim gates on the T5-wearing
+  reference export are faithful as-is.
 - Sim harness (`runner`, gear export, wowsims source) lives in the ephemeral scratchpad — see
   `docs/TOOLING.md` for rebuild.

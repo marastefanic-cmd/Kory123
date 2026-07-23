@@ -54,6 +54,13 @@ casts**, so it should sit on the fastest part of the window.
   press moment (unchanged). Consequence, sim-confirmed **+2.4–2.8%**: with Lust at 0:07, pressing the
   burst at **0:05** (fires 6.5) beats pressing at 0:07 (fires 8.0) — the planner now emits the earlier
   press on its own.
+  - **The plan displays FIRE times (user-directed).** Every intent second inside one ramp cast fires at
+    the same boundary, so the whole band is score-identical — and printing the intent (`slideEarliest`
+    canonicalizes to the band's *earliest* member) read as ramp-blind ("0:04 press Icon/AP/gem" for a
+    burst firing at 5.4s). The schedule table, copy-text, and press board now print, sort, and group by
+    the **effective fire time floored to the second** ("activated 0:05", co-rowed with a 0:05 Lust
+    call): pressing at the printed second is exact, since any press inside the band fires at the same
+    boundary. Intents stay internal (cooldown math).
 - **Damage buffs step off the ramp (sim-confirmed on the fixed rig).** A damage window covering slow ramp
   casts hits fewer completions, so: at an intermission exit, haste at the exit + damage delayed past the
   re-ramp = **+0.39%**; at a bare (no-Lust) pull, the cluster delayed past the IV-compressed ramp =
@@ -61,6 +68,17 @@ casts**, so it should sit on the fastest part of the window.
   from 0:00 while 15s gem/AP + Berserking step to the ramp's last boundary (**+0.44%**, the Vashj-class
   opener). Haste buffs stay put (position-independent). All of this now emerges from the score — no rule
   is hardcoded.
+  - **IV@0 on an early-Lust pull is ramp COMPRESSION, not waste (user-challenged, engine head-to-head,
+    2:45 h0 Lust@0:05).** The intuition "IV at the pull gains nothing (position-independence) and costs
+    Icon's IV-overlap tail" prices only two of the three currencies. IV@0 runs the ramp casts ×1.2 →
+    the cluster's snap boundary arrives at **5.42 instead of 6.5** — ~1.1s of extra steady-state fight
+    time, all of it under the full burst; and at h0 IV-inside-Lust is nearly free (Lust×IV 1.56 vs cap
+    1.5 — the in-Lust marginal cast gain ≈ the solo gain, which is WHY IV-in-Lust wins at h0, §5/§7).
+    Numbers: tool plan (IV@0) **133.106** eff ABs · IV riding the cluster instead (full Icon×IV overlap,
+    natural ramp) **132.950** (−0.16 — the Icon-tail gain is real but smaller than the compression) ·
+    IV fully out of Lust at 0:45 **131.894** (−1.2) · terminal window kill-anchored instead of on its
+    cd-tick **133.083** (−0.02, a genuine tie the kill-variance taper breaks toward the EARLY, banked
+    press — §8).
 - **Why haste is position-independent (the exact statement).** A haste buff `×h` for duration `D` saves
   `D·(h−1)` of base cast-time **wherever it sits** — whatever casts fall in the window, their total base
   cast-time is exactly what fills `D` at the hastened rate, so the ramp's slower casts don't change the
@@ -413,13 +431,15 @@ durations the contained region shrinks to the **intersection** of the constraint
     sim ≥ model) ≈ **6.7 plain-AB casts** — a landslide vs ~2.7 for the same IV on single-target. The
     1:45 cluster is the N=6 cluster-threshold case (1.77× the Lust marginal). KT's plan is unchanged
     (exact-match 25/25).
-  - **⚠ Gear caveat — Tirisfal 2pc rescales the AB side (sim-discovered, source-confirmed).** T5-2pc =
-    +20% Arcane Blast damage, so on that gear every threshold above shifts ×1.2 (`M_eff = M/1.2`) — and
-    wowsims pools it ADDITIVELY with Arcane Power (both `SpellMod_DamageDone_Flat`: AP on a T5'd AB =
-    **×1.25 relative**, on AE = the full **×1.30**; both measured — TOOLING, SOURCES). Whether real
-    2.4.3 multiplies instead is an open user-authority question (ROADMAP). Either way no layout class
-    flips and KT is robust (M_eff(6) = 2.15, still past every band). The model stays gear-agnostic
-    (AP = ×1.30, no set bonuses) by design.
+  - **Gear input — Tirisfal 2pc is now a kit toggle (user-directed; `ck-t5` checkbox).** T5-2pc =
+    +20% Arcane Blast damage (and +20% AB mana — the chip includes it), so with it on, every threshold
+    above shifts ×1.2 (`M_eff = M/1.2`). **Pooling with AP: ADDITIVE — RESOLVED** (user ruling: no
+    public 2.4.3 source decides it → trust wowsims; both effects are percent-damage aura modifiers that
+    SUM in the client's pool, which is exactly wowsims' implementation). So AB under AP+T5 = ×1.5, AP's
+    relative premium on a T5'd AB dilutes to ×1.25 (full ×1.30 on AE — T5 doesn't touch AE). Verified
+    behavior: single-target PLANS are stable (identical on the reference fight; the effective count
+    honestly drops ~0.9 for the AP dilution), and the N=3 knife-edge still tips (cluster-on-AoE +0.607
+    → −0.052 with T5). KT robust either way (M_eff(6) = 2.15, past every band).
   - **Super-linearity — modeled (unchanged).** AoE is super-linear in the sim (**+8.6% per-target at
     6 tgt, crit 38%**, falling as crit rises); talent-isolation pins it **entirely on Clearcasting →
     Arcane Potency** (Arcane Concentration procs **per hit**, so more targets ⇒ more Clearcasting ⇒

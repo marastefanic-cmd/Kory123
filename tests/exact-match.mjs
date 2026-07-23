@@ -73,10 +73,12 @@ for (const c of spec.cases) {
       L.push(`[${s.type === 'intermission' ? 'Intermission' : s.type === 'burn' ? 'Burn x' + s.mult : 'AoE x' + s.targets} ${fmtT(s.start)}-${fmtT(s.end)}]`);
     }
     windows.forEach((w, i) => {
-      const wt = Math.min(...w.acts.map(a => Math.round(a.intent)));
+      // mirror the UI: print (and sort by) the ACTUAL fire time floored to the second (a.sec,
+      // set by scheduleRows) — not the intent second
+      const wt = Math.min(...w.acts.map(a => a.sec));
       L.push(`[Window ${i + 1} @ ${fmtT(wt)}]`);
-      const acts = w.acts.slice().sort((a, b) => Math.round(a.intent) - Math.round(b.intent) || ALL_BUFFS.indexOf(a.k) - ALL_BUFFS.indexOf(b.k));
-      for (const a of acts) L.push(`  ${fmtT(Math.round(a.intent))}  ${a.coldSnap ? 'Cold Snap -> ' : ''}${BUFFS[a.k].name}`);
+      const acts = w.acts.slice().sort((a, b) => a.t - b.t || ALL_BUFFS.indexOf(a.k) - ALL_BUFFS.indexOf(b.k));
+      for (const a of acts) L.push(`  ${fmtT(a.sec)}  ${a.coldSnap ? 'Cold Snap -> ' : ''}${BUFFS[a.k].name}`);
     });
     return L.join('\n');
   }, { c, gear, kit, ALL_BUFFS });
