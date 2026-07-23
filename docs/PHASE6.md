@@ -280,11 +280,14 @@ reports **monoDip = 0.00%**. The residual ±1 cast-*count* flicker at a boundary
 landing on the fight-end line; it contributes ~0 to DPS (the metric the cross-val uses), which stays
 monotone. **DO NOT prepull in any model-compared sim — see the genapl header and §1.**
 
-Consequence: with the noise floor now ~0, diagonal deficits are **real signal**, not artifact. (E.g.
-the mqg+skull short combo now shows a genuine 0.64% deficit at h30 — recorded for triage, not
-hot-fixed.) Campaign UNBLOCKED. NOTE (still open): a *diagonal* comparison is between DIFFERENT plans
-at the same haste, so short fights may retain some plan-to-plan boundary quantization not captured by
-the same-plan monotonicity floor — long fights remain the cleaner signal; weigh short-fight deficits
+Consequence: the SAME-plan monotonicity floor is now ~0, so a nonzero monoDip is a clean regression
+signal. This does **not** mean every diagonal deficit is real: a *diagonal* comparison is between
+DIFFERENT plans at the same haste, so short fights still carry plan-to-plan boundary quantization (up
+to ~0.5–1%) that the same-plan floor does not capture (§3.0). So a sub-1% short/medium deficit stays
+UNCONFIRMED; long/XL deficits, or ones that grow with length, are the real signal. Campaign UNBLOCKED
+and gathering — the live short/medium deficits (0.16–0.77%) are exactly in the quantization band and
+shrink with length, consistent with no model mis-adaptation (provisional; confirm via the collector
+rollup + adversarial pass). NOTE: weigh short-fight deficits
 against fight length.
 
 ### 4.8 (Phase 7) Ashtongue Talisman of Insight is NOT in the cross-val kits
