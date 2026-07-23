@@ -52,18 +52,26 @@ never prepull) · ∞ mana (`--mana 100000000`) · var10 · paired seed 11 (CRN)
 runner · breakpoint-straddle haste sets (`tools/xval-haste-sets.json`)**. Raw matrices are committed to
 `tools/xval-results/`; the collector output is the authoritative row-by-row ledger.
 
-## Current status (2026-07-23, first run) — NOT PASSING
-- **Invariant A: PASS** — `monoDip = 0.00%` on every table run so far (adversarially re-verified: zero
-  row-dips anywhere in 18 files).
-- **Invariant B: OPEN** — all diagonal deficits are sub-1% (worst 0.77%), but **not all are pure
-  quantization.** `mqg+skull` carries a low-haste deficit that *persists and grows* onto long/XL
-  (0.38%/0.32%) — a real, tiny (~0.1–0.6% DPS) model slack to fix. `isc+scb` reverses to CLEAN as the
-  fight lengthens (quantization-consistent). Mechanism is heterogeneous (IV/Cold-Snap sequencing is the
-  most recurring differing track); a single-worst-cell summary also hides secondary deficit columns
-  (some length-robust). Full triage + the fix belong to the **next (fix) phase** — see PHASE6 §4.1/§4.5.
+## Current status (2026-07-23, first full run — 36 tables) — NOT PASSING
+Data-gathering complete: 30 fight-class tables (6 kits × 5 classes) + 6 boss tables (Vashj/Al'ar/KT ×
+{mqg+skull, isc+scb}), all committed to `tools/xval-results/`.
+- **Invariant A: PASS** — `monoDip = 0.00%` on **all 36** tables (18 adversarially re-verified: zero
+  row-dips anywhere; full-set re-run confirming the rest).
+- **Invariant B: OPEN** — every **fight-class** deficit is sub-1% (worst 0.77%); Vashj/Al'ar boss sub-0.6%.
+  But **not all are pure quantization:**
+  - `mqg+skull` carries a low-haste deficit that *persists and grows* onto long/XL (0.38%/0.32%) — a
+    real, tiny (~0.1–0.6% DPS) model slack. **This is the primary blocker.**
+  - The SP-trinket-free kits (`scb+skull`, `scb+mqg`) add mid/HIGH-haste deficits (h210–290, ~0.1–0.3%)
+    — the §4.2 region (no exhaustive ground truth above ~h150 there); triage pending.
+  - `isc+scb`/`isc+mqg` low-haste deficits reverse/vanish with length ⇒ quantization, not model error.
+  - Mechanism is heterogeneous (IV/Cold-Snap sequencing recurs most); the single-worst-cell summary hides
+    secondary deficit columns, some length-robust (§7 collector upgrade).
+- **KT boss is EXCLUDED** (1.06%/2.68%): its AoE window is simmed as downtime (genapl has no
+  Arcane-Explosion), so the model optimized valuing AoE the sim can't reward — a **harness limitation**,
+  not a haste-adaptation failure. Re-run KT after adding AE emission (§7).
 
-**So: the model does not yet fully survive this test.** Next phase fixes the low-haste slack, then re-runs
-this in full.
+**So: the model does not yet fully survive this test.** The fix phase owns the `mqg+skull` low-haste slack
++ the scb §4.2 items, then re-runs this in full (incl. KT once AE emission lands). See PHASE6 §4.1/§4.5.
 
 ## Known coverage gaps in the test itself (make the test stronger over time)
 - **Single-worst-cell reporting hides structure.** `XVAL-DONE`/the collector surface one worst cell per
