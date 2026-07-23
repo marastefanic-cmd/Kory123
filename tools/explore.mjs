@@ -81,6 +81,18 @@ const SCENARIOS = [
     place: [{ key: 'icyVeins', at: [0, 20, 60] }, { key: 'berserking', at: [0, 10, 20, 30, 60, 70] }],
     haste: [0, 20, 40, 80, 150, 250],
   },
+  {
+    // Haste-on-haste in ISOLATION (RULES §7): stacking is a real multiplicative synergy below the floor
+    // (Zerk inside IV is worth ×1.2 its outside value — sim-verified +0.37% var10). Watch the winner:
+    // STACK through cap-touch (stacked ×1.32 caps at ~215) until ~263 (the premium absorbs the early
+    // overcap waste), SPREAD ~263–700, then stack-on-the-pull-ramp at unreachable haste (only the slow
+    // ramp casts stay under the floor).
+    name: 'iv-zerk-solo',
+    desc: '1:00, NO Lust, no damage buffs. IV + Berserking alone: stack vs spread across the floor.',
+    T: 60, pins: {},
+    place: [{ key: 'icyVeins', at: [0, 10, 20, 30, 40] }, { key: 'berserking', at: [0, 10, 20, 30, 40, 50] }],
+    haste: [0, 100, 200, 215, 240, 263, 280, 394, 574, 700, 789],
+  },
 ];
 
 // ── model scoring (in-page) ──

@@ -148,27 +148,45 @@ seeds). Matters when the AP cluster is *staggered* off the pinned Lust (KT: Lust
 the spellpower buff should slide onto AP, which a pinned-only snap misses. Forward-slide only (an
 already-early buff has nothing better behind it).
 
-## 7. Haste-on-haste: a wash in isolation, a loss over the floor — not a synergy
+## 7. Haste-on-haste IS a multiplicative synergy below the floor — the floor decides when to split
+*(REWRITTEN — the old "wash" version was a fixed-rig artifact; see the correction note at the end.)*
 
-Two pure-haste buffs, overlapped vs sequenced (0 gear haste). The multiplicative arithmetic is real
-(`1.30 · 1.10 = 1.43`), but it buys **no extra effective ABs from the product itself** — below the
-floor a pure-haste buff is *position-independent* (it banks the same fractional casts wherever it
-lands, §3). **Sim-confirmed:** Berserking **inside** Lust vs **after** it (both unfloored, no damage
-buffs) score an identical **2367.4 DPS** at 0 gear (var 0, 300k iters, same at mana 300k and 5M — not a
-mana artifact). So overlap is a **wash**, not a hair-win.
-- What overlap can *cost* is the **GCD floor:** the excess of `(h_a + h_b)` past **headroom** (the
-  additive haste reaching the floor = `1.5/g − 1`, i.e. 0.5 at 0 gear) spills into the pinned 1.0s
-  interval and is wasted. Lust+IV (30+20 = 50) sits exactly at headroom → the ~4% spillage exactly
-  cancels the gain (still a wash). Above headroom, or with any gear haste (headroom shrinks), overlap
-  **loses**. (Compare additive percentages to headroom, not the multiplicative product: Lust×IV = ×1.56
-  is +56%, already over — haste never adds.)
+Below the GCD floor, cast rate ∝ the multiplier `m(t)`, and haste buffs MULTIPLY (`1.2 × 1.1 = 1.32`).
+So a haste buff riding another is worth **the host's multiplier times** its solo value — the same flux
+law that makes damage buffs want fast windows applies to haste itself. Berserking inside Icy Veins is
+worth ×1.2 its outside value; inside Lust, ×1.3. Verified exactly, model AND sim (fixed rig, var10):
+Zerk-in-IV beats Zerk-outside by **+0.13 casts / +0.37%**; Zerk-in-Lust beats Zerk-after-Lust by
+**+0.20 casts (model +0.42%, sim +0.6%)** — the pure `10·(1.43−1.30)/1.5 − 10·0.10/1.5` arithmetic.
+Stacking position is otherwise free (pull-stack ≡ interior-stack to 0.0000, §3).
 
-So the reason to put haste on Lust is **flux** (speeding the *damage/SP* casts, §1/§6) or banking value
-before an early kill — *not* a haste-stacking synergy, which doesn't exist. And the reason to **sequence**
-two haste buffs (rather than overlap) is to keep each under the floor, not to chase a product. (A wowsims
-"+37 DPS" for Lust+IV overlap at one fixed length was a boundary artifact — it vanished under randomized
-kill. If a specific fight ever shows an overlap gain that survives the var0↔var10 cross-check, that's a
-novel finding — verify it per the TOOLING methodology, then record it here.)
+**The IV+Berserking playbook** (isolated pair, 1:00 fight, brute-enumerated over 0–789 rating —
+`tools/explore.mjs iv-zerk-solo`):
+- **0–215 rating: STACK.** The ×1.2 premium is free — the stacked ×1.32 stays under the floor
+  (cap-touch = `(1.5/1.32 − 1)·1577 ≈ 215`).
+- **215–~263: STILL STACK.** The answer to "split the moment you touch the cap?" is **no — a bit
+  after**: the growing overcap waste has to eat the whole 20% premium first. Measured crossover:
+  **~263 rating** (spread−stack: −0.042 at 250, −0.011 at 260, +0.006 at 265, +0.022 at 270).
+- **~263–~700: SPREAD.** Waste exceeds premium; the spread advantage peaks ~+0.55 casts around 574
+  (where solo-Berserking itself nears its cap) and shrinks after.
+- **~700+: STACK ON THE PULL (academic).** Everything is floored except the three slow ramp casts —
+  the last place haste still buys anything — so both buffs pile onto the opener ramp. Unreachable
+  in-game; the exact-ramp model produces it automatically.
+
+**Why Lust+IV still sequences (§4/§5 unchanged):** Lust×IV = 1.56 is over the 1.5 cap at ZERO gear
+haste — at exactly h0 the premium and the waste cancel to a wash (IV-in-Lust = IV-out = 2.67 casts,
+the old §4 "swap is a wash" data point), and any gear haste tips it to a loss. So the sequencing rule
+survives, but its justification changes: not "no synergy exists" but "the synergy is real and the
+overcap waste beats it from rating ~0 for THIS pair." The general rule: **stack two haste buffs while
+`passive × (A·B)` is under the cap plus a margin; the margin is where the smaller buff's premium
+(`(A−1)` × its solo value) equals the overcap waste** — for IV×Zerk that margin is ~48 rating past
+cap-touch.
+
+**Correction note (methodology).** The old §7 claimed "a wash in isolation — not a synergy," citing
+Berserking-in-Lust vs after at an identical 2367.4 DPS (var 0, 300k). Two different schedules scoring
+byte-identical DPS is the signature of the `APLActionSchedule` drop bug (both Zerk presses eaten —
+TOOLING), and var 0's fixed-end quantization masks sub-cast differences anyway (our re-test: var0
+shows ~0%, var10 shows the real +0.6%). Yet another old-rig casualty — always cross-check var0 ↔ var10
+on the patched runner.
 
 ## 8. Known-kill planning + Cold Snap
 
