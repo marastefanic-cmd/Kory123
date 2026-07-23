@@ -58,7 +58,21 @@ const page = await browser.newPage();
 let perr = null; page.on('pageerror', e => (perr = String(e)));
 await page.goto('file://' + path.join(REPO, 'index.html'));
 
-const plans = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA }) => {
+// BOSS mode: override the random fight with a boss preset's shape (T, Lust, phases). The kit stays
+// the drawn/KIT pair (we test each kit ON the boss's fight shape). Intermission phases sim cleanly
+// (genapl _intermissions = AB off during downtime). AoE phases are a KNOWN LIMITATION — genapl casts
+// only Arcane Blast, not Arcane Explosion, so an AoE window is simmed as downtime (AB off): the model
+// optimized WITH AoE damage but the sim skips it, so an AoE-containing preset (KT) is flagged.
+const out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS }) => {
+  let segments = null, downtime = [], hasAoe = false, fightT = T, lust = LUST;
+  if (BOSS) {
+    const p = (window.BOSS_PRESETS || []).find(x => x.name === BOSS || x.name.toLowerCase().includes(BOSS.toLowerCase()));
+    if (!p) throw new Error('boss preset not found: ' + BOSS);
+    fightT = p.T; lust = (p.pins && p.pins.bloodlust && p.pins.bloodlust[0]) || 0;
+    const rows = (p.phases || []).map(ph => ({ from: ph.from, to: ph.to, type: ph.type, mult: ph.mult || 1, targets: ph.targets || 0 }));
+    segments = rows.length ? buildSegments(rows, fightT) : null;
+    for (const ph of (p.phases || [])) { if (ph.type === 'intermission' || ph.type === 'aoe') downtime.push([ph.from, ph.to]); if (ph.type === 'aoe') hasAoe = true; }
+  }
   const kit = ["icyVeins", PAIR[0], PAIR[1], "arcanePower", "berserking", "bloodlust"];
   const en = {}; for (const k in BUFFS) en[k] = kit.includes(k);
   const plain = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * 1387) * (1 + 0.38 * (GAME.CRIT_MULT - 1));
@@ -72,18 +86,22 @@ const plans = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA }) => {
     for (const t of ivs) { if (t < cd - 1e-6) csOut.push(t); ivOut.push(t); cd = t + BUFFS.icyVeins.cd; }
     if (ivOut.length) spec.IV = ivOut;
     if (csOut.length) spec.CS = csOut;
+    if (downtime.length) spec._intermissions = downtime; // AB off during intermission/aoe windows
     return spec;
   };
   const res = {};
   for (const h of HASTES) {
-    const cfg = { T, hasteRating: h, sp: 1387, critPct: 38, enabled: en, fixed: { bloodlust: [LUST] }, warnings: [], coldSnap: true, segments: null };
+    const cfg = { T: fightT, hasteRating: h, sp: 1387, critPct: 38, enabled: en, fixed: { bloodlust: [lust] }, warnings: [], coldSnap: true, segments };
     const best = await optimizeAsync(cfg, 14, () => {});
     res[h] = { spec: toSpec(best.s), eff: +(best.val / plain).toFixed(3) };
   }
-  return res;
-}, { HASTES, T, LUST, PAIR, TMETA });
+  return { res, fightT, lust, hasAoe };
+}, { HASTES, T, LUST, PAIR, TMETA, BOSS: process.env.BOSS || null });
 await browser.close();
 if (perr) { console.error('PAGEERROR', perr); process.exit(2); }
+const plans = out0.res;
+const FIGHT_T = out0.fightT;   // boss overrides T for the sim/labels below
+if (process.env.BOSS) console.log(`  BOSS=${process.env.BOSS}  T=${FIGHT_T}  Lust@${out0.lust}${out0.hasAoe ? '  ★ HAS AoE PHASE — simmed as downtime (genapl has no AE); numbers exclude AoE damage' : ''}`);
 
 for (const h of HASTES) console.log(`  plan@h${h}: eff=${plans[h].eff}  ${JSON.stringify(plans[h].spec)}`);
 // dedupe by spec signature
@@ -98,7 +116,7 @@ for (const h of HASTES) {
 }
 const M = {};
 for (const ph of HASTES) { M[ph] = {}; for (const sh of HASTES) {
-  const out = execFileSync(RUNNER, ['--export', EXPORT, '--apl', path.join(SCRATCH, `plan_${ph}.apl.json`), '--dur', String(T), '--var', '10', '--iter', ITER, '--seed', '11', '--mana', '100000000', '--haste', String(sh), '--quiet', '--tag', 'm'], { encoding: 'utf8' });
+  const out = execFileSync(RUNNER, ['--export', EXPORT, '--apl', path.join(SCRATCH, `plan_${ph}.apl.json`), '--dur', String(FIGHT_T), '--var', '10', '--iter', ITER, '--seed', '11', '--mana', '100000000', '--haste', String(sh), '--quiet', '--tag', 'm'], { encoding: 'utf8' });
   M[ph][sh] = parseFloat(out.trim().split(/\s+/)[4]);
 } }
 
@@ -124,4 +142,4 @@ for (const sh of HASTES) { const native = M[sh][sh];
 const diagClean = diagWorst <= 1e-9;
 console.log(`\n(a) haste-monotonicity [OBSERVED, not interpreted]: worst downward dip = ${(monoWorst*100).toFixed(2)}%` + (monoWorst > 0 ? `  [${monoAt}]` : ''));
 console.log(`(b) DIAGONAL DOMINANCE: ${diagClean ? 'CLEAN — native dominates every column' : `DEFICIT ${(diagWorst*100).toFixed(2)}%  [${diagAt}]`}`);
-console.log(`XVAL-DONE seed=${SEED} kit=${PAIR.join('+')} class=${cls||'any'} T=${T} lust=${LUST} monoDip=${(monoWorst*100).toFixed(2)}% diag=${diagClean ? 'CLEAN' : 'DEFICIT'} diagWorst=${(diagWorst*100).toFixed(2)}%`);
+console.log(`XVAL-DONE seed=${SEED} kit=${PAIR.join('+')} class=${process.env.BOSS ? 'BOSS:'+process.env.BOSS.replace(/[^A-Za-z]/g,'') : (cls||'any')} T=${FIGHT_T} lust=${out0.lust} monoDip=${(monoWorst*100).toFixed(2)}% diag=${diagClean ? 'CLEAN' : 'DEFICIT'} diagWorst=${(diagWorst*100).toFixed(2)}%`);
