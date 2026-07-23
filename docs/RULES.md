@@ -266,8 +266,13 @@ on the patched runner.
   property of the entire chain geometry, not a local check: the maximum-count chain on a long fight can
   FORCE CS early (the minimum span for n uses with CS is `20 + (n−2)·180`, i.e. CS at prev+20 compressing
   the chain — 4 uses need ≥380s). So the hierarchy is:
-  1. **Choose among count-MAXIMAL chains only** — a whole extra IV window (~2.7 casts) dwarfs any flux
-     alignment (fractions of a cast). On long fights this alone can pin CS to the early chain.
+  1. **Choose among count-MAXIMAL chains only — as the DEFAULT, not an absolute** (user-flagged). The
+     count-vs-alignment trade is priced by the count itself: a naked extra window is worth ~2.7 casts at
+     0 gear, which dwarfs flux fractions — but that value DECAYS with passive haste (a bare IV window's
+     marginal casts shrink toward the §16 394 cap), so at high gear, forfeiting a weak naked third use
+     for a well-aligned second can win. E.g. on a 3:40 fight the chains 0/20(CS)/200, 0/180/200(CS), and
+     the 2-use 60/120(CS) sacrifice are all candidates — the model prices them per fight and gear (§4's
+     align-vs-twice breakpoint generalized); the `polish` drop-and-relocate move expresses the sacrifice.
   2. **Within the count-maximal chains, chase flux**: the CS-IV rides whichever damage window the natural
      cadence leaves uncovered — the second Icon+gem cluster at its exact tick (T=180/340: CS-IV@126 =
      Icon's 6+120), the Lust tail (T=260: CS at the 120-cluster would push the third IV past the kill, so
@@ -534,19 +539,22 @@ those). What it confirms:
     beyond "use Icon at all." **Sweeping past 789 is useless** — the harness caps there.
 
 **The layout morphology across haste** *(user-predicted, brute-force-mapped: T=80, Lust@20, six tracks,
-staged exhaustive enumeration per haste point; the tool matched the brute optimum at 9/10 points — the
-one gap, h40 −0.033 casts, sits on a plateau edge inside the designed 0.15 pressability slack)*:
-- **h0–40: the classic pack.** CS-IV floors Lust's first half, the damage cluster rides it, Zerk
-  sequences onto the tail. IV starts straddling out at ~40.
-- **~80: IV fully exits** (brackets Lust: pre [0,20] + post [60,80]) and **Berserking carries the Lust
+staged exhaustive enumeration per haste point at coarse + fine resolution; the tool matched the brute
+optimum at 17/19 points — the two gaps, h40 −0.033 and h50 −0.019 casts, both sit on the straddle-
+transition plateau edge, inside the designed 0.15 pressability slack)*:
+- **h0–50: the classic pack.** CS-IV floors Lust's first half, the damage cluster rides it, Zerk
+  sequences onto the tail. IV straddles out at 40–50.
+- **~55: IV fully exits** (brackets Lust: pre [0,20] + post [60,80]) and **Berserking carries the Lust
   burst window** with the cluster — the user's predicted first transition.
-- **~160–200: the PORTABLE BURST WINDOW** (the unpredicted one). Once `IV×Zerk×passive` (~1.45) rivals
-  Lust alone (~1.43), the self-buffs manufacture their own fast window OUTSIDE Lust and the whole damage
-  cluster rides it — the fight is fast from 0:10 to 1:00 instead of only inside Lust. Zerk∩Lust = 0: the
-  user's predicted second transition, except the damage leaves with it.
-- **≥243 (Lust self-floors): the cluster returns to Lust** (it needs no help anymore — pure flux), Zerk
-  retires to the pull ramp (the last uncapped casts), IV keeps bracketing. Every step is the same three
-  laws composing: flux, the §7 premium bands, floor-avoidance.
+- **~125–225: the PORTABLE BURST WINDOW** (the unpredicted one). Once `IV×Zerk×passive` rivals Lust
+  alone, the self-buffs manufacture their own fast window OUTSIDE Lust and the whole damage cluster
+  rides it — the fight is fast from 0:10 to 1:00 instead of only inside Lust. Zerk∩Lust = 0: the user's
+  predicted second transition, except the damage leaves with it. **Sim-verified at h160: portable beats
+  cluster-on-Lust by +1.2% var0 / +0.6% var10** — a real, novel layout class, not a model artifact.
+- **~225+ (just before Lust self-floors at 243): the cluster returns to Lust** (its window value catches
+  the self-made one as it nears the floor — pure flux, no help needed), Zerk retires to the pull ramp
+  (the last uncapped casts), IV keeps bracketing. Every step is the same three laws composing: flux, the
+  §7 premium bands, floor-avoidance.
 
 ## 17. Shared trinket lockout: SP trinket first, haste trinket second — until the haste trinket exits
 
