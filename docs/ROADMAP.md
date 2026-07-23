@@ -315,10 +315,17 @@ TOOLING). Findings, all sim-measured on the fixed rig:
   hop↔normalize fixpoint re-teleports near-identical candidates every round — repeats now cost a
   Map lookup instead of ~0.3–1s (cached entries cloned at accept so downstream passes can't
   corrupt them; both pooled and sequential paths share the cache, so tests speed up too).
-  Container (2 pool workers): KT 285.7s → 201s (pool) → **134.4s** (pool+cache); scales with
-  cores (~45–60s expected on a typical 8-core). Remaining depth if ever needed: parallelizing
-  polish's inner shift ladder; a simulate()-level memo. The pool commit is suite-certified
-  (25/25, byte-identical goldens).
+  Container (2 pool workers): KT 285.7s → 201s (pool) → **134.4s** (pool+cache) → **83.9s**
+  (+ a `simulate()`-level memo — the wrapper over `simulateRaw`, collect=false results only
+  (plain number bags, no caller mutates them — verified), keyed `cfgSigOf(cfg)+sigOf(schedule)`
+  so pool workers hit despite per-job cfg clones, bounded by wholesale clear at 120k entries;
+  the hill-climb's final all-rejections round and the tie-break incumbents are the repeats).
+  Scales with cores (~25–40s expected on a typical 8-core; short fights ~2s). Remaining depth if
+  ever needed: parallelizing polish's inner shift ladder. The pool commit is suite-certified
+  (25/25, byte-identical goldens); cache/memo commits certified the same way. **Hard product
+  rule (user): NOTHING computes after the results render — no speculative or anytime refinement;
+  what's shown is final.** (This is why the speculative concurrent Cold-Snap comparison was NOT
+  built: its mispredict case would keep pool work running past the render.)
 - **Honest progress display (user: "at least make the loading bar accurate").** onProgress now
   carries a **stage label**; the engine emits real within-stage fractions banded by the measured
   cost profile (Trying N starts (k/N) → Snapping to whole seconds → Basin-hop (main sweep, real

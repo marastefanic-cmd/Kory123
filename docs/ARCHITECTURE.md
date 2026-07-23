@@ -37,8 +37,13 @@ damage in `simulate`, single-target returns 1 — sim-validated, RULES §9). `BU
 `kind` (`mult` haste-multiplier, `rating` haste-rating, `dmg` damage-mult, `sp` spellpower, `proc`),
 `value`, `dur`, `cd`. `KILL_WINDOW = 0.5` (inside `simulate`, ~631) — half-cast kill smoothing.
 
-## `simulate(schedule, cfg, collect)` — the scorer (~634–934)
+## `simulate(schedule, cfg, collect)` — the scorer (~660–990)
 Returns `{total, totalEarly, robust, castCount, gcdCappedTime, casts, actEff, dps}`.
+`simulate` is now a **memo wrapper** over `simulateRaw` (the actual scorer): collect=false results
+(plain number bags; no caller mutates them — verified) are cached keyed by
+`cfgSigOf(cfg) + sigOf(schedule)` (string key, so pool workers hit despite receiving cfg as a
+structured clone per job), bounded by a wholesale clear at 120k entries. Purity ⇒ hits are
+bit-equal to recomputation; collect=true always computes fresh.
 - A discrete cast loop builds the press board / activation times (does NOT accumulate damage);
   intermissions fast-forward (`t = seg.end`). **Ramp-aware (RULES §3):** stacks open at 0 (no prestack)
   and re-ramp after every ≥8s AB gap (`lastCastStart` + `DEBUFF_DUR`; AE casts neither build nor

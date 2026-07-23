@@ -632,7 +632,35 @@ const RAID_PINNABLE = new Set(["bloodlust", "drums", "powerInfusion"]);
 const ATI = { rating: 145, dur: 5, procChance: 0.5 };
 
 /* ═══════════════ engine ═══════════════ */
+/* simulate() memo — the innermost hot function (~5.7M calls per long-fight optimize, ~46µs each,
+   with heavy repeats: a hill-climb's final all-rejections round re-evaluates its previous round,
+   and the tie-break passes re-score the incumbent constantly). Pure function ⇒ a hit is bit-equal
+   to recomputing, so plans are untouched. collect=false only: that result is a plain bag of
+   numbers (casts/actEff are null — nothing to mutate; verified no caller writes result fields).
+   Keyed by a cfg SIGNATURE (pool workers receive cfg as a structured clone per job, so object
+   identity would never hit there) + the schedule signature. Bounded by wholesale clear at CAP —
+   crude, O(1), and deterministic (eviction can only cause recomputation, never a different value). */
+const SIM_MEMO = new Map();
+const SIM_MEMO_CAP = 120000;
+let simMemoCfg = null, simMemoCfgSig = "";
+function cfgSigOf(cfg) {
+  if (simMemoCfg === cfg) return simMemoCfgSig; // identity fast path — one cfg dominates any run
+  simMemoCfg = cfg;
+  simMemoCfgSig = JSON.stringify([cfg.T, cfg.hasteRating, cfg.sp, cfg.critPct, cfg.coldSnap ? 1 : 0, cfg.t5two ? 1 : 0, cfg.enabled, cfg.fixed, cfg.segments]);
+  return simMemoCfgSig;
+}
 function simulate(schedule, cfg, collect) {
+  if (collect) return simulateRaw(schedule, cfg, collect);
+  const key = cfgSigOf(cfg) + "|" + sigOf(schedule);
+  let r = SIM_MEMO.get(key);
+  if (r === undefined) {
+    r = simulateRaw(schedule, cfg, collect);
+    if (SIM_MEMO.size >= SIM_MEMO_CAP) SIM_MEMO.clear();
+    SIM_MEMO.set(key, r);
+  }
+  return r;
+}
+function simulateRaw(schedule, cfg, collect) {
   const g = GAME;
   const crit = Math.min(1, Math.max(0, cfg.critPct / 100));
   const critFactor = 1 + crit * (g.CRIT_MULT - 1);
