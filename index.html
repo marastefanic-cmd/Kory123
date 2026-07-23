@@ -1192,14 +1192,33 @@ async function poolMap(items, itemMsg, onOne) {
   await Promise.all(items.map((it, i) => POOL.run(itemMsg(it, i)).then(r => { out[i] = r; done++; if (onOne) onOne(done, items.length); })));
   return out;
 }
-// the pool worker's job kinds (also used inline by the sequential path so both stay one code path)
-function jobPolishTeleport(baseS, cfg, pr) {
+// Build a teleport candidate and legalize it — the CHEAP part (repair ≈ 2µs), done orchestrator-
+// side so identical repaired schedules can be deduped/cached BEFORE paying for a polish (~0.3–1s).
+function teleportRep(baseS, cfg, pr) {
   const cand = cloneS(baseS);
   for (const key in cand) {
     if (cfg.fixed[key]) continue;
     for (let i = 0; i < cand[key].length; i++) if (Math.round(cand[key][i]) === pr.X) cand[key][i] += pr.A - pr.X;
   }
-  return polish(repair(cand, cfg), cfg);
+  return repair(cand, cfg);
+}
+/* Polish-result cache, one per cfg object (WeakMap — a run's cache dies with its cfg; the
+   Cold-Snap recursion's {...cfg} clone gets its own). polish() is a pure function of (schedule,
+   cfg), so serving a repeat from cache returns the exact same bits as recomputing — determinism
+   untouched, accept-walks see identical values. The win is the hop↔normalize FIXPOINT: rounds
+   2–3 re-teleport near-identical candidates from a barely-changed champion, and whole windows of
+   (X, A) pairs repair to the same legalized schedule even within one sweep. */
+const POLISH_CACHES = new WeakMap();
+function polishCacheFor(cfg) {
+  let m = POLISH_CACHES.get(cfg);
+  if (!m) { m = new Map(); POLISH_CACHES.set(cfg, m); }
+  return m;
+}
+function sigOf(s) {
+  const ks = Object.keys(s).sort();
+  let out = "";
+  for (const k of ks) out += k + ":" + s[k].join(",") + ";";
+  return out;
 }
 // Async: each window×anchor teleport costs a polish() (seconds on long fights), and the hop can run
 // dozens of them — `onStep` (optional) is awaited between teleports so the caller can yield the main
@@ -1234,29 +1253,46 @@ async function basinHop(champ, cfg, onStep) {
     const pairs = [];
     for (const X of windows) for (const A of anchors) if (A !== X) pairs.push({ X, A });
     const hopTotal = Math.max(1, pairs.length);
+    const cache = polishCacheFor(cfg);
     if (POOL) {
-      // Pooled sweep with sequential-equivalent reduction: evaluate the remaining pairs against
-      // the CURRENT champion in parallel, then walk the results in iteration order and accept the
-      // FIRST improvement — exactly what the sequential loop would have accepted — then restart
-      // the fan-out from the next pair against the updated champion. Evaluations past the accepted
-      // pair are discarded (they were made against a stale base); acceptances are rare, so the
-      // waste is small and the final (no-improvement) sweep parallelizes with zero waste.
+      // Pooled sweep with sequential-equivalent reduction: repair every remaining pair's teleport
+      // against the CURRENT champion (cheap, orchestrator-side), dedupe the repaired schedules
+      // against each other and the cache, polish only the misses in parallel, then walk the
+      // results in iteration order and accept the FIRST improvement — exactly what the sequential
+      // loop would have accepted — and restart the fan-out from the next pair against the updated
+      // champion. Evaluations past the accepted pair are discarded (stale base); acceptances are
+      // rare, so the waste is small and the final (no-improvement) sweep parallelizes cleanly.
       let i = 0;
       while (i < pairs.length) {
         const base = bestS;
-        const results = await poolMap(pairs.slice(i), pr => ({ kind: "teleport", baseS: base, cfg, pr }),
-          (d, t) => { if (onStep) onStep(Math.min(1, (i + d) / hopTotal)); });
+        const slice = pairs.slice(i);
+        const reps = slice.map(pr => teleportRep(base, cfg, pr));
+        const sigs = reps.map(sigOf);
+        const needReps = [], needSigs = [], seen = new Set();
+        for (let k = 0; k < reps.length; k++) {
+          if (cache.has(sigs[k]) || seen.has(sigs[k])) continue;
+          seen.add(sigs[k]); needReps.push(reps[k]); needSigs.push(sigs[k]);
+        }
+        if (needReps.length) {
+          const rs = await poolMap(needReps, rp => ({ kind: "polish", s: rp, cfg }),
+            (d, t) => { if (onStep) onStep(Math.min(1, (i + d * slice.length / t) / hopTotal)); });
+          for (let k = 0; k < needSigs.length; k++) cache.set(needSigs[k], rs[k]);
+        }
         let j = -1;
-        for (let k = 0; k < results.length; k++) if (results[k].val > bestV + 1e-7) { j = k; break; }
+        for (let k = 0; k < sigs.length; k++) if (cache.get(sigs[k]).val > bestV + 1e-7) { j = k; break; }
         if (j < 0) break;
-        bestS = results[j].s; bestV = results[j].val; again = true;
+        const p = cache.get(sigs[j]);
+        bestS = cloneS(p.s); bestV = p.val; again = true; // clone: cached entries must never be mutated downstream
         i += j + 1;
       }
     } else {
       let hopStep = 0;
       for (const pr of pairs) {
-        const p = jobPolishTeleport(bestS, cfg, pr);
-        if (p.val > bestV + 1e-7) { bestS = p.s; bestV = p.val; again = true; }
+        const rep = teleportRep(bestS, cfg, pr);
+        const sg = sigOf(rep);
+        let p = cache.get(sg);
+        if (!p) { p = polish(rep, cfg); cache.set(sg, p); }
+        if (p.val > bestV + 1e-7) { bestS = cloneS(p.s); bestV = p.val; again = true; }
         if (onStep) await onStep(++hopStep / hopTotal);
       }
     }
@@ -3017,8 +3053,8 @@ function makeEngineWorker(flavor) {
       "  if (e.data.type !== 'pool-port') return;" +
       "  for (const port of e.data.ports) {" +
       "    port.onmessage = ev => {" +
-      "      const j = ev.data;" +
-      "      port.postMessage(j.kind === 'teleport' ? jobPolishTeleport(j.baseS, j.cfg, j.pr) : polish(repair(j.s, j.cfg), j.cfg));" +
+      "      const j = ev.data;" + // every dispatched schedule is already repaired (seeds at construction, teleports orchestrator-side) — polish directly, matching the sequential path exactly
+      "      port.postMessage(polish(j.s, j.cfg));" +
       "    };" +
       "  }" +
       "};"

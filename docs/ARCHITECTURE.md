@@ -16,6 +16,12 @@ fans its two dominant costs — the seed polishes and `basinHop`'s teleport eval
 285s KT run, measured) — across them with a **first-accept-in-iteration-order** reduction that
 reproduces the sequential search step for step, so pooled and sequential paths return
 **byte-identical plans** (verified; tests run the page's sequential path, `POOL` stays null there).
+A **polish-result cache** (`polishCacheFor` — per-cfg WeakMap, keyed by `sigOf(repairedSchedule)`,
+shared by both paths) dedupes the repeats: teleports are repaired orchestrator-side (`teleportRep`,
+~2µs) so identical legalized candidates — rampant within a sweep and across the fixpoint's rounds —
+pay for one polish, not many; polish is pure, so cache hits are bit-equal to recomputation, and
+accepted entries are **cloned** before becoming the champion so downstream passes can't mutate the
+cache. Measured: KT 285.7s → 201s (pool alone, 2 workers) → **134.4s** (pool + cache).
 Nothing runs after the results render — the old post-render "what if the kill runs longer"
 re-optimization (aux worker) is REMOVED (user decision: not worth the background CPU). Line
 numbers drift as the file is edited — treat them as signposts, re-grep if they're off. Everything

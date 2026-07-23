@@ -310,9 +310,14 @@ TOOLING). Findings, all sim-measured on the fixed rig:
   polishes and hop teleports across them with a **first-accept-in-iteration-order** reduction —
   reproduces the sequential accept sequence exactly, so pooled ≡ sequential **byte-identical**
   (verified on 2:45 and KT: val 617033.2, identical plan; exact-match suite runs the sequential
-  page path and is untouched). Container (2 pool workers): KT 285.7s → 201s; scales with cores
-  (~60–90s expected on a typical 8-core). Remaining depth: parallelizing polish's inner shift
-  ladder — only if still needed.
+  page path and is untouched). **Plus a polish-result cache with orchestrator-side dedupe**
+  (`polishCacheFor`/`sigOf`/`teleportRep`, per-cfg WeakMap): polish() is pure, and the
+  hop↔normalize fixpoint re-teleports near-identical candidates every round — repeats now cost a
+  Map lookup instead of ~0.3–1s (cached entries cloned at accept so downstream passes can't
+  corrupt them; both pooled and sequential paths share the cache, so tests speed up too).
+  Container (2 pool workers): KT 285.7s → 201s (pool) → **134.4s** (pool+cache); scales with
+  cores (~45–60s expected on a typical 8-core). Remaining depth if ever needed: parallelizing
+  polish's inner shift ladder; a simulate()-level memo.
 - **`basinHop` ramp-exit anchors landed** (the backlog headroom item): h160-class ramp-exit-hug basin
   CLOSED; **Kael'thas moved** to a strictly better plan (+354 robust, `IV@106/126/380`,
   `AP@120/380`, cluster mirrors) and was re-locked. h40/h50 straddle residuals (≤0.033, inside
