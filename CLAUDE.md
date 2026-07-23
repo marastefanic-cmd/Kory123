@@ -111,11 +111,14 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/ROADMAP.md` — status, current work, and open questions.
 - `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
-  into ROADMAP). **No plan in flight — Phase 4 is COMPLETE** (exact discrete ramp + press-snap in the
-  scorer, basin-stable search, `tests/monotonicity.mjs` certified 0 violations; full record in ROADMAP).
-  The deferred UI flair (leeway "press anywhere" bands + action-plan reasoning tags — removed from
-  `index.html`, logic in git history) is now UNBLOCKED by the certificate but needs the user's design
-  input before restoring (they disliked the old tag wording); the haste-graph reference lines stay.
+  into ROADMAP). **Current plan: Phase 5 — cracking AoE phases** (see PLAN.md). Phase 4 is COMPLETE
+  (exact discrete ramp + press-snap, basin-stable search, monotonicity certified 0 violations; record in
+  ROADMAP). **Permanently REJECTED (user decisions — do not revisit):** the leeway "press anywhere"
+  bands and reasoning-tag UI (a plateau tie is conditional on everything else staying put, so the bands
+  over-promise; logic deleted from `index.html`); an in-tool "exact mode" (the brute-grid instrument is
+  for RESEARCH — generalize its findings into rules, don't ship enumeration); the finite-mana model (too
+  many unreliable inputs — the per-window mana-cost chip on the infinite-mana plan is the ceiling of
+  mana UX, and it is ramp-aware via the casts board). The haste-graph reference lines stay.
 - `docs/SOURCES.md` — where WoW facts come from (TBC is a solved game — look up + cite, don't
   re-derive) and the verified-facts ledger of the constants the model uses.
 - `docs/EP.md` — stat weights **two contexts**: the infinite-mana **layout** EP (closed-form model

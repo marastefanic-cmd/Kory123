@@ -2900,49 +2900,6 @@ function renderTiles({ cfg, baseline, naiveR, optR }) {
 }
 
 /* timeline: haste curve + buff lanes */
-// Free-leeway zones (RULES §14): a press that can be moved across an interval for the SAME
-// effective-AB result — the position-independent presses (RULES §3), a lone haste/utility use
-// bound only by its own cooldown, not riding a damage burst. For each, the maximal contiguous
-// interval whose robust score TIES the current placement (near-exact). Presses that ride a burst
-// score-drop the moment they move, so their interval collapses and they are not drawn. Shown on
-// the timeline as a dotted "press anywhere here" band and reported by the Flexible/earliest tag.
-function leewayZones(run) {
-  const { cfg, best } = run;
-  const castVal = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + (cfg.critPct / 100) * (GAME.CRIT_MULT - 1));
-  const TIE = Math.max(1, 0.01 * castVal);      // "same result" = tie within ~1% of a cast (float-noise slack)
-  const MINW = 3, STEP = 1;                     // only an interval >= 3s is worth calling free leeway; scan at 1s
-  const countsOf = s => { const o = {}; for (const k in s) o[k] = s[k].length; return o; };
-  const base = countsOf(best.s);
-  const sameCounts = c => Object.keys(base).every(k => (c[k] || 0) === base[k]);
-  const zones = [];
-  for (const k in best.s) {
-    if (cfg.fixed[k] || !BUFFS[k] || BUFFS[k].kind === "proc") continue; // pinned raid call / proc: not ours to move
-    const arr = best.s[k].slice().sort((a, b) => a - b);
-    const cd = BUFFS[k].cd;
-    for (let i = 0; i < arr.length; i++) {
-      const t0 = arr[i];
-      // Feasibility is decided by repair + the guards below (so a Cold-Snap Icy Veins — previous use < cd
-      // away — is handled correctly, not skipped): move THIS use by value, keep the rest, and require the
-      // count to hold and the press to actually land where we put it. Scan the whole fight; expand-until-
-      // break stops at the tie/feasible edges on each side.
-      const scoreAt = t2 => {
-        if (t2 < -1e-6 || t2 > cfg.T + 1e-6) return -Infinity;
-        const cand = cloneS(best.s); cand[k] = arr.map((t, j) => j === i ? t2 : t).sort((a, b) => a - b);
-        const rep = repair(cand, cfg);
-        if (!sameCounts(countsOf(rep))) return -Infinity;                 // dropped/added a use → not the same line
-        if (!(rep[k] || []).some(x => Math.abs(x - t2) < 0.5)) return -Infinity; // repair relocated it → score is for a different spot
-        return simulate(rep, cfg).robust;
-      };
-      const ref = scoreAt(t0);
-      if (!isFinite(ref)) continue;
-      let lo = t0, hi = t0;
-      for (let t = t0 - STEP; t >= -1e-6; t -= STEP) { const tt = Math.max(0, t); if (scoreAt(tt) >= ref - TIE) lo = tt; else break; }
-      for (let t = t0 + STEP; t <= cfg.T + 1e-6; t += STEP) { const tt = Math.min(cfg.T, t); if (scoreAt(tt) >= ref - TIE) hi = tt; else break; }
-      if (hi - lo >= MINW) zones.push({ k, t: t0, lo: Math.round(lo), hi: Math.round(hi) });
-    }
-  }
-  return zones;
-}
 function renderTimeline(run) {
   const { cfg, best, optR } = run;
   el("viz").hidden = false;
@@ -3476,10 +3433,10 @@ function pressPlan(run) {
     if (r && Math.round(a.intent) === r.t) r.items.push(a);
     else rows.push({ t: Math.round(a.intent), items: [a] });
   }
-  // Placement-REASONING tags are DEFERRED (user-directed): the model/optimizer must be airtight first —
-  // the "why-here" badges (and the leeway bands) were diluting focus and could mislead while the search
-  // still mis-places on some inputs. Rows carry no `.tag` for now; the schedule/board show only the presses.
-  // The inference logic (leewayZones, cd-feeds-next, Cold-Snap, boundary) is in git history to restore later.
+  // Placement-reasoning tags and leeway "press anywhere" bands are PERMANENTLY REJECTED (user decision):
+  // a plateau tie for one press is conditional on everything else staying put — moving it shifts other
+  // optima — so "can be pressed anywhere here" over-promises. Rows carry no `.tag`; the schedule/board
+  // show only the presses. (Old inference logic lives in git history; do not restore.)
   run.pressRows = rows;
 }
 function followPrime(run) {

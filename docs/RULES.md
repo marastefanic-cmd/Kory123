@@ -463,7 +463,7 @@ differently, and that difference is **source-verified against wowsims**, not ass
   APL sim wasn't required to certify these (the physics is anchored by the rating trust-anchor + the PI
   source read above).
 
-## 14. Ashtongue Talisman → leeway zones (passive proc; depict the freedom, don't schedule it) *(decided this project)*
+## 14. Ashtongue Talisman (passive proc: fold into the haste, don't schedule it) *(decided this project; the leeway-zone UI half is DEAD — see the end of the section)*
 
 The Ashtongue Talisman of Insight (145 haste rating, 5s, ~50% on a spell crit) is modeled as **steady-state
 proc-uptime folded into every window's haste** (`simulate` `atiOn`, ~662) — real DPS, in the effective-AB
@@ -480,10 +480,11 @@ computed by scanning the press across its feasible range and taking the maximal 
 robust score ties the champion within `QTOL`). **No proc verdict is computed:** aligning such a press with a
 live Ashtongue proc (or any moment the player likes) inside the band is **never anti-synergous** — every
 position in the band already scores identically, so overlapping a proc is at worst neutral (a floored proc is
-wasted, not a loss) and at best free upside. So the honest, minimal depiction is the band itself. **Narrow /
-sub-cast ties are NOT drawn** — moving those costs a later alignment or a whole use (§10 is a *tie-break*, not
-free leeway). This is the useful, general form of the user's "some timings have leeway" idea (react to adds,
-dodges, or a proc), and it feeds the action-plan **Flexible/earliest** reasoning tag (§ ROADMAP task 6).
+wasted, not a loss) and at best free upside. **This depiction half of the section is DEAD (user decision,
+final): the leeway bands and reasoning tags were permanently rejected** — a plateau tie for one press is
+conditional on every other press staying put, so "press anywhere here" over-promises; `leewayZones()` is
+deleted from `index.html`. The MODELING half above (fold the proc into scored haste, never schedule it)
+stands unchanged.
 
 **The haste trend does NOT average the proc in (user-directed).** Because the proc is random, the timeline
 curve and the schedule's peak-haste / AB-cast / at-GCD-floor readouts use the **deterministic** haste (gear +

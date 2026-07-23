@@ -152,8 +152,13 @@ Ran as **A → measure → B → C** (the plan that lived in `docs/PLAN.md`):
   earliest-canonical choice (`slideEarliest`) is also the sim-preferred one.
   Search cost: ~20–40s per plan headless (basinHop dominates) — optimize later if the UI feels it.
 
-**UI deferred:** the leeway "press anywhere" bands and the action-plan reasoning tags (removed; logic in
-git history — restore once monotonicity is certified airtight); the haste-graph reference lines stay.
+**UI: leeway bands + reasoning tags PERMANENTLY REJECTED (user decision, post-certification).** A plateau
+tie for one press is conditional on every other press staying put — moving it shifts other optima — so
+"press anywhere from here to here" over-promises and was cut for good; `leewayZones()` deleted from
+`index.html` (git history has it; do not restore). Also decided: NO in-tool exact mode (brute-grid is a
+research instrument — generalize its findings into rules); NO finite-mana model (unreliable inputs — the
+ramp-aware per-window mana-cost chip on the infinite-mana plan is the ceiling of mana UX). The
+haste-graph reference lines stay. **Next: Phase 5 — crack AoE phases (docs/PLAN.md).**
 
 ## Done — gear-haste + haste-trinket correctness (this session, user-directed)
 
