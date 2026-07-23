@@ -634,6 +634,25 @@ transition plateau edge, inside the designed 0.15 pressability slack)*:
     basinHop ramp-exit anchors — the tool now returns 80.659 > the grid's 80.618). Lesson:
     staged/local refinement can sit 0.02–0.03 casts off the enumerated optimum; the full grid is
     cheap at this fight size — use it when exactness matters.
+  - **The exhaustive haste ladder (user-directed; `tools/haste-ladder.mjs`).** The full grid
+    marched h=0→300 (27 points after bisection), tool-certified at every rung — **zero misses
+    beyond the 0.15 slack** (worst: −0.091 at h40, −0.077 at h300, both in straddle/plateau
+    bands). The enumerated morphology of the standard kit (T=80, Lust@20; layouts
+    [IV, Icon, gem, AP, Zerk]):
+    · **h0**: IV brackets the back ([35,55]), cluster on the back bridge (40–45), Zerk@20 in Lust.
+    · **~h10**: IV1 jumps to the PULL ([0,45]) — pull + Lust-end bracketing begins.
+    · **~h30–70**: IV2 slides 45→55 — the STRADDLE band (the priced soft spot lives here).
+    · **~h80–120**: the CLASSIC PACK crystallizes — IV [0,60], cluster+Zerk co-pressed on Lust's
+      start (20–25).
+    · **~h130–170**: the cluster abandons Lust for the RAMP EXIT (@5) — the h160 discovery is a
+      whole band, not a point.
+    · **~h180–190**: the BACK BRIDGE (Icon@50, gem/AP@55, Zerk@60 on IV2) — the user's
+      construction is the enumerated optimum of this band.
+    · **~h200–220**: front-side burst (@10).
+    · **~h230+**: the cluster RETURNS to Lust (@20) and **Zerk retires to the pull** (@0) — the
+      endgame; stable through h300. (Adjacent bands often tie within ~0.01 casts — the "changes"
+      at h120/h260/h270 are plateau wobbles between damage-twins, not new physics; the seven bands
+      above are the real structure.)
   - **Every 2-trinket kit certified (user-directed; `brute-grid --pair --tool`).** All six pairs
     from {Icon, Serpent-Coil, Skull, MQG} — including the shared-lockout pairs — full-grid-bruted
     at h∈{0, 40, 160, 240} (T=80, Lust@20) against the real optimizer: **20/20 PASS, zero misses.**
