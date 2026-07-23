@@ -153,7 +153,11 @@ already-early buff has nothing better behind it).
   SP buff dilutes nothing — Icon+gem BOTH on the fastest window beats any split at every haste level
   (measured: both-fast 52.018 vs best split 51.662 at h0, +0.36 casts; same ordering at h150/h300).
   Concentrate every SP buff on the single highest-flux window; only cooldown spacing ever separates
-  them.
+  them. **Budget asterisk (user-flagged): the gem is a 3-charge resource (Mana Emerald, `trackRule`),
+  Icon is only cd-limited** — per-window they still never compete, but on a long fight gem's three
+  uses are a budget to spend on the three best windows while Icon can ride every 2-minute tick. The
+  planner's `maxUses` handles this; when reading a plan, a "missing" gem on some window is the budget,
+  not a mistake.
 
 ## 7. Haste-on-haste IS a multiplicative synergy below the floor — the floor decides when to split
 *(REWRITTEN — the old "wash" version was a fixed-rig artifact; see the correction note at the end.)*
@@ -216,6 +220,14 @@ disjoint 48.595). Never park a haste buff half-in.
   ×1.1 still fits under Lust's shrinking headroom, IV ×1.2 doesn't. **General law: fill a haste
   window with the largest haste buff that still fits under the cap.** (With damage buffs present the
   flux coupling §16 holds IV in Lust much longer — pure haste is the floor-only limit.)
+
+**⚠ Every crossover above is the PURE-haste limit — damage/SP buffs on the stacked window STRETCH the
+stack band (user-flagged; the §16 coupling from the haste side).** Stacked extra casts are PREMIUM
+casts (they carry the window's damage multiplier); spread extra casts are plain. Measured (IV+Zerk
+split point, 2-rating resolution): pure **264** → +Icon on the window **280** → +Icon+AP **332** →
++Icon+AP+gem **348**. So in a real burst the stack holds ~+84 rating longer than the isolated-pair
+number — always read this section's crossovers as lower bounds whenever the damage cluster rides the
+stacked window.
 
 **Why Lust+IV still sequences (§4/§5 unchanged):** Lust×IV = 1.56 is over the 1.5 cap at ZERO gear
 haste — at exactly h0 the premium and the waste cancel to a wash (IV-in-Lust = IV-out = 2.67 casts,
