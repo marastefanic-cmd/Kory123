@@ -259,6 +259,13 @@ on the patched runner.
   window is kept to a **half-cast** (smooths the exact-second boundary, doesn't distort placement).
   Reacting to an early death (pop cooldowns sooner) is the player's live job. Result: terminal bursts
   align to end **at** the kill (e.g. KT: last IV+Icon at 6:40, ending at 7:00).
+- **Where Cold Snap's extra IV goes — it chases the uncovered damage window, COUNT-first** *(mapped with
+  the certified tool across T=100–340, Lust@5)*: the CS-chained IV lands on whichever damage-buff window a
+  natural-180s-cadence IV cannot cover — the second Icon+gem cluster at its exact cadence tick (T=180/340:
+  CS-IV@126 = Icon's 6+120), the Lust tail, or the kill-anchored terminal cluster. The one hard constraint
+  ranks above flux: **never spend CS where it costs a later use** (T=260: CS at the 120-cluster would push
+  the natural third IV past the kill, so CS takes the Lust tail instead and all three IVs survive). Order
+  of the composition: use-count (§4 align-vs-twice) → flux (§1) → premium bands (§7).
 - **Cold Snap** = "**once per fight, one Icy Veins ignores its cooldown**." Mechanically it resets IV's
   480s cd, but the simplest correct model is: exactly one extra IV per fight, and because there's no way
   to reset again, the *cheated* IV must be the one that skips the cooldown (schedule the cheat **before**
@@ -430,6 +437,10 @@ differently, and that difference is **source-verified against wowsims**, not ass
   **does** stack with BL. The model matches exactly: `if (piActive && !blActive) mult *= 1.20`
   (`simulate` ~746/821), IV/Berserking multiply unconditionally. Verified instant-by-instant (PI ⊂ BL adds
   **0**; PI partly past BL gains only the non-overlap tail).
+  - **Placement corollaries (enumerated):** PI fully inside Lust loses its ENTIRE value (measured: 2.0
+    casts — it is dead, not merely non-stacking), so PI always dodges Lust outright. And PI obeys the §7
+    premium law with IV: PI×IV = ×1.44, cap-touch at **~66** rating, stack until **~135**, separate after
+    — the same band structure as every other haste pair.
 - **Placement is the planner's** (unpinned Drums/PI are scheduled like any cooldown). Confirmed optimal, not
   just legal: at the opener PI@0 rides the AP burst even though its 180cd forces it to overlap BL for a few
   seconds (dropping it loses ~1.6k; the overlap is intrinsic to also catching the next AP burst); when the
@@ -514,3 +525,33 @@ those). What it confirms:
     (it lifts a bare window to the cap); IV is only wasted *inside* Lust. (Also the Frostbolt 4× soft cap, §15.)
   - **789 rating** — passive alone caps (`passive ≥ 1.50`). Everything is floored; all placement is irrelevant
     beyond "use Icon at all." **Sweeping past 789 is useless** — the harness caps there.
+
+**The layout morphology across haste** *(user-predicted, brute-force-mapped: T=80, Lust@20, six tracks,
+staged exhaustive enumeration per haste point; the tool matched the brute optimum at 9/10 points — the
+one gap, h40 −0.033 casts, sits on a plateau edge inside the designed 0.15 pressability slack)*:
+- **h0–40: the classic pack.** CS-IV floors Lust's first half, the damage cluster rides it, Zerk
+  sequences onto the tail. IV starts straddling out at ~40.
+- **~80: IV fully exits** (brackets Lust: pre [0,20] + post [60,80]) and **Berserking carries the Lust
+  burst window** with the cluster — the user's predicted first transition.
+- **~160–200: the PORTABLE BURST WINDOW** (the unpredicted one). Once `IV×Zerk×passive` (~1.45) rivals
+  Lust alone (~1.43), the self-buffs manufacture their own fast window OUTSIDE Lust and the whole damage
+  cluster rides it — the fight is fast from 0:10 to 1:00 instead of only inside Lust. Zerk∩Lust = 0: the
+  user's predicted second transition, except the damage leaves with it.
+- **≥243 (Lust self-floors): the cluster returns to Lust** (it needs no help anymore — pure flux), Zerk
+  retires to the pull ramp (the last uncapped casts), IV keeps bracketing. Every step is the same three
+  laws composing: flux, the §7 premium bands, floor-avoidance.
+
+## 17. Shared trinket lockout: SP trinket first, haste trinket second — until the haste trinket exits
+
+Skull of Gul'dan (+175 rating, 20s) and Icon (+155 SP, 20s) share the on-use lockout (`OFF_TRINKETS`):
+using one locks the other for the buff's duration, forcing a SEQUENCE on any burst. Enumerated over
+gear haste (Lust@0 40s + IV@0, T=60):
+- **0–~100 rating: Icon first, Skull second** — the SP trinket takes the FLOORED first half (flux, §1:
+  its value scales with cast rate, and haste on an already-floored window would be wasted anyway), the
+  haste trinket takes the unfloored second half where its rating still buys casts. The lockout's forced
+  ordering happens to be exactly what the physics wants.
+- **~100–150: Skull exits Lust** (its +175 rating overcaps Lust's headroom — cap-touch at `242.7 − 175
+  ≈ 68` gear rating plus the §7 premium margin) → Icon on Lust, Skull post-Lust.
+- **≥~200: Icon drifts to the later Lust half** (both halves near-floored; margins are hair-thin ties).
+The general form: **the SP trinket always owns the fastest window; the haste trinket claims the best
+window it doesn't overcap, sliding out of Lust as gear grows** — §5's IV rule replayed through a lockout.
