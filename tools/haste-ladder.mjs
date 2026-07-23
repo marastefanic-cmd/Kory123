@@ -17,7 +17,7 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { chromium } = createRequire(path.join(REPO, 'tests', 'package.json'))('playwright-core');
 
 const WORKERS = 6;
-let T = 80, LUST = 20, PAIR = ['isc', 'scb'], MAX = 300, STEP = 20, OUT = null;
+let T = 80, LUST = 20, PAIR = ['isc', 'scb'], MAX = 300, STEP = 20, OUT = null, BISECT = 10;
 {
   const av = process.argv.slice(2);
   for (let i = 0; i < av.length; i++) {
@@ -26,6 +26,7 @@ let T = 80, LUST = 20, PAIR = ['isc', 'scb'], MAX = 300, STEP = 20, OUT = null;
     else if (av[i] === '--pair') PAIR = av[++i].split(',');
     else if (av[i] === '--max') MAX = +av[++i];
     else if (av[i] === '--step') STEP = +av[++i];
+    else if (av[i] === '--bisect') BISECT = +av[++i];
     else if (av[i] === '--out') OUT = av[++i];
   }
 }
@@ -102,7 +103,7 @@ for (let i = 0; i + 1 < hs0.length; i++) if (differs(points.get(hs0[i]), points.
 while (frontier.length) {
   const next = [];
   for (const [a, b] of frontier) {
-    if (b - a <= 10) continue;
+    if (b - a <= BISECT) continue;
     const m = Math.round((a + b) / 2 / 5) * 5;
     if (m === a || m === b) continue;
     const rm = await at(m);
