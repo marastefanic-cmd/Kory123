@@ -1,14 +1,15 @@
 # PHASE 6 — Haste-adaptation cross-validation & the open soft spots
 
-**Status:** IN FLIGHT — **campaign BLOCKED on a measurement anomaly (§4.7).** Phases 4 (search
+**Status:** IN FLIGHT — measurement FIXED (§4.7 ✅), campaign now running. Phases 4 (search
 robustness) and 5 (AoE) are CLOSED; the six-kit ladder campaign (RULES §16) certified the search
 against exhaustive enumeration across every trinket pair and the full haste range. Phase 6 asks the
 next question: **does the planner's haste-ADAPTATION hold up in the real sim, end to end, on random
 fights it has never seen — and where are the remaining cracks?** The instrument, granularity, and
-fight-classes are built and validated, and several harness bugs were found+fixed — but the sim
-currently produces a **physically-impossible result** (a fixed rotation losing a cast as haste rises,
-§4.7), so **no cross-val verdict is trustworthy until that measurement is fixed.** This pass's job is
-to make the data correct and record it; the next pass decides model changes. **Start at §4.7.**
+fight-classes are built and validated; several harness bugs were found+fixed — the last and biggest
+being that the sim was **prepulling while the model opens cold** (§4.7), which caused a
+physically-impossible cast-loss and is now fixed (cold open ⇒ strict haste-monotonicity restored).
+Data is now trustworthy; gathering the campaign (§2(ii)) and recording deficits without hot-fixing —
+the NEXT pass decides model changes.
 
 Read `CLAUDE.md` → `docs/MECHANICS.md` → `docs/RULES.md` (esp. §16) → `docs/TOOLING.md` (the sim
 methodology + the ★ mana trap) before touching anything here.
@@ -77,6 +78,10 @@ breakpoint-straddle, drop the round anchor). ~7–11 points per kit:
 | xl | 3-min ×3 (mqg ×2) | 385–460 |
 
 ### Sim protocol locked in (do NOT deviate — each cost us a real bug once)
+- **COLD OPEN — `_prestack:0`, NEVER prepull.** ★★★ The model opens cold (0 stacks, RULES §3). A
+  prepull cast (genapl's old default) is fixed at −2.3s wall-time, doesn't scale with haste, and
+  broke haste-monotonicity (§4.7). `xval.mjs` forces `_prestack:0`; genapl now defaults to it. Do not
+  reintroduce a prepull in any model-compared sim.
 - **`--mana 100000000` (infinite).** ★ The model is layout-first; mana is excluded by design. A gate
   without infinite mana measures MANA, not layout (see §4.4 and the −4% phantom in TOOLING). This is
   the single most important flag.
@@ -240,37 +245,31 @@ because scb is genuinely different from the other three:
 
 ---
 
-### 4.7 ★ CRITICAL OPEN ANOMALY — the sim fits FEWER casts at higher haste (measurement is WRONG; block the campaign on this)
-Haste-monotonicity is a **hard invariant**: with ∞ mana, on a FIXED-length fight with a FIXED
-rotation, more haste ⇒ each cast is ≤ as long ⇒ **≥ casts fit ⇒ ≥ damage**. Worst case equal (the
-extra haste didn't buy a cast). It can **never decrease.** The sim violates this:
+### 4.7 ✅ RESOLVED — the measurement was PREPULLING; the model opens COLD. Fixed.
+Haste-monotonicity is a **hard invariant**: ∞ mana + fixed rotation ⇒ more haste ⇒ each cast is ≤ as
+long ⇒ **≥ casts ⇒ ≥ damage**, never a decrease. The sim was violating it (pure AB spam, var0,
+dur80: **h130 = 53 casts, h140 = 52** — a lost cast at higher haste).
 
-**Smoking gun (pure AB spam, var0, dur80, deterministic single iter, ∞ mana):**
-| haste | AB casts | total AB dmg | last cast completes |
-|---|---|---|---|
-| **130** | **53** | 202398 | 79.93s |
-| **140** | **52** | 197681 | 79.00s |
+**Root cause: the sim was PREPULLING, and the model NEVER prepulls.** `genapl` defaulted to one
+prepull Arcane Blast scheduled at a **fixed wall-time (−2.3s)** that does not scale with haste — so at
+higher haste it finishes early and mistimes the whole opener ramp (measured: h140's first cast
+*intervals* [2.3, 1.99, 1.68] were **longer** than h130's [2.0, 1.69, 1.39], and it took an extra cast
+to reach steady state). That opener corruption is what lost the cast. The model opens **COLD** (0
+stacks, RULES §3 — no prestack), so the sim must too.
 
-More haste (140 > 130) fits **one FEWER cast** and does **less** damage — implied per-cast spacing
-1.519s at h140 vs 1.508s at h130, i.e. the sim's AB casts are *slower at higher haste* around here.
-That is physically impossible for a correct measurement, so **the data is not yet trustworthy** — my
-earlier "fixed-length DPS quantization" note was wrong (quantization gives a flat step, never a
-*decrease* / a *lost cast*). This is the anomaly, unexplained.
+**Fix:** `genapl` now defaults `_prestack = 0` (cold open) with a ★★★ hard-note header, and `xval.mjs`
+sets `_prestack:0` explicitly. **Verified:** cold-open pure-AB DPS is now **strictly non-decreasing**
+across h100–200 (2324.5 → 2325.3 → 2365.9 → … → 2452.4, every step up), and the mqg+skull short combo
+reports **monoDip = 0.00%**. The residual ±1 cast-*count* flicker at a boundary (h150→h160) is a cast
+landing on the fight-end line; it contributes ~0 to DPS (the metric the cross-val uses), which stays
+monotone. **DO NOT prepull in any model-compared sim — see the genapl header and §1.**
 
-Candidate causes to test NEXT pass (do not assume): cast-time / GCD **rounding to a discrete tick**
-that a small haste bump pushes across a boundary the wrong way; a real-TBC haste-breakpoint rounding
-mechanic (which normally makes a monotone staircase, not a decrease — so a decrease would still be
-suspect); the opener-ramp (0→3 stack) cast-time interaction with the fixed end; or a `--haste`
-bonusStats injection quirk. Also observed and relevant: **`--seed 7/42/99` gave byte-identical DPS**
-→ `--seed` does not vary the sample (deterministic per config), so this is not statistical noise —
-it's a reproducible, deterministic wrong-direction result.
-
-**This BLOCKS the campaign.** Until a fixed-rotation haste sweep is verified strictly non-decreasing
-(cast count and total damage), diagonal-dominance deficits cannot be trusted — a "deficit" could be
-this same lost-cast artifact rather than a model mis-adaptation. **First task of the next pass:
-resolve this** (fix the measurement, or switch to a metric that is provably monotone in haste — e.g.
-total damage over a fixed CAST COUNT rather than a fixed fight length, or the model's own effective-AB
-count), then gather the campaign.
+Consequence: with the noise floor now ~0, diagonal deficits are **real signal**, not artifact. (E.g.
+the mqg+skull short combo now shows a genuine 0.64% deficit at h30 — recorded for triage, not
+hot-fixed.) Campaign UNBLOCKED. NOTE (still open): a *diagonal* comparison is between DIFFERENT plans
+at the same haste, so short fights may retain some plan-to-plan boundary quantization not captured by
+the same-plan monotonicity floor — long fights remain the cleaner signal; weigh short-fight deficits
+against fight length.
 
 ### 4.8 (Phase 7) Ashtongue Talisman of Insight is NOT in the cross-val kits
 The cross-val covers the six pairs of {Icon, Serpent-Coil, Skull, MQG} only. **Ashtongue (`ati`, the

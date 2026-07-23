@@ -63,7 +63,7 @@ const plans = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA }) => {
   const en = {}; for (const k in BUFFS) en[k] = kit.includes(k);
   const plain = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * 1387) * (1 + 0.38 * (GAME.CRIT_MULT - 1));
   const toSpec = s => {
-    const spec = { BL: (s.bloodlust || []).map(Math.round) };
+    const spec = { _prestack: 0, BL: (s.bloodlust || []).map(Math.round) }; // COLD OPEN — the model never prepulls (genapl header ★; PHASE6 §4.7). NEVER change to >0.
     if (s.arcanePower) spec.AP = s.arcanePower.map(Math.round);
     if (s.berserking) spec.Zerk = s.berserking.map(Math.round);
     for (const tk of PAIR) if (s[tk]) spec[TMETA[tk].key] = s[tk].map(Math.round);
