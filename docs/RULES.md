@@ -228,6 +228,12 @@ split point, 2-rating resolution): pure **264** → +Icon on the window **280** 
 +Icon+AP+gem **348**. So in a real burst the stack holds ~+84 rating longer than the isolated-pair
 number — always read this section's crossovers as lower bounds whenever the damage cluster rides the
 stacked window.
+- **Sim-verified (fixed rig, var10 300k, brackets around each crossover):** sign agreement at 7/8
+  points, and the coupling's monotone growth confirmed — the stack-side premium rises with the kit in
+  BOTH columns (model +0.32/+0.43/+0.54/+0.56% vs sim +0.2/+0.3/+0.6/+0.7% for pure/+Icon/+AP/+gem).
+  At the two extreme points (h=400/415, beyond reachable gear) the sim holds the stack even longer
+  than the model (tie instead of clear spread) — the documented GCD-lattice divergence zone, erring
+  in the direction that strengthens the rule.
 
 **Why Lust+IV still sequences (§4/§5 unchanged):** Lust×IV = 1.56 is over the 1.5 cap at ZERO gear
 haste — at exactly h0 the premium and the waste cancel to a wash (IV-in-Lust = IV-out = 2.67 casts,
