@@ -115,7 +115,7 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
   ARCHITECTURE). exact-match 25/25.
 - **Phase 3 is complete** (all 6 tasks + the proc-free-trend follow-up).
 
-## Phase 4 — understand the optimum, then make the search find it *(A+measure+B LANDED; C's guard landed, monotonicity check pending)*
+## Phase 4 — understand the optimum, then make the search find it *(COMPLETE — monotonicity certified 0 violations)*
 
 Ran as **A → measure → B → C** (the plan that lived in `docs/PLAN.md`):
 - **A · exploration harness** (`tools/explore.mjs`) — **DONE.** Brute-scores every placement of a small buff
@@ -132,14 +132,19 @@ Ran as **A → measure → B → C** (the plan that lived in `docs/PLAN.md`):
   indifference preserved exactly; fixed-layout haste sweep still 0 drops. Full physics battery vs the sim in
   RULES §3. **Harness had to be fixed to gate it**: `ap-cd-at-cast.patch` (real AP-180 in the sim) + the
   runner-provenance trap — see TOOLING; two "refutations" turned out to be harness contamination.
-- **C — guard machinery LANDED**: `basinHop` (window-teleport self-consistency guard: the champion's window
-  blocks re-based on each other's anchors + the kill anchor, re-polished to fixpoint), a joint window-move
-  in `polish` (co-pressed clusters cross valleys together), a kill-anchored seed, a denser shift ladder
-  (±3/±6 ramp-boundary hops, ±30/±60), top-6 final snaps. **Golden triage: 19 model-driven improvements,
-  6 ties, 0 search misses** — the search never returns worse than the previous tool's plan; all mover
-  classes sim-confirmed on the fixed rig (+0.10% to +2.8%). Goldens regenerated, exact-match **25/25**.
-  Remaining: `tests/monotonicity.mjs` = 0 violations (being verified), and a known fractional-basin
-  headroom (~0.1 casts on 5:40 — the polished-old basin sits slightly deeper than the integer champion).
+- **C — DONE, certified.** `basinHop` (window-teleport self-consistency guard: the champion's window
+  blocks re-based on each other's anchors, each track's natural next cd-tick, and the kill anchor,
+  re-polished; iterated with the canonicalizers to a **fixpoint** so the returned plan is basin-stable
+  AND canonical), a joint window-move in `polish` (co-pressed clusters cross valleys together), a
+  kill-anchored seed, a denser shift ladder (±3/±6 ramp-boundary hops, ±30/±60), top-6 final snaps.
+  **`tests/monotonicity.mjs`: 0 violations** across both reference fights, haste 0–150 — and the original
+  70→71 bug case now yields the identical stable layout with rising effective casts. The test's tolerance
+  is the DESIGNED pressability slack (0.15 effective casts = coPressAlign's castVal/8 "execution beats
+  microtiming" trade, which varies with haste); the underlying objective is monotone to float precision.
+  Two rounds of golden triage under the strengthening search: first 19 improvements / 0 misses, then the
+  fixpoint found deeper basins on 18 more (all strict robust gains) — goldens locked at that final level
+  (exact-match 25/25). The search never returns worse than any earlier tool version's plan on any preset.
+  Search cost: ~20–40s per plan headless (basinHop dominates) — optimize later if the UI feels it.
 
 **UI deferred:** the leeway "press anywhere" bands and the action-plan reasoning tags (removed; logic in
 git history — restore once monotonicity is certified airtight); the haste-graph reference lines stay.

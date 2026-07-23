@@ -111,12 +111,11 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/ROADMAP.md` — status, current work, and open questions.
 - `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
-  into ROADMAP). **Phase 4 plan in flight: optimizer robustness (haste-monotonicity).** The user found the
-  multi-start search occasionally *loses* effective casts as haste rises (e.g. 70→71) — a violation of a
-  **proven** invariant (for a fixed layout the score is monotone in haste; the model has no breakpoints, so
-  every violation is a SEARCH miss). Acceptance test: `tests/monotonicity.mjs` → 0 violations. UI flair
-  (leeway "press anywhere" bands + action-plan reasoning tags) is **deferred** — both removed from
-  `index.html` this session until the search is airtight; the haste-graph reference lines stay.
+  into ROADMAP). **No plan in flight — Phase 4 is COMPLETE** (exact discrete ramp + press-snap in the
+  scorer, basin-stable search, `tests/monotonicity.mjs` certified 0 violations; full record in ROADMAP).
+  The deferred UI flair (leeway "press anywhere" bands + action-plan reasoning tags — removed from
+  `index.html`, logic in git history) is now UNBLOCKED by the certificate but needs the user's design
+  input before restoring (they disliked the old tag wording); the haste-graph reference lines stay.
 - `docs/SOURCES.md` — where WoW facts come from (TBC is a solved game — look up + cite, don't
   re-derive) and the verified-facts ledger of the constants the model uses.
 - `docs/EP.md` — stat weights **two contexts**: the infinite-mana **layout** EP (closed-form model
