@@ -27,18 +27,21 @@ The instrument is a **holdout cross-validation matrix** (`tools/xval.mjs`):
 3. Sim **every plan at every haste** → an N×N DPS matrix. Rows = the haste a plan was optimized FOR;
    columns = the haste it's SIMMED at. The **diagonal** is each plan run at its native haste.
 4. Two readings:
-   - **(a) Haste-monotonicity is INFORMATIONAL, not pass/fail.** "More passive haste ⇒ more DPS" is
-     **not strictly true**: Arcane Blast has ~0.6–1.5% **GCD-floor dead-zone dips** at haste
-     breakpoints (a real TBC mechanic — verified with pure AB spam: h130→h160 dips 2809→2792). The
-     harness reports the worst dip's magnitude; a sub-2% dip is expected physics, not a bug.
-   - **(b) Diagonal dominance is THE model test.** In every column the native (diagonal) plan should
-     sim ≥ every plan borrowed from another haste. A **>1% deficit** means a borrowed plan really
-     out-simmed the native one → the model mis-adapted; triage per §3.
+   - **(a) Haste-monotonicity — OBSERVED, not interpreted.** "More passive haste ⇒ more DPS" is
+     **observed to NOT hold strictly** in the sim at fine granularity (a fixed plan can sim lower at
+     higher haste by up to ~1.5% around certain haste values). **Cause not yet determined** — see the
+     open observations in §4.7. The harness reports the worst dip's raw magnitude and draws no
+     conclusion. Do NOT assume it's benign until §4.7 is resolved.
+   - **(b) Diagonal dominance — the model test.** In every column, does the native (diagonal) plan
+     sim ≥ every plan borrowed from another haste? The harness reports **CLEAN** (native is the max
+     in every column) or **DEFICIT X%** (a borrowed plan out-simmed the native somewhere, by X% at
+     the named cell). No tolerance is applied — a deficit is a deficit; deciding what to do about a
+     small one is the NEXT pass, not this one.
 
 Run it: `CHROMIUM=… RUNNER=…/runner-ap180 EXPORT_BASE=…/export.json [KIT=a,b TCLASS=short
-HASTES=0,30,…] node tools/xval.mjs <seed>`. Prints the matrix and an `XVAL-DONE … diagDeficit=…%
-verdict=CLEAN|ok(noise)|CONCERN` line. Verdict tiers: ≤0.3% CLEAN, ≤1.0% within
-AB-breakpoint/pressability noise, >1.0% CONCERN.
+HASTES=0,30,…] node tools/xval.mjs <seed>`. Prints the matrix and an `XVAL-DONE … monoDip=…%
+diag=CLEAN|DEFICIT diagWorst=…%` line. **This pass = gather correct, clearly-labeled data; the next
+pass decides what to fix.**
 
 ### Granularity — the haste set (user-directed)
 The informative haste points are **not** a uniform grid; they **straddle each kit's layout
@@ -166,15 +169,25 @@ narrowed window around the grid optimum (not full 1s enumeration — 8M×5^4 is 
 optimum from the closed-form cast-rate integral. Needed before any high-haste claim for those kits
 can be called "certified" rather than "tool ≥ coarse grid."
 
-### 4.7 Arcane Blast is non-monotone in haste (GCD-floor dead zone — physics, not a bug)
-Verified with pure AB spam (no haste buffs): DPS dips ~0.6–1.5% at haste breakpoints near the GCD
-floor (e.g. h130→h160: 2809→2792 on an 80s fight). This is the real TBC "haste breakpoint" — a
-region where a little more haste shortens the cast but you haven't yet cleared the boundary that
-fits an extra cast, so you're momentarily worse than slightly-less-haste. The model already encodes
-this (GCD floor + the +25% "4-Frostbolt" reference line). **Consequence for the cross-val:** the
-monotonicity property (a) is INFORMATIONAL only, and the diagonal-dominance verdict uses a ~1%
-tolerance so these dips (and adjacent-band model-tie wobble) don't read as false failures. A diagonal
-deficit must exceed ~1% to count as a real mis-adaptation.
+### 4.7 OBSERVATION (unexplained) — the sim's haste-monotonicity is not clean at fine granularity
+**Status: OBSERVED, cause NOT determined. Do not act on a theory until this pass verifies the data.**
+Raw observations gathered while dialing in the harness (NOT conclusions):
+- A fixed plan can sim **lower at higher passive haste** by up to ~1.5% at some haste values.
+- It reproduces in **pure Arcane Blast spam with zero buffs** (var10, 150k iters): e.g. 2419 (h120)
+  → 2434 (h130) → **2379 (h140)** → 2393 (h150) → 2408 (h160) → 2422 (h170) — a ~2.3% trough at
+  h140. So it's a property of the **sim's AB casting under `--haste` injection**, not of our plans.
+- var0 shows a similarly jagged non-monotone curve (2411/2452/2370/2411/2412/2413 at h120–170).
+- **`--seed 7`, `42`, `99` produced BYTE-IDENTICAL DPS** for the same setup — so varying `--seed`
+  did NOT vary the sample here (the runner may be deterministic per config, or these seeds collide;
+  note TOOLING already flags "seeds 11/19 are the same sample"). This affects how we reason about
+  "sim noise" — the cross-cell differences may be deterministic quantization, not statistical spread.
+
+Candidate explanations NOT yet tested (for the next pass): a real TBC GCD/rounding breakpoint; a
+`--haste` bonusStats injection quirk; a fixed-duration truncation × cast-quantization interaction;
+an AB-stack-timing artifact. **Until this is pinned, treat monotonicity dips as unexplained data and
+weigh diagonal-dominance deficits cautiously** — a "small" diagonal deficit could be the same
+quantization rather than a model error. Whichever it is, it must be understood before the cross-val's
+verdicts are trustworthy. That resolution is the FIRST task of the next pass.
 
 ### 4.3 The press-boundary phase blind spot (~0.1%)
 The scorer phase-averages the sub-GCD press-to-boundary offset at steady state (deliberately — it's a

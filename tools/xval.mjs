@@ -106,14 +106,12 @@ console.log('\nDPS matrix (row = plan optimized @haste, col = simmed @haste):');
 console.log('plan\\sim ' + HASTES.map(h => String(h).padStart(8)).join(''));
 for (const ph of HASTES) console.log(String(ph).padEnd(8) + ' ' + HASTES.map(sh => M[ph][sh].toFixed(1).padStart(8)).join(''));
 
-// checks — tolerances are RELATIVE (%), because Arcane Blast itself is NOT strictly monotonic in
-// haste in the real sim: near the GCD floor there are ~0.5–0.7% dead-zone dips (a known TBC haste
-// breakpoint — verified with pure AB spam), invisible at coarse 100-rating spacing but real at a
-// breakpoint-straddling grid. And adjacent-band plans are model-TIES, so a sub-1% sim wobble
-// between them is quantization, not a model error. So we report the WORST deficit as a % and tier
-// it: ≤0.3% clean, ≤1.0% within AB-breakpoint/pressability noise (PASS with a note), >1.0% = a real
-// concern to triage (PHASE6 §3).
-const CLEAN = 0.003, NOISE = 0.010;
+// DATA-GATHERING pass — report raw observations, draw NO conclusions:
+// (a) haste-monotonicity: the worst "more haste sims LOWER" dip across any fixed plan's row.
+//     Reported raw; NOT interpreted (cause under review — PHASE6 §4.7).
+// (b) diagonal dominance: did ANY borrowed plan out-sim the native plan in its own column?
+//     CLEAN = no (native is the max in every column). DEFICIT = yes, by diagWorst% at the named cell.
+//     No tolerance applied — a deficit is a deficit; what (if anything) to do about it is NEXT pass.
 let monoWorst = 0, monoAt = '';
 for (const ph of HASTES) for (let k = 1; k < HASTES.length; k++) {
   const d = (M[ph][HASTES[k-1]] - M[ph][HASTES[k]]) / M[ph][HASTES[k-1]];
@@ -123,13 +121,7 @@ let diagWorst = 0, diagAt = '';
 for (const sh of HASTES) { const native = M[sh][sh];
   for (const ph of HASTES) { const d = (M[ph][sh] - native) / native;
     if (d > diagWorst) { diagWorst = d; diagAt = `@sim${sh}: plan@${ph} (${M[ph][sh].toFixed(1)}) > native@${sh} (${native.toFixed(1)})`; } } }
-const tier = w => w <= CLEAN ? 'CLEAN' : w <= NOISE ? 'ok(noise)' : 'CONCERN';
-// (a) monotonicity is INFORMATIONAL, not pass/fail: Arcane Blast is genuinely non-monotone in haste
-//     (~0.6–1.5% GCD-floor dead-zone dips, a real TBC breakpoint — verified with pure AB spam), so a
-//     dip here is expected physics, not a model error. We report its magnitude only.
-// (b) diagonal dominance is THE model test (does the plan built FOR a haste win at that haste). This
-//     is the verdict. A >1% deficit means a borrowed plan really out-simmed the native one — triage
-//     per PHASE6 §3 (mana? tail artifact? CS mapping? then model mis-adaptation).
-console.log(`\n(a) haste-monotonicity [INFO — AB dead-zone is real physics]: worst dip ${(monoWorst*100).toFixed(2)}%` + (monoWorst > NOISE ? `  [${monoAt}]` : ''));
-console.log(`(b) DIAGONAL DOMINANCE [the model test]: worst deficit ${(diagWorst*100).toFixed(2)}% → ${tier(diagWorst)}` + (diagWorst > CLEAN ? `  [${diagAt}]` : ''));
-console.log(`XVAL-DONE seed=${SEED} kit=${PAIR.join('+')} class=${cls||'any'} T=${T} lust=${LUST} monoDip=${(monoWorst*100).toFixed(2)}% diagDeficit=${(diagWorst*100).toFixed(2)}% verdict=${tier(diagWorst)}`);
+const diagClean = diagWorst <= 1e-9;
+console.log(`\n(a) haste-monotonicity [OBSERVED, not interpreted]: worst downward dip = ${(monoWorst*100).toFixed(2)}%` + (monoWorst > 0 ? `  [${monoAt}]` : ''));
+console.log(`(b) DIAGONAL DOMINANCE: ${diagClean ? 'CLEAN — native dominates every column' : `DEFICIT ${(diagWorst*100).toFixed(2)}%  [${diagAt}]`}`);
+console.log(`XVAL-DONE seed=${SEED} kit=${PAIR.join('+')} class=${cls||'any'} T=${T} lust=${LUST} monoDip=${(monoWorst*100).toFixed(2)}% diag=${diagClean ? 'CLEAN' : 'DEFICIT'} diagWorst=${(diagWorst*100).toFixed(2)}%`);
