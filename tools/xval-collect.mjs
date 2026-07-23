@@ -22,8 +22,10 @@ for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.txt')).sort()) {
   rows.push({ file: f, ...kv, mono: parseFloat(kv.monoDip), deficit: parseFloat(kv.diagWorst), T: +kv.T, simH, planH });
 }
 const band = T => T <= 130 ? 'short' : T <= 200 ? 'medium' : T <= 260 ? 'medlong' : T <= 380 ? 'long' : 'xl';
-// neutral locus tag by the sim-haste the deficit lands at (raw fact + region name, not a verdict)
-const locus = r => r.simH == null ? '—' : (r.simH <= 70 ? `low-haste h${r.simH} (§4.1 basin region)` : `mid/high h${r.simH} — investigate`);
+// neutral locus tag: the sim-haste REGION the deficit lands at (a raw fact, NOT a cause). Spot-checks
+// (PHASE6 §4.5) show low-haste deficits are heterogeneous micro-placement diffs — do NOT pre-attribute
+// them to the §4.1 IV-into-Lust basin here; that's next-pass triage.
+const locus = r => r.simH == null ? '—' : (r.simH <= 70 ? `low-haste (h${r.simH})` : `mid/high (h${r.simH}) — investigate`);
 const clean = rows.filter(r => r.diag === 'CLEAN');
 const defs  = rows.filter(r => r.diag === 'DEFICIT').sort((a,b)=>b.deficit-a.deficit);
 const errs  = rows.filter(r => r.err);
@@ -34,7 +36,7 @@ console.log(`## Cross-val results (${rows.length} tables)\n`);
 console.log(`- **Monotonicity (cold-open invariant):** ${monoBad.length ? '⚠ '+monoBad.length+' tables with monoDip>0.05% — REGRESSION' : 'all ≤0.05% ✓'}`);
 console.log(`- **CLEAN (native dominates every column):** ${clean.length}/${rows.length}`);
 console.log(`- **DEFICIT:** ${defs.length}/${rows.length}` + (errs.length?`  ·  **ERRORS:** ${errs.length}`:''));
-if (defs.length) console.log(`- **Deficit loci:** ${lowN} at low haste (≤70, §4.1 basin region) · ${hiN} at mid/high haste (investigate)`);
+if (defs.length) console.log(`- **Deficit loci:** ${lowN} at low haste (≤70) · ${hiN} at mid/high haste (investigate). Low-haste = heterogeneous micro-placement (spot-checked, §4.5), NOT auto-§4.1.`);
 console.log(`\n### Deficits (worst first) — weigh against fight length; a diagonal deficit on a short fight may be plan-to-plan boundary quantization\n`);
 console.log('| kit | class | T | fight-band | diag deficit | monoDip | deficit cell | locus |');
 console.log('|-----|-------|---|-----------|--------------|---------|--------------|-------|');
