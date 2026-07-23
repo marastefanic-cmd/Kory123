@@ -1,0 +1,91 @@
+
+═══ isc-scb ═══
+  h   0–0    IV1@lust · IV2@straddle · cluster@mid · zerk@lust  (worst toolΔ +0.000)  e.g. [[35,55],[40],[45],[45],[20]]
+  h   5–75   IV1@pull · IV2@straddle · cluster@mid · zerk@lust  (worst toolΔ -0.125)  e.g. [[0,55],[40],[45],[45],[45]]
+  h  80–120  IV1@pull · IV2@exit · cluster@lustStart · zerk@lust  (worst toolΔ +0.000)  e.g. [[0,60],[30],[30],[30],[30]]
+  h 125–175  IV1@pull · IV2@exit · cluster@ramp · zerk@pull  (worst toolΔ +0.000)  e.g. [[0,60],[5],[5],[5],[5]]
+  h 180–225  IV1@pull · IV2@exit · cluster@backBridge · zerk@late  (worst toolΔ +0.059)  e.g. [[0,60],[50],[55],[55],[60]]
+  h 230–300  IV1@pull · IV2@exit · cluster@lustStart · zerk@pull  (worst toolΔ -0.102)  e.g. [[0,60],[20],[20],[20],[0]]
+
+═══ isc-skull ═══
+  h   0–5    IV1@pull · IV2@straddle · cluster@lustStart · zerk@late  (worst toolΔ -0.017)  e.g. [[0,35],[35],[10],[35],[10]]
+  h  10–15   IV1@pull · IV2@straddle · cluster@lustStart · zerk@lust  (worst toolΔ -0.063)  e.g. [[0,45],[40],[15],[45],[35]]
+  h  20–55   IV1@pull · IV2@straddle · cluster@mid · zerk@lust  (worst toolΔ -0.140)  e.g. [[0,55],[40],[20],[45],[45]]
+  h  60–80   IV1@pull · IV2@exit · cluster@lustStart · zerk@lust  (worst toolΔ -0.007)  e.g. [[0,60],[20],[40],[30],[30]]
+  h  85–90   IV1@pull · IV2@exit · cluster@mid · zerk@lust  (worst toolΔ -0.030)  e.g. [[0,60],[35],[55],[45],[45]]
+  h  95–115  IV1@pull · IV2@exit · cluster@ramp · zerk@lust  (worst toolΔ +0.000)  e.g. [[0,60],[20],[0],[20],[20]]
+  h 120–170  IV1@pull · IV2@exit · cluster@lustStart · zerk@pull  (worst toolΔ -0.042)  e.g. [[0,60],[5],[60],[5],[5]]
+  h 180–240  IV1@pull · IV2@exit · cluster@mid · zerk@late  (worst toolΔ +0.000)  e.g. [[0,60],[50],[0],[55],[60]]
+  h 245–300  IV1@pull · IV2@exit · cluster@lustStart · zerk@pull  (worst toolΔ -0.104)  e.g. [[0,60],[20],[60],[20],[0]]
+
+═══ isc-mqg ═══
+  h   0–10   IV1@pull · IV2@straddle · cluster@ramp · zerk@lust  (worst toolΔ -0.019)  e.g. [[0,20],[20],[0],[20],[40]]
+  h  20–55   IV1@pull · IV2@straddle · cluster@lustStart · zerk@lust  (worst toolΔ -0.051)  e.g. [[0,55],[40],[0],[45],[45]]
+  h  60–125  IV1@pull · IV2@exit · cluster@ramp · zerk@lust  (worst toolΔ +0.000)  e.g. [[0,60],[20],[0],[15],[20]]
+  h 130–240  IV1@pull · IV2@exit · cluster@mid · zerk@late  (worst toolΔ +0.000)  e.g. [[0,60],[50],[0],[55],[60]]
+  h 245–275  IV1@pull · IV2@exit · cluster@ramp · zerk@late  (worst toolΔ +0.000)  e.g. [[0,60],[20],[0],[20],[60]]
+  h 280–280  IV1@pull · IV2@exit · cluster@lustStart · zerk@late  (worst toolΔ +0.000)  e.g. [[0,60],[25],[0],[25],[60]]
+  h 285–285  IV1@pull · IV2@exit · cluster@ramp · zerk@late  (worst toolΔ +0.000)  e.g. [[0,60],[20],[0],[20],[65]]
+  h 290–290  IV1@pull · IV2@exit · cluster@lustStart · zerk@late  (worst toolΔ +0.000)  e.g. [[0,60],[30],[0],[30],[65]]
+  h 295–300  IV1@pull · IV2@exit · cluster@ramp · zerk@late  (worst toolΔ +0.000)  e.g. [[0,60],[20],[0],[20],[60]]
+
+═══ scb-skull ═══
+  h   0–10   IV1@pull · IV2@straddle · cluster@mid · zerk@late  (worst toolΔ -0.036)  e.g. [[0,45],[45],[25],[45],[15]]
+  h  15–15   IV1@pull · IV2@straddle · cluster@mid · zerk@lust  (worst toolΔ +0.004)  e.g. [[0,50],[45],[30],[45],[20]]
+  h  20–40   IV1@pull · IV2@exit · cluster@ramp · zerk@pull  (worst toolΔ +0.000)  e.g. [[0,60],[5],[5],[5],[5]]
+  h  45–80   IV1@pull · IV2@exit · cluster@lustStart · zerk@lust  (worst toolΔ -0.028)  e.g. [[0,60],[20],[20],[20],[40]]
+  h  85–110  IV1@pull · IV2@exit · cluster@mid · zerk@lust  (worst toolΔ -0.073)  e.g. [[0,60],[45],[55],[45],[45]]
+  h 115–230  IV1@pull · IV2@exit · cluster@ramp · zerk@late  (worst toolΔ +0.093)  e.g. [[0,60],[5],[0],[5],[65]]
+  h 240–240  IV1@pull · IV2@exit · cluster@backBridge · zerk@pull  (worst toolΔ +0.207)  e.g. [[0,60],[60],[60],[60],[0]]
+  h 245–275  IV1@pull · IV2@exit · cluster@lustStart · zerk@pull  (worst toolΔ +0.197)  e.g. [[0,60],[20],[60],[20],[0]]
+  h 280–300  IV1@pull · IV2@exit · cluster@mid · zerk@pull  (worst toolΔ +0.191)  e.g. [[0,60],[25],[60],[25],[0]]
+
+═══ scb-mqg ═══
+  h   0–0    IV1@pull · IV2@straddle · cluster@ramp · zerk@lust  (worst toolΔ +0.005)  e.g. [[0,20],[20],[0],[20],[40]]
+  h   5–15   IV1@pull · IV2@straddle · cluster@lustStart · zerk@lust  (worst toolΔ +0.065)  e.g. [[0,45],[45],[0],[45],[20]]
+  h  20–85   IV1@pull · IV2@exit · cluster@ramp · zerk@lust  (worst toolΔ +0.211)  e.g. [[0,60],[5],[0],[5],[20]]
+  h  90–300  IV1@pull · IV2@exit · cluster@ramp · zerk@late  (worst toolΔ +0.211)  e.g. [[0,60],[5],[0],[5],[60]]
+
+═══ skull-mqg ═══
+  h   0–10   IV1@pull · IV2@straddle · cluster@lustStart · zerk@lust  (worst toolΔ +0.059)  e.g. [[0,50],[30],[0],[45],[20]]
+  h  15–80   IV1@pull · IV2@exit · cluster@ramp · zerk@lust  (worst toolΔ +0.150)  e.g. [[0,60],[20],[0],[5],[40]]
+  h  85–175  IV1@pull · IV2@exit · cluster@lustStart · zerk@lust  (worst toolΔ +0.150)  e.g. [[0,60],[60],[0],[5],[20]]
+  h 180–300  IV1@pull · IV2@exit · cluster@lustStart · zerk@pull  (worst toolΔ +0.150)  e.g. [[0,60],[60],[0],[30],[0]]
+
+═══ CROSS-PAIR: band-class presence (class → pair: range) ═══
+  [5/6 pairs] IV1@pull · IV2@exit · cluster@lustStart · zerk@pull
+      isc-scb:230–300  isc-skull:120–170  isc-skull:245–300  scb-skull:245–275  skull-mqg:180–300
+  [5/6 pairs] IV1@pull · IV2@exit · cluster@ramp · zerk@late
+      isc-mqg:245–275  isc-mqg:285–285  isc-mqg:295–300  scb-skull:115–230  scb-mqg:90–300
+  [4/6 pairs] IV1@pull · IV2@exit · cluster@lustStart · zerk@lust
+      isc-scb:80–120  isc-skull:60–80  scb-skull:45–80  skull-mqg:85–175
+  [4/6 pairs] IV1@pull · IV2@straddle · cluster@lustStart · zerk@lust
+      isc-skull:10–15  isc-mqg:20–55  scb-mqg:5–15  skull-mqg:0–10
+  [4/6 pairs] IV1@pull · IV2@exit · cluster@ramp · zerk@lust
+      isc-skull:95–115  isc-mqg:60–125  scb-mqg:20–85  skull-mqg:15–80
+  [3/6 pairs] IV1@pull · IV2@straddle · cluster@mid · zerk@lust
+      isc-scb:5–75  isc-skull:20–55  scb-skull:15–15
+  [2/6 pairs] IV1@pull · IV2@exit · cluster@ramp · zerk@pull
+      isc-scb:125–175  scb-skull:20–40
+  [2/6 pairs] IV1@pull · IV2@exit · cluster@mid · zerk@lust
+      isc-skull:85–90  scb-skull:85–110
+  [2/6 pairs] IV1@pull · IV2@exit · cluster@mid · zerk@late
+      isc-skull:180–240  isc-mqg:130–240
+  [2/6 pairs] IV1@pull · IV2@straddle · cluster@ramp · zerk@lust
+      isc-mqg:0–10  scb-mqg:0–0
+  [2/6 pairs] IV1@pull · IV2@exit · cluster@lustStart · zerk@late
+      isc-mqg:280–280  isc-mqg:290–290
+  [1/6 pairs] IV1@lust · IV2@straddle · cluster@mid · zerk@lust
+      isc-scb:0–0
+  [1/6 pairs] IV1@pull · IV2@exit · cluster@backBridge · zerk@late
+      isc-scb:180–225
+  [1/6 pairs] IV1@pull · IV2@straddle · cluster@lustStart · zerk@late
+      isc-skull:0–5
+  [1/6 pairs] IV1@pull · IV2@straddle · cluster@mid · zerk@late
+      scb-skull:0–10
+  [1/6 pairs] IV1@pull · IV2@exit · cluster@backBridge · zerk@pull
+      scb-skull:240–240
+  [1/6 pairs] IV1@pull · IV2@exit · cluster@mid · zerk@pull
+      scb-skull:280–300
+
+Worst tool delta anywhere: -0.140 (isc-skull, h 20–55)
