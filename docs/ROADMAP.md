@@ -144,6 +144,12 @@ Ran as **A → measure → B → C** (the plan that lived in `docs/PLAN.md`):
   Two rounds of golden triage under the strengthening search: first 19 improvements / 0 misses, then the
   fixpoint found deeper basins on 18 more (all strict robust gains) — goldens locked at that final level
   (exact-match 25/25). The search never returns worse than any earlier tool version's plan on any preset.
+  **Certified against exhaustive enumeration** (user-directed): on the simplest full-fledged fight (T=80,
+  Lust@20, six tracks incl. CS-chain, ~131k-cell staged brute force to 1s resolution) the tool's output
+  equals the brute optimum **byte-for-byte** (74.118 eff casts; IV@0 → CS-IV@20 + full cluster@20, Zerk@40
+  sequential). Without AP the optimum is a two-layout mirror TIE (damage on either Lust half); AP breaks
+  the symmetry toward early, and the sim tilts the same way under kill variance (+0.3% var10) — so the
+  earliest-canonical choice (`slideEarliest`) is also the sim-preferred one.
   Search cost: ~20–40s per plan headless (basinHop dominates) — optimize later if the UI feels it.
 
 **UI deferred:** the leeway "press anywhere" bands and the action-plan reasoning tags (removed; logic in
