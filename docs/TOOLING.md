@@ -4,6 +4,17 @@ This file documents the wowsims workflow, the **trust anchor** that certifies it
 protocol, and the traps. It was rewritten after a full end-to-end harness audit (see the ★ section and
 the audit summary). **Read the methodology below first — it says what the sim is *for*.**
 
+## ★★★ HARD RULE — THE MODEL OPENS COLD. NEVER PREPULL IN A MODEL-COMPARED SIM. ★★★
+
+The model opens **cold** — 0 Arcane Blast stacks at the first cast, no prestack (RULES §3, MECHANICS).
+So **every sim compared to the model MUST open cold too**: `genapl` defaults `_prestack:0`; do NOT
+set `_prestack>0` for any comparison. A prepull cast is scheduled at a **fixed wall-time (−2.3s)** that
+does NOT scale with haste, so at higher haste it finishes early and mistimes the opener ramp — this
+made a fixed-rotation, ∞-mana haste sweep **LOSE a cast as haste rose** (h130=53 → h140=52), a
+physically-impossible result that silently corrupts any haste comparison (docs/PHASE6.md §4.7). If a
+fixed rotation ever sims non-monotone in haste, **check for a prepull first.** The only legitimate
+`_prestack>0` use is a deliberate ramp-isolation experiment that is NOT compared to the model.
+
 ## Methodology — the model is the objective, the sim calibrates it
 
 The planner already knows, deterministically, every cast, every buff window, and every timing in a
@@ -45,9 +56,11 @@ was all search, not scoring). Don't conflate "the count is right" with "the sear
 - **`tools/genapl.mjs`** (in this repo, durable): builds a wowsims `APLRotation` JSON that spams Arcane
   Blast and fires each cooldown at **fixed scheduled times** (`APLActionSchedule`). Example:
   `node tools/genapl.mjs '{"IV":[105,125,396],"AP":[105,285],"Icon":[0,125,260,396],"Gem":[105,285,405],"Zerk":[105,285],"CS":[124],"BL":[260]}' out.apl.json`.
-  Keys: `IV AP CS Zerk BL Icon Gem`. Supports `_intermission:[a,z]` / `_intermissions:[[a,z],…]` (AB
-  gated off during downtime) and `_prestack:N` (prepull AB casts to seed the opener stack). Spell/item
-  IDs in the file header. **This is the INFINITE-mana harness** (AB-spam forever) — pair it with
+  Keys: `IV AP CS Zerk BL Icon Gem Skull MQG`. Supports `_intermission:[a,z]` / `_intermissions:[[a,z],…]`
+  (AB gated off during downtime) and `_prestack:N` (prepull AB casts). **`_prestack` DEFAULTS TO 0
+  (COLD OPEN) — the model never prepulls; see the ★★★ HARD RULE at the top of this file. Do not set
+  it >0 for a model comparison.** Spell/item IDs in the file header. **This is the INFINITE-mana
+  harness** (AB-spam forever) — pair it with
   `--mana 900000` for layout work. **★ Forgetting `--mana` silently turns a layout gate into a mana
   test** (burned us in the band-gate audit: −4% phantom "refutations"; at h150 an 80s burn is dry by
   0:25, 34 ABs instead of 64, and A/B arms OOM differently). If a layout A/B disagrees with the model

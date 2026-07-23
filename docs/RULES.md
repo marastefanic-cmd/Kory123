@@ -43,7 +43,9 @@ casts**, so it should sit on the fastest part of the window.
 - **The ramp is now modeled EXACTLY** (landed this project; an earlier per-cast ramp model was dropped for
   over-crediting — the difference is this one never touches the interval/count valuation). The mage opens
   **cold (0 stacks, no prestack** — a start-intermission expresses a delayed opener**)** and re-ramps after
-  every AB gap ≥ 8s. The first 3 casts run at their true lengths and are scored **discretely** — each cast's
+  every AB gap ≥ 8s. **★ Because the model opens cold, EVERY sim compared to it must open cold too — never
+  prepull (`genapl _prestack:0`). A prepull's fixed −2.3s time is haste-blind and makes a sim haste sweep
+  non-monotone (TOOLING ★★★, PHASE6 §4.7).** The first 3 casts run at their true lengths and are scored **discretely** — each cast's
   damage lands around its **completion** (jitter-smoothed ±½ GCD so no knife-edge enters the score); the
   cast-rate integral covers everything else. Haste placement-independence is preserved *exactly* (verified
   0.0000% pre-vs-post-Lust, h0–200): haste shortens the ramp but never changes its cast count.

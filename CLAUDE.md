@@ -86,8 +86,12 @@ changing the model or the passes**, and keep it updated as the living theorycraf
   **verify a suspicious or novel finding** before it's locked. It is **not** a routine per-golden gate.
   When a clean cast-count and a sim number disagree with **no blind spot in play**, that's a **sim-setup
   audit trigger**, not a model bug — the sim is rarely *wrong*, we've usually *used it wrong* (the Vashj
-  drop bug, the stale unpatched runner, and the AP-195 quirk are the cautionary tales). See the
-  methodology in `docs/TOOLING.md`.
+  drop bug, the stale unpatched runner, the AP-195 quirk, and the **prepull** cast-loss are the
+  cautionary tales). See the methodology in `docs/TOOLING.md`.
+- **★ The model opens COLD — never prepull in a model-compared sim.** `genapl _prestack:0` (default).
+  A prepull's fixed −2.3s time is haste-blind and makes a sim haste sweep non-monotone (more haste
+  → fewer casts), which is physically impossible and silently corrupts any haste comparison. Rule
+  lives in TOOLING (★★★), RULES §3, and PHASE6 §4.7.
 - Commit to the designated feature branch provided at session start; follow the session's configured
   commit author/trailers; don't open a PR unless asked.
 

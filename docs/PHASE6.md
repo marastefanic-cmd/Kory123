@@ -32,12 +32,12 @@ The instrument is a **holdout cross-validation matrix** (`tools/xval.mjs`):
 3. Sim **every plan at every haste** → an N×N DPS matrix. Rows = the haste a plan was optimized FOR;
    columns = the haste it's SIMMED at. The **diagonal** is each plan run at its native haste.
 4. Two readings:
-   - **(a) Haste-monotonicity — a strict invariant, used as a DATA-QUALITY canary.** With ∞ mana,
-     more haste ⇒ ≥ casts ⇒ ≥ damage; haste is *never* harmful, so a fixed plan's row MUST be
-     non-decreasing. Any observed dip is therefore **not physics and not the model — it is a broken
-     measurement** (§4.7: the sim currently fits *fewer* casts at higher haste, an impossible result).
-     The harness reports the worst dip's magnitude as the per-table **noise floor** — but until §4.7
-     is fixed, a nonzero floor means the whole table is suspect, not merely imprecise.
+   - **(a) Haste-monotonicity — a strict invariant, used as a REGRESSION CANARY.** With ∞ mana, more
+     haste ⇒ ≥ casts ⇒ ≥ damage; haste is *never* harmful, so a fixed plan's row MUST be non-decreasing.
+     Since the cold-open fix (§4.7) this holds: the harness reports **monoDip ≈ 0.00%** on every table.
+     A nonzero monoDip now means a REGRESSION (a prepull crept back in, or a new harness bug) — stop
+     and fix it, don't gather. It is NOT a noise floor for the diagonal (that noise is plan-to-plan,
+     see §3.0).
    - **(b) Diagonal dominance — the model test.** In every column, does the native (diagonal) plan
      sim ≥ every plan borrowed from another haste? The harness reports **CLEAN** (native is the max
      in every column) or **DEFICIT X%** (a borrowed plan out-simmed the native somewhere, by X% at
@@ -154,11 +154,18 @@ A DEFICIT means: at some sim-haste H, a plan optimized for a *different* haste o
 plan. Before believing it's a model bug, rule out the usual suspects in this order (the methodology's
 "sim is rarely wrong, we usually used it wrong"):
 
-0. **Quantization floor (§4.7) — check FIRST.** Is the deficit smaller than this table's monotonicity
-   dip (the noise floor the harness prints)? On a short/medium fight that floor is ~1–3%. If the
-   deficit is under it, it is **not trustworthy** — it's indistinguishable from the fixed-length DPS
-   cutoff artifact. Only deficits ABOVE the floor are real signal. (This is the change that made the
-   earlier 0.62% short-fight "deficit" a non-finding.)
+0. **Boundary quantization (§4.7) — check FIRST, and note the floor is NOT the monotonicity dip.**
+   Since the cold-open fix the same-plan monotonicity dip is ~0.00%, so it is NOT a useful noise
+   yardstick anymore. The residual noise on a diagonal comparison is **plan-to-plan** boundary
+   quantization: two DIFFERENT plans at the same haste have different cast timings, so the fixed
+   fight-end cuts a different partial cast from each — worth up to ~0.5–1% on a short fight, shrinking
+   with fight length. This is NOT measured by the (now-zero) monotonicity dip. To decide if a
+   short/medium-fight deficit is real: **re-measure it robustly** — bump `--iter`, and/or check
+   whether the same kit's deficit persists or *grows* on a LONG fight (real model mis-adaptation
+   persists; boundary quantization shrinks toward zero as the fight lengthens). Treat a sub-~1%
+   short-fight deficit as **unconfirmed** until that check; long/XL-fight deficits are trustworthy
+   as-is. (A future harness change to a length-independent metric — total damage over a fixed cast
+   count, or the model's effective-AB count — would remove this caveat; §4.7.)
 1. **Mana.** Re-confirm `--mana 100000000` actually applied (grep the log for OOM / regen-wait). This
    has bitten us twice.
 2. **Fixed-length tail artifact.** A plan with a buff jammed against the kill sims low because the sim
