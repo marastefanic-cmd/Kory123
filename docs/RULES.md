@@ -661,7 +661,35 @@ transition plateau edge, inside the designed 0.15 pressability slack)*:
     omitted `--mana 100000000` and returned −4% "refutations" — on real mana an 80s h150 full burn
     is dry by 0:25 (34 ABs instead of 64) and the arms OOM differently. The model is layout-first
     by design; sim gates MUST run infinite mana or they measure mana, not layout.
-  - **Every 2-trinket kit certified (user-directed; `brute-grid --pair --tool`).** All six pairs
+  - **The six-kit law set (all six trinket-pair ladders, step 10 / bisect 5, ~260 rungs —
+    adversarially verified against the raw JSONs by an independent agent pass; evidence in
+    `tools/ladders/`). Two of the six drafted laws needed surgery — the corrections are the point:**
+    · **L1 skeleton (CONFIRMED, strengthened):** from h≥10 in every kit, IV1 sits at exactly 0,
+      IV2 is only ever straddle or exit-at-60, and the straddle→exit transition is strictly
+      monotone (never returns once exited).
+    · **L2 breakpoint ordering (CORRECTED):** IV2 exits Lust at h80 (isc+scb) / h55 (isc+skull,
+      isc+mqg) / h20 (scb+skull, scb+mqg) / h15 (skull+mqg). My drafted mechanism ("haste stacked
+      on Lust advances the breakpoint") was WRONG — identical-haste kits break at 55 vs 20. The
+      data supports a two-factor story: **kits whose SP trinket shares the lockout break far later
+      (isc: 80/55/55) than kits whose SP trinket is free or absent (20/20/15)**; on-use haste is
+      second-order within each group.
+    · **L3 MQG (CONFIRMED, stronger than claimed):** MQG is pressed at **exactly t=0 in every
+      recorded co-optimal of every rung** of both MQG kits — not "avoids Lust", but "always the
+      pull, period" (the +330 flooring buff takes the ramp and pre-Lust, full stop).
+    · **L4 ramp-hug band (REFUTED as universal):** five kits have one; **isc+mqg has none** — and
+      the cause is mechanical: MQG@0 holds the lockout, forbidding Icon before t=20, so the
+      cluster can never sit on the ramp. Corrected law: every kit EXCEPT those whose SP trinket is
+      lockout-bound to a pull-pressed MQG.
+    · **L5 endgame (CONFIRMED):** by h240 every kit has Berserking out of the burst (pull or late);
+      most kits much earlier (isc+mqg h125, scb+mqg h90). Endpoint is kit-dependent (late vs pull).
+    · **L6 lockout (CONFIRMED, exact):** lockout trinket pairs are separated by exactly 20s in
+      every co-optimal ever recorded; Serpent-Coil co-presses with its partner at 31–43 of each
+      ladder's rungs (it's the no-lockout exception that proves the rule).
+    · **Extras the draft missed:** AP rides the SP trinket within 5s at essentially every rung
+      (two isc+skull exceptions); ties are pervasive (top-1 claims are really "some co-optimal");
+      Skull runs a three-act arc (Lust → pull → late) in all three skull kits; and the tool's
+      constant +0.15–0.21 over the grid in three kits proves the **5s grid itself isn't converged
+      there** (off-grid presses at t=2–4/59 win) — the tool out-resolves the certifier. All six pairs
     from {Icon, Serpent-Coil, Skull, MQG} — including the shared-lockout pairs — full-grid-bruted
     at h∈{0, 40, 160, 240} (T=80, Lust@20) against the real optimizer: **20/20 PASS, zero misses.**
     Most points are exact grid-matches or tool > grid (up to +0.211 — the 1s search out-resolving
