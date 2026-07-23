@@ -79,7 +79,13 @@ ladders change.)
 | medium | 2-min ×2, 3-min ×1 | 150–195 |
 | medlong | both 2- and 3-min ×2 | 205–255 |
 | long | 2-min ×3, 3-min ×2 | 265–375 |
-| xl | 3-min ×3 (mqg ×2) | 385–460 |
+| xl | 2-min ×4, 3-min ×3 (IV ×4 w/ CS), mqg ×2 | 385–460 |
+
+**Every class exercises the swapped 2-min trinket on-uses** — that IS the subject of a trinket
+cross-val, so no class drops them; on the longer fights they fire the MOST. Verified in the xl plans:
+isc+scb T=435 fires `Icon [0,120,240,414]` (×4) + `Gem` (×3); mqg+skull T=395 fires `Skull
+[0,120,240,375]` (×4) + `MQG` (×2) — the 2-min on-uses out-number the 3-min cooldowns there. (mqg is
+the lone 5-min cd, so it caps at ×2 on xl; the "3-min ×3" only ever means IV/AP/Zerk.)
 
 ### Sim protocol locked in (do NOT deviate — each cost us a real bug once)
 - **COLD OPEN — `_prestack:0`, NEVER prepull.** ★★★ The model opens cold (0 stacks, RULES §3). A
