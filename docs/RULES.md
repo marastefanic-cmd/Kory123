@@ -630,9 +630,20 @@ transition plateau edge, inside the designed 0.15 pressability slack)*:
     staging — runs in <1 min): at **h220 the bridge twins ARE the exact global optimum** (83.381,
     nothing above them). At **h160 the true optimum hugs the ramp exit** — cluster@5, one more fast
     cast, **+0.026** over both bridges — a placement the staged brute AND the tool both missed (a
-    descent valley between 10 and 5; inside the 0.15 pressability slack, recorded as known search
-    headroom). Lesson: staged/local refinement can sit 0.02–0.03 casts off the enumerated optimum;
-    the full grid is cheap at this fight size — use it when exactness matters.
+    descent valley between 10 and 5; inside the 0.15 pressability slack; CLOSED since by the
+    basinHop ramp-exit anchors — the tool now returns 80.659 > the grid's 80.618). Lesson:
+    staged/local refinement can sit 0.02–0.03 casts off the enumerated optimum; the full grid is
+    cheap at this fight size — use it when exactness matters.
+  - **Every 2-trinket kit certified (user-directed; `brute-grid --pair --tool`).** All six pairs
+    from {Icon, Serpent-Coil, Skull, MQG} — including the shared-lockout pairs — full-grid-bruted
+    at h∈{0, 40, 160, 240} (T=80, Lust@20) against the real optimizer: **20/20 PASS, zero misses.**
+    Most points are exact grid-matches or tool > grid (up to +0.211 — the 1s search out-resolving
+    the 5s grid); the only deficits, **−0.046 (isc+skull) and −0.051 (isc+mqg), both at h40**, sit
+    inside the pressability slack and confirm the **h40 straddle-basin band is kit-universal** —
+    the known, priced soft spot (an IV part-way into Lust trading overcap for cluster coupling),
+    not an Icon+gem quirk. New physics confirmed on the way: MQG (+330) behaves as a *flooring*
+    buff like IV (overcaps Lust → exits early); Skull (+175) fits under Lust's cap at low gear
+    haste like Berserking (§7 fits-under-the-cap law), then exits at its §17 crossover.
 - **~225+ (just before Lust self-floors at 243): the cluster returns to Lust** (its window value catches
   the self-made one as it nears the floor — pure flux, no help needed), Zerk retires to the pull ramp
   (the last uncapped casts), IV keeps bracketing. Every step is the same three laws composing: flux, the

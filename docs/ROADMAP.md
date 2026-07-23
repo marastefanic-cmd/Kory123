@@ -326,6 +326,14 @@ TOOLING). Findings, all sim-measured on the fixed rig:
   rule (user): NOTHING computes after the results render — no speculative or anytime refinement;
   what's shown is final.** (This is why the speculative concurrent Cold-Snap comparison was NOT
   built: its mispredict case would keep pool work running past the render.)
+- **Every 2-trinket kit brute-certified (user-directed): 20/20 PASS, zero misses** — all six pairs
+  from {Icon, Serpent-Coil, Skull, MQG} full-grid-bruted (`brute-grid --pair --tool`) at
+  h∈{0,40,160,240} vs the real optimizer. Worst deficits −0.046/−0.051 both at **h40** (inside the
+  0.15 slack): the straddle-basin soft spot is **kit-universal**, documented, priced. Record +
+  new pair physics (MQG floors like IV; Skull fits-under-cap like Zerk) in RULES §16/§17.
+  Haste-ladder instrument (`tools/haste-ladder.mjs`) added: full-grid brute marched 0→300 with
+  automatic breakpoint bisection (≤10 rating) + continuous tool certification — the exhaustive
+  version of the §16 morphology map; results folded into RULES when each run completes.
 - **Honest progress display (user: "at least make the loading bar accurate").** onProgress now
   carries a **stage label**; the engine emits real within-stage fractions banded by the measured
   cost profile (Trying N starts (k/N) → Snapping to whole seconds → Basin-hop (main sweep, real
