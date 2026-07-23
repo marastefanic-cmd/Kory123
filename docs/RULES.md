@@ -259,13 +259,20 @@ on the patched runner.
   window is kept to a **half-cast** (smooths the exact-second boundary, doesn't distort placement).
   Reacting to an early death (pop cooldowns sooner) is the player's live job. Result: terminal bursts
   align to end **at** the kill (e.g. KT: last IV+Icon at 6:40, ending at 7:00).
-- **Where Cold Snap's extra IV goes — it chases the uncovered damage window, COUNT-first** *(mapped with
-  the certified tool across T=100–340, Lust@5)*: the CS-chained IV lands on whichever damage-buff window a
-  natural-180s-cadence IV cannot cover — the second Icon+gem cluster at its exact cadence tick (T=180/340:
-  CS-IV@126 = Icon's 6+120), the Lust tail, or the kill-anchored terminal cluster. The one hard constraint
-  ranks above flux: **never spend CS where it costs a later use** (T=260: CS at the 120-cluster would push
-  the natural third IV past the kill, so CS takes the Lust tail instead and all three IVs survive). Order
-  of the composition: use-count (§4 align-vs-twice) → flux (§1) → premium bands (§7).
+- **Where Cold Snap's extra IV goes — COUNT-maximal chain first, then flux** *(mapped with the certified
+  tool across T=100–430, Lust@5)*. The mechanics that make this dangerous to over-generalize
+  (user-flagged): **the CS-IV press RESTARTS the 180s cadence from wherever it lands**, so the whole
+  subsequent chain shifts with it — uses run `0, t_CS, t_CS+180, t_CS+360…`. The achievable count is a
+  property of the entire chain geometry, not a local check: the maximum-count chain on a long fight can
+  FORCE CS early (the minimum span for n uses with CS is `20 + (n−2)·180`, i.e. CS at prev+20 compressing
+  the chain — 4 uses need ≥380s). So the hierarchy is:
+  1. **Choose among count-MAXIMAL chains only** — a whole extra IV window (~2.7 casts) dwarfs any flux
+     alignment (fractions of a cast). On long fights this alone can pin CS to the early chain.
+  2. **Within the count-maximal chains, chase flux**: the CS-IV rides whichever damage window the natural
+     cadence leaves uncovered — the second Icon+gem cluster at its exact tick (T=180/340: CS-IV@126 =
+     Icon's 6+120), the Lust tail (T=260: CS at the 120-cluster would push the third IV past the kill, so
+     CS takes the Lust tail and all three survive), or the kill-anchored terminal cluster.
+  Order of the composition: use-count (§4 align-vs-twice) → flux (§1) → premium bands (§7).
 - **Cold Snap** = "**once per fight, one Icy Veins ignores its cooldown**." Mechanically it resets IV's
   480s cd, but the simplest correct model is: exactly one extra IV per fight, and because there's no way
   to reset again, the *cheated* IV must be the one that skips the cooldown (schedule the cheat **before**
