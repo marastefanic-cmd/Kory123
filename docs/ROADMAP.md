@@ -4,7 +4,8 @@
 
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
-2. **No plan in flight — Phase 3 landed** (`docs/PLAN.md` deleted; see "Phase 3 progress" below). Phase 3
+2. **No plan in flight — Phase 5 landed** (`docs/PLAN.md` deleted; see "Phase 5 — AoE phases cracked"
+   below for the verdict, thresholds, and gates; Phase 4's record is below it). Earlier history: Phase 3
    = raid-buff/proc tightening + **deterministic mana & haste helpers**, all shipped without touching the
    scorer/optimizer core (exact-match **25/25**): only-raid-pinnable cooldowns, Drums/PI verified +
    sim-source-anchored, Ashtongue → free-leeway "press anywhere" zones, per-window target-mana chip, the
@@ -32,7 +33,7 @@
    (not the folklore 0.4–0.6 — that's the OOM-idle rotation; a Frostbolt-conserving mage never idles).
    **No plan in flight.** **The model / cast-counting was RIGHT on Vashj; the sim was wrong because of the
    drop bug — fix the sim, don't distrust the model.**
-3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 16/16).
+3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 25/25).
 4. The sim harness (`runner` binary, gear export, `wowsims/tbc-new` source) persists in the session
    **scratchpad** and survives `/clear` *within the same session* — check it's there before rebuilding
    (`docs/TOOLING.md`); only a brand-new session needs a rebuild. Sim-gate every golden that moves.
@@ -114,6 +115,28 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
   proc reaches the cap. ATI stays in the *scored* effective-AB count; this is display-only (RULES §14/§15,
   ARCHITECTURE). exact-match 25/25.
 - **Phase 3 is complete** (all 6 tasks + the proc-free-trend follow-up).
+
+## Phase 5 — AoE phases cracked *(COMPLETE — verdict: burn ×M(N) + two corrections; RULES §9)*
+
+The question: is an AoE phase fully a per-cast damage modifier on the phase, or does it change
+placement structure? Settled the Phase-4 way — full-5s-grid enumeration (`brute-grid --aoe/--burn`,
+two shapes × N∈{2,3,4,6,10} × h∈{0,150,250}) against a burn-×M(N) control, novel classes sim-gated on
+the fixed rig. **Verdict: AoE = burn × `M(N)` + exit-re-ramp + SP-dilution** — layouts coincide with
+the control at 21/24 points; the divergences ARE the two corrections. All in RULES §9; the scorer was
+already exact (no engine change; exact-match 25/25 untouched, KT plan unchanged).
+- **Thresholds (h0 reference):** cluster chases the window at M(N)>1 vs co-resident Lust (N*≈2.5),
+  M(N)>1.30 vs disjoint Lust (N*≈3.2); SP buffs lag one N-step (`M_sp ≈ 0.30·N·amp`, knife-edge bridge
+  at N=4); haste migrates from M(N)>1 (bare window = floor headroom). Flux-predicted BEFORE the grid;
+  N=3 confirmed both directions.
+- **Gates (all green):** cluster marginal AE-vs-Lust 0.85/1.15/1.77 at N=3/4/6 (var0≡var10); exit-ramp
+  retreat +0.497% vs model +0.501% (same-stream CRN); KT double-IV +10.0% both far seeds (model +9.09%);
+  AE interval physics multiplicative (log: 1.25/1.136), IV +5.66% vs 5.71%, Zerk stack +0.24% vs +0.30%
+  under var10 (var0 = exact-tie quantization trap, TOOLING).
+- **Discovery — Tirisfal 2pc ×1.2 on AB + AP additivity in wowsims** (TOOLING ★, SOURCES): per-cast
+  anchor decomposed to the digit; thresholds shift ×1.2 on T5 gear (no class flips; KT robust). Two
+  open user calls below.
+- KT re-certified: the 1:45 cluster (N=6 threshold case) + double-IV-over-AoE both re-gated with
+  `--targets` isolation on the fixed rig; the old "standing model assumption" caveat is CLOSED.
 
 ## Phase 4 — understand the optimum, then make the search find it *(COMPLETE — monotonicity certified 0 violations)*
 
@@ -483,7 +506,14 @@ exact-match suite; new fights are added by editing that one array.
   `dodgeDowntime` is legibility-neutral). **KaelThas:** golden (280/400) = 1718.7 vs TOOL 260/396 (1718.5)
   and 280/402 (1718.2) — a 3-way tie within CRN noise (containment-equivalent icon timings), no
   regression. Both plans stand.
-- **KT AoE valuation** (double-IV over the 6-target phase) rests on Arcane-Explosion-vs-Blast
-  weighting that plain-AB sims can't confirm — a standing model assumption.
+- **Tirisfal-2pc as a tool input? (user call.)** T5-2pc (+20% AB damage, worn by the reference export)
+  shifts every RULES §9 AoE threshold ×1.2 (`M_eff = M/1.2`) and dilutes AP to +25% relative on AB (in
+  wowsims' additive pooling). The model is deliberately gear-agnostic; a "T5 2pc" kit toggle would make
+  the AoE knife-edge cases (N≈3–5) exact for T5 wearers. No golden is affected either way (KT's N=6 is
+  past every band). Decide before the next AoE-heavy phase.
+- **AP × T5-2pc: additive or multiplicative in real 2.4.3? (user authority.)** wowsims pools both as
+  flat damage-done mods (×1.5 together, measured — TOOLING ★). If the real game multiplied (×1.56),
+  that's another wowsims quirk to patch before trusting AP-marginal gates on T5 exports; if additive is
+  real, sim gates on this export are already faithful. Cf. the AP-195 precedent.
 - Sim harness (`runner`, gear export, wowsims source) lives in the ephemeral scratchpad — see
   `docs/TOOLING.md` for rebuild.

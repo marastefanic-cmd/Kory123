@@ -4,13 +4,21 @@
 // Same spec keys as genapl (IV/AP/Icon/Gem/Zerk/BL). See docs/TOOLING.md "Evaluating AoE".
 import fs from 'fs';
 const AE=27082;
-const IDS={ IV:{spellId:12472}, AP:{spellId:12042}, Zerk:{spellId:20554,tag:1}, BL:{spellId:2825,tag:-1}, Icon:{itemId:29370}, Gem:{itemId:22044} };
+const IDS={ CS:{spellId:11958}, IV:{spellId:12472}, AP:{spellId:12042}, Zerk:{spellId:20554,tag:1}, BL:{spellId:2825,tag:-1}, Icon:{itemId:29370}, Gem:{itemId:22044} };
 const fmt=a=>(a||[]).map(t=>`${t}s`).join(', ');
 const sched=(times,id)=>({action:{schedule:{schedule:fmt(times),innerAction:{castSpell:{spellId:id}}}}});
 export function build(spec){
   const pl=[];
-  for(const k of ['IV','AP','Icon','Gem','Zerk','BL']) if(spec[k]?.length) pl.push(sched(spec[k],IDS[k]));
-  pl.push({action:{castSpell:{spellId:{spellId:AE}}}});
+  // CS first so its IV-reset lands before the IV schedule evaluates (same as genapl)
+  for(const k of ['CS','IV','AP','Icon','Gem','Zerk','BL']) if(spec[k]?.length) pl.push(sched(spec[k],IDS[k]));
+  // optional AE→AB handoff: AE only before _abAfter, plain AB from there on (the
+  // AoE-phase EXIT — the post-AoE re-ramp is real: AE never applies the AB debuff)
+  if(spec._abAfter!=null){
+    pl.push({action:{condition:{cmp:{op:'OpLt',lhs:{currentTime:{}},rhs:{const:{val:`${spec._abAfter}s`}}}},castSpell:{spellId:{spellId:AE}}}});
+    pl.push({action:{castSpell:{spellId:{spellId:30451}}}});
+  } else {
+    pl.push({action:{castSpell:{spellId:{spellId:AE}}}});
+  }
   return {type:'TypeAPL',prepullActions:[],priorityList:pl};
 }
 if(process.argv[2]){ fs.writeFileSync(process.argv[3]||'/dev/stdout', JSON.stringify(build(JSON.parse(process.argv[2])),null,1)); }

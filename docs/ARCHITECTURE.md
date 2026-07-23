@@ -159,29 +159,19 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   **deterministic** haste step-curve (`multNoAti` — no averaged Ashtongue proc, RULES §14) + area fill,
   three reference lines (**+50% GCD cap**, **"cap if Ashtongue" ≈ +40.8%** when ATI on, **+25% "4× FB"**
   filler soft cap — RULES §15), phase bands (intermission hatched, AoE/burn tinted with ×N badges),
-  buff-uptime lanes with press ticks, **plus dashed "press anywhere here" leeway bands** (`run.leeway`,
-  from `leewayZones` — RULES §14). `scheduleRows`/`renderSchedule` build the window table (peak-haste /
+  buff-uptime lanes with press ticks. `scheduleRows`/`renderSchedule` build the window table (peak-haste /
   AB-cast / floor also read the deterministic `multNoAti`/`castDn`/`capDn`); `btn-copy` emits the
-  canonical copy-as-text plan the tests compare.
-- `leewayZones(run)` (just before `renderTimeline`): per mobile press, the maximal contiguous interval
-  whose robust score TIES the current placement (move the use by VALUE over the whole fight, scan ±1s until
-  it drops; `repair` + sameCounts + relocation guards decide feasibility, so a Cold-Snap Icy Veins is
-  handled — not skipped). Since `slideEarliest` (RULES §10) already sits each press at its earliest tie, the
-  band naturally extends rightward ("you can delay to X"). Position-independent presses get a wide interval;
-  burst-riders collapse to nothing. Computed once in `render` → `run.leeway`, drawn by the timeline and the
-  Flexible reasoning tag. Output-only — not in the golden canonicalization.
+  canonical copy-as-text plan the tests compare. (The dashed leeway bands that used to overlay the lanes
+  are **permanently rejected** — user decision, RULES §14; `leewayZones()` is deleted.)
 - **Per-window target mana** (`scheduleRows`, ~2939): each window carries `w.mana` = the AB-spam spend
   over its burst span (`GAME.AB.MANA_FLAT 195 × (1 + 0.75·stacks) + 30% under AP`, per-cast real stacks,
   AoE casts excluded — SOURCES). Shown as the blue `.manatag` chip with a net-of-regen tooltip. Pure
   read over the existing cast list; **mana never feeds the optimizer** (layout-first). Display-only.
-- **Placement-reasoning tags** (`pressPlan`, ~3271): a *why-here* reason on a press row **only when it's
-  non-obvious** — **Flexible** (a `run.leeway` interval → "press anytime X–Y", + the ATI-proc nudge),
-  **Cooldown-timed** ("pressed now so it's back for X", next use ~one cd later), **Cold Snap**
-  (`a.coldSnap`), and the boundary note "buffs land on your next AB" for a deferred pinned-row press.
-  Anything implied by the schedule (a cluster presses together; an untagged press goes at the time shown)
-  gets **no tag** — the earlier "first burst / grouped burst / positioned" tags were dropped as noise.
-  Feeds the schedule `.whytag` + copy-text. Output-only (exact-match rebuilds from `scheduleRows`), goldens
-  untouched.
+- **`pressPlan(run)`** (~3423): builds the press board rows only (one row per macro press moment,
+  co-pressed items grouped). The placement-reasoning tags and leeway bands it used to emit are
+  **permanently rejected** (user decision — a plateau tie for one press is conditional on every other
+  press staying put; RULES §14); rows carry no `.tag`, and the old inference logic lives only in git
+  history. Do not restore.
 
 ## Presets & tests — two baked strips, both the fight table
 `index.html` defines **two** baked preset arrays + `GOLDEN_DEFAULTS` (near the localStorage-preset
@@ -199,7 +189,7 @@ localStorage user-saved strip (was "Boss presets"). The user presses "Find optim
 - **Tests (`tests/`):** `exact-match.mjs` reads **both** `window.BOSS_PRESETS` and
   `window.GOLDEN_PRESETS` (+ `GOLDEN_DEFAULTS`) headless, runs each through `optimizeAsync`,
   canonicalizes the plan (setup header + windows + per-press times + Cold-Snap markers, minus cosmetic
-  peak-haste/price tags), diffs vs `golden.json` (23 cases: 10 boss + 13 debug). `--update` regenerates.
+  peak-haste/price tags), diffs vs `golden.json` (25 cases: 10 boss + 15 debug). `--update` regenerates.
 
 So "what you click in the tool" and "what the suite locks" are still the same lists — a confirmed
 preset (boss or debug) is the exact-match test.

@@ -298,15 +298,41 @@ accounts for it before blaming the model.
 Two additions let the runner value an Arcane-Explosion AoE phase (the model's `type:"aoe"` segment):
 - **`runner --targets N`** duplicates `encounter.targets[0]` to N mobs (config protos are read-only, so
   the pointer is shared; each becomes its own Unit). `0` = keep the export's count.
-- **`tools/genae.mjs`** (scratchpad) builds an **Arcane Explosion (27082) spam** APL, same cooldown-
-  schedule interface as `genapl.mjs`. Run a short isolation fight (e.g. `--dur 40 --targets 6`).
+- **`tools/genae.mjs`** (repo, durable) builds an **Arcane Explosion (27082) spam** APL, same cooldown-
+  schedule interface as `genapl.mjs` (now incl. `CS`). `_abAfter: T` switches AE → plain AB at `T`
+  (the AoE-phase EXIT: AE never applies the AB debuff, so the handoff re-ramps — the Phase 5 exit-ramp
+  gate). Run a short isolation fight (e.g. `--dur 40 --targets 6`).
 
-**Validated (this session), model vs sim:** the model's AE constants are **exact** — base roll 377–407
-(avg 392), `BonusCoefficient` 0.214, instant + GCD-bound, `DamageMultiplier 1`, full per-target damage
-(`arcane_explosion.go`, spell 27082). Sim spot-checks: AP over AoE ≈ **×1.30** (dmgMult), IV over AoE ≈
-**×1.18–1.20** (haste, unfloored), steady 6-target AE flux ≈ **2.25×** a single-target AB cast — so a
-6-target AoE cast is worth ~2.25× an AB, which is why the KT **double-IV-over-AoE** call is robust (IV
-adds ~+20% casts to a window worth ~2.25× — a landslide vs the same IV on single-target).
+**Validated, model vs sim:** the model's AE constants are **exact** — base roll 377–407 (avg 392),
+`BonusCoefficient` 0.214, instant + GCD-bound, `DamageMultiplier 1`, full per-target damage
+(`arcane_explosion.go`, spell 27082). Sim spot-checks: AP over AoE = **×1.30** (measured +30% on the AE
+stream), IV over AoE ≈ ×1.18–1.20 (haste, unfloored; var10 marginal +5.66% vs model +5.71% on a 20s/70s
+window). Phase 5 re-anchored the **per-cast ratio** at N=2/6/10 (AE-spam vs prestacked AB-spam, same
+seed): sim **0.709 / 2.255 / 3.873** vs model M(N) 0.819 / 2.579 / 4.434 — a **constant ×~0.87**, fully
+decomposed below (Tirisfal 2pc ×1.2 on the AB side, ÷1.2 → residual +2–4% = the conservatively-credited
+amp + export-vs-input SP/crit calibration). The old "≈2.25×" quote is the same number with the T5 factor
+baked in. KT's **double-IV-over-AoE** re-gated directly: 2nd IV over the 6t window's back half = +10.0%
+of the 40s window, both far seeds (model +9.09%).
+
+**★ Tirisfal-2pc + Arcane-Power additivity (Phase 5 sim-audit finding — the sim was right, our
+CONSTANTS were incomplete).** The reference export wears **T5 Tirisfal 2pc = +20% Arcane Blast damage**
+(`sim/mage/items.go`, set 649) — combat-log per-hit AB/AE ratio 2.99 vs 2.52 expected without it (and
+solving the per-hit data gives SP≈1414 ≈ the 1387 input; without T5 you'd need an absurd SP≈6050). AND
+it pools **additively** with Arcane Power — both are `SpellMod_DamageDone_Flat` (`arcane_power.go`,
+`spell_mod.go`): AB under AP+T5 = ×(1+0.2+0.3) = 1.5, not 1.2×1.3. Measured with count-preserving CRN
+pairs: AP marginal = **+25% relative on the T5'd AB stream** (141.7 DPS vs 141.2 predicted-additive,
+161+ predicted-multiplicative) but the full **+30% on the AE stream** (369 vs 378 predicted — AE has no
+T5 mod). Consequences: on T5 gear the AoE placement thresholds shift ×1.2 (RULES §9 caveat — no class
+flips, KT robust), and sim gates on THIS export under-credit AP marginals vs the model by ~1/6 (bake
+that into expectations before calling a gap a bug). Whether real 2.4.3 stacks these multiplicatively is
+an **open user-authority question** (ROADMAP) — like AP-195, don't assume the sim's pooling is the game.
+
+**AE fixed-length quantization (a var0 trap, worse than on AB streams).** A uniform instant stream fits
+a WHOLE number of GCDs into a fixed fight: at `--dur 60` var0, Zerk-in-IV vs Zerk-outside on the 6t
+window tie **byte-identically** (both +1 cast; the continuous +0.14-cast stack premium never
+materializes a 45th cast), and the IV marginal reads +2 casts where the integral says +2.67. Re-run
+haste A/Bs on AE streams under **var10** (or a longer non-resonant dur): there IV = +5.66% and the §7
+stack premium +0.24% emerge at 28σ. Damage/SP A/Bs are immune (same cast stream both sides).
 
 **Super-linearity — measured, isolated, and now modeled.** 6-target AE is **+8.6% per-target** above
 linear at crit 38% (×1.024 @2t, ×1.086 @6t, ×1.119 @10t; and it **falls as crit rises** — +11% @10% crit,

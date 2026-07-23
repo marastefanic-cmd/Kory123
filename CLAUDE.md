@@ -41,7 +41,7 @@ cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs
 ```
 Loads the real `index.html` headless, reads the fight tables from the page (`window.BOSS_PRESETS` — the
 real phase encounters — and `window.GOLDEN_PRESETS` — the abstract **Debugging presets**), runs every
-one through the actual optimizer, compares the copy-as-text plan to `golden.json` (23 cases). `--update`
+one through the actual optimizer, compares the copy-as-text plan to `golden.json` (25 cases). `--update`
 regenerates goldens (do this ONLY after an intentional change, and only when each changed plan improves
 the effective-ABs count — sim-verified when a blind spot is in play, per the methodology in
 `docs/TOOLING.md`). The two preset arrays are defined once in `index.html` (`BOSS_PRESETS` +
@@ -111,9 +111,11 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/ROADMAP.md` — status, current work, and open questions.
 - `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
-  into ROADMAP). **Current plan: Phase 5 — cracking AoE phases** (see PLAN.md). Phase 4 is COMPLETE
-  (exact discrete ramp + press-snap, basin-stable search, monotonicity certified 0 violations; record in
-  ROADMAP). **Permanently REJECTED (user decisions — do not revisit):** the leeway "press anywhere"
+  into ROADMAP). **No plan in flight. Phase 5 (AoE phases) is COMPLETE** — verdict: an AoE phase is a
+  burn ×M(N) modifier + exit-re-ramp + SP-dilution, thresholds and sim gates in RULES §9, record in
+  ROADMAP (incl. the Tirisfal-2pc/AP-additivity discovery and its two open user calls). Phase 4 is
+  COMPLETE (exact discrete ramp + press-snap, basin-stable search, monotonicity certified 0 violations;
+  record in ROADMAP). **Permanently REJECTED (user decisions — do not revisit):** the leeway "press anywhere"
   bands and reasoning-tag UI (a plateau tie is conditional on everything else staying put, so the bands
   over-promise; logic deleted from `index.html`); an in-tool "exact mode" (the brute-grid instrument is
   for RESEARCH — generalize its findings into rules, don't ship enumeration); the finite-mana model (too

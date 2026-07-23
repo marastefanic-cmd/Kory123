@@ -366,19 +366,66 @@ durations the contained region shrinks to the **intersection** of the constraint
     once-suspected "Vashj wants 3 icons because an exit icon is worth less" was the **dropped-terminal
     artifact** — the 4-icon plan's *own* 6:00 icon was deleted by the harness, not out-valued; with the
     drop fixed 4 icons beat 3. The 4-icon plan stands; the 4:05/6:05 refinement rides on top of it.)
-- **AoE** phases score linearly in `targets` off the Arcane **Explosion** base (392 + 0.214·SP,
-  instant, GCD-bound), NOT off Arcane Blast — so an N-target AoE is N× an AE cast. **Now sim-verified**
-  (`--targets N` AE-spam, TOOLING): the constants match `arcane_explosion.go` exactly, and a 6-target AE
-  cast sims ~**2.25×** an AB cast — so **double-IV-over-AoE (KT)** is real, not an assumption (IV adds
-  ~+20% casts to a window worth ~2.25×, a landslide vs the same IV on single-target). **Super-linearity —
-  now modeled.** AoE is super-linear in the sim (**+8.6% per-target at 6 tgt, crit 38%**, falling as crit
-  rises). A talent-isolation run pins the cause: it's **entirely Clearcasting → Arcane Potency** (zero the
-  talents and it vanishes; gear on-crit SP procs add ~0). Arcane Concentration procs **per hit**, so more
-  targets ⇒ more Clearcasting ⇒ Potency's +30% crit lands on more casts. This is always-present and
-  gear-agnostic (crit × N × talent ranks), so the planner credits it via `aoeCritAmp(N,crit)` on the AoE
-  damage only (ARCHITECTURE / `index.html` `TALENTS`) — ~75–80% of the measured effect, conservative,
-  single-target untouched. Crit thus **no longer fully cancels for AoE** (MECHANICS §4). Gear on-crit SP
-  procs stay unmodeled (negligible + transient).
+- **AoE — CRACKED (Phase 5): an AoE phase IS a burn-phase modifier `M(N)` on unchanged interval
+  physics, plus two structural corrections (SP dilution; the exit re-ramp).** Method: full-5s-grid
+  enumeration (`tools/brute-grid.mjs --aoe`, two fight shapes — AoE overlapping Lust's back half and AoE
+  disjoint after Lust — × N∈{2,3,4,6,10} × h∈{0,150,250}) against a **burn ×M(N) control** (`--burn`,
+  amp folded); every novel class sim-gated on the fixed rig. Layouts coincide with the control at 21/24
+  points; the divergences are exactly the two corrections below. Internal consistency: with no buff
+  inside the window the AoE and control fights score **identical to the 3rd decimal** (the M(N) folding
+  is exact by construction).
+  - **The window's worth is `M(N) = [(392+0.214·sp)·N·amp(N,crit)] / (720+0.714·sp)`** — the per-cast
+    AE/AB ratio with the Potency amp folded (at sp 1387 / crit 38: M(2)=0.82, M(3)=1.25, M(4)=1.68,
+    M(6)=2.58, M(10)=4.43). The interval side is NOTHING new: AE = `max(1.0, 1.5/m)` = 3-stack AB, so
+    every §2/§7 haste band applies unchanged on an AoE window — **sim-verified**: combat-log intervals
+    1.25 / 1.136 under IV / IV×Zerk (multiplicative stacking, not additive), IV marginal **+5.66% vs
+    model +5.71%**, Zerk stack-beats-spread **+0.24% vs model +0.30%** (var10; at var0 exact fight
+    lengths the uniform GCD stream quantizes whole casts and stack==spread ties EXACTLY — an AE-specific
+    fixed-length trap, TOOLING).
+  - **Placement = the same flux law (§1) with M(N) as the window multiplier.** The damage cluster chases
+    the AoE window when `M(N) ×` its cast rate beats the alternative window's flux: co-resident with
+    Lust it moves at **M(N) > 1** (N*≈2.5 — N=2 evacuates the window, N=3 moves), against a disjoint h0
+    Lust at **M(N) > 1.30** (N*≈3.2 — N=3 stays, N=4 moves). Below threshold a weak AoE (N=2, M=0.82) is
+    a **dead zone the burst dodges** (the plain-fight layout squeezed into the non-AoE time). Both
+    thresholds were predicted from flux BEFORE enumerating; the N=3 grid runs confirmed both directions.
+    **Sim gate** (count-preserving cluster A/Bs, 100k, var0 AND var10 agree): cluster marginal on the
+    N-target stream vs the Lust'd AB stream = **0.85 / 1.15 / 1.77** at N=3/4/6 — the sign flips exactly
+    at the predicted threshold.
+  - **Correction 1 — SP buffs lag one N-step.** Icon/gem price the window at the DILUTED
+    `M_sp(N) = (0.214/0.714)·N·amp ≈ 0.30·N·amp` (AE's per-target SP coefficient vs AB's 0.714), not
+    M(N). At N=4 h0 Icon's AoE value ties floored-Lust to the 4th decimal (0.0648 vs 0.0647 AB/s) and
+    the exact grid winner is a **bridge** (Icon straddling the Lust→AoE boundary); from N=6 it follows
+    the cluster cleanly. The burn control glues Icon to the window at N=4 — this is the main placement
+    divergence from a pure modifier, confined to the knife-edge band.
+  - **Correction 2 — the exit re-ramp.** An AoE run ≥ 8s drops the AB debuff, so the seconds after the
+    window are ramp-devalued: coverage **retreats into the window** (windows end AT the AoE end, not
+    past it — the AoE grid pulls IV/Zerk inward where the burn control keeps them straddling out).
+    Sim (same-stream CRN, 150k): Icon covering the AoE window exactly beats hanging 5s into the exit
+    ramp by **+0.497% vs model +0.501%**. KT's golden already expresses this: its CS-IV@2:05 ends
+    exactly at the window end (2:25).
+  - **Haste migrates EARLIER than damage.** A bare AoE window is the max-floor-headroom window, so
+    leftover haste (IV/Zerk) takes it from **M(N) > 1** even while the damage cluster still holds Lust
+    (grid: disjoint shape at N=3 — CS-IV + Zerk on the window, cluster on Lust). §5's "largest buff that
+    fits under the cap" law, replayed. **CS-IV chases the AoE window** at every N≥4 (the KT pattern
+    reproduced ab initio by the grid).
+  - **Double-IV-over-AoE re-certified on the fixed rig** (KT's load-bearing call): the CS-IV over the
+    6-target window's back half = **+10.0%** of the whole 40s window (both far seeds; model +9.09%,
+    sim ≥ model) ≈ **6.7 plain-AB casts** — a landslide vs ~2.7 for the same IV on single-target. The
+    1:45 cluster is the N=6 cluster-threshold case (1.77× the Lust marginal). KT's plan is unchanged
+    (exact-match 25/25).
+  - **⚠ Gear caveat — Tirisfal 2pc rescales the AB side (sim-discovered, source-confirmed).** T5-2pc =
+    +20% Arcane Blast damage, so on that gear every threshold above shifts ×1.2 (`M_eff = M/1.2`) — and
+    wowsims pools it ADDITIVELY with Arcane Power (both `SpellMod_DamageDone_Flat`: AP on a T5'd AB =
+    **×1.25 relative**, on AE = the full **×1.30**; both measured — TOOLING, SOURCES). Whether real
+    2.4.3 multiplies instead is an open user-authority question (ROADMAP). Either way no layout class
+    flips and KT is robust (M_eff(6) = 2.15, still past every band). The model stays gear-agnostic
+    (AP = ×1.30, no set bonuses) by design.
+  - **Super-linearity — modeled (unchanged).** AoE is super-linear in the sim (**+8.6% per-target at
+    6 tgt, crit 38%**, falling as crit rises); talent-isolation pins it **entirely on Clearcasting →
+    Arcane Potency** (Arcane Concentration procs **per hit**, so more targets ⇒ more Clearcasting ⇒
+    Potency's +30% crit on more casts; gear on-crit SP procs add ~0). Credited via `aoeCritAmp(N,crit)`
+    on AoE damage only (~75–80% of measured, conservative; single-target untouched). Crit thus does not
+    fully cancel for AoE (MECHANICS §4).
 
 ## 10. Determinism / tie-breaks
 
