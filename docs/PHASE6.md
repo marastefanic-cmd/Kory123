@@ -41,10 +41,11 @@ The instrument is a **holdout cross-validation matrix** (`tools/xval.mjs`):
    - **(b) Diagonal dominance — the model test.** In every column, does the native (diagonal) plan
      sim ≥ every plan borrowed from another haste? The harness reports **CLEAN** (native is the max
      in every column) or **DEFICIT X%** (a borrowed plan out-simmed the native somewhere, by X% at
-     the named cell). No tolerance is applied in the label — but a deficit **below that table's
-     monotonicity noise floor (a) is not trustworthy** (it can't be told apart from quantization).
-     A deficit *above* the floor is a real signal. Deciding what to do about a real one is the NEXT
-     pass.
+     the named cell). No tolerance is applied in the label. **Trustworthiness depends on fight length,
+     not the monotonicity dip** (which is ~0): on a short/medium fight, plan-to-plan boundary
+     quantization is worth up to ~0.5–1%, so a sub-1% deficit there is UNCONFIRMED until re-checked
+     (§3.0); a long/XL-fight deficit, or one that persists as the fight lengthens, is real signal.
+     Deciding what to do about a real one is the NEXT pass.
 
 Run it: `CHROMIUM=… RUNNER=…/runner-ap180 EXPORT_BASE=…/export.json [KIT=a,b TCLASS=short
 HASTES=0,30,…] node tools/xval.mjs <seed>`. Prints the matrix and an `XVAL-DONE … monoDip=…%
@@ -66,7 +67,10 @@ breakpoint-straddle, drop the round anchor). ~7–11 points per kit:
 | isc+mqg   | 0,20,40,70,110,140,230,260,305,400 |
 | scb+skull | 0,30,60,90,210,240,260,290,400 |
 | scb+mqg   | 0,20,75,105,235,265,400 |
-(Regenerate with the snippet in `scratchpad/haste-sets.json`'s builder if the ladders change.)
+(The committed source of truth is `tools/xval-haste-sets.json`; the campaign driver `xval-kit.sh`
+reads a kit's set from it and passes it to `xval.mjs` via `HASTES=…`. `xval.mjs` on its own defaults to
+the coarse `0,100,200,300,400`. Regenerate the JSON from the RULES §16 ladder breakpoints if the
+ladders change.)
 
 ### Fight-length classes (user-directed; 2-min = skull/scb/isc, 3-min = IV/AP/Zerk, 5-min = mqg; CS→IV grants IV +1)
 | class | rule | length band (s) |
@@ -110,32 +114,33 @@ breakpoint-straddle, drop the round anchor). ~7–11 points per kit:
 
 ## 2. Results ledger
 
-**Two grids were run. Read the caveats — the coarse grid predates the fixes/labeling.**
+**The real campaign** = breakpoint-straddle haste grids (§1) × the five fight-classes × six kits (30
+tables) + the three boss shapes × the kits, all **cold-open, ∞ mana, var10** on the fixed rig. Each
+`tools/xval.mjs` run writes a full N×N DPS matrix to `tools/xval-results/<kit>-<class>.txt` (committed
+— the scratchpad is ephemeral) and an `XVAL-DONE` summary line. `tools/xval-collect.mjs <dir>`
+assembles the ledger below.
 
-**(i) Coarse 5-point grid (0/100/200/300/400), earlier "no >6 DPS deficit" labeling — pre-quantization-finding.** All seven kits showed the native plan winning its column with the
-now-familiar fall-off away from the diagonal. Treat as *encouraging but not authoritative* (loose
-label; the short-fight ones are inside the §4.7 quantization floor):
+**How to read a row.** `monoDip` must be ~0.00% (the §1(a) regression canary — nonzero ⇒ a prepull or
+new harness bug, stop and fix). `diag` is CLEAN (native wins every column) or DEFICIT X% (a borrowed
+plan beat native, by X%). **Trust a deficit by fight length (§3.0), not by monoDip:** short/medium
+< ~1% = UNCONFIRMED (plan-to-plan boundary quantization); long/XL, or a deficit that grows with
+length, = REAL. A confirmed real deficit graduates to §4.5.
 
-| seed | fight | kit | note |
-|------|-------|-----|------|
-| 20260723 | 3:10 | mqg+skull | reference matrix below |
-| 7 | 1:33 | mqg+skull | SHORT — inside quantization floor, discount |
-| 5 | 5:18 | isc+skull | long — meaningful |
-| 9 | 2:35 | isc+mqg | medium |
-| 2 | 5:33 | scb+skull | long — meaningful (scb fix §4.6) |
-| 3 | 5:28 | isc+scb | long — meaningful (scb fix §4.6) |
-| 8 | 2:21 | scb+mqg | medium (scb fix §4.6) |
+### 2.1 Campaign results  ← paste `node tools/xval-collect.mjs tools/xval-results` output here
+_Being gathered (`tools/xval-campaign.sh`, 2-concurrent). Live pattern so far: every table
+monoDip = 0.00% (cold open holding); short/medium fights show sub-1% deficits (0.16–0.77%,
+UNCONFIRMED per §3.0); the first medlong (T=220) came back CLEAN — consistent with deficits shrinking
+as fights lengthen. Final table + per-kit rollup drop in here when the campaign + boss runs finish._
 
-**(ii) Breakpoint-straddle grid + CLEAN/DEFICIT labeling + fight-classes — the REAL campaign: NOT
-YET RUN.** Blocked on the §4.7 metric decision (short/medium fights are quantization-limited, so
-their DEFICIT labels aren't trustworthy as-is). The harness (`tools/xval.mjs`), the per-kit haste
-sets (§1), and the fight classes are all ready; launch once the metric question is resolved. Fill
-this table then, one row per (kit × fight-class × boss-preset), with the fight length shown so each
-row's noise floor is visible.
+| kit | class | T | band | monoDip | diag | worst-cell | trust |
+|-----|-------|---|------|---------|------|-----------|-------|
+| _(collector fills)_ | | | | | | | |
 
-Reference matrix (seed 20260723, coarse grid), for the *shape* a healthy result has — native bold,
-penalty grows with distance from the diagonal in both directions (this shape is real; the sub-1%
-magnitudes on this 3:10 fight are partly quantization):
+### 2.2 Earlier COARSE 5-point runs (0/100/200/300/400) — superseded, kept only as sanity context
+Pre-cold-open-fix, pre-breakpoint-grid, loose "no >6 DPS deficit" labeling. NOT authoritative (they
+prepulled, and short ones are quantization-limited); do not cite as results. All seven showed native
+winning its column with the expected fall-off. Reference shape (seed 20260723, mqg+skull, 3:10) —
+native bold on the diagonal, penalty growing with distance from it both ways:
 
 ```
 plan\sim     0      100      200      300      400
@@ -184,9 +189,10 @@ plan. Before believing it's a model bug, rule out the usual suspects in this ord
 
 ## 4. Findings & open items
 
-**§4.7 is a MEASUREMENT-CORRECTNESS BLOCKER — start there.** §4.6 is a harness bug found+fixed this
-pass. The rest (§4.1–4.4) are pre-existing "the tool sits a hair under the true optimum / we lack
-ground truth" gaps — known, priced, model-level, deferred. §4.8 is the Phase-7 Ashtongue defer.
+**§4.6 and §4.7 are harness bugs FOUND + FIXED this pass** (scb equip; the prepull cast-loss — the big
+one). §4.5 collects confirmed model mis-adaptations from the campaign (none yet). §4.1–4.4 are
+pre-existing "the tool sits a hair under the true optimum / we lack ground truth" gaps — known,
+priced, model-level, deferred. §4.8 is the Phase-7 Ashtongue defer.
 
 ### 4.1 The h≈40 straddle-basin slack (kit-universal)
 Around 30–70 gear rating, in every trinket kit, the tool's plan sits up to **0.14 eff casts under**
@@ -221,10 +227,13 @@ a bug — a scope boundary. If a future phase wants mana-aware *layout*, it's a 
 finite-mana model was explicitly rejected before) and needs its own design, not a patch here.
 
 ### 4.5 (placeholder) Model mis-adaptations from the cross-val sweep
-_Empty until §4.7 is resolved and the campaign runs. A confirmed diagonal deficit (exceeds its
-table's noise floor AND survives the §3 triage) goes here with: seed, fight, kit, the haste it fails
-at, the misplaced track, and the band edge the model got wrong._ Nothing recorded yet — the coarse
-runs in §2(i) are not authoritative and the real campaign (§2(ii)) is blocked on §4.7.
+_A CONFIRMED diagonal deficit — one that survives the §3 triage AND is trustworthy by length (§3.0:
+long/XL, or persists/grows with fight length; not a sub-1% short-fight quantization artifact) — goes
+here with: seed, fight, kit, the sim-haste it fails at, the borrowed plan that beat native, the
+misplaced track, and the RULES §16 band edge the model put on the wrong side._ **Nothing confirmed
+yet.** Campaign in progress; the deficits seen so far are sub-1% and shrink with fight length (short/
+medium 0.16–0.77% → long 0.05–0.38%), i.e. consistent with boundary quantization, not model error —
+but that is a provisional read, to be confirmed by the collector rollup + adversarial pass.
 
 ### 4.6 Harness bug (FIXED) — scb needs the Serpent-Coil TRINKET equipped, not the Mana Emerald
 The cross-val's first scb runs crashed the sim: `SIM ERROR: No item with id: 22044`. Root cause was
@@ -293,7 +302,20 @@ fresh session, see §6).
 
 - **`index.html`** — the product. Engine in `<script id="engine-src">`, pooled Blob workers, the
   optimizer. Tests drive the sequential in-page path.
-- **`tools/xval.mjs`** — the cross-val instrument (this phase). `node tools/xval.mjs <seed>`.
+- **`tools/xval.mjs`** — the cross-val instrument (this phase). `node tools/xval.mjs <seed>`. Env:
+  `KIT=a,b` (explicit kit; else seed-drawn), `TCLASS=short|medium|medlong|long|xl` (fight class),
+  `HASTES=…` (the haste set; defaults to the coarse `0,100,200,300,400`), `BOSS="Lady Vashj"|…` (load
+  a preset's T/Lust/segments instead of a class-drawn fight), `ITER`, `SCRATCH`. Forces cold open
+  (`_prestack:0`) and ∞ mana. Prints the N×N matrix + an `XVAL-DONE … monoDip diag diagWorst` line.
+- **`tools/xval-haste-sets.json`** — the committed per-kit breakpoint-straddle haste sets (the §1
+  granularity table, source of truth). Read by `xval-kit.sh`.
+- **`tools/xval-kit.sh`** — campaign driver for ONE kit across all five fight-classes, using that
+  kit's set from the JSON above. `bash tools/xval-kit.sh mqg,skull`. Tees full matrices to
+  `$XVDIR/<kit>-<class>.txt`, seeds each class deterministically (`1000 + cksum(kit)%9000 + classIdx`).
+- **`tools/xval-campaign.sh`** — runs all six kits (`xval-kit.sh` each), 2-concurrent, `ITER=6000`.
+  The whole fight-class campaign in one command.
+- **`tools/xval-collect.mjs`** — reads a directory of `xval` outputs → the §2.1 CLEAN/DEFICIT ledger
+  markdown (`node tools/xval-collect.mjs tools/xval-results`); asserts every `monoDip ≈ 0`.
 - **`tools/brute-grid.mjs`** — full 5s-grid exhaustive brute. `--pair a,b` (any 2 trinkets), `--tool`
   (also run the optimizer + print tool-vs-grid), `--aoe`/`--burn` (Phase 5). ~7.9M cells/haste, <1min.
 - **`tools/haste-ladder.mjs`** — the brute marched across haste with breakpoint bisection.
@@ -316,19 +338,27 @@ fresh session, see §6).
 2. Trust-anchor: a bare-rotation run reproduces the baseline DPS to the decimal (TOOLING §trust).
 3. The gear export is user data (NOT in repo). `xval.mjs` trinket-swaps a copy; never commit an export.
 
-## 7. Next-pass task list (in order)
-1. **Resolve §4.7 (BLOCKER).** Verify a fixed-rotation, ∞-mana haste sweep is strictly non-decreasing
-   in cast count AND total damage. Find why the sim currently loses a cast (h130=53 → h140=52).
-   Likely: switch the cross-val metric to something provably monotone in haste — total damage over a
-   fixed CAST COUNT, or the model's own effective-AB count — rather than DPS over a fixed fight length.
-   Do NOT proceed until a monotone sweep is demonstrated.
-2. **Run the campaign** (§2(ii)): 6 kits × 5 fight-classes + Vashj / Kael'thas / Al'ar boss shapes, on
-   the per-kit breakpoint grids (§1), ∞ mana, honest CLEAN/DEFICIT labeling. Boss shapes need `xval.mjs`
-   extended to load a preset's T/Lust/segments (it currently builds `segments:null`).
-3. **Triage every real deficit** (§3) → record confirmed model mis-adaptations in §4.5.
-4. **Adversarial pass**: an agent tries to refute the campaign's clean-diagonal claims against the raw
-   matrices before anything is called certified.
-5. **Phase 7**: fold in Ashtongue (§4.8).
+## 7. Task list — status
+**Done this pass:** §4.7 measurement fix (cold open); §4.6 scb fix; breakpoint haste grids +
+fight-classes; `xval.mjs` BOSS mode (loads a preset's T/Lust/segments — Vashj/Al'ar sim cleanly,
+KT's AoE window is simmed as downtime with a flag, §4.8-adjacent limitation); campaign drivers
+(`xval-kit.sh`, `xval-campaign.sh`, `xval-collect.mjs`).
+
+**In progress / remaining:**
+1. **Finish the campaign** (`xval-campaign.sh`, running 2-concurrent) — 6 kits × 5 classes; then the
+   three boss shapes (`BOSS="Lady Vashj"|"Al'ar"|"Kael'thas Sunstrider" node tools/xval.mjs <seed>`).
+   Commit the raw matrices to `tools/xval-results/`.
+2. **Assemble the ledger** (§2.1) from `xval-collect.mjs`; confirm every `monoDip≈0`.
+3. **Triage the trustworthy deficits** (§3; long/XL or length-persistent only) → §4.5. Provisional
+   read: deficits are sub-1% and shrink with length ⇒ likely all boundary quantization, no model
+   mis-adaptation — CONFIRM, don't assume.
+4. **Adversarial pass**: an agent tries to refute the "clean diagonal" claim against the raw matrices.
+5. **KT AoE**: to sim KT's AoE phase properly, genapl needs Arcane-Explosion emission during AoE
+   windows (currently simmed as downtime — KT numbers exclude AoE damage). Small addition; do before
+   trusting KT.
+6. **(Optional, next pass) length-independent metric** — total damage over a fixed cast count, or the
+   model's effective-AB count — would erase the short-fight quantization caveat entirely (§3.0).
+7. **Phase 7**: fold in Ashtongue (§4.8).
 
 ## 8. Guardrails (do not regress)
 - **Determinism:** one setup ⇒ one plan. No `Date.now`/`Math.random` outside the seeded PRNG. The
