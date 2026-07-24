@@ -350,3 +350,26 @@ the ORDER is not.) Principle for the fix: among score-tied orderings, resolve **
 fights** — burst cluster first inside Lust (the day-1 "anchor burst early" doctrine), THEN the lone
 haste filler, then the CS chain. Consistency is the aesthetic: same-shape fights must render
 same-shape plans.
+
+### 5.12 ROUND-3 RESULTS (COMPLETE — all 36 tables: pooling ON, var0.5, jitter v2, KT AoE valued)
+The full acceptance campaign on the post-fix engine, all tables committed to `tools/xval-results/`
+(round-2 snapshotted to `tools/xval-results-archive/phase7-round2/`). Ledger =
+`node tools/xval-collect.mjs tools/xval-results`; invariants recomputed by `tools/xval-verify.mjs`.
+
+| | Phase 6 (var10, prepull-era protocol) | Round 3 (pooling ON, var0.5, wj2, AE) |
+|---|---|---|
+| monoDip | 0.00% everywhere | **0.0000% everywhere** (recomputed) |
+| borrowed-win columns | 167 | **145** (median width **0.042%**, mean 0.081%) |
+| worst column | 0.77% (2.68% KT-artifact) | **0.40%** (KT now ordinary: worst 0.39%) |
+| columns ≥0.3% / ≥0.2% / ≥0.1% | — / — / — (not tracked) | **9 / 17 / 35** |
+| CLEAN tables | 1/36 | 2/36 |
+
+Facts, no grading (the bar remains ZERO columns — invariant B still FAILS):
+- The ≥0.3% head is 9 columns; the known **B2 family** tops it (isc+mqg medlong @70 = 0.40%, medium
+  @110 = 0.38% — the pull-anchored-haste scorer gap, PHASE8's charge). KT's former 2.68% artifact is
+  gone (AE valued): its worst column is 0.39%, in-family.
+- The tail is hair-width: median 0.042% — half the 145 columns are sub-0.05% wobbles at the
+  measurement's quantization scale. Eliminating them is a DESIGN task (length-independent metric or
+  sim-side by-construction guarantee), not a per-column chase — per the §5.9 ruling they stay counted
+  as violations until then.
+- Model-side B1 held by construction throughout (pooling ON for every emitted plan).

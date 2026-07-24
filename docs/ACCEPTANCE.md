@@ -75,20 +75,25 @@ snapshot the old round into `tools/xval-results-archive/<phase>/` first (append-
 `docs/archive/`) — history stays first-class, never just git archaeology. The collector output is
 the authoritative row-by-row ledger.
 
-## Current status (2026-07-23, first full run — 36 tables) — NOT PASSING
-Data-gathering complete: 30 fight-class tables (6 kits × 5 classes) + 6 boss tables (Vashj/Al'ar/KT ×
-{mqg+skull, isc+scb}), all committed to `tools/xval-results/`. Invariants independently recomputed with
-`tools/xval-verify.mjs`.
-- **Invariant A: PASS** — `monoDip = 0.00%` on **all 36** tables (every row rechecked cell-by-cell; zero
-  dips anywhere).
-- **Invariant B: FAILS** — **35/36 tables carry ≥1 diagonal deficit** (167 borrowed-plan-wins columns
-  total; worst non-KT 0.77%; KT 1.06%/2.68% with an AoE-not-simmed measurement caveat). Per the invariant
-  above, every one is a violation; this status does **not** rank them or excuse any as quantization/small.
-  The data (where each lands, length behaviour, mechanism spot-checks) is in `PHASE6.md §2.1/§4.5`,
-  `tools/xval-collect.mjs`, and `tools/xval-verify.mjs` — recorded for the fix phase, not graded here.
+## Current status (2026-07-24, round 3 — the post-Phase-7-fix full run) — NOT PASSING (B), improved
+All 36 tables re-run on the fixed engine (cross-haste pooling ON, var0.5, per-wall jitter v2, KT AoE
+valued). Current round in `tools/xval-results/`; earlier rounds under `tools/xval-results-archive/`
+(`phase6/`, `phase7-round2/`). Invariants recomputed with `tools/xval-verify.mjs`.
+- **Invariant A: PASS** — `monoDip = 0.0000%` on all 36 tables (every row rechecked cell-by-cell).
+- **Invariant B (model side, B1): HOLDS BY CONSTRUCTION** — pooling makes every emitted plan the argmax
+  over the cross-haste champion set, so no borrowed plan can out-SCORE a native (verified per run).
+- **Invariant B (sim side): FAILS** — 145 borrowed-win columns across 34/36 tables (bar = zero).
+  Distribution: median 0.042%, mean 0.081%, worst **0.40%**; ≥0.3%: 9. The ≥0.3% head is the **B2
+  scorer-gap family** (`docs/PHASE8.md` — the pull-anchored-haste joint interaction; worst case isc+mqg
+  medlong @70). The sub-0.05% tail (half the columns) sits at the fixed-length measurement's
+  quantization scale — eliminating it is a design task (length-independent metric or a sim-side
+  by-construction guarantee), tracked, not excused.
+- Movement Phase 6 → round 3: worst 0.77% → 0.40%; KT's 2.68% AoE artifact eliminated (now 0.39%,
+  ordinary); mean width halved (0.160% → 0.081%).
 
-**So: the model does not survive this test.** The fix phase (PHASE7) diagnoses the patterns and
-eliminates ALL diagonal deficits so invariant B holds everywhere — including KT once genapl emits AE.
+**So: not passing yet.** Remaining owners: PHASE8 (the B2 family, highest-effort scorer work), the
+§5.11 legibility tie-break fix (must land before the next full run), and the metric-design task for the
+quantization tail. Re-run this in full after each.
 
 ## Known coverage gaps in the test itself (make the test stronger over time)
 - **Single-worst-cell reporting hides structure.** `XVAL-DONE`/the collector surface one worst cell per
