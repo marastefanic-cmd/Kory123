@@ -690,7 +690,8 @@ transition plateau edge, inside the designed 0.15 pressability slack)*:
       at h120/h260/h270 are plateau wobbles between damage-twins, not new physics; the seven bands
       above are the real structure.)
     **Sim-gated (pre-registered predictions, AP-180 rig, paired seeds, --mana ∞, var0+var10):**
-    ramp-hug@h150 model +0.28% → sim var10 **+0.47%** (var0 −0.08%, the documented fixed-length
+    ramp-hug@h150 model +0.28% → sim var10 **+0.47%**, re-certified Phase 7 at the model-matched
+    metric: var0.5 **+0.37%** ≈ the recalibrated model's +0.25 casts (var0 −0.08%, the documented fixed-length
     quantization trap — var10 is the protocol read); back-bridge@h185 model +0.61% → var10
     **+0.69%**; endgame-Zerk-to-pull@h250 model +0.97% → var10 **+0.96%** (agreement to 0.01%).
     All three counterintuitive band claims CONFIRMED. Cautionary tale renewed: the first gate run

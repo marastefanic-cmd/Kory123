@@ -692,7 +692,7 @@ function simulateRaw(schedule, cfg, collect) {
   const active = []; // fired buff windows {key, def, start}
   const actEff = collect ? {} : null;
   let lastTrinket = null;
-  let prevCastEnd = 0;
+  let prevCastEnd = 0, prevInterval = 0;
   // Ashtongue Talisman: discrete 145-rating / 5s procs, 50% per spell crit,
   // no ICD. Modeled per cast as the probability the proc is CURRENTLY up,
   // derived from the actual casts of the last 5s — so procs cluster where
@@ -743,9 +743,17 @@ function simulateRaw(schedule, cfg, collect) {
       const e = evs[k2];
       if (e.fired) continue;
       if (e.ts > t) break;
-      let eff;
+      let eff, slip = 0;
       if (e.key === "bloodlust" || e.key === "powerInfusion" || e.key === "drums") {
         eff = e.ts; // raid externals: someone ELSE presses these — they land exactly when called
+        // …but a haste external only accelerates the STREAM from the next cast boundary (the
+        // in-flight cast keeps its speed — sim-verified: Lust@10 with the boundary at 10.25 vs a
+        // compressed ramp whose 9.94→11.19 cast STRANDS 1.19s of the window). The board lattice is
+        // deterministic and matches the sim's exactly near the pull, so score the window from the
+        // lattice boundary, not the call. This also balances the ramp-compression credit: pressing
+        // IV earlier still shortens the ramp, but the model now charges the phase it imposes on a
+        // near-pull raid call (the VR −0.18% phantom; RULES §3's compression bullet, re-derived).
+        if (e.ts < prevCastEnd - 1e-9) slip = prevCastEnd - e.ts;
       } else {
         let minStart = e.ts;
         if (e.gap && lastEff[e.key] !== undefined) minStart = Math.max(minStart, lastEff[e.key] + (e.gap >= e.def.cd - 1e-9 ? e.def.cd : e.def.dur)); // natural spacing enforces the cooldown from the real press; a reset-chained use only needs the previous window to finish
@@ -763,9 +771,21 @@ function simulateRaw(schedule, cfg, collect) {
         // the macro fires it (sim-log-verified: intent 5 in a fresh opener lands 6.5).
         eff = Math.max(minStart, e.ts);
         if (prevCastRamp && e.ts < prevCastEnd - 1e-9) eff = Math.max(minStart, prevCastEnd);
+        // Expected press-snap SLIPPAGE (closes the §4.3 phase blind spot where it bites). A press
+        // landing mid-cast at STEADY state fires at that cast's END; phase is uniform, so the
+        // expected slip is half the local interval. Interior windows are slip-invariant (what the
+        // start loses the end regains — the phase-average argument, unchanged), but a window whose
+        // end abuts a hard edge (intermission wall, the kill) has its slipped tail CLAMPED — a
+        // real, sim-verified loss the intent-time scoring silently forgave (Al'ar: a stagger
+        // sequenced to end flush at the 3:28 wall model-tied the packed layout yet simmed −0.66%,
+        // ≈1s × 4 buffs of clamped slippage). Scoring windows shift by the slip; the DISPLAYED
+        // press times (actEff) stay at the fire/intent convention — pressing at the printed second
+        // still fires at the same boundary. Ramp presses (sparse boundaries) already snap exactly;
+        // gap presses (idle — downtime, GCD-idle remainder) fire at the press moment: both slip 0.
+        else if (eff < prevCastEnd - 1e-9) slip = prevInterval / 2;
       }
       e.fired = true;
-      active.push({ key: e.key, def: e.def, start: eff });
+      active.push({ key: e.key, def: e.def, start: eff, scoreStart: eff + slip });
       lastEff[e.key] = eff;
       if (OFF_TRINKETS.includes(e.key)) lastTrinket = { key: e.key, end: eff + e.def.dur };
       if (actEff) (actEff[e.key] = actEff[e.key] || []).push(eff);
@@ -831,6 +851,7 @@ function simulateRaw(schedule, cfg, collect) {
     // remainder (and all of an instant AE's interval) is free press time
     const castLen = pUp * up.cast + (1 - pUp) * dn.cast;
     prevCastEnd = t + Math.min(interval, castLen);
+    prevInterval = interval;
     prevCastRamp = !isAoe && stacks < g.AB.MAX_STACKS;
     if (prevCastRamp) boardRamp.push({ s: t, c: prevCastEnd, e: t + interval }); // a true ramp cast — scored discretely
     if (!isAoe) { lastCastStart = t; if (stacks < g.AB.MAX_STACKS) stacks++; }
@@ -861,7 +882,9 @@ function simulateRaw(schedule, cfg, collect) {
     let blA = false, piA = false;
     for (let i = 0; i < active.length; i++) {
       const w = active[i];
-      if (tt < w.start || tt >= w.start + w.def.dur) continue;
+      // scoreStart = fire time + expected press-snap slip (see the firing block): the scoring
+      // integral reads the slipped window; display/legality keep the fire-time convention.
+      if (tt < w.scoreStart || tt >= w.scoreStart + w.def.dur) continue;
       if (w.key === "powerInfusion") piA = true;
       else if (w.def.kind === "mult") { mult2 *= w.def.value; if (w.key === "bloodlust") blA = true; }
       else if (w.def.kind === "rating") rating2 += w.def.value;
@@ -909,16 +932,24 @@ function simulateRaw(schedule, cfg, collect) {
   const nonAB = s => !!s && (s.type === "intermission" || s.type === "aoe");
   const segAt = tt => { if (!segs) return null; for (let i = 0; i < segs.length; i++) { const sg = segs[i]; if (tt >= sg.start && tt < sg.end) return sg; } return null; };
   const RAMP_JITTER = g.GCD_FLOOR;
-  const rampCastDmg = tc => {
-    const a = Math.max(0, tc - RAMP_JITTER / 2), b = tc + RAMP_JITTER / 2;
+  // A ramp cast's damage STATE snapshots at its START (sim-verified: a buff landing mid-flight or at
+  // the completion instant never touches the in-flight cast — the 242.50 Vashj cast used pre-Icon SP).
+  // Sampling the state across the COMPLETION over-credited every press-snapped ramp-exit window with
+  // ~half of the cast it fired after (the T=98 ramp-exit cluster phantom, ~+0.3 casts). So: buff/SP
+  // state is jitter-averaged around the cast START (ts); the damage TIME — kill taper, wall/AoE
+  // gating — stays at the completion (tc), preserving Phase 4's "damage lands on completion" rule
+  // (midpoint TIME sampling is what once re-created the haste-compresses-the-ramp phantom).
+  const rampCastDmg = (ts, tc) => {
+    if (nonAB(segAt(tc))) return 0;                    // completes into downtime/AoE — no AB damage
+    const sgD = segAt(tc);                             // damage context (burn mult) at the completion
+    const a = Math.max(0, ts - RAMP_JITTER / 2), b = ts + RAMP_JITTER / 2;
     const edges = new Set([a, b]);
-    for (const w of active) { if (w.start > a && w.start < b) edges.add(w.start); const we = w.start + w.def.dur; if (we > a && we < b) edges.add(we); }
-    if (segs) for (const sg of segs) { if (sg.start > a && sg.start < b) edges.add(sg.start); if (sg.end > a && sg.end < b) edges.add(sg.end); }
+    for (const w of active) { if (w.scoreStart > a && w.scoreStart < b) edges.add(w.scoreStart); const we = w.scoreStart + w.def.dur; if (we > a && we < b) edges.add(we); }
     const es = [...edges].sort((x, y) => x - y);
     let acc = 0;
     for (let i = 0; i < es.length - 1; i++) {
-      const m = (es[i] + es[i + 1]) / 2, sg = segAt(m);
-      acc += (nonAB(sg) ? 0 : scanAt(m, sg).dmg2) * (es[i + 1] - es[i]); // gap slices of the fuzz score 0
+      const m = (es[i] + es[i + 1]) / 2;
+      acc += scanAt(m, sgD).dmg2 * (es[i + 1] - es[i]);
     }
     return acc / (b - a);
   };
@@ -931,12 +962,12 @@ function simulateRaw(schedule, cfg, collect) {
     const e2 = Math.min(rc.e, cfg.T + KW);
     if (rampSpans.length && Math.abs(rampSpans[rampSpans.length - 1][1] - rc.s) < 1e-9) rampSpans[rampSpans.length - 1][1] = e2;
     else rampSpans.push([rc.s, e2]);
-    rampCasts.push({ tc: rc.c, dmg: rampCastDmg(rc.c) });
+    rampCasts.push({ tc: rc.c, dmg: rampCastDmg(rc.s, rc.c) });
   }
   // integrate over piecewise-constant segments: buff state changes only at window
   // edges / phase boundaries / the kill window, so a few dozen breakpoints are exact
   const bpS = new Set([0, cfg.T, Math.max(0, cfg.T - KW), cfg.T + KW]);
-  for (let i = 0; i < active.length; i++) { const w = active[i]; if (w.start > 0) bpS.add(w.start); bpS.add(w.start + w.def.dur); }
+  for (let i = 0; i < active.length; i++) { const w = active[i]; if (w.scoreStart > 0) bpS.add(w.scoreStart); bpS.add(w.scoreStart + w.def.dur); }
   if (segs) for (const sg of segs) { bpS.add(sg.start); bpS.add(sg.end); }
   for (const [ra, rb] of rampSpans) { if (ra > 0) bpS.add(ra); bpS.add(rb); }
   const bps = [...bpS].filter(x => x >= 0 && x <= cfg.T + KW).sort((a, b) => a - b);
@@ -2647,6 +2678,35 @@ function optimizeAsync(cfg, starts, onProgress) {
           s = s2; val = v2;
           if (stable) break;
         }
+        // ——— drop-one-use escape (RULES §4 align-vs-twice, the sacrifice side). The polish ladder
+        // has drop-AND-relocate (count-preserving); the basin where a track genuinely spends FEWER
+        // uses so the remainder aligns better (isc+scb: one AP on the Lust cluster beats two spread
+        // — the §8 count-vs-flux trade going the other way) is reachable only by dropping. Offer
+        // each single-use drop, polish (the survivors re-align), keep strict improvements, iterate
+        // to fixpoint (counts only shrink — bounded); the winner re-hops so it canonicalizes like
+        // any champion.
+        {
+          let again2 = true, guard2 = 0;
+          while (again2 && guard2++ < 4) {
+            again2 = false;
+            for (const key of Object.keys(s)) {
+              if (cfg.fixed[key] || (s[key] || []).length < 2) continue;
+              for (let di = 0; di < s[key].length; di++) {
+                const cand = cloneS(s);
+                cand[key] = s[key].filter((_, j) => j !== di);
+                const p = polish(repair(cand, cfg), cfg);
+                if (p.val > val + 1e-7) { s = p.s; val = p.val; again2 = true; break; }
+                await breathe();
+              }
+              if (again2) break;
+            }
+            if (again2) {
+              const hopD = await basinHop({ s, val }, cfg, async () => { await tick(); });
+              const sD = await normalize(hopD.s);
+              s = sD; val = simulate(sD, cfg).robust;
+            }
+          }
+        }
         best = { s, val };
         // a razor-timed variant may sim higher at EXACTLY the entered kill by
         // squeezing one last cast under the wire; the planner keeps the
@@ -2668,23 +2728,42 @@ function optimizeAsync(cfg, starts, onProgress) {
             // second full pass, honestly labeled — the bar RESTARTS for it (the UI resets its
             // monotone clamp on a label change) instead of stalling near-done for its duration
             optimizeAsync({ ...cfg, coldSnap: false }, starts, (p, lbl) => onProgress(p, `No-Cold-Snap comparison — ${lbl || "optimizing"}`)).then(async bestN => {
-              // deterministically offer the end-chain on the no-CS champion —
-              // last IV back on its natural tick with a reset-chained IV
-              // appended as that window ends — so the "spend the reset on the
-              // kill" line is never lost to search path order
+              // deterministically offer the CS chain GEOMETRIES on the no-CS champion. RULES §8:
+              // the CS-IV press restarts the 180s cadence from wherever it lands, so each "which
+              // slot is the compressed pair" choice is its own basin — the cross-val proved the
+              // search misses these when only the raw end-chain was offered. Offer the full slot
+              // family (CS after use j: 0, cd, …, j·cd, j·cd+dur, +cd, …) at BOTH the same count
+              // (reposition) and count+1 (adds a use — the materiality gate below prices it), plus
+              // the kill-anchored end pair — and POLISH each candidate: the chain only competes
+              // once the other tracks co-adapt to it (sim-proven on the mqg+skull xl end-chain,
+              // where the raw candidate loses but the polished one wins).
               let champ = best;
               const ivsN = (bestN.s.icyVeins || []).slice().sort((a, b) => a - b);
               if (ivsN.length) {
                 const dur = BUFFS.icyVeins.dur, cd = BUFFS.icyVeins.cd;
                 const ready = ivsN.length >= 2 ? ivsN[ivsN.length - 2] + cd : 0;
                 const chains = [[...ivsN, ivsN[ivsN.length - 1] + dur], [...ivsN.slice(0, -1), ready, ready + dur]];
+                for (const n of [ivsN.length, ivsN.length + 1]) {
+                  if (n < 2) continue;
+                  for (let j = 1; j < n; j++) {          // CS compresses the pair at slot j
+                    const ch = [];
+                    for (let i = 0; i < n; i++) ch.push(i < j ? i * cd : (i === j ? ch[j - 1] + dur : ch[j] + (i - j) * cd));
+                    chains.push(ch);
+                  }
+                  // kill-anchored end pair: siblings on natural cadence, last two ending at the kill
+                  const kf = Math.max(0, cfg.T - 1 - dur);
+                  if (n >= 2 && kf - dur >= (n - 2) * cd) {
+                    const ch2 = []; for (let i = 0; i < n - 2; i++) ch2.push(i * cd);
+                    chains.push([...ch2, kf - dur, kf]);
+                  }
+                }
                 for (const ch of chains) {
                   if (ch[ch.length - 1] > cfg.T - 1) continue;
                   const cand = cloneS(bestN.s);
                   cand.icyVeins = ch;
-                  const rep = repair(cand, cfg);
-                  const rr = simulate(rep, cfg);
-                  if (rr.robust > champ.val) champ = { s: rep, val: rr.robust };
+                  const p = polish(repair(cand, cfg), cfg);
+                  if (p.val > champ.val) champ = { s: p.s, val: p.val };
+                  await breathe();
                 }
               }
               // a Cold-Snapped IV whose window is cut by the kill falls under

@@ -229,11 +229,22 @@ the 2264.9 in TOOLING was an earlier export revision; the identity check is the 
 exactly the model's M(N) physics). Sim-verified: AE 105→145 hits 6 targets, AB resumes at the exit;
 KT-shape smoke +69% vs the old downtime read. KT re-runs with the campaign.
 
-### 5.6 Open / in flight
-- Golden triage of the 16 suite diffs under the new scorer+search (old-vs-new model + CRN sim gate) —
-  running; accept via `--update` only where new ≥ old (sim) or sim-tie with model preference.
-- Root-cause the ramp-exit co-press phantom (N-vs-X1) → next scorer term.
-- Wall-jitter harness design + implement for boss tables.
-- Cross-haste pooling wiring (neighbor set decision after scorer stabilizes).
-- Model-side xval instrument (fast search-dominance regression without the sim) — planned.
-- Then: full acceptance re-run at var0.5 (+jitter), adversarial pass, docs, archive.
+### 5.6 Status of the open items (updated as they close)
+- ✅ **Ramp-exit co-press phantom root-caused + fixed**: `rampCastDmg` sampled the buff STATE across the
+  completion — a press-snapped ramp-exit window was credited ~half the cast it fired after; state now
+  snapshots at cast START (damage time stays at completion — Phase 4's rule). T=98 pair flips to
+  sim-agreement. RULES §3b.3.
+- ✅ **External lattice snap** (RULES §3b.2) — closes the VR/compression phantom.
+- ✅ **Wall-jitter implemented** (`xval.mjs` WJITTER=2; the Al'ar parity pair now sims identical) +
+  **var0.5 default** (the model-matched metric).
+- ✅ **Golden triage (all 25)**: model(new) ≥ model(old) everywhere; sim net strongly positive
+  (Hydross +0.37%, Lurker +0.48%, 2:40-int +0.48%, 2:20 +0.26%, Al'ar +0.14%; locked structures
+  byte-preserved: Vashj 0.000, KT +0.014, 6:00/5:45 ≈0; worst residual 3:20 −0.145% = parity envelope).
+  Goldens regenerated (`--update`) and locked.
+- ✅ **xval-model.mjs** committed (model-side dominance instrument, no sim needed).
+- **Deferred to the NEXT round (recorded, not dropped):** cross-haste pooling wiring (closes 19/19
+  probed misses; costs 2-3× solve time — wire after this round's campaign says what still misses);
+  the Al'ar opener residual (+0.17 casts model-vs-sim-tie, sub-slack); the isc+skull straddle-credit
+  and scb+skull count-trade margins (≤0.2% at the corrected metric — re-measure in the campaign first).
+- **IN FLIGHT: the full acceptance re-run** (`tools/xval-rerun.sh` — new engine, var0.5, wall-jitter,
+  KT AoE valued; per-kit durable checkpoint commits), then collector + adversarial verification.
