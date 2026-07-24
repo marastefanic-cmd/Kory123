@@ -79,6 +79,12 @@ console.log(`- **Invariant A (monoDip):** ${monoBad.length ? '⚠ ' + monoBad.le
 console.log(`- **Invariant B (diagonal dominance):** ${totalCols === 0 ? 'ZERO deficit columns — PASS ✓' : `**FAILS** — ${deficit.length}/${ok.length} tables carry ${totalCols} borrowed-win columns (bar = zero)`}`);
 console.log(`- **CLEAN tables:** ${clean.length}/${ok.length}` + (errs.length ? `  ·  **ERRORS:** ${errs.length}` : ''));
 if (mismatches.length) console.log(`- ⚠ reported-diagWorst mismatches: ${mismatches.map(t => t.file).join(', ')}`);
+if (totalCols) { // width DISTRIBUTION (§5.9: report distributions, not zero-bar counts)
+  const w = ok.flatMap(t => t.defCols.map(d => d.pct)).sort((a, b) => a - b);
+  const med = w[Math.floor(w.length / 2)], mean = w.reduce((s, x) => s + x, 0) / w.length;
+  const ge = x => w.filter(v => v >= x).length;
+  console.log(`- **Width distribution:** median ${med.toFixed(3)}% · mean ${mean.toFixed(3)}% · max ${w[w.length - 1].toFixed(2)}% · ≥0.3%: ${ge(0.3)} · ≥0.2%: ${ge(0.2)} · ≥0.1%: ${ge(0.1)}`);
+}
 
 if (totalCols) {
   console.log(`\n### ALL deficit columns (worst first; ★ = length-robust locus — same kit×sim-haste violates on long/xl)\n`);
