@@ -1,46 +1,119 @@
-// Collect Phase-6 cross-val results from a directory of xval output files into a markdown ledger
-// for PHASE6.md §2. Splits CLEAN (native dominates every column) from DEFICIT, flags each row's
-// fight length (short fights carry plan-to-plan boundary quantization — weigh deficits against it),
-// confirms monoDip≈0 everywhere (the cold-open invariant — any nonzero is a regression to flag), and
-// LOCALIZES each deficit to its cell (which sim-haste, which borrowed plan won) + a neutral locus tag
-// (low-haste ≤70 = the §4.1 straddle-basin region; higher = investigate). Localization is data for the
-// next-pass triage — it does NOT decide fixes.
-//   node tools/xval-collect.mjs <dir>
+// Collect the cross-val results from a directory of xval output files into the acceptance ledger.
+// PHASE7 upgrade: reports EVERY borrowed-plan-wins column per table (the single-worst-cell summary
+// hid ~130 columns behind the 35 worst cells), flags length-robust loci (a kit×sim-haste that
+// violates on a long/xl fight — least likely to be boundary quantization), recomputes monoDip
+// (invariant A) and diagonal dominance (invariant B) from the raw matrices, and cross-checks each
+// file's reported diagWorst. The bar is ZERO deficit columns (ACCEPTANCE invariant B) — nothing here
+// grades or excuses a violation; the locus tags are data for the diagnostic, not verdicts.
+//   node tools/xval-collect.mjs <dir> [--json targets.json]
+// --json writes the full target set (every borrowed-win column, with the native + borrowed plan
+// specs parsed from the file) for tools/diagnose-deficit.mjs to consume.
 import fs from 'fs';
 import path from 'path';
-const dir = process.argv[2] || '/tmp/claude-0/-home-user-Kory123/e436da46-89c3-50bc-bce2-5b6be890f704/scratchpad/xvcamp';
-const rows = [];
+const args = process.argv.slice(2);
+const jsonIdx = args.indexOf('--json');
+const jsonOut = jsonIdx >= 0 ? args[jsonIdx + 1] : null;
+const dir = args.filter((a, i) => a !== '--json' && i !== jsonIdx + 1)[0] || '/home/user/Kory123/tools/xval-results';
+
+const tables = [];
 for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.txt')).sort()) {
   const txt = fs.readFileSync(path.join(dir, f), 'utf8');
-  const m = txt.match(/^XVAL-DONE .*/m);
-  if (!m) { rows.push({ file: f, err: 'no XVAL-DONE (crashed?)' }); continue; }
-  const kv = Object.fromEntries([...m[0].matchAll(/(\w+)=(\S+)/g)].map(x => [x[1], x[2]]));
-  // deficit cell: "(b) DIAGONAL DOMINANCE: DEFICIT X%  [@simH: plan@P (v) > native@H (v)]"
-  let simH = null, planH = null;
-  const c = txt.match(/DEFICIT [\d.]+%\s*\[@sim(\d+): plan@(\d+)/);
-  if (c) { simH = +c[1]; planH = +c[2]; }
-  rows.push({ file: f, ...kv, mono: parseFloat(kv.monoDip), deficit: parseFloat(kv.diagWorst), T: +kv.T, simH, planH });
+  const done = txt.match(/^XVAL-DONE .*/m);
+  if (!done) { tables.push({ file: f, err: 'no XVAL-DONE (crashed?)' }); continue; }
+  const kv = Object.fromEntries([...done[0].matchAll(/(\w+)=(\S+)/g)].map(x => [x[1], x[2]]));
+  // plan specs: "  plan@h30: eff=226.369  {json}"
+  const specs = {};
+  for (const m of txt.matchAll(/plan@h(\d+): eff=([\d.]+)\s+(\{.*\})/g)) specs[+m[1]] = { eff: +m[2], spec: JSON.parse(m[3]) };
+  // the DPS matrix
+  const lines = txt.split('\n');
+  const hdr = lines.findIndex(l => l.startsWith('plan\\sim'));
+  if (hdr < 0) { tables.push({ file: f, err: 'no matrix' }); continue; }
+  const cols = lines[hdr].trim().split(/\s+/).slice(1).map(Number);
+  const M = {};
+  for (let i = hdr + 1; i < lines.length; i++) {
+    const t = lines[i].trim(); if (!t || !/^\d/.test(t)) break;
+    const parts = t.split(/\s+/).map(Number);
+    M[parts[0]] = Object.fromEntries(cols.map((c, k) => [c, parts[1 + k]]));
+  }
+  const planHastes = Object.keys(M).map(Number);
+  // invariant A — monoDip (every row non-decreasing)
+  let mono = 0, monoAt = '';
+  for (const ph of planHastes) for (let k = 1; k < cols.length; k++) {
+    const a = M[ph][cols[k - 1]], b = M[ph][cols[k]], d = (a - b) / a;
+    if (d > mono) { mono = d; monoAt = `row@${ph}: ${a}->${b}`; }
+  }
+  // invariant B — EVERY borrowed-plan-wins column (not just the worst cell)
+  const defCols = [];
+  for (const c of cols) {
+    if (M[c] == null) continue;
+    const native = M[c][c];
+    let best = native, bestPh = c;
+    for (const ph of planHastes) if (M[ph][c] > best) { best = M[ph][c]; bestPh = ph; }
+    if (best > native) defCols.push({ simH: c, borrowedH: bestPh, native, borrowed: best, pct: +((best - native) / native * 100).toFixed(3) });
+  }
+  defCols.sort((a, b) => b.pct - a.pct);
+  const rep = txt.match(/diagWorst=([\d.]+)%/);
+  const worst = defCols.length ? defCols[0].pct : 0;
+  const mismatch = rep && Math.abs(parseFloat(rep[1]) - +worst.toFixed(2)) > 0.02;
+  tables.push({ file: f, kit: kv.kit, class: kv.class, T: +kv.T, lust: +kv.lust, seed: +kv.seed,
+    mono: +(mono * 100).toFixed(4), monoAt, defCols, worst, mismatch, specs,
+    boss: /^BOSS:/.test(kv.class || '') });
 }
-const band = T => T <= 130 ? 'short' : T <= 200 ? 'medium' : T <= 260 ? 'medlong' : T <= 380 ? 'long' : 'xl';
-// neutral locus tag: the sim-haste REGION the deficit lands at (a raw fact, NOT a cause). Spot-checks
-// (PHASE6 §4.5) show low-haste deficits are heterogeneous micro-placement diffs — do NOT pre-attribute
-// them to the §4.1 IV-into-Lust basin here; that's next-pass triage.
-const locus = r => r.simH == null ? '—' : (r.simH <= 70 ? `low-haste (h${r.simH})` : `mid/high (h${r.simH}) — investigate`);
-const clean = rows.filter(r => r.diag === 'CLEAN');
-const defs  = rows.filter(r => r.diag === 'DEFICIT').sort((a,b)=>b.deficit-a.deficit);
-const errs  = rows.filter(r => r.err);
-const monoBad = rows.filter(r => r.mono > 0.05);
-const lowN = defs.filter(r => r.simH != null && r.simH <= 70).length;
-const hiN  = defs.filter(r => r.simH != null && r.simH > 70).length;
-console.log(`## Cross-val results (${rows.length} tables)\n`);
-console.log(`- **Monotonicity (cold-open invariant):** ${monoBad.length ? '⚠ '+monoBad.length+' tables with monoDip>0.05% — REGRESSION' : 'all ≤0.05% ✓'}`);
-console.log(`- **CLEAN (native dominates every column):** ${clean.length}/${rows.length}`);
-console.log(`- **DEFICIT:** ${defs.length}/${rows.length}` + (errs.length?`  ·  **ERRORS:** ${errs.length}`:''));
-if (defs.length) console.log(`- **Deficit loci:** ${lowN} at low haste (≤70) · ${hiN} at mid/high haste (investigate). Low-haste = heterogeneous micro-placement (spot-checked, §4.5), NOT auto-§4.1.`);
-console.log(`\n### Deficits (worst first) — weigh against fight length; a diagonal deficit on a short fight may be plan-to-plan boundary quantization\n`);
-console.log('| kit | class | T | fight-band | diag deficit | monoDip | deficit cell | locus |');
-console.log('|-----|-------|---|-----------|--------------|---------|--------------|-------|');
-for (const r of defs) console.log(`| ${r.kit} | ${r.class} | ${r.T} | ${band(r.T)} | **${r.diagWorst}** | ${r.monoDip} | @sim${r.simH}: plan@${r.planH}>native | ${locus(r)} |`);
-console.log(`\n### Clean tables\n`);
-for (const r of clean) console.log(`- ${r.kit} ${r.class} (T=${r.T}, ${band(r.T)})`);
-if (errs.length) { console.log(`\n### Errors\n`); for (const r of errs) console.log(`- ${r.file}: ${r.err}`); }
+
+const band = t => t.boss ? t.class.replace('BOSS:', 'boss:') : t.class;
+const isLongish = t => !t.boss && (t.class === 'long' || t.class === 'xl');
+// length-robust loci: kit × sim-haste that violates on a long/xl fight
+const robustLoci = new Set();
+for (const t of tables) if (!t.err && isLongish(t)) for (const d of t.defCols) robustLoci.add(`${t.kit}@${d.simH}`);
+
+const ok = tables.filter(t => !t.err);
+const clean = ok.filter(t => t.defCols.length === 0);
+const deficit = ok.filter(t => t.defCols.length > 0);
+const errs = tables.filter(t => t.err);
+const monoBad = ok.filter(t => t.mono > 0.05);
+const totalCols = ok.reduce((n, t) => n + t.defCols.length, 0);
+const mismatches = ok.filter(t => t.mismatch);
+
+console.log(`## Cross-val ledger (${ok.length} tables, ${totalCols} borrowed-win columns)\n`);
+console.log(`- **Invariant A (monoDip):** ${monoBad.length ? '⚠ ' + monoBad.length + ' tables with monoDip>0.05% — REGRESSION: ' + monoBad.map(t => t.file).join(', ') : 'all ≤0.05% ✓'}`);
+console.log(`- **Invariant B (diagonal dominance):** ${totalCols === 0 ? 'ZERO deficit columns — PASS ✓' : `**FAILS** — ${deficit.length}/${ok.length} tables carry ${totalCols} borrowed-win columns (bar = zero)`}`);
+console.log(`- **CLEAN tables:** ${clean.length}/${ok.length}` + (errs.length ? `  ·  **ERRORS:** ${errs.length}` : ''));
+if (mismatches.length) console.log(`- ⚠ reported-diagWorst mismatches: ${mismatches.map(t => t.file).join(', ')}`);
+
+if (totalCols) {
+  console.log(`\n### ALL deficit columns (worst first; ★ = length-robust locus — same kit×sim-haste violates on long/xl)\n`);
+  console.log('| kit | class | T | sim-haste | borrowed plan | deficit % | robust |');
+  console.log('|-----|-------|---|-----------|---------------|-----------|--------|');
+  const flat = [];
+  for (const t of deficit) for (const d of t.defCols) flat.push({ t, d });
+  flat.sort((a, b) => b.d.pct - a.d.pct);
+  for (const { t, d } of flat) {
+    const rob = robustLoci.has(`${t.kit}@${d.simH}`) ? '★' : '';
+    console.log(`| ${t.kit} | ${band(t)} | ${t.T} | ${d.simH} | plan@${d.borrowedH} (${d.borrowed.toFixed(1)} > ${d.native.toFixed(1)}) | ${d.pct.toFixed(2)} | ${rob} |`);
+  }
+  console.log(`\n### Per-table summary\n`);
+  console.log('| kit | class | T | deficit cols | worst % | monoDip |');
+  console.log('|-----|-------|---|--------------|---------|---------|');
+  for (const t of ok.slice().sort((a, b) => b.worst - a.worst)) {
+    console.log(`| ${t.kit} | ${band(t)} | ${t.T} | ${t.defCols.length} | ${t.worst ? t.worst.toFixed(2) : 'CLEAN'} | ${t.mono.toFixed(2)} |`);
+  }
+  console.log(`\n### Length-robust loci (kit × sim-haste violating on long/xl — start here, but ALL columns are targets)\n`);
+  for (const l of [...robustLoci].sort()) console.log(`- ${l}`);
+}
+if (clean.length) { console.log(`\n### Clean tables\n`); for (const t of clean) console.log(`- ${t.kit} ${band(t)} (T=${t.T})`); }
+if (errs.length) { console.log(`\n### Errors\n`); for (const t of errs) console.log(`- ${t.file}: ${t.err}`); }
+
+if (jsonOut) {
+  const targets = [];
+  for (const t of deficit) for (const d of t.defCols) targets.push({
+    file: t.file, kit: t.kit, class: t.class, T: t.T, lust: t.lust, seed: t.seed,
+    simH: d.simH, borrowedH: d.borrowedH, nativeDPS: d.native, borrowedDPS: d.borrowed, pct: d.pct,
+    robust: robustLoci.has(`${t.kit}@${d.simH}`),
+    nativeSpec: t.specs[d.simH] ? t.specs[d.simH].spec : null,
+    borrowedSpec: t.specs[d.borrowedH] ? t.specs[d.borrowedH].spec : null,
+    nativeEff: t.specs[d.simH] ? t.specs[d.simH].eff : null,
+    borrowedEff: t.specs[d.borrowedH] ? t.specs[d.borrowedH].eff : null,
+  });
+  fs.writeFileSync(jsonOut, JSON.stringify(targets, null, 1));
+  console.log(`\n[targets JSON → ${jsonOut}: ${targets.length} columns]`);
+}
