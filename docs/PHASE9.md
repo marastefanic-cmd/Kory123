@@ -217,6 +217,10 @@ makes the same question answerable without touching a plan.)*
 every case we can produce.** That is not a judgement call — it is a counter. And when it holds, deleting or
 merging P is byte-identical *by construction*, so the exact-match suite is a sufficient gate.
 
+**Do §4.9(A) first.** The accept path this instrument hooks currently exists in *five identical copies*;
+collapsing them to one turns "instrument every accept site consistently" from a five-way opportunity for
+error into a one-line change.
+
 **Instrument (additive only, same monkeypatch trick as §3.1):** for each pass record
 1. **entries** — how often it runs;
 2. **firings** — how often it changes the incumbent at all (`val` or `s`);
@@ -266,3 +270,53 @@ plus a wall-time re-measure so each step's real win is recorded next to its pred
 §4.7's census is deliberately **not** in this ladder. It gates a different class of change — *merging or
 retiring* a pass rather than making the existing passes cheaper — and unlike 4.1–4.4 it is a measurement
 first, so it can (and should) run in the CPU gap between acceptance rounds, independent of this order.
+
+### 4.9 ★ The two dedups that need no measurement at all
+
+§4.7 needs hours of CPU because it asks whether a pass does anything. These two ask nothing about
+behaviour — they are *the same code written more than once*, findable by reading, and collapsing them is
+byte-identical by inspection rather than by argument. They are the literal reading of "fewer steps that do
+the same thing", and both are **enablers for §4.7**, so they land first.
+
+**(A) `polish()` contains FIVE copies of one accept path.** Lines **1149, 1155, 1165, 1186, 1207** are
+character-for-character identical bar the `break` label:
+
+```js
+if (v > val + 1e-7) { s = rep; val = v; improved = true; break /* outerW | outer */; }
+```
+
+and each is preceded by the same four-line preamble — `cloneS(s)` → mutate → `repair` → `simulate(...).robust`.
+The three "move families" (single-use shift ladder; suffix shift; add-a-use; joint window move;
+escape/drop-one) differ **only in the mutator**. One `tryMove(mutate) → bool` helper closing over
+`(s, val, cfg)` collapses all five into a single accept path with the same order, the same `1e-7` epsilon,
+and the same first-improvement-wins semantics.
+
+Why this is the *first* thing to do rather than a tidy-up: **§4.7's instrument becomes a one-line change
+instead of five.** Counting entries/firings/surviving-firings per move family means touching the accept
+path — with five copies that is five chances to instrument one of them subtly differently and get a census
+that is wrong in exactly the way that matters. (Three further accept sites — **1354, 1393, 2816** — share
+the same `> x + 1e-7` rule but not the same surrounding shape; note them, do not force them into the same
+helper.)
+
+**(B) The block-shift primitive is written twice.** `polish()`'s joint window move (**1179–1181**) and
+`teleportRep` (**1258–1260**) are the same loop:
+
+```js
+for (const key in cand) { if (cfg.fixed[key]) continue;
+  for (let i = 0; i < cand[key].length; i++) if (Math.round(cand[key][i]) === X) cand[key][i] += delta; }
+```
+
+They differ only in how `delta` is expressed — polish shifts by a relative `d ∈ SHIFTS`, `teleportRep`
+shifts to an absolute anchor (`delta = A − X`) — and in that polish counts how many uses moved. One
+`shiftBlock(cand, cfg, X, delta) → moved` serves both. **Keep the `moved < 2` guard at polish's call
+site**: it is a real rule ("lone uses are the per-key loop's job"), not shared plumbing, and folding it
+into the helper would silently change what `teleportRep` legalizes.
+
+This one matters beyond line count: the joint window move and the basin-hop teleport are *the same
+physical idea* — press-windows are magnets, and a cluster has to move as a block or not at all — expressed
+twice. Sharing the primitive makes that identity visible in the code, which is the point of the exercise;
+the perf win (one fewer duplicated walk) is incidental.
+
+Both are gated the same way as everything else: exact-match 25/25. Unlike 4.1–4.5 neither changes what is
+computed, so a *failing* suite after either one means the refactor was wrong, never that the plans moved
+legitimately — there is no `--update` branch here.
