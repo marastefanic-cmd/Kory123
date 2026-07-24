@@ -351,6 +351,33 @@ fights** — burst cluster first inside Lust (the day-1 "anchor burst early" doc
 haste filler, then the CS chain. Consistency is the aesthetic: same-shape fights must render
 same-shape plans.
 
+**ROOT CAUSE of the *inconsistency* (the part that actually needed explaining — user follow-up).** The
+user's real objection was not ugliness but that *near-identical setups disagreed with each other for no
+reason*: `2:00 lust 0:05` rendered `LUST → cluster → Zerk@0:26 → CS-IV@0:36` while Hydross (T=100, the
+same shape — too short to fit a second use of anything) rendered `Zerk → cluster → CS-IV`. The reason is
+**plateau path-dependence, and it is a real class of bug, not an aesthetic quibble**:
+- On a fight where every buff window lies wholly inside the fight, does not clip, and gates nothing else,
+  the objective is **exactly flat** over permutations of the presses within the haste window — the two
+  Hydross layouts score `196077.764863` to the last bit. The optimizer is maximizing a function that
+  genuinely **does not care**, so it returns *whichever point the search last touched*.
+- Which pass last touched it varies with T, the pin second, and the multi-start seeds — so two fights of
+  the same shape can exit from different passes and land on different rotations of the same plateau.
+  The historic legibility stack existed but ran **early**, so every pass added later (press-snap
+  slippage, external lattice snap, CS-chain family, drop-one escape) could and did emit after it and
+  undo it. **Nothing preferred Zerk-first on Hydross** — it was simply where that fight's search
+  happened to stop.
+- The general lesson (worth keeping beyond this fix): *a maximizer alone does not define an output on a
+  plateau.* Wherever the objective is flat, the answer is decided by search history unless something
+  **downstream of every pass** picks a canonical representative. That is exactly what
+  `canonicalWindowOrder` is — and why it had to run last (see "Placement was the whole difficulty").
+
+**Post-fix cross-fight consistency check (all 25 goldens, lust-window act order).** Every short fight
+now renders the same shape — `LUST → IV/Icon/SCB/AP` (or the cluster just ahead of a later Lust pin),
+with Zerk as a lone filler ~20s later and CS-IV after it. The four plans that still show Zerk *inside*
+the cluster (`3:20 lust 0:05` ±drums/PI, `Al'ar`) are **not** the same shape: they are long enough for a
+second full burst window, so Zerk is co-pressed into burst #1 by design rather than held as a filler.
+Consistent, and consistently *explainable* — which was the ask.
+
 #### 5.11 FIX (landed) — `canonicalWindowOrder`, a resolve-time exact-tie canonicalizer
 Two changes, both gated to **exact ties or strict gains** (a golden may move only if the effective-AB
 count does not decrease):

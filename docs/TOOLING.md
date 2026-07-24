@@ -207,10 +207,59 @@ intermission-exit or AoE phase).
 
 ## Statistical protocol (read this — the old "seeds 11/19" habit was wrong)
 
+### What the seed actually drives — the RNG-consumer inventory (read before trusting a paired A/B)
+The long-standing working belief was "the seed just moves crit and SP-proc rolls." **That is wrong, and
+the error matters** — it is why CRN pairing is fragile and why count-changing A/Bs desync. Enumerated
+from source (`tbc-new` @ `ade9f39`; every line re-verified before being written here):
+
+- **One shared stream, not per-callsite streams.** `Simulation.RandomFloat(label)` returns
+  `sim.rand` — the `label` argument only splits into per-callsite streams **when `sim.isTest`**
+  (`sim/core/sim.go:230-246`). In production every consumer draws from a single interleaved SplitMix64
+  (`sim/core/rand.go:36-73`). **Consequence: adding or removing ANY RNG consumer reshuffles every
+  downstream draw** — that is the mechanism behind the count-preserving rule below, and it is much
+  broader than "crit rolls move."
+- **Per single-target AB cast the stream is consumed in this order:** ① **base-damage roll** — AB damage
+  IS rolled, `CalcAndRollDamageRange(sim, 668, 772)` (`sim/mage/arcane_blast.go:36`); ② **partial
+  resist** (`spell_resistances.go:38`) — drawn *even on a miss*; ③ **hit roll**
+  (`spell_result.go:260`) — always; ④ **crit roll** (`spell_result.go:273`) — only if it landed;
+  ⑤ **Arcane Concentration** (`mage/talents.go:170`) — 0.02×rank per landed hit; ⑥ any proc trigger not
+  blocked by an ICD (`aura_helpers.go:128/176/203`). So **five to six draws per cast**, of which crit is
+  one.
+- **The hit cap does not remove the miss.** `SpellChanceToMiss` floors at `math.Max(0.01, 1-hitChance)`
+  (`spell_result.go:257`) — a hard **1% miss floor** no amount of hit rating clears, and the roll is
+  consumed every cast regardless.
+- **Partial resists are live** against the default level-73 target (`levelBasedResist` = 0.02×3 = 0.06 →
+  ~13.7% of casts eat a 25/50/75% partial). AB/AE are neither binary nor resist-ignoring.
+- **Fight duration is itself a draw.** `sim.Duration += RandomFloat("sim duration")·2V − V`
+  (`sim/core/sim.go:405-409`), default `durationVariation = 5` in the UI (`ui/core/encounter.ts:14,176`)
+  — often the single largest variance source in a DPS number. `--var` sets `V`; **our protocol pins it to
+  0.5** so the sim answers the model's question (below).
+- **No player-side reaction jitter.** The `randomizeReactionTime` branch (`sim/core/gcd.go:90-92`) is
+  dead — all six callers pass `false`; the *boss* does get timing jitter (`target.go:249`,
+  `attack.go:981`), which perturbs the shared stream. **APL evaluation consumes zero RNG** (no draws in
+  `apl*.go` / `cast.go` / `spell_queueing.go`) — a scheduled press never "rolls" to fire.
+- **AoE:** Arcane Explosion rolls its base damage **once per cast** (377–407) and reuses it for all
+  targets (`arcane_explosion.go:32`, `CalcAndDealAoeDamage`); only hit/crit/resist are per-target.
+  Arcane Missiles is flat 265/tick, no damage roll.
+- **Seeding is a full reset, per iteration.** `reseedRands(i)` sets `rseed = RandomSeed + i` and
+  re-seeds SplitMix state outright (`sim.go:248-251`, `rand.go:58-61`) — iteration *i* is entirely
+  determined by its seed and nothing carries across iterations. ⚠ With `RandomSeed == 0` iteration 0
+  falls back to `time.Now().UnixNano()` → **never run with seed 0**.
+- **Concurrency is safe by construction:** `sim_concurrent.go:39-47` offsets each split's starting seed
+  so the *multiset* of per-iteration seeds is thread-count independent. (Float summation order can still
+  differ; the upstream determinism test is disabled — `_sim_concurrent_test.go` — so exact cross-thread
+  float equality is unverified. Treat last-digit disagreement across `-j` as expected, not a bug.)
+
+**So: the seed drives base damage, partial resist, the floored 1% miss, crit, Clearcasting, proc rolls,
+boss timing AND the fight length — all interleaved on one stream.** Two consequences we already rely on:
+CRN pairing is *powerful* (it cancels all of that at once) and *brittle* (any press-count change desyncs
+all of it, not just the crit sequence).
+
 - **Determinism / CRN:** per-iteration RNG seed = `baseSeed + iterationIndex` (`sim_concurrent.go`;
   concurrency is split so it never affects results). Same seed+plan ⇒ byte-identical. For an **A/B
   comparison use the SAME seed** — A and B then share the per-iteration RNG and the paired diff cancels
-  crit/proc noise (this is why a real +0.6 is resolvable under ~100-DPS per-run stdev).
+  *the whole inventory above* (damage roll, resist, miss, crit, procs, and the drawn fight length), not
+  just crit noise — which is why a real +0.6 DPS is resolvable under ~100-DPS per-run stdev.
 - **Nearby seeds are NOT independent replicates.** Because seeds are contiguous, `--seed 11` and
   `--seed 19` at 150k iters share ~all iterations (they differ by 8 of 150000). Verified: seed 11 ==
   seed 19 to the decimal incl. max; far seeds (100000, 10⁶) give genuinely different draws. **For an
@@ -252,6 +301,26 @@ intermission-exit or AoE phase).
   prices only a half-cast of kill variance BY DESIGN (RULES §8), so when gating a model preference,
   either use a fight long enough that no compared window sits in the variance zone, or expect the sim
   to exceed the model by the clip premium.
+
+### Can a sim number be trusted? — the per-question ledger
+"Is the sim trustworthy" has no single answer; it depends on which question you asked it. Current state
+(all four rows below were **not** true earlier in the project — each was fixed, and the fix is named):
+
+| question you ask the sim | trustworthy? | why / what fixed it |
+|---|---|---|
+| **absolute DPS of one plan** | ✅ ~0.4% abs vs `wowsimcli` | the trust-anchor procedure ("Trust anchor", above) — re-certify per fresh session |
+| **A vs B, same press count** | ✅ sub-DPS resolvable | CRN pairing cancels the whole RNG inventory; use one seed, `--var 0.5` |
+| **A vs B, different press count** | ⚠️ noise-limited | the streams desync (shared-stream rule) — needs far-separated seeds + large N, never a nearby-seed pair |
+| **an intermission / wall-bounded plan** | ✅ *since* the `APLActionSchedule` fix | the schedule silently DROPPED on-cooldown presses (next section) — every pre-patch intermission number was garbage. Requires the patched runner (`RUNNER PROVENANCE`) **and** wall-jitter v2, because fixed walls phase-lock cast parity |
+| **an AoE phase** | ✅ *since* Phase 5 | `--targets N` + `_aoe` emission in `genapl` (AE was previously simmed as downtime). AE constants verified exact vs `arcane_explosion.go`; KT's 2.68% AoE artifact went to 0.39% (ordinary) once AoE was actually valued |
+
+**Iteration count is NOT the lever people reach for.** 10–60k is plenty (SEM ≈ 0.3 DPS at 150k); the mean
+is converged to ~0.02% by 10k. The campaign uses `ITER=6000` per cell *because* the residual disagreements
+we chase are **deterministic structure, not sampling noise** — cast-boundary parity, wall phase, kill
+quantization. Those do not shrink with N at any rate; they are addressed by **metric design** (var0.5,
+wall-jitter v2) or by accepting them as measurement structure. **If a disagreement survives 10k, adding a
+zero to the iterations is wasted CPU — audit the setup instead** (the four cautionary tales: the Vashj
+drop bug, the stale unpatched runner, the AP-195 quirk, the prepull cast-loss).
 
 ## ★ KNOWN HARNESS BUG — `APLActionSchedule` silently DROPS an on-cooldown press
 

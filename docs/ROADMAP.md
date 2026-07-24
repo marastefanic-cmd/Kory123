@@ -598,6 +598,16 @@ exact-match suite; new fights are added by editing that one array.
 
 ## Open questions / known limitations
 
+- **OPEN UX CALL — the fire-time display reads as a deliberate delay.** Plan rows print the *fire* time
+  (the cast boundary where the buff starts paying), not the press *intent* — a user-directed convention
+  (`index.html` ~3599). It misled its own author: on `2:00 lust 0:05` the whole cluster has **intent
+  5.00, identical to the Lust pin**, but fires at **6.50** (the AB that began at 4.67 ends there; a buff
+  pressed mid-cast cannot affect the cast in flight), so the plan prints `0:05 Bloodlust / 0:06 Icy
+  Veins…` and reads as "wait a second after Lust — presumably to build stacks." It is not: it is one
+  macro at 0:05. **Options:** (a) leave as-is; (b) append the intent when it differs — the row already
+  has a free tag slot (`(${tg})`), e.g. `0:06  Icy Veins  (press 0:05, with Bloodlust)`; (c) print
+  intents and move fire times to the tag. Needs a user call — the current convention was explicitly
+  chosen, so do not flip it unilaterally.
 - **Model mis-valuation (documented, not patched):** the scorer ranks the *partial* pack
   (IV-in-lust-alone) above "IV out" (+935 model) though the sim calls it a −0.7 wash — it over-credits
   the damage flux through the floored IV window. It does NOT block the full pack (model ranks full >
