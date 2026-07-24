@@ -20,7 +20,7 @@ const { chromium } = createRequire(path.join(REPO, 'tests', 'package.json'))('pl
 const args = process.argv.slice(2);
 const jsonIdx = args.indexOf('--json');
 const jsonOut = jsonIdx >= 0 ? args[jsonIdx + 1] : null;
-const dir = args.filter((a, i) => a !== '--json' && i !== jsonIdx + 1)[0] || path.join(REPO, 'tools/xval-results');
+const dir = args.filter((a, i) => a !== '--json' && (jsonIdx < 0 || i !== jsonIdx + 1))[0] || path.join(REPO, 'tools/xval-results');
 
 // ── parse every results table (matrix + specs + metadata) ──
 const tables = [];
