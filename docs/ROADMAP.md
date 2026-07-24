@@ -4,8 +4,14 @@
 
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
-2. **No plan in flight — Phase 5 landed** (`docs/PLAN.md` deleted; see "Phase 5 — AoE phases cracked"
-   below for the verdict, thresholds, and gates; Phase 4's record is below it). Earlier history: Phase 3
+2. **Plan in flight: `docs/PHASE7.md` — FIX the cross-val deficits so the acceptance test passes.**
+   Phase 6 (the haste-adaptation cross-val, `docs/PHASE6.md`) is data-complete: 36 tables, monoDip=0
+   everywhere (measurement correct), every non-KT deficit sub-1%, but a set of **length-robust diagonal
+   deficits (0.05–0.38%)** — one per kit, always "a neighbor-haste plan out-sims the native" — keeps the
+   standing acceptance test (`docs/ACCEPTANCE.md`) OPEN. Phase 7 diagnoses each as SEARCH-MISS vs
+   SCORER-GAP and fixes the root cause. History up to here: Phase 5 landed (`docs/PLAN.md` deleted; see
+   "Phase 5 — AoE phases cracked" below for the verdict, thresholds, and gates; Phase 4's record is
+   below it). Earlier history: Phase 3
    = raid-buff/proc tightening + **deterministic mana & haste helpers**, all shipped without touching the
    scorer/optimizer core (exact-match **25/25**): only-raid-pinnable cooldowns, Drums/PI verified +
    sim-source-anchored, Ashtongue → free-leeway "press anywhere" zones, per-window target-mana chip, the

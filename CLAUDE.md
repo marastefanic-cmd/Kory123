@@ -132,7 +132,10 @@ Treat maintaining them as part of the work, not an afterthought:
   believed→disproved corrections ledger. Read to avoid re-litigating settled mistakes.
 - `docs/archive/` — recovered per-phase plan docs (Phases 1–5 = the deleted `PLAN.md` versions),
   chronological with a README index. Historical snapshots; append when a phase closes.
-- `docs/PHASE6.md` — the current in-flight phase (haste-adaptation cross-val). Archive it when it closes.
+- `docs/PHASE6.md` — the haste-adaptation cross-val RUN (data gathered, 36-table ledger; measurement
+  fixed). Archive when Phase 7 closes it out.
+- `docs/PHASE7.md` — **the current in-flight plan: FIX the cross-val deficits so the acceptance test
+  passes.** Diagnose each length-robust deficit as SEARCH-MISS vs SCORER-GAP, then fix at the root.
 - `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
   into ROADMAP). **No plan in flight. Phase 5 (AoE phases) is COMPLETE** — verdict: an AoE phase is a
