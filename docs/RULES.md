@@ -135,13 +135,26 @@ are slip-invariant" holds because over a uniform press phase `E[casts in window]
 a human**: TBC on-use trinkets and Arcane Power are off the GCD and can be pressed mid-cast, so a real mage
 draws from the whole phase distribution. It is **false for the sim**, which can only press at a cast
 boundary and therefore always realises φ=0 — the *minimum* of that distribution, covering exactly
-`floor(D/Δ)` casts (**THE FLOOR LAW**, sim-verified 10/10 with a mechanism proof; PHASE8 §5, TOOLING ★).
+`floor(D_eff/Δ_inside)` casts (**THE FLOOR LAW**; PHASE8 §5 established it, §11/§13 pre-registered and
+confirmed it to one rating point with a mechanism proof; TOOLING ★).
 So the model is written for the player and the sim samples one corner of the player's options: **expect the
 model to read `frac(D/Δ) × premium` high against any sim A/B of a damage/SP window** (≈+0.036pp measured on
-a clean single-buff marginal) before calling that gap a model bug. **Haste buffs are exempt** — their value
-is time-compression that rolls to the fight end rather than expiring with the window. Charging the back-edge
-fraction is a live candidate refinement, **not implemented** (it moves the B2 deficit the wrong way —
-PHASE8 §8 — so it would need its own physics justification and sim gate).
+a clean single-buff marginal) before calling that gap a model bug.
+
+**The law's general form (PHASE8 §13 — this CORRECTS the earlier "haste buffs are exempt" wording):**
+`Δ_inside` is the cast interval **in force inside the window** — for a value buff `Δ_inside = Δ`, for a
+**haste** buff `Δ_inside = Δ_buffed` — and `D_eff` is the window's true aura duration (SCB's is `15.010 s`,
+not `15.000`: it is a *proc* off the Mana Emerald, and its aura lands 10 ms after the cast boundary, which
+is enough to move its step a rating point off AP's). **Haste buffs are NOT exempt.** That belief came from
+only ever measuring them at `--var 0`, where the **fight-end quantizer exactly compensates the window
+floor** — the window loses a fractional cast and hands the time back at the kill, where a fixed `T` re-floors
+it. Jitter the fight (`--var 3.0` > one cast interval) and the end-quantizer phase-averages away, leaving the
+window floor exposed: IV steps at `R≈98.6` and `R≈196.9`, Zerk at `R≈143.4`, while MQG — same `D=20`, smaller
+bonus, no integer crossed — correctly does not. **Practical consequence for the harness:** a haste-window A/B
+is only floor-free at `var=0`, and only because two errors cancel there; never read a `var=0` haste marginal
+as evidence about window coverage. Charging the back-edge fraction is a live candidate refinement,
+**not implemented** (it moves the B2 deficit the wrong way — PHASE8 §8 — so it would need its own physics
+justification and sim gate).
 
 **The IV@0 "ramp compression" bullet above is TEMPERED by (2):** the compression is real (ramp casts do
 run faster — sim-verified cast lengths), but pressing IV earlier re-phases the post-ramp lattice, and what

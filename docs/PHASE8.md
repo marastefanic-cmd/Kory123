@@ -264,7 +264,7 @@ exactly the residual's shape. It is an artifact of how each side counts:
   §8: it moves B2 the wrong way, so it must be justified on its own physics, not as a B2 fix. High-risk,
   can move the 25 goldens; one hypothesis at a time, sim-gated like the Phase-7 §3b terms.
 
-## §11 — ★ ROUND 3'S PRE-REGISTERED TEST (prediction recorded; sim NOT yet run)
+## §11 — ★ ROUND 3'S PRE-REGISTERED TEST (prediction recorded before the sim ran; **verdict in §13**)
 
 Round 2 established the floor law by *measuring* ten hastes and finding the floor. That is strong, but it
 is still a fit: the law was read off the same data it explains. §11 removes that objection. The law
@@ -322,12 +322,13 @@ therefore run at **both** var 0 and var 3.0, so the difference is measured rathe
 observed brackets, with no free parameter. §11 tightens those brackets from 4 and 40 rating points to
 **one**.
 
-**Rig (built, dry-run verified, not yet fired):** `scratchpad/p8/r3model.mjs` computes and prints the
+**Rig (built, fired, analysed — see §13):** `scratchpad/p8/r3model.mjs` computes and prints the
 prediction above (model leg only — run it again to reproduce the table); `scratchpad/p8/r3sweep.sh` runs
-the sim leg — seven single-buff APLs pressed at t=30 in a T=100 cold-open infinite-mana fight, over the
+the sim leg — nine single-buff legs pressed at t=30 in a T=100 cold-open infinite-mana fight, over the
 grid `0 40 70 78 79 120 150 157 158 197 198 240 300`, with the SCB leg on a 30720-equipped export
-(`tools/xval.mjs:59` — the Mana Emerald only grants +225 SP while the braid is worn). **Blocked on CPU
-only:** it must not overlap an acceptance round.
+(`tools/xval.mjs:59` — the Mana Emerald only grants +225 SP while the braid is worn). Raw output at
+`scratchpad/p8/r3/r3sweep.txt`. It was held back on a *believed* CPU conflict with the acceptance round;
+timing one runner call at **0.716 s** (⇒ ~4 min for the whole sweep) dissolved that — measure, don't assume.
 
 ## §12 — ★ THE FLOOR LAW *IS* A B2 MECHANISM — right direction, ~9.5% of the magnitude
 §8 falsified the **residual** as a B2 mechanism. It never asked what the **floor correction itself** does to
@@ -373,6 +374,114 @@ risk.
 **What this does and does not overturn.** §8 stands exactly as written — the *residual*, post-correction,
 still has the wrong sign, and "the model misprices SP under haste" is still retired. §12 adds that the
 *correction it was measured on top of* is itself a small pro-h40 term. Both are real; neither is B2.
+
+## §13 — ★★★ ROUND 3'S VERDICT: the floor law SURVIVES, in a corrected and **more general** form
+
+The sim leg of §11 is fired and analysed. Three of the four pre-registered falsifiers behaved as the law
+required; the fourth **fired**, and chasing it down produced a *stronger* law and a live B2 lead. Nothing
+here changes `index.html` — these are facts about the harness and about what the count should *expect* the
+sim to say, not about the plan the tool emits.
+
+### 13.1 The corrected law
+
+> **A buff window of duration `D` covers exactly `floor(D_eff / Δ_inside)` casts**, where `Δ_inside` is the
+> cast interval **in force inside the window** and `D_eff` is the window's true aura duration.
+> For a **value** buff `Δ_inside = Δ` (the buff does not move the cast boundaries).
+> For a **haste** buff `Δ_inside = Δ_buffed` (it does).
+
+Round 2's wording — "value buffs floor, **haste buffs are exempt**" — is **falsified**. The exemption was an
+artifact of having only ever measured haste buffs at `--var 0`; see §13.4. The `Δ_inside` form subsumes
+round 2 exactly (for value buffs it *is* round 2) and predicts three further step locations that round 2
+could not, all of which were then observed out of sample.
+
+Closed form, unchanged: `Δ(R) = 1.5/(1+R/1577)`, step to floor `n` at `R = 1577·(1.5n/D − 1)`.
+
+### 13.2 Scorecard against the four pre-registered falsifiers
+
+| # | pre-registered falsifier | verdict |
+|---|---|---|
+| 1 | *AP fails to jump at 157→158, or jumps elsewhere* | **SURVIVES.** AP flat at 155/156/157 (`+3.5224 / +3.5224 / +3.5226`), jumps to `+3.8220` at 158. Predicted `+0.345 pp`, observed `+0.2994 pp`. |
+| 2 | *AP and SCB (same D=15, different kind) do not jump together* | **FIRES — then resolved by measurement.** SCB steps at 156→157, AP at 157→158. Cause in §13.3. The clause is dead *as literally worded*; the law survives in the `D_eff` form. |
+| 3 | *Icon jumps at 157→158, or fails to jump at 78→79 and 197→198* | **SURVIVES on physics.** Icon jumps at 78→79 (`+0.0915` vs predicted `+0.091`), does **not** jump at 157→158, and jumps at 196→197 (`+0.0853` vs predicted `+0.085`). The `197|198` bracket was simply the wrong *pair* — ms quantization puts the step at ≈196.9, so both grid points sit post-step. A refinement sweep at 194–198 found it. |
+| 4 | *any of IV/MQG/Zerk shows a step* | **FIRES.** IV shows a deterministic `+0.23 pp` step at exactly 196→197 (at `--var 3.0`), precisely where `20000/Δ_IV` crosses 18 (`17.9902 → 18.0058`). MQG, same `D=20` but a smaller haste bonus, correctly does **not** (`17.7799 → 17.7885`, no integer crossed). |
+
+Falsifier 4 firing *while MQG stayed flat at the same D* is what makes it a law rather than noise: the law
+predicted **which** of two same-duration haste buffs would step, and was right.
+
+### 13.3 ★ The 10 ms aura tell — why SCB steps one rating point before AP
+
+Falsifier 2 was resolved by reading the combat log (`SIMLOG=1`), not by fitting. At R=157 every on-use
+gains its aura at exactly the cast boundary `[30.46]` — Icon (`ItemID: 29370`), AP (`SpellID: 12042`),
+IV (`12472`), MQG (`ItemID: 19339`), Zerk (`20554 Tag 1`). **SCB (`SpellID: 37445`) alone gains at
+`[30.47]`** — one 10 ms tick later, because it is a **proc off the Mana Emerald use**, not a direct
+on-use aura. So `D_eff(SCB) = 15.010 s` against `15.000 s` for AP, and at R=157:
+
+```
+15000/Δ = 10.9968  → floor 10        15010/Δ = 11.0041  → floor 11
+```
+
+**The 10 ms *is* the step.** Predicted SCB step `156.6` ⇒ bracket `(156, 157]`; observed
+`156=+1.3446 → 157=+1.4913`. Exact hit. Two hypotheses were killed first and are worth recording: *different
+gear ⇒ different base haste* (dead — the two exports' base staircases are identical in shape) and *the Mana
+Emerald consumes a GCD ⇒ a **shorter** effective window* (dead — wrong sign).
+
+### 13.4 ★ The `var=0` / `var>0` dichotomy — and the B2 lead
+
+Confirmed four times: **value** buffs step identically at `var=0` and `var=3.0`; **haste** buffs step
+**only** at `var>0` and are flat at `var=0`.
+
+```
+Icon var=0 : 194=+1.209 195=+1.209 196=+1.209 197=+1.294 198=+1.294
+Icon var=3.0 194=+1.212 195=+1.212 196=+1.211 197=+1.295 198=+1.295
+IV   var=0 : 194=+4.168 195=+4.168 196=+4.168 197=+4.167 198=+4.167   ← flat through its own step
+IV   var=3.0 194=+4.178 195=+4.184 196=+4.169 197=+4.405 198=+4.405   ← steps
+MQG  var=3.0 194=+3.959 195=+3.960 196=+3.949 197=+3.951 198=+3.950   ← no integer crossed, no step
+```
+
+The reading: **at `var=0` the fight-end quantizer exactly compensates the window floor.** A haste window
+that loses a fractional cast inside itself hands that time back at the kill, where a fixed `T` re-floors it;
+the two floors cancel. Jitter the fight length past one cast interval and the end-quantizer phase-averages
+away, leaving the window floor exposed. Round 2 measured haste buffs only at `var=0` and therefore saw the
+sum, not the terms.
+
+**This is a haste × kill-boundary interaction — i.e. exactly the shape B2 is defined to be** ("the emergent
+joint haste×damage×kill interaction that every isolated decomposition reports CLEAN"). It is the first
+mechanism found that is *invisible to every single-axis decomposition by construction*: isolate haste at
+fixed `T` and the two floors cancel; isolate the kill boundary without a haste window and there is nothing
+to cancel against. **Lead status: live, highest-priority.** Do not act on it in the engine yet — it needs a
+magnitude, measured the way §12 measured the value-window loss.
+
+### 13.5 Out-of-sample confirmations (locations not in the round-3 grid)
+
+| buff | predicted step | observed | |
+|---|---|---|---|
+| IV (2nd step) | `R = 98.6` | `(98, 99]` — var=3.0: `98=+4.119 → 99=+4.353` | exact hit |
+| Zerk | `R = 143.4` | `(144, 145]` — var=3.0: `144=+1.034 → 145=+1.168` | **one rating point late** |
+
+Zerk's miss is ≈0.1% in the assumed `×1.10` multiplier or a sub-ms aura detail of the same family as §13.3
+— it is a constant, not the law's *form*. Left open; it does not affect anything downstream.
+
+### 13.6 The measured-Δ table (the instrument)
+
+The log states cast time outright — `Casting {SpellID: 30451} (… Cast Time = 2.274s, GCD = 1.364s …)` —
+which is a far better instrument than differencing timestamps. Two byproducts:
+
+- **AB's 3-stack cast time *is* the GCD.** AB ramps `2.274 → 1.970 → … → 1.364 s`, and at 3 stacks cast
+  time == GCD. This is *why* `Δ(0) = 1.5 s` exactly: it is AB at 3 stacks, not gear haste.
+- **wowsims quantizes cast time to whole milliseconds** — independently evidenced by IV ≡ MQG byte-identical
+  DPS at several hastes and by R=197 ≡ R=198 across all nine legs. This is what defeated the `197|198`
+  bracket and is now a standing caution: **a one-rating-point bracket is only as sharp as the ms grid.**
+
+```
+R= 78: Δ=1429.062 ms  20000/Δ=13.9952   |  R= 79: Δ=1427.969 ms  20000/Δ=14.0059
+R=157: Δ=1364.030 ms  15000/Δ=10.9968   |  R=158: Δ=1362.941 ms  15000/Δ=11.0056
+R=196: Δ=1334.058 ms  20000/Δ=14.9919   |  R=197: Δ=1332.899 ms  20000/Δ=15.0049
+```
+
+Also settled in passing: **`--seed` IS wired** (seeds 99/12345 give 2461.3/2461.7 against 2461.2 for
+11/12/13); the apparent seed-invariance in earlier rounds was one-decimal DPS output granularity, not a
+dead flag. The IV `var=3.0` jump was checked against that: identical across four seeds and still `+0.228 pp`
+at 200k iterations.
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
