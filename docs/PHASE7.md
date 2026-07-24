@@ -283,3 +283,21 @@ cluster-on-Lust@165). NOT a broken invariant: lone-MQG early-vs-late on a plain 
 BYTE-IDENTICAL (position-independence exact); the preference is contextual (double-IV opener /
 Icon / Lust coupling). Candidate suspects for next round: the §5.3 recalibration's interaction with
 self-press haste near the opener, or a §16-band coupling the scorer under-weights.
+
+### 5.9 Loop engineering (user-directed) — the standing fix→verify loop for the next rounds
+User rulings folded into ACCEPTANCE: **monoDip stays forever** (free — computed from the matrix the
+campaign already sims); **no accepted tolerance floor** — the guarantee moves to construction:
+- **B1 (model level, every commit, no sim):** cross-haste pooling makes native ≥ every borrowed
+  candidate BY CONSTRUCTION; `diagnose-deficit`/`xval-model` verify in minutes. Pooling is therefore
+  the NEXT ROUND'S CENTERPIECE (measured: closes 19/19 probed misses; cost 2–3× solve — engineer it
+  on the worker pool / reduced-depth neighbor solves).
+- **B2 (sim level):** every borrowed win = mandatory investigation → scorer bug (minimal-pair method)
+  or demonstrated-then-fixed measurement structure. Distribution always published.
+- **Loop cadence:** inner (per fix, ~30–60 min): minimal-pair gate → exact-match → diagnose-deficit
+  margins. Middle (per batch): affected-kit `xval-kit.sh` + `xval-model` fast classes. Outer (per
+  phase): the full campaign once. Retired as information-free: per-fix full campaigns, zero-bar
+  DEFICIT *counts* (report distributions), plateau-interior column labels, and any pre-v2-protocol
+  numbers.
+Current round-2 open items for that loop: the 5 var-robust ≥0.3% columns (§5.8 — the contextual
+pull-anchored-haste family), the 14 sub-slack model wobbles (pooling closes), boss tables under
+jitter-v2 (running).

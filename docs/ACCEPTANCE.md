@@ -34,13 +34,26 @@ For a fight (random by class, or a boss preset) and a trinket kit:
   different partial casts — is itself something the fix phase must design away, e.g. a length-independent
   metric or a by-construction guarantee, so the invariant can hold cleanly. That's how it's *achievable*.)
 
-## The PASS criterion
+## The PASS criterion *(amended Phase 7, user-directed: the guarantee is BY CONSTRUCTION, not a tolerance)*
 The model **passes** when, across all six trinket kits × the five fight-length classes × the boss shapes:
-1. `monoDip = 0.00%` on **every** table (invariant A, no exceptions), AND
-2. **Zero diagonal deficits** — the native plan wins every column of every table (invariant B, no
-   exceptions), on the same footing as (1). KT counts once genapl emits Arcane-Explosion so its AoE is
-   measured rather than dropped. No deficit is excused as "quantization" or "too small" — the fix phase's
-   job is to make invariant B hold everywhere, provably.
+1. `monoDip = 0.00%` on **every** table (invariant A, no exceptions — kept forever: it is computed from
+   the same matrix the campaign already sims, so the check is FREE, and it only speaks when something
+   breaks), AND
+2. **Invariant B in two enforced layers:**
+   - **(B1) MODEL-level dominance, BY CONSTRUCTION — zero exceptions, deterministic.** The plan the tool
+     emits at haste H must model-score ≥ every plan the tool emits at any other haste of the kit's set,
+     re-scored at H (`tools/diagnose-deficit.mjs` / `tools/xval-model.mjs` verify this with NO sim). The
+     mechanism is cross-haste candidate pooling in the search: the native search *considers* every
+     neighbor champion, so a borrowed plan can at worst BE the native plan. A B1 violation is always a
+     search bug.
+   - **(B2) SIM-level: every borrowed-plan win is a MANDATORY investigation, never tolerated noise.**
+     With B1 enforced, a sim-side violation can only be (a) a scorer mis-ranking — root-cause it with the
+     minimal-pair method and fix the term (the Al'ar/Vashj digs are the template), or (b) measurement
+     structure — which must be DEMONSTRATED (var-width sweep, jitter robustness) and then fixed in the
+     harness (as var0.5 and wall-jitter-v2 were), not excused. The full deficit-column DISTRIBUTION
+     (worst / mean / ≥0.1% / ≥0.3% buckets) is always published so nothing hides behind a label.
+   KT counts with its AoE measured (genapl `_aoe`). There is no accepted tolerance band: the loop
+   terminates by exhausting explanations, not by declaring a floor.
 
 ## How to run it
 ```
