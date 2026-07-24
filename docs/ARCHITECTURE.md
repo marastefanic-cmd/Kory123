@@ -48,14 +48,19 @@ bit-equal to recomputation; collect=true always computes fresh.
   intermissions fast-forward (`t = seg.end`). **Ramp-aware (RULES §3):** stacks open at 0 (no prestack)
   and re-ramp after every ≥8s AB gap (`lastCastStart` + `DEBUFF_DUR`; AE casts neither build nor
   refresh); ramp casts run at true lengths and are recorded to `boardRamp`. **Press-snap:** an
-  activation landing mid-ramp-cast fires at that cast's real end (`prevCastRamp`/`prevCastEnd`);
-  steady-state presses keep the phase-averaged intent time. Externals (BL/PI/Drums) always land at
-  intent (someone else presses them).
+  activation landing mid-ramp-cast fires at that cast's real end (`prevCastRamp`/`prevCastEnd`).
+  **Press-execution scoring (RULES §3b, Phase 7):** every activation carries a `scoreStart` alongside
+  its fire/display time — a mid-cast steady press slips `+½·prevInterval` (expected wait to the next
+  boundary; interior windows invariant, edge-flush windows charged), and an external (BL/PI/Drums —
+  aura lands at the call, someone else presses) snaps its scored window to the next board-lattice
+  boundary (the in-flight cast keeps its speed). `scanAt`/`bpS`/`rampCastDmg` read `scoreStart`;
+  legality/cadence/display keep the fire time.
 - **Damage = cast-rate integral + discrete ramp casts** (~853–934): `rateAt(t)` = `dmg2 /
   intervalAt(multDn2)` integrated over piecewise-constant breakpoints (buff-window edges, phase edges,
   T±KW, ramp-span edges) — but each `boardRamp` span is EXCLUDED from the integral and scored as its
-  discrete cast instead: damage sampled around the completion, jitter-smoothed ±½ GCD (`rampCastDmg`,
-  no knife-edges). `scanAt` (~817) is the shared deterministic buff-state scan; `intervalAt` applies
+  discrete cast instead: `rampCastDmg(ts, tc)` — buff/SP **state** jitter-averaged ±½ GCD around the
+  cast **START** `ts` (snapshot rule, RULES §3b.3 — a window firing at the completion never touches the
+  in-flight cast), damage **time** (kill taper, wall/AoE gating) at the completion `tc` (Phase 4's rule). `scanAt` (~817) is the shared deterministic buff-state scan; `intervalAt` applies
   the **GCD floor** `max(cast/m, 1.0)` statelessly. `total` counts ≤ T; `robust` tapers the last
   half-cast — the optimizer maximizes `robust`.
 - AoE segments: `dmg` uses AE base × `targets` × `aoeCritAmp`, interval = GCD only.
@@ -100,6 +105,14 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
 - **Groom loop** ×3 (~1208): Pass 1 haste-actives local search (±45, `nulled`/floored tie-break,
   ~1215–1280) · Pass 2 damage/SP cluster move (~1286–1401) · Pass 3 ±8 ensemble (~1406–1462) · macro
   snap · legibility merges (has a hard `nulled` veto ~1598) · downtime slide to `seg.end` (~1610).
+- **Drop-one-use escape** (after the fixpoint, before the CS gate — Phase 7): offers each single-use
+  drop per unfixed track, polishes (survivors re-align), keeps strict improvements, iterates to a
+  bounded fixpoint with a re-hop — the RULES §4 align-vs-twice *sacrifice* side (one AP aligned on the
+  cluster can beat two spread), unreachable by the count-preserving drop-and-relocate ladder.
+- **CS chain-geometry candidates** (inside the Cold-Snap gate — Phase 7): the end-chain offering is
+  generalized to the full slot family (CS compressing the pair at each slot j, at both the same count
+  and count+1, plus the kill-anchored end pair), and every chain candidate is **polished** (raw chains
+  lose without co-adapting the other tracks — probe-proven on the mqg+skull xl end-chain).
 - **Finishing passes:** wasted-haste relocation (evicts a marginal-≤`castVal*0.1` haste
   use — the "Berserking-in-Lust eviction") · **ramp-hold / "Let the stacks build"** — slides a
   damage/SP press stuck on the opener or a post-intermission-exit ramp out past the ramp on a model

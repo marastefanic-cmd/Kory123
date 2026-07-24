@@ -97,6 +97,40 @@ casts**, so it should sit on the fastest part of the window.
   vanishes to 0.00%. (AB damage is **stack-independent** — re-confirmed at source, `arcane_blast.go:55/58`
   — so this is pure cast-count, not a stack-damage effect.)
 
+### 3b. Press-execution physics in the SCORER *(Phase 7 — the cross-val's scorer-gap fixes, each sim-gated by a minimal pair)*
+
+Three terms landed together, all expressing one law: **a buff affects the cast STREAM only from a cast
+boundary, and the model must price that wherever it is not phase-averageable.**
+
+1. **Expected press-snap slippage** (`scoreStart = press + ½·local interval` for a mid-cast steady press).
+   Interior windows are slip-invariant (what the start loses the end regains — the phase-average argument,
+   still valid there); a window sequenced to end FLUSH against a hard edge (intermission wall, the kill)
+   has its slipped tail CLAMPED — a pure loss the intent-time scoring forgave. **Sim:** Al'ar minimal pair
+   — a stagger ending flush at the 3:28 wall model-TIED the packed layout yet simmed **−0.66% at every
+   kill-variance**; the term now charges it (model −975) and the optimizer rejects it. Ramp presses
+   (sparse boundaries, exact snap) and idle/gap presses slip 0. Displayed times unchanged (fire-time
+   convention) — pressing at the printed second fires at the same boundary.
+2. **Raid externals snap to the board lattice.** Bloodlust/PI/Drums *auras* land at the call second
+   (someone else presses), but the stream only accelerates from the **next cast boundary** — the in-flight
+   cast keeps its speed, and near the pull the lattice is deterministic (locked to the ramp), so the call's
+   phase is NOT averageable. **Sim (Void Reaver):** pressing IV 2s earlier compressed the ramp and
+   re-phased the lattice so a 1.248s cast ran 9.94→11.19 across the Lust@10 call — stranding 1.19s of Lust
+   the call-time model silently credited (−0.18% for the "better-compressed" plan). The scorer now starts
+   an external's scored window at the board-lattice boundary after the call.
+3. **A ramp cast's damage snapshots its buff state at cast START** (its damage *time* stays at the
+   completion — Phase 4's rule, unchanged). Sampling the state across the completion had credited every
+   press-snapped ramp-exit window with ~half of the cast it fired *after*; the sim (and game) snapshot at
+   cast start, so the in-flight cast never benefits. **Sim (isc+scb T=98 h140):** the model preferred the
+   co-pressed-at-ramp-exit cluster over cluster-on-Lust by +0.12 casts while the sim said **−0.40%**; with
+   the snapshot fix the model ranks it −0.11 — agreement.
+
+**The IV@0 "ramp compression" bullet above is TEMPERED by (2):** the compression is real (ramp casts do
+run faster — sim-verified cast lengths), but pressing IV earlier re-phases the post-ramp lattice, and what
+compression gains, a stranded near-pull raid call takes back. Decomposed at Al'ar (Lust@6): IV@0-vs-@5
+alone = **sim wash** (2106.9 vs 2107.1); at Void Reaver (Lust@10), chasing compression = **−0.18%**. The
+old "+0.16 eff casts for IV@0" figure was an engine head-to-head, never sim-gated — treat compression as
+a tie-breaker at best; the optimizer now weighs it against the call-phase cost on its own.
+
 ## 4. Buff-into-Lust packing — the usual method for maximizing effective ABs *(sim-verified this project)*
 
 Lust is nothing special in the model — it's just a **hardcoded stretch of extra haste** the fight hands

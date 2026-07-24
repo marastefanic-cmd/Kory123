@@ -49,10 +49,15 @@ bash tools/xval-campaign.sh                    # 6 kits × 5 fight-length classe
 bash tools/xval-boss.sh                         # Vashj / Al'ar / KT × representative kits
 node tools/xval-collect.mjs tools/xval-results  # → the CLEAN/DEFICIT ledger, with deficit-cell localization
 ```
-Locked protocol (do NOT deviate — each cost a real bug once; PHASE6 §1): **cold open (`_prestack:0`,
-never prepull) · ∞ mana (`--mana 100000000`) · var10 · paired seed 11 (CRN) · the AP-180 patched
-runner · breakpoint-straddle haste sets (`tools/xval-haste-sets.json`)**. Raw matrices are committed to
-`tools/xval-results/`; the collector output is the authoritative row-by-row ledger.
+Locked protocol (do NOT deviate — each cost a real bug once; PHASE6 §1, PHASE7 §5): **cold open
+(`_prestack:0`, never prepull) · ∞ mana (`--mana 100000000`) · `var 0.5` — the MODEL-MATCHED kill window
+(the scorer's `robust` is exactly expected damage under a uniform kill in T±0.5s; var10's ±10s hedging
+premium and var0's whole-cast parity are both off-question — TOOLING) · wall-jitter on boss tables
+(`WJITTER=2`: cells averaged over δ∈{−2..+2}s wall shifts with post-wall presses tracking — fixed-wall
+cast parity is measurement structure no phase-averaged model can rank) · AoE phases VALUED (genapl
+`_aoe` → Arcane Explosion + `--targets N`; the KT caveat is closed) · paired seed 11 (CRN) · the AP-180
+patched runner · breakpoint-straddle haste sets (`tools/xval-haste-sets.json`)**. Raw matrices are
+committed to `tools/xval-results/`; the collector output is the authoritative row-by-row ledger.
 
 ## Current status (2026-07-23, first full run — 36 tables) — NOT PASSING
 Data-gathering complete: 30 fight-class tables (6 kits × 5 classes) + 6 boss tables (Vashj/Al'ar/KT ×

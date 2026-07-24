@@ -215,11 +215,23 @@ intermission-exit or AoE phase).
   point on → A and B desync → the paired diff reverts to full noise, so nearby seeds "agree" on a
   desynced sample and mislead. Measure count-changing questions (e.g. 3-vs-4 icons) with
   **far-separated-seed replicates + large N**, never a single nearby-seed pair.
-- **`--var 0` vs `--var 10`:** `--var` randomizes ONLY the kill time; intermissions are fixed. var0 is
-  the lowest-noise fixed-length A/B; re-check under var10 to kill **fixed-length boundary artifacts** (a
-  real effect survives both; var10 is a genuinely different sample, so var0-and-var10 agreement is a
-  real cross-check — unlike seeds 11/19). var10 does **not** clear an intermission-boundary effect
-  (intermissions stay fixed).
+- **`--var 0` vs `--var 10` — and the MODEL-MATCHED read, `--var 0.5` (Phase 7).** `--var V` draws the
+  kill uniformly in [T−V, T+V]; intermissions stay fixed. The scorer's `robust` objective (KILL_WINDOW =
+  0.5s linear taper) is **exactly** expected damage under a uniform kill in [T−0.5, T+0.5] — so
+  **var 0.5 asks the sim the same question the model answers** and is the cross-val/acceptance metric.
+  var0 is the razor-edge whole-cast-parity trap (measured: the §16 h150 ramp-hug pair flips −0.08% →
+  +0.37% from var0 to var0.5 — the var0 read was a stranded whole cast, the var0.5 read matches the
+  model's +0.25 casts to 0.01%). var10 asks a *different* question — ±10s kill hedging the model
+  deliberately does not price (RULES §8) — and adds a late-window premium (measured on 15 cross-val
+  columns: var10 deltas shrink 2–4× at var0.5). Use var0 only for count-preserving CRN A/Bs where its
+  low noise helps, and confirm at var0.5; gate model preferences at var0.5. No kill-variance setting
+  clears an **intermission-wall** effect (walls stay fixed) — that needs wall-jitter, below.
+- **Wall-jitter (boss tables — `xval.mjs` `WJITTER`, default 2):** the cast-train phase at a fixed wall
+  clips a whole cast differently per plan (measured: two Al'ar plans 1s apart simmed 0.59% apart at
+  EVERY kill-variance), which no phase-averaged model can rank — it is measurement structure, not model
+  error, and real phase transitions are not metronomic anyway. Each boss cell is averaged over wall
+  shifts δ ∈ {−2..+2}s with the walls AND all post-first-wall presses sliding together (the raid tracks
+  the boss). Validated: the recalibrated tool's Al'ar pair sims identical under the jittered read.
 - **var10 penalizes LATE windows near the end — decide which question you're asking.** A buff window
   inside the last `var` seconds gets clipped on short draws, so var10's A/B adds a real "late-slot
   kill-variance premium" on top of the fixed-kill effect (measured: Zerk-in-Lust vs after = +0.6% at
