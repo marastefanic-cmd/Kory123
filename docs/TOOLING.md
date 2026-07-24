@@ -374,6 +374,35 @@ for AP cadence. Cautionary tale: before the patch, a layout whose 2nd AP sat exa
 was silently penalized ~1% in gates (the press dropped/slid) — it manufactured a fake "refutation" of a
 correct model preference (the haste-first opener) until the contamination was found.
 
+## ★ SHARED TRINKET LOCKOUT — the sim silently RETIMES an illegal schedule, it never rejects it
+
+**Same family as the bug above, and it invalidated a whole phase's headline decomposition.** Every
+on-use *offensive* trinket (Icon, MQG, Skull — `OFF_TRINKETS` in `index.html:618`) shares wowsims'
+spell-category-1141 timer via `GetOffensiveTrinketCD()`, and the lockout's length is **the trinket's own
+buff duration**: `sim/common/shared/shared_utils.go` → `SharedCD: {Timer: sharedTimer, Duration:
+config.Duration}` = **20s** for all three. So two on-use trinkets pressed <20s apart is an *illegal*
+schedule.
+
+**The trap: the sim does not error.** It queues the second press until the shared timer clears and fires
+it at the next cast boundary, then prints a perfectly plausible DPS number **for a plan you never tested**.
+Verified with `SIMLOG=1` on the exact spec `{"Icon":[4,182],"MQG":[9],…}`:
+
+```
+[ 5.18] Casting {ItemID: 29370}   <- Icon, requested @4  (+1.18s press lag)
+[25.18] Aura faded: {ItemID: 29370}
+[25.64] Casting {ItemID: 19339}   <- MQG, requested @9, ACTUALLY FIRED @25.64
+```
+
+Cautionary tale: PHASE8's canonical decomposition ("moving ONLY MQG@202→@9 captures the whole deficit,
+sim +0.461%") actually measured **MQG@25.64**, and the "emergent joint interaction" theory built on it
+had to be withdrawn (PHASE8 §1; DIARY). **Before trusting any hand-built trinket delta, log-verify the
+fire times** — `SIMLOG=1 … 2>&1 >/dev/null | grep -E "Casting \{ItemID: (19339|29370|32483)\}"` — and
+check every on-use pair is ≥20s apart. The optimizer's `repair()` enforces this, so plans that come out
+of the tool are legal; **hand-written probe specs are the exposure.**
+
+Press lag is real but modest and boundary-driven: a press fires at the next cast boundary, so it lands
+~0.05–0.1s late inside a fast hasted window and up to ~1.2s late during the cold opener ramp (2.5s casts).
+
 **★ RUNNER PROVENANCE — one true binary.** The canonical runner is built from the scratchpad `wowsims`
 clone (`ade9f39` + `apl-schedule-strict-ready.patch` + `ap-cd-at-cast.patch`):
 `go build -tags with_db -o runner-ap180 ./cmd/runner`. A stale pre-patch binary once sat at the
@@ -436,6 +465,19 @@ T5 mod). Consequences: on T5 gear the AoE placement thresholds shift ×1.2 (RULE
 flips, KT robust), and sim gates on THIS export under-credit AP marginals vs the model by ~1/6 (bake
 that into expectations before calling a gap a bug). Whether real 2.4.3 stacks these multiplicatively is
 an **open user-authority question** (ROADMAP) — like AP-195, don't assume the sim's pooling is the game.
+
+**⚠ The xval harness does not set `cfg.t5two` (found 07-24, fix at the START of the next round).**
+`tools/xval.mjs:111` and `tools/xval-model.mjs:53` build the model cfg without it, while the reference
+export wears T5 (items **30206/30196/30207** = Cowl/Robes/Leggings of Tirisfal). So the whole Phase 6/7/8
+campaign has scored a **no-T5 model against a T5-wearing sim**: AP's premium read as ×1.30 where the sim
+gives ×1.25, and the AB stream under-weighted ×1.2 relative to AE. **The engine is CORRECT** — `index.html`
+applies `t5add` to the AB damage sites (831, 899) and correctly *not* to the AE sites (829, 898); this is
+purely a harness omission. **Measured impact is small on AB-only fights** (every plan presses AP the same
+number of times, so it is nearly rank-preserving): the B2 target's delta moves −0.02% → −0.04%, an order
+of magnitude under the 0.3% deficit threshold, so gathered rounds stay meaningful. Do **not** flip it
+mid-round (it changes what a half-gathered acceptance run measures); add `t5two: true` to both cfg
+builders between rounds and re-baseline. Expect the largest effect on **AoE columns** (KT), where the
+AB-vs-AE ratio moves a full ×1.2 — the ×1.2 threshold shift already noted above.
 
 **AE fixed-length quantization (a var0 trap, worse than on AB streams).** A uniform instant stream fits
 a WHOLE number of GCDs into a fixed fight: at `--dur 60` var0, Zerk-in-IV vs Zerk-outside on the 6t
