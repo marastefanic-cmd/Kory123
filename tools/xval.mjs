@@ -28,7 +28,12 @@ const RUNNER = process.env.RUNNER;
 const EXPORT_BASE = process.env.EXPORT_BASE;
 if (!RUNNER || !EXPORT_BASE) { console.error('set RUNNER=/path/to/runner-ap180 EXPORT_BASE=/path/to/export.json'); process.exit(1); }
 const ITER = process.env.ITER || '10000';
-const VAR = process.env.VAR || '10';   // kill-time variation (s); the metric decision lives in ACCEPTANCE
+// Kill-time variation (s). 0.5 is the MODEL-MATCHED metric: the scorer's `robust` (KILL_WINDOW=0.5s
+// linear taper) is exactly expected damage under a uniform kill in [T−0.5, T+0.5]. var10 asks a
+// different question (±10s kill hedging the model deliberately does not price, RULES §8) and adds a
+// late-window premium; var0 is the razor-edge whole-cast parity trap. See ACCEPTANCE (PHASE7 metric
+// decision).
+const VAR = process.env.VAR || '0.5';
 
 
 // ── seeded draw (mulberry32) ──
@@ -109,7 +114,8 @@ const out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS }) 
     const best = await optimizeAsync(cfg, 14, () => {});
     res[h] = { spec: toSpec(best.s), eff: +(best.val / plain).toFixed(3) };
   }
-  return { res, fightT, lust, aoeTargets };
+  const wallList = [...downtime, ...aoeWins].map(w => w[0]).sort((a, b) => a - b);
+  return { res, fightT, lust, aoeTargets, wallList };
 }, { HASTES, T, LUST, PAIR, TMETA, BOSS: process.env.BOSS || null });
 await browser.close();
 if (perr) { console.error('PAGEERROR', perr); process.exit(2); }
@@ -123,17 +129,37 @@ const sig = sp => JSON.stringify(Object.keys(sp).sort().reduce((o,k)=>(o[k]=sp[k
 const uniq = {}; for (const h of HASTES) uniq[sig(plans[h].spec)] = h; // rep haste per unique plan
 console.log(`unique plans: ${Object.keys(uniq).length}/${HASTES.length}`);
 
-// sim matrix
-for (const h of HASTES) {
-  const p = path.join(SCRATCH, `plan_${h}.apl.json`);
-  execFileSync('node', [path.join(REPO, 'tools/genapl.mjs'), JSON.stringify(plans[h].spec), p]);
-}
+// sim matrix. WALL-JITTER (boss tables with phases): the cast-train phase at a FIXED intermission
+// wall clips a whole cast differently per plan (Al'ar: two plans 1s apart simmed 0.59% apart at
+// EVERY kill-variance — walls are fixed, so --var can never smooth them), which no phase-averaged
+// model can rank — it is measurement structure, not model error. Real phase transitions are not
+// metronomic either: so each cell is averaged over small deterministic wall shifts δ (the whole
+// post-first-wall fight — walls AND the player's presses — slides by δ, exactly as a raid tracks
+// the boss). WJITTER=2 → δ ∈ {−2,−1,0,+1,+2}; WJITTER=0 (default for plain fights) = one sim.
+const WJ = (process.env.BOSS && (out0.wallList || []).length) ? +(process.env.WJITTER ?? 2) : 0;
+const DELTAS = WJ > 0 ? Array.from({ length: 2 * WJ + 1 }, (_, i) => i - WJ) : [0];
+const firstWall = (out0.wallList || [])[0] ?? Infinity;
+const shiftSpec = (spec, d) => {
+  if (!d) return spec;
+  const s = JSON.parse(JSON.stringify(spec));
+  for (const k in s) {
+    if (k === '_intermissions' || k === '_aoe') s[k] = s[k].map(([a, z]) => [a + d, z + d]);
+    else if (Array.isArray(s[k])) s[k] = s[k].map(t => (t >= firstWall ? t + d : t));
+  }
+  return s;
+};
 const M = {};
 for (const ph of HASTES) { M[ph] = {}; for (const sh of HASTES) {
-  const args = ['--export', EXPORT, '--apl', path.join(SCRATCH, `plan_${ph}.apl.json`), '--dur', String(FIGHT_T), '--var', VAR, '--iter', ITER, '--seed', '11', '--mana', '100000000', '--haste', String(sh), '--quiet', '--tag', 'm'];
-  if (out0.aoeTargets) args.push('--targets', String(out0.aoeTargets));
-  const out = execFileSync(RUNNER, args, { encoding: 'utf8' });
-  M[ph][sh] = parseFloat(out.trim().split(/\s+/)[4]);
+  let acc = 0;
+  for (const d of DELTAS) {
+    const p = path.join(SCRATCH, `plan_${ph}_d${d}.apl.json`);
+    execFileSync('node', [path.join(REPO, 'tools/genapl.mjs'), JSON.stringify(shiftSpec(plans[ph].spec, d)), p]);
+    const args = ['--export', EXPORT, '--apl', p, '--dur', String(FIGHT_T), '--var', VAR, '--iter', ITER, '--seed', '11', '--mana', '100000000', '--haste', String(sh), '--quiet', '--tag', 'm'];
+    if (out0.aoeTargets) args.push('--targets', String(out0.aoeTargets));
+    const out = execFileSync(RUNNER, args, { encoding: 'utf8' });
+    acc += parseFloat(out.trim().split(/\s+/)[4]);
+  }
+  M[ph][sh] = acc / DELTAS.length;
 } }
 
 console.log('\nDPS matrix (row = plan optimized @haste, col = simmed @haste):');
@@ -156,7 +182,9 @@ let diagWorst = 0, diagAt = '';
 for (const sh of HASTES) { const native = M[sh][sh];
   for (const ph of HASTES) { const d = (M[ph][sh] - native) / native;
     if (d > diagWorst) { diagWorst = d; diagAt = `@sim${sh}: plan@${ph} (${M[ph][sh].toFixed(1)}) > native@${sh} (${native.toFixed(1)})`; } } }
-const diagClean = diagWorst <= 1e-9;
+// 1e-6 relative = far below the printed 0.1-DPS precision — suppresses float-average artifacts of
+// the jittered mean, NOT a graded tolerance (a real deficit is orders of magnitude above it).
+const diagClean = diagWorst <= 1e-6;
 console.log(`\n(a) haste-monotonicity [OBSERVED, not interpreted]: worst downward dip = ${(monoWorst*100).toFixed(2)}%` + (monoWorst > 0 ? `  [${monoAt}]` : ''));
 console.log(`(b) DIAGONAL DOMINANCE: ${diagClean ? 'CLEAN — native dominates every column' : `DEFICIT ${(diagWorst*100).toFixed(2)}%  [${diagAt}]`}`);
-console.log(`XVAL-DONE seed=${SEED} kit=${PAIR.join('+')} class=${process.env.BOSS ? 'BOSS:'+process.env.BOSS.replace(/[^A-Za-z]/g,'') : (cls||'any')} T=${FIGHT_T} lust=${out0.lust} monoDip=${(monoWorst*100).toFixed(2)}% diag=${diagClean ? 'CLEAN' : 'DEFICIT'} diagWorst=${(diagWorst*100).toFixed(2)}%`);
+console.log(`XVAL-DONE seed=${SEED} kit=${PAIR.join('+')} class=${process.env.BOSS ? 'BOSS:'+process.env.BOSS.replace(/[^A-Za-z]/g,'') : (cls||'any')} T=${FIGHT_T} lust=${out0.lust} var=${VAR} wj=${WJ} monoDip=${(monoWorst*100).toFixed(2)}% diag=${diagClean ? 'CLEAN' : 'DEFICIT'} diagWorst=${(diagWorst*100).toFixed(2)}%`);
