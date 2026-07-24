@@ -1358,7 +1358,43 @@ async function basinHop(champ, cfg, onStep) {
   }
   return { s: bestS, val: bestV };
 }
-function optimizeAsync(cfg, starts, onProgress) {
+// ═══════════ cross-haste pooling wrapper — B1 dominance BY CONSTRUCTION (RULES §16, ACCEPTANCE) ═══
+// The per-haste search can settle in a basin a NEIGHBOR gear-haste's search would beat when its plan
+// is scored at H (the Phase-6 cross-val's "borrowed plan out-scores native" — a search miss, not a
+// scorer gap). When `cfg.poolHastes` is given, optimizeAsync forms the fixed candidate set
+// C = { champ(h) : h ∈ poolHastes ∪ {H} } — each `champ(h)` is a full core solve at h (recursion-
+// guarded) — and emits argmax_{P∈C} score(P at H). This is dominance BY CONSTRUCTION: every column
+// Hj of the cross-val emits some champ(h′) ∈ C, and score(champ(h′) at H) ≤ max_C at H = emit(H), so
+// no borrowed plan can out-SCORE the native (model-side invariant B1 holds deterministically, RULES
+// §16 / ACCEPTANCE). ★ The candidates are scored RAW (`repair` is haste-independent → idempotent on a
+// legal plan, so it doesn't change them), NOT re-polished at H: re-polishing would create a plan
+// OUTSIDE C and reintroduce the leak (a neighbor's own-haste-polished plan beating H's by a sub-cast).
+// Each champ(h) is already locally optimal at its own haste, so emit(H) ≥ the unpooled champ(H) — pooling
+// only ever helps. Default (no poolHastes) → plain core solve → goldens/UI byte-identical. Determinism
+// preserved (fixed pool list, seeded PRNG, no Date.now/random). Cost = |poolHastes| extra bounded solves;
+// the caller chooses the grid (the cross-val passes its full straddle set so every column is in C).
+async function optimizeAsync(cfg, starts, onProgress) {
+  const base = await optimizeCore(cfg, starts, onProgress);
+  const pool = cfg.poolHastes;
+  if (cfg._noPool || !Array.isArray(pool) || !pool.length) return base;
+  // Anchor the baseline to the ACTUAL score of the returned plan: a core solve's `.val` can differ
+  // by a hair from `simulate(.s)` (the Cold-Snap path returns a normalize()-d schedule with the
+  // pre-normalize val), and the argmax must compare like-for-like or the guarantee leaks.
+  let best = { s: base.s, val: simulate(base.s, cfg).robust, csNote: base.csNote, squeakNote: base.squeakNote };
+  // ★ pool solves MUST use the SAME `starts` as the base solve: the guarantee needs champ(h) to be
+  // ONE object regardless of which column computes it (as base at h, or as a neighbor of another
+  // column). A reduced-effort neighbor solve would make champ(H)-as-base ≠ champ(H)-as-neighbor and
+  // reintroduce the leak. (Cost is |pool|× solves; the caller bounds the grid.)
+  for (const h of pool) {
+    if (Math.abs(h - cfg.hasteRating) < 1e-9) continue;
+    const nb = await optimizeCore({ ...cfg, hasteRating: h, _noPool: true }, starts, () => {});
+    const rep = repair(cloneS(nb.s), cfg);          // idempotent (haste-independent legality); NOT re-polished
+    const v = simulate(rep, cfg).robust;            // champ(h) scored raw at H — a member of C
+    if (v > best.val + 1e-7) best = { s: rep, val: v, csNote: best.csNote, squeakNote: best.squeakNote };
+  }
+  return best;
+}
+function optimizeCore(cfg, starts, onProgress) {
   return new Promise(resolve => {
     const rand = mulberry32(1337);
     const seeds = [naiveSchedule(cfg), packedSchedule(cfg)];
@@ -2727,7 +2763,7 @@ function optimizeAsync(cfg, starts, onProgress) {
           if (consumed) {
             // second full pass, honestly labeled — the bar RESTARTS for it (the UI resets its
             // monotone clamp on a label change) instead of stalling near-done for its duration
-            optimizeAsync({ ...cfg, coldSnap: false }, starts, (p, lbl) => onProgress(p, `No-Cold-Snap comparison — ${lbl || "optimizing"}`)).then(async bestN => {
+            optimizeCore({ ...cfg, coldSnap: false, _noPool: true }, starts, (p, lbl) => onProgress(p, `No-Cold-Snap comparison — ${lbl || "optimizing"}`)).then(async bestN => {
               // deterministically offer the CS chain GEOMETRIES on the no-CS champion. RULES §8:
               // the CS-IV press restarts the 180s cadence from wherever it lands, so each "which
               // slot is the compressed pair" choice is its own basin — the cross-val proved the

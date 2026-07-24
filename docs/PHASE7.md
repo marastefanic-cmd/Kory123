@@ -301,3 +301,22 @@ campaign already sims); **no accepted tolerance floor** — the guarantee moves 
 Current round-2 open items for that loop: the 5 var-robust ≥0.3% columns (§5.8 — the contextual
 pull-anchored-haste family), the 14 sub-slack model wobbles (pooling closes), boss tables under
 jitter-v2 (running).
+
+### 5.10 Cross-haste pooling — B1 dominance BY CONSTRUCTION (the ACCEPTANCE amendment, implemented)
+The user's requirement — "the model should guarantee whatever it found is at worst equal to the
+alternatives" — is now a structural property, not a search-quality hope. `optimizeAsync` gained
+`cfg.poolHastes`: it emits, at haste H, the argmax over the fixed champion set {champ(h)} scored at H
+(ARCHITECTURE). Every cross-val column emits a member of that shared set, so no borrowed plan can
+out-SCORE the native (model-side B1). Default off → goldens byte-identical (exact-match 25/25).
+- **Design validated on committed round-2 data** (`scratchpad/pool-design.mjs`): model-side B1
+  violations vs neighbor width — W0 22, W30 9, W60 6, W90 2, W120 1, **W=ALL 0**. Pooling over the
+  full straddle set closes it completely (lower bound — the real mechanism ties or beats this).
+- **Mechanism verified end-to-end** (`scratchpad/pool-verify.mjs`, engine `poolHastes`): scb+skull
+  short **1 → 0** B1 violations; the guarantee held only after THREE correctness fixes (raw-score not
+  re-polish; equal `starts` for pool solves; baseline anchored to `simulate(base.s)` — the Cold-Snap
+  normalize()/val mismatch). All three are documented invariants in ARCHITECTURE.
+- **Scope:** pooling fixes SEARCH misses (B1). It does NOT touch the ~5 var-robust ≥0.3% SCORER-GAP
+  columns (§5.8, model prefers native yet sim disagrees — the pull-anchored-haste family); those are
+  the B2 scorer work reserved for the high-effort next phase.
+- **Next:** run the full campaign with pooling ON (`xval.mjs` default; `POOL=0` to measure the delta),
+  then B2 investigation of the residual family.

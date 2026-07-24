@@ -78,7 +78,7 @@ await page.goto('file://' + path.join(REPO, 'index.html'));
 // `_aoe` windows cast Arcane Explosion (27082), and the runner gets `--targets N` (the extra
 // dummies are inert outside the window — AB is single-target — so only the AE window is worth ×N,
 // exactly the model's M(N) physics, RULES §9). The old "simmed as downtime" KT caveat is CLOSED.
-const out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS }) => {
+const out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS, POOL_ENV }) => {
   let segments = null, downtime = [], aoeWins = [], aoeTargets = 0, fightT = T, lust = LUST;
   if (BOSS) {
     const p = (window.BOSS_PRESETS || []).find(x => x.name === BOSS || x.name.toLowerCase().includes(BOSS.toLowerCase()));
@@ -108,15 +108,27 @@ const out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS }) 
     if (aoeWins.length) spec._aoe = aoeWins;             // Arcane Explosion during AoE windows
     return spec;
   };
+  const mkCfg = h => ({ T: fightT, hasteRating: h, sp: 1387, critPct: 38, enabled: en, fixed: { bloodlust: [lust] }, warnings: [], coldSnap: true, segments });
+  // CROSS-HASTE POOLING (B1 dominance by construction, ACCEPTANCE): solve each haste ONCE to get the
+  // champion set C = {champ(h)}, then EMIT at each H the argmax over C scored at H. This is exactly the
+  // engine's `cfg.poolHastes` mechanism (verified equivalent), deduplicated so each champ is computed
+  // once instead of N times. Guarantees the emitted plan at H model-scores ≥ every champ at H, so no
+  // borrowed plan can out-score the native. POOL=0 env restores the raw per-haste search (to MEASURE
+  // what pooling fixed). Raw scores (repair is haste-independent → idempotent), never re-polished — the
+  // shared fixed set is what makes the guarantee hold (see the engine's optimizeAsync note).
+  const POOL = POOL_ENV !== '0';
+  const champ = {};
+  for (const h of HASTES) champ[h] = (await optimizeAsync(mkCfg(h), 14, () => {})).s;
   const res = {};
-  for (const h of HASTES) {
-    const cfg = { T: fightT, hasteRating: h, sp: 1387, critPct: 38, enabled: en, fixed: { bloodlust: [lust] }, warnings: [], coldSnap: true, segments };
-    const best = await optimizeAsync(cfg, 14, () => {});
-    res[h] = { spec: toSpec(best.s), eff: +(best.val / plain).toFixed(3) };
+  for (const H of HASTES) {
+    const cfg = mkCfg(H);
+    let bestH = champ[H], bestV = simulate(champ[H], cfg).robust;
+    if (POOL) for (const h of HASTES) { if (h === H) continue; const v = simulate(champ[h], cfg).robust; if (v > bestV + 1e-7) { bestV = v; bestH = champ[h]; } }
+    res[H] = { spec: toSpec(bestH), eff: +(bestV / plain).toFixed(3) };
   }
   const wallList = [...downtime, ...aoeWins].map(w => w[0]).sort((a, b) => a - b);
   return { res, fightT, lust, aoeTargets, wallList };
-}, { HASTES, T, LUST, PAIR, TMETA, BOSS: process.env.BOSS || null });
+}, { HASTES, T, LUST, PAIR, TMETA, BOSS: process.env.BOSS || null, POOL_ENV: process.env.POOL || "1" });
 await browser.close();
 if (perr) { console.error('PAGEERROR', perr); process.exit(2); }
 const plans = out0.res;

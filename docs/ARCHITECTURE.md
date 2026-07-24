@@ -72,7 +72,25 @@ inside cd is allowed only if Cold Snap is ready, then burns it), and the OFF_TRI
 (skull/mqg/isc). Called after **every** candidate move — this is what makes "packing would cost a 2nd
 use" fail automatically (via `sameCounts`).
 
-## `optimizeAsync(cfg, starts, onProgress)` — the search (~1224+)
+## `optimizeAsync` = cross-haste pooling wrapper over `optimizeCore` (B1 dominance by construction)
+`optimizeAsync(cfg, starts, onProgress)` is a thin `async` wrapper (Phase 7): it runs `optimizeCore`
+at `cfg.hasteRating`, and — **only when `cfg.poolHastes` is a non-empty array** — forms the fixed
+candidate set `C = { champ(h) = optimizeCore(h) : h ∈ poolHastes ∪ {H} }` and returns
+`argmax_{P∈C} simulate(P at H).robust`. Because every haste's emitted plan is a member of the *same*
+set C, `score(emit(Hj) at H) ≤ max_C at H = emit(H)` — no borrowed-haste plan can out-score the native
+(model-side **invariant B1**, ACCEPTANCE). Three correctness rules the implementation MUST keep (each
+cost a debugging round): candidates are scored **raw** (never re-polished at H — a re-polished plan is
+outside C and leaks the guarantee); pool solves use the **same `starts`** as the base (so `champ(H)` is
+one object whether computed as base or as a neighbor); and the baseline is anchored to
+`simulate(base.s)` not `base.val` (the Cold-Snap path returns a normalize()-d schedule whose `.val`
+predates the normalize). Recursion is guarded by `_noPool` (neighbor solves and the internal no-Cold-
+Snap comparison call `optimizeCore` directly). **Default (no `poolHastes`) returns the plain core solve
+— goldens/UI byte-identical, exact-match 25/25 unchanged.** Cost = `|poolHastes|`× solves; the caller
+picks the grid. The cross-val (`tools/xval.mjs`) computes each `champ(h)` **once** and takes the argmax
+per column (identical result, deduplicated — `POOL=0` env restores the raw per-haste search to measure
+what pooling fixed). Design validated on committed round-2 data: pooling closes model-side B1 **22→0**.
+
+### `optimizeCore(cfg, starts, onProgress)` — the search (~1224+)
 Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ deterministic.
 - **The whole finishing stage runs inside an `async` IIFE with throttled yields** (crash fix — on long
   fights it used to block the browser main thread for minutes, tripping the "Page Unresponsive" kill).
