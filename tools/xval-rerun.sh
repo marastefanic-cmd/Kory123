@@ -31,14 +31,21 @@ ckpt () {  # copy any new/changed tables into the repo and commit+push
   fi
 }
 
-for KIT in "mqg,skull" "isc,scb" "isc,skull" "isc,mqg" "scb,skull" "scb,mqg"; do
-  KTAG=$(echo "$KIT" | tr ',' '-')
-  if [ "${FORCE:-0}" != 1 ] && grep -q "var=0.5" "$RES/$KTAG-short.txt" 2>/dev/null && grep -q "var=0.5" "$RES/$KTAG-xl.txt" 2>/dev/null; then
-    echo "== kit $KIT already re-run (var=0.5 tables present) — skipping"; continue
-  fi
-  echo "== kit $KIT =="
-  bash "$REPO/tools/xval-kit.sh" "$KIT"
-  ckpt "$KTAG"
+# kits run in PAIRS (2-concurrent, like the original campaign — keeps 2 chromium + runners busy on
+# a 4-core box), checkpointing after each pair
+for PAIR_ in "mqg,skull isc,scb" "isc,skull isc,mqg" "scb,skull scb,mqg"; do
+  PIDS=""
+  for KIT in $PAIR_; do
+    KTAG=$(echo "$KIT" | tr ',' '-')
+    if [ "${FORCE:-0}" != 1 ] && grep -q "var=0.5" "$RES/$KTAG-short.txt" 2>/dev/null && grep -q "var=0.5" "$RES/$KTAG-xl.txt" 2>/dev/null; then
+      echo "== kit $KIT already re-run (var=0.5 tables present) — skipping"; continue
+    fi
+    echo "== launching kit $KIT =="
+    bash "$REPO/tools/xval-kit.sh" "$KIT" &
+    PIDS="$PIDS $!"
+  done
+  [ -n "$PIDS" ] && wait $PIDS
+  ckpt "$(echo "$PAIR_" | tr ' ,' '--')"
 done
 echo "== bosses =="
 bash "$REPO/tools/xval-boss.sh"
