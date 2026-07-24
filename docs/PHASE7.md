@@ -1,8 +1,9 @@
 # PHASE 7 — Fix the cross-val deficits (make the acceptance test PASS)
 
-**Status:** PLANNED (in flight). Phase 6 gathered the data and proved the measurement correct; Phase 7
-**dives into the results and fixes the root causes** so that the next run of `docs/ACCEPTANCE.md` passes
-fully. This is the "fix" phase the user scoped: *not* accept the basin — kill it.
+**Status:** IN FLIGHT — diagnostic COMPLETE (§5 run ledger below), fixes landing. Phase 6 gathered the
+data and proved the measurement correct; Phase 7 **dives into the results and fixes the root causes** so
+that the next run of `docs/ACCEPTANCE.md` passes fully. This is the "fix" phase the user scoped: *not*
+accept the basin — kill it. **Read §5 first for what is already established this run.**
 
 Read first: `docs/ACCEPTANCE.md` (the test + pass criterion), `docs/PHASE6.md` §2.1/§3/§4.1/§4.2/§4.5
 (the results + triage method), `docs/DIARY.md` (what we already got wrong — don't repeat it),
@@ -160,3 +161,79 @@ do last, one term at a time.
 - Does cross-haste pooling change any of the 25 goldens? (It shouldn't — it only adds rejectable candidates
   — but verify.)
 - After KT gets AoE emission, is its deficit real or does it also go CLEAN? (Only measurable post-§3c.)
+
+---
+
+## 5. RUN LEDGER (2026-07-24) — what this run has established so far
+
+Rig: the surviving scratchpad rig re-certified (runner-ap180 == wowsimcli to the decimal, 2248.8/47.2 —
+the 2264.9 in TOOLING was an earlier export revision; the identity check is the anchor, not the number).
+
+### 5.1 The diagnostic (§2) ran on ALL 167 columns — the partition
+- **19 SEARCH-MISS** (model itself prefers the borrowed/3rd layout): incl. the worst non-KT case
+  (isc+scb medium 0.77% — the plateau plan; model prefers the h0 layout at h20 by +0.127 casts) and
+  mqg+skull medlong (+0.334). Mechanisms heterogeneous; dominant family = **Cold-Snap chain geometry**
+  (8 of 19), plus drop-a-use-to-align, off-grid kill anchors, plateau micro-shifts.
+- **26 KT columns invalid-premise** (model margins −2..−10 casts = the AoE value the sim couldn't see).
+- **~120 residual** (model prefers native ≤0.5 casts; var10 sim disagrees ≤0.5%).
+
+### 5.2 Search: probes + fixes landed
+- **Pooling probe:** polish(repair(neighbor-haste champion)) at H closes **19/19** probed misses when
+  the right neighbor is used; fixed N(H)={H±60} closes 15/19 (band-edge basins are narrow — the 4
+  escapes need either the in-pipeline transforms or a denser neighbor set). Full solve times headless:
+  short ~0.6s · medium ~1-3s · long ~5-25s · xl 60-140s (pooling cost driver — pool workers can
+  parallelize neighbor solves in the UI later).
+- **LANDED in `optimizeAsync`:** (1) the CS-gate chain candidates are now the FULL slot-geometry family
+  (reposition + adds-one + kill-anchored end pair) and each is **polished** (raw candidates lose without
+  co-adaptation — probe-proven); (2) a **drop-one-use escape** pass (align-vs-twice sacrifice side),
+  iterated to fixpoint with a re-hop. Cross-haste pooling NOT yet wired (decide neighbor set after the
+  scorer stabilizes — pooling amplifies scorer phantoms).
+
+### 5.3 Scorer: one term landed, several isolated
+- **LANDED — expected press-snap slippage** (`simulate` firing block, `scoreStart = eff + slip`,
+  slip = ½·prevInterval for a mid-cast steady press; ramp/gap/external presses slip 0; display/legality
+  keep fire-time convention). The §4.3 phase blind spot, closed where it bites: a window sequenced to end
+  flush against a wall/kill loses the clamped slip for real (Al'ar minimal pair: model tie → sim −0.66%;
+  with the term the model now charges −975 and rejects the stagger). Re-diagnosis: 21 residual columns
+  flip to model-agrees-with-sim; margins shrink on most others; **the term is right but not sufficient.**
+- **Al'ar wall parity ISOLATED (measurement, not scorer):** plan@160-vs-plan@190 differ by a 1s cluster
+  shift yet sim 0.59% apart at EVERY var (0/0.5/10) — the cast-train phase at FIXED intermission walls
+  clips a whole cast differently per plan. No kill-variance setting smooths walls; a phase-averaged model
+  can never see it. → needs a **wall-jitter measurement** (average over small deterministic wall-time
+  shifts on boss tables) or stays an irreducible ±1-cast noise band on wall fights.
+- **Opener phantom ISOLATED:** the model prefers the IV@0+Zerk@18 opener over IV@5+Zerk@0 by +0.26..0.58
+  casts; sim (var0.5, CRN, decomposed arm-by-arm) says they are EQUAL (and Zerk@18-alone-with-IV@5 is a
+  real −0.45% the model does see). The over-credit sits in the ramp-exit/co-press interaction: on the
+  isc+scb T=98 pair the model over-credits the all-co-pressed-at-ramp-exit variant (N vs X1) by ~+0.58
+  casts vs sim ≈0. NOT yet root-caused — next term to isolate.
+- **Ramp-hug RE-CERTIFIED (metric matters):** the §16 h150 T=80 claim survives var0.5 (+0.366% ≈ the
+  model's +0.25 casts — excellent agreement; the old var0 −0.08% is the whole-cast parity trap). BUT the
+  isc+scb short T=98 @140 fight genuinely prefers cluster-on-Lust (+0.42..0.48% at every var) — the
+  model's hug preference there is the ramp-exit co-press phantom above, NOT a generic ramp-hug error.
+
+### 5.4 Measurement (the metric decision, per ACCEPTANCE's pre-authorized redesign)
+- `--var V` = uniform kill in [T−V, T+V]; the model's `robust` (KILL_WINDOW=0.5s linear taper) is
+  **exactly** expected damage under var **0.5** — the model-matched metric. var10 asks a different
+  question (±10s kill hedging the model deliberately does not price, RULES §8) and manufactures a
+  late-window premium: probe on 15 residual columns shows var10 deltas shrink 2-4× at var0.5, BUT
+  13/15 persist ⇒ they were never pure metric artifacts. **Decision: the acceptance harness moves to
+  var0.5** (xval VAR env landed; flip the default when the campaign re-runs) **+ wall-jitter for boss
+  tables** (design pending).
+- Sim iteration/statistics (user question, answered with live data): single iterations spread ±2%
+  (σ≈47-65 DPS); means converge by 10k (SEM≈0.02%); the stubborn deficits are METRIC-independent
+  deterministic structure, not sampling noise — more iterations cannot shrink them, only metric design.
+
+### 5.5 KT harness gap CLOSED (§3c)
+`genapl` `_aoe` windows cast Arcane Explosion (27082); `xval` BOSS mode emits them + `--targets N`
+(AB is single-target so the extra dummies are inert outside the window — the AE window is valued at
+exactly the model's M(N) physics). Sim-verified: AE 105→145 hits 6 targets, AB resumes at the exit;
+KT-shape smoke +69% vs the old downtime read. KT re-runs with the campaign.
+
+### 5.6 Open / in flight
+- Golden triage of the 16 suite diffs under the new scorer+search (old-vs-new model + CRN sim gate) —
+  running; accept via `--update` only where new ≥ old (sim) or sim-tie with model preference.
+- Root-cause the ramp-exit co-press phantom (N-vs-X1) → next scorer term.
+- Wall-jitter harness design + implement for boss tables.
+- Cross-haste pooling wiring (neighbor set decision after scorer stabilizes).
+- Model-side xval instrument (fast search-dominance regression without the sim) — planned.
+- Then: full acceptance re-run at var0.5 (+jitter), adversarial pass, docs, archive.
