@@ -1,9 +1,14 @@
 # PHASE 8 — the B2 scorer-gap family (reserved for the highest-effort model)
 
-**Status:** OPEN. Round-1 investigation done (07-24): the phase's original *canonical decomposition was
-disproved* (a harness bug, see §1), the "emergent joint interaction" theory built on it is **withdrawn**,
-and six candidate mechanisms are now ruled out with evidence (§3). What survives is a small, **systematic,
-single-signed** model-vs-sim ranking error. §4 reframes how to measure it; §5 is the remaining task list.
+**Status:** OPEN. **Round 1** (07-24): the phase's original *canonical decomposition was disproved* (a
+harness bug, §1), the "emergent joint interaction" theory built on it is **withdrawn**, and six candidate
+mechanisms are ruled out with evidence (§3). **Round 2** (07-24): §4's proposed conditioning fix
+(*"measure at T=40"*) is itself **disproved** (§4), and the round switched to **single-buff steady-state
+marginals swept across haste** — which produced the phase's first hard result, **THE FLOOR LAW** (§5,
+10/10 with a mechanism proof), a two-correction error decomposition that **zeroes the mean model-vs-sim
+bias** (§7), and a surviving haste-correlated residual whose **sign is wrong for B2** (§8) — a genuine
+falsification: B2 is *not* a single-buff SP-valuation error. §9 records the leads closed this round; §10 is
+the task list for round 3.
 
 Phase 7 fixed everything cheaper: three press-execution scorer terms (RULES §3b), two search passes, the
 metric (var0.5 + wall-jitter), the KT AoE harness, and — the big one — **cross-haste pooling, which makes
@@ -85,25 +90,87 @@ That is a *systematic differential bias*, not noise: the model under-credits the
    deficit. Press lag makes the gap harder to explain, not easier.
 7. **Tirisfal-2pc omission in the harness** — REAL BUG, but ~0.02pp here (see §6). Not the cause.
 
-## §4 — How to measure it next (the conditioning fix)
-**Stop measuring at T=229.** The full-fight delta is catastrophic cancellation: a 0.36pp answer built from
-two ~2.4pp components, so a 4% relative bias in either term *is* the whole answer. **Measure at T=40**,
-where the same layout question shows a **+7.850%** signal and the model's error is 0.316pp — a ~4%
-relative error on a well-conditioned quantity, with the same sign as every other length.
+## §4 — ⚠ THE "MEASURE AT T=40" CONDITIONING FIX IS ALSO WRONG (round-2 correction)
+The round-1 version of this section said: *"Stop measuring at T=229 … **Measure at T=40**, where the same
+layout question shows a **+7.850%** signal."* The **diagnosis** (§2's catastrophic cancellation) stands.
+The **prescription** does not.
 
-The T=40 question is clean and small: *given a cold open, is haste-first (Zerk+IV+MQG) or damage-first
-(AP+Icon) worth more over the ramp?* The sim says haste-first by 7.85%; the model says 7.53%. Find the
-missing ~4% there, then confirm it closes the 0.38pp at T=229 as a consequence.
+**Truncating the fight changes the question.** The h70 plan presses `MQG@202` and `IV@202`; at T=40 those
+presses never fire at all. So the T=40 delta is not *"haste-first vs damage-first over the ramp"* — it is
+**h40's full kit vs h70's kit minus its second trinket use**, a cooldown-*presence* comparison. That is why
+the signal is 20× larger: it is measuring a missing trinket, not a layout. Every length in §2's table below
+~205 is contaminated the same way, monotonically less so as T grows — which fully explains the smooth decay
+from +7.850% to +0.360% without any physics. **A truncated fight is a different plan, not the same plan
+measured better.**
 
-## §5 — Remaining task list
-- **Re-run the isolation battery at T=40** with the conditioning fix, using **log-verified legal**
-  schedules only (§1) and `cfg.t5two: true` (§6).
-- **Interrogate the ramp × haste interaction.** All six ruled-out mechanisms were steady-state; the one
-  regime both plans differ in most, and the one where the signal is largest, is the **opening ramp**
-  (0 stacks → 3 stacks). The model's `rampCastDmg(ts, tc)` / `rampSpans` machinery is the prime suspect:
-  does front-loaded haste compress the ramp *more* than the model's discrete ramp credits?
-- Only then consider a core-integral term — high-risk, can move the 25 goldens, one hypothesis at a time
-  and sim-gated exactly like the Phase-7 §3b terms.
+**The conditioning fix that actually works: single-buff steady-state marginals.** Base = pure AB spam;
+variant = base + **exactly one** buff pressed at t=30 in a T=100 fight (window fully interior — no ramp
+overlap, no kill-taper interaction, no cooldown-presence confound), CRN-paired, and **swept across haste**.
+The signal is ~1.3% — small in absolute terms but it is the *whole* quantity, not a residue of two large
+terms, so a 4% relative model error shows up as a 4% relative error. It also isolates one physics term at a
+time and makes the haste dependence directly readable. This is what round 2 ran; §5 and §7 are its output.
+(Probes: `scratchpad/p8/{iso-model,floorsweep,frac,calib,counts,times}.mjs`.)
+
+## §5 — ★★★ THE FLOOR LAW (round 2's hard result)
+**A value-multiplier buff window of duration `D` covers exactly `floor(D/Δ)` casts in the sim.** The model's
+rate integral credits the fractional `D/Δ`. Over-credit = `frac(D/Δ) × premium`, always ≥ 0.
+
+**Measurement.** Icon of the Silver Crescent (+155 SP, 20s) pressed at t=30, T=100, cold open, CRN seed 11,
+haste swept 0→300 rating. Boosted casts counted by **CRN damage-difference** (§9), Δ computed analytically
+as `Δ(R) = 1.5/(1+R/1577)` (§9):
+
+| haste R | Δ | D/Δ | **floor** | **CRN-boosted** | sim % | model % | err pp |
+|---|---|---|---|---|---|---|---|
+| 0 | 1.50000 | 13.3333 | 13 | **13** | 1.401 | 1.321 | −0.080 |
+| 40 | 1.46289 | 13.6715 | 13 | **13** | 1.284 | 1.320 | +0.036 |
+| 70 | 1.43625 | 13.9252 | 13 | **13** | 1.228 | 1.320 | +0.092 |
+| 78 | 1.42931 | 13.9928 | 13 | **13** | 1.229 | 1.320 | +0.091 |
+| 82 | 1.42586 | 14.0266 | 14 | **14** | 1.303 | 1.319 | +0.016 |
+| 120 | 1.39393 | 14.3479 | 14 | **14** | 1.236 | 1.319 | +0.083 |
+| 160 | 1.36183 | 14.6861 | 14 | **14** | 1.123 | 1.318 | +0.195 |
+| 200 | 1.33118 | 15.0243 | 15 | **15** | 1.211 | 1.318 | +0.107 |
+| 240 | 1.30187 | 15.3625 | 15 | **15** | 1.170 | 1.318 | +0.147 |
+| 300 | 1.26026 | 15.8698 | 15 | **15** | 1.108 | 1.316 | +0.208 |
+
+**10/10, and both integer crossings are captured** — h78→h82 straddles 13.993/14.027 inside a *4-rating-point*
+window, and h160→h200 straddles 14.686/15.024. The sim column **sawtooths** (it jumps at each crossing and
+decays between); the model column is **flat** (1.321→1.316) because `(D/Δ)/(T/Δ) = D/T` is haste-independent.
+That shape difference *is* the error.
+
+**Mechanism proof (not a fit).** Two facts compose:
+1. wowsims applies a damage/SP modifier at **cast COMPLETION** (`applyEffects`, `sim/core/cast.go:216/258/
+   338/356`) — not at cast start, not pro-rata.
+2. The APL can only press at a **cast boundary** (φ=0, TOOLING "GCD-boundary quantization"), so the first
+   buffed *completion* is a full Δ after the press.
+
+Prediction: `firstBoostedCast − auraGain == Δ` exactly, at every haste. Measured lag: **1.500, 1.460, 1.440,
+1.430, 1.420, 1.390, 1.360, 1.320, 1.300, 1.260** — Δ at every point (log quantization is 0.01s). The window
+therefore spans `[gain+Δ, gain+D]`, holding `floor(D/Δ)` completions.
+
+**★ Haste buffs are EXEMPT.** A haste buff's value is time-compression, which does not expire with the
+window — it rolls forward to the fight END, where `--var` / the model's kill taper handle the fraction. Only
+**value multipliers** (SP, damage) are floored. Do not apply this correction to MQG/IV/Zerk/Lust.
+
+**Is it a model bug?** *Not necessarily — it is first a harness expressiveness limit.* `index.html:764`
+justifies fractional credit with a phase-average argument: over a uniform press phase, `E[casts in window]
+= D/Δ`, unbiased. That is **correct for a human** — TBC on-use trinkets and Arcane Power are off-GCD and can
+be pressed mid-cast, so a real mage draws from the full phase distribution. The **sim is boundary-locked**:
+it can only ever realise φ=0, the *minimum* of that distribution. So the model describes the player and the
+sim describes one corner of the player's options. **The honest statement: the model over-credits a value
+window by `frac(D/Δ) × premium` relative to the sim, and by `≈ ½ × premium/(D/Δ)` less than that relative to
+a real mid-cast presser.** Quantified on this probe the boundary-lock alone is worth **≈ +0.036pp**
+(the h40 row, where `frac` is smallest). This upgrades §3.1 ("terminal-cast phase quantization — PARTIAL")
+from a tail effect to a law that applies to **every** value window, not just the terminal one.
+
+## §5b — Consequence for RULES §3b.3
+RULES §3b.3 states *"a ramp cast's damage snapshots its buff state at cast START."* The **fix it prescribes
+is correct** (a press-snapped window must not credit the in-flight cast it fired after), but the stated
+**mechanism is wrong**: wowsims snapshots at cast *completion* (§5, source-checked). The two agree at the
+front edge precisely because the press is boundary-snapped — "completion of the cast in progress" *is* the
+start of the next one. They **disagree at the back edge**: on the completion rule the cast in flight when
+the aura fades is *not* buffed, so a start-snapshot model over-credits the window's last partial cast. That
+back-edge over-credit is exactly the `frac(D/Δ)` term above, arriving from the other direction — a candidate
+refinement, **not yet implemented** (see §10).
 
 ## §6 — Harness calibration gap found in this round (fix in the NEXT xval round)
 `tools/xval.mjs:111` and `tools/xval-model.mjs:53` build the model cfg **without `t5two`**, but the
@@ -117,6 +184,83 @@ is an order of magnitude under the 0.3% deficit threshold). **The engine is corr
 `t5add` to the AB sites only (831, 899) and correctly *not* to the AE sites (829, 898). This is purely a
 harness-side omission. **Do not fix mid-round** (it would change what a half-gathered acceptance run
 measures); add `t5two: true` to both cfg builders at the start of the next round, and re-baseline.
+
+## §7 — Error decomposition: two corrections ZERO the mean bias
+Same probe as §5 (Icon marginal, 10 haste points). Applying the two known harness-side corrections in turn:
+
+| model correction | mean err | RMS | corr(haste, residual) |
+|---|---|---|---|
+| raw (as shipped) | **+0.0895 pp** | 0.1208 | +0.839 |
+| + floor law (×`floor(D/Δ)`/(D/Δ)) | +0.0414 pp | 0.0878 | +0.916 |
+| + floor + **effective SP 1450** | **+0.0084 pp** | 0.0781 | +0.913 |
+
+**Effective SP is ≈1450, not the harness's 1387.** The export wears **Tirisfal 4pc** (`SpellID: 37444`,
++70 SpellDamage on crit), and the combat log states it outright — every AB `[DEBUG]` line reads either
+`SP: 1386.2` (proc down) or `SP: 1456.2` (proc up), an exact +70. Measured uptime is **88–94%** ⇒
+`effSP ≈ 1386 + 0.9·70 ≈ 1449`. A +155 SP window is worth ~2.4% less on a 1450 base than on a 1387 base,
+a **flat** shrink. (⚠ *Disproved sub-hypothesis*: I predicted uptime would **rise with haste** — more casts
+⇒ more crits ⇒ more procs — and that this would explain the haste-growing residual. It does not: the
+measured uptime has **no haste trend**. Recorded rather than quietly dropped; DIARY ledger.)
+
+Together the two corrections take the mean bias from +0.0895 pp to **+0.0084 pp** — i.e. **the model's
+single-buff SP valuation is unbiased once the harness is described correctly.** Neither correction belongs
+in `index.html`: the floor law is a property of the *sim's* press lattice (§5) and the SP figure is a
+property of *this export's* gear. Both belong in the harness and in expectations.
+
+## §8 — ✗ The surviving residual has the WRONG SIGN for B2 (falsification)
+A strongly haste-correlated residual survives all corrections (r ≈ +0.91), spanning **−0.147 pp at h0 to
++0.103 pp at h300**. Positive at high haste means: **the model over-credits an SP window as the ambient cast
+rate rises.**
+
+Now apply that to the B2 pair (§ target table). The h40 plan puts **Icon@29 riding MQG+IV** — i.e. its SP
+window sits at the fight's *highest* effective haste. The h70 plan puts **Icon@4 bare**. So correcting this
+residual would **lower h40's model score** and make the model prefer h70 *more*.
+
+**B2 would get wider, not narrower.** The one hard number round 2 produced about the model's SP valuation
+therefore **cannot** be the B2 mechanism — it pushes the wrong way. This retires "the model misprices SP
+under haste" from the candidate list and is the round's most useful negative result.
+
+## §9 — Leads CLOSED this round (do not re-open)
+**The "model fits more casts than the sim" denominator lead — CLOSED, it is a counting convention.**
+Model base cast counts read +1 at low haste and *+2* at high haste versus the sim, a denominator effect with
+exactly the residual's shape. It is an artifact of how each side counts:
+
+| haste | model `castCount` | sim **completions** | sim Hit\|Crit lines | Miss |
+|---|---|---|---|---|
+| 0 | 66 | 65 | 65 | 0 |
+| 40 | 68 | 67 | 67 | 0 |
+| 70 / 78 / 82 | 69 | 68 | 68 | 0 |
+| 120 | 71 | 70 | 69 | **1** |
+| 160 | 73 | 72 | 71 | **1** |
+| 200 | 74 | 73 | 72 | **1** |
+| 240 | 76 | 75 | 74 | **1** |
+| 300 | 79 | 78 | 77 | **1** |
+
+- **`model = sim completions + 1` at EVERY haste, exactly.** `index.html:834` counts casts that **START**
+  before `T` (`if (t < cfg.T) castCount++`); the combat log shows **COMPLETIONS**. One cast is always in
+  flight at the kill ⇒ a constant, haste-independent +1. (h300: model's last start 99.98; sim's last
+  completion 99.96, then `Casting …` at 99.96 that never completes.)
+- **The apparent haste-growing "+2" was my own regex.** wowsims enforces a hard **1% miss floor** no hit
+  rating clears (DIARY row 129); a miss logs as `Miss`, not `Hit`/`Crit`, so a Hit|Crit-only count drops it.
+  At ~70+ casts the CRN stream's first miss lands, and exactly 1 miss appears from h120 up.
+- **No score impact either way:** `castCount` is board/UI only — the score is the `rateAt` integral over
+  `[0,T]`. The convention difference cannot corrupt a ranking.
+
+## §10 — Task list for round 3
+- **Fix the harness first, between rounds** (§6 and §7): `t5two: true` **and** `sp: 1450` at
+  `tools/xval.mjs:111` / `tools/xval-model.mjs:53`, then re-baseline. Rank-neutrality already checked on the
+  B2 pair — shipped −0.020, +t5two −0.040, +t5two+effSP −0.037, effSP only −0.017; **all pick h70**, so no
+  gathered round is invalidated (the sim says h40 by +0.360%).
+- **Re-run the isolation battery as single-buff steady-state marginals** (§4's real conditioning fix), not
+  at a truncated T. Use **log-verified legal** schedules only (§1) and the corrected cfg.
+- **Sweep the OTHER buffs across haste** the way §5 swept Icon. AP (damage, floored) should show the same
+  sawtooth; MQG/IV/Zerk (haste, exempt) should not. A haste buff that *does* sawtooth would overturn §5's
+  exemption and is the single highest-information next measurement.
+- **Interrogate the ramp × haste interaction** — still the least-probed regime, and the one both B2 plans
+  differ in most. Prime suspect remains `rampCastDmg(ts, tc)` / `rampSpans`.
+- **Consider the §5b back-edge refinement** (charge a value window its unfinished last cast) — but note
+  §8: it moves B2 the wrong way, so it must be justified on its own physics, not as a B2 fix. High-risk,
+  can move the 25 goldens; one hypothesis at a time, sim-gated like the Phase-7 §3b terms.
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it

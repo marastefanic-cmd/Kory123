@@ -83,6 +83,23 @@ recalibration some fights rendered equal-score layouts in an order other fights 
 resolve-time exact-tie canonicalizer (`canonicalWindowOrder`) — see the ledger row below for what that
 cost to learn. Full detail in `docs/PHASE7.md`.
 
+### Phase 8 — the B2 scorer-gap family (2026-07-24 → in flight)
+Inherited from Phase 7 as *"an emergent joint haste×damage×kill interaction."* **Round 1 demolished its own
+premise**: the decomposition that produced it never placed MQG where it claimed — wowsims silently RETIMED
+the press onto a shared trinket lockout and printed a plausible number for a plan never run. The joint
+theory was withdrawn, six mechanisms ruled out, and the deficit re-characterised as **catastrophic
+cancellation** (two ~2.4pp opposing terms leaving 0.36pp). **Round 2 then demolished round 1's proposed
+fix** — measuring at T=40 silently drops a trinket use from one of the two plans, making it a
+cooldown-*presence* comparison — and replaced it with **single-buff steady-state marginals swept across
+haste**. That instrument immediately paid: **THE FLOOR LAW** (a value window covers exactly `floor(D/Δ)`
+casts in the sim; 10/10 with a source-level mechanism proof, both integer crossings captured), a second
+harness input error (effective SP ≈1450, not 1387), and — together — a **zeroed mean model-vs-sim bias**
+(+0.0895 → +0.0084 pp). The round's most useful output is a **negative** one: the surviving residual's sign
+is *wrong* for B2, so "the model misprices SP under haste" is retired as a candidate, and a plausible
+denominator lead ("the model fits more casts") closed as a pure start-vs-completion counting convention.
+The phase's own guiding lesson is now explicit: **every measurement here has had to be audited as hard as
+the model it was auditing.** Detail in `docs/PHASE8.md`.
+
 ### Phase 9 — performance, with zero plan drift (2026-07-24 → notes)
 User: *"the tool has gotten a bit slow again and takes a lot of CPU."* Opened as a **measure-first**
 phase under a hard determinism constraint (every emitted plan must stay byte-identical; exact-match 25
@@ -131,6 +148,12 @@ add a *new* entry rather than deleting the old.
 | 07-24 | The B2 deficit reduces to ONE placement: **moving only MQG@202→@9 captures it, sim +0.461%** — and since each candidate mechanism is clean in isolation, it must be an **emergent joint haste×damage×kill interaction**. | **The measurement never placed MQG at 9.** The h70 layout presses Icon@4, and every on-use offensive trinket shares a category-1141 lockout whose duration is the trinket's own **20s buff** (`shared_utils.go`: `SharedCD.Duration = config.Duration`) — so the sim **silently RETIMED** MQG to **25.64** and printed a plausible number for a plan never tested (`SIMLOG=1` log in TOOLING). The +0.461% was @25.64-vs-@202. The joint-interaction theory built on it is **withdrawn**. | TOOLING ★ (shared trinket lockout); PHASE8 §1. |
 | 07-24 | The B2 residual is a ~0.36pp scorer term to be found at the representative target (T=229). | It is **catastrophic cancellation**: the h40 plan is **+7.850%** at T=40 decaying monotonically to **+0.360%** at T=229 — two ~2.4pp opposing components (haste-loaded opener vs h70's last-24s MQG+IV burst). A 4% relative bias in either term *is* the whole answer, which is why every isolated probe "reports clean" — the signal was being measured where it is smallest. **Measure at T=40 instead** (7.85% signal, 0.316pp error, same sign). Also newly ruled out with evidence: `KILL_WINDOW` width (model KW-invariant), GCD floor, boundary straddle, window membership, and press-latency asymmetry (**wrong sign** — a later opener press starts on a higher AB stack, favouring h70). | PHASE8 §2–§4. |
 | 07-24 | The model over-credits **Arcane Power by 2.374pp** (implied sim multiplier 1.2407 vs the model's 1.30) — a scorer bug. | Already-known physics + a **mis-configured probe**: Tirisfal 2pc (+20% AB) pools **additively** with AP, so AP is ×1.25 on a T5'd AB stream (SOURCES; TOOLING ★, Phase 5), and an additive base of 1.2465 reproduces the measurement exactly. My probe cfgs simply never set `cfg.t5two`. **The engine is correct** (`t5add` on the AB sites 831/899, correctly absent from the AE sites 829/898). But the same omission is in the **harness** — `xval.mjs:111` / `xval-model.mjs:53` build cfg without `t5two` while the export wears T5 (items 30206/30196/30207) — so the campaign has scored a no-T5 model against a T5 sim. Impact is small on AB-only fights (nearly rank-preserving: B2 delta −0.02%→−0.04%), so gathered rounds stay valid; fix **between** rounds, not mid-round. | TOOLING (⚠ xval `t5two`); PHASE8 §6. |
+| 07-24 | The B2 conditioning fix is to **measure at T=40**, where the same layout question shows a +7.850% signal instead of 0.360%. | **Truncating the fight changes the question.** The h70 plan presses `MQG@202`/`IV@202`; at T=40 they never fire, so the delta is h40's full kit vs **h70's kit minus a trinket use** — a cooldown-*presence* comparison, not a layout one. That confound (monotonically weaker as T grows) fully explains the smooth +7.850%→+0.360% decay with no physics. The real conditioning fix is **single-buff steady-state marginals swept across haste** (one buff at t=30, T=100, window fully interior, CRN-paired): the ~1.3% signal is the *whole* quantity rather than a residue of two ~2.4pp terms. | PHASE8 §4 (the round-1 §4 is now the disproof). |
+| 07-24 | A value-multiplier window's worth is the model's fractional `D/Δ` casts — the press-phase average makes it unbiased. | **THE FLOOR LAW:** in the sim it is **exactly `floor(D/Δ)`**, verified **10/10** across haste 0→300 *including both integer crossings* (h78→h82 straddles 13.993/14.027 in a 4-rating-point window; h160→h200 straddles 14.686/15.024). Mechanism proved, not fitted: wowsims applies the modifier at **cast COMPLETION** (`sim/core/cast.go:216/258/338/356`) and the APL can only press at a **cast boundary**, so `firstBoostedCast − auraGain == Δ` at all ten hastes (1.500…1.260). The phase-average argument is **conditional on a uniform press phase** — true for a human (off-GCD trinkets/AP are pressable mid-cast), false for the boundary-locked sim, which realises only φ=0, the *minimum*. So it is a harness expressiveness limit first (~+0.036pp), a candidate back-edge model refinement second. **Haste buffs are EXEMPT** (compression rolls to the fight end). Two counting traps found the hard way: timestamp membership in `(gain, fade]` double-counts both edges (floor+1 in 9/10) — count by **CRN damage-difference**; and log-derived Δ quantizes to 0.01s so it cannot resolve a crossing — use analytic `Δ(R)=1.5/(1+R/1577)` (valid: the R=0 log gives exactly 1.5000, so the export's base spell haste is 0%). | TOOLING ★ ("the sim cannot press mid-cast"); PHASE8 §5; RULES §3b-note. |
+| 07-24 | RULES §3b.3's mechanism: *"the sim (and game) snapshot a cast's buff state at cast START."* | The **fix** is right, the **mechanism** is wrong — wowsims snapshots at cast **completion**. They coincide at a window's front edge only because the press is boundary-snapped ("completion of the cast in progress" *is* the next cast's start); they **disagree at the back edge**, where a start-snapshot model over-credits the window's unfinished last cast by `frac(D/Δ)×premium`. | RULES §3b.3 (mechanism correction); PHASE8 §5b. |
+| 07-24 | Tirisfal-4pc uptime **rises with haste** (more casts ⇒ more crits ⇒ more +70 SP procs), explaining the haste-growing model-vs-sim residual. | **Measured and disproved:** uptime is **88–94% with no haste trend**. The correction is a *flat* one — effective SP ≈ **1450**, not the harness's 1387 (the log states it outright: every AB `[DEBUG]` line reads `SP: 1386.2` or `SP: 1456.2`, an exact +70 from `SpellID: 37444`). A second harness input error alongside `t5two`; fix both between rounds. With floor-law + effSP the mean model-vs-sim bias on a clean single-buff marginal goes **+0.0895 pp → +0.0084 pp** — the model's SP valuation is unbiased once the harness is described correctly. | TOOLING (⚠ effective SP ≈1450); PHASE8 §7. |
+| 07-24 | The surviving haste-correlated residual (r≈+0.91, −0.147pp@h0 → +0.103pp@h300) is the B2 mechanism. | **Wrong sign — a falsification.** Positive at high haste means the model *over*-credits an SP window as ambient cast rate rises. In the B2 pair h40 puts **Icon@29 riding MQG+IV** (highest effective haste) while h70 puts **Icon@4 bare** — so correcting it would *lower* h40 and make the model prefer h70 **more**, widening B2. "The model misprices SP under haste" is retired as a B2 candidate. | PHASE8 §8. |
+| 07-24 | The model **fits more casts than the sim** (+1 low haste, **+2** high haste) — a denominator effect with exactly the residual's shape. | **A counting convention, closed.** `model == sim completions + 1` at **every** haste, exactly: `index.html:834` counts casts that **START** before `T`, the combat log shows **COMPLETIONS**, and one cast is always in flight at the kill. The apparent haste-growing "+2" was my own regex — wowsims enforces a hard **1% miss floor**, a miss logs as `Miss` not `Hit`/`Crit`, and exactly 1 miss appears from h120 up (~70+ casts). **No score impact**: `castCount` is board/UI only; scoring is the `rateAt` integral. | PHASE8 §9. |
 
 ---
 
@@ -143,10 +166,13 @@ add a *new* entry rather than deleting the old.
   off-grid optimum). PHASE6 §4.2.
 - **KT AoE simmed as downtime** — genapl needs Arcane-Explosion emission to value KT's AoE window. PHASE6 §7.
 - **Ashtongue** is out of the cross-val kits (a random proc, needs different treatment). Phase 7. PHASE6 §4.8.
-- **The xval harness omits `cfg.t5two`** while the reference export wears Tirisfal 2pc. Small on AB-only
-  columns (nearly rank-preserving), largest on AoE/KT columns (AB-vs-AE ratio off ×1.2). Add
-  `t5two: true` to `xval.mjs:111` + `xval-model.mjs:53` at the START of the next round and re-baseline —
-  **never mid-round.** PHASE8 §6; TOOLING.
+- **The xval harness has TWO wrong model inputs.** (a) It omits `cfg.t5two` while the reference export
+  wears Tirisfal 2pc — small on AB-only columns (nearly rank-preserving), largest on AoE/KT columns
+  (AB-vs-AE ratio off ×1.2). (b) It passes `sp: 1387` where the export's **effective** SP is ≈**1450**
+  (Tirisfal 4pc, `SpellID: 37444`, +70 on crit at 88–94% flat-in-haste uptime). Set `t5two: true` **and**
+  `sp: 1450` at `xval.mjs:111` + `xval-model.mjs:53` at the START of the next round and re-baseline —
+  **never mid-round.** Rank-neutrality on the B2 pair already checked (all variants pick h70), so gathered
+  rounds stay valid. PHASE8 §6/§7; TOOLING.
 
 ## The planned road ahead (as understood at 07-23)
 Per user: **next phase = FIX** the recorded debts (starting with the low-haste basin), **then** likely

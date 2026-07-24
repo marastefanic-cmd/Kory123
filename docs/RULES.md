@@ -119,10 +119,29 @@ boundary, and the model must price that wherever it is not phase-averageable.**
    an external's scored window at the board-lattice boundary after the call.
 3. **A ramp cast's damage snapshots its buff state at cast START** (its damage *time* stays at the
    completion — Phase 4's rule, unchanged). Sampling the state across the completion had credited every
-   press-snapped ramp-exit window with ~half of the cast it fired *after*; the sim (and game) snapshot at
-   cast start, so the in-flight cast never benefits. **Sim (isc+scb T=98 h140):** the model preferred the
-   co-pressed-at-ramp-exit cluster over cluster-on-Lust by +0.12 casts while the sim said **−0.40%**; with
-   the snapshot fix the model ranks it −0.11 — agreement.
+   press-snapped ramp-exit window with ~half of the cast it fired *after*; the in-flight cast never
+   benefits. **Sim (isc+scb T=98 h140):** the model preferred the co-pressed-at-ramp-exit cluster over
+   cluster-on-Lust by +0.12 casts while the sim said **−0.40%**; with the snapshot fix the model ranks it
+   −0.11 — agreement.
+   **⚠ Mechanism correction (Phase 8 round 2):** the *fix* is right, the stated mechanism is not. wowsims
+   applies a buff at **cast COMPLETION** (`sim/core/cast.go:216/258/338/356`), not at cast start. The two
+   agree at a window's **front** edge only because the press is boundary-snapped — "completion of the cast
+   in progress" *is* the next cast's start. They **disagree at the BACK edge**: on the completion rule the
+   cast in flight when the aura fades is unbuffed, so a start-snapshot model over-credits a window's last
+   partial cast by `frac(D/Δ) × premium`. See §3b-note and PHASE8 §5/§5b.
+
+**§3b-note — the phase-average argument (1) is CONDITIONAL on a uniform press phase.** "Interior windows
+are slip-invariant" holds because over a uniform press phase `E[casts in window] = D/Δ`. That is **true for
+a human**: TBC on-use trinkets and Arcane Power are off the GCD and can be pressed mid-cast, so a real mage
+draws from the whole phase distribution. It is **false for the sim**, which can only press at a cast
+boundary and therefore always realises φ=0 — the *minimum* of that distribution, covering exactly
+`floor(D/Δ)` casts (**THE FLOOR LAW**, sim-verified 10/10 with a mechanism proof; PHASE8 §5, TOOLING ★).
+So the model is written for the player and the sim samples one corner of the player's options: **expect the
+model to read `frac(D/Δ) × premium` high against any sim A/B of a damage/SP window** (≈+0.036pp measured on
+a clean single-buff marginal) before calling that gap a model bug. **Haste buffs are exempt** — their value
+is time-compression that rolls to the fight end rather than expiring with the window. Charging the back-edge
+fraction is a live candidate refinement, **not implemented** (it moves the B2 deficit the wrong way —
+PHASE8 §8 — so it would need its own physics justification and sim gate).
 
 **The IV@0 "ramp compression" bullet above is TEMPERED by (2):** the compression is real (ramp casts do
 run faster — sim-verified cast lengths), but pressing IV earlier re-phases the post-ramp lattice, and what

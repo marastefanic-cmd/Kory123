@@ -137,8 +137,11 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/PHASE7.md` — **the current in-flight plan: FIX the cross-val deficits so the acceptance test
   passes.** Diagnose each length-robust deficit as SEARCH-MISS vs SCORER-GAP, then fix at the root.
   (§5.11 legibility canonicalization is DONE; §5.12 round-3 gathered; the residual B2 family → PHASE8.)
-- `docs/PHASE8.md` — the B2 scorer-gap family: the emergent **joint** haste×damage×kill interaction that
-  every isolated decomposition reports CLEAN. Reserved as the highest-effort model work.
+- `docs/PHASE8.md` — the B2 model-vs-sim ranking error (the old "emergent joint interaction" framing is
+  **withdrawn** — it rested on a press the sim silently retimed). Round 2 established **THE FLOOR LAW**
+  (a value window covers exactly `floor(D/Δ)` casts in the sim; haste buffs exempt) and two harness input
+  errors (`t5two`, effective SP ≈1450), which together zero the mean bias — and **falsified** the
+  SP-under-haste candidate on sign. Reserved as the highest-effort model work.
 - `docs/PHASE9.md` — **performance / refactor notes** (CPU + latency, under a byte-identical-plans
   constraint). Measure-first: baseline profile, call census, hypothesis table with verdicts, and the
   refactor catalogue (redundant walks, fusable steps) with a cheapest-and-safest-first landing order.

@@ -185,6 +185,42 @@ A press *also* cannot fire while its own cooldown is still running — a press s
 cooldown fires when the cd clears (which may be a later boundary). These two facts drive the
 intermission-resume behavior below.
 
+## ★ THE SIM CANNOT PRESS MID-CAST — a value window covers exactly `floor(D/Δ)` casts
+
+The direct consequence of the section above, and it bites **every** damage/SP window you A/B. A value
+window of duration `D` boosts **`floor(D/Δ)` casts in the sim**, never the fractional `D/Δ` the model's rate
+integral credits. Two facts compose: wowsims applies the modifier at **cast COMPLETION** (`applyEffects`,
+`sim/core/cast.go:216/258/338/356`), and the APL can only press at a **cast boundary** — so the first
+boosted completion is a full `Δ` after the press and the window really spans `[gain+Δ, gain+D]`.
+
+**Verified 10/10** (Icon +155 SP / 20s at t=30, T=100, cold open, CRN seed 11, haste 0→300): predicted floor
+== CRN-counted boosted casts at every point, **including both integer crossings** — h78→h82 straddles
+`D/Δ` = 13.993/14.027 inside a 4-rating-point window, and h160→h200 straddles 14.686/15.024. Mechanism
+confirmed independently: `firstBoostedCast − auraGain` == `Δ` at all ten hastes (1.500 … 1.260). Full table
+in PHASE8 §5.
+
+- **Haste buffs are EXEMPT.** Their value is time-compression, which does not expire with the window — it
+  rolls to the fight END where `--var` handles the fraction. Never apply this to MQG/IV/Zerk/Lust.
+- **Expect a SAWTOOTH, not a curve.** A sim haste sweep of a fixed value window jumps at each integer
+  crossing of `D/Δ` and decays between. A model that credits `D/Δ` is **flat** (`(D/Δ)/(T/Δ) = D/T`). A
+  sweep that looks non-monotone here is *correct*, unlike the prepull artifact (★★★ below).
+- **It is a harness expressiveness limit first, a model bug second.** Real TBC on-use trinkets and Arcane
+  Power are **off the GCD and pressable mid-cast**, so a human draws from the whole press phase, for which
+  `E[casts] = D/Δ` is unbiased. The sim can only realise φ=0 — the *minimum* of that distribution. Budget
+  the model to read `frac(D/Δ) × premium` high against the sim (~+0.036pp on the probe above) before calling
+  a gap a bug.
+
+**Two counting traps** (both cost a re-run to find):
+- **Never count boosted casts by timestamp membership in `(gain, fade]`.** It double-counts both edges and
+  returns floor+1 in 9/10 cases. **Count by CRN damage-difference**: for a count-preserving buff (SP/damage)
+  the paired base and buffed runs are cast-for-cast aligned, so the casts whose damage *differs* ARE exactly
+  the boosted set.
+- **Never take `Δ` from the combat log.** Timestamps quantize to 0.01s, which cannot resolve an integer
+  crossing (h78 and h82 both read a median gap of 1.4300 — h82's true `D/Δ` is 14.027 and gets misclassified
+  as floor 13). Regressing over the steady train fails differently: one anomalous gap (h200 has a lone 2.66s
+  against a modal 1.33 × 61) drags the fit. **Use the analytic interval `Δ(R) = 1.5/(1 + R/1577)`** — valid
+  because the R=0 log gives Δ = exactly 1.5000, i.e. the reference export's base spell haste is **0%**.
+
 ## External buffs (Bloodlust / PI / Drums) — off-GCD, single application
 
 `raidBuffs.bloodlust=true` **registers** the off-GCD `registerBloodlustCD` cooldown (spell 2825) — that
@@ -478,6 +514,17 @@ of magnitude under the 0.3% deficit threshold, so gathered rounds stay meaningfu
 mid-round (it changes what a half-gathered acceptance run measures); add `t5two: true` to both cfg
 builders between rounds and re-baseline. Expect the largest effect on **AoE columns** (KT), where the
 AB-vs-AE ratio moves a full ×1.2 — the ×1.2 threshold shift already noted above.
+
+**⚠ The export's EFFECTIVE spell power is ≈1450, not the 1387 the harness passes the model** (found 07-24,
+same fix window as `t5two`). The export also wears **Tirisfal 4pc** — `SpellID: 37444`, **+70 SpellDamage on
+crit** — and the combat log states it outright: every AB `[DEBUG]` line reads either `SP: 1386.2` (proc down)
+or `SP: 1456.2` (proc up), an exact +70. Measured **uptime 88–94%**, and — checked explicitly — **flat in
+haste** (more casts ⇒ more crits does *not* raise it; the hypothesis that it would was tested and
+disproved). So `effSP ≈ 1386 + 0.9·70 ≈ 1449`. Effect on model-vs-sim: an SP-window marginal is worth ~2.4%
+less on a 1450 base than a 1387 base — a **flat** shrink, not haste-dependent. Combined with the floor law
+(★ above) this takes the mean model-vs-sim bias on a clean single-buff marginal from **+0.0895 pp to
++0.0084 pp** (PHASE8 §7): once the harness is described correctly, the model's SP valuation is unbiased.
+Set `sp: 1450` alongside `t5two: true` in both cfg builders, between rounds.
 
 **AE fixed-length quantization (a var0 trap, worse than on AB streams).** A uniform instant stream fits
 a WHOLE number of GCDs into a fixed fight: at `--dur 60` var0, Zerk-in-IV vs Zerk-outside on the 6t

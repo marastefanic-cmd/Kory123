@@ -20,7 +20,9 @@
    **§5.11 (legibility) is now LANDED** — `canonicalWindowOrder` at the three `resolve(...)` sites plus
    a second anchor base in the packing pass; two goldens moved (Hydross = bit-exact tie, now
    cluster-first; `4:00 lust 0:05` = strict +0.0067 eff casts), 23 byte-identical, suite 25/25.
-   **Two phases now stand open behind Phase 7:** `docs/PHASE8.md` (the B2 joint-interaction scorer gap)
+   **Two phases now stand open behind Phase 7:** `docs/PHASE8.md` (the B2 model-vs-sim ranking error — the
+   "joint interaction" framing is **withdrawn**, round 1 traced it to a retimed trinket press and round 2
+   established **THE FLOOR LAW** + two harness input errors; §8 falsifies the SP-under-haste candidate)
    and `docs/PHASE9.md` (**performance/refactor**, user-reported CPU cost — notes + hypotheses only so
    far, nothing landed; every change there is gated on byte-identical plans).
    Background: Phase 6 (the haste-adaptation cross-val, `docs/archive/07-phase6-xval-run.md`) was data-complete: 36
