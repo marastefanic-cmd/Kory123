@@ -339,3 +339,14 @@ the shipped engine and the acceptance record match. Fix outline:
    preserved by construction — a tie kept is still dominance — and native plans carry the legibility
    tie-breaks.
 3. Re-run exact-match + the affected goldens' sims, then the final acceptance campaign.
+
+**§5.11 concrete case (measured, reproducible — use as the fix's acceptance example):** Hydross preset
+(T=100, Lust@7 pinned), 0 haste rating, kit isc+scb, CS on. The emitted plan orders Lust as
+**Zerk@8 → cluster@18 (IV/Icon/SCB/AP) → CS-IV@39**; the ordering used on other fights (and the natural
+read) is **cluster@8 → Zerk@28 → CS-IV@38**. Scored with the engine (`scratchpad/hydross-zerk.mjs`
+pattern): **87.4509 vs 87.4509 effective ABs — an EXACT tie**, so the flip is pure tie-resolution.
+(Contrast: pushing Zerk outside Lust entirely costs a real −0.20 casts — the SPLIT is load-bearing,
+the ORDER is not.) Principle for the fix: among score-tied orderings, resolve **consistently across
+fights** — burst cluster first inside Lust (the day-1 "anchor burst early" doctrine), THEN the lone
+haste filler, then the CS chain. Consistency is the aesthetic: same-shape fights must render
+same-shape plans.
