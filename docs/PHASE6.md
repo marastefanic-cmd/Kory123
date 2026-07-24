@@ -461,13 +461,13 @@ assembled; the diary/acceptance/archive docs are stood up (`docs/DIARY.md`, `doc
    `isc+scb`-medium "low-haste" label); confirmed monoDip=0 and sub-1% everywhere. Folded into §2.1/§4.5.
    The full 36-table re-run is running now (verifies the 12 new fight-class + 6 boss tables, incl. the
    KT-exclusion soundness); reconcile §2.1's "bottom line" verdict when it returns.
-4. **[FIX PASS] Upgrade the collector to report the FULL deficit-column set, not just the worst cell** —
-   the adversary found ~78 borrowed-plan-wins columns behind the worst-cells, including length-robust
-   ones the single-number summary hid. Report all deficit columns per table and flag length-robust ones.
-5. **[FIX PASS] KT AoE**: to sim KT's AoE phase properly, genapl needs Arcane-Explosion emission during
-   AoE windows (currently simmed as downtime — KT numbers exclude AoE damage, §2.1). Do before trusting KT.
-6. **(Optional, next pass) length-independent metric** — total damage over a fixed cast count, or the
-   model's effective-AB count — would erase the short-fight quantization caveat entirely (§3.0).
+4. ✅ **[DONE in PHASE7] Collector full-column upgrade** — `xval-collect.mjs` reports every
+   borrowed-win column + length-robust loci (+`--json` target export); reconciles with
+   `xval-verify.mjs` (167 columns).
+5. ✅ **[DONE in PHASE7] KT AoE** — genapl `_aoe` windows cast Arcane Explosion; xval BOSS mode passes
+   `--targets N`; sim-verified (AE ×6 targets inside the window, AB re-ramps at the exit).
+6. ✅ **[DONE in PHASE7] The metric** — var0.5 (the model-matched kill window) + wall-jitter on boss
+   tables; see TOOLING/ACCEPTANCE and PHASE7 §5.4.
 7. **Phase 7**: fold in Ashtongue (§4.8).
 
 ## 8. Guardrails (do not regress)
