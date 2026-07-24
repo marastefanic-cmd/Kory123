@@ -10,8 +10,15 @@ historical snapshot, possibly later revised or reversed. For *outcomes* and *wha
 **Append-only. Do not prune.** When a phase closes, archive its plan doc here (see the policy in
 `CLAUDE.md`) rather than deleting it.
 
+`00-genesis.md` is different from the rest: it's a **narrative reconstructed from git history** (not a
+recovered artifact), covering the very beginning — the first idea, the first working tool, and the day-1
+→ day-3 iteration *before any plan doc existed* — plus a **findings / living-doc evolution timeline** (a
+durable summary of what the pruned-to-current living docs learned and overturned over time). Read it
+first for the origin story; then `01`–`06` are the recovered per-phase plans.
+
 | # | file | date | phase / workstream | outcome (see DIARY) |
 |---|------|------|--------------------|---------------------|
+| 00 | `00-genesis.md` | 2026-07-19→21 | origin story + findings timeline (reconstructed from git) | the model everything is built on |
 | 01 | `01-placement-containment.md` | 2026-07-21 | placement/containment search fix | landed (3:20 +3.6, 5:00 +2.4) |
 | 02 | `02-harness-audit-ramp-SP.md` | 2026-07-21 | wowsims harness audit + ramp-aware SP valuation | landed; found the APLActionSchedule drop bug + AP-180 quirk |
 | 03 | `03-finite-mana-REJECTED.md` | 2026-07-22 | proactive finite-mana planner (beta MODE) | **REJECTED** (user) — layout-first; mana chip is the UX ceiling |

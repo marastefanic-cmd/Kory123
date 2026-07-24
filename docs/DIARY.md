@@ -17,6 +17,11 @@ the raw arc anytime with `git log --reverse --pretty=format:'%ad %s' --date=shor
 
 ## The arc, by phase
 
+> **The very beginning** — the first idea, the first working tool (commit `7f6713c`), and the day-1→3
+> iteration before any plan doc existed — plus a **findings / living-doc evolution timeline**, is
+> reconstructed in `docs/archive/00-genesis.md`. This section is the high-level arc; read 00-genesis for
+> the origin narrative.
+
 ### Phase 1 — the planner exists (2026-07-19)
 Built the single-file `index.html`: enter a fight (length, Lust, phases), get the optimal press time for
 each on-use cooldown + a burn timeline + copy-as-text plan. Boss presets, a fight-phase editor, pinnable
