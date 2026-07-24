@@ -263,3 +263,23 @@ the deficit is deterministic measurement structure. TWO harness corrections came
 (2) jitter v2 = independent per-wall seeded shifts, presses tracking their segment's wall,
 seam-coupled edges. Boss tables re-running under v2. No scorer change — by design (the §8
 plan-for-the-known-kill philosophy extends to walls: don't razor-time segment parities).
+
+### 5.8 ROUND-2 RESULTS (fight-class complete; bosses re-running under jitter v2)
+Apples-to-apples on the 30 fight-class tables (same fights, same kits):
+| | Phase 6 (var10) | Phase 7 round 2 (var0.5) |
+|---|---|---|
+| borrowed-win columns | 127 | 125 (median width **0.047%** — mostly hair-ties) |
+| mean / worst | 0.160% / **0.77%** | **0.075% / 0.40%** |
+| columns ≥0.3% / ≥0.2% / ≥0.1% | 19 / 40 / 73 | **5 / 11 / 28** |
+| monoDip | 0.00% everywhere | 0.00% everywhere |
+Model-side residual search-misses: 14, ALL with model margins ≤0.084 casts (inside the 0.15
+pressability slack — the pooling-class wobbles, as predicted in §5.6).
+
+**The residual ≥0.3% family (5 columns) is REAL and characterized** (next round's §3b targets):
+robust to var width (isc+mqg medlong @70: +0.38% at var0.5 / +0.33% at var1.5 AND var3 — not
+kill-window parity), model near-ties (−0.005..−0.07 casts; one −0.34), and a shared shape: the sim
+prefers EARLIER/pull-anchored on-use haste in context (MQG@pull ×2 — the ladder L3 law — IV-chain@pull,
+cluster-on-Lust@165). NOT a broken invariant: lone-MQG early-vs-late on a plain fight sims
+BYTE-IDENTICAL (position-independence exact); the preference is contextual (double-IV opener /
+Icon / Lust coupling). Candidate suspects for next round: the §5.3 recalibration's interaction with
+self-press haste near the opener, or a §16-band coupling the scorer under-weights.
