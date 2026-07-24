@@ -134,8 +134,10 @@ wowsimcli sim --infile req.json                    # upstream canonical CLI on t
 
 `--dumpreq` writes the built `RaidSimRequest` as protojson; `wowsimcli` (`go build -tags with_db -o
 wowsimcli ./cmd/wowsimcli`) is the upstream tool the web backend uses. **Verified: identical to the
-decimal** (plain-AB mana-0 = 944.4 == 944.4; mana-900k = 2264.9 == 2264.9, incl. stdev). So absolute
-numbers are trustworthy, not just A/B deltas. Re-run this whenever the runner or source changes.
+decimal** (plain-AB mana-0 = 944.4 == 944.4; mana-900k = 2264.9 == 2264.9, incl. stdev; re-anchored
+2026-07-24 on the current export: 2248.8 == 2248.8 with stdev 47.2 == 47.2). The IDENTITY is the
+anchor, not the absolute number — it shifts with export revisions. So absolute numbers are
+trustworthy, not just A/B deltas. Re-run this whenever the runner or source changes.
 
 ## The combat log — `SIMLOG=1`
 
@@ -149,12 +151,17 @@ claimed the runner had no combat-log flag.)
 
 ```
 node tools/genapl.mjs '<specA>' A.apl.json
-runner --export gear.json --apl A.apl.json --dur 420 --var 0 --iter 150000 --seed 11 --mana 900000 --tag A --quiet
+runner --export gear.json --apl A.apl.json --dur 420 --var 0.5 --iter 30000 --seed 11 --mana 100000000 --tag A --quiet
 # repeat for specB; compare column 5.
 ```
-- `--var 0` = fixed kill (lowest noise for A/B). `--mana 900000` ≈ infinite (isolate the overlay from
-  mana — verified the mage never OOMs at these levels, so mana is not the binding constraint). `--haste
-  N` tests gear breakpoints.
+- **`--var 0.5` is the default read** (the model-matched kill window — see the metric bullets below).
+  `--var 0` is still useful for count-preserving CRN A/Bs (lowest pairing noise) but MUST be confirmed
+  at var0.5 (var0's whole-cast parity flipped the §16 h150 gate's sign once). `--mana 100000000` =
+  infinite (isolate the overlay from mana). `--haste N` tests gear breakpoints.
+- **Iterations: 10–60k is plenty** (single iterations spread ±2%, σ≈50–65 DPS; the mean converges to
+  ~0.02% by 10k; 250k was always wasteful). More iterations CANNOT shrink a persistent disagreement —
+  the stubborn ones are deterministic structure (cast-boundary parity, wall phase), which only metric
+  design (var0.5, wall-jitter) addresses.
 - **Use the SAME `--seed` for A and B** — common random numbers (below) make the paired diff low-noise.
 
 ## Off-GCD co-fire — there is NO "collision" (the old #1 trap was a myth)

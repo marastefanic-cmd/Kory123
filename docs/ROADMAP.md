@@ -4,12 +4,23 @@
 
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
-2. **Plan in flight: `docs/PHASE7.md` — FIX the cross-val deficits so the acceptance test passes.**
-   Phase 6 (the haste-adaptation cross-val, `docs/PHASE6.md`) is data-complete: 36 tables, monoDip=0
-   everywhere (measurement correct), every non-KT deficit sub-1%, but a set of **length-robust diagonal
-   deficits (0.05–0.38%)** — one per kit, always "a neighbor-haste plan out-sims the native" — keeps the
-   standing acceptance test (`docs/ACCEPTANCE.md`) OPEN. Phase 7 diagnoses each as SEARCH-MISS vs
-   SCORER-GAP and fixes the root cause. History up to here: Phase 5 landed (`docs/PLAN.md` deleted; see
+2. **Plan in flight: `docs/PHASE7.md` — FIX the cross-val deficits so the acceptance test passes.
+   Status 2026-07-24: the FIXES ARE LANDED (read PHASE7 §5 — the run ledger); the acceptance
+   re-campaign is running.** What landed: three sim-gated scorer terms (RULES §3b — press-snap
+   slippage at hard edges; externals snap to the cast lattice, which tempers the IV@0 "ramp
+   compression" credit; ramp casts snapshot buffs at cast START), two search passes (polished CS
+   chain-geometry family; drop-one-use escape), the KT AoE harness gap closed (genapl `_aoe` →
+   Arcane Explosion + `--targets`), and the MEASUREMENT locked to the model-matched protocol
+   (**var 0.5** + wall-jitter on boss tables + 10–60k iters — TOOLING; do NOT regress to var10/var0
+   or 150k+ iters). Goldens regenerated under the recalibration — every move gated (model ≥ old on
+   all 25, CRN sim net-positive, wall fights +0.3–0.5%). **Deferred to the next round (PHASE7
+   §5.6):** cross-haste candidate pooling (closes 19/19 probed search misses; 2–3× solve cost),
+   the Al'ar opener residual, the isc+skull straddle-credit and scb+skull count-trade margins
+   (≤0.2% at the corrected metric — re-measured by the running campaign first).
+   Background: Phase 6 (the haste-adaptation cross-val, `docs/PHASE6.md`) was data-complete: 36
+   tables, monoDip=0 everywhere, 167 borrowed-win columns keeping the standing acceptance test
+   (`docs/ACCEPTANCE.md`) OPEN; Phase 7's diagnostic (`tools/diagnose-deficit.mjs`) partitioned
+   every one (19 search misses / 26 KT-caveat / a few real scorer terms / metric artifacts). History up to here: Phase 5 landed (`docs/PLAN.md` deleted; see
    "Phase 5 — AoE phases cracked" below for the verdict, thresholds, and gates; Phase 4's record is
    below it). Earlier history: Phase 3
    = raid-buff/proc tightening + **deterministic mana & haste helpers**, all shipped without touching the
