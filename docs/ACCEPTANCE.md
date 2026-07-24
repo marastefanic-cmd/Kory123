@@ -25,20 +25,22 @@ For a fight (random by class, or a boss preset) and a trinket kit:
   reports `monoDip`; it MUST be ~0.00%. A nonzero value is a regression (a prepull crept back in, or a
   new harness bug) — stop and fix, do not gather. *Necessary but not sufficient for correctness: it
   proves haste isn't harmful, not that the absolute DPS is calibrated.*
-- **(B) Diagonal dominance (the model test).** In every column, the native (diagonal) plan must sim ≥
-  every plan borrowed from another haste. CLEAN = native wins every column. DEFICIT X% = a borrowed
-  plan out-simmed native somewhere. **Weigh a deficit by fight length** (§3.0): short/medium sub-1% may
-  be plan-to-plan boundary quantization (unconfirmed); a long/XL deficit, or one that persists/grows
-  with length, is real model mis-adaptation.
+- **(B) Diagonal dominance (a hard invariant — the model test).** In every column, the native (diagonal)
+  plan must sim ≥ every plan borrowed from another haste. This should be **provably always true, just like
+  monotonicity** — the plan the tool builds FOR a haste is, by claim, the best plan AT that haste, so no
+  borrowed plan can beat it. CLEAN = native wins every column; any DEFICIT is a **violation**. The bar is
+  **zero deficits**, not "small enough" — deficits are not to be graded by fight length or magnitude and
+  tolerated. (A residual measurement subtlety — fixed-length DPS quantization can make two plans clip
+  different partial casts — is itself something the fix phase must design away, e.g. a length-independent
+  metric or a by-construction guarantee, so the invariant can hold cleanly. That's how it's *achievable*.)
 
 ## The PASS criterion
-The model **passes** when, across all six trinket kits × the five fight-length classes × the boss
-shapes:
+The model **passes** when, across all six trinket kits × the five fight-length classes × the boss shapes:
 1. `monoDip = 0.00%` on **every** table (invariant A, no exceptions), AND
-2. Every diagonal DEFICIT is either **CLEAN** or **provably boundary-quantization only** — i.e. it
-   vanishes/reverses as the fight lengthens (the quantization fingerprint) and does NOT persist or grow
-   onto long/XL fights. Any length-persistent or length-robust diagonal deficit is a **model bug to fix**,
-   not a pass.
+2. **Zero diagonal deficits** — the native plan wins every column of every table (invariant B, no
+   exceptions), on the same footing as (1). KT counts once genapl emits Arcane-Explosion so its AoE is
+   measured rather than dropped. No deficit is excused as "quantization" or "too small" — the fix phase's
+   job is to make invariant B hold everywhere, provably.
 
 ## How to run it
 ```
@@ -54,24 +56,18 @@ runner · breakpoint-straddle haste sets (`tools/xval-haste-sets.json`)**. Raw m
 
 ## Current status (2026-07-23, first full run — 36 tables) — NOT PASSING
 Data-gathering complete: 30 fight-class tables (6 kits × 5 classes) + 6 boss tables (Vashj/Al'ar/KT ×
-{mqg+skull, isc+scb}), all committed to `tools/xval-results/`.
-- **Invariant A: PASS** — `monoDip = 0.00%` on **all 36** tables (18 adversarially re-verified: zero
-  row-dips anywhere; full-set re-run confirming the rest).
-- **Invariant B: OPEN** — every **fight-class** deficit is sub-1% (worst 0.77%); Vashj/Al'ar boss sub-0.6%.
-  But **not all are pure quantization:**
-  - `mqg+skull` carries a low-haste deficit that *persists and grows* onto long/XL (0.38%/0.32%) — a
-    real, tiny (~0.1–0.6% DPS) model slack. **This is the primary blocker.**
-  - The SP-trinket-free kits (`scb+skull`, `scb+mqg`) add mid/HIGH-haste deficits (h210–290, ~0.1–0.3%)
-    — the §4.2 region (no exhaustive ground truth above ~h150 there); triage pending.
-  - `isc+scb`/`isc+mqg` low-haste deficits reverse/vanish with length ⇒ quantization, not model error.
-  - Mechanism is heterogeneous (IV/Cold-Snap sequencing recurs most); the single-worst-cell summary hides
-    secondary deficit columns, some length-robust (§7 collector upgrade).
-- **KT boss is EXCLUDED** (1.06%/2.68%): its AoE window is simmed as downtime (genapl has no
-  Arcane-Explosion), so the model optimized valuing AoE the sim can't reward — a **harness limitation**,
-  not a haste-adaptation failure. Re-run KT after adding AE emission (§7).
+{mqg+skull, isc+scb}), all committed to `tools/xval-results/`. Invariants independently recomputed with
+`tools/xval-verify.mjs`.
+- **Invariant A: PASS** — `monoDip = 0.00%` on **all 36** tables (every row rechecked cell-by-cell; zero
+  dips anywhere).
+- **Invariant B: FAILS** — **35/36 tables carry ≥1 diagonal deficit** (167 borrowed-plan-wins columns
+  total; worst non-KT 0.77%; KT 1.06%/2.68% with an AoE-not-simmed measurement caveat). Per the invariant
+  above, every one is a violation; this status does **not** rank them or excuse any as quantization/small.
+  The data (where each lands, length behaviour, mechanism spot-checks) is in `PHASE6.md §2.1/§4.5`,
+  `tools/xval-collect.mjs`, and `tools/xval-verify.mjs` — recorded for the fix phase, not graded here.
 
-**So: the model does not yet fully survive this test.** The fix phase owns the `mqg+skull` low-haste slack
-+ the scb §4.2 items, then re-runs this in full (incl. KT once AE emission lands). See PHASE6 §4.1/§4.5.
+**So: the model does not survive this test.** The fix phase (PHASE7) diagnoses the patterns and
+eliminates ALL diagonal deficits so invariant B holds everywhere — including KT once genapl emits AE.
 
 ## Known coverage gaps in the test itself (make the test stronger over time)
 - **Single-worst-cell reporting hides structure.** `XVAL-DONE`/the collector surface one worst cell per

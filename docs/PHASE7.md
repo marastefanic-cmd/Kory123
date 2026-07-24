@@ -13,9 +13,10 @@ Read first: `docs/ACCEPTANCE.md` (the test + pass criterion), `docs/PHASE6.md` �
 ## 0. Definition of DONE (the only thing that counts)
 `docs/ACCEPTANCE.md` passes FULLY on a fresh full run:
 1. **Invariant A** — `monoDip = 0.00%` on every table (already holds; must not regress).
-2. **Invariant B** — every non-KT diagonal deficit is **CLEAN or provably boundary-quantization only**
-   (vanishes/reverses as the fight lengthens). **No length-robust diagonal deficit survives** on any
-   long/xl fight, for any kit, at any haste.
+2. **Invariant B — ZERO diagonal deficits.** The native plan wins every column of every table — the same
+   hard bar as monotonicity, no deficit excused by fight length or magnitude. (If fixed-length DPS
+   quantization leaves an irreducible residual, part of this phase is *designing it away* — a
+   length-independent metric or a by-construction dominance guarantee — so the invariant can hold cleanly.)
 3. **KT included** — once genapl emits Arcane-Explosion, KT sims with its AoE valued and joins the pass.
 
 And the standing guardrails hold at every commit: **exact-match 25/25**, **determinism** (one setup ⇒
@@ -23,34 +24,31 @@ one plan; no new RNG), **cold open / ∞ mana** protocol unchanged.
 
 ---
 
-## 1. The target set — the length-robust deficits (the ONLY real fix targets)
-Short/medium deficits that reverse to CLEAN on longer fights are boundary quantization (§3.0) — NOT
-targets. The real targets are the **long + xl** deficits, one per kit, all the same shape ("a plan built
-for a *neighbor* haste out-sims the native plan"):
+## 1. The target set — ALL diagonal deficits (the goal is zero, not a hand-picked subset)
+The target is **every** diagonal-dominance violation, not a graded subset — Phase 6 deliberately did
+NOT pre-classify them (some grow with length, some shrink; that distinction is for THIS phase to
+establish and act on, not to assume). Get the authoritative, un-graded list from:
+`node tools/xval-verify.mjs` (all 167 borrowed-win columns across 36 tables) and
+`node tools/xval-collect.mjs tools/xval-results` (worst cell + locus per table).
 
-| kit | fight | sim-haste | borrowed plan that wins | deficit | locus |
-|-----|-------|-----------|-------------------------|---------|-------|
-| mqg+skull | long (283) | 70 | plan@100 | **0.38%** | low |
-| mqg+skull | xl (395)   | 30 | plan@70  | **0.32%** | low |
-| scb+skull | long (366) | 90 | plan@210 | **0.30%** | mid/high |
-| scb+mqg   | xl (406)   | 0  | plan@105 | **0.29%** | low |
-| isc+mqg   | xl (451)   | 230| plan@260 | **0.23%** | high |
-| isc+mqg   | long (281) | 110| plan@0   | **0.21%** | mid |
-| scb+skull | xl (437)   | 240| plan@260 | **0.19%** | high |
-| isc+scb   | xl (435)   | 20 | plan@400 | **0.17%** | low |
-| scb+mqg   | long (309) | 0  | plan@105 | **0.12%** | low |
-| isc+skull | long (293) | 40 | plan@70  | **0.12%** | low |
-| isc+skull | xl (417)   | 130| plan@100 | **0.09%** | mid |
-| isc+scb   | long (300) | 20 | plan@0   | **0.05%** | low |
+The **long/xl deficits are a sensible place to START** (one per kit, all the shape "a plan built for a
+*neighbor* haste out-sims the native"), because a violation that survives a long fight is least likely to
+be pure measurement noise — but starting there is a *sequencing* choice, not a decision that the others
+don't count. Snapshot for orientation (regenerate with the tools above; don't treat as the final scope):
 
-Plus **KT** (excluded until AoE emission lands) and any **length-robust SECONDARY** deficit columns the
-worst-cell summary hides (Task 2 upgrades the collector to surface these — the adversary found some, e.g.
-isc+scb xl plan@65 winning mid-haste columns). Reconcile this list with the **full-set adversarial re-run**
-before committing to it (it may promote/demote a target).
+| kit | fight | sim-haste | borrowed wins | deficit | | kit | fight | sim-haste | borrowed wins | deficit |
+|-----|-------|-----------|---------------|---------|-|-----|-------|-----------|---------------|---------|
+| mqg+skull | long | 70 | plan@100 | 0.38% | | isc+scb | xl | 20 | plan@400 | 0.17% |
+| mqg+skull | xl | 30 | plan@70 | 0.32% | | scb+mqg | long | 0 | plan@105 | 0.12% |
+| scb+skull | long | 90 | plan@210 | 0.30% | | isc+skull | long | 40 | plan@70 | 0.12% |
+| scb+mqg | xl | 0 | plan@105 | 0.29% | | isc+skull | xl | 130 | plan@100 | 0.09% |
+| isc+mqg | xl | 230 | plan@260 | 0.23% | | isc+scb | long | 20 | plan@0 | 0.05% |
+| isc+mqg | long | 110 | plan@0 | 0.21% | | scb+skull | xl | 240 | plan@260 | 0.19% |
 
-Two loci, likely two mechanisms: **low-haste (≤70)** — the §4.1 straddle-basin region; **mid/high
-(≥90)** — concentrated in the SP-trinket-free kits (scb+skull, scb+mqg, isc+mqg), the §4.2 "no ground
-truth above ~h150" region.
+Loci span **low-haste (≤70)** — the §4.1 straddle-basin region — and **mid/high (≥90)**, concentrated in
+the SP-trinket-free kits (§4.2 "no ground truth above ~h150"). Which loci share a mechanism is for the
+diagnostic (§2) to establish, not to presume here. Also fix the collector so no violation stays hidden
+(§3c) and re-check the short/medium deficits under the same diagnostic — they are targets too.
 
 ---
 
