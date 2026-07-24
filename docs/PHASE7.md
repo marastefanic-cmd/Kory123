@@ -248,3 +248,18 @@ KT-shape smoke +69% vs the old downtime read. KT re-runs with the campaign.
   and scb+skull count-trade margins (≤0.2% at the corrected metric — re-measure in the campaign first).
 - **IN FLIGHT: the full acceptance re-run** (`tools/xval-rerun.sh` — new engine, var0.5, wall-jitter,
   KT AoE valued; per-kit durable checkpoint commits), then collector + adversarial verification.
+
+### 5.7 The Vashj 0.64% — dug to ground (user-directed): per-segment cast parity, measurement redesigned
+The @235←265 column decomposed (arms A–F, jittered var0.5): the differing choice is which wall-exit
+hosts the Cold-Snap IV and whether Skull stacks on it. The model's arm pattern was exact (A==F, C==E)
+and the sim's disagreed — minimal 2-wall reproduction + per-interval log verification found WHY:
+**the sim's cadence matches the model's intervals EXACTLY (floored 1.0s under the stack, 1.09 under
+IV, ramps 1.65/1.44/1.21) — the only difference is that a wall-bounded segment realizes haste in
+WHOLE casts.** The fractional credit truncates at the wall: stacked-window marginal model +1.65 casts
+vs sim +1.04; split +1.48 vs +1.54 (units: the export's measured 3378 dmg/cast — beware the model's
+2241 constant when converting). So the model is RIGHT in expectation (real transition times vary);
+the deficit is deterministic measurement structure. TWO harness corrections came out of the dig:
+(1) the first wall-jitter (rigid translation) washes NOTHING — parity is per-segment (DIARY entry);
+(2) jitter v2 = independent per-wall seeded shifts, presses tracking their segment's wall,
+seam-coupled edges. Boss tables re-running under v2. No scorer change — by design (the §8
+plan-for-the-known-kill philosophy extends to walls: don't razor-time segment parities).

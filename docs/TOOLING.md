@@ -233,12 +233,18 @@ intermission-exit or AoE phase).
   columns: var10 deltas shrink 2–4× at var0.5). Use var0 only for count-preserving CRN A/Bs where its
   low noise helps, and confirm at var0.5; gate model preferences at var0.5. No kill-variance setting
   clears an **intermission-wall** effect (walls stay fixed) — that needs wall-jitter, below.
-- **Wall-jitter (boss tables — `xval.mjs` `WJITTER`, default 2):** the cast-train phase at a fixed wall
-  clips a whole cast differently per plan (measured: two Al'ar plans 1s apart simmed 0.59% apart at
-  EVERY kill-variance), which no phase-averaged model can rank — it is measurement structure, not model
-  error, and real phase transitions are not metronomic anyway. Each boss cell is averaged over wall
-  shifts δ ∈ {−2..+2}s with the walls AND all post-first-wall presses sliding together (the raid tracks
-  the boss). Validated: the recalibrated tool's Al'ar pair sims identical under the jittered read.
+- **Wall-jitter (boss tables — `xval.mjs` `WJITTER`, default 2) — INDEPENDENT per-wall shifts, and why.**
+  Within a wall-bounded segment the cast train is phase-locked to the exit (the re-ramp), so a plan
+  realizes haste value only in **whole casts** before the next wall — a deterministic per-segment
+  cast-parity worth up to ~±½ cast per segment that NO kill-variance can smooth. Dug to ground on the
+  Vashj 0.64% pair (minimal 2-wall reproduction, per-interval log verification): the sim's cadence
+  matches the model's floored/unfloored intervals EXACTLY; only the whole-cast truncation at walls
+  differs (stacked window: model +1.65 casts, sim +1.04; split: model +1.48, sim +1.54). The model's
+  continuous fractional credit is the CORRECT expectation for real fights, whose transition times vary
+  run to run — so the measurement must vary **segment lengths**: each wall gets its own seeded shift
+  δ_i ∈ [−WJ,+WJ], presses shift with the wall that starts their segment, seam-coincident window edges
+  move together (KT downtime→AoE). ★ A RIGID translation (one δ for walls+presses — the first design)
+  preserves every segment's internal parity and washes NOTHING — do not regress to it.
 - **var10 penalizes LATE windows near the end — decide which question you're asking.** A buff window
   inside the last `var` seconds gets clipped on short draws, so var10's A/B adds a real "late-slot
   kill-variance premium" on top of the fixed-kill effect (measured: Zerk-in-Lust vs after = +0.6% at
