@@ -253,14 +253,78 @@ exactly the residual's shape. It is an artifact of how each side counts:
   gathered round is invalidated (the sim says h40 by +0.360%).
 - **Re-run the isolation battery as single-buff steady-state marginals** (§4's real conditioning fix), not
   at a truncated T. Use **log-verified legal** schedules only (§1) and the corrected cfg.
-- **Sweep the OTHER buffs across haste** the way §5 swept Icon. AP (damage, floored) should show the same
-  sawtooth; MQG/IV/Zerk (haste, exempt) should not. A haste buff that *does* sawtooth would overturn §5's
-  exemption and is the single highest-information next measurement.
+- **Sweep the OTHER buffs across haste** the way §5 swept Icon — now upgraded from "should sawtooth" to a
+  **pre-registered, crossed, one-rating-point prediction**. See §11; the rig is built and ready to fire.
 - **Interrogate the ramp × haste interaction** — still the least-probed regime, and the one both B2 plans
   differ in most. Prime suspect remains `rampCastDmg(ts, tc)` / `rampSpans`.
 - **Consider the §5b back-edge refinement** (charge a value window its unfinished last cast) — but note
   §8: it moves B2 the wrong way, so it must be justified on its own physics, not as a B2 fix. High-risk,
   can move the 25 goldens; one hypothesis at a time, sim-gated like the Phase-7 §3b terms.
+
+## §11 — ★ ROUND 3'S PRE-REGISTERED TEST (prediction recorded; sim NOT yet run)
+
+Round 2 established the floor law by *measuring* ten hastes and finding the floor. That is strong, but it
+is still a fit: the law was read off the same data it explains. §11 removes that objection. The law
+predicts **where** the sawtooth steps, in closed form, from the window duration alone — so the step
+locations can be written down first and the sim asked to agree.
+
+    Δ(R) = 1.5/(1 + R/1577)          (export base spell haste = 0%: the R=0 log gives exactly 1.5000)
+    D/Δ  = (D/1.5)·(1 + R/1577)      ⇒   step to floor n at   R = 1577·(1.5n/D − 1)
+
+In the 0–300 rating range that gives, for the buffs we can press in isolation:
+
+| buff | D | kind | predicted step locations |
+|---|---|---|---|
+| **Icon** (29370, +155 SP) | 20s | value/sp | **R = 78.85, 197.1** (and 315.4, out of range) |
+| **SCB** (22044 w/ 30720 worn, +225 SP) | 15s | value/sp | **R = 157.7** |
+| **Arcane Power** (12042, ×1.30 dmg) | 15s | value/dmg | **R = 157.7** |
+| Icy Veins (12472) | 20s | haste | **none** — exempt |
+| MQG (19339) | 20s | haste | **none** — exempt |
+| Berserking (20554) | 10s | haste | **none** — exempt |
+
+**The design is CROSSED, and that is the point.** Neither buff is "the one that steps":
+
+- at **R = 78 → 79**, Icon must jump (**+0.091 pp**) and AP must not;
+- at **R = 157 → 158**, AP must jump (**+0.345 pp**), SCB must jump (**+0.126 pp**), and Icon must not;
+- at **R = 197 → 198**, Icon must jump again (**+0.085 pp**) and AP/SCB must not.
+
+Each bracket is **one rating point wide** — as sharp as the instrument goes. A step that lands on a
+predicted integer, and *only* on the predicted integer, cannot be a curve fit.
+
+Four falsifiers, each killing a different clause:
+
+1. **AP fails to jump at 157→158, or jumps elsewhere** → the floor law is wrong for ×dmg buffs.
+2. **AP and SCB (same D=15, different kind) do not jump TOGETHER** → the sawtooth follows the *buff*, not
+   the *window*; the whole "floor(D/Δ)" framing is mis-stated.
+3. **Icon jumps at 157→158, or fails to jump at 78→79 and 197→198** → *D* is not what sets the step.
+4. **Any of IV / MQG / Zerk steps at any of the three locations** → §5's haste exemption is overturned,
+   which would be the most consequential outcome of the round (it would mean the model over-credits
+   *every* haste window too, not just value windows).
+
+Falsifier 4 is a **genuine** null, not a freebie: at 78→79 and 197→198 the D=20 window floor *does* change
+(13→14, 14→15) for IV and MQG as well — the mechanism is present and available to fire. The exemption
+claims it doesn't matter there because a haste buff's value is time-compression that rolls to the fight
+**end**, not damage credited **inside** the window.
+
+**★ Why the two classes need different `--var`, and why that is not a fudge.** A **value** buff does not
+change cast timing at all — base and buffed runs have byte-identical cast boundaries, so the marginal is a
+pure damage ratio and the fight end cancels *exactly*; `--var 0` is correct and adds no confound. A
+**haste** buff *does* change timing, so base and buffed end the fight mid-cast at different phases, and at
+`--var 0` that terminal partial cast is a **second quantizer — at the fight end** — which would masquerade
+as a window step. `--var` must exceed one cast interval (>1.5s) to phase-average it. The haste legs are
+therefore run at **both** var 0 and var 3.0, so the difference is measured rather than assumed.
+
+**Retrospective check (already passing).** Round 2's measured Icon transitions were 13→14 somewhere in
+(78, 82] and 14→15 somewhere in (160, 200]. The closed form says 78.85 and 197.1 — both inside the
+observed brackets, with no free parameter. §11 tightens those brackets from 4 and 40 rating points to
+**one**.
+
+**Rig (built, dry-run verified, not yet fired):** `scratchpad/p8/r3model.mjs` computes and prints the
+prediction above (model leg only — run it again to reproduce the table); `scratchpad/p8/r3sweep.sh` runs
+the sim leg — seven single-buff APLs pressed at t=30 in a T=100 cold-open infinite-mana fight, over the
+grid `0 40 70 78 79 120 150 157 158 197 198 240 300`, with the SCB leg on a 30720-equipped export
+(`tools/xval.mjs:59` — the Mana Emerald only grants +225 SP while the braid is worn). **Blocked on CPU
+only:** it must not overlap an acceptance round.
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
