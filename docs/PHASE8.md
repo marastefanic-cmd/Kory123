@@ -220,6 +220,9 @@ residual would **lower h40's model score** and make the model prefer h70 *more*.
 therefore **cannot** be the B2 mechanism — it pushes the wrong way. This retires "the model misprices SP
 under haste" from the candidate list and is the round's most useful negative result.
 
+⚠ **Scope:** this falsifies the **residual**, i.e. what is left *after* the floor correction. The floor
+correction itself points the **other** way and is a (small) genuine pro-h40 term — see **§12**.
+
 ## §9 — Leads CLOSED this round (do not re-open)
 **The "model fits more casts than the sim" denominator lead — CLOSED, it is a counting convention.**
 Model base cast counts read +1 at low haste and *+2* at high haste versus the sim, a denominator effect with
@@ -325,6 +328,51 @@ the sim leg — seven single-buff APLs pressed at t=30 in a T=100 cold-open infi
 grid `0 40 70 78 79 120 150 157 158 197 198 240 300`, with the SCB leg on a 30720-equipped export
 (`tools/xval.mjs:59` — the Mana Emerald only grants +225 SP while the braid is worn). **Blocked on CPU
 only:** it must not overlap an acceptance round.
+
+## §12 — ★ THE FLOOR LAW *IS* A B2 MECHANISM — right direction, ~9.5% of the magnitude
+§8 falsified the **residual** as a B2 mechanism. It never asked what the **floor correction itself** does to
+the ranking, and the two point *opposite* ways. Worth separating, because the answer is the first mechanism
+found that pushes B2 the **correct** direction.
+
+Why they differ: the residual grows with the *ambient* cast rate, so it punishes h40's Icon-riding-MQG+IV.
+The floor loss is `frac(D/Δ) × premium` — it is **largest when Δ is large**, i.e. at *low* haste, so it
+punishes h70's **bare** windows. Same two windows, opposite sign.
+
+Computed on the actual B2 plans (`scratchpad/p8/frac.mjs`; per-window Δ from each press's local buff state,
+premium = the buff's per-cast multiplier over a plain AB):
+
+| plan | buff | press | Δ | D/Δ | frac | prem% | lost ABs |
+|---|---|---|---|---|---|---|---|
+| h40 | arcanePower | 8 | 1.088 | 13.786 | 0.786 | 25 | 0.1965 |
+| h40 | arcanePower | 188 | 1.105 | 13.577 | 0.577 | 25 | 0.1443 |
+| h40 | isc | 29 | **1.000** | **20.000** | **0** | 6.47 | **0** |
+| h40 | isc | 183 | 1.105 | 18.103 | 0.103 | 6.47 | 0.0066 |
+| h70 | arcanePower | 4 | 1.463 | 10.254 | 0.254 | 25 | 0.0635 |
+| h70 | arcanePower | 192 | 1.105 | 13.577 | 0.577 | 25 | 0.1443 |
+| h70 | isc | 4 | 1.463 | 13.672 | 0.672 | 6.47 | 0.0435 |
+| h70 | isc | 182 | 1.105 | 18.103 | 0.103 | 6.47 | 0.0066 |
+
+| plan | totalDmg | sim under-credit | % of total |
+|---|---|---|---|
+| h40 | 510732 | 713 | **0.140%** |
+| h70 | 511298 | 529 | **0.104%** |
+
+**Predicted sim bias favouring h40 = 0.036 pp.** The observed model-vs-sim gap is **0.38 pp**. So the floor
+law explains **~9.5%** of B2 — the sign is right, the magnitude is an order of magnitude short. B2 is not the
+floor law wearing a disguise.
+
+**The h40 `isc@29` row is the striking one.** `D/Δ = 20.000` *exactly*: at that press the local haste makes
+Δ = 1.000s and a 20s window fits twenty whole casts with nothing left over. h40's Icon window is a
+**perfect-fit** window and loses **nothing** to the press lattice — which is precisely why h40's total loss
+is only modestly larger than h70's despite carrying the deeper AP fractions. Had the optimizer been *aware*
+of the lattice it would presumably hunt for exactly this, and the coincidence is a hint that a floor-aware
+scorer would change *which* presses it likes, not just their scores. Not a change to make on this evidence
+(§5b: it must be justified on its own physics), but it is the strongest argument yet that §5b is worth the
+risk.
+
+**What this does and does not overturn.** §8 stands exactly as written — the *residual*, post-correction,
+still has the wrong sign, and "the model misprices SP under haste" is still retired. §12 adds that the
+*correction it was measured on top of* is itself a small pro-h40 term. Both are real; neither is B2.
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
