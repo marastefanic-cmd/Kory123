@@ -1,6 +1,22 @@
 # PHASE 6 — Haste-adaptation cross-validation & the open soft spots
 
-**Status:** IN FLIGHT — measurement FIXED (§4.7 ✅), campaign now running. Phases 4 (search
+**Status: CLOSED / ARCHIVED 2026-07-24.** This is a **historical snapshot** — the phase's remit
+(build the cross-validation instrument, fix the measurement, gather trustworthy data) is DONE, and
+Phase 7 took over the *fixing*. The status line below was written mid-run and is preserved as written;
+**do not read it as current state.** What superseded it:
+- The **standing test** and its pass criterion now live in `docs/ACCEPTANCE.md` (which also carries the
+  instrument inventory that was §5 here); the **rig rebuild** that was §6 lives in `docs/TOOLING.md`.
+- The §2.1 results ledger is the **round-1** data. Round 2 and round 3 (the current record) are in
+  `docs/PHASE7.md` §5.8/§5.12, with raw matrices in `tools/xval-results/` (current) and
+  `tools/xval-results-archive/` (superseded rounds).
+- §4.7 (never prepull) and §4.6 (the scb trinket bug) were promoted to permanent rules in
+  `CLAUDE.md`/`docs/TOOLING.md`/`docs/RULES.md`; §4.5's deficits became Phase 7's target list.
+- Still-open items that outlived the phase: §4.2 (no exhaustive ground truth above ~h150) and §4.8
+  (Ashtongue is out of the kits) — both tracked in ACCEPTANCE's "Known coverage gaps".
+
+---
+
+**Status (as written during the run):** IN FLIGHT — measurement FIXED (§4.7 ✅), campaign now running. Phases 4 (search
 robustness) and 5 (AoE) are CLOSED; the six-kit ladder campaign (RULES §16) certified the search
 against exhaustive enumeration across every trinket pair and the full haste range. Phase 6 asks the
 next question: **does the planner's haste-ADAPTATION hold up in the real sim, end to end, on random

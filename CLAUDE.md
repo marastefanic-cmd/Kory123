@@ -130,12 +130,18 @@ Treat maintaining them as part of the work, not an afterthought:
   diagonal deficit). Re-run after every fix/upgrade phase. Currently NOT passing (a low-haste slack).
 - `docs/DIARY.md` — **append-only history** of how the tool evolved: the phase arc + the
   believed→disproved corrections ledger. Read to avoid re-litigating settled mistakes.
-- `docs/archive/` — recovered per-phase plan docs (Phases 1–5 = the deleted `PLAN.md` versions),
-  chronological with a README index. Historical snapshots; append when a phase closes.
-- `docs/PHASE6.md` — the haste-adaptation cross-val RUN (data gathered, 36-table ledger; measurement
-  fixed). Archive when Phase 7 closes it out.
+- `docs/archive/` — closed-phase docs, chronological with a README index (`01`–`06` = the per-phase
+  plans recovered from the deleted `PLAN.md`; `07-phase6-xval-run.md` = the Phase-6 cross-val run doc,
+  cited throughout as *PHASE6 §x*). Historical snapshots; **archive a phase doc the moment its phase
+  closes** so the living `docs/` folder only ever shows work that is actually in flight.
 - `docs/PHASE7.md` — **the current in-flight plan: FIX the cross-val deficits so the acceptance test
   passes.** Diagnose each length-robust deficit as SEARCH-MISS vs SCORER-GAP, then fix at the root.
+  (§5.11 legibility canonicalization is DONE; §5.12 round-3 gathered; the residual B2 family → PHASE8.)
+- `docs/PHASE8.md` — the B2 scorer-gap family: the emergent **joint** haste×damage×kill interaction that
+  every isolated decomposition reports CLEAN. Reserved as the highest-effort model work.
+- `docs/PHASE9.md` — **performance / refactor notes** (CPU + latency, under a byte-identical-plans
+  constraint). Measure-first: baseline profile, call census, hypothesis table with verdicts, and the
+  refactor catalogue (redundant walks, fusable steps) with a cheapest-and-safest-first landing order.
 - `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
   into ROADMAP). **No plan in flight. Phase 5 (AoE phases) is COMPLETE** — verdict: an AoE phase is a

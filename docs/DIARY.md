@@ -68,7 +68,30 @@ optimize a plan at each haste, sim every plan at every haste, check (a) **haste-
 plan never sims worse with more haste) and (b) **diagonal dominance** (the plan built for haste H wins its
 own column). This became a **standing acceptance test** — see `docs/ACCEPTANCE.md`. Status: measurement
 fixed (cold open), campaign gathering, one open debt (a low-haste micro-placement slack) recorded for the
-next (fix) phase. Full detail in `docs/PHASE6.md`.
+next (fix) phase. Full detail in `docs/archive/07-phase6-xval-run.md`.
+
+### Phase 7 — FIX the cross-val deficits (2026-07-24 → in flight)
+Phase 6 measured; Phase 7 fixes. Each length-robust deficit was first **partitioned** (SEARCH-MISS vs
+SCORER-GAP, `tools/diagnose-deficit.mjs`) and then fixed at its root rather than tuned away. The search
+misses closed via polished Cold-Snap chain candidates, a drop-one escape pass, and — the structural
+answer — **cross-haste pooling**, which makes model-side diagonal dominance (B1) hold *by construction*.
+The scorer earned three new real terms (expected-slippage on wall/kill-flush windows, the external
+lattice snap, ramp-cast state sampled at cast START). What remains is the B2 family: an emergent
+**joint** haste×damage×kill interaction that is CLEAN in every isolated decomposition — handed to
+Phase 8. Closing item **§5.11** was a *product* regression, not a DPS one: after the scorer
+recalibration some fights rendered equal-score layouts in an order other fights don't use. Fixed with a
+resolve-time exact-tie canonicalizer (`canonicalWindowOrder`) — see the ledger row below for what that
+cost to learn. Full detail in `docs/PHASE7.md`.
+
+### Phase 9 — performance, with zero plan drift (2026-07-24 → notes)
+User: *"the tool has gotten a bit slow again and takes a lot of CPU."* Opened as a **measure-first**
+phase under a hard determinism constraint (every emitted plan must stay byte-identical; exact-match 25
+is the gate). Baseline CDP profile + a call census established the shape before any code moved: one
+long solve does ~2.0M `repair`s and ~2.0M signature builds against only ~0.6M real simulations, and
+~19% of all CPU is **memo bookkeeping rather than simulation**. The structural finding is that the
+inner loop walks the same small schedule **five times** (repair · counts · clip · sigOf · simulate)
+where one fused walk would do. Notes, hypotheses and landing order in `docs/PHASE9.md`; nothing landed
+yet.
 
 ---
 
@@ -101,6 +124,8 @@ add a *new* entry rather than deleting the old.
 | 07-24 | The cross-val's sub-1% deficits are mostly **quantization to be measured away**. | The §2 diagnostic partitioned all 167: **19 real search misses** (CS-chain geometries, drop-a-use alignment — closed by polished chain candidates + a drop-one pass; every probed miss is also reachable from a neighbor-haste champion), 26 KT measurement-caveat (closed by AE emission), and a small set of REAL scorer terms (above) under the metric artifacts. | PHASE7 §5; tools/diagnose-deficit.mjs. |
 | 07-24 | Search misses need per-target anchor surgery (§3a.1) to reach neighbor-haste basins. | A general **cross-haste pooling** wrapper (`optimizeAsync cfg.poolHastes`: emit argmax over the fixed champion set scored at H) makes model-side B1 hold **by construction** — no per-target anchors needed. Design analysis: B1 22→0. End-to-end: scb+mqg medlong 0.20%→**0.01%**. Three correctness invariants earned by debugging (raw-score not re-polish; equal pool `starts`; baseline anchored to `simulate(base.s)` past the Cold-Snap normalize/val mismatch). | ARCHITECTURE (pooling); PHASE7 §5.10; ACCEPTANCE B1. |
 | 07-24 | The residual ≥0.3% deficits (e.g. isc+mqg medlong MQG@202-vs-@9, sim +0.46%) are a single crackable scorer term. | Each candidate mechanism is CLEAN in isolation (haste-over-damage 0.000; haste-on-IV model & sim agree; lone-haste early-vs-late a wash both). The deficit is an **emergent joint interaction** (MQG stacked on IV + on the terminal cluster + near the kill, simultaneously) — no single term. Reserved for the highest-effort next phase. | PHASE8 (scoped); `scratchpad/{posindep,iso2,clincher}.mjs`. |
+| 07-24 | A legibility canonicalizer belongs **inside `normalize`** (that's where the other placement normalizers live). | Placed there it *lost* 0.0136 eff casts on Hydross: `normalize` runs inside the hop↔normalize fixpoint, whose downstream passes re-drift the rotated layout and re-converge on the old shape. Moved to the three `resolve(...)` sites — the LAST thing to touch a plan — it lands the exact tie (`robust=196077.764863`, bit-identical) with the cluster-first reading. Corollary found the same day: the canonical packed form was **unreachable** from the raw window second `A` (not a legal press boundary during the opener ramp), so the packing pass needed the incumbent's own snapped span start `A2` as a second anchor — which turned out to be a **strict** +0.0067-cast win on `4:00 lust 0:05`, not just a cosmetic reach. | ARCHITECTURE (`canonicalWindowOrder`, packing-pass anchors); PHASE7 §5.11. |
+| 07-24 | The tool's CPU cost is dominated by **simulation** (it's a simulator). | Profile + call census: `simulateRaw` is 41.5%, but **~19% is memo bookkeeping** (`sigOf` 12.3% + the wrapper 6.4%) and `repair` another 10.6% — and `Map.get` costs 0.011 µs against 1.158 µs to *build* each key, so the memo's whole overhead is key construction. One solve repairs and signs each schedule ~3.3× per actual simulation. The win is in the plumbing, not the physics. | PHASE9 §1/§3. |
 | 07-24 | **Rigid wall-jitter** (shift walls + post-wall presses by one common δ) washes wall parity. | It is a pure TRANSLATION — every segment's internal cast-parity vs its own bounding walls is preserved exactly, so it washes nothing (Vashj still 0.64% under it). The parity is per-SEGMENT whole-cast truncation (proven by a 2-wall minimal pair with per-interval log verification: sim cadence == model cadence exactly; stacked window model +1.65 vs sim +1.04 casts, split +1.48 vs +1.54). The wash must vary SEGMENT LENGTHS: independent per-wall seeded δ_i, presses tracking their segment's wall. The model's continuous credit is the right real-world expectation — no scorer change. | TOOLING wall-jitter bullet (★); xval.mjs jitter v2; PHASE7 §5. |
 
 ---

@@ -175,6 +175,24 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   unchanged for intermission fights** (the exit ramp is a scorer blind spot the sim disagrees with — Vashj
   4:05). Fixes the opener cluster sitting off the pull and Cold-Snap IVs parked mid-fight; moved 7 plain
   goldens earlier (same DPS).
+- **`canonicalWindowOrder(s0)`** (~2730, the §5.11 legibility canonicalizer — applied at all THREE
+  `resolve(...)` sites *after* `normalize`, i.e. it is the LAST thing that touches a plan). Inside each
+  **pinned haste window** (a `cfg.fixed` buff of kind `mult`/`rating` — in practice Bloodlust) it groups
+  the mage's presses into **blocks** (presses within 3s of each other are one block), finds the **burst
+  cluster** (the first block carrying both a damage/SP buff and a haste buff), and — when the only blocks
+  ahead of it are **lone-haste fillers** — rotates the arrangement so the **cluster leads** and the
+  fillers sequence after it (each filler placed at `cluster.start + leadDur`, then chained by its own
+  duration). Same window occupancy, opposite order. Gated hard: `repair`-legal, `sameCounts`, no worse
+  `clipOf`, and `robust ≥ r0 − castVal/1000` (≈0.001 casts — a float-noise epsilon, i.e. **exact ties
+  only**), so it can never trade DPS for looks.
+  - **Why it lives at `resolve`, not inside `normalize`:** placed inside the normalize fixpoint it cost
+    **0.0136 effective casts** on Hydross — the downstream passes re-drift the rotated layout and the
+    hop↔normalize fixpoint re-converges on the old shape. Run last, Hydross lands on the exact tie
+    (`robust=196077.764863`, bit-identical) with the cluster-first reading.
+  - **What it fixes (§5.11):** post-recalibration some fights emitted `Zerk@8 → cluster@18 → CS-IV@39`
+    while identically-shaped fights emitted `cluster → filler → CS chain`. Both score the same; the
+    inconsistency was the bug. Consistency across fights *is* the aesthetic (RULES: anchor the burst
+    early, then the lone haste filler, then the Cold-Snap chain).
 - **Displayed times are FIRE times, not intents (user-directed — RULES §3).** During the opener cold
   ramp the press boundaries are sparse, so every intent second inside one ramp cast fires at that
   cast's END — a whole band of intents is exactly equivalent, and `slideEarliest` canonicalizes the
@@ -209,6 +227,18 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   **inert at h0** (IV-in-Lust wins → goldens byte-identical) and **self-select above the gear-haste
   breakpoint** (sim-verified +2% at h250; RULES §5). Known residual: a narrow ~h200 band whose exit layout
   needs Cold Snap that `repair()` un-spaces (ROADMAP).
+  - **Two anchor bases (`A` and `A2`, ~2490).** The raw window second `A` is not always a legal press
+    boundary: during the opener ramp the casts are long, so an `A`-anchored candidate fires off-boundary
+    and scores *worse* than the incumbent (Hydross: `A=7` costs −0.09 casts vs the incumbent's snapped
+    `8`). The pass therefore also sweeps `A2` = the incumbent's **own** boundary-snapped span start (the
+    earliest planner press inside the window), so the packed forms are reachable from geometry the
+    engine has already proven legal. Not merely cosmetic: `A2` is a **strict** win on `4:00 lust 0:05`
+    (+15.08 damage = +0.0067 effective casts).
+  - **Canonical-tie adoption (§5.11, ~2530).** Alongside the strict-gain winner the pass remembers the
+    **canonical** packed form (`packIn`, biggest-first) when it lands within `TIE_EPS = castVal/1000` of
+    the incumbent. With no strict winner the tie form is adopted, so equal-score fights render the same
+    shape. `TIE_EPS` sits far below any deliberate sub-cast preference (the `castVal/8` class) and far
+    above float noise — the 3:20 shorter-buff-leads order is a *strict* win and is untouched.
 - **Cold-Snap materiality** (~2229) distinguishes two regimes (RULES §8). `csAddsUse` starts as "the CS
   champ has **more** IVs than the best no-CS plan"; when CS genuinely **adds** a use the full "≥ one cast"
   bar applies (`bar = castVal`); when it only **repositions** the same IV count (or the chain ends the

@@ -1,0 +1,218 @@
+# PHASE 9 — Optimizer performance (CPU / latency) with ZERO plan drift
+
+**Trigger (user, 2026-07-24):** *"the tool has gotten a bit slow again and takes a lot of CPU, see any
+performance improvements without regressions? perhaps a refactor in the future?"*
+
+**The hard constraint.** Determinism is a feature (CLAUDE.md): one setup ⇒ one schedule. So a perf
+change is only allowed if **every emitted plan stays byte-identical**. The exact-match suite (25 cases)
+is the gate, and it is a *sufficient* one for any change that is pure-refactor by construction; for any
+change that touches float arithmetic order, the gate is the suite PLUS an argument that the arithmetic
+is unchanged, not merely "the tests still pass".
+
+Method (user-directed): **notes → hypothesis → test → prove or disprove.** Every hypothesis below
+carries its measurement and a verdict. No hypothesis is acted on before it is measured.
+
+---
+
+## §1 Baseline measurement
+
+`tools/profile-opt.mjs` (new) loads the real `index.html` headless, runs `optimizeAsync` on a
+representative case with a CDP CPU profile attached (200µs sampling), and prints wall time + self-time
+by function. This is the **sequential in-page path** — the same code the pooled workers run, one copy —
+so it measures CPU cost per worker, which is what "takes a lot of CPU" means.
+
+**Case `long`** — T=375, haste 150, sp 1387, crit 38, full kit (IV/Icon/gem/AP/Zerk/MQG/Lust),
+Lust pinned 0:10, Cold Snap on, no segments. Heaviest ordinary single-target UI case.
+
+```
+case=long  wall=31.49s  val=714496.544061  memoSize=1707
+--- CPU self-time (top, of 100392 samples) ---
+ 41.5%  simulateRaw       12.3%  sigOf          10.6%  repair
+  6.4%  simulate (memo)    5.3%  GC             4.8%  stepFor
+  4.1%  scanAt             3.8%  polish         2.2%  rampCastDmg
+  1.5%  cloneS             0.8%  intervalAt     0.7%/0.5%  (anon)/rateAt
+```
+
+Reading it: **~19% of all CPU is memo bookkeeping** (`sigOf` 12.3 + the `simulate` wrapper 6.4), not
+simulation. `stepFor` shows 4.8% *self* time — a closure re-created every cast iteration. GC at 5.3%
+says allocation pressure is real, not incidental.
+
+---
+
+## §2 Hypotheses
+
+| # | Hypothesis | Predicted win | Risk to plans | Verdict |
+|---|-----------|---------------|---------------|---------|
+| H1 | `sigOf` is 12.3% because it does `Object.keys().sort()` + per-track `join(",")` + rope concat on **every** `simulate()` call. A cheaper exact encoding cuts most of it. | ~8-10% | none (pure fn, same string) | *pending* |
+| H2 | The memo's **wholesale `clear()` at CAP** throws away a high hit rate; `memoSize=1707` after a run that made millions of calls proves it cleared repeatedly. A generational (hot/cold) cache recovers the hits at O(1) and bounded memory. | ? (depends on clear count) | none (eviction only ⇒ recompute) | *pending* |
+| H3 | `stepFor` (4.8% self) and `scanAt` (4.1%) allocate a **closure and/or a fresh result object per cast / per breakpoint**; hoisting them out of the loops cuts both self time and the 5.3% GC. | ~5-8% | must not reorder float ops | *pending* |
+| H4 | `repair` (10.6%) is called on candidates that are **already legal** (it is idempotent); a cheap legality pre-check would skip the work. | ? | none if the check is exact | *pending* |
+| H5 | The pass stack re-scores the **same incumbent** many times across passes; the memo already absorbs this (hence the high hit rate), so there is no separate algorithmic win here. | ~0 | — | *pending* |
+
+---
+
+## §3 Evidence
+
+### 3.1 Call census (`scratchpad/instrument.mjs` — monkeypatched counters, case `long`)
+
+Top-level `function` declarations in a classic script become properties of the global object, so
+reassigning `window.sigOf` / `window.simulateRaw` / `window.repair` / `window.cloneS` intercepts the
+engine's own **internal** call sites. Purely additive — engine behaviour untouched.
+
+```
+sigOf calls   : 1,984,160
+memo get/hit  : 1,981,692 / 1,379,985   (hit rate 69.64%)
+memo set      :   601,707   clears: 5   final size: 1,707
+simulateRaw   :   616,718   (of which collect=true: 15,011)
+repair calls  : 2,019,660   cloneS calls: 2,079,763
+```
+
+**One solve does ~2.0M repairs, ~2.0M signature builds and ~0.6M real simulations.** The ratio is the
+headline: for every schedule actually simulated, the engine repairs and signs it ~3.3×.
+
+### 3.2 H1 — **CONFIRMED.** `sigOf` is pure string-building cost
+
+`scratchpad/bench-sig.mjs`, 120,000 calls per variant on a realistic schedule population, in-page:
+
+| variant | µs/call | vs current | exact? |
+|---|---|---|---|
+| **A** current (`Object.keys().sort()` + `join(",")`) | **1.158** | — | — |
+| B drop the `sort()` | 0.79 | 1.5× | **NO** — 2000/2000 sigs change under key reorder; canonicality lost ⇒ hit-rate loss |
+| C manual number encode (no `join`) | **0.503** | **2.3×** | yes |
+| D positional (fixed `BUFFS` order, index instead of name) | 0.671 | 1.7× | yes, **0 collisions** on 2000 schedules |
+
+`Map.get` itself costs **0.011 µs** — 100× less than building the key. So the memo's entire overhead is
+key *construction*, not lookup. At 1.98M calls, variant C's saving alone is ~1.3 s/solve of the ~31 s.
+
+**Corollary (not in the original hypothesis list):** the key is `cfgSigOf(cfg) + "|" + sigOf(schedule)`.
+`cfgSigOf` has an identity fast path so it is cheap to *fetch* — but it is a `JSON.stringify` of the
+whole cfg (T, gear, `enabled`, `fixed`, **`segments`**), i.e. a long constant prefix that is
+**re-concatenated onto every one of the 1.98M keys** and then re-hashed by `Map`. A **per-cfg memo**
+(`WeakMap<cfg, Map<sig, result>>`) deletes the prefix, the concat and the `cfgSigOf` call in one move,
+and makes eviction naturally per-cfg. This is strictly better than optimizing the concat.
+
+### 3.3 H2 — **PARTIALLY MEASURED.** The wholesale `clear()` does throw work away
+
+Hit rate 69.64%, but **5 wholesale clears** and 601,707 sets against a final size of 1,707: essentially
+every cached entry computed during the run was eventually discarded. What is *not* yet measured is the
+ceiling — how many of the 601,707 misses are **pure eviction loss** (a key that had been computed
+before and thrown away) versus genuinely new schedules. `scratchpad/instrument2.mjs` answers it by
+counting DISTINCT keys touched; if distinct ≪ misses, a generational cache recovers the difference.
+
+Intended replacement (same memory bound as today if `CAP` is halved, strictly better hit behaviour —
+and still deterministic, because eviction can only cause *recomputation*, never a different value):
+
+```js
+let r = SIM_MEMO.get(key);
+if (r === undefined) {
+  r = SIM_MEMO_COLD.get(key);                    // second chance before recomputing
+  if (r === undefined) r = simulateRaw(schedule, cfg, collect);
+  if (SIM_MEMO.size >= SIM_MEMO_CAP) { SIM_MEMO_COLD = SIM_MEMO; SIM_MEMO = new Map(); }
+  SIM_MEMO.set(key, r);
+}
+```
+
+### 3.4 H3 — **IDENTIFIED IN CODE** (not yet benchmarked)
+
+`stepFor` (~818) is a **closure re-created inside the per-cast `while` loop**, and it returns a fresh
+object literal `{cast, gcd, interval, capped}` up to twice per cast — order 10² casts × 0.6M simulations
+≈ 10⁸ short-lived objects per solve. That is both its 4.8% self time and most of the 5.3% GC. `scanAt`
+(~880) has the same shape (`{multDn2, mult2, dmg2, aoe}` per call, consumed immediately by `rateAt` /
+`rampCastDmg` — a shared scratch object is safe). The breakpoint integral builds a `Set`, spreads and
+sorts it per `simulate`, and allocates a closure per breakpoint in
+`rampSpans.some(([ra, rb]) => mid > ra && mid < rb)`.
+
+**Constraint:** these are float-arithmetic sites. Hoisting must not reorder any operation — the rewrite
+has to be expression-for-expression identical, with the objects replaced by scratch/locals. The
+exact-match suite is necessary but not sufficient here; the diff must be read as a proof.
+
+### 3.5 H4 — **SIZED.** `repair` is 10.6% over 2.02M calls
+
+`repair` (1018-1096) always allocates `out = {}` and rebuilds every track, and it is **idempotent** —
+so the very common `repair(repair(x))` shape does full work for nothing. See §4.1: the better fix is not
+a fast path but **fusion**.
+
+### 3.6 H5 — pass-stack re-scoring
+
+The 69.64% hit rate is the evidence that the memo already absorbs repeated incumbent scoring. No
+separate algorithmic win expected; **not a target**.
+
+---
+
+## §4 Refactor notes — redundant steps, and steps that should be one step
+
+*(User-directed, 2026-07-24: "note things that can be refactored, steps in the model's calculations that
+are redundant, steps that can be combined together into a single and/or more efficient one." These are
+NOTES — design candidates, each still owing a measurement and a byte-identical proof before it lands.)*
+
+### 4.1 ★ The big one: **five walks over the same schedule per candidate**
+
+The pass stack's inner loop is, almost everywhere, this shape:
+
+```js
+const rep = repair(cand, cfg);                        // walk 1 — rebuilds every track
+if (!sameCounts(counts(base), counts(rep))) continue; // walk 2 — counts per track
+if (clipOf(rep) > clipOf(base) + 1e-9) continue;      // walk 3 — clip per track
+const rr = simulate(rep, cfg);                        // walk 4 — sigOf inside; walk 5 — simulateRaw
+```
+
+Four of those five walks traverse the *same* small object and are each O(tracks × uses). `repair`
+already visits every use in order — it can **emit the signature, the counts and the clip as it goes**,
+at essentially zero marginal cost, and return them alongside the schedule. That single change subsumes
+H1 (no separate `sigOf` walk at all — 1.98M walks deleted, not merely made 2.3× cheaper), most of H4
+(the redundant rebuild is amortized instead of skipped), and the `counts`/`clipOf` walks.
+
+Shape: `repair` returns (or fills a caller-provided scratch record) `{s, sig, counts, clip}`; `simulate`
+gains an overload that accepts a precomputed `sig`. **Risk: this is the widest-blast-radius change in
+the file** — every call site must be converted, and any missed site silently falls back to the slow
+path (correct, just slower), which is the *good* failure mode. Do it LAST, after the local wins, and
+only with the suite green at each step.
+
+### 4.2 Per-cfg memo instead of a concatenated key
+
+Per §3.2: `WeakMap<cfg, Map<sig, result>>`. Deletes the `cfgSigOf` call, the `"|"` concat and the long
+constant prefix from 1.98M lookups, shortens the hashed key by ~5×, and makes the generational eviction
+of §3.3 per-cfg (so a neighbour-solve cfg cannot evict the main solve's hot set). Composes with 4.1 —
+after fusion the key is simply the sig `repair` already produced.
+
+### 4.3 `JSON.stringify` used as an equality test
+
+At least three sites compare schedules with `JSON.stringify(a) !== JSON.stringify(b)` (the §5.11
+canonical-tie branch, the `canonicalWindowOrder` no-op check). Both operands already have — or can
+cheaply have — a signature; **sig comparison is exact and ~20× cheaper**. Pure win, tiny blast radius.
+Good first landing.
+
+### 4.4 Allocation in the hot loops (H3)
+
+`stepFor` → a top-level function writing into a reusable scratch record (or inlined: only `interval` and
+`capped` are consumed at the call site). `scanAt` → shared scratch. Breakpoint set → build the sorted
+array once per (cfg, schedule) rather than per simulate; hoist the `rampSpans` predicate out of the
+per-breakpoint closure. Expression-for-expression identical arithmetic is mandatory.
+
+### 4.5 `cloneS` at 2.08M calls
+
+Slightly *more* clones than repairs, so a clone is happening outside `repair` too — many candidates are
+cloned, mutated in one or two slots, then repaired (which rebuilds everything anyway). A `withUse(s, key,
+i, t)` copy-on-write helper that shares untouched track arrays would cut most of it, but only if callers
+never mutate a shared array in place — **audit required before this is even a candidate.** Lower
+priority than 4.1-4.4.
+
+### 4.6 Explicitly NOT a target
+
+- **The pass stack's structure.** The passes are the theorycraft; the redundancy worth removing is
+  mechanical (walks, allocations, keys), not conceptual. Removing a pass changes plans — out of scope.
+- **`breathe()` cadence / worker-pool sizing.** Already tuned; the profile shows the cost is in the
+  engine, not the scheduling around it.
+- **Cross-haste pooling.** Ruled out as a cause of UI slowness: `cfg.poolHastes` is set **only** by the
+  cross-val harness, never from the UI.
+
+### 4.7 Landing order (cheapest/safest first)
+
+1. §4.3 sig-vs-`JSON.stringify` equality — trivial, exact.
+2. §3.2/H1 cheaper `sigOf` encode (variant C or D) — pure function, same string ⇒ same behaviour.
+3. §4.2 per-cfg memo + §3.3 generational eviction — behaviour-preserving by the eviction argument.
+4. §4.4 hot-loop allocation — needs a read-the-diff proof, not just a green suite.
+5. §4.1 the repair/sig/counts/clip fusion — biggest win, widest blast radius, do it last.
+
+Gate at **every** step: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` = 25/25,
+plus a wall-time re-measure so each step's real win is recorded next to its predicted one.

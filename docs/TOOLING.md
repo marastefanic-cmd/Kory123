@@ -11,7 +11,7 @@ So **every sim compared to the model MUST open cold too**: `genapl` defaults `_p
 set `_prestack>0` for any comparison. A prepull cast is scheduled at a **fixed wall-time (−2.3s)** that
 does NOT scale with haste, so at higher haste it finishes early and mistimes the opener ramp — this
 made a fixed-rotation, ∞-mana haste sweep **LOSE a cast as haste rose** (h130=53 → h140=52), a
-physically-impossible result that silently corrupts any haste comparison (docs/PHASE6.md §4.7). If a
+physically-impossible result that silently corrupts any haste comparison (docs/archive/07-phase6-xval-run.md §4.7). If a
 fixed rotation ever sims non-monotone in haste, **check for a prepull first.** The only legitimate
 `_prestack>0` use is a deliberate ramp-isolation experiment that is NOT compared to the model.
 

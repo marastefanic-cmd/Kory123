@@ -5,8 +5,9 @@ is the **completion criterion**, re-run after every fix/upgrade phase. Phase 6 b
 future phases fix what it exposes and re-run it. A documented deficit is a **debt to fix, not a state to
 accept** (user-directed).
 
-Read `docs/PHASE6.md` for the current run's detail, `docs/DIARY.md` for history, `docs/TOOLING.md` for
-the sim methodology (esp. the ★★★ never-prepull rule and the ★ mana trap).
+Read `docs/DIARY.md` for history and `docs/TOOLING.md` for the sim methodology (esp. the ★★★
+never-prepull rule and the ★ mana trap). The run that first built and executed this test is archived at
+`docs/archive/07-phase6-xval-run.md` (cited across the docs as *PHASE6 §x*).
 
 ---
 
@@ -57,7 +58,8 @@ The model **passes** when, across all six trinket kits × the five fight-length 
 
 ## How to run it
 ```
-# fixed rig (rebuild per fresh session — PHASE6 §6): runner-ap180 + a gear export (user data, not in repo)
+# fixed rig (rebuild per fresh session — TOOLING "Building the runner" + "RUNNER PROVENANCE"):
+#   runner-ap180 + a gear export (user data, never committed)
 bash tools/xval-campaign.sh                    # 6 kits × 5 fight-length classes, 2-concurrent, ITER=6000
 bash tools/xval-boss.sh                         # Vashj / Al'ar / KT × representative kits
 node tools/xval-collect.mjs tools/xval-results  # → the CLEAN/DEFICIT ledger, with deficit-cell localization
@@ -75,6 +77,25 @@ snapshot the old round into `tools/xval-results-archive/<phase>/` first (append-
 `docs/archive/`) — history stays first-class, never just git archaeology. The collector output is
 the authoritative row-by-row ledger.
 
+### The instruments (all committed; the sim rig itself is scratchpad-ephemeral — TOOLING)
+- **`tools/xval.mjs`** — the cross-val instrument. `node tools/xval.mjs <seed>`. Env: `KIT=a,b` (explicit
+  kit; else seed-drawn) · `TCLASS=short|medium|medlong|long|xl` · `HASTES=…` · `BOSS="Lady Vashj"|…`
+  (load a preset's real T/Lust/segments instead of a class-drawn fight) · `ITER` · `SCRATCH`. Forces cold
+  open (`_prestack:0`) and ∞ mana. Prints the N×N matrix + an `XVAL-DONE … monoDip diag diagWorst` line.
+- **`tools/xval-haste-sets.json`** — the committed per-kit breakpoint-straddle haste sets (source of
+  truth for granularity; read by `xval-kit.sh`).
+- **`tools/xval-kit.sh`** — one kit across all five fight-classes. `bash tools/xval-kit.sh mqg,skull`.
+  Tees matrices to `$XVDIR/<kit>-<class>.txt`; seeds deterministically (`1000 + cksum(kit)%9000 + classIdx`).
+- **`tools/xval-campaign.sh`** / **`tools/xval-boss.sh`** — all six kits (2-concurrent, `ITER=6000`) /
+  the boss-shape tables (Vashj + Al'ar + KT × representative kits, with `--targets N` on AoE phases).
+- **`tools/xval-collect.mjs`** — a results directory → the CLEAN/DEFICIT ledger markdown, every
+  borrowed-win column + length-robust loci (`--json` exports the target list); asserts `monoDip ≈ 0`.
+- **`tools/xval-verify.mjs`** — the deterministic invariant **recompute** (restart-proof, unlike an LLM
+  adversary): re-derives monoDip and diagonal dominance from every matrix and cross-checks each file's
+  reported `diagWorst`. Run it before believing any ledger.
+- **`tools/genapl.mjs`** — model plan → wowsims APLRotation JSON (the bridge that makes a schedule
+  simmable). **Never** set `_prestack>0` for a model comparison.
+
 ## Current status (2026-07-24, round 3 — the post-Phase-7-fix full run) — NOT PASSING (B), improved
 All 36 tables re-run on the fixed engine (cross-haste pooling ON, var0.5, per-wall jitter v2, KT AoE
 valued). Current round in `tools/xval-results/`; earlier rounds under `tools/xval-results-archive/`
@@ -91,9 +112,19 @@ valued). Current round in `tools/xval-results/`; earlier rounds under `tools/xva
 - Movement Phase 6 → round 3: worst 0.77% → 0.40%; KT's 2.68% AoE artifact eliminated (now 0.39%,
   ordinary); mean width halved (0.160% → 0.081%).
 
-**So: not passing yet.** Remaining owners: PHASE8 (the B2 family, highest-effort scorer work), the
-§5.11 legibility tie-break fix (must land before the next full run), and the metric-design task for the
-quantization tail. Re-run this in full after each.
+**So: not passing yet.** Remaining owners: PHASE8 (the B2 family, highest-effort scorer work) and the
+metric-design task for the quantization tail. Re-run this in full after each.
+
+**Engine drift since round 3 — a full re-run is OWED.** The round-3 tables were gathered before the
+§5.11 legibility fix landed. That fix is *almost* score-neutral but not entirely: the packing pass's
+second anchor base (`A2`) is a **strict** search win, so the shipped engine can now emit a *different,
+better* plan on some cells than the one round 3 measured (observed: `4:00 lust 0:05`, +0.0067 eff
+casts). The rule stands — **the engine that ships must match the acceptance record** — so round 4 must
+be gathered on the post-§5.11 engine before any pass/fail claim is made from these numbers. Round 3's
+verdict (A passes, B fails with 145 columns) is the best current estimate, not the record.
+A performance phase is also open (`docs/PHASE9.md`); by construction it must leave every plan
+byte-identical, so it cannot invalidate a round — but re-run the exact-match suite after each of its
+steps, and if any plan ever *does* move, the round is void.
 
 ## Known coverage gaps in the test itself (make the test stronger over time)
 - **Single-worst-cell reporting hides structure.** `XVAL-DONE`/the collector surface one worst cell per

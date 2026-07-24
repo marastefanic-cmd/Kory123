@@ -8,7 +8,7 @@
 // (−2.3s), which does NOT scale with haste, so at higher haste it finishes early and mistimes the
 // opener ramp — this made a fixed-rotation, infinite-mana haste sweep LOSE a cast as haste rose
 // (h130=53 → h140=52), a physically-impossible result that blocked the Phase-6 cross-val. Cold open
-// removes it and restores strict haste-monotonicity (docs/PHASE6.md §4.7). DO NOT set _prestack>0 for
+// removes it and restores strict haste-monotonicity (docs/archive/07-phase6-xval-run.md §4.7). DO NOT set _prestack>0 for
 // any sim that is compared to the model. The only legitimate use of _prestack>0 is a deliberate
 // ramp-isolation experiment that is NOT compared to the cold-open model — and even then, know that
 // the fixed prepull time makes it haste-non-monotone.

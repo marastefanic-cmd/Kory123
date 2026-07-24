@@ -508,6 +508,22 @@ ramp-aware search + `dodgeDowntime`. In a plain fight the only ramp is the pull,
 (§ MECHANICS, ~0 casts) and where pressing everything together is exactly what's wanted. Runs before
 `dodgeDowntime`. Moved 7 plain goldens earlier (model-neutral; DPS identical, timings earlier).
 
+**`canonicalWindowOrder` — same-shape fights must render same-shape plans (this project, user-reported).**
+The tie-break list above resolves *where* a press goes; it does not resolve the **order of score-tied
+blocks inside a raid-called haste window**. After the Phase 7 scorer recalibration some fights emitted
+`lone-haste filler → burst cluster → CS chain` while identically-shaped fights emitted
+`burst cluster → filler → CS chain`. Both are exact ties — the user confirmed the DPS wash — but the
+**inconsistency is the defect**: a planner that renders the same situation two ways can't be read at a
+glance. The rule, and the order the engine now always resolves to: **anchor the burst cluster first
+inside the window** (the day-1 doctrine — get the damage/SP presses onto the fastest casts), *then* the
+lone haste filler, *then* the Cold-Snap chain. Realized by a final canonicalizer at the three
+`resolve(...)` sites, gated to `robust ≥ r0 − castVal/1000` — a float-noise epsilon, so it is **exact
+ties only** and can never trade a real cast for looks. Two related findings, both dearly bought:
+- **It must run LAST, not inside `normalize`.** Inside the hop↔normalize fixpoint the downstream passes
+  re-drift the rotated layout and re-converge on the old shape — that placement *lost* 0.0136 casts.
+- **The split is load-bearing, the order is not.** On the Hydross case, pushing Berserking outside Lust
+  entirely costs a real −0.20 casts; only its position *relative to the cluster* is free.
+
 ## 12. Mana & the conserve rotation — the real gearing weights *(sim-computed this project)*
 
 The planner is **infinite-mana / layout-first** by design (§ nothing here changes that — mana never feeds

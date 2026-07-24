@@ -17,7 +17,13 @@
    §5.6):** cross-haste candidate pooling (closes 19/19 probed search misses; 2–3× solve cost),
    the Al'ar opener residual, the isc+skull straddle-credit and scb+skull count-trade margins
    (≤0.2% at the corrected metric — re-measured by the running campaign first).
-   Background: Phase 6 (the haste-adaptation cross-val, `docs/PHASE6.md`) was data-complete: 36
+   **§5.11 (legibility) is now LANDED** — `canonicalWindowOrder` at the three `resolve(...)` sites plus
+   a second anchor base in the packing pass; two goldens moved (Hydross = bit-exact tie, now
+   cluster-first; `4:00 lust 0:05` = strict +0.0067 eff casts), 23 byte-identical, suite 25/25.
+   **Two phases now stand open behind Phase 7:** `docs/PHASE8.md` (the B2 joint-interaction scorer gap)
+   and `docs/PHASE9.md` (**performance/refactor**, user-reported CPU cost — notes + hypotheses only so
+   far, nothing landed; every change there is gated on byte-identical plans).
+   Background: Phase 6 (the haste-adaptation cross-val, `docs/archive/07-phase6-xval-run.md`) was data-complete: 36
    tables, monoDip=0 everywhere, 167 borrowed-win columns keeping the standing acceptance test
    (`docs/ACCEPTANCE.md`) OPEN; Phase 7's diagnostic (`tools/diagnose-deficit.mjs`) partitioned
    every one (19 search misses / 26 KT-caveat / a few real scorer terms / metric artifacts). History up to here: Phase 5 landed (`docs/PLAN.md` deleted; see

@@ -2472,13 +2472,36 @@ function optimizeCore(cfg, starts, onProgress) {
             // kept on a strict gain, so all of this is inert below the breakpoint (h0:
             // IV-in-Lust wins) and self-selects above it — no per-haste-level rule.
             const modes = win > 1e-9 ? ["packIn", "exitSeq", "exitStack"] : ["packIn"];
+            // §5.11 canonical-tie adoption: when the CANONICAL packed form (packIn, biggest-first —
+            // damage cluster on the window start, flooring buff riding it, tails sequenced) EXACTLY
+            // ties the incumbent, adopt it — score-ties must render consistently across fights
+            // (burst cluster first inside the window), not keep whichever arrangement the search
+            // happened to land in (the Hydross Zerk@8-before-cluster@18 flip, an exact 87.4509 tie).
+            // TIE_EPS is far below any deliberate sub-cast preference (castVal/8-class) and far above
+            // float noise, so genuine preferences — incl. the 3:20 shorter-buff-leads STRICT win —
+            // are untouched; strict gains still take precedence over any tie.
+            const rob0 = bestRob;
+            let tieRep = null;
+            const TIE_EPS = castVal / 1000;
+            const perms = permute(hasteKeys);
+            // Anchor bases: the raw window second A, plus the incumbent's own boundary-snapped span
+            // start (min planner press inside the window) — A-anchored candidates sit off the ramp's
+            // press boundary (Hydross: A=7 scores −0.09 casts vs the incumbent's 8), so the canonical
+            // TIE form is only reachable from the incumbent's own snapped geometry.
+            let A2 = null;
+            for (const key in base) { if (cfg.fixed[key]) continue;
+              for (const t of base[key]) if (t >= A - 1 && t <= A + win && (A2 === null || t < A2)) A2 = t; }
+            const bases = (A2 !== null && Math.abs(A2 - A) > 1e-9) ? [A, A2] : [A];
+            for (const AB of bases)
             for (const mode of modes)
-            for (const order of permute(hasteKeys)) {
+            for (let pi = 0; pi < perms.length; pi++) {
+              const order = perms[pi];
+              const canonical = mode === "packIn" && pi === 0;
               const slots = [];
               let off = mode === "packIn" ? 0 : win;
               for (const hk of order) {
                 if (mode === "packIn" && slots.length && off + 1e-9 >= win) break; // packing in: don't spill past the window (dead floored casts)
-                slots.push({ key: hk, at: A + off });
+                slots.push({ key: hk, at: AB + off });
                 off += mode === "exitStack" ? 0 : BUFFS[hk].dur; // exitStack overlaps at the window end; the others sequence
               }
               const lead = slots[0].key;
@@ -2490,8 +2513,8 @@ function optimizeCore(cfg, starts, onProgress) {
                 for (const dk of dmgKeys) {
                   if (!cand[dk].length) continue;
                   let bi = 0, bd = Infinity;
-                  cand[dk].forEach((t, j) => { const d = Math.abs(t - A); if (d < bd) { bd = d; bi = j; } });
-                  cand[dk][bi] = A; cand[dk].sort((a, b) => a - b);
+                  cand[dk].forEach((t, j) => { const d = Math.abs(t - AB); if (d < bd) { bd = d; bi = j; } });
+                  cand[dk][bi] = AB; cand[dk].sort((a, b) => a - b);
                 }
                 for (let si = 0; si < slots.length; si++) {
                   const sl = slots[si];
@@ -2506,9 +2529,12 @@ function optimizeCore(cfg, starts, onProgress) {
                 if (clipOf(rep) > clipOf(base) + 1e-9) continue;
                 const rr = simulate(rep, cfg);
                 if (rr.robust > bestRob + 0.5) { bestRob = rr.robust; bestRep = rep; }
+                else if (canonical && !tieRep && Math.abs(rr.robust - rob0) <= TIE_EPS &&
+                         JSON.stringify(rep) !== JSON.stringify(base)) tieRep = rep; // §5.11 exact-tie canonical form
               }
             }
             if (bestRep) { s = bestRep; val = Math.max(val, bestRob); }
+            else if (tieRep) s = tieRep; // no strict winner: canonicalize the tie (score unchanged by construction)
           }
         }
         // ——— Co-press alignment (legibility). A bundled off-GCD damage/SP press
@@ -2691,6 +2717,62 @@ function optimizeCore(cfg, starts, onProgress) {
           }
           return sx;
         }
+        // ——— Canonical window ordering (§5.11, user-directed). Among EXACT score-ties, the
+        // arrangement inside a raid-called haste window must render CONSISTENTLY across fights:
+        // burst cluster (damage + its flooring haste rider) FIRST, lone haste fillers sequenced
+        // after — not whichever permutation the search landed in (the Hydross Zerk@8-before-
+        // cluster@18 flip, an exact 87.4509 tie both ways). Position-independence inside the
+        // containing window (MECHANICS §3) makes the rotation an exact tie whenever it's legal;
+        // the gate (robust ≥ r0 − castVal/1000, sameCounts, no worse clip) rejects everything
+        // else — deliberate arrangements (the 3:20 shorter-buff-leads opener is a STRICT win for
+        // Zerk-first) are untouched. Applied in `normalize` so BOTH the main and Cold-Snap
+        // resolve paths canonicalize (the CS chain recursion bypasses the packing pass).
+        async function canonicalWindowOrder(s0) {
+          let sx = cloneS(s0);
+          for (const fk in cfg.fixed) {
+            const kd = BUFFS[fk] && BUFFS[fk].kind;
+            if (kd !== "mult" && kd !== "rating") continue;
+            for (const ft of cfg.fixed[fk]) {
+              await breathe();
+              const F = Math.round(ft), win = BUFFS[fk].dur;
+              // planner presses inside the window, grouped into co-press blocks (≤3s gaps)
+              const acts = [];
+              for (const key in sx) { if (cfg.fixed[key]) continue;
+                sx[key].forEach((t, i) => { if (t >= F - 1 && t <= F + win) acts.push({ key, i, t }); }); }
+              if (acts.length < 2) continue;
+              acts.sort((a, b) => a.t - b.t);
+              const blocks = [];
+              for (const a of acts) {
+                const b = blocks[blocks.length - 1];
+                if (b && a.t - b.end <= 3) { b.m.push(a); b.end = a.t; } else blocks.push({ m: [a], start: a.t, end: a.t });
+              }
+              const isDmg = k => { const d = BUFFS[k].kind; return d === "dmg" || d === "sp"; };
+              const isHaste = k => { const d = BUFFS[k].kind; return d === "mult" || d === "rating"; };
+              const ci = blocks.findIndex(b => b.m.some(x => isDmg(x.key)) && b.m.some(x => isHaste(x.key)));
+              if (ci <= 0) continue; // no cluster, or cluster already first
+              const fillers = blocks.slice(0, ci).filter(b => b.m.every(x => isHaste(x.key)));
+              if (fillers.length !== ci) continue; // something non-filler precedes the cluster — leave it
+              const cluster = blocks[ci];
+              const leadDur = Math.max(...cluster.m.filter(x => isHaste(x.key)).map(x => BUFFS[x.key].dur));
+              const cand = cloneS(sx);
+              const shift = cluster.start - fillers[0].start;
+              for (const x of cluster.m) cand[x.key][x.i] = x.t - shift;      // cluster takes the front slot
+              let cursor = fillers[0].start + leadDur;                        // fillers sequence after its rider
+              for (const fb of fillers) {
+                for (const x of fb.m) cand[x.key][x.i] = cursor + (x.t - fb.start);
+                cursor += Math.max(...fb.m.map(x => BUFFS[x.key].dur));
+              }
+              for (const key in cand) cand[key].sort((a, b) => a - b);
+              const rep = repair(cand, cfg);
+              if (JSON.stringify(rep) === JSON.stringify(sx)) continue;
+              if (!sameCounts(counts(sx), counts(rep))) continue;
+              if (clipOf(rep) > clipOf(sx) + 1e-9) continue;
+              const r0 = simulate(sx, cfg).robust;
+              if (simulate(rep, cfg).robust >= r0 - castVal / 1000) sx = rep; // exact tie → canonical form
+            }
+          }
+          return sx;
+        }
         // Final hop ↔ normalize fixpoint: the tie-break/legibility passes above may have drifted a
         // sub-cast off the deepest basin (each is QTOL-bounded but they compound), and a normalizer
         // move can OPEN a basin the previous hop couldn't see. Iterate hop → canonicalize until the
@@ -2834,15 +2916,16 @@ function optimizeCore(cfg, starts, onProgress) {
               }
               const bar = (endChain || !csAddsUse) ? castVal / 8 : castVal;
               if (bestN.val >= champ.val - bar) {
-                resolve({ s: await normalize(bestN.s), val: bestN.val, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote });
+                resolve({ s: await canonicalWindowOrder(await normalize(bestN.s)), val: bestN.val, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote });
               } else {
-                resolve({ ...champ, s: await normalize(champ.s), csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote });
+                resolve({ ...champ, s: await canonicalWindowOrder(await normalize(champ.s)), csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote });
               }
             });
             return;
           }
           best.csNote = { unused: true };
         }
+        best.s = await canonicalWindowOrder(best.s); // §5.11 final canonicalization (exact-tie only)
         resolve(best);
       }
     })();

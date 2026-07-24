@@ -2,7 +2,7 @@
 
 Committed output of the holdout haste-adaptation cross-val (`tools/xval.mjs`, driven by
 `tools/xval-campaign.sh`). The scratchpad these were produced in is ephemeral; **these files are the
-durable record** the `docs/PHASE6.md` §2.1 ledger is assembled from.
+durable record** the `docs/archive/07-phase6-xval-run.md` §2.1 ledger is assembled from.
 
 ## What's here
 - `<kit>-<class>.txt` — one full run per (trinket kit × fight-length class). Each file contains:

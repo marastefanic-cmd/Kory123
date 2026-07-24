@@ -5,7 +5,7 @@ data and proved the measurement correct; Phase 7 **dives into the results and fi
 that the next run of `docs/ACCEPTANCE.md` passes fully. This is the "fix" phase the user scoped: *not*
 accept the basin — kill it. **Read §5 first for what is already established this run.**
 
-Read first: `docs/ACCEPTANCE.md` (the test + pass criterion), `docs/PHASE6.md` §2.1/§3/§4.1/§4.2/§4.5
+Read first: `docs/ACCEPTANCE.md` (the test + pass criterion), `docs/archive/07-phase6-xval-run.md` §2.1/§3/§4.1/§4.2/§4.5
 (the results + triage method), `docs/DIARY.md` (what we already got wrong — don't repeat it),
 `docs/RULES.md` §16 (the haste-morphology band map), `docs/ARCHITECTURE.md` (the optimizer pass order).
 
@@ -321,7 +321,7 @@ out-SCORE the native (model-side B1). Default off → goldens byte-identical (ex
 - **Next:** run the full campaign with pooling ON (`xval.mjs` default; `POOL=0` to measure the delta),
   then B2 investigation of the residual family.
 
-### 5.11 REGRESSION (user-reported, open): equal-DPS layouts got UGLIER after the recalibration
+### 5.11 REGRESSION (user-reported) — **RESOLVED.** Equal-DPS layouts got UGLIER after the recalibration
 The bf34f56 golden regeneration (scorer recalibration §5.3 + new search passes) left some fights with
 **equal-score but less legible layouts** — the historic tie-break/legibility stack (co-press beats
 earliest, grouped presses, overlay preference, quarter-cast legibility tolerance — the day-1 "beauty"
@@ -350,6 +350,34 @@ the ORDER is not.) Principle for the fix: among score-tied orderings, resolve **
 fights** — burst cluster first inside Lust (the day-1 "anchor burst early" doctrine), THEN the lone
 haste filler, then the CS chain. Consistency is the aesthetic: same-shape fights must render
 same-shape plans.
+
+#### 5.11 FIX (landed) — `canonicalWindowOrder`, a resolve-time exact-tie canonicalizer
+Two changes, both gated to **exact ties or strict gains** (a golden may move only if the effective-AB
+count does not decrease):
+1. **`canonicalWindowOrder(s0)`** (`index.html` ~2730), applied at all three `resolve(...)` sites
+   **after** `normalize` — the last thing that touches a plan. Inside a pinned haste window it blocks
+   the mage's presses (≤3s apart = one block), finds the burst cluster (first block with both a
+   damage/SP and a haste buff) and, when everything ahead of it is a lone-haste filler, rotates the
+   cluster to the front and re-sequences the fillers after it. Gate: `repair`-legal + `sameCounts` +
+   no worse `clipOf` + `robust ≥ r0 − castVal/1000` (≈0.001 casts — float noise, so **exact ties only**).
+2. **A second anchor base in the sequential window-packing pass** (`A2` = the incumbent's own
+   boundary-snapped span start) plus **canonical-tie adoption** at `TIE_EPS = castVal/1000`. The raw
+   window second `A` is often *not* a legal press boundary during the opener ramp, so the canonical
+   packed form was simply unreachable from `A` alone.
+
+**Placement was the whole difficulty.** Run INSIDE `normalize`, the fix *lost* 0.0136 casts on Hydross:
+the hop↔normalize fixpoint's downstream passes re-drift the rotated layout and re-converge on the old
+shape. Run last, at `resolve`, it lands on the exact tie.
+
+**Evidence (both engines scored with the same untouched `simulate()`, so directly comparable):**
+
+| case | pre-fix | post-fix | verdict |
+|---|---|---|---|
+| Hydross the Unstable | `robust=196077.764863` · `isc[18] iv[18,39] ap[18] scb[18] zerk[8]` | `robust=196077.764863` · `isc[8] iv[8,39] ap[8] scb[8] zerk[28]` | **bit-exact tie**, now cluster-first — the layout the user identified as the cross-fight norm |
+| 4:00 lust 0:05 | `robust=428242.674625` (eff 190.996641) | `robust=428257.758448` (eff 191.003368) | **strict +15.08 damage = +0.0067 eff ABs** (the `A2` anchor) |
+
+Those are the only two goldens that move; the other 23 are byte-identical. `A2` is therefore
+**load-bearing, not redundant** — it is a real search win, not a cosmetic one.
 
 ### 5.12 ROUND-3 RESULTS (COMPLETE — all 36 tables: pooling ON, var0.5, jitter v2, KT AoE valued)
 The full acceptance campaign on the post-fix engine, all tables committed to `tools/xval-results/`
