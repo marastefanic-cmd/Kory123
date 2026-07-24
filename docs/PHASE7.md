@@ -320,3 +320,22 @@ out-SCORE the native (model-side B1). Default off → goldens byte-identical (ex
   the B2 scorer work reserved for the high-effort next phase.
 - **Next:** run the full campaign with pooling ON (`xval.mjs` default; `POOL=0` to measure the delta),
   then B2 investigation of the residual family.
+
+### 5.11 REGRESSION (user-reported, open): equal-DPS layouts got UGLIER after the recalibration
+The bf34f56 golden regeneration (scorer recalibration §5.3 + new search passes) left some fights with
+**equal-score but less legible layouts** — the historic tie-break/legibility stack (co-press beats
+earliest, grouped presses, overlay preference, quarter-cast legibility tolerance — the day-1 "beauty"
+machinery) is evidently no longer the FINAL word among score-ties after the new passes. Not a DPS bug
+(user-confirmed equal); a product regression all the same — legibility is a feature here.
+**Decision (user): fix LATER, within this phase's close — not mid-campaign.** Do it AFTER the running
+round-3 (its B1/B2 verdicts don't depend on tie aesthetics) and BEFORE the FINAL acceptance re-run, so
+the shipped engine and the acceptance record match. Fix outline:
+1. Audit the pass order: where do the new passes (press-snap slippage, external lattice snap, CS chain
+   family, drop-one escape) emit relative to the tie-break stack? Restore legibility as the LAST pass
+   over equal-score candidates (within the established tolerance). Goldens will move aesthetically —
+   regenerate under the standing gate (count must not decrease; spot-sim ties).
+2. Pooling tie rule (for when `poolHastes` ships ON anywhere user-facing): adopt a borrowed champion
+   ONLY on strict score improvement (> EPS); on ties keep the native plan. B1 (native ≥ borrowed) is
+   preserved by construction — a tie kept is still dominance — and native plans carry the legibility
+   tie-breaks.
+3. Re-run exact-match + the affected goldens' sims, then the final acceptance campaign.
