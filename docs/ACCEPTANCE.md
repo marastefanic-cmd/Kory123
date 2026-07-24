@@ -57,7 +57,10 @@ premium and var0's whole-cast parity are both off-question — TOOLING) · wall-
 cast parity is measurement structure no phase-averaged model can rank) · AoE phases VALUED (genapl
 `_aoe` → Arcane Explosion + `--targets N`; the KT caveat is closed) · paired seed 11 (CRN) · the AP-180
 patched runner · breakpoint-straddle haste sets (`tools/xval-haste-sets.json`)**. Raw matrices are
-committed to `tools/xval-results/`; the collector output is the authoritative row-by-row ledger.
+committed to `tools/xval-results/` (always the CURRENT round); when a new round supersedes them,
+snapshot the old round into `tools/xval-results-archive/<phase>/` first (append-only, like
+`docs/archive/`) — history stays first-class, never just git archaeology. The collector output is
+the authoritative row-by-row ledger.
 
 ## Current status (2026-07-23, first full run — 36 tables) — NOT PASSING
 Data-gathering complete: 30 fight-class tables (6 kits × 5 classes) + 6 boss tables (Vashj/Al'ar/KT ×
