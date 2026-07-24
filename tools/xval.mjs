@@ -129,37 +129,48 @@ const sig = sp => JSON.stringify(Object.keys(sp).sort().reduce((o,k)=>(o[k]=sp[k
 const uniq = {}; for (const h of HASTES) uniq[sig(plans[h].spec)] = h; // rep haste per unique plan
 console.log(`unique plans: ${Object.keys(uniq).length}/${HASTES.length}`);
 
-// sim matrix. WALL-JITTER (boss tables with phases): the cast-train phase at a FIXED intermission
-// wall clips a whole cast differently per plan (Al'ar: two plans 1s apart simmed 0.59% apart at
-// EVERY kill-variance — walls are fixed, so --var can never smooth them), which no phase-averaged
-// model can rank — it is measurement structure, not model error. Real phase transitions are not
-// metronomic either: so each cell is averaged over small deterministic wall shifts δ (the whole
-// post-first-wall fight — walls AND the player's presses — slides by δ, exactly as a raid tracks
-// the boss). WJITTER=2 → δ ∈ {−2,−1,0,+1,+2}; WJITTER=0 (default for plain fights) = one sim.
+// sim matrix. WALL-JITTER (boss tables with phases): within a wall-bounded segment the cast train
+// is phase-locked to the exit (the re-ramp), so a plan realizes haste value only in WHOLE casts
+// before the next wall — a deterministic per-segment cast-parity worth up to ~±½ cast/segment that
+// no kill-variance can smooth (dug to ground on Vashj: per-interval the sim matches the model
+// EXACTLY; only the whole-cast truncation at walls differs — the model's continuous credit is the
+// correct expectation for real fights, whose transition times vary run to run). The wash must vary
+// SEGMENT LENGTHS: each wall gets its OWN shift δ_i (seeded, deterministic), and each press shifts
+// with the wall that starts its segment (the raid tracks the boss). A RIGID translation (one δ for
+// everything — the first design) preserves every segment's internal parity and washes NOTHING.
+// WJITTER=2 → 1 nominal + 2·WJ jitter variants with per-wall δ_i ∈ [−WJ, +WJ].
 const WJ = (process.env.BOSS && (out0.wallList || []).length) ? +(process.env.WJITTER ?? 2) : 0;
-const DELTAS = WJ > 0 ? Array.from({ length: 2 * WJ + 1 }, (_, i) => i - WJ) : [0];
-const firstWall = (out0.wallList || [])[0] ?? Infinity;
-const shiftSpec = (spec, d) => {
-  if (!d) return spec;
+const walls = out0.wallList || [];
+const mulb = seed => () => { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+const VARIANTS = [walls.map(() => 0)];
+for (let v = 1; v <= 2 * WJ; v++) {
+  const rnd = mulb(9000 + v);
+  VARIANTS.push(walls.map(() => Math.round((rnd() * 2 - 1) * WJ)));
+}
+const shiftSpec = (spec, ds) => {
+  if (!ds.some(d => d)) return spec;
   const s = JSON.parse(JSON.stringify(spec));
+  const shiftOf = t => { let d = 0; for (let i = 0; i < walls.length; i++) if (t >= walls[i]) d = ds[i]; return d; };
   for (const k in s) {
-    if (k === '_intermissions' || k === '_aoe') s[k] = s[k].map(([a, z]) => [a + d, z + d]);
-    else if (Array.isArray(s[k])) s[k] = s[k].map(t => (t >= firstWall ? t + d : t));
+    // a window's end that coincides with ANOTHER window's start (seam — e.g. KT downtime→AoE at
+    // 105) must move with THAT window's shift, or the two would overlap/gap at the seam
+    if (k === '_intermissions' || k === '_aoe') s[k] = s[k].map(([a, z]) => { const i = walls.indexOf(a); const j = walls.indexOf(z); return [a + (i >= 0 ? ds[i] : 0), z + (j >= 0 ? ds[j] : (i >= 0 ? ds[i] : 0))]; });
+    else if (Array.isArray(s[k])) s[k] = s[k].map(t => t + shiftOf(t));
   }
   return s;
 };
 const M = {};
 for (const ph of HASTES) { M[ph] = {}; for (const sh of HASTES) {
   let acc = 0;
-  for (const d of DELTAS) {
-    const p = path.join(SCRATCH, `plan_${ph}_d${d}.apl.json`);
-    execFileSync('node', [path.join(REPO, 'tools/genapl.mjs'), JSON.stringify(shiftSpec(plans[ph].spec, d)), p]);
+  for (let vi = 0; vi < VARIANTS.length; vi++) {
+    const p = path.join(SCRATCH, `plan_${ph}_v${vi}.apl.json`);
+    execFileSync('node', [path.join(REPO, 'tools/genapl.mjs'), JSON.stringify(shiftSpec(plans[ph].spec, VARIANTS[vi])), p]);
     const args = ['--export', EXPORT, '--apl', p, '--dur', String(FIGHT_T), '--var', VAR, '--iter', ITER, '--seed', '11', '--mana', '100000000', '--haste', String(sh), '--quiet', '--tag', 'm'];
     if (out0.aoeTargets) args.push('--targets', String(out0.aoeTargets));
     const out = execFileSync(RUNNER, args, { encoding: 'utf8' });
     acc += parseFloat(out.trim().split(/\s+/)[4]);
   }
-  M[ph][sh] = acc / DELTAS.length;
+  M[ph][sh] = acc / VARIANTS.length;
 } }
 
 console.log('\nDPS matrix (row = plan optimized @haste, col = simmed @haste):');
