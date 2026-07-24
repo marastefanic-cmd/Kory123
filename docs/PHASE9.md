@@ -199,14 +199,60 @@ priority than 4.1-4.4.
 
 ### 4.6 Explicitly NOT a target
 
-- **The pass stack's structure.** The passes are the theorycraft; the redundancy worth removing is
-  mechanical (walks, allocations, keys), not conceptual. Removing a pass changes plans — out of scope.
+- **Deleting a pass because it *looks* redundant.** The passes are the theorycraft; a pass that fires
+  rarely is not a pass that fires uselessly (the escape/drop-one move exists for essentially one AoE
+  geometry). What *is* in scope is the measured version of the same question — see §4.7.
 - **`breathe()` cadence / worker-pool sizing.** Already tuned; the profile shows the cost is in the
   engine, not the scheduling around it.
 - **Cross-haste pooling.** Ruled out as a cause of UI slowness: `cfg.poolHastes` is set **only** by the
   cross-val harness, never from the UI.
 
-### 4.7 Landing order (cheapest/safest first)
+### 4.7 ★ The pass-firing census — the disciplined way to answer *"fewer steps that do the same thing"*
+
+*(The user's ask is explicitly "grouping the rules and steps of the model into fewer steps that do the same
+thing, getting rid of the redundant steps." §4.6 refuses the **guess**; this is the **measurement** that
+makes the same question answerable without touching a plan.)*
+
+**The provable form of the question.** A pass P is redundant **iff its input is already a fixpoint of P on
+every case we can produce.** That is not a judgement call — it is a counter. And when it holds, deleting or
+merging P is byte-identical *by construction*, so the exact-match suite is a sufficient gate.
+
+**Instrument (additive only, same monkeypatch trick as §3.1):** for each pass record
+1. **entries** — how often it runs;
+2. **firings** — how often it changes the incumbent at all (`val` or `s`);
+3. **surviving firings** — how often that change is still present in the **emitted** plan.
+
+(3) is the one that matters. A pass that fires and is then undone by a later pass is doing *negative* work;
+a pass with zero **surviving** firings across the whole corpus is a merge candidate. Corpus = the 25
+goldens **plus** the xval fight-class grid, so a pass isn't retired on the strength of the presets alone.
+
+**Three structural suspicions already visible statically** (read-only, no run needed — each becomes a number
+the moment the census exists):
+
+- **`polish()` is a 40-round fixpoint over THREE move families** (single-use shift ladder → joint window
+  move → escape/drop-one; `index.html:1137-1270`). Families 2 and 3 are already guarded to run only "once
+  ordinary moves dry up", which is a hand-written subsumption rule. Record the **last round at which each
+  family fired**: if nothing fires past round *k* on any case, the bound of 40 is generous by a measurable
+  margin, and the per-round re-entry cost (a full `cloneS → repair → simulate` per candidate) is the most
+  expensive thing in the profile.
+- **Two nested fixpoints over overlapping pass sets.** The grooming block "grooms three times" (~1664)
+  *and* there is a separate "final hop ↔ normalize fixpoint" (~2777, `Re-hop & canonicalize (round N)`).
+  If the outer loop converges in one round on every case, rounds 2–3 are pure cost. If it *doesn't*, that
+  is more interesting than the perf win — it means the pass order isn't confluent, which is worth knowing
+  for its own sake.
+- **`repair` is idempotent and applied at least twice per surviving candidate** — once inside every
+  candidate evaluation and again on each `resolve(...)` path. §4.1's fusion makes the repeat nearly free;
+  the census says whether it can simply be dropped at the resolve sites instead.
+
+**Cost + scheduling.** This is a full instrumented run of the corpus — hours of CPU on 4 cores, and it
+**must not overlap an acceptance round** (both saturate the box, and an acceptance round in flight also
+freezes the engine). Run it in the gap after a round lands, before the next one starts.
+
+**The trap to avoid.** Do not convert "fires on 1/25 goldens" into "delete it". The bar is **zero
+surviving firings on the whole corpus**, and even then the merge must reproduce the pass's effect rather
+than remove it — the point is *fewer steps doing the same thing*, not fewer things done.
+
+### 4.8 Landing order (cheapest/safest first)
 
 1. §4.3 sig-vs-`JSON.stringify` equality — trivial, exact.
 2. §3.2/H1 cheaper `sigOf` encode (variant C or D) — pure function, same string ⇒ same behaviour.
@@ -216,3 +262,7 @@ priority than 4.1-4.4.
 
 Gate at **every** step: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` = 25/25,
 plus a wall-time re-measure so each step's real win is recorded next to its predicted one.
+
+§4.7's census is deliberately **not** in this ladder. It gates a different class of change — *merging or
+retiring* a pass rather than making the existing passes cheaper — and unlike 4.1–4.4 it is a measurement
+first, so it can (and should) run in the CPU gap between acceptance rounds, independent of this order.
