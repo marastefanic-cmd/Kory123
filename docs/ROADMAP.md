@@ -22,9 +22,14 @@
    cluster-first; `4:00 lust 0:05` = strict +0.0067 eff casts), 23 byte-identical, suite 25/25.
    **Two phases now stand open behind Phase 7:** `docs/PHASE8.md` (the B2 model-vs-sim ranking error — the
    "joint interaction" framing is **withdrawn**, round 1 traced it to a retimed trinket press and round 2
-   established **THE FLOOR LAW** + two harness input errors; §8 falsifies the SP-under-haste candidate)
+   established **THE FLOOR LAW** + two harness input errors; §8 falsifies the SP-under-haste candidate;
+   **§11 pre-registers round 3** — a crossed, one-rating-point test of the law's closed-form step
+   locations, rig built and dry-run verified, blocked on CPU only)
    and `docs/PHASE9.md` (**performance/refactor**, user-reported CPU cost — notes + hypotheses only so
-   far, nothing landed; every change there is gated on byte-identical plans).
+   far, nothing landed; every change there is gated on byte-identical plans. **§4.7** turns the "fewer
+   steps" ask into a *pass-firing census* — a pass is redundant iff its input is already its own fixpoint
+   on the whole corpus — and **§4.9** records the two dedups that need no measurement at all: polish()'s
+   five identical accept paths and the block-shift primitive written twice).
    Background: Phase 6 (the haste-adaptation cross-val, `docs/archive/07-phase6-xval-run.md`) was data-complete: 36
    tables, monoDip=0 everywhere, 167 borrowed-win columns keeping the standing acceptance test
    (`docs/ACCEPTANCE.md`) OPEN; Phase 7's diagnostic (`tools/diagnose-deficit.mjs`) partitioned
