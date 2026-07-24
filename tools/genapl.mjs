@@ -15,6 +15,7 @@
 import fs from 'fs';
 
 const AB = 30451;
+const AE = 27082;   // Arcane Explosion — cast during `_aoe` windows (see the AB-spam block)
 // ActionID inner values (spellId for spells, itemId for on-use trinkets)
 const IDS = {
   IV:   {spellId:12472},
@@ -49,16 +50,27 @@ export function build(spec){
   if (spec.Zerk?.length) pl.push(sched(spec.Zerk, IDS.Zerk));
   // Arcane Blast spam — optionally gated OFF during an intermission window
   // (boss untargetable: no casting, but cooldowns keep ticking).
+  // AoE phases (`_aoe: [[a,z],…]`): cast Arcane EXPLOSION (27082) inside the window instead of
+  // AB — pair with `runner --targets N` so the sim values the window at N mobs (AB is
+  // single-target, so the extra dummies are inert outside the window; AE never applies the AB
+  // debuff, so the exit re-ramp is real — matches the model, RULES §9). Before this, an AoE
+  // window was simmed as DOWNTIME and the model's AoE credit was unmeasurable (the KT caveat).
   let abCond = null;
   const gap = ([a, z]) => ({ or: { vals: [
     { cmp: { op: "OpLt", lhs: { currentTime: {} }, rhs: { const: { val: `${a}s` } } } },
     { cmp: { op: "OpGe", lhs: { currentTime: {} }, rhs: { const: { val: `${z}s` } } } },
   ] } });
-  if (spec._intermissions) {            // multiple downtime windows: AB off during ANY of them
-    abCond = { and: { vals: spec._intermissions.map(gap) } };
-  } else if (spec._intermission) {
-    abCond = gap(spec._intermission);
+  const inside = ([a, z]) => ({ and: { vals: [
+    { cmp: { op: "OpGe", lhs: { currentTime: {} }, rhs: { const: { val: `${a}s` } } } },
+    { cmp: { op: "OpLt", lhs: { currentTime: {} }, rhs: { const: { val: `${z}s` } } } },
+  ] } });
+  const offWins = [ ...(spec._intermissions || (spec._intermission ? [spec._intermission] : [])),
+                    ...(spec._aoe || []) ];   // AB is off during downtime AND during AE windows
+  if (spec._aoe?.length) {
+    const aeCond = spec._aoe.length === 1 ? inside(spec._aoe[0]) : { or: { vals: spec._aoe.map(inside) } };
+    pl.push({ action: { condition: aeCond, castSpell: { spellId: { spellId: AE } } } });
   }
+  if (offWins.length) abCond = { and: { vals: offWins.map(gap) } };
   pl.push({ action: abCond
     ? { condition: abCond, castSpell: { spellId: { spellId: AB } } }
     : { castSpell: { spellId: { spellId: AB } } } });

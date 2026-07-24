@@ -28,6 +28,8 @@ const RUNNER = process.env.RUNNER;
 const EXPORT_BASE = process.env.EXPORT_BASE;
 if (!RUNNER || !EXPORT_BASE) { console.error('set RUNNER=/path/to/runner-ap180 EXPORT_BASE=/path/to/export.json'); process.exit(1); }
 const ITER = process.env.ITER || '10000';
+const VAR = process.env.VAR || '10';   // kill-time variation (s); the metric decision lives in ACCEPTANCE
+
 
 // ── seeded draw (mulberry32) ──
 let s = SEED;
@@ -67,18 +69,22 @@ await page.goto('file://' + path.join(REPO, 'index.html'));
 
 // BOSS mode: override the random fight with a boss preset's shape (T, Lust, phases). The kit stays
 // the drawn/KIT pair (we test each kit ON the boss's fight shape). Intermission phases sim cleanly
-// (genapl _intermissions = AB off during downtime). AoE phases are a KNOWN LIMITATION — genapl casts
-// only Arcane Blast, not Arcane Explosion, so an AoE window is simmed as downtime (AB off): the model
-// optimized WITH AoE damage but the sim skips it, so an AoE-containing preset (KT) is flagged.
+// (genapl _intermissions = AB off during downtime). AoE phases are VALUED (PHASE7 §3c): genapl
+// `_aoe` windows cast Arcane Explosion (27082), and the runner gets `--targets N` (the extra
+// dummies are inert outside the window — AB is single-target — so only the AE window is worth ×N,
+// exactly the model's M(N) physics, RULES §9). The old "simmed as downtime" KT caveat is CLOSED.
 const out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS }) => {
-  let segments = null, downtime = [], hasAoe = false, fightT = T, lust = LUST;
+  let segments = null, downtime = [], aoeWins = [], aoeTargets = 0, fightT = T, lust = LUST;
   if (BOSS) {
     const p = (window.BOSS_PRESETS || []).find(x => x.name === BOSS || x.name.toLowerCase().includes(BOSS.toLowerCase()));
     if (!p) throw new Error('boss preset not found: ' + BOSS);
     fightT = p.T; lust = (p.pins && p.pins.bloodlust && p.pins.bloodlust[0]) || 0;
     const rows = (p.phases || []).map(ph => ({ from: ph.from, to: ph.to, type: ph.type, mult: ph.mult || 1, targets: ph.targets || 0 }));
     segments = rows.length ? buildSegments(rows, fightT) : null;
-    for (const ph of (p.phases || [])) { if (ph.type === 'intermission' || ph.type === 'aoe') downtime.push([ph.from, ph.to]); if (ph.type === 'aoe') hasAoe = true; }
+    for (const ph of (p.phases || [])) {
+      if (ph.type === 'intermission') downtime.push([ph.from, ph.to]);
+      if (ph.type === 'aoe') { aoeWins.push([ph.from, ph.to]); aoeTargets = Math.max(aoeTargets, ph.targets || 0); }
+    }
   }
   const kit = ["icyVeins", PAIR[0], PAIR[1], "arcanePower", "berserking", "bloodlust"];
   const en = {}; for (const k in BUFFS) en[k] = kit.includes(k);
@@ -93,7 +99,8 @@ const out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS }) 
     for (const t of ivs) { if (t < cd - 1e-6) csOut.push(t); ivOut.push(t); cd = t + BUFFS.icyVeins.cd; }
     if (ivOut.length) spec.IV = ivOut;
     if (csOut.length) spec.CS = csOut;
-    if (downtime.length) spec._intermissions = downtime; // AB off during intermission/aoe windows
+    if (downtime.length) spec._intermissions = downtime; // AB off during intermissions
+    if (aoeWins.length) spec._aoe = aoeWins;             // Arcane Explosion during AoE windows
     return spec;
   };
   const res = {};
@@ -102,13 +109,13 @@ const out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS }) 
     const best = await optimizeAsync(cfg, 14, () => {});
     res[h] = { spec: toSpec(best.s), eff: +(best.val / plain).toFixed(3) };
   }
-  return { res, fightT, lust, hasAoe };
+  return { res, fightT, lust, aoeTargets };
 }, { HASTES, T, LUST, PAIR, TMETA, BOSS: process.env.BOSS || null });
 await browser.close();
 if (perr) { console.error('PAGEERROR', perr); process.exit(2); }
 const plans = out0.res;
 const FIGHT_T = out0.fightT;   // boss overrides T for the sim/labels below
-if (process.env.BOSS) console.log(`  BOSS=${process.env.BOSS}  T=${FIGHT_T}  Lust@${out0.lust}${out0.hasAoe ? '  ★ HAS AoE PHASE — simmed as downtime (genapl has no AE); numbers exclude AoE damage' : ''}`);
+if (process.env.BOSS) console.log(`  BOSS=${process.env.BOSS}  T=${FIGHT_T}  Lust@${out0.lust}${out0.aoeTargets ? `  AoE phase VALUED: AE windows ×${out0.aoeTargets} targets (--targets)` : ''}`);
 
 for (const h of HASTES) console.log(`  plan@h${h}: eff=${plans[h].eff}  ${JSON.stringify(plans[h].spec)}`);
 // dedupe by spec signature
@@ -123,7 +130,9 @@ for (const h of HASTES) {
 }
 const M = {};
 for (const ph of HASTES) { M[ph] = {}; for (const sh of HASTES) {
-  const out = execFileSync(RUNNER, ['--export', EXPORT, '--apl', path.join(SCRATCH, `plan_${ph}.apl.json`), '--dur', String(FIGHT_T), '--var', '10', '--iter', ITER, '--seed', '11', '--mana', '100000000', '--haste', String(sh), '--quiet', '--tag', 'm'], { encoding: 'utf8' });
+  const args = ['--export', EXPORT, '--apl', path.join(SCRATCH, `plan_${ph}.apl.json`), '--dur', String(FIGHT_T), '--var', VAR, '--iter', ITER, '--seed', '11', '--mana', '100000000', '--haste', String(sh), '--quiet', '--tag', 'm'];
+  if (out0.aoeTargets) args.push('--targets', String(out0.aoeTargets));
+  const out = execFileSync(RUNNER, args, { encoding: 'utf8' });
   M[ph][sh] = parseFloat(out.trim().split(/\s+/)[4]);
 } }
 
