@@ -1598,6 +1598,23 @@ It cannot land a fix. Any change to the cast-rate integral moves goldens and mus
 4 to close; and because the defect is gear-dependent **by construction** (the floor is only reachable near
 `R ≈ 53+`), a fix validated at `R = 70` must be re-run across the full acceptance haste grid before it lands.
 
+### 19.6 One suspect removed for free — B2 is INVARIANT to the tie-break (from acceptance round 4)
+Round 4 re-ran the whole campaign on the post-§5.11 engine (the resolve-time exact-tie canonicalizer). On
+the 35 tables both rounds have, **28 came back content-identical**, and `isc-mqg-medlong` — B2's own table —
+is one of them: same emitted plans, same matrix, **same 0.40% at `@sim70` down to the DPS pair**
+(`plan@40` 2787.5 > native 2776.5). See PHASE7 §5.13 for the full attribution.
+
+So B2 does **not** depend on how score-ties are ordered. That was never the leading hypothesis, but it was
+live — a tie-break is exactly the kind of thing that could pick a differently-shaped-but-equal-scoring
+layout and change which plan the sim then ranks. It is now ruled out at **zero measurement cost**, on a
+campaign that had to run anyway. Round 9's charge is unchanged and unbroadened: the `MQG 100 → 202` press
+arriving on `IV@202`, and whether its surplus ever becomes a completed cast.
+
+*Method note worth carrying:* the ruling-out only worked because the comparison was made **table-by-table
+against the previous round** rather than headline-to-headline. Two rounds can agree on "worst = 0.40%" while
+disagreeing about every plan underneath; the content-diff is what turns that coincidence into a fact. Keep
+archiving each round (`tools/xval-results-archive/<phase>-round<N>/`) — that archive is what made this free.
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance
