@@ -2558,6 +2558,70 @@ harness's own ±0.02% resolution. That is the shape §20.5 predicted from first 
 ("What the B BANNER can and cannot tell you"); both surviving columns are low-haste, which ties them to the
 already-recorded low-haste micro-placement debt rather than to anything in this section.
 
+### 20.8 ★★★ B2 HAS A MIRROR IN ITS OWN TABLE — the pair is **CROSSED**, so it is a two-sided ranking inversion with **no search component**
+
+Round 5's #1 persist target (§20.7, and `tools/xval-persist.mjs`' 5/5 row) is `isc+mqg medlong h40`, rival
+`plan@h70`. **That is the same table B2 lives in, one column over** — and reading both columns off the *same*
+round-5 matrix (`tools/xval-results/isc-mqg-medlong.txt`, seed 5523, T=229, lust=162) shows the preference is
+not merely wrong at one haste, it is **crossed**:
+
+```
+plan\sim        40      70
+40         2731.4  2787.5      ← native@40 · B2's winner@70
+70         2738.5  2786.5      ← B2's loser (native@70) · rival@40
+110        2738.0  2787.0      ← ⚠ a near-tie with BOTH winners
+```
+
+| column | model emits (native) | sim's best of the two | sim gap | model gap |
+|---|---|---|---|---|
+| `@sim40` | `plan@40` 2731.4 | **`plan@70` 2738.5** | **+0.260%** | −0.027 eff-AB (0.0145%) |
+| `@sim70` | `plan@70` 2786.5 | **`plan@40` 2787.5** | **+0.036%** | not in this round's dossier |
+
+**Each plan wins at the other's native haste.** Swapping the two would win *both* columns. Two consequences:
+
+**(a) It is purely a scorer defect — the search is exonerated by construction.** Both plans are already in the
+pooled champion set (§ACCEPTANCE B1 / `xval.mjs:176-190`), so the emit at each haste *is* the model-argmax over
+a set that contains the sim's preferred layout. The model looked straight at the better plan and ranked it
+lower, twice, in opposite directions. No basin-hop, seed class, or anchor widening can reach this. (This is the
+concrete instance of the degeneracy PHASE7 §5.16 proved in general: on a pooled round `diagnose-deficit.mjs`
+*cannot* report SEARCH-MISS, and here that verdict is not an artifact — it is correct.)
+
+**(b) B2's own gap collapsed under the §6/§7 harness correction; the mirror did not.** Round 4 archived
+`DEFICIT 0.40% [@sim70: plan@40 (2787.5) > native@70 (2776.5)]`. In round 5 `plan@40` holds at **2787.5
+exactly** while `native@70` rose 2776.5 → 2786.5, so B2 is now **+0.036%** — precisely the "0.036 pp" figure
+§12 computes, and *at* the harness's ±0.02% resolution boundary. Its mirror is **7× wider (0.260%)** and
+length-robust at 5/5. **⇒ Work the mirror, not B2.** Every future B2 probe should be run on the `@sim40`
+column, which has the signal; the `@sim70` column no longer has enough to grade a fix by.
+
+**What the two layouts actually differ by** (dossier `$SP/dd5.json`, all six tracks differ — no press-count
+change, a pure retiming):
+
+```
+native@h40 :  IV[0,20,200]  Zerk[0,188]  AP[8,188]  MQG[9]   Icon[29,183]  CS[20]
+rival =@h70:  IV[5,25,205]  Zerk[5,185]  AP[5,185]  MQG[25]  Icon[5,182]   CS[25]
+```
+`plan@70` is an **all-in group at t=5** (IV+Zerk+AP+Icon together) with MQG pushed to the second IV/CS window at
+25; `plan@40` is a **staggered open** (IV 0 → AP/MQG 8–9 → Icon 29). So the model wants *staggered* at low haste
+and *grouped* at higher haste; the sim wants the reverse.
+
+**⚠ HYPOTHESIS, NOT A FINDING — and it is post-hoc.** That reversal is the shape a mis-weighted
+**stacked-haste / GCD-floor** term would produce, which is exactly the mechanism §18.6 named for this family
+("it is the **stack**, not the kill — the sim log names the GCD floor"). Note the model is *not* floor-blind:
+`GCD_FLOOR: 1.0` is applied inside the integral (`index.html:819,903`) and two passes already reason about
+overcap explicitly (`:2466`, `:2521`). So any candidate is **mis-weighted or mis-located**, never "missing" —
+and h40 vs h70 gear haste is only ≈2.5% vs ≈4.4%, far from the floor except inside Lust+IV, which makes the
+floor a *weak* prior here. Do not promote this to a rule off two columns of one table.
+
+**⚠ And it is a PLATEAU, not a duel.** `plan@110` scores 2738.0 / 2787.0 — within 0.02% of the winner at *both*
+columns. So there is no unique "correct" layout to aim a scorer term at; there is a ridge of retimings the model
+orders differently than the sim. Any pre-registered test must therefore predict the **ordering of the ridge**,
+not the identity of a single winner.
+
+**Where this leaves §19.10.** L1 concluded "the model never inverts a *resolvable* ranking". This pair does not
+falsify it — the h40 model margin is 0.0145%, under the ±0.02% ruler, so the ranking is not resolvable. What is
+new is the **two-sidedness**: an unresolvable margin that errs in the *same* direction at both hastes (always
+toward the locally-tuned plan losing) is not noise-shaped. That asymmetry, not the magnitude, is the handle.
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance

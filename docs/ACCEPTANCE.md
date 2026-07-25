@@ -57,6 +57,11 @@ The model **passes** when, across all six trinket kits × the five fight-length 
      mechanism is cross-haste candidate pooling in the search: the native search *considers* every
      neighbor champion, so a borrowed plan can at worst BE the native plan. A B1 violation is always a
      search bug.
+     **⚠ And enforcing B1 by construction COSTS an instrument: it empties the SEARCH-MISS side of
+     `diagnose-deficit.mjs`'s partition.** With pooling on (`xval.mjs:176-190`, default) `model(B,H) ≤
+     model(N,H)` is forced, so the tool reports `SEARCH-MISS 0 · SEARCH-MISS(other) 0 · SCORER-GAP N` on
+     *any* pooled round — round 5 gave `0 · 0 · 135` — which is B1 restated, not a finding about the
+     search. The partition can only route work again on a `POOL=0` round. PHASE7 §5.16.
    - **(B2) SIM-level: every borrowed-plan win is a MANDATORY investigation, never tolerated noise.**
      With B1 enforced, a sim-side violation can only be (a) a scorer mis-ranking — root-cause it with the
      minimal-pair method and fix the term (the Al'ar/Vashj digs are the template), or (b) measurement
@@ -155,6 +160,13 @@ the authoritative row-by-row ledger.
   `+0.045%` in every length → **1** naming exactly that column. **⚠ It is a PRIORITIZER, not a
   redefinition of the PASS criterion** — a column it clears still carries a borrowed win that must be
   explained before the model is complete.
+- **`tools/diagnose-deficit.mjs`** — per borrowed-win column, re-score the borrowed and native plans with
+  the **model** at the deficit's sim-haste and print the margin + the track-level diff. **⚠ Its
+  SEARCH-MISS / SCORER-GAP partition is DEGENERATE on any pooled round** — B1-by-construction forces
+  `model(B,H) ≤ model(N,H)`, so the verdict is `0 · 0 · N` whatever the search does (round 5: `0 · 0 ·
+  135`). A ⚠ banner now leads the file; re-gather with `POOL=0` to make the partition mean something.
+  What it still measures honestly, and what PHASE7 §5.16 used it for: the **model margin** (how close the
+  objective thinks the two layouts are) and the **track diff** (what actually differs).
 - **`tools/genapl.mjs`** — model plan → wowsims APLRotation JSON (the bridge that makes a schedule
   simmable). **Never** set `_prestack>0` for a model comparison. Hardened 07-25 against its own
   false-pass shape: an **unknown spec key was dropped in total silence**, so `{"IcyVeins":[20]}` (or
@@ -235,7 +247,16 @@ false-pass defects across 14 tools, several of which could have silently corrupt
 `[0,100,200,300,400]` default an empty `HASTES` would have substituted — all 345 plan rows carry
 `_prestack:0` (cold open, no prepull), no `NaN`/`undefined`, all 36 carry `XVAL-DONE`.
 
-**So: not passing yet.** Remaining owners: the two persistent columns (Phase 7), PHASE8 (the B2 family,
+**★★ The worst non-KT column in round 5 has a named candidate mechanism, and it is an existing debt.**
+`isc-skull short T=99 @sim40 ← plan@70`, **0.362%**, differs from native in **one track**: `IV[8,28]` vs
+`IV[0,20]` (Icon and Skull byte-identical). The model prices the pair 0.006% apart, because it credits
+haste covering the opening ramp at **exactly 0.000** (`index.html:926-928`) — the ramp under-credit debt
+already measured at ~+0.079 pp (PHASE8 §15.5 F5; DIARY open debts), and the ramp is a large fraction of a
+99s fight. Filed as a **lead with a pre-registered test**, not a finding: patching the ramp credit must
+flip the opening-haste-window cells specifically and leave the flat per-press population alone. PHASE7 §5.16c.
+
+**So: not passing yet.** Remaining owners: the two persistent columns (Phase 7), the ramp-credit patch
+(scorer change — lands after the round closes, duel-gated per moved cell), PHASE8 (the B2 family,
 highest-effort scorer work) and the metric-design task for the near-tie tail. Re-run this in full after each.
 A performance phase is also open (`docs/PHASE9.md`); by construction it must leave every plan
 byte-identical, so it cannot invalidate a round — but re-run the exact-match suite after each of its
@@ -315,6 +336,13 @@ from the immediately adjacent haste column** and **114 (84.4%) from within 2 gri
 from ≥5 steps away. Magnitudes: median 0.035%, mean 0.069%, p90 0.191%, max 0.377% — **34.1% are ≤0.02%**
 (at or below CRN resolution) and 77.8% are ≤0.10%. "The plan built for h70 wins at h40" is what a flat
 optimum looks like when measured with a ±0.02% ruler, not what a wrong adaptation rule looks like.
+**Confirmed at track level** (PHASE7 §5.16, `tools/diagnose-deficit.mjs` dossiers): **132 of 135** have
+identical press *counts* on every track — pure **retimings**, only 3 structurally different plans — and
+the *model's own* margin is ≤0.02% in **58 of 135**, with **14 exact ties**. ⚠ "Retiming" is a statement
+about structure, not size: the median row moves 6 presses and its worst press moves 24s. And those 58
+matter more than the count suggests — where the model's margin is below the ruler, **the model has no
+opinion to be wrong about**, so no search fix can reach them; they are a *resolution* property of the
+objective (a metric-design task), while the other 77 carry a real model preference a scorer term could fix.
 
 **5. The principled test — and it needs no tuned thresholds.** A length-persistent structural defect at
 `(kit, haste c)` can only have one shape: **one specific rival layout is genuinely better there, so it

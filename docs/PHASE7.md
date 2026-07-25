@@ -663,8 +663,10 @@ which for a near-tie is a coin flip that happened to land on a long fight. Both 
 low-haste (h40, h20), consistent with the recorded low-haste micro-placement slack (DIARY open debts).
 
 ⚠ **Both still need a magnitude-vs-resolution judgement before either is called a defect**: each has at
-least one length at 0.007%, well inside the ±0.02% ruler. Diagnose them with
-`tools/diagnose-deficit.mjs` (SEARCH-MISS vs SCORER-GAP) before designing anything.
+least one length at 0.007%, well inside the ±0.02% ruler. ~~Diagnose them with
+`tools/diagnose-deficit.mjs` (SEARCH-MISS vs SCORER-GAP) before designing anything.~~ **That instruction
+is superseded by §5.16** — on pooled results the SEARCH-MISS bucket is arithmetically empty, so the
+partition cannot route the work. §5.16 is the diagnosis that was actually possible, and what it found.
 
 #### (c) The rigged-sieve correction — recorded so it is not repeated
 
@@ -677,3 +679,113 @@ survivors were rejected by the sieve** (`isc-mqg h40` by the distance filter at 
 h20` by the magnitude filter at 0.087%). Nothing from the sieve is recorded as a finding.
 **Lesson: a sieve whose thresholds you chose after seeing the data is not evidence; the threshold-free
 test that names the only physically possible shape of the defect is.**
+
+### 5.16 DIAGNOSING THE 135 — the SEARCH-MISS/SCORER-GAP partition is DEGENERATE, and what the columns actually are
+
+Run on round 5 (`CHROMIUM=… node tools/diagnose-deficit.mjs tools/xval-results --json dd5.json`):
+
+```
+SEARCH-MISS (model prefers B):                                 0
+SEARCH-MISS(other) (model prefers a 3rd candidate over native): 0
+SCORER-GAP (model prefers native; sim disagrees):             135
+```
+
+#### (a) ⚠⚠⚠ That partition is TAUTOLOGICAL — §2's decisive diagnostic no longer decides anything
+
+`0 / 0 / 135` reads like a strong positive result about optimizer completeness. It is not a result at
+all. `tools/xval.mjs:176-190` turns **cross-haste pooling on by default** (`const POOL = POOL_ENV !==
+'0'`) and its own comment states the consequence: *"no borrowed plan can out-score the native."* The
+emitted native plan **is** the model-argmax over the union of all cross-haste champions, so
+`model(B,H) ≤ model(N,H)` holds **by construction** and every borrowed-win column is *forced* into
+SCORER-GAP. Confirmed in the dossiers: `modelMargin > 0` in **0 of 135**, and `modelBest === modelN` in
+all 135. This is just B1 restated (ACCEPTANCE), not evidence about the search.
+
+**★★★ P7.3 invalidated P7.2's instrument, and nothing said so.** Pooling was landed (§5.10) as the
+mechanism that makes B1 hold by construction — which is exactly the property that empties one side of
+the partition this phase's §2 was built on. Same defect shape as the B banner: *a test that cannot fail
+measures nothing.* Measuring the SEARCH side again requires a `POOL=0` round (the env switch exists
+precisely "to MEASURE what pooling fixed"); a ⚠ banner now leads `tools/diagnose-deficit.mjs`.
+
+#### (b) What the 135 columns ARE (the part of the tool that still measures something)
+
+The model margin and the track diff are still real, and they say the population is **near-tie retimings,
+not structural alternatives**:
+
+| property | round 5, over all 135 |
+|---|---|
+| identical press COUNT on every track (pure retiming) | **132 / 135** — only 3 change structure |
+| model margin `\|Δ\|/N` | median **0.035%** · p75 0.064% · p90 0.162% · max 0.376% |
+| exact model ties (`modelMargin == 0`) | **14** |
+| model margin ≤ 0.02% (at/below CRN resolution) | **58 / 135** |
+| sim% ÷ model% (per column, where both nonzero) | median **1.18** |
+| all presses within ±2s | 14 / 135 |
+| uniform whole-plan translation | 16 / 135 (8 of them moving ≥2 presses) |
+
+⚠ **"Retiming" does not mean "small".** The per-row worst single-press shift has median **24s** and runs
+to 360s, and the median row moves **6** presses. What is near-degenerate is the *score*, not the layout:
+these are visibly different plans that the model prices within a whisker of each other.
+
+**The load-bearing number is 58/135.** In those columns the model's own margin is at or below the
+harness's ±0.02% resolution — i.e. **the model does not have an opinion to be wrong about**. Their sim
+margins are not all small either (median 0.025%, but 11 at ≥0.10% and 4 at ≥0.20%, worst **0.362%**). No
+search fix can address a column where the scorer is indifferent; the whole 58 is a **resolution** problem
+in the objective, which is a metric-design question, not a ranking bug. The other 77 columns do carry a
+real model preference (median sim 0.040%) and are the ones a scorer term could in principle fix.
+
+#### (c) ★★ The largest non-KT deficit in the round is an 8-second shift of ONE track that the model calls a dead tie
+
+`isc-skull short T=99 lust=49 @sim40 ← plan@70`, **sim 0.362%** (the worst non-KT column in round 5),
+model `87.8336` vs `87.8282` = **0.006%**, and the *entire* difference is:
+
+```
+IV: [8,28] vs [0,20]        CS: [28] vs [20]
+```
+
+Icon and Skull are byte-identical on both plans. So on a 99s cold-open fight the sim pays **0.36%** for
+opening Icy Veins at **0** instead of **8** — and the model prices the two layouts 0.006% apart.
+
+**That is the signature of a debt already on the books:** *"Haste covering the opening ramp is
+under-credited by ~+0.079 pp"* (DIARY open debts; PHASE8 §15.5 F5; RULES §3) — the model pays ramp
+overlap **exactly 0.000** by design (`index.html:926-928`), so it has no reason to pull the opening haste
+window onto the ramp, and the sim rewards doing it. The magnitude fits the direction of the scaling too:
+the debt was sized at ≈0.03 pp on a 229s fight, and the ramp is a far larger fraction of a **99s** fight.
+It is also a **low-haste, short-fight** cell, which is where the recorded low-haste slack lives.
+
+**A corpus-wide check of the same asymmetry, and it is a LEAD, not a finding.** Over all 135 columns,
+per-press direction is dead flat — haste presses moved earlier by the sim-preferred plan **247 vs 238**
+(z≈0.4), value presses **163 vs 146** (z≈1.0), i.e. no global "earlier is better" bias. But restricted to
+the **first** haste window of the fight, the sim-preferred plan opens it **earlier in 33 rows vs later in
+18** (z≈2.1, p≈0.04); the sharper form (rival opens a haste window at t=0 where native does not) is
+**18 vs 10**, z≈1.5, **not** significant.
+
+⚠ **That is one test at p≈0.04, framed after seeing the striking cell — exactly the post-hoc sieve §5.15c
+was written to forbid, so it is recorded as a lead and nothing is concluded from it.** The escape from the
+post-hoc trap is a **pre-registered** prediction, and it is available: the ramp term is a *known* defect
+with a *known* sign and an *existing* measurement instrument (the §15.5 F5 position sweep). Patch the ramp
+credit, and the prediction to declare in advance is that the flipping cells are the ones whose diff is an
+opening-haste-window placement — with the flat per-press population unmoved. If patching it moves a
+different population, the mechanism is wrong. ⚠ The patch is a **scorer** change: it moves goldens, so it
+lands after the round closes, gated by exact-match + the duel (`tools/plan-duel.mjs`) on every moved cell.
+
+#### (d) The two persistent columns, at track level
+
+`tools/diagnose-deficit.mjs` dossiers only the **best** borrower per column, while `xval-persist.mjs`
+follows **one specific** rival across lengths — so the persistent pair is only partly covered here (3 of
+`isc-mqg h40`'s 5 lengths, 1 of `isc-skull h20`'s 4; at the other lengths plan@70/plan@100 still beat
+native but some *other* plan beat it by more).
+
+| column | native vs rival (differing tracks only) | sim% | model Δ |
+|---|---|---|---|
+| `isc-mqg` medlong `@sim40 ← plan@70` | `AP[8,188]→[5,185]` `Zerk[0,188]→[5,185]` `Icon[29,183]→[5,182]` `MQG[9]→[25]` `IV[0,20,200]→[5,25,205]` `CS[20]→[25]` | 0.260 | −0.027 |
+| `isc-mqg` long `@sim40 ← plan@70` | `AP[5,187]→[4,260]` `Zerk[5,251]→[20,260]` `Icon[5,131,251]→[20,140,260]` `MQG[187]→[0]` `IV[5,187,251]→[0,20,260]` `CS[251]→[20]` | 0.094 | −0.005 |
+| `isc-mqg` xl `@sim40 ← plan@70` | every track **+1s** except `MQG[8,378]→[9,384]` and `IV[9,198,378,423]→[10,204,384,424]` | 0.073 | −0.107 |
+| `isc-skull` short `@sim20 ← plan@100` | `Zerk[59]→[49]` `Skull[69]→[0]` `IV[7,39]→[0,20]` `CS[39]→[20]` | 0.066 | −0.279 |
+
+Two of the four (medlong, and `isc-skull` short) share one contrast: **native places the on-use
+damage/SP trinket OFF the haste stack** (`Icon@29` against haste at 0/8/9/20; `Skull@69` against
+`IV[7,39]`/`Zerk@59`) **and the sim's preferred rival stacks it ON** (`Icon@5` with `AP/Zerk/IV@5`;
+`Skull@0` with `IV@0`). The other two do not — `long` is an MQG placement swap, and `xl` is close to a
+whole-plan **+1s translation** that the sim prefers by 0.073% while the model prefers native by 0.031%.
+⚠ Do **not** promote the trinket-stacking reading to a rule on 2 of 4 rows; it is listed because it is
+the only repeated contrast, and because `isc-skull` short's rival also pulls `IV` to 0 — i.e. it may be
+the (c) ramp mechanism wearing a different hat rather than an independent stacking rule.

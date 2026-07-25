@@ -11,6 +11,20 @@
 // KT caveat: its sim numbers exclude AoE (genapl gap) — the model-side verdict still stands (a
 // search miss is a search miss), but the "B out-sims N" premise is unmeasured until AE emission.
 //   CHROMIUM=… node tools/diagnose-deficit.mjs [resultsDir] [--json dossiers.json]
+//
+// ⚠⚠⚠ THE PARTITION IS DEGENERATE ON ANY POOLED RESULTS DIRECTORY — READ THIS BEFORE TRUSTING A VERDICT.
+// `tools/xval.mjs:176-190` turns CROSS-HASTE POOLING ON BY DEFAULT (`const POOL = POOL_ENV !== '0'`)
+// and its own comment states the consequence: "no borrowed plan can out-score the native." The emitted
+// native plan IS the model-argmax over the union of all cross-haste champions, so `model(B,H) ≤
+// model(N,H)` holds BY CONSTRUCTION for every borrowed plan — SEARCH-MISS and SEARCH-MISS(other) are
+// arithmetically forced to 0 and every column falls into SCORER-GAP. Measured on round 5: 0 · 0 · 135.
+// That is not a result about the optimizer; it is a restatement of B1 (ACCEPTANCE). P7.3 landed pooling
+// AFTER P7.2 built this tool, which silently emptied one side of its own partition — the same
+// "a test that cannot fail measures nothing" shape as the B banner.
+// SO: to route work between "fix the search" and "fix the scorer" you must gather with `POOL=0`
+// (`POOL=0 node tools/xval.mjs <seed>`), which restores the raw per-haste search. On a pooled directory
+// this tool is still useful for ONE thing — the model MARGIN and the track-level diff, i.e. *how close*
+// the model thinks the two layouts are and *what* differs — and that is how it was used in PHASE7 §5.16.
 import { createRequire } from 'module';
 import fs from 'fs';
 import path from 'path';
