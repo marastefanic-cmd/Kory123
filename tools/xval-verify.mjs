@@ -8,12 +8,22 @@
 import fs from 'fs'; import path from 'path';
 const dir = process.argv[2] || '/home/user/Kory123/tools/xval-results';
 let worstMono = 0, worstMonoAt = '', worstDef = 0, worstDefAt = '', totalBorrowWinCols = 0, nTables = 0, mismatches = [];
-const longRobust = [];
-for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.txt')).sort()) {
+const longRobust = [], unparsed = [];
+const files = fs.readdirSync(dir).filter(f => f.endsWith('.txt')).sort();
+// An empty read is NEVER a pass — with no matrices, both invariants report their happy value off an
+// empty set ("= zero, invariant A holds", "worst deficit 0.00%"). Same defect the collector carried
+// until 07-25 (DIARY); this instrument is the check on that one, so it must not share the shape.
+if (files.length === 0) {
+  console.error(`ERROR: no *.txt cross-val matrices in ${dir} — nothing to verify.`);
+  process.exit(2);
+}
+for (const f of files) {
   const txt = fs.readFileSync(path.join(dir, f), 'utf8');
   const lines = txt.split('\n');
   const hdr = lines.findIndex(l => l.startsWith('plan\\sim'));
-  if (hdr < 0) continue;
+  // A file with no matrix is a CRASHED table, i.e. an ungraded cell of the acceptance grid — not a
+  // file to step over in silence. Recorded and made fatal below.
+  if (hdr < 0) { unparsed.push(f); continue; }
   const cols = lines[hdr].trim().split(/\s+/).slice(1).map(Number);
   const M = {};
   for (let i = hdr + 1; i < lines.length; i++) {
@@ -50,3 +60,16 @@ console.log(`(b) total borrowed-plan-wins columns: ${totalBorrowWinCols}`);
 console.log(`cross-check vs reported diagWorst: ${mismatches.length? 'MISMATCHES:\n  '+mismatches.join('\n  ') : 'all match'}`);
 console.log(`\nlength-robust (long/xl, non-KT) deficits — Phase-7 targets:`);
 for (const l of longRobust.sort()) if (!/Kael/.test(l)) console.log('  '+l);
+
+// The verdict, with an exit code — so "run it before believing any ledger" is mechanical rather than
+// a reading exercise. 2 = the instrument could not grade (missing/crashed data); 1 = graded, FAILED.
+if (unparsed.length) {
+  console.error(`\nERROR: ${unparsed.length} file(s) carry no matrix (crashed run?) — the grid is INCOMPLETE ` +
+                `and the verdict below would cover fewer cells than it claims:\n  ${unparsed.join('\n  ')}`);
+  process.exit(2);
+}
+if (nTables === 0) { console.error(`\nERROR: 0 matrices parsed — nothing to verify.`); process.exit(2); }
+const aFail = worstMono > 5e-4, bFail = totalBorrowWinCols > 0;
+console.log(`\nVERDICT over ${nTables} tables: A ${aFail ? 'FAILS' : 'holds'} · B ${bFail ? 'FAILS' : 'holds'}` +
+            `  ->  ACCEPTANCE ${aFail || bFail ? 'NOT PASSING' : 'PASSING'}`);
+if (aFail || bFail) process.exit(1);

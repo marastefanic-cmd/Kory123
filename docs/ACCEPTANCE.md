@@ -100,7 +100,13 @@ the authoritative row-by-row ledger.
   directory that happens to equal the default.
 - **`tools/xval-verify.mjs`** — the deterministic invariant **recompute** (restart-proof, unlike an LLM
   adversary): re-derives monoDip and diagonal dominance from every matrix and cross-checks each file's
-  reported `diagWorst`. Run it before believing any ledger.
+  reported `diagWorst`. Run it before believing any ledger. **It now ends in a verdict with an exit
+  code** — `0` PASSING · `1` graded and FAILING · `2` *could not grade* — so "run it first" is
+  mechanical rather than a reading exercise. Hardened 07-25 alongside the collector, against the same
+  failure shape: an empty directory used to print `= zero, invariant A holds` off an empty set, and a
+  **crashed table** (a file with no matrix) was stepped over by a silent `continue` — i.e. an ungraded
+  cell of the grid vanished while the verdict still claimed to cover it. Both are now exit-2 errors,
+  the second listing the offending files.
 - **`tools/genapl.mjs`** — model plan → wowsims APLRotation JSON (the bridge that makes a schedule
   simmable). **Never** set `_prestack>0` for a model comparison.
 
