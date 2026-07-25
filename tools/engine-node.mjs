@@ -46,8 +46,10 @@ export function loadEngine(htmlPath) {
   const win = {};
   let api;
   try {
+    // GAME is returned so node tools can compute the plain-cast normalizer from the engine's own
+    // constants table (reference-gear.mjs doctrine: read GAME, never re-type 720 / 2.5÷3.5 / 0.8175).
     api = new Function('window', 'self', `${eng}\n${bs}\n${presets}\n
-      return { optimizeAsync, simulate, repair, buildSegments, BUFFS,
+      return { optimizeAsync, simulate, repair, buildSegments, BUFFS, GAME,
                cases: [...window.BOSS_PRESETS, ...window.GOLDEN_PRESETS],
                nBoss: window.BOSS_PRESETS.length, nGolden: window.GOLDEN_PRESETS.length,
                defaults: window.GOLDEN_DEFAULTS };`)(win, globalThis);

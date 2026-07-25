@@ -130,3 +130,6 @@ for (const r of rows.slice().sort((a, b) => b.burn - a.burn).slice(0, 12)) {
   console.log(`  ${r.boss} / ${r.kit} / h${r.H}: burn ${r.burn.toFixed(2)}s over ${r.nDiv} press(es) — ${r.detail.join(' · ')}`);
 }
 if (JSON_OUT) { fs.writeFileSync(JSON_OUT, JSON.stringify(rows, null, 1)); console.log(`\nwrote ${JSON_OUT}`); }
+// The evaluated engine block leaves a live handle behind, so node never drains its event loop after
+// the final write — observed as a completed sweep idling for hours at 0% CPU. Exit explicitly.
+process.exit(0);
