@@ -722,9 +722,12 @@ stable order-canonical form — but stop calling it on the hot path.
 > as a speedup until a profile says so. **§4.19 is the exception and therefore does *not* join them:** it is a
 > predicted speedup, so it goes in the numbered ladder below as **item 1b**.
 >
-> - **(0a) extract the `admit` helper** (§4.16) — the legality prefix written longhand at 9 sites,
->   byte-identical by construction, worth landing on legibility alone. After it, item 5's "every call
->   site must be converted" becomes **one** call site.
+> - **(0a) extract the `admit` helper** (§4.16, patch written out in **§4.21**) — the legality prefix
+>   written longhand at **7** convertible sites (⚠ **not 9** — §4.21 Class D: `:2347` and `:2666` omit the
+>   clip guard *deliberately* and must keep their longhand line), byte-identical by construction, worth
+>   landing on legibility alone. After it, item 5's "every call site must be converted" becomes **one**
+>   call site. §4.21's Class C site (`:2306`) is a **reordering**, not text motion — it lands as its own
+>   step, with its own measurement, and its sign is unknown in both directions.
 > - **(0b) hoist `counts(base)`/`clipOf(base)`** (§4.16) out of the candidate loops — completes a hoist
 >   the code already performs for `simulate` at the same scope.
 > - **(0c) give the groom loop the early exit its sibling already has** (§4.17) — byte-identical by the
@@ -914,6 +917,12 @@ Verbatim — same calls, same order, same `1e-9` — at **5 sites** (`index.html
 (`:2766`) is the same triple behind a `JSON.stringify` no-op check; a 7th (`:2306`) folds the clip test
 into a combined condition; two more use the counts half alone. Nine sites, one idea.
 
+> **⚠ CORRECTED by §4.21.** Nine sites share the *shape*; only **seven** share the *rule*. Writing the patch
+> out found that the two counts-only sites (`:2347`, `:2666`) omit the clip guard **deliberately** — at
+> `:2666` the file says so outright (*"`clipOf` would wrongly veto a pure wash"*) — so converting them would
+> add a rejection and change the plan. "Nine sites, one idea" is right about the idea and wrong about the
+> blast radius. Read §4.21 before touching any of them.
+
 **The idea itself is right and is theorycraft** — a candidate is admissible iff it preserves the use
 counts and does not clip more past the kill; the passes then differ in what they do with an admissible
 candidate, and *that* difference is the model. §4.6's refusal to delete a pass is untouched. What is
@@ -966,7 +975,8 @@ converted" — 41 of them, of which §4.15 showed a third want none of it. Throu
 that consumer uses **all** of its outputs, which is precisely the waste §4.15 objected to. The ordering
 that falls out:
 
-1. **`admit` extraction** — pure text motion, 9 sites → 1 helper, byte-identical by construction.
+1. **`admit` extraction** — pure text motion, **7** sites → 1 helper, byte-identical by construction
+   (⚠ §4.21: 7, not 9 — and `:2306` is a separate reordering step).
 2. **Hoist `counts(base)`/`clipOf(base)`** out of the candidate loops — now a change to one signature
    (`admit(cand, baseCounts, baseClip, cfg)`) instead of nine call sites.
 3. **Fuse the walk into `repair`** (§4.1) — behind the one helper, opt-in outputs, all consumed.
@@ -1393,3 +1403,145 @@ Three consecutive readings of the same subsystem — the progress bands (§4.18)
 the pool's lifecycle (§4.20) — none of which needed a CPU cycle, all found by reading code that a shipped
 comment had already described. **The comments describe the design as intended; a census describes it as
 built.** Where the two differ is where the phase's findings have been.
+
+### 4.21 ★★ The `admit` patch, written out — and **two of the nine sites must NOT be converted**
+
+§4.16 established the idea and §4.13.1 put it at the head of the ladder as item **0a**, described there as
+*"the legality prefix written longhand at 9 sites, byte-identical by construction"*. Writing the patch out —
+site by site, against today's file — makes that description **wrong in a way that matters**: nine sites share
+the prefix, but only **seven** share the *rule*. Two of them omit the clip guard **deliberately**, and folding
+them into the helper would add a rejection that the pass was written to avoid.
+
+This is the §4.15 lesson again at a smaller scale: the grep finds the *shape*, and only reading finds the
+*rule*. It is also the more dangerous direction — §4.15 over-counted work, this would have shipped a
+**behaviour change under a "pure text motion" label**.
+
+#### The helper (unchanged from §4.16)
+
+```js
+// one helper, seven callers
+const admit = (cand, base, cfg) => {
+  const rep = repair(cand, cfg);
+  if (!sameCounts(counts(base), counts(rep))) return null;
+  if (clipOf(rep) > clipOf(base) + 1e-9) return null;
+  return rep;
+};
+```
+
+#### Class A — pure text motion, `continue`, 5 sites
+
+`index.html:2208-2210` · `:2391-2393` · `:2527-2529` · `:2576-2578` · `:2627-2629`. Each is exactly:
+
+```js
+const rep = repair(cand, cfg);
+if (!sameCounts(counts(BASE), counts(rep))) continue;
+if (clipOf(rep) > clipOf(BASE) + 1e-9) continue;
+```
+→
+```js
+const rep = admit(cand, BASE, cfg);
+if (!rep) continue;
+```
+
+with `BASE` = `s`, `s`, `base`, `sx`, `sx` respectively (indents 16/16/16/16/18 — the last is one level
+deeper). Three lines become two at each; same calls, same order, same short-circuit, same epsilon.
+
+#### Class B — same rule, different control flow, 2 sites
+
+**`:2766-2769`** carries an extra no-op guard that stays at the call site:
+
+```js
+const rep = repair(cand, cfg);
+if (JSON.stringify(rep) === JSON.stringify(sx)) continue;
+if (!sameCounts(counts(sx), counts(rep))) continue;
+if (clipOf(rep) > clipOf(sx) + 1e-9) continue;
+```
+→
+```js
+const rep = admit(cand, sx, cfg);
+if (!rep || JSON.stringify(rep) === JSON.stringify(sx)) continue;
+```
+
+This **reorders** the stringify check after the counts/clip checks. Unobservable: all three are pure
+predicates whose only effect is `continue`, nothing between them mutates, and `repair(cand, cfg)` is still the
+first call in both spellings. *(The stringify itself is item 2's target, §4.12(A) — orthogonal, and this
+patch must not pre-empt it.)*
+
+**`:2702-2704`** ends the scan instead of skipping the candidate, and pre-builds its candidate via `shift(d)`:
+
+```js
+const rep = repair(shift(d), cfg);
+// Feasibility is monotone in d (pulling earlier only adds constraints), so break on it:
+if (!sameCounts(counts(sx), counts(rep)) || clipOf(rep) > clipOf(sx) + 1e-9) break;
+```
+→
+```js
+const rep = admit(shift(d), sx, cfg);
+// Feasibility is monotone in d (pulling earlier only adds constraints), so break on it:
+if (!rep) break;
+```
+
+The comment is load-bearing (it justifies `break` over `continue`) and stays put.
+
+#### Class C — a REORDERING, not text motion: 1 site, and its sign is unknown
+
+**`:2306-2310`** splits the prefix around a `simulate`:
+
+```js
+const rep = repair(cand, cfg);
+if (!sameCounts(counts(s), counts(rep))) continue;
+if (!(rep[key] || []).some(x => Math.abs(x - t) < 0.5)) continue;
+const rr = simulate(rep, cfg);
+if (rr.robust < r0.robust - 0.5 || rr.totalEarly < r0.totalEarly - 0.5 || clipOf(rep) > clipOf(s) + 1e-9) continue;
+```
+
+Converting it hoists `clipOf` **ahead of `simulate`**. The plan is unaffected — every path involved is a pure
+`continue` and the intervening guard is one too — but this is *not* "byte-identical by construction", and the
+performance sign is **genuinely unknown in both directions**:
+
+- it **saves** a `simulate` on every candidate that fails clip, and
+- it **costs** a `clipOf` on every candidate that currently never reaches the third term, because `clipOf` sits
+  **last in a `||` chain** and is short-circuited away whenever either robust gate already rejects.
+
+Which dominates is a rejection-rate question, i.e. a measurement. **Land it as its own step, after 0a, with
+its own suite run and its own wall-time delta** — and revert it on a null result rather than keeping it for
+tidiness, because it makes the guard order at that site disagree with the other seven.
+
+#### Class D — ⚠ DO NOT CONVERT: 2 sites where the missing clip guard is the point
+
+**`:2666`** (`dodgeDowntime`) and **`:2347`** (the fixed-window snap) use `sameCounts` with **no clip test
+anywhere in the loop**. At `:2666` the omission is documented, in the file, as deliberate:
+
+> *"Model-neutral gate + sameCounts. **No clip guard: sliding to the exit ends the window later (more
+> past-kill seconds) but the LIVE portion is unchanged — `clipOf` would wrongly veto a pure wash.**"*
+
+That is theorycraft, not an oversight: this pass slides a press whose window *begins* inside an intermission
+out to the intermission exit. The dead seconds are dead wherever the window sits, so the move is a wash in
+score and a win in legibility — and `clipOf`, which counts past-kill seconds without asking whether they were
+ever live, reads that wash as a regression. Feed `:2666` through `admit` and the pass stops firing on exactly
+the case it was written for (the 4:00 multi-intermission Cold-Snap IV at 3:47 → 3:49, named in the comment).
+
+**So item 0a's blast radius is 7 sites, not 9**, and the two survivors must keep their longhand `sameCounts`
+line. Do **not** add an `admitCounts` variant for them: two callers with different remaining guards is not a
+duplication, and a second near-identical helper would re-create at the helper layer exactly the confusion this
+item is removing.
+
+**⚠ And note what the suite would and would not have caught.** `:2666` only fires when `cfg.segments` contains
+an intermission, so the 25 goldens catch a wrong conversion **only if a golden exercises that pass** — likely,
+given the boss presets, but "likely" is the wrong confidence for a guard. The conversion was ruled out by
+*reading*, which is the durable reason; **before landing 0a, confirm the goldens actually cover `dodgeDowntime`
+and the `:2347` snap**, so the gate is known-live rather than assumed-live. (Same defect class as §4.14's:
+an instrument whose failure mode is a pass.)
+
+#### ★ A model question this turned up — not a performance one
+
+`:2666` documents why it has no clip guard. **`:2347` does not.** Its comment explains only the *strict*-gain
+policy (*"ONLY strict robust gains — so a press that genuinely wants to be off it … stays"*), and says nothing
+about clipping. Two sibling passes, same prefix, same omission, one justified and one silent. Either `:2347`'s
+omission is deliberate for a reason nobody wrote down, or it is a genuine gap — a press can be snapped onto a
+fixed window at the cost of clipping further past the kill, and only the +0.5 robust margin stands against it.
+
+**This is a RULES question, not a §4 question**, and it is the second time the perf census has produced one.
+It must not ride along with a refactor: if `:2347` wants a clip guard, that is a **model change**, gated by the
+sim and by moved goldens, and it belongs in Phase 7's ledger. Recorded here only because this is where it was
+found. **Do not "fix" it while landing 0a.**
