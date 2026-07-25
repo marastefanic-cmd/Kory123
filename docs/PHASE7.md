@@ -428,3 +428,43 @@ Facts, no grading (the bar remains ZERO columns — invariant B still FAILS):
   sim-side by-construction guarantee), not a per-column chase — per the §5.9 ruling they stay counted
   as violations until then.
 - Model-side B1 held by construction throughout (pooling ON for every emitted plan).
+
+### 5.13 ROUND-4 DELTA ATTRIBUTION — what §5.11 actually moved (35/36 tables; the 36th still gathering)
+Round 4 re-runs the whole campaign on the post-§5.11 engine. Before reading its headline, the honest
+question is **which tables the tie-break canonicalizer touched at all** — a legibility change is
+*supposed* to be score-neutral, so most tables should come back unchanged, and any that move should
+move only where an exact tie existed. Measured, comparing round 3 against round 4 on the 35 tables
+both rounds have (strip the runner's timestamp lines, then diff content):
+
+| | round 3 | round 4 | delta |
+|---|---|---|---|
+| tables with **identical content** | — | **28 / 35** | 7 moved |
+| borrowed-win columns | 139 | **136** | **−3** |
+| worst column | 0.40% `isc-mqg-medlong @sim70` | **0.40%, same cell, same DPS pair** (2787.5 > 2776.5) | **0.00** |
+| monoDip | 0.0000% | 0.0000% | — |
+
+The full −3 localizes to the 7 moved tables, and every movement is tie-scale:
+
+| moved table | r3 cols / worst | r4 cols / worst |
+|---|---|---|
+| `boss-LadyVashj-isc-scb` | 5 / 0.06% | 3 / 0.11% |
+| `boss-LadyVashj-mqg-skull` | 4 / 0.15% | 4 / 0.07% |
+| `isc-skull-xl` | 5 / 0.08% | 4 / 0.08% |
+| `scb-mqg-short` | 3 / 0.07% | 3 / 0.03% |
+| `isc-scb-long` · `isc-skull-long` · `scb-skull-short` | 5 / 0.05% · 5 / 0.21% · 1 / 0.02% | unchanged counts and worsts |
+
+Three readings, and the third is the one that matters:
+1. **§5.11 behaved as designed.** 28/35 tables are content-identical — the canonicalizer moved a plan
+   only where a score-tie existed to resolve, which is the whole claim of a resolve-time tie-break.
+2. **It is NOT a fix, and must not be booked as one.** The 7 movements are mixed-signed (Vashj-isc-scb
+   *loses 2 columns while its worst rises 0.05 pp*; Vashj-mqg-skull holds 4 columns while its worst
+   falls 0.08 pp). Net −3 columns out of 139 is tie-resolution landing where it lands, not the deficit
+   shrinking. A legibility change that improved the invariant would in fact be *suspicious*.
+3. **★ The deficit head is untouched, and now demonstrably so.** `isc-mqg-medlong` is in the
+   **content-identical** set — same plans, same matrix, same 0.40% at `@sim70` down to the DPS pair.
+   B2 is therefore provably invariant to the tie-break, which removes tie-ordering from its suspect
+   list at zero extra cost and leaves PHASE8's charge exactly where round 8 left it.
+
+*Instrument note:* this comparison was only trustworthy because both instruments were repaired first —
+the collector was silently reading **zero** tables and reporting `PASS ✓` (DIARY 07-25). The two now
+cross-agree exactly on all four headline numbers, which is the check that licenses the table above.
