@@ -13,10 +13,25 @@ import path from 'path';
 const args = process.argv.slice(2);
 const jsonIdx = args.indexOf('--json');
 const jsonOut = jsonIdx >= 0 ? args[jsonIdx + 1] : null;
-const dir = args.filter((a, i) => a !== '--json' && i !== jsonIdx + 1)[0] || '/home/user/Kory123/tools/xval-results';
+// The flag and ITS value are the only argv entries that are not the directory.  (The old form,
+// `i !== jsonIdx + 1`, silently ate argv[0] whenever --json was absent — jsonIdx was -1, so the
+// test read `i !== 0` — and the run then fell back to the default dir.  A dry run against a
+// scratch copy of 35 tables read ZERO of them and printed "PASS ✓".)
+const dir = args.filter((a, i) => !(jsonIdx >= 0 && (i === jsonIdx || i === jsonIdx + 1)))[0]
+            || '/home/user/Kory123/tools/xval-results';
+
+const files = fs.readdirSync(dir).filter(f => f.endsWith('.txt')).sort();
+// An empty read is NEVER a pass.  Invariant B is "zero deficit columns among the tables gathered";
+// with zero tables gathered there is nothing to be dominant over, and the verdict below would read
+// PASS off an empty set.  Fail loudly instead.
+if (files.length === 0) {
+  console.error(`ERROR: no *.txt cross-val tables in ${dir} — nothing to grade.`);
+  console.error(`(zero tables is a MISREAD, not a pass; check the directory argument.)`);
+  process.exit(2);
+}
 
 const tables = [];
-for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.txt')).sort()) {
+for (const f of files) {
   const txt = fs.readFileSync(path.join(dir, f), 'utf8');
   const done = txt.match(/^XVAL-DONE .*/m);
   if (!done) { tables.push({ file: f, err: 'no XVAL-DONE (crashed?)' }); continue; }
@@ -73,6 +88,14 @@ const errs = tables.filter(t => t.err);
 const monoBad = ok.filter(t => t.mono > 0.05);
 const totalCols = ok.reduce((n, t) => n + t.defCols.length, 0);
 const mismatches = ok.filter(t => t.mismatch);
+
+// Same rule one level down: files that all failed to parse leave `ok` empty, and totalCols would
+// again be 0.  A verdict needs a population to be a verdict about.
+if (ok.length === 0) {
+  console.error(`ERROR: ${tables.length} file(s) in ${dir}, but NONE parsed into a matrix — nothing to grade.`);
+  for (const t of tables) console.error(`  - ${t.file}: ${t.err}`);
+  process.exit(2);
+}
 
 console.log(`## Cross-val ledger (${ok.length} tables, ${totalCols} borrowed-win columns)\n`);
 console.log(`- **Invariant A (monoDip):** ${monoBad.length ? '⚠ ' + monoBad.length + ' tables with monoDip>0.05% — REGRESSION: ' + monoBad.map(t => t.file).join(', ') : 'all ≤0.05% ✓'}`);

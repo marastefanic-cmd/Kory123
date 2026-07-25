@@ -90,6 +90,14 @@ the authoritative row-by-row ledger.
   the boss-shape tables (Vashj + Al'ar + KT × representative kits, with `--targets N` on AoE phases).
 - **`tools/xval-collect.mjs`** — a results directory → the CLEAN/DEFICIT ledger markdown, every
   borrowed-win column + length-robust loci (`--json` exports the target list); asserts `monoDip ≈ 0`.
+  **★ Zero tables is a hard error (exit 2), never a pass** — fixed 07-25 after a dry run on a scratch
+  copy of 35 round-4 tables read **none** of them and printed `ZERO deficit columns — PASS ✓`. Two
+  defects, both now closed: (1) the positional-arg filter (`i !== jsonIdx + 1`) silently dropped
+  `argv[0]` whenever `--json` was absent, because `jsonIdx` was `-1` — so a supplied directory was
+  discarded and the default used; (2) an empty (or wholly unparseable) read still reached the
+  `totalCols === 0 ⇒ PASS` branch. **Lesson: an instrument that can report PASS on no data is not an
+  instrument.** The bug never bit in practice only because the documented command above passes the
+  directory that happens to equal the default.
 - **`tools/xval-verify.mjs`** — the deterministic invariant **recompute** (restart-proof, unlike an LLM
   adversary): re-derives monoDip and diagonal dominance from every matrix and cross-checks each file's
   reported `diagWorst`. Run it before believing any ledger.
