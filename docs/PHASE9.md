@@ -177,6 +177,12 @@ after fusion the key is simply the sig `repair` already produced.
 
 ### 4.3 `JSON.stringify` used as an equality test
 
+> **⚠ CORRECTED — read §4.12 before acting on this section.** All three of its claims are wrong as
+> written: "at least three sites" (there are **twelve**), "exact" (true here, but only by a five-step
+> structural argument this section does not give), and "~20× cheaper" (**backwards** — measured
+> **2.9× slower**). The half that survives is the *hoist*, not the swap. Kept in place unedited because
+> §4.12 is a correction of this text and quotes it.
+
 At least three sites compare schedules with `JSON.stringify(a) !== JSON.stringify(b)` (the §5.11
 canonical-tie branch, the `canonicalWindowOrder` no-op check). Both operands already have — or can
 cheaply have — a signature; **sig comparison is exact and ~20× cheaper**. Pure win, tiny blast radius.
@@ -257,6 +263,10 @@ surviving firings on the whole corpus**, and even then the merge must reproduce 
 than remove it — the point is *fewer steps doing the same thing*, not fewer things done.
 
 ### 4.8 Landing order (cheapest/safest first)
+
+> **⚠ AMENDED — items 1 and 2 are superseded; the revised ladder is in §4.13.** Item 1 (§4.3's swap) is
+> **rejected on measurement**; item 2 (a cheaper hand-rolled `sigOf`) is **superseded** by the native
+> encoder. Items 3–5 stand as written.
 
 1. §4.3 sig-vs-`JSON.stringify` equality — trivial, exact.
 2. §3.2/H1 cheaper `sigOf` encode (variant C or D) — pure function, same string ⇒ same behaviour.
@@ -430,3 +440,270 @@ nearest preceding `function`/`const … = (` declaration, so call sites inside n
 inner helper (`fired @2112`, `nulledIn @2291`, `canonicalWindowOrder @2730`) rather than the enclosing pass.
 It bounds *where the code is*, not *how often it runs*. §4.7's instrumented run remains the only thing that
 can rank passes by actual cost, and it still needs its CPU gap.
+
+### 4.12 The §4.3 patch, written out — and §4.3's premise CORRECTED
+
+*(§4.3 sits at the top of §4.8's landing ladder: "sig comparison is exact and ~20× cheaper. Pure win, tiny
+blast radius. Good first landing." Writing it out as a landable patch meant checking its claims first. **Both
+were unproven, and one is false.** A patch survives — but for a different reason, in two separable halves,
+with a different site list, and with the half §4.3 actually proposed rejected.)*
+
+#### 4.12.1 What §4.3 got wrong
+
+**"At least three sites."** There are **twelve** schedule-equality comparison sites, in two shapes (anchors
+re-verified 07-25 against `index.html`):
+
+| shape | comparison sites | the invariant operand's stringify |
+|---|---|---|
+| **A** — already hoisted | `1697`, `1801`, `1889`, `1907` | `const curSig` at `1683`, `1784`, `1883` |
+| **B** — both operands stringified in-loop | `1951`, `1961`, `1983`, `2037`, `2092`, `2169`, `2533`, `2767` | *not hoisted* |
+
+Two further `JSON.stringify` uses are **not** in scope and must be left alone: `:649` (`simMemoCfgSig` — a
+*cfg* key, not a schedule) and `:4036` (`lsSet` — serialization, not a comparison). *(A working note during
+this pass said "14 sites"; that counted the three hoisted `curSig` **declarations** as if they were
+comparisons. Twelve is the number.)*
+
+**"Exact" — false as a general statement.** `sigOf` (`:1276-1281`) does `Object.keys(s).sort()`;
+`JSON.stringify` preserves **insertion order**. Two schedules with identical key→values maps but different key
+insertion order are **equal under `sigOf` and unequal under `JSON.stringify`**. That is not hypothetical here:
+`repair` (`:1018`) rebuilds its output object with the shared-lockout trinket group FIRST — fixed group keys at
+`:1033`, movable group keys at `:1061` — and only then the remaining keys in the input's own order (`:1063`).
+`repair` demonstrably reorders keys, so the two predicates are interchangeable only if **both operands' key
+orders always agree**. §4.3 asserted that; it did not establish it.
+
+**"~20× cheaper" — never measured, and it has the sign backwards.** §3.2's own bench already put `sigOf` at
+**1.158 µs/call**, so a signature is not free, and the swap replaces *two* `JSON.stringify` calls with *two*
+`sigOf` calls. Measured properly in §4.12.7: **2.9× slower.**
+
+#### 4.12.2 The two halves
+
+Separating them matters because their risk profiles are opposites.
+
+**(A) Hoist the loop-invariant operand — Shape B becomes Shape A.** Semantics untouched: the same predicate on
+the same values, just not recomputing a string that cannot have changed. Byte-identical *by construction*, no
+probe needed. This is the free half.
+
+**(B) Swap the predicate — `JSON.stringify` → `sigOf`.** This changes what "equal" means, and is only
+byte-identical if key orders always agree. This is the half §4.3 assumed away.
+
+#### 4.12.3 (A) is worth much less than the site count suggests — the per-site redundancy audit
+
+A hoist only pays when the operand is invariant across a loop that runs **many** times. Reading each Shape B
+site's enclosing loop:
+
+| site | enclosing candidate loop | iterations | invariant operand | verdict |
+|---|---|---|---|---|
+| `1951` `isAnchored` | called from `for (const key in s) … forEach` (`1970-1973`) | **keys × uses, per cluster, inside a `while` fixpoint** | `s` | ★ **the real win** |
+| `2533` | `for (let li …)` inside the alternatives nest | many | `base` (never reassigned) | ★ real |
+| `1983` | `for (const anchor of uniq)` | ≈ #uniq | `s` | worthwhile |
+| `2169` | `for (const to of targets)` | 2 × #phases5 | `s` | worthwhile |
+| `1961` | `for (const target of distinct)` | small | `s` | marginal |
+| `2037` | `for (const [from,to] of [[b,a],[a,b]])` | **2** | `s` | negligible |
+| `2092` | `for (const tighten of [false,true])` | **2** | `s` | negligible |
+| `2767` | **no inner candidate loop** — one evaluation per `(fk, ft)` | **1** | `sx` | **not a redundancy site** |
+
+So "seven sites paying a redundant stringify" is really **two sites that matter, two more worth taking, and
+four that are noise** — and `2767` is not a redundancy site at all. `2767` is also the one site whose operand
+is reassigned *without* breaking its loop (`sx = rep` at `:2771`), so a naive hoist there would be wrong as
+well as pointless. **Leave `2767` alone.**
+
+Safety of the hoist at the other seven: at `1961`, `1983`, `2037`, `2092`, `2169` the incumbent `s` is
+reassigned **only** on an accept that immediately `break`s the loop being hoisted out of (`:1964`, `:1986`,
+`:2066` after the loop, `:2096`, `:2173`), so the hoisted string is never stale. At `2533` the operand is
+`base`, which the nest never writes. At `1951` the caller's `for (const key in s)` block only *gathers* into
+`near` — it does not touch `s`. (Shape A's `1883` `curSig` serving two loops is safe for the same reason: the
+only assignment between them, `:1894`, `break`s the enclosing `groups` loop.)
+
+#### 4.12.4 (B): the swap IS exact here — by a proof §4.3 never gave
+
+The general statement is false; the statement *at these sites* is provable.
+
+1. **`repair` preserves the key set exactly.** Group keys are always emitted (`:1033`, `:1061`), and the tail
+   loop assigns `out[key] = times` unconditionally at `:1093` — a key whose uses are all dropped still emits
+   `[]`. No key is added or removed.
+2. **`repair`'s output key order is a pure function of (input key order, `cfg.fixed`)**, namely
+   `R(x) = [G_fixed] ++ [G_movable] ++ [x's remaining keys, in x's order]`, where `G` is
+   `OFF_TRINKETS ∩ keys(x)` in `OFF_TRINKETS` order (`:618`).
+3. **Therefore `R` is order-idempotent**: `R(R(x)) = R(x)`. `R(x)` already begins with `G_fixed ++ G_movable`,
+   and its remaining keys are `x`'s remaining keys in `x`'s order, so re-applying `R` reproduces it exactly.
+4. **Every schedule in circulation is a `repair` output.** All three seed constructors return one —
+   `naiveSchedule` `:1104`, `randomSchedule` `:1109`, `packedSchedule` — and every incumbent assignment in the
+   pass stack is `s = rep` for some `rep = repair(...)`. `cloneS` (`:1097`) is `for (const k in s)`, so it
+   preserves key order.
+5. **Mutators change values, never keys** — `c[key][i] += d`, `c[key].push(extra)`, `c[key].splice(i,1)` (a
+   *use*, not a key).
+
+Chaining these: at every site one operand is `repair(cloneS(incumbent))` and the other is the incumbent
+itself, which is already `R`-ordered — so by (3) both have **identical key order**, and `sigOf`'s sort is a
+no-op difference. The encoding is also injective on this domain: buff keys are identifiers containing neither
+`:` nor `;`, and press times are finite numbers, so `k + ":" + times.join(",") + ";"` cannot alias.
+
+That is a construction argument, so it can have a hole. The empirical backstop is §4.12.6 — and the proof is
+reused, for a much larger win, in §4.13.
+
+#### 4.12.5 The asymmetry that decides how much the proof is worth
+
+If the two predicates ever disagreed, the direction would matter, and not symmetrically:
+
+- **`JSONdiff / SIGsame`** (same map, different key order) — at the eleven `if (equal) continue;` sites this
+  makes the engine **skip a candidate it evaluates today**. A real move disappears; the plan can move. This is
+  the dangerous direction.
+- **`JSONsame / SIGdiff`** — impossible for finite values given §4.12.4(5), and *benign* at the `continue`
+  sites anyway (an identical schedule re-scores identically and cannot clear `+1e-7`) — **except at `2533`,
+  which is a `!==` guarding `tieRep = rep`. There a spurious "different" would install a canonical tie the
+  engine does not install today.** So `2533` is the one site where both directions are plan-changing, which is
+  reason enough to keep it in the probe rather than reason it away.
+
+#### 4.12.6 The probe — proving it instead of asserting it
+
+`$SP/p9/mkprobe.mjs` builds an instrumented copy of `index.html` in which every one of the twelve sites calls
+
+```js
+function EQ(site, a, b) {
+  const j = JSON.stringify(a) === JSON.stringify(b);
+  const g = sigOf(a) === sigOf(b);
+  window.__EQ.n++;
+  if (j !== g) { /* count by site AND direction, keep the first example */ }
+  return j; // behaviour UNCHANGED: the probe run emits the real engine's plans
+}
+```
+
+Returning the **JSON** answer is the point: the instrumented build is behaviourally the shipped engine, so the
+same run doubles as its own positive control — the 25 emitted plans must still match `tests/golden.json`. Per
+the 07-25 false-pass lesson the builder asserts an expected hit count for **every** rewrite and then rejects
+any un-instrumented `JSON.stringify` equality line it does not recognise, and the runner exits **2** on
+pageerror, on zero presets, or on zero recorded EQ calls — a probe that patches nothing and then reports "0
+disagreements" is exactly the defect class this project spent 07-25 removing.
+
+**Result — the whole corpus, one run** (`$SP/p9/run-eqprobe.mjs`, ~16 min wall, 8:17 renderer CPU):
+
+```
+POSITIVE CONTROL (probe emits the real plans): 25 passed, 0 failed  of 25
+EQ-PROBE: 228685 schedule-equality tests, 0 where sigOf disagreed with JSON.stringify
+```
+
+228,685 tests, zero disagreements, in either direction, at any of the twelve sites. Together with §4.12.4 that
+is as settled as this project gets: the proof says *why*, the corpus says *and it holds where we actually go*.
+
+**★ And then the probe failed its own negative control.** "0 disagreements" is only evidence if the counter
+*can* fire, so `$SP/p9/negctl.mjs` feeds `EQ` the exact pathology the swap risks — `a = {icyVeins:[10,200],
+mqg:[30]}` against a `b` holding the same map built in the opposite key order — and requires it to be counted,
+in the right direction, at the right site; then feeds it two agreeing pairs and requires it *not* to count
+them. It found a real bug: the direction label's ternary was inverted (`j ? ':JSONdiff/SIGsame' : …`, where
+`j` true means JSON said *same*), so every disagreement would have been filed under the opposite name — and
+the dangerous direction above is precisely what you would read off that label. Fixed, rebuilt, re-run:
+`NEG-CTL PASS`.
+
+The corpus verdict survives untouched — `__EQ.dis` increments *before* the label is computed and was 0, so no
+label was ever emitted — but that is luck, not design. **This is a first-person instance of the very defect
+class the 07-25 sweep removed from 14 tools** (DIARY: *"dry-run against known-nonempty data is not enough —
+the instrument must also be run against known-BAD data and required to fail"*), committed by the same hand
+that wrote the lesson down, days later, while deliberately trying to obey it. The rule it earns: **a negative
+control is not optional even for a 30-line probe.** It costs minutes, against a 16-minute corpus run whose
+output you would otherwise simply believe.
+
+#### 4.12.7 The bench — what an equality test actually costs
+
+`$SP/p9/bench-eq.mjs`, in the real page, on §3.2's schedule population, with `K = 16` candidates per invariant
+operand so the hoist is charged the way the code would actually run it:
+
+```
+schedule-equality predicates — 2,000 tests/rep, K=16 candidates per invariant operand
+
+  J2  stringify BOTH        (Shape B today)    0.879 µs/test   1.00× vs J2
+  J1  invariant hoisted     (§4.12 A)          0.510 µs/test   1.72× vs J2
+  S2  sigOf === sigOf       (§4.12 B)          2.580 µs/test   0.34× vs J2
+  S1  sigOf, hoisted        (A+B)              1.580 µs/test   0.56× vs J2
+
+single-key encoders (the memo keys, 1.98M/solve):
+  E_json JSON.stringify(s)  (native)           0.483 µs/call   2.90× vs sigOf
+  E_sig  sigOf(s)           (today's key)      1.400 µs/call   1.00× vs sigOf
+  E_c    variant C          (§3.2 hand-roll)   0.802 µs/call   1.74× vs sigOf
+
+predicate disagreements on this population: 0 / 2000
+reference: repair 2.250 µs/call — one equality test is 39.1% of one repair
+```
+
+Three things fall out, and the middle one kills half the patch.
+
+1. **The hoist is real: 1.72×**, and at 39.1% of a `repair` an equality test is not noise inside its own loop
+   body.
+2. **★ The swap is 2.9× SLOWER, not "~20× cheaper".** `sigOf` is a JS loop building a string through
+   `Object.keys().sort()` and `Array.join`; `JSON.stringify` on a small plain object of number arrays is
+   native serialization. Betting against the engine's own C++ was the error — an intuition ("a compact
+   hand-rolled encoding must beat a general-purpose serializer") written into a plan doc as if it were a
+   measurement.
+3. **The bench's own first draft measured nothing.** Its "hoisted" variant stringified *both* operands per
+   test — identical work to J2 — and duly reported `1.01×`, which would have produced a confident "not worth
+   it" verdict about a transform it was not testing. Same defect class as the label bug; third instance in one
+   section. It is recorded in that file's header comment so the mistake stays visible.
+
+#### 4.12.8 Landing decision
+
+**Land (A). Reject (B). Strike §4.3 from the top of the ladder.**
+
+- **(A) hoist the invariant operand** at the four sites where the enclosing loop is long — **`1951`, `2533`,
+  `1983`, `2169`** (§4.12.3). Byte-identical by construction, 1.72× on the test, no probe needed. `1961` is
+  optional (take it for uniformity, expect nothing); **`2037` and `2092` are noise — skip them**; **`2767` is
+  neither redundant nor safe — leave it exactly as it is.**
+- **(B) the sig-swap: REJECTED on measurement.** It is *exact* here (§4.12.4 plus 228,685 tests), which is
+  worth knowing and is exactly what §4.13 spends — but at 2.9× slower there is no reason to spend that
+  exactness on the comparison sites.
+- Gate: exact-match 25/25. (A) hoists a pure computation whose operand cannot change inside the loop, so a
+  *failing* suite means the hoist was placed wrong, never that a plan legitimately moved.
+
+**What §4.3 cost, and the rule it earns.** §4.3 was three sentences and it was wrong three ways: the site
+count (3 → 12), the exactness claim (asserted; actually needs a five-step structural argument), and the cost
+claim (20× cheaper → 2.9× slower). It sat at the top of the landing ladder as "trivial, exact, good first
+landing" — and taken at its word it would have made the engine **slower** while changing the predicate at
+twelve sites on the strength of an unexamined assumption. **A perf claim written without a measurement is not
+a plan item; it is a hypothesis, and it belongs in the hypothesis table (§3.x) with a verdict column, not in
+the ladder.**
+
+### 4.13 ★★ The finding that came out of the bench: `JSON.stringify` is a CHEAPER memo key than `sigOf`
+
+§4.12.7's point 2 is much bigger than the patch that produced it. `sigOf` is not primarily a comparison
+helper — it is **the memo key**, and §3.1 counted **1,984,160 calls per solve**.
+
+`sigOf` has exactly three usages in the file:
+
+- `:1276` — the definition;
+- `:654` — the sim memo, `const key = cfgSigOf(cfg) + "|" + sigOf(schedule);`
+- `:1351` — basinHop's candidate cache, `const sg = sigOf(rep); … cache.set(sg, p)`, read at `:1341`.
+
+At **0.483 vs 1.400 µs/call** the native encoder saves ~0.92 µs on each of 1.98M calls ≈ **1.8 s of CPU per
+solve** — an order of magnitude more than §4.12 itself — and it *also* beats §3.2's fastest hand-rolled
+candidate (variant C, 0.802 µs) by 1.66×. That **retires §4.8's old item 2**: the answer to "cheaper `sigOf`
+encode" is not a better hand-roll, it is **delete the hand-roll and call the native one**.
+
+**Correctness.** A memo key must be *injective* (two different schedules must never collide) and *canonical*
+(two equivalent schedules must produce one key, or the memo just misses). `sigOf`'s sort buys canonicality —
+and §4.12.4's R-order proof shows the sort is a **no-op** on every schedule that reaches these two call sites
+(all are `repair` outputs or `cloneS` of one; `R` is order-idempotent), which the 228,685-test probe confirms
+empirically at the comparison sites.
+
+**And the failure mode is the good one.** If the proof has a hole and two key orders *did* diverge,
+`JSON.stringify` yields two keys for one schedule: a memo **miss** → a recompute → the same value. Slower,
+never wrong. (Contrast the injectivity half, where a collision *would* return a wrong score — which is why
+§4.12.4's injectivity argument is the load-bearing one and canonicality is merely a performance concern.)
+Identical argument for basinHop's cache: a miss re-scores.
+
+**Landing.** New ladder item 1 below. Keep `sigOf` defined — §4.7's census and any future debugging want a
+stable order-canonical form — but stop calling it on the hot path.
+
+#### 4.13.1 The revised landing order (supersedes §4.8's items 1–2)
+
+1. **§4.13 native `JSON.stringify` as the memo key** — replaces `sigOf` at `:654` and `:1351`. Biggest
+   measured win per line changed (≈1.8 s CPU/solve); miss-not-corruption failure mode.
+2. **§4.12(A) hoist the loop-invariant operand** at `1951`, `2533`, `1983`, `2169` — byte-identical by
+   construction, 1.72× on the equality test.
+3. §4.2 per-cfg memo + §3.3 generational eviction — behaviour-preserving by the eviction argument. *(Composes
+   with item 1: after it, the key is one native string with no `"|"` concat and no cfg prefix.)*
+4. §4.4 hot-loop allocation — needs a read-the-diff proof, not just a green suite.
+5. §4.1 the repair/sig/counts/clip fusion — biggest win, widest blast radius, do it last. *(Item 1 lowers its
+   payoff slightly: the walk it deletes is now a 0.483 µs native call, not a 1.400 µs JS loop.)*
+
+Dropped from the old ladder: **§4.3's sig-swap** (rejected, §4.12.8) and **§3.2/H1's hand-rolled encoder**
+(superseded by item 1). §4.9's two dedups still land ahead of all of this as §4.7's enablers, and §4.7's
+census still runs in a CPU gap rather than in this order. Gate at **every** step: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs`
+= 25/25, plus a wall-time re-measure so each step's real win is recorded next to its predicted one.

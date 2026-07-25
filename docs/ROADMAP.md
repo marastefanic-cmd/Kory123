@@ -91,7 +91,13 @@
    far, nothing landed; every change there is gated on byte-identical plans. **§4.7** turns the "fewer
    steps" ask into a *pass-firing census* — a pass is redundant iff its input is already its own fixpoint
    on the whole corpus — and **§4.9** records the two dedups that need no measurement at all: polish()'s
-   five identical accept paths and the block-shift primitive written twice).
+   five identical accept paths and the block-shift primitive written twice. **§4.12 corrects §4.3**, which
+   had headed the landing ladder: not 3 sites but **12**, "exact" only via a five-step key-order proof
+   (backed by a 228,685-test probe, 0 disagreements), and "~20× cheaper" is **backwards — measured 2.9×
+   slower**, so the sig-swap is REJECTED and only the *hoist* half lands. The bench that killed it found
+   the bigger win instead: **§4.13 — native `JSON.stringify` beats `sigOf` as the memo key** (0.483 vs
+   1.400 µs × 1.98M calls ≈ **1.8 s CPU/solve**), retiring the "cheaper hand-rolled encode" item too;
+   revised ladder in §4.13.1).
    Background: Phase 6 (the haste-adaptation cross-val, `docs/archive/07-phase6-xval-run.md`) was data-complete: 36
    tables, monoDip=0 everywhere, 167 borrowed-win columns keeping the standing acceptance test
    (`docs/ACCEPTANCE.md`) OPEN; Phase 7's diagnostic (`tools/diagnose-deficit.mjs`) partitioned
