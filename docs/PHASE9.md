@@ -261,6 +261,12 @@ the moment the census exists):
   If the outer loop converges in one round on every case, rounds 2–3 are pure cost. If it *doesn't*, that
   is more interesting than the perf win — it means the pass order isn't confluent, which is worth knowing
   for its own sake.
+
+  > **⚠ CORRECTED by §4.17 — these two are not the same shape, and only one is a suspicion.** The final
+  > hop ↔ normalize fixpoint (`:2786-2798`) **already early-exits** (`if (stable) break;`), so its rounds
+  > 2–3 are not pure cost and never were. The groom loop (`:1667-1740`) has **no** groom-level break in
+  > its 72-line body. The suspicion collapses onto that one loop — and §4.17 shows the fix needs no census
+  > at all: rounds 1 and 2 are the *same function*, so a no-op round 1 provably implies a no-op round 2.
 - **`repair` is idempotent and applied at least twice per surviving candidate** — once inside every
   candidate evaluation and again on each `resolve(...)` path. §4.1's fusion makes the repeat nearly free;
   the census says whether it can simply be dropped at the resolve sites instead.
@@ -268,6 +274,13 @@ the moment the census exists):
 **Cost + scheduling.** This is a full instrumented run of the corpus — hours of CPU on 4 cores, and it
 **must not overlap an acceptance round** (both saturate the box, and an acceptance round in flight also
 freezes the engine). Run it in the gap after a round lands, before the next one starts.
+
+> **⚠ AMENDED by §4.17 — that price is for the RETIREMENT half only.** Proving a pass redundant is a
+> universal claim (∀ cases: zero surviving firings) and costs the whole corpus. Proving one **not**
+> redundant is existential (∃ one case: one surviving firing) and costs **one instrumented case**. Since
+> §4.6 already expects most passes to be non-redundant, run the cheap elimination pass first and spend
+> the CPU gap only on whatever survives it. The existential half is also **immune to §4.14's false-pass
+> defect** — its evidence is a presence, and a broken instrument cannot manufacture a presence.
 
 **The trap to avoid.** Do not convert "fires on 1/25 goldens" into "delete it". The bar is **zero
 surviving firings on the whole corpus**, and even then the merge must reproduce the pass's effect rather
@@ -793,6 +806,11 @@ from *blocking* to *nice, because instrumenting one site beats instrumenting fiv
 **Unchanged:** the census is hours of CPU on 4 cores and still **must not overlap an acceptance round**
 (§4.7). The freeze was never the binding constraint — the box is.
 
+> **⚠ AMENDED by §4.17.** "Hours on 4 cores" prices the *retirement* run. The **elimination** run — which
+> only ever concludes "this pass fired, keep it" — costs one case, and needs neither of the two guards
+> above, because a presence-shaped verdict cannot be produced by a silently-skipped insertion. The guards
+> gate the retirement run. The box stops being the binding constraint for everything except that.
+
 ### 4.15 ★ The static call-site census — and it CORRECTS §4.1's "almost everywhere"
 
 `tools/pass-sites.mjs` (static; reads text, never runs the engine, so it costs no CPU and is safe to
@@ -937,3 +955,103 @@ Each step is independently landable, independently revertible, and gated by the 
 **Still owed, and not to be skipped:** §4.7's *runtime* census, because everything above is a static
 argument about where the work is written, not a measurement of where it is spent. Step 1 is worth
 landing on legibility alone; steps 2 and 3 must show a profile delta before they are called wins.
+
+### 4.17 ★★ The census is CHEAP in the direction it usually resolves — and §4.7's suspicion 2 is half wrong
+
+§4.7 and §4.14 both close on the same sentence: the census is *"hours of CPU on 4 cores"* and *"must not
+overlap an acceptance round — the freeze was never the binding constraint, the box is."* That is true of
+**one half** of the instrument, and the halves have wildly different prices. Pricing the whole thing at the
+expensive half is why it has sat unrun through every CPU gap this phase has had.
+
+#### The asymmetry
+
+§4.7 defines redundancy as *"a pass P is redundant iff its input is already a fixpoint of P on every case we
+can produce"* — a **universal** claim, and universals are expensive. But its **negation is existential**, and
+existentials are nearly free:
+
+| verdict | logical form | evidence | corpus needed | cost |
+|---|---|---|---|---|
+| P is **redundant** (retire/merge it) | ∀ cases: zero surviving firings | an **absence** | the whole corpus | hours |
+| P is **not** redundant (keep it) | ∃ one case: one surviving firing | a **presence** | **one case that fires** | seconds |
+
+And the *expected* answer for most passes is "not redundant" — §4.6 already argues the pass overlap is
+deliberate, several routes into the same basin. So the elimination pass resolves most of the suspicion list
+at the price of a single instrumented case, and the expensive run is owed only for whatever **survives**
+it. That inverts §4.7's scheduling advice: don't wait for the CPU gap to start — **spend the gap only on the
+survivors**, and thin the list today.
+
+#### ★ And the cheap half is structurally immune to the defect that makes the expensive half dangerous
+
+This is the part worth keeping. §4.14 mandates two guards (anchor-match assertions, positive controls)
+for one reason: **the retirement verdict and the instrument's commonest bug produce the same output —
+zero.** A silently-skipped textual insertion reads as "this pass never fired", which reads as "delete it".
+That is §19.11's shape, and it is why the census needs a trust apparatus at all.
+
+The existential half **cannot** have that failure. Its verdict is *"here is the case, the round, and the
+firing"* — a **presence**. An insertion that failed to match its anchor produces no firing, so a broken
+instrument cannot manufacture a keep; it can only fail to find one, which leaves the pass on the list where
+it already was. The cheap direction is therefore not merely cheaper, it is **safe to trust before the guards
+are built**, whereas no number in the expensive direction may be believed until they are.
+
+(The guards are still mandatory — but they gate the *retirement* run, not the elimination run, and that
+ordering means the instrument can produce useful output on its first day instead of its last.)
+
+#### §4.7's suspicion 2, checked against the code: the two "nested fixpoints" are not the same shape
+
+§4.7 groups them: *"the grooming block grooms three times (~1664) and there is a separate final hop ↔
+normalize fixpoint (~2777). If the outer loop converges in one round on every case, rounds 2–3 are pure
+cost."* Read against today's file, that is true of one and **false of the other**:
+
+- **The final hop ↔ normalize fixpoint (`index.html:2786-2798`) already early-exits.** It computes
+  `stable = hop2.val <= simulate(s, cfg).robust + 1e-7` and `if (stable) break;`. Rounds 2–3 run *only*
+  when round 1's hop actually improved. They are not pure cost and never were.
+- **The groom loop (`index.html:1667-1740`) does not.** `for (let groom = 0; groom < 3; groom++)` runs
+  three times unconditionally — there is no groom-level `break` anywhere in its 72-line body.
+
+So the suspicion collapses onto exactly one loop, and the fix does not need the census at all: **give the
+groom loop the early exit its sibling already has, 1100 lines away.**
+
+#### Why that exit is byte-identical — and it is an argument, not a hope
+
+The rounds are not all the same function. Round 0 runs the sweeps; rounds 1 and 2 run
+`await challengePass()` **first** (`if (groom > 0) await challengePass();`) and then the same sweeps. So
+
+```
+f0 = sweeps                       (round 0)
+f1 = f2 = challengePass ∘ sweeps  (rounds 1 and 2 — identical functions)
+```
+
+If `f1(s) = s`, then `f2(s) = f1(s) = s`, and skipping round 2 changes nothing — **provided rounds 1 and 2
+are pure in `s`**. Checked rather than assumed: the groom body declares every name it uses
+(`sweep, key, kind, dur, cand, rep, r0, curSig, …` — 27 of them, all loop-local), and `challengePass`
+allocates its own state per call (`const anchors = new Set([0]);` `:1591`, `const rowSecs = new Set();`
+`:1625` — both **inside** the arrow function, re-created on each invocation). The only cross-round state is
+the polish memo, which by definition returns the same value for the same input.
+
+Note the boundary carefully: **round 0 → 1 is not eligible** (different functions — round 1 adds
+`challengePass`), so a no-op round 0 proves nothing about round 1. Only 1 → 2 collapses. The guard is
+therefore `if (groom >= 1 && unchanged) break;`, with `unchanged` a `JSON.stringify(s)` compare taken
+across the round (§4.13: the native encoder is the cheaper key).
+
+#### ⚠ Sizing it honestly — the win is smaller than "a whole groom round"
+
+The obvious claim is "this saves a third of the grooming". It does not, because **the inner sweep loop
+already self-terminates**: `for (let sweep = 0, sweptMoved = true; sweep < 8 && sweptMoved; sweep++)`. A
+groom round that changes nothing runs **one** dry sweep, not eight, and then falls out. So the actual saving
+of the skipped round is:
+
+> one `challengePass()` + one dry sweep pass (every unfixed buff key × every use, `repair` + `simulate` per
+> candidate) + one `JSON.stringify` paid on the rounds that *do* fire.
+
+Real, but bounded — and **how often round 1 is a no-op is unmeasured**, which is precisely the cheap half of
+the census described above. This is the same discipline §4.15 and §4.16 landed under: a static reading sizes
+the *work*, never the *win*. Land it for the structural reason (a loop that cannot terminate early while its
+sibling can is an inconsistency, not a design), gate it on exact-match 25/25 — where the purity argument
+above is what makes a green suite *meaningful* rather than lucky — and only call it a speedup once a profile
+says so.
+
+#### Landing-ladder placement
+
+Between §4.16's step 1 and step 2: it is smaller than the `admit` extraction, independent of it, and shares
+its property of being provable before it is measured. It does **not** unblock or replace §4.7's census — it
+*removes one of the three things the census was going to be asked*.
