@@ -29,6 +29,9 @@
   - Why no gate caught it: both landed on `PLAN-DIFF changed=0` over the 25 goldens. `plan-diff` does
     carry a per-cell `dScore`, but with `changed=0` that field was **never populated** — the one number
     that would have caught it was structurally guaranteed empty on the only corpus it ran against.
+    ✅ **The gate hole is CLOSED (07-25): `plan-diff` now carries the SCORE-AUDIT** — scorer-identity
+    proof on unchanged cells, sign split on changed ones, and scorer-pinned `ΔScore<0` = exit 1 even
+    under `--allow-change` (PHASE9 §5.15 open item 2 → landed; §5.3 contract updated).
   - **Attribution is owed** (task #4): groom-exit vs `groupSeeds` vs interaction, one variable at a
     time against `git show <pre-landing>:index.html`. Sim-free. Needs **idle cores**, and must not
     modify the repo's `index.html` while a campaign is reading it per cell — sweep a scratchpad copy.

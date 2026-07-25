@@ -1641,8 +1641,12 @@ node tools/plan-sweep.mjs index.html B.json [jobs] [--max-t=200]   # after
 node tools/plan-diff.mjs A.json B.json [--allow-change]
 ```
 Exit codes — sweep: `0` swept clean · `1` a plan is ILLEGAL · `2` could not sweep. Differ: `0`
-identical (or changed with `--allow-change`) · `1` a plan changed · `2` could not compare (an error
-cell or a corpus mismatch — *could-not-grade beats every other verdict*). `tools/engine-node.mjs` is
+identical (or changed with `--allow-change`, none score-worse under a proven-identical scorer) · `1` a
+plan changed, **or a SEARCH REGRESSION — scorer pinned + `ΔScore<0`, which fails even under
+`--allow-change`** (the §5.15 rule, ported here 07-25: the differ proves scorer identity on the
+unchanged cells — byte-identical plan ⇒ byte-identical score — and then grades changed cells on the
+sign; if the scorer *moved* it is a repricing, the sign split is printed but not graded) · `2` could
+not compare (an error cell or a corpus mismatch — *could-not-grade beats every other verdict*). `tools/engine-node.mjs` is
 the shared loader: it extracts the engine block, `buildSegments`, and the preset arrays out of
 `index.html` and evaluates them in one `new Function`, asserting every extraction (a silently-missing
 preset array would make the gate grade **fewer** cases and still report success).
@@ -2764,8 +2768,16 @@ sign + the named regression list. Exit stays **0** — the file's exit contract 
 **Open (deliberately not decided here):**
 1. Should EFF-AUDIT's `worse>0` become **exit 1**? It is a genuine grade, but it changes a published
    contract; decide it with the user, not silently.
-2. **`plan-diff` should get the same rule** — flag `dScore < 0` — which *is* the every-edit gate and
-   is where this should have been caught.
+2. ✅ **LANDED (07-25): `plan-diff` has the rule** — the `SCORE-AUDIT` block. It proves scorer
+   identity the same way EFF-AUDIT does (a cell whose plan is byte-identical must score
+   byte-identically; determinism guarantees it under a shared scorer), then splits changed cells by
+   `ΔScore` sign. **Scorer pinned + `ΔScore<0` = `PLAN-DIFF FAIL — search regression`, exit 1 even
+   under `--allow-change`** — that flag admits movement, not regression. If the scorer moved it
+   prints the repricing warning and does not grade the sign (per-cell duel territory); if *zero*
+   cells are unchanged, identity is unprovable and it says so instead of grading. Old sweep JSONs
+   without a `score` field are counted `unscored`, never graded. Contract updated in §5.3 and the
+   file header. (plan-diff's exit-1-on-change default was never the published-observation contract
+   that makes the same question hard for `xval-round-diff`, so this one did not need a user call.)
 3. **Attribution is still owed**: groom-exit vs `groupSeeds` vs their interaction. Cheap and sim-free —
    re-optimize `mqg+skull` medlong (T=226, lust=0) @h265 against `git show <pre-landing>:index.html`,
    one variable at a time. **Needs idle cores; do not run it against the live acceptance campaign.**
