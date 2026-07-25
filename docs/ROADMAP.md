@@ -133,7 +133,27 @@
    discretization disagreement at the very `T` the sim gains a cast. **§19.10's target stands, minus one
    suspect.** Instrument 32/32 green first run, and it carries the round's sharpest lesson: **a verdict whose
    evidence is an ABSENCE needs a positive sensitivity control** (a flat reading and a blind instrument are
-   the same number, and the blind one exits 0)
+   the same number, and the blind one exits 0).
+   **L3 then delivered the round's biggest result (§19.13): L3b AND ★ L3c BOTH FIRE.** The K2 repair — MQG
+   stacked onto **`BL`** instead of `IV`, with a matched solo reference 30 s earlier — reads `Δresid` =
+   **+0.0159 pp** at `R=70` (bar 0.15), so **stacking onto `BL` is priced correctly** and §18.6's *"the model
+   mis-composes two overlapping haste multipliers"* is **too broad: the distinguishing feature is not
+   "stacking".** And across the whole sweep `max |Δresid|` = **0.0396 pp** with mean **−0.0187**, only
+   **0.0120 pp** from L1's well-clipped mean −0.0067 — even though `BL`+MQG is **floored at every gear haste**
+   (crossing at `R = −72`, unreachable) and so **never visits** the crossing where L1 localized the defect.
+   The BL residuals nevertheless lie on **L1's own curve**, so `Δresid` is a function of the **clip fraction
+   alone**: **K2 and K3 unify and buff composition is RETIRED as a separate suspect.** What survives as B2's
+   cause is §19.10's single finding — a **crossing-location** error, the model's sign flip one grid step late.
+   Secondary L3d: the repaired like-for-like number **+0.0352** vs round 8's voided **+0.0402** — the
+   contamination was **real but immaterial to the answer**. Both scoring columns agree on all three verdicts;
+   controls all green (reproduction 8/8 exact, sensitivity re-derives −0.1808 = 3.6× the L3b bar, and a new
+   **CONTROL 3** asserting each arm is byte-identical across the two pair records that contain it). Instrument
+   **30/30 first run** (13 derived fixtures with *aimed* perturbations; the headline is **`blindl1`** — the
+   sensitivity control's own control, a well-formed L1 rewritten to see nothing, which must be refused). It
+   also caught a defect class **in our own pre-registration**: §19.12's additive reference-invariance is a
+   **NEAR-ALGEBRAIC control** — computed from the same three per-arm numbers as the thing it checks, so it
+   cannot fail for a measurement reason. Kept but relabelled WEAK; the substantive form (re-read the
+   falsifiers against the *other* solo reference) added and passing
    and `docs/PHASE9.md` (**performance/refactor**, user-reported CPU cost — notes + hypotheses only so
    far, nothing landed; every change there is gated on byte-identical plans. **§4.7** turns the "fewer
    steps" ask into a *pass-firing census* — a pass is redundant iff its input is already its own fixpoint

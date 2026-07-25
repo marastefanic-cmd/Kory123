@@ -1551,6 +1551,10 @@ All on the round-8 `C0`/`C1` pair (`Icon` off, rest-context B), so the contrast 
   **≈ ±0.44 % sawtooth in `d_sim` at var 0 that flattens at var 3.0**, with `d_model` smooth in both.
 - **L3 — the K2 repair.** The one untested J1 clause. Pair the `MQG`-on-`BL` arm across two fight lengths so
   the cascade cancels the way K1-vs-K3 does, or park the reference **after** `BL@162`.
+  **↳ SUPERSEDED by §19.12 — neither sketch was needed.** §19.9's aligned scoring *prices* a control cascade
+  instead of disqualifying it, so L3 ran the reference **before** `BL` (`MQG@140`, solo, 30 s earlier — far
+  better matched than a cross-`T` pair or a post-`BL` park) and simply recorded the resulting `DRIFT`.
+  **RESULT in §19.13.**
 
 ### 19.3 Pre-registered falsifiers
 - **L1a — THE FLOOR IS THE MECHANISM.** `Δresid(K3)` is ≈ 0 for `R < 53` and grows monotonically in the
@@ -2128,6 +2132,87 @@ comparison is like-for-like.
 - **Sensitivity (the §19.11 lesson).** L3b and L3c are both **absence** verdicts, so the instrument must first
   demonstrate it can see a residual of the size being denied: the same reduction, run on L1's `R = 70` row,
   must return `−0.1808 pp`. A flat reading is not reportable until that passes.
+
+### 19.13 LEG L3, RESULT (07-25) — **L3b and ★ L3c BOTH FIRE. K2 and K3 unify; buff composition is retired**
+
+The repair ran clean and the round's biggest result came out of it. All eight haste points graded.
+
+| `R` | clip % `BL`+MQG | `d_sim` % | `d_model` AL % | **`Δresid` AL pp** | `d_model` REQ % | `Δresid` REQ pp | casts AL | gate |
+|---|---|---|---|---|---|---|---|---|
+| 0 | 4.58 | −0.0830 | −0.0664 | **−0.0166** | −0.0662 | −0.0168 | 220→220 | `DRIFT` 0.31 s |
+| 30 | 6.36 | −0.2014 | −0.1618 | **−0.0396** | −0.1804 | −0.0210 | 224→223 | `DRIFT` 0.52 s |
+| 53 | 7.68 | −0.3320 | −0.3022 | **−0.0298** | −0.3034 | −0.0286 | 227→226 | `OK` |
+| **70** | 8.64 | −0.3515 | −0.3673 | **+0.0159** | −0.3866 | +0.0352 | 230→229 | `DRIFT` 1.21 s |
+| 120 | 11.33 | −0.6319 | −0.6174 | **−0.0146** | −0.5954 | −0.0365 | 236→235 | `DRIFT` 0.47 s |
+| 200 | 15.32 | −0.9248 | −0.9033 | **−0.0215** | −0.9074 | −0.0173 | 247→245 | `OK` |
+| 300 | 19.83 | −1.0052 | −0.9980 | **−0.0071** | −1.0716 | +0.0664 | 259→256 | `DRIFT` 0.79 s |
+| 400 | 23.89 | −1.0473 | −1.0107 | **−0.0366** | −0.9954 | −0.0519 | 269→266 | `OK` |
+
+- **L3a fails.** `|Δresid|` at `R = 70` is **0.0159 pp** — an order of magnitude under the 0.15 bar.
+- **L3b FIRES.** `0.0159 < 0.05`. Stacking MQG onto **`BL`** is priced **correctly**, while stacking it onto
+  `IV` is not (L1: −0.1808 pp at the same haste, same instrument). §18.6's *"the model mis-composes two
+  overlapping haste multipliers"* is therefore **too broad — the distinguishing feature is not "stacking".**
+- **★ L3c FIRES — THE UNIFICATION.** `max |Δresid| = 0.0396 pp` across the whole sweep (bar 0.10), and the mean
+  **−0.0187 pp** sits **0.0120 pp** from L1's well-clipped mean −0.0067 (tol 0.06). The BL contrast is floored at
+  every gear haste — it **never visits** the crossing where L1 localized the defect (§19.12) — yet its residuals
+  lie on **L1's own curve**. So `Δresid` is a function of the **clip fraction alone**: one boundary-discretization
+  curve, the stacking partner irrelevant. **K2 and K3 unify, and buff composition is retired as a separate
+  suspect.** What survives as B2's cause is §19.10's single finding: a **crossing-location** error — the model's
+  sign flip is one grid step late — with the residual peaking *at* the crossing and decaying once clipping is deep.
+- **L3d (secondary, no verdict).** Repaired REQUESTED-column number **+0.0352 pp** vs round 8's voided
+  **+0.0402 pp** → `|d| = 0.0050 pp`. **The contamination was real but immaterial to the answer.** Non-promotable:
+  round 8 ran `T = 229` and L3 runs `T = 300`, so it is a comparison across fight lengths, not a repeat measurement.
+
+#### §19.3's audit-trigger clause — discharged, not skipped
+The clause fires *"if L1 and L2 both come back negative"*: the sim becomes the suspect and three checks must
+run before any scorer change. All three are already discharged in this round, which is why L3's verdict is read
+as a model finding rather than a sim-setup artifact. (1) **Casts re-derived from first principles** — §19.7.2
+measured the arms cast-for-cast: first AB `1.995 s = 2.5/(1.20×1.0444)` ✓ and the quiet interval `1.43588` vs
+`1.43623` ✓, so the streams agree everywhere except at press seams. (2) **The runner is the patched AP-180
+build** (`$SP/wowsims/runner-ap180`, asserted executable by `r9l3.sh` before anything runs). (3) **`--var`
+dithers duration, not start time** — established in §19.7 and re-asserted here per invocation: every run's
+**realized** duration (col 7) is compared against `T` within 0.005 s, so a quantizing runner cannot manufacture
+an absence. On top of that, §19.9 showed the two independent phase-removal routes AGREE (gap 0.0158 pp against
+a 0.10 tolerance), which places the residual in the **scorer** and not in either reduction.
+
+**Both columns agree on all three verdicts** (REQUESTED: 0.0352 at `R=70`, max 0.0664, mean −0.0088, 0.0021 from
+L1), so nothing here depends on the §19.9 phase treatment.
+
+#### Controls — all green
+- **Reproduction:** `C0` matches `r9l1/dps.txt` at **8/8** shared haste points, **exactly**.
+- **Sensitivity (§19.11):** the same `reduce()` on L1's `R = 70` row returns **−0.1808 pp** — **3.6× the L3b bar
+  and 1.8× the L3c bar.** Run **first, before any L3 number is read**; the script refuses to grade otherwise.
+- **Gate:** `DRIFT` at `R = 0,30,70,120,300` — expected (`BL` slides between the arms), recorded not excluding.
+- **CONTROL 3 (new, L3-specific):** three arms are read out of **three** pair records and each arm appears in
+  two, so the two copies are asserted **byte-identical**. A swapped `A`/`B` inside one record is the one
+  three-arm wiring error that still produces a plausible number.
+- **`maxMove` 0.006 s** (tol 0.30) and slip suppression material at **19/24** points.
+
+#### ★ A defect-class lesson found in our own pre-registration: the NEAR-ALGEBRAIC CONTROL
+§19.12 registered reference-invariance as `Δresid(C0→D1) − Δresid(C0→D0) == Δresid(D0→D1)` within 0.02 pp. While
+building the battery this was recognized as an **identity, not a measurement**: all three contrasts are computed
+from the same three per-arm numbers, so it can only fail through float error (it reads **0.0001 pp**, and the
+only non-algebraic part is a `C0`-vs-`D0` denominator worth ~2e−5 pp). **A "control" derived from the same
+numbers as the thing it checks belongs to the false-pass class** — it cannot fail for the reason it was written.
+It is kept, relabelled **WEAK — cannot carry the claim**, and the **substantive** form was added: re-read the
+same falsifiers against the **other** solo reference, `C0→D1`, which is a sim pair the primary never touches.
+That passes on the real data (`−0.0030 pp` at `R=70`, max 0.0512 — **same three verdicts**), and the `refinv`
+fixture makes the two references *disagree* **while the additive identity still holds**, which is simultaneously
+the positive control for the substantive check and the proof the weak one was never load-bearing.
+
+#### Instrument: 30/30
+`r9l3ctl.sh` — 13 fixtures, all **derived** from the real outputs, each broken in exactly one named way, with the
+sim-side perturbations **aimed** at a target residual (`deadband` → +0.125, `l3afires` → +0.52, `refinv` → +0.30
+by moving `D0` only) rather than eyeballed, so each provably sits where the battery claims. 22 negative controls
+(every guard must FAIL on data built to break it) and 8 positive ones (a guard that over-rejects is the same
+defect class, so **every verdict must be reachable**: L3a, L3b, L3c and the dead-band branch are each reached on
+purpose-built data). The headline control is **`blindl1`** — the sensitivity control's *own* control: a complete,
+well-formed L1 whose model is rewritten to match its sim exactly, so the reduction returns 0 pp everywhere. A
+flat L3 reading from such an instrument is indistinguishable from a real absence, so the reducer must refuse to
+grade — and does. Green on the first run.
+
+*Apparatus: `$SP/p8/{r9l3.sh,r9l3model.mjs,r9l3stat.mjs}` + `r9l3fixgen.mjs`/`r9l3ctl.sh`, writing
+`r9l3/{req,gate.<TAG>.h<R>,model,l3}.json`, `dps.txt`, `drift.txt`, `stat.out`.*
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
