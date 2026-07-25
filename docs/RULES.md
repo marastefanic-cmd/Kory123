@@ -696,32 +696,61 @@ durations the contained region shrinks to the **intersection** of the constraint
     Sim (same-stream CRN, 150k): Icon covering the AoE window exactly beats hanging 5s into the exit
     ramp by **+0.497% vs model +0.501%**. KT's golden already expresses this: its CS-IV@2:05 ends
     exactly at the window end (2:25).
-  - **⚠ OPEN — Correction 3 CANDIDATE: WITHIN-window placement. The model packs the cluster against the
-    window END; the sim wants it ~10 s EARLIER, and this is the ONLY surviving cross-val deficit**
-    (`tools/cell-band.mjs`, 07-25; PHASE7 §5.17. **Not yet a rule — measured at one cell family, cause not
-    yet named, no engine change made.**) On `isc+scb / KT / T=420`, two plans differing *only* by a 10 s
-    shift of the AP/Zerk/Icon/Gem group (model's champion **130**, rival **120**), with **both** presses and
-    all four buff windows **entirely inside** the AoE window [105,145]:
-    - **Ablate the AoE window** — same press times, same walls, same 33 wall geometries, same seed, `_aoe`
-      deleted and `--targets` dropped so genapl casts AB through [105,145] — and, excluding the ±1-cast
-      parity mode, **the two plans are statistically IDENTICAL in the sim: −0.0063 ± 0.0048 pp.** Turn the
-      window back on and the model mis-ranks by **+0.2930 ± 0.0068 pp**. ⇒ **the AoE window accounts for
-      102 % — i.e. all — of the parity-free deficit.** Outside the window the model's ranking of this pair is
-      exactly right, so this is not a burn-model, search, or tail-lattice error.
-    - It is **neither Correction 1 nor Correction 2** — both are *boundary* corrections (SP dilution at the
-      edge; retreat rather than straddle out) and **neither pair straddles a boundary here.** What it is in
-      tension with is how Correction 2 got **interpolated**: its sim evidence compares *flush-with-the-end*
-      against *hanging 5 s past the end*, and it never tested flush-with-the-end against **10 s inside**.
-      The model reads "windows end AT the AoE end" as *pack against the end*; at this cell that is worse than
-      sitting 5–10 s inside it. The rule as written stands; the interpolation between its two tested points
-      is unverified.
-    - Corroboration that the two channels are separable: the parity mode is the **same 7 of 33 geometries**
-      with and without AoE, worth **3375 vs 3428 damage** (an ordinary **AB**-train cast, not an AE cast),
-      and with the window ablated the cell's residual (0.0947) falls **inside** its own ripple ceiling
-      (0.0865) — no deficit left at all.
-    - **Next measurement (pre-register first):** sweep the cluster press time across the window (110…140) in
-      the sim on the parity-free geometries and compare to the model's own curve — the model peaks at 130,
-      the sim at ≤120, and the *shape* of that gap is what names the term to fix.
+  - **Correction 3 — CONFIRMED (07-25): a press inside an AoE phase FIRES LATE, and a window that ends
+    flush with the phase wall LOSES ITS LAST CAST. Never place a value window so that `press + dur`
+    lands within ~1 cast-interval of the AoE phase end — sit it a second earlier and it is free.**
+    (PHASE7 §5.18; ledger `$SP/aoewin/walk.mjs`, predictive sweep `tools/cell-band.mjs`. This was §5.17's
+    Correction-3 *candidate*; the "model packs against the window END, sim wants it 10 s earlier" framing
+    is **RETIRED** — the model's press-time curve is *flat* across the window interior and spikes only at
+    the wall.) The mechanism, on `isc+scb / KT / T=420 / sim@195`, model champion P=130 vs rival P=120:
+    - **The AE lattice inside an AoE phase is hard-anchored to the phase START** (first AE at exactly
+      `phaseStart`, then `+Δ`, Δ = `max(1.0, 1.5/m)`), and the APL stops casting AE at the phase end.
+      A window therefore covers `floor(·)` **lattice points**, not seconds — PHASE8's FLOOR LAW on an
+      AoE phase.
+    - **A press fires ~0.5–0.6 s after its intent** (cast latency / GCD boundary). Interior slip is
+      **self-cancelling** — what the start loses the end regains — but slip at a **hard edge is clamped**.
+      Native's AP intent 130 fires **130.58** and runs to **145.58**; the phase ends at **145.00**; the
+      lattice point after 144.02 is 145.13, past the wall. Native's 15 s window covers only **14.42 s of
+      in-phase lattice** ⇒ **one fewer AE cast**. Borrowed's [120.57, 135.57] is interior and loses
+      nothing. **One-sided ⇒ a ranking error.**
+    - **Assumption-free ledger** (aura-state walk of both combat logs, damage pooled per state so crit
+      cancels): both plans cast **37 AE**; exactly **one** moves from `Icon+IV` (7785) to
+      `AP+Gem+Icon+IV` (10780) = **+2995 damage** vs measured **2919 ± 35** ⇒ **102.6 % closure.**
+    - **The model's matching artifact:** its score is flat to the decimal for P ∈ {125..129} (correct
+      translation invariance) then spikes **+368.4 damage at exactly P = 130 = phaseEnd − dur**. Proven an
+      artifact by moving the phase end: at E = 146/147/150 the P129/P130 scores are **bit-equal**; at
+      E = 143/144 flush is **−1539.8** worse. It is also non-additive (AP alone −29, Gem alone −68, Zerk
+      alone 0, all three **+368**). Model cusp **368** + sim lost cast **2995** = **3363 damage =
+      0.347 pp** = exactly the observed sign flip (model prefers native by 0.0536; sim prefers borrowed
+      by 0.2930).
+    - **Pre-registered predictive sweep, all three falsifiers fail to fire.** Sim pct vs native(130):
+      P126 **+0.2926** · P127 **+0.2943** · P128 **+0.3019** · P129 **+0.2960** · P131 **−0.3053** ·
+      P132 **−0.4664**. The interior is flat to within 0.0093 pp (< 2 SEM), the 129→130 step is
+      **370 SEM** and **98.5 % of exactly one `AP+Gem+Icon+IV` cast**, and all five wall-jitter variants
+      put the cliff at the same P (sd 0.0018) ⇒ the snap is **δ-invariant**, as a phase-start-anchored
+      lattice requires. **The model's argmax is the sim's argmin of the flat top.**
+    - **Consistent with, not contradicting, Correction 2.** C2 ("windows end AT the AoE end, not past
+      it") was verified *flush vs 5 s past* and is still right — hanging out is worse. C3 prices the
+      **other side** of flush, which C2 never tested: flush itself is one cast short of a second earlier.
+      Read together: **end the window inside the phase, one cast-interval clear of the wall.**
+    - **Root cause in `index.html`** (two guards, each independently disabling the correct treatment):
+      **`:855` `prevCastRamp = !isAoe && …`** switches off the deterministic snap at `:773` — whose own
+      comment justifies snapping where "boundaries are sparse and DETERMINISTIC, locked to the ramp
+      start, no phase freedom", which is *exactly* an AoE lattice; and **`:820` `cast: 0`** makes `:853`
+      yield `prevCastEnd === t`, so `:785`'s expected-slip fallback is unreachable inside AoE. The
+      model's cadence is already right (model Δ 1.1128 vs sim 1.1124 s; Zerk boundary 130.59 vs 130.58)
+      — the missing piece is the **snap**, not the lattice. ⚠ **Not yet patched**: both edits move every
+      AoE-phase plan, so the fix owes plan-sweep + exact-match 25/25 + a DUEL of every changed cell
+      against its previous layout.
+    - Corroboration that the AoE channel and the ±1-cast **parity** channel are separable: ablate the
+      window (same presses, walls, geometries, seed) and the two plans are statistically identical
+      (**−0.0063 ± 0.0048 pp**) with the residual inside its own ripple ceiling; the parity mode is the
+      same 7 of 33 geometries with and without AoE, worth 3375 vs 3428 damage — an ordinary **AB** cast,
+      not an AE cast.
+    - **Corollary (cluster coherence).** Holding Icon at 125 while the cluster moves to 120 costs
+      **0.08 pp** (P120 parity-free +0.2151 vs the +0.29 plateau) — ordinary Correction 1, ~4 casts bought
+      without Icon — and P=120 is then the **only** arm where the parity mode fires. Move the SP press
+      **with** the damage cluster and it returns to the plateau (+0.2930).
   - **Haste migrates EARLIER than damage.** A bare AoE window is the max-floor-headroom window, so
     leftover haste (IV/Zerk) takes it from **M(N) > 1** even while the damage cluster still holds Lust
     (grid: disjoint shape at N=3 — CS-IV + Zerk on the window, cluster on Lust). §5's "largest buff that

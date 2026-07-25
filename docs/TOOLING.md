@@ -365,6 +365,35 @@ log to stderr: every `[t] Casting {SpellID}` (with Cast Time / GCD / Effective T
 when a press actually fires, whether it's off-GCD, when a cooldown is ready. (Earlier notes wrongly
 claimed the runner had no combat-log flag.)
 
+⚠ **The log prints NUMERIC IDs ONLY** — `{SpellID: 12042}`, `{ItemID: 29370}`, never a name. Grepping
+for "Arcane Power" returns nothing and reads as "the buff never fired." Resolve IDs from the plan's own
+`*.apl.json`; the ones this project uses:
+
+| | ID | | ID |
+|---|---|---|---|
+| Cold Snap | `S11958` | Bloodlust | `S2825` (tag −1) |
+| Icy Veins | `S12472` | Arcane Power | `S12042` |
+| Berserking | `S20554` (tag 1) | Arcane Explosion | `S27082` |
+| Icon of the Silver Crescent | `I29370` | Mana Emerald (the "Gem" press) | `I22044` |
+| …whose **+225 SP bracer proc** (SCB) is the aura that actually matters | `S37445` | Clearcasting / AB stack aura | `S12536` / `S36032` |
+
+### ★★ DECOMPOSE A DUEL BY WALKING THE LOG — the cheapest instrument in the project (07-25)
+
+When two plans differ in the sim and you want to know *why*, **do not run more sims**. Take the two
+`SIMLOG=1` logs you already captured for the legality check and walk the `Aura gained` / `Aura faded`
+stream, labelling each damaging cast with the **set of buffs up at its cast moment**; then pool observed
+damage **per aura state across both logs** and read the ledger as
+`Σ_states (count_B − count_A) × pooled_dmg_per_cast`.
+
+Two properties make this strong: pooling across both plans cancels **crit variance** (the states are
+identical, only the counts differ), and it needs **no assumption** about coefficients, amp curves or
+stacking order — it is pure observed damage. On P7.14 (PHASE7 §5.18, RULES §9 Correction 3) it closed a
+0.29 pp deficit to **102.6 %** at **zero additional sim cost**, after five sim campaigns had been
+pre-registered to attack the same question. Reference implementation: `$SP/aoewin/walk.mjs`.
+
+Corollary: **capture `SIMLOG=1` for both arms of every duel as a matter of course.** The legality gate
+is the cheap excuse to obtain the expensive-looking data.
+
 ## ★ THE REFERENCE GEAR — one module, spread, never re-typed
 
 A model-vs-sim harness is only measuring anything if the **model cfg describes the gear the sim actually

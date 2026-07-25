@@ -1351,3 +1351,167 @@ before 120; the *shape* of that disagreement is what names the term to fix. Pre-
 Filed: the acceptance-criterion restatement remains a **user call** (ACCEPTANCE coverage gaps) — untouched
 here. And the 3-cell survivor list is *narrower* than the 9-cell list it replaces, which is the first time
 this phase's target list got smaller for a reason other than a retraction.
+
+### ⛔ §5.18 — P7.14 SOLVED: the last deficit is ONE Arcane Explosion cast, and the model's press-time curve has an ARTIFACT CUSP exactly at `phaseEnd − dur` (07-25)
+
+§5.17 left the survivor as "Correction-3 CANDIDATE: within-window placement, cause not yet named."
+It is now named, located in `index.html` by line, closed arithmetically to **102.6 %** on the sim side,
+and confirmed by a **pre-registered predictive sweep** on the model side. It is not an emergent
+interaction, not a search miss, and not a 10 s "the model likes the end of the window" preference.
+**It is one press-second on the wrong side of a wall, costing exactly one AE cast.**
+
+#### The instrument: read the combat log instead of running more sims
+
+The pre-registration (`$SP/aoewin/PREREG.md`) laid out five work items W0–W5, of which W2/W3/W5 were sim
+campaigns. **W0 was only a legality gate** — capture `SIMLOG=1` for both plans and check that every
+requested press actually fires (the PHASE8 §16.3 "two presses exactly one cooldown apart" trap: borrowed
+asks for `Icon:[0,120,…]` with a 120 s cooldown). It passed — every press in both plans fires within
+**0.62 s** of intent; press #1 lands at exactly 0.00 so the cooldown is ready at exactly 120.00 and press
+#2 slips only by cast latency to 120.57 — **and the two logs already contained the entire answer.**
+The decomposition below cost **zero additional sim runs**. This is the cheapest instrument this phase has
+produced and it is generalisable; recorded in TOOLING.
+
+⚠ The log prints `{SpellID: N}` / `{ItemID: N}` with **no names**, so grepping for "Arcane Power" returns
+nothing. The ID map (resolved from `native.apl.json`, plus SCB's proc found by matching gain-count and
+times) is in TOOLING.
+
+#### THE SIM-SIDE LEDGER — crit-independent, assumption-free
+
+`$SP/aoewin/walk.mjs` walks the aura gained/faded stream, labels every AE cast with the *set* of buffs up
+at its cast moment, and pools observed damage per state across both logs (so crit variance cancels).
+
+Both plans cast **37 AE**. The only differences:
+
+| aura state at cast | native (P=130) | borrowed (P=120) | pooled dmg/cast |
+|---|---|---|---|
+| `IV` | 18 | 18 | 7811 |
+| `Icon+IV` | **5** | **4** | 7785 |
+| `AP+Icon+IV+Zerk` | 1 | 1 | 9156 |
+| `AP+Gem+Icon+IV+Zerk` | 9 | 9 | 11042 |
+| `AP+Gem+Icon+IV` | **4** | **5** | 10780 |
+
+Exactly **one cast** moves, from `Icon+IV` to `AP+Gem+Icon+IV`: **+2995 damage**. Measured gap
+**2919 ± 35** ⇒ **102.6 % closure.** Nothing else in the fight differs.
+
+#### THE MECHANISM: sub-second phase-end truncation of a value window
+
+Native's AP is requested at 130 and **fires at 130.58**, running to **145.58**. The AoE phase ends at
+**145.00** and genapl stops casting AE there (`currentTime < 145s`). The AE lattice inside the phase is
+hard-anchored to the phase start (first AE at exactly 105.00, then +Δ, Δ ≈ 1.1124 s): after 144.02 the
+next lattice point is 145.13 — **past the wall**. So native's 0.58 s of overhang buys nothing and its
+15 s window covers only **14.42 s of in-phase lattice**, i.e. one fewer AE than borrowed, whose
+[120.57, 135.57] sits wholly in the window interior where the same 0.57 s slip is harmless.
+
+**The asymmetry is the whole error.** A slip inside a window's interior is self-cancelling (what the
+start loses the end regains — the phase-average argument that `simulate()` is built on); a slip at a
+**hard edge** is clamped and is a real loss. That is *precisely* the case `:785` already exists to price
+— and it is unreachable here.
+
+#### THE ROOT CAUSE, BY LINE (`index.html`)
+
+An on-use press inside an AoE segment is credited from its **intent** time with **zero slip**, because
+two independent guards each disable the correct treatment:
+
+- **`:855` `prevCastRamp = !isAoe && stacks < g.AB.MAX_STACKS;`** — the deterministic ramp-snap branch at
+  `:773` (`if (prevCastRamp && e.ts < prevCastEnd) eff = prevCastEnd`) is switched **off** inside AoE.
+  Its own comment justifies snapping "DURING A RAMP [where] the boundaries are sparse and DETERMINISTIC
+  (locked to the ramp start, no phase freedom)" — and an AoE lattice is *exactly* that: locked to the
+  phase start, no phase freedom. The guard excludes the one place its own rationale applies hardest.
+- **`:820` `if (isAoe) return { cast: 0, gcd, interval: gcd, … }`** ⇒ `:853`
+  `prevCastEnd = t + Math.min(interval, castLen)` with `castLen = 0` ⇒ **`prevCastEnd === t`**, so the
+  expected-slippage fallback at `:785` (`else if (eff < prevCastEnd) slip = prevInterval / 2`) can never
+  trigger inside an AoE phase. AE is instant, so "no cast in flight" is true — but the *press still
+  cannot land before the next GCD boundary*, which is what the slip term models.
+
+Net: the model scores native's AP over **[130, 145] = 15.0 s fully in-phase**; the sim delivers
+**[130.58, 145.58] ∩ [105,145] = 14.42 s**. For borrowed the same slip changes nothing. **One-sided ⇒ a
+ranking error, not a level error.**
+
+The model's cadence is *already right*: model Δ = 1.5/(1.20 × 1.12365) = **1.1128 s** vs sim **1.1124 s**;
+model's Zerk speed-up boundary **130.59** vs sim **130.58**. The missing piece is the **snap**, not the
+lattice.
+
+#### THE MODEL-SIDE CUSP (`$SP/aoewin/modelsweep.mjs`, `fine.mjs`)
+
+Scoring the model's own objective across press time P (AP/Zerk/Gem cluster; Icon fixed at 125):
+
+| P | 125 | 126 | 127 | 128 | 129 | **130** | 131 | 132 |
+|---|---|---|---|---|---|---|---|---|
+| model score | 800641.9 | 800641.9 | 800641.9 | 800641.9 | 800641.9 | **801010.3** | 799638.1 | 797627.2 |
+
+Flat to the decimal for P ∈ {125..129} — correct translation invariance — then a **+368.4 damage
+(+0.046 pp) spike at exactly P = 130**, then a fall. Three properties prove it is an artifact:
+
+1. **It is a cusp at `P = E − dur` and nowhere else.** Sweeping the AoE phase end E: at **E = 146, 147,
+   150** the P=129 and P=130 scores are **bit-equal** (translation invariance holds, as it must); at
+   **E = 143, 144** the flush placement is **−1539.8** worse. The bonus exists **only** at E = 145.
+2. **It is non-additive across keys** — moving 129→130 for AP alone = **−29**, Gem alone = **−68**, Zerk
+   alone = **0**, all three together = **+368**. A genuine physical effect that is separable in the sim
+   should not be born only from the triple.
+3. **No tail ripple is involved.** The post-window AB starts are identical (145.15, 147.37, 149.30,
+   150.93) for every P, and the board holds 37 AE casts at every P.
+
+#### TOTAL RANKING ERROR — BOTH SIDES CLOSE
+
+| | model | sim |
+|---|---|---|
+| prefers | native (P=130) by **0.0536 pp** | borrowed by **0.2930 pp** |
+
+Sum **0.3466 pp ≈ 3363 damage** = the **368** damage model cusp **+ 2995** damage sim-side lost cast.
+The two independent halves add to the observed sign flip.
+
+#### W4′ — THE PREDICTIVE TEST (pre-registered before running; ALL THREE FALSIFIERS FAIL TO FIRE)
+
+Prediction, written before any sim ran: *sim DPS is flat within noise across P ∈ {126..129}, drops
+≈0.30 pp between 129 and 130, keeps falling for 131/132, and — because the snap is δ-invariant — the
+cliff lands at the same P in every wall-jitter variant. **The model's own choice should be the WORST of
+{126..130}.*** Run: `cell-band.mjs`, same cell, 7 press times × 5 variants vs native(130).
+
+| P | 120 | 120 parity-free | 126 | 127 | 128 | 129 | **130** | 131 | 132 |
+|---|---|---|---|---|---|---|---|---|---|
+| pct vs native130 | +0.2808 | **+0.2151** | +0.2926 | +0.2943 | +0.3019 | **+0.2960** | **0 (ref)** | −0.3053 | −0.4664 |
+| variant sd | 0.1471 ⚠ | 0.0068 | 0.0051 | 0.0054 | 0.0068 | 0.0018 | — | 0.0058 | 0.0095 |
+
+- **(a) "no step at 129→130"** — does not fire. Step **0.2960 pp = 370 SEM**, 2.4× the boss cell's own
+  95 % band (±0.1251).
+- **(b) "the step moves, or moves per variant"** — does not fire. Same location and size in all five
+  δ-vectors (P=129 sd 0.0018; P=131 sd 0.0058). **δ-invariance confirmed**: the lattice is anchored to
+  the phase start, so wall jitter translates the picture rigidly and cannot move the cliff.
+- **(c) "the step is materially larger than one cast"** — does not fire. native130 = 2372.3 DPS × 420 s
+  = 996 366 damage; the traded cast is 10780 − 7785 = 2995 = **0.3006 pp**. Measured **0.2960 pp =
+  98.5 % of exactly one cast.** No second mechanism rides along.
+
+Two things the sweep adds beyond the grading:
+
+- **The plateau IS translation invariance, made visible.** {126..129} span 0.0093 pp — under 2 SEM of
+  each other. For P < 130 the window is wholly inside the phase, so a later press trades one AE out at
+  the front for one in at the back: net zero. Past 130 the back hangs over the wall and the trade goes
+  one-sided. **The model is not "10 s off"; it is one press-second past a wall.** (P=131 and P=132 fall
+  further, so 130 is the argmin of the flat top, not of the whole sweep — as pre-registered.)
+- ⚠ **A prediction of mine MISSED and is recorded as such.** I predicted P=120 would sit ≈0.03 pp under
+  the plateau; parity-free it sits **0.08 pp** under, ~2.5× off. The cause is a *different, correct*
+  effect: this sweep holds Icon at 125, so at P=120 the AP/Gem window opens 5 s before Icon and ~4 casts
+  are bought without it (ordinary Correction 1). The original duel's `borrowed`, which moves Icon **with**
+  the cluster, lands at **+0.2930** — dead on the plateau. So the plateau is *"cluster coherent and
+  wholly inside the window"*. Relatedly, P=120 is the **only** arm where the §5.17 parity mode fires
+  (v0 δ=0 at 0.5438 vs ~0.21; sd 0.1471 where every other arm is ~0.005) — consistent with its being the
+  only non-coherent arm. §5.17's rule applied: **quote the parity-free subset, never the mixture.**
+
+#### What this does and does not license
+
+**Does:** promote §5.17's Correction-3 CANDIDATE to a **CONFIRMED** rule (RULES §9), with a named
+mechanism, two code sites, an arithmetic ledger and a predictive test. It also **retires** the framing
+that the model "prefers the end of the window" — it does not; its curve is flat across the interior and
+spikes only at the wall.
+
+**Does not:** authorize an engine patch on its own. The fix is specified (below) but every engine change
+still owes the plan-sweep loop, exact-match 25/25, and a head-to-head **DUEL of every changed cell against
+its previous layout** — `monoDip`/`diagWorst` are aggregates and can improve while one cell regresses.
+
+**The fix, specified:** inside an AoE segment a press's effective start must receive the same
+deterministic treatment a ramp press gets at `:773` — snap forward to the next AE lattice boundary — which
+requires `:855` to stop excluding `isAoe`, or an equivalent AoE-specific snap. The `:820` `cast: 0` path
+must additionally stop collapsing `prevCastEnd` to `t`, or `:785`'s expected-slip fallback stays dead.
+Both edits move *every* AoE-phase plan, so the DUEL obligation is wide, not narrow.
+
+**The acceptance-criterion restatement remains a user call and is not made here.**

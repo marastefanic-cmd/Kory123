@@ -342,10 +342,31 @@ is **complete**. Top class cell stands: `isc+skull long T=293 @130`, excess **0.
 (press times, walls, geometries and seed all identical; `_aoe` deleted and `--targets` dropped) collapses the
 deficit from **+0.2930 ±0.0068 pp to −0.0063 ±0.0048 pp** on the parity-free geometries — statistically
 identical. **The AoE window accounts for 102 % of it.** Outside the window the model ranks this pair exactly
-right, so this is **not** a burn-model, search, or tail-lattice error: it is **within-AoE-window placement**
-(the model packs the cluster against the window end; the sim wants it ~10 s earlier). Filed as the
-Correction-3 *candidate* in RULES §9 — measured at one cell family, cause not yet named, **no engine change
-made**. Phase 7's remaining work is that one term.
+right, so this is **not** a burn-model, search, or tail-lattice error: it is **within-AoE-window placement**.
+
+**★★★ And that term is now SOLVED (07-25, P7.14 — PHASE7 §5.18, RULES §9 Correction 3, promoted
+CANDIDATE → CONFIRMED).** The whole surviving boss deficit is **ONE Arcane Explosion cast**, and the
+"model packs against the window end / sim wants it 10 s earlier" reading is **retired**: the model's
+press-time curve is *flat to the decimal* across the window interior and spikes only **at the wall**.
+Mechanism: a press inside an AoE phase fires ~0.58 s late, the AE lattice is hard-anchored to the phase
+*start*, and the APL stops casting AE at the phase end — so a window placed flush (`press + dur ==
+phaseEnd`) has its slipped tail clamped and loses its last lattice point, while an interior window's slip
+is self-cancelling. Closed on both sides: sim-side aura-state ledger **+2995 damage** vs measured
+**2919 ± 35** (**102.6 %**), model-side artifact cusp **+368** at exactly `P = phaseEnd − dur` (bit-equal
+at other phase ends, non-additive across keys); **368 + 2995 = 0.347 pp** = the observed sign flip
+(model prefers native by 0.0536, sim prefers borrowed by 0.2930). A **pre-registered predictive sweep**
+confirms it: sim pct vs the model's champion is flat at +0.29–0.30 for P ∈ {126..129}, the 129→130 step
+is **370 SEM** and **98.5 % of exactly one cast**, and all five wall-jitter variants put the cliff at the
+same P (sd 0.0018). All three falsifiers fail to fire.
+
+⇒ **Phase 7's diagnostic mandate is discharged: every residual deficit in this corpus is now explained.**
+What remains is an **engine fix, not a diagnosis** — root-caused to `index.html:855` (`prevCastRamp =
+!isAoe && …`, which switches off the deterministic snap at `:773` precisely where the lattice is most
+deterministic) and `:820` (`cast: 0` ⇒ `prevCastEnd === t`, making `:785`'s slip fallback unreachable
+inside AoE). ⚠ **Not yet patched.** Both edits move every AoE-phase plan, so the fix owes the plan-sweep
+loop, exact-match 25/25, and a head-to-head **DUEL of every changed cell against its previous layout**
+(aggregates can improve while one cell regresses). The **15 class over-floor cells are untouched by this
+finding** — they carry no AoE window — and remain the other half of the acceptance gap.
 
 **★★★ Round 5 proves the B failure is NOT a reference-gear artifact.** The correction was a genuine
 repricing: `xval-round-diff` reports **124 of 345 plan cells changed (35.9%)** across 34/36 tables on a

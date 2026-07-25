@@ -79,13 +79,32 @@
    (3) ★★★ **The survivor is 100 % AoE-WINDOW VALUATION.** Ablating `_aoe` (press times, walls, geometries and
    seed identical) collapses the deficit from **+0.2930 ±0.0068 pp to −0.0063 ±0.0048** — the window accounts
    for **102 %** of the parity-free gap, so burn model, search and tail lattice are excluded in one
-   measurement. What remains is **within-window placement**: the model packs the cluster against the window's
-   END, the sim wants it **~10 s earlier**, and both candidates sit wholly inside the window so **neither**
-   RULES §9 Correction 1 nor Correction 2 applies. Filed as the **Correction-3 candidate** (RULES §9) — one
-   cell family, cause unnamed, **no engine change**. ⇒ **Phase 7's remaining work is that one term**, plus 15
-   class cells whose floor is complete (top excess 0.1653 pp). Next measurement, to be pre-registered before
-   it runs: sweep the cluster press time 110→140 in the sim on the parity-free geometries and compare to the
-   model's own curve — the *shape* of the gap names the term.
+   measurement. What remains is **within-window placement**, filed as the **Correction-3 candidate**.
+   ★★★ **P7.14 SOLVED IT (07-25, PHASE7 §5.18; RULES §9 Correction 3 promoted CANDIDATE → CONFIRMED; no
+   `index.html` change).** The entire surviving boss deficit is **ONE Arcane Explosion cast**, and the
+   "model packs against the END, sim wants it 10 s earlier" reading is **RETIRED** — the model's press-time
+   curve is *flat to the decimal* across the window interior (translation invariance, correct) and spikes
+   only **at the wall**. Mechanism: a press inside an AoE phase fires **~0.58 s late**, the AE lattice is
+   **hard-anchored to the phase start**, and the APL stops casting AE at the phase end — so a window placed
+   **flush** (`press + dur == phaseEnd`) has its slipped tail **clamped** and loses its last lattice point,
+   where an interior window's slip is self-cancelling. **One-sided ⇒ a ranking error.** Closed on both
+   sides: an assumption-free aura-state ledger over the two combat logs gives **+2995 damage** vs measured
+   **2919 ± 35** (**102.6 %**), and the model's own artifact cusp is **+368** at exactly `P = phaseEnd −
+   dur` (bit-equal at other phase ends; non-additive across keys — AP alone −29, Gem alone −68, Zerk alone
+   0, all three +368). **368 + 2995 = 0.347 pp** = exactly the observed sign flip. A **pre-registered
+   predictive sweep** confirms it and **all three falsifiers fail to fire**: sim pct vs the model's champion
+   is flat at +0.2926/+0.2943/+0.3019/+0.2960 for P ∈ {126..129}, the 129→130 step is **370 SEM** and
+   **98.5 % of exactly one cast**, and all five wall-jitter variants put the cliff at the same P (sd 0.0018)
+   ⇒ the snap is **δ-invariant**, as a phase-start-anchored lattice requires. Method note: the decomposition
+   cost **zero extra sim runs** — it fell out of the `SIMLOG=1` logs captured for the legality gate (new
+   TOOLING technique: **walk the aura stream and pool damage per state; crit cancels**). ⇒ **Phase 7's
+   diagnostic mandate is DISCHARGED — every residual deficit in this corpus is explained.** What is left is
+   an **engine fix, not a diagnosis**: `index.html:855` (`prevCastRamp = !isAoe && …` switches off the
+   deterministic snap at `:773` precisely where the lattice is most deterministic) and `:820` (`cast: 0` ⇒
+   `prevCastEnd === t`, making `:785`'s slip fallback unreachable inside AoE). ⚠ **Not yet patched** — both
+   edits move every AoE-phase plan, so the fix owes plan-sweep + exact-match 25/25 + a **DUEL of every
+   changed cell against its previous layout**. Plus 15 class cells whose floor is complete (top excess
+   0.1653 pp) and which carry no AoE window, so this finding does not touch them.
    What landed earlier: three sim-gated scorer terms (RULES §3b — press-snap
    slippage at hard edges; externals snap to the cast lattice, which tempers the IV@0 "ramp
    compression" credit; ramp casts snapshot buffs at cast START), two search passes (polished CS
