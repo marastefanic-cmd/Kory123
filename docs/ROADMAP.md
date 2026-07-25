@@ -2,6 +2,53 @@
 
 ## Resuming after a context clear (start here)
 
+### ⏳ 0. FRESHEST STATE (07-25) — ROUND 6 IS IN FLIGHT, and it already found a search regression
+
+**Read this before anything below it; items 1–2 describe round 5, which round 6 supersedes.**
+
+- **Round 6 = the `emit=fire` re-gather** (task #70). `tools/xval-results/` is being refilled; round 5
+  is archived at `tools/xval-results-archive/phase7-round5/` (the last `emit=intent` round — a table
+  with **no `emit=` stamp** is `intent`, that is the classification rule). The driver
+  (`tools/xval-rerun.sh`) is detached and **commits + pushes each batch itself**, so the round lands
+  in git with or without a live session. A complete round is **36 tables**.
+- **Every `XVAL-DONE` so far reads `emit=fire artifact=0 monoDip=0.00%`** — the two things task #70
+  asks to verify are holding on all 30 class tables.
+- **The rig lives OUTSIDE this session's scratchpad.** Discover it by CONTENT, never by mtime — that
+  is what `tools/xval-env.sh` does (`ls -dt /tmp/claude-*/*/*/scratchpad` then test for
+  `wowsims/runner-ap180`). Only one sibling scratchpad has it.
+  ⚠ **Override `XVDIR` to a fresh dir** when re-running: `ckpt()` copies `$XVDIR/*.txt` into the repo
+  blindly, and the default `$SP/xvcamp7` still holds prior-round tables that would contaminate it.
+- **★★★ NEW DEFECT, and it gates the final verdict — `docs/PHASE9.md §5.15`.** The −8.5% CPU landing
+  (§5.12 groom early exit + §5.14 `groupSeeds`) is **not plan-neutral off the golden corpus, and the
+  movement is one-directional**. Round5→round6 on 100 class cells:
+  `EFF-AUDIT unchangedSpecs=82 scorerMoved=0 movedSpecs=18 → worse=3 better=0 tie=15`. Worst is
+  `mqg-skull-medlong @h265`, eff **204.883 → 204.812 (−0.0347 %)**, a genuine restructure
+  (`AP:[3,183]→[4,205]`, `MQG:[60]→[140]`). Needs **no sim**: `eff` is the model's own objective and
+  the audit *proves* the scorer is pinned (82 byte-identical specs score byte-identically), so a lower
+  eff means the optimizer rejected a layout it had found and its own objective prefers.
+  - Why no gate caught it: both landed on `PLAN-DIFF changed=0` over the 25 goldens. `plan-diff` does
+    carry a per-cell `dScore`, but with `changed=0` that field was **never populated** — the one number
+    that would have caught it was structurally guaranteed empty on the only corpus it ran against.
+  - **Attribution is owed** (task #4): groom-exit vs `groupSeeds` vs interaction, one variable at a
+    time against `git show <pre-landing>:index.html`. Sim-free. Needs **idle cores**, and must not
+    modify the repo's `index.html` while a campaign is reading it per cell — sweep a scratchpad copy.
+  - **Do not read a FINAL acceptance verdict off an engine carrying this.** Round 6 is still the
+    `emit=fire` re-baseline the docs demand (acceptance was already failing), but the verdict waits.
+- **Grade the round when 36 tables are present** (a partial directory is the false-pass shape both
+  instruments were hardened against):
+  ```
+  grep -h XVAL-DONE tools/xval-results/*.txt        # assert emit=fire + artifact=0 on all 36
+  node tools/xval-verify.mjs   tools/xval-results
+  node tools/xval-collect.mjs  tools/xval-results
+  node tools/xval-persist.mjs  tools/xval-results
+  node tools/xval-round-diff.mjs tools/xval-results-archive/phase7-round5 tools/xval-results
+  ```
+  Watch for **phantom deficits vanishing** on the boss half: `intent` *inflated* 2 of 60 banked plans
+  ~0.26 %, and an inflated plan in a *borrowed* column manufactures a deficit that was never real
+  (PHASE7 §5.22). Also expect KT's 3 over-floor survivors to move — P7.14 changes KT plans.
+- **Still open after that:** the 15 class over-floor cells (Phase 7) and B2's crossing-location error
+  with the P3 context-asymmetry round-10 candidate (Phase 8).
+
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
 2. **Plan in flight: `docs/PHASE7.md` — FIX the cross-val deficits so the acceptance test passes.
