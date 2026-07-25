@@ -31,18 +31,21 @@
 // The distinction matters because a tie-break needs no re-verification (the number it optimizes is
 // unchanged) while a repricing invalidates every ranking gathered under the old scorer.
 //
-// ★ A ROUND DIFF IS AN OBSERVATION, NOT A GRADE.  Exit codes follow the project contract:
-//   0 = compared cleanly · 2 = COULD NOT compare.  Exit 1 is unused on purpose — "12 plans changed"
-// is data for a human, and no threshold here decides whether the model got better.
+// ★ A ROUND DIFF IS AN OBSERVATION, NOT A GRADE — WITH ONE EXCEPTION.  Exit codes:
+//   0 = compared cleanly · 1 = SEARCH REGRESSION (below) · 2 = COULD NOT compare.  "12 plans
+// changed" is still data for a human, and no threshold here decides whether the model got better.
 //
-// ⚠ THAT LAST SENTENCE USED TO END "Only the sim columns can say that, and this tool does not touch
-// them."  PARTLY FALSIFIED 07-25 (PHASE9 §5.15).  When the two rounds share a scorer — which this tool
-// can now PROVE, by checking that every byte-identical spec scores byte-identically — a moved plan
-// whose eff went DOWN is a search regression by definition, with no sim required: the optimizer
-// rejected a layout it had previously found and its own objective prefers.  Hence the EFF-AUDIT block
-// at the bottom.  The exit code is deliberately left at 0 anyway: this file's contract is quoted in
-// tools/xval-results/README.md and callers grade on it, so the finding is made LOUD rather than fatal.
-// Whether it should become exit 1 is an open question recorded in §5.15, not a decision made silently.
+// The exception (07-25, PHASE9 §5.15): when the two rounds share a scorer — which this tool PROVES,
+// by checking that every byte-identical spec scores byte-identically — a moved plan whose eff went
+// DOWN is a search regression by definition, with no sim required: the optimizer rejected a layout
+// it had previously found and its own objective prefers.  Hence the EFF-AUDIT block at the bottom,
+// and `worse > 0` under a pinned scorer is EXIT 1 (the contract change is mirrored in
+// tools/xval-results/README.md, same commit).  `--observe` restores the old observation-only exit
+// for a round pair KNOWN to trade eff deliberately (an epsilon-bounded legibility canonicalization
+// like §5.11 could legitimately print tiny negatives) — pass it because you can name the trade, not
+// because the exit is inconvenient.  Decision provenance: §5.15 said "decide with the user"; the
+// user was asked 07-25 and deferred, so default-fatal + explicit opt-out was chosen to match the
+// rule just landed in plan-diff (a regression must not ride a green exit into an acceptance round).
 //
 // ★ THE FALSE-PASS SHAPE THIS TOOL HAS.  Its headline is an ABSENCE ("0 plans changed"), which is
 // exactly what a misread directory, a filename convention drift, or an unparseable table also
@@ -54,9 +57,10 @@ import path from 'path';
 
 const args = process.argv.slice(2);
 const FULL = args.includes('--full');
+const OBSERVE = args.includes('--observe');
 const dirs = args.filter(a => !a.startsWith('--'));
 if (dirs.length !== 2) {
-  console.error('ERROR: usage: node tools/xval-round-diff.mjs <dirA> <dirB> [--full]');
+  console.error('ERROR: usage: node tools/xval-round-diff.mjs <dirA> <dirB> [--full] [--observe]');
   console.error('  dirA = the OLDER round (e.g. tools/xval-results-archive/phase7-round4)');
   console.error('  dirB = the NEWER round (e.g. tools/xval-results)');
   process.exit(2);
@@ -206,5 +210,12 @@ if (effWorse.length && !effScorerMoved) {
 if (nErr) {
   console.log(`\nROUND-DIFF-INCOMPLETE — ${nErr} table(s) could not be parsed; the counts above are PARTIAL.`);
   process.exit(2);
+}
+// The one graded case (header ¶3): a proven search regression is exit 1 unless the caller declared
+// the round pair an intentional eff trade with --observe.  Guards mirror the proof's premises: the
+// scorer must be PINNED (no scorerMoved) and the pin must rest on at least one unchanged spec.
+if (effWorse.length && !effScorerMoved && effSame && !OBSERVE) {
+  console.log('\nROUND-DIFF FAIL — search regression under a pinned scorer (pass --observe only for a NAMED, deliberate eff trade).');
+  process.exit(1);
 }
 process.exit(0);

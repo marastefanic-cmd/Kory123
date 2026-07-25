@@ -2766,8 +2766,17 @@ sign + the named regression list. Exit stays **0** — the file's exit contract 
 `tools/xval-results/README.md` and callers grade on it, so this is made loud, not fatal.
 
 **Open (deliberately not decided here):**
-1. Should EFF-AUDIT's `worse>0` become **exit 1**? It is a genuine grade, but it changes a published
-   contract; decide it with the user, not silently.
+1. ✅ **DECIDED (07-25): yes — `worse>0` under a pinned scorer is exit 1**, with `--observe` restoring
+   the old observation-only exit for a round pair *known* to trade eff deliberately (the §5.11-style
+   epsilon canonicalization is the named case). The user was asked per this item's instruction and
+   deferred ("no idea"), so default-fatal + explicit opt-out was chosen to match plan-diff's new rule:
+   a proven regression must not ride a green exit into an acceptance round, and the escape hatch
+   exists in the tool rather than being improvised later. Contract updated in the file header and
+   `tools/xval-results/README.md`, same commit. ⚠ Running the audit over all **30** round-6 class
+   tables (vs the 10 the table above had) reads `movedSpecs=52 → worse=7 better=5 tie=40` — the
+   regression list for attribution is **seven cells**, and the "not one got better" sentence above
+   describes the first-10 snapshot only (5 cells did improve once the full class half landed; each
+   `worse` cell remains individually provable regardless).
 2. ✅ **LANDED (07-25): `plan-diff` has the rule** — the `SCORE-AUDIT` block. It proves scorer
    identity the same way EFF-AUDIT does (a cell whose plan is byte-identical must score
    byte-identically; determinism guarantees it under a shared scorer), then splits changed cells by

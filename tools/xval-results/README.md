@@ -71,9 +71,12 @@ EFF-AUDIT unchangedSpecs=82 scorerMoved=0 movedSpecs=18 → worse=3 better=0 tie
 
 It found three such cells on round5→round6 (the −8.5% CPU landing), which every existing gate had
 missed because they gate on plan-*identity* and were only ever run on a corpus where plans didn't move.
-The exit code is still 0 — this file's exit contract is quoted above and callers grade on it — so the
-finding is loud, not fatal. **Do not read a final acceptance verdict off a round whose EFF-AUDIT shows
-`worse > 0`;** attribute the regression first.
+**Since 07-25 this is a GRADE: `worse > 0` under a pinned scorer is exit 1** (the tool's contract is
+now 0 = compared cleanly · 1 = search regression · 2 = could not compare). `--observe` restores the
+observation-only exit for a round pair *known* to trade eff deliberately (an epsilon-bounded
+legibility canonicalization like §5.11) — pass it because you can name the trade, not because the
+exit is inconvenient. Either way, **do not read a final acceptance verdict off a round whose
+EFF-AUDIT shows `worse > 0`;** attribute the regression first.
 
 ## What's here
 - `<kit>-<class>.txt` — one full run per (trinket kit × fight-length class). Each file contains:

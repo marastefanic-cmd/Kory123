@@ -32,6 +32,11 @@
     ✅ **The gate hole is CLOSED (07-25): `plan-diff` now carries the SCORE-AUDIT** — scorer-identity
     proof on unchanged cells, sign split on changed ones, and scorer-pinned `ΔScore<0` = exit 1 even
     under `--allow-change` (PHASE9 §5.15 open item 2 → landed; §5.3 contract updated).
+    ✅ **And `xval-round-diff` now GRADES it too**: `worse>0` under a pinned scorer = exit 1, with
+    `--observe` as the named-trade opt-out (user asked, deferred; decided default-fatal to match).
+    ⚠ On the full 30 class tables the audit reads `movedSpecs=52 → worse=7 better=5 tie=40` — the
+    attribution list is **SEVEN cells** (worst still `mqg-skull-medlong @h265` −0.0347%), not the 3
+    the first-10 snapshot showed, and `better=0` did not survive the full half (5 cells improved).
   - **Attribution is owed** (task #4): groom-exit vs `groupSeeds` vs interaction, one variable at a
     time against `git show <pre-landing>:index.html`. Sim-free. Needs **idle cores**, and must not
     modify the repo's `index.html` while a campaign is reading it per cell — sweep a scratchpad copy.
