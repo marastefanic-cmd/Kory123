@@ -2677,7 +2677,12 @@ should show them netted, not each claiming its own headline.
 > delta against a baseline swept **in the same session, at the same `jobs`, under the same load** — a
 > figure lifted out of one table and compared to a figure in another is meaningless.
 
-### 4.21 Incidental datum from P7.14: `simulate()` memoizes, and the memo is already load-bearing
+### 4.22 Incidental datum from P7.14: `simulate()` memoizes, and the memo is already load-bearing
+
+> **§ number corrected 07-25 — this was appended as a second "4.21" and collided with the `admit`
+> patch section at line 1407, which a dozen cross-references point to by number.** Nothing else in the
+> document referenced *this* one, so the later section moved. Append-only means the text stays, not that
+> a numbering mistake has to stay with it.
 
 Surfaced by accident while instrumenting the engine for the AoE press-snap fix (PHASE7 §5.19). A trace
 split printed nonsense — `integral d = −742070` — at one press time whose **snapped schedule duplicated
