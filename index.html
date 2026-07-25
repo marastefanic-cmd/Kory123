@@ -2915,10 +2915,18 @@ function optimizeCore(cfg, starts, onProgress) {
                 if (champ.val - bestTrim < castVal) csAddsUse = false; // the extra IV isn't worth a use → repositioning regime
               }
               const bar = (endChain || !csAddsUse) ? castVal / 8 : castVal;
+              // ★ Re-score the plan we are about to EMIT.  `normalize()` runs after the last
+              // simulate() and coPressAlign spends a designed pressability trade of up to
+              // castVal/8; carrying the pre-transform `val` therefore reported the score of a
+              // DIFFERENT plan than the one shipped — measured at up to 0.153 eff casts, on these
+              // two Cold-Snap paths specifically (PHASE7 §5.14).  csNote.delta stays on the
+              // pre-transform values: it records the margin the branch was DECIDED on.
               if (bestN.val >= champ.val - bar) {
-                resolve({ s: await canonicalWindowOrder(await normalize(bestN.s)), val: bestN.val, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote });
+                const sOut = await canonicalWindowOrder(await normalize(bestN.s));
+                resolve({ s: sOut, val: simulate(sOut, cfg).robust, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote });
               } else {
-                resolve({ ...champ, s: await canonicalWindowOrder(await normalize(champ.s)), csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote });
+                const sOut = await canonicalWindowOrder(await normalize(champ.s));
+                resolve({ ...champ, s: sOut, val: simulate(sOut, cfg).robust, csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote });
               }
             });
             return;
@@ -2926,6 +2934,7 @@ function optimizeCore(cfg, starts, onProgress) {
           best.csNote = { unused: true };
         }
         best.s = await canonicalWindowOrder(best.s); // §5.11 final canonicalization (exact-tie only)
+        best.val = simulate(best.s, cfg).robust;     // …and report the score of THAT plan (PHASE7 §5.14)
         resolve(best);
       }
     })();

@@ -554,18 +554,24 @@ and confirms it is whatever the transform happened to trade on that plan.
   as the 0.153 worst over-report, so a genuine search miss up to ~0.30 could print
   `PASS (within pressability slack)`. **Fixed** (`tools/brute-grid.mjs`): it now grades
   `simulate(best.s, cfg).robust`, making both sides apples-to-apples.
-- **Its bearing on invariant B is plausible but UNPROVEN.** A plan selected on an inflated `val` and
-  then emitted in a slightly worse normalized form is precisely the "native loses to a borrowed plan"
-  signature. But the `:2918` branch comparison (`bestN.val >= champ.val - bar`) happens *before* the
-  transforms, so recomputing `val` afterwards is expected to change only the reported number, not the
-  emitted plan. **Expected, not verified** — the exact-match suite is the test that settles it, and it
-  has not been run against this change. Do not book this as a B fix until it has.
+- **It does NOT bear on invariant B — now SETTLED, not merely expected.** A plan selected on an inflated
+  `val` and then emitted in a slightly worse normalized form would be precisely the "native loses to a
+  borrowed plan" signature. But the `:2918` branch comparison (`bestN.val >= champ.val - bar`) happens
+  *before* the transforms, so recomputing `val` afterwards changes only the reported number, not the
+  emitted plan. **Verified:** with the fix applied the exact-match suite is **25/25, zero goldens moved**
+  — every emitted plan is byte-identical. **This is not a B fix; do not book it as one.** B remains open
+  and is Phase 8's target.
 
-#### Decision
+#### Decision — APPLIED
 
-The fix is to re-score after the transform at all three sites. It is **gated on exact-match 25/25**:
-if any golden moves, the change is not a reporting fix but a plan change, and must be re-argued on
-effective-AB grounds before it lands. Not yet applied.
+The fix re-scores after the transform at all three sites (`index.html:2919 / :2921 / :2928`), reusing
+the pattern the fixpoint at `:2792-2796` already used correctly. `csNote.delta` deliberately stays on
+the pre-transform values: it records the margin the branch was **decided** on, which is a different
+question from what the emitted plan scores.
+
+Gate: **exact-match 25/25, zero goldens moved** — confirming this is a reporting fix, not a plan change.
+Confirmation sweep: the prevalence instrument re-run against the fixed engine reports **0/25 presets
+where reported `val` != `simulate(returned plan)`, worst over-report 0.0000** (was 4/25, worst 0.1533).
 
 *Instrument note (the class again).* The first version of the prevalence sweep called a function that
 did not exist; all 25 presets threw, and the summary still printed **"0/25 presets where reported val
