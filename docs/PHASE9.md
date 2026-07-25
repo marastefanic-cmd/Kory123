@@ -393,3 +393,40 @@ guard stays at polish's call site as `>= 2` inside the mutator, per §4.9(B).
 **Landing order within §4.9:** (B) first — it is 8 lines, touches two call sites, and cannot interact with the
 accept path. Then (A). Re-run `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` after
 each, separately, so a failure names its own cause.
+
+### 4.11 ⚠ THE SCOPE GUARD on §4.9(A) — **there are TWO accept tolerances, and only one is an epsilon**
+Static census of `index.html` (lexical, free — the *dynamic* counts §4.7 wants still need the instrumented
+run): **63 `simulate(` call sites and 42 `repair(` sites**. The accept-shaped ones split into two families
+that look alike and are semantically opposite:
+
+| family | tolerance | sites | meaning |
+|---|---|---|---|
+| **strict-improve** | `1e-7` | 10 literals — polish's **5** (`1149,1155,1165,1186,1207`), plus `1341`, `1354`, `1393`, `2795`, `2816` | a floating-point epsilon: *any* real improvement is accepted |
+| **material-improve** | `QTOL` | 13 sites (`1700,1715,1804,1832,1892,1916,1964,1986,2049,2094,2171`, …) | `const QTOL = castVal` (`index.html:1536`) — **one whole cast's expected damage** |
+
+`castVal` is `(AVG_BASE_DMG + COEF·sp)·(1 + crit·(CRIT_MULT−1))·(t5two ? 1.2 : 1)` — for the campaign's
+`sp≈1450` that is a *four-figure damage number*, i.e. `QTOL` is roughly **10 orders of magnitude** larger
+than `1e-7`. It is not a sloppier epsilon; it is a deliberate materiality bar, the encoding of "a MATERIAL
+improvement … outranks aesthetics" (`:1714`) and the reason a cosmetic reshuffle can't outrank a real cast.
+
+**Therefore: `tryMove` (§4.10) must NEVER be applied to a `QTOL` site.** Folding them in would silently
+replace a whole-cast materiality bar with a float epsilon, and every aesthetic tie in `fired`/`isAnchored`/
+`nulledIn` would start winning against the layout the pass exists to protect. That is a **plan-changing**
+edit wearing a refactor's clothes — the exact failure the byte-identical constraint is meant to catch, and
+it would be caught (goldens would move), but it would cost a debugging session to attribute.
+
+§4.10's scope — polish's five `1e-7` sites and nothing else — was already right. This section records the
+*reason*, so a later reader who greps "13 accept-shaped sites, dedup them all" stops here instead.
+
+Also out of scope, and why (they share the `1e-7` epsilon but not the shape):
+- **`1341` / `1354`** — reduce over a *cache of pre-scored candidates* against `bestV`/`bestS`; there is no
+  clone→mutate→repair→simulate chain to hoist, and `1341` reads `cache.get(sigs[k]).val` rather than scoring.
+- **`1393`** — `optimizeCore`'s final best-of accumulator, carrying `csNote`/`squeakNote` through the accept.
+- **`2795`** — a *stability assertion* (`hop2.val <= simulate(s,cfg).robust + 1e-7`), not an accept at all.
+- **`2816`** — accepts `p.s` from a precomputed list into `s`/`val`/`again2`, a different state triple.
+
+*Caveat on the census itself:* the per-function attribution is **lexical** — each call site is charged to the
+nearest preceding `function`/`const … = (` declaration, so call sites inside nested arrows are charged to the
+inner helper (`fired @2112`, `nulledIn @2291`, `canonicalWindowOrder @2730`) rather than the enclosing pass.
+It bounds *where the code is*, not *how often it runs*. §4.7's instrumented run remains the only thing that
+can rank passes by actual cost, and it still needs its CPU gap.
