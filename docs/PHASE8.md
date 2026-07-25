@@ -1840,6 +1840,73 @@ false was reported. But a guard that fires two screens from its cause is a poor 
 `MODSP` and both `T` and `MODSP` are validated **by name where they are read**. Lesson for the harness
 generally: *validate inputs at the point of parse, not only outputs at the point of use.*
 
+### 19.9 ★ THE ALIGNED CROSS-CHECK (07-25) — **ROUTES AGREE.** L0b is not an artifact of its own method
+
+§19.7.5 item 3 pre-registered a **second, independent** way to remove the press-phase confound: instead of
+averaging the *sim* over phase (that is L0), align the *model* to the sim's one realized phase by scoring the
+**executed** press times. Both routes estimate the same quantity — the phase-free residual — so §19.7.5
+required them to agree, *"and if they don't, neither is trustworthy and the round stops."* L0 already wrote
+the executed presses for all 12 δ (`gate.k*.json`), so this leg costs **zero sim time**.
+
+| route | mean residual |
+|---|---|
+| **ALIGNED** (model scored at the sim's executed presses, slip suppressed) | **−0.2122 pp** (sd 0.0237) |
+| **δ-AVERAGED** (L0: sim averaged over phase, model as-is) | **−0.2280 pp** (sd 0.0468) |
+| gap | **0.0158 pp** — tolerance `AGREETOL = 0.10` |
+
+**VERDICT — ROUTES AGREE.** Two independent phase removals land on the same residual to 0.016 pp, so
+**L0b's −0.228 pp is a property of the scorer, not of either reduction.** §19.7.5's stop condition does not
+trigger; L1 proceeds.
+
+**★ THE DOUBLE-COUNT TRAP this leg exists to avoid.** Feeding executed times into `simulate()` *unchanged*
+would **double-count the snap**: `index.html:785` adds `slip = prevInterval / 2` whenever a press lands
+mid-cast, which is the *expected* snap of a press whose phase is unknown. An executed time **has already
+snapped** — its residual expected snap is **zero**. At `R = 70` that term is ≈ 0.72 s, i.e. *larger than the
+≈ 0.3 pp confound being removed*, so the naive version of item 3 would have reported a bigger error than the
+one it was correcting. The aligned leg must suppress that one term.
+
+**Method — patch the engine in memory, never on disk.** §19.5 freezes `index.html`, so the leg reads the
+page's own `<script id="engine-src">` text, replaces the single `slip = prevInterval / 2` occurrence with
+`slip = 0`, and evaluates the result in an isolated scope
+(`new Function(text + '; return { simulate, BUFFS };')()`) — the same trick `index.html` itself uses to build
+its Worker. The engine on disk is untouched and the page's own `simulate()` stays available as the reference.
+
+**Pre-registered thresholds (rationale independent of the answer).** `AGREETOL = 0.10 pp` — the width §19.7.4
+already calls "small", and *below* `REALTOL = 0.20`, so agreement at this width cannot flip L0b either way.
+`MOVETOL = 0.30 s` — the model must actually **fire** where it is fed, measured against `actEff`; further
+re-timing than that and the leg is not "aligned" and cannot grade. Exit contract `0 = AGREE · 1 = DISAGREE
+(round stops) · 2 = cannot grade` — unlike `r9l0stat.mjs`, a **disagreement here IS an instrument-level
+failure**, hence the use of exit 1.
+
+**Controls — 5/5, plus 3 in-page.** In-page: the needle must appear **exactly once** in `engine-src`; the
+in-memory eval must reproduce the *page's* `simulate()` bit-for-bit (positive: else the route is measuring
+some other engine); and the patched engine must **disagree** with the unpatched one on the same input
+(negative: if the replacement silently missed, both agree and the leg reports the *unpatched* model as
+"phase-aligned" — a false pass aimed straight at the round's own cross-check). Driven from outside:
+`AGREETOL=0.0001` → `ROUTES DISAGREE`, exit 1 · `MOVETOL=0` → `NOT ALIGNED`, exit 2 · `MODSP=/nope` → exit 2
+· a bogus `NEEDLE` → *"appears 0 times … the patch target moved"*, exit 2 · healthy → `AGREE`, exit 0.
+(`NEEDLE` is env-overridable **only** so the `hits !== 1` guard can be proven to fire.)
+
+**Three corroborations nobody planned:**
+
+- **`maxMove = 0.006 s`** across every fed press in both arms at all 12 δ — the alignment is essentially
+  exact, so "the model fires where the sim fired" is measured, not assumed.
+- **Aligned `sd` 0.0237 vs as-is 0.0468** — removing phase *halves* the residual's spread across δ, which is
+  precisely what removing a phase confound should look like. The two routes agree on the mean **and** the
+  aligned one is the quieter estimator.
+- **`castCount` is `230 -> 230` in all 12 rows.** With executed times fed, the differential cast of §19.7.3
+  vanishes at every phase — **confirming** that note's claim that the `+1 castCount` was *"a symptom, not the
+  mechanism"*: it was stream drift showing up at the truncation boundary, and it disappears the moment the
+  drift is removed. (Aligned `d_model` runs 0.162–0.341 % across δ — the model is flat in *intent* phase
+  (§19.8 secondary 2) but of course not in *executed* phase, since a different executed plan is a different
+  plan.)
+
+**Carry-over for L1.** `r9l1model.mjs`'s executed-time scoring must use **this same slip-suppressed engine
+copy**. Scoring executed presses through the stock engine double-counts the snap by ≈ 0.72 s of stream time
+per press — the trap above, in the leg where it would be hardest to notice.
+
+*Apparatus: `$SP/p8/r9l0align.mjs`, reading `r9l0/{plans,l0,model,gate.k*}.json`; writes `align.json`.*
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance

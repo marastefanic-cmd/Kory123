@@ -97,7 +97,15 @@
    own — and `sd(d_model)` = **0.017 pp** *certifies* `index.html:762-785`'s slip-invariance claim, which makes
    this a **level** error the scorer commits equally at every phase (no re-timing fix can close it).
    Phase-averaged the sim **agrees on sign** but is **5.3× smaller**, so the target is "the model over-credits
-   a stacked press ~5×", not "the model inverts a ranking". L1/L2 proceed per §19.7.5)
+   a stacked press ~5×", not "the model inverts a ranking". §19.7.5's **required cross-check then agreed**:
+   aligning the *model* to the sim's executed presses (the second, independent phase removal) gives
+   **−0.2122 pp** against L0's −0.2280 — gap 0.016 pp, tolerance 0.10 → `ROUTES AGREE`, so the residual is a
+   property of the scorer and not of either reduction (§19.9). That leg had to suppress `index.html:785`'s
+   `slip = prevInterval/2` — an executed time has already snapped, so scoring it through the stock engine
+   double-counts the snap by ≈0.72 s, *larger than the confound being removed*; done by patching the engine
+   text **in memory** (the page's own Worker trick), never on disk. Corroborations: `maxMove` 0.006 s, residual
+   spread **halved** (0.024 vs 0.047), and casts `230→230` at every δ — confirming §19.7.3's "+1 cast" was a
+   symptom. **L1/L2 proceed per §19.7.5**, with L1's model leg required to use the same slip-suppressed copy)
    and `docs/PHASE9.md` (**performance/refactor**, user-reported CPU cost — notes + hypotheses only so
    far, nothing landed; every change there is gated on byte-identical plans. **§4.7** turns the "fewer
    steps" ask into a *pass-firing census* — a pass is redundant iff its input is already its own fixpoint
