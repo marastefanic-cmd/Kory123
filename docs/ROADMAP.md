@@ -687,6 +687,16 @@ TOOLING). Findings, all sim-measured on the fixed rig:
 
 ## Status (as of the current work)
 
+- **Customizable timeline + debug export LANDED (07-25, user-requested — UI only, engine untouched).**
+  "Unlock timeline for customization" makes the burn-timeline presses drag-editable (release snaps the
+  intent to the nearest whole second); the model plan stays visible as dashed ghost bars; a second tile
+  row compares the custom layout to the model (Δ% damage + the four headline metrics with deltas, live
+  during the drag via memoized `simulate()`); re-locking validates with `repair()` (violations listed +
+  flagged, auto-fix offered) and regenerates the activation schedule/pressboard/copy-text from the
+  custom plan. "Debug export" copies input + model output + custom timeline + stats/deltas/validation
+  as one paste, including an `evalsched`-ready JSON block (round-trip verified against
+  `tests/evalsched.mjs` — identical totals). Full internals: ARCHITECTURE "Timeline customization".
+  Exact-match: 25/25 unchanged (the default render path and copy text are byte-identical without opts).
 - **Crash fix (user-reported "Page Unresponsive" kills): the engine now runs in a Web Worker (latest,
   user-directed).** The finishing stage of `optimizeAsync` (top-6 polish, `basinHop` fixpoint,
   tie-break/normalizer stack) ran **synchronously on the browser main thread** — ~minutes on long
