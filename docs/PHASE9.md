@@ -1727,3 +1727,44 @@ Two consequences, one for the gate and one for the phase:
    and it says where to look once the cheap items are in: **why does an extra press slot cost 1.35–2×,
    and is that factor irreducible or an artifact of re-exploring settled prefixes?** Open question,
    deliberately not answered here.
+
+### §5.7 Tier 1 LANDED — exact-match parallelised (547s → 270–337s)
+
+The 25 cases are independent, so the only reason the gate was sequential was that nobody had made it
+otherwise. `tests/exact-match.mjs` now fans them across `JOBS` browser pages (default `cores-1`,
+`JOBS=1` forces the old path). **Harness-only — the engine is untouched, so there is no determinism
+risk in the change itself.** Measured on the 4-core box while the xval campaign held 2 cores:
+**547s → 270.3s and 337.2s across two runs at `JOBS=3`** (~1.6–2.0×; the spread is campaign
+contention, not variance in the suite).
+
+Same round-robin slicing as the sweep, and for the same reason (§5.6): case cost tracks press count
+and the presets are `T`-ordered, so contiguous blocks hand one page every long fight.
+
+**Two invariants that parallelism could silently break, and how each is held:**
+1. **Output order must not depend on completion order.** Results are keyed by name and re-emitted in
+   `spec.cases` order. Without this, `--update` would write `golden.json` in whatever order the pages
+   happened to finish — and `JSON.stringify` preserves insertion order, so *the golden would churn on
+   job count alone*. Verified separately: `golden.json`'s 25 keys are already in preset order, so a
+   future `--update` writes byte-identical ordering.
+2. **A case that could not be produced is not a case that agrees.** Any throw or `pageerror` becomes an
+   ERROR and the run exits **2 (could not grade)** before anything reads `results` as if it covered the
+   corpus.
+
+**Both controls run.**
+- *Positive* — `JOBS=3` scores **25/25 PASS against a golden produced by the sequential runner**. That
+  is the byte-identical proof, and it is stronger than re-running `JOBS=1` would have been.
+- *Negative* — `INDEX=` (new) points the suite at a scratch copy; one with `optimizeAsync` throwing for
+  `T > 200` produced **9 ERROR cases, exit 2, in 30.3s** — and critically did *not* print "16 passed",
+  which is exactly the false-pass mode (the 16 short cases genuinely did pass).
+
+⚠ **One guard was written unreachable and had to be repointed.** The first draft refused to write a
+short golden — but every omitted case already pushes an error, and errors exit 2 first, so that branch
+could never execute. A guard that cannot fire is not protection, it is the *appearance* of protection.
+It is now a **partition** check (`PARTITION HOLE`): `slices` is a computed round-robin cover, and if a
+future edit to it dropped an index, no case would error and the corpus would silently shrink — the
+failure mode being a PASS. That is a real risk; the original was not. Repointing it also removed a
+latent crash (a missing `got` would have hit `got.split` in the FAIL branch).
+
+**Remaining honest limit:** exact-match is still a **final-state** comparison (§5.1). Parallelising it
+made it faster, not deeper — a refactor that changes a mid-pipeline accept decision which later passes
+wash out still goes green on all 25. Ladder item 0a is exactly such a change.

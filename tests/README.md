@@ -24,6 +24,42 @@ every one through the actual optimizer, and compares the resulting plan to
 
 - **All green** → no placement changed.
 - **A FAIL** prints a `- expected / + got` diff for that case.
+- **Exit codes:** `0` graded clean · `1` graded and failing · `2` **could not grade**
+  (a case errored, or the slicing left a hole). Could-not-grade beats every other
+  verdict — 24 passes and one error is not "24 passed".
+
+### Parallelism
+
+The 25 cases are independent, so they are fanned across `JOBS` browser pages
+(default `cores-1`). This is a **harness** change only — the engine is untouched —
+and `JOBS=1` must produce byte-identical output to `JOBS=N`:
+
+```
+JOBS=1 node exact-match.mjs            # sequential (the control)
+INDEX=/path/to/scratch.html node …     # point at a scratch copy (used to make the
+                                       # error guards actually fire)
+```
+
+Measured on a 4-core box: **547s sequential → 270–337s at `JOBS=3`.** Two invariants
+keep parallelism safe and are easy to break: results are keyed by name and re-emitted
+in preset order (so neither the console output nor a regenerated `golden.json`
+depends on which page finished first), and a case that throws becomes an ERROR rather
+than a silently absent one.
+
+### This is not the every-edit loop
+
+At ~5–9 minutes it is the **pre-commit** gate. For the fast loop use the bare-node
+sweep + full-precision differ, which needs no browser and no golden:
+
+```
+node ../tools/plan-sweep.mjs ../index.html A.json 3 --max-t=200   # before
+node ../tools/plan-sweep.mjs ../index.html B.json 3 --max-t=200   # after
+node ../tools/plan-diff.mjs A.json B.json
+```
+
+~33s for 16 of 25 cases (~16× faster), and it prints the changed-cell work list.
+Exact-match still runs before a commit — it is the only gate that covers the **render
+path**, which the sweep never touches. See `docs/PHASE9.md §5`.
 
 ## When a case legitimately changes
 
