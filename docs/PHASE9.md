@@ -717,11 +717,20 @@ stable order-canonical form — but stop calling it on the hot path.
 
 #### 4.13.1 The revised landing order (supersedes §4.8's items 1–2)
 
-> **⚠ AMENDED by §4.16.** Two items land *ahead* of everything below, and they change item 5's shape:
-> **(0a) extract the `admit` helper** — the legality prefix written longhand at 9 sites, byte-identical
-> by construction, worth landing on legibility alone; **(0b) hoist `counts(base)`/`clipOf(base)`** out of
-> the candidate loops, which completes a hoist the code already performs for `simulate` at the same
-> scope. After 0a, item 5's "every call site must be converted" becomes **one** call site.
+> **⚠ AMENDED by §4.16, §4.17 and §4.18.** Four items land *ahead* of everything below, and one of them
+> changes item 5's shape. All four are provable before they are measured — none may be booked as a
+> speedup until a profile says so.
+>
+> - **(0a) extract the `admit` helper** (§4.16) — the legality prefix written longhand at 9 sites,
+>   byte-identical by construction, worth landing on legibility alone. After it, item 5's "every call
+>   site must be converted" becomes **one** call site.
+> - **(0b) hoist `counts(base)`/`clipOf(base)`** (§4.16) out of the candidate loops — completes a hoist
+>   the code already performs for `simulate` at the same scope.
+> - **(0c) give the groom loop the early exit its sibling already has** (§4.17) — byte-identical by the
+>   `f1 = f2` purity argument; a small, honestly-bounded win (one `challengePass` + one dry sweep).
+> - **(0d) band the unbudgeted tail** (§4.18) — display-only, plan-neutral by inspection, and **not a
+>   speedup at all**: it makes the drop-one-use escape visible so it can be profiled and so the bar
+>   stops reading as a hang at 96%.
 
 1. **§4.13 native `JSON.stringify` as the memo key** — replaces `sigOf` at `:654` and `:1351`. Biggest
    measured win per line changed (≈1.8 s CPU/solve); miss-not-corruption failure mode.
@@ -1055,3 +1064,103 @@ says so.
 Between §4.16's step 1 and step 2: it is smaller than the `admit` extraction, independent of it, and shares
 its property of being provable before it is measured. It does **not** unblock or replace §4.7's census — it
 *removes one of the three things the census was going to be asked*.
+
+### 4.18 ★★ The file contains a hand-written cost model — and it stops 4% before the end
+
+§1 measured where the time goes. But `optimizeCore` **already carries a second, independent cost model**,
+written by hand and never checked against §1: the progress bands. The comment that installs them says so
+outright (`index.html:1450`):
+
+> *"honest progress (user-directed): labeled stages with real within-stage fractions, banded by the
+> **MEASURED cost profile** (seeds ~4%, hop dominates, fixpoint rounds mostly cache-served) … truthful,
+> instead of a bar stalled at 97% for a second run as long as the first."*
+
+Two models of the same program, built from different evidence, is a free cross-check. Taking it produces
+three findings, all verified statically.
+
+#### (1) The bar's stage model ends at `:2792`, and the optimizer does not
+
+There are exactly **three** `setStage` calls and **two** `stageFrac` sites in the whole file:
+
+| band | stage | `index.html` |
+|---|---|---|
+| 0.00 → 0.10 | seed phase — `starts = 14` polishes | `:1456`/`:1464` (raw `onProgress`) |
+| 0.14 → 0.72 | `Basin-hop (main sweep)` | `:1521` |
+| 0.72 → 0.82 | `Grooming (ties & legibility)` | `:1525` |
+| 0.82 → 0.96 | `Re-hop & canonicalize (round 1-3)` | `:2791` |
+| — | **everything after** | *nothing* |
+
+`awk 'NR>2792 && /setStage|stageFrac/'` returns **zero lines**. Every stage past the hop↔normalize fixpoint
+reports nothing at all.
+
+#### (2) The bands top out at 0.96, not the 0.98 the comment claims
+
+`:2787` documents *"round 1 [0.82,0.91], round 2 [0.91,0.955], round 3 [0.955,0.98]"*. The formula two
+lines below is `0.82 + 0.16 * (1 - 0.5^fx)`, which gives:
+
+```
+round 1: [0.8200, 0.9000]      round 2: [0.9000, 0.9400]      round 3: [0.9400, 0.9600]
+```
+
+The comment's numbers are not its own formula's (0.98 is the halving's *limit*, reached only as `fx → ∞`;
+three rounds get to 0.96). So the unreported tail is **4% of the bar**, not 2%.
+
+#### (3) The unbudgeted tail is not a rounding error — it is a `polish`-per-candidate loop
+
+What runs in that 4%, before `best = { s, val }` is even assigned:
+
+- **The drop-one-use escape** (`:2799-2827`). For every unfixed track with ≥2 uses, for every use index:
+  `cloneS` → `repair` → **a full `polish()`**. On any strict improvement it breaks out and runs a **full
+  `basinHop` + `normalize`**, then iterates — up to **4 rounds** (`while (again2 && guard2++ < 4)`).
+- **The Cold-Snap chain search** (`:2882`), another `polish` per chain candidate, inside the `.then` of the
+  recursive `optimizeCore` at `:2848`.
+
+The sizing writes itself against the bands that *do* exist:
+
+> The seed phase runs **14** polishes and is given **10%** of the bar.
+> The drop-one-use escape runs **one polish per single-use drop candidate** — on a full kit that is already
+> ~15 in a single round — plus up to **4 `basinHop`s**, and is given **0%**.
+> A `basinHop` is the unit the bar prices at **58%**.
+
+**⚠ Sized honestly, it is bimodal, and the common case is the cheap one.** `again2` is set only on a strict
+improvement (`p.val > val + 1e-7`) and `break`s immediately, so when no drop wins — the usual outcome — the
+escape costs **one round of ~15 polishes and no `basinHop`**: roughly the seed phase's whole workload, in a
+band worth nothing. The expensive mode (an improvement found ⇒ a full hop, up to 4×) is exactly the mode
+where the user is left staring at 96%.
+
+#### What the cross-check actually says
+
+The hand-written model names three stages — *"seeds ~4%, hop dominates, fixpoint rounds mostly
+cache-served"* — and **omits the tail entirely**. So the "MEASURED cost profile" it was calibrated from
+never measured the tail, and §1's `wall=31.49s` on case `long` contains time that the file's own cost
+narrative does not account for. That is worth knowing before §4.7's census is designed: **a census whose
+stage list is taken from the progress bands would inherit the same blind spot.**
+
+It is also the precise pathology the comment was written to prevent. "A bar stalled at 97% for a second run
+as long as the first" was fixed for the Cold-Snap comparison (it restarts the bar with its own label,
+`:2848`) and reintroduced by the drop-one-use escape, which was added later and never given a band.
+
+#### The fix is plan-neutral by inspection, and it is NOT a speedup
+
+`setStage` and `stageFrac` (`:1514-1515`) only write `prog`/`stage.label` and call `onProgress`. No computed
+value, comparison, or ordering anywhere reads them — they are display state, and in the headless suite
+`onProgress` is inert. So re-banding is **provably plan-neutral**, the same class as §4.16's step 1: gated
+by exact-match 25/25, but byte-identical by construction rather than by luck.
+
+Sketch: compress the three fixpoint rounds into `[0.82, 0.90]`, give the drop-one-use escape `[0.90, 0.96]`
+with a per-round `stageFrac(guard2 / 4)` and its own label, and leave `0.96 → 1.0` for the razor variant and
+finalisation. The Cold-Snap comparison keeps its restarted bar.
+
+**Do not book this as a performance win.** It makes nothing faster; it makes the slow part *visible*. It
+earns its place in this phase for two reasons: task #57's report ("the tool has gotten slow again") is a
+*perception* claim as much as a CPU one, and a bar that reaches 96% and then sits through a
+polish-per-candidate loop is indistinguishable from a hang — and because you cannot profile a stage you
+have not named.
+
+#### Tie-back to §4.17
+
+The escape's *existence* is not in question — §4.17's cheap existential test is already answered, in the
+comment at `:2799`: it fires on `isc+scb` ("one AP on the Lust cluster beats two spread"), which is a
+surviving firing and therefore a **keep**. The open question was never whether it does something; it is
+what it **costs**, and that is a number nobody has, because the one instrument that would have shown it —
+the progress bar — stops just before it starts.
