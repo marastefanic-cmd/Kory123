@@ -185,6 +185,29 @@ A press *also* cannot fire while its own cooldown is still running — a press s
 cooldown fires when the cd clears (which may be a later boundary). These two facts drive the
 intermission-resume behavior below.
 
+## ★★ `--var 0` QUANTIZES TO INTEGER CASTS — never measure a marginal with it
+
+**Use `--var 3.0` for any buff-marginal or A/B measurement. `--var 0` is not "the clean deterministic
+answer", it is a resolution failure**, and it has now faked a result twice (PHASE8 §13's "haste buffs are
+exempt from the floor law", and half of §14's round-4 table).
+
+With zero jitter every one of your 20 000 iterations is the **same fight**, so the reported DPS is
+`(integer cast count × avg damage)/T` — a **staircase**, not a smooth function. Symptoms straight out of
+the §14 sweep, all at `--var 0`, `iter=20000`, `seed=11`:
+
+- **R=64 and R=65 return byte-identical base DPS** (2287.9 both) — 1 rating point of real haste, zero
+  measured effect.
+- **IV and MQG return byte-identical marginals** at R=40/64/65/70 (+3.0249, +3.0421, +3.0421, +4.4442) —
+  two different buffs, because they happen to buy the same integer number of casts.
+- **Berserking's 10 s window measures +0.03 pp** at five of thirteen ratings — i.e. *zero* extra casts.
+
+None of that is a bug: it is the count law's `ceil` sampling at maximum exposure, and it is the **true**
+answer for one phase-locked fight. It is simply orders of magnitude coarser than the sub-cast quantity a
+marginal measures. `--var 3.0` dithers the cast phase across iterations and recovers the expectation.
+
+Rule of thumb: **if the quantity you want is smaller than one cast, you must jitter.** Reserve `--var 0`
+for reproducing a specific timeline in the combat log, never for a number you intend to compare.
+
 ## ★ THE SIM CANNOT PRESS MID-CAST — a value window covers exactly `floor(D/Δ)` casts
 
 The direct consequence of the section above, and it bites **every** damage/SP window you A/B. A value

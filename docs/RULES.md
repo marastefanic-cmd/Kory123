@@ -33,6 +33,13 @@ automatically. This single quantity is behind every rule below; they are its con
 stacking: `(1+ratingHaste) × 1.30 Lust × 1.20 IcyVeins × 1.10 Berserking …`.
 - Lust alone = +30% (1.15s, unfloored). Lust+IV = +56% (floored → 1.0s, ~3.8% of IV wasted).
   Lust+Berserking = +43% (1.05s, unfloored, fully efficient).
+- **★ The floor's location is CERTIFIED against the sim** (PHASE8 §14.6, 07-25) — not merely read off
+  `core/constants.go:13` (`GCDMin = 1s`). Three two-buff sets cross `m = 1.5` at three *different* gear
+  ratings — IV+MQG at **R=64.25**, IV+Zerk at **215.05**, MQG+Zerk at **243.45** (from
+  `R* = 1577·(1.5/mult − 1) − rating_add`) — and each was bracketed to a single rating point. In all three
+  the sim's marginal slope turns over inside the **same** point the model's does, while the three singles
+  (which never cross anywhere on the grid) kink nowhere. The cast and the GCD clamp *together* because a
+  3-stack AB is `2.5 − 3×⅓ = 1.5 s` = `GCD_BASE` exactly, which is why one crossing governs both.
 
 ## 3. Ramp is irrelevant for haste, relevant for damage/spellpower
 

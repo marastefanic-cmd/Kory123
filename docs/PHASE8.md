@@ -18,7 +18,17 @@ closing result (§13.9): the signed residual is **positive on every buff at ever
 *level*, which cancels in B2 because both plans carry identical window multiplicities) with **no haste
 slope on any leg that clears its own noise** — the most generous scaling reaches 0.048 pp against 0.445.
 **B2 is excluded from per-buff valuation entirely; it is a layout property** (window×window or
-window×kill). Round 4's live item is the `rampCastDmg`/`rampSpans` × haste interrogation.
+window×kill). **Round 4** (07-25, §14): the **stacked-haste / GCD-floor** probe, pre-registered before it
+ran. **F1 PASSES** — three crossed sets cross the floor at three different ratings and the sim's marginal
+kinks inside the same single rating point the model does in all three, so `Δ = max(1.5/m, 1.0)` binding at
+`m ≥ 1.5` is now **certified against the sim** and the floor leaves the suspect list. **F3 FAILS** —
+`ΔI(IV+MQG+Zerk) = −0.259 ± 0.032 pp`, negative at 13/13 ratings, where B2 needs it positive; retired
+same-day per pre-registration, and worth only −0.114 pp to B2 (wrong way). F4 explains it: `ΔI` decomposes
+identically to `resid(S) − Σ resid(singles)`, so §13.9's per-buff under-credit simply **fails to stack** —
+it is a **per-window** constant (ratio ≈ ⅓ for three buffs, no R-trend) and therefore cancels in B2 for the
+same multiplicity reason §13.9's level did. **Window×window is out; window × kill is the sole survivor**,
+and it is the one every probe so far is structurally blind to (all have measured steady-state fights that
+never end). §15 must pre-register it.
 
 Phase 7 fixed everything cheaper: three press-execution scorer terms (RULES §3b), two search passes, the
 metric (var0.5 + wall-jitter), the KT AoE harness, and — the big one — **cross-haste pooling, which makes
@@ -753,6 +763,81 @@ Recorded now so the result cannot be read after the fact (§12's sign error is t
 **Harness checks before reading anything** (the §1 and §13.3 lessons): confirm from `SIMLOG=1` that all
 buffs in a set gain their aura at the **same** timestamp. MQG is the only trinket in any set, so the
 category-1141 shared lockout that invalidated §1 cannot bite — but verify it, do not assume it.
+
+### 14.6 VERDICT — F1 **passes**, F3 **fails**: window×window is retired, wrong-signed
+
+Ran as pre-registered (`r4sweep.sh` → `r4/r4sweep.txt`, `r4model.mjs`, `r4stat.mjs`; T=100 s, press@30 s,
+iter=20000, seed=11, cold open, infinite mana). Harness check first: `SIMLOG=1` on the triple shows
+`[30.63]` for `{SpellID: 12472}` (IV), `{ItemID: 19339}` + `Gained {"SpellHasteRating": 330.000}` (MQG)
+and `{SpellID: 20554, Tag: 1}` (Zerk) — one timestamp, all off-GCD, MQG the only trinket. Clean.
+
+**★ F1 — PASS. The GCD floor is exactly where the model puts it.** Marginal slope per rating point, sim
+vs model, across each pre-registered one-point bracket:
+
+| set | crossing R | bracket | sim before → after | model before → after |
+|---|---|---|---|---|
+| IV+MQG | 64.25 | 64→65 | −0.0073 → **−0.0212** | −0.0032 → **−0.0179** |
+| IV+Zerk | 215.05 | 215→216 | +0.0039 → **−0.0083** | −0.0001 → **−0.0074** |
+| MQG+Zerk | 243.45 | 243→244 | +0.0028 → **−0.0102** | −0.0022 → **−0.0082** |
+
+Three independent crossings, three different ratings, and in every one the sim's marginal turns over
+inside the same single rating point the model does — and the singles, which never cross, show no such
+kink anywhere. `Δ(R) = max(1.5/m, 1.0)` with the floor binding at `m ≥ 1.5` is **certified against the
+sim**, not merely inferred from `constants.go`. This is the round's durable result: it is a *confirmation*,
+so it also removes the floor from the suspect list for good.
+
+**F2 — live (a real interaction residual exists), but F3 kills it.** `ΔI = I_sim − I_model` over the grid:
+
+| set | mean ΔI pp | se | t | slope pp/300R | negative at | F3 |
+|---|---|---|---|---|---|---|
+| IV+MQG | **−0.166** | 0.034 | −5.0 | −0.253 | 12 / 13 | FAIL |
+| IV+Zerk | +0.009 | 0.026 | +0.3 | −0.198 | 7 / 13 | (null) |
+| MQG+Zerk | −0.003 | 0.034 | −0.1 | −0.045 | 6 / 13 | (null) |
+| **IV+MQG+Zerk** | **−0.259** | 0.032 | **−8.1** | −0.212 | **13 / 13** | **FAIL** |
+
+The triple's `ΔI` is negative at **every one of the 13 ratings**, t = −8.1 — not noise, and not the sign
+B2 needs. §14.5 pre-registered this exact outcome as terminal: *"If it is negative, this joins §8, §13.4
+and §13.8 in the wrong-signed pile and is retired the same day — no reinterpretation."* Retired.
+
+Direct B2 arithmetic, for the record: h40's line stacks the triple, h70's kill cluster is the IV+MQG pair,
+so the B2-relevant error is `ΔI(triple)@R=40 − ΔI(IV+MQG)@R=70 = −0.246 − (−0.132) = **−0.114 pp**`.
+Correcting it moves h40 **down** relative to h70 by 0.114 pp, against a target of **+0.445 pp**. Wrong
+direction *and* a quarter of the magnitude.
+
+**★★ F4 — the mechanism, and why it is the same thing §13.9 found.** `ΔI` is level-dominated (mean −0.259
+vs slope −0.212 pp over the *whole* 300-rating span) and there is no kink in it at the crossings, so per
+F4 this is composition, not the floor. Decomposing it settles what kind:
+
+| R | 0 | 40 | 64 | 65 | 70 | 120 | 180 | 215 | 216 | 243 | 244 | 280 | 300 |
+|---|---|---|---|---|---|---|---|---|---|---|---|---|---|
+| resid(triple) | .234 | .133 | .086 | .097 | .080 | .110 | .142 | .146 | .141 | .150 | .160 | .099 | .094 |
+| Σ resid(singles) | .420 | .379 | .183 | .171 | .252 | .482 | .312 | .511 | .515 | .545 | .526 | .307 | .441 |
+| ratio | .56 | .35 | .47 | .56 | .32 | .23 | .45 | .29 | .27 | .27 | .31 | .32 | .21 |
+
+`ΔI ≡ resid(S) − Σ resid(singles)` identically, so the negative `ΔI` is not a new effect at all: it is
+**§13.9's per-buff under-credit failing to stack.** Each buff alone carries ~+0.1 pp of unexplained sim
+upside; three of them sharing one window carry ~+0.1 pp *total*, not +0.3 (ratio ≈ ⅓, no trend in R).
+
+That is the mechanistic close of §13.9's open question. The residual is **per-window, not per-buff** — one
+window's worth of edge effect (aura-application ms, the boundary cast) regardless of how many buffs are
+inside it. And a per-window constant **cancels between two plans with the same window count**, which is
+exactly what B2's two plans have (§13.8: AP×2, Zerk×2, Icon×2, MQG×1, IV×3, Lust×1 in both). §13.9 said
+B2 is not in per-buff valuation; §14 says it is not in per-*window* valuation either, stacked or not.
+
+**Where this leaves B2.** Of the two joint candidates §13.9 left standing, window×window is now retired.
+**Window × kill is the sole survivor** — and it is the one the isolation batteries structurally cannot
+reach, because every probe so far has measured a *steady-state* fight where nothing ends. B2's h40 and
+h70 plans differ in *where the fight stops relative to the last window*, and every quantity this phase has
+measured is blind to that by construction. §15 must pre-register it: vary `T` against a fixed press
+schedule so the terminal window is clipped by a controlled amount, and read `∂(model−sim)/∂(clip)`.
+
+**Methodology gotcha found (now in TOOLING).** The sweep ran `--var 0` and `--var 3.0`. The `--var 0` half
+is **unusable for marginal measurement** and was discarded: with zero jitter every iteration is the same
+fight, so DPS quantizes to integer cast counts — R=64 and R=65 return byte-identical base DPS, IV and MQG
+return byte-identical marginals at four ratings, and Berserking's 10 s window measures **+0.03 pp** (i.e.
+*zero* extra casts) at five of thirteen ratings. That is the count law's `ceil` sampling at maximum
+exposure — *true*, but far below the resolution of the sub-cast quantity being measured. `--var 3.0`
+dithers the cast phase and recovers the expectation. All numbers above are the var=3.0 half.
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it

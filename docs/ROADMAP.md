@@ -31,7 +31,18 @@
    valuation entirely** — signed residual positive on all 6 buffs × 13 hastes (a 0.369 pp *level* that
    cancels in B2, since both plans carry identical window multiplicities) with **no leg's haste slope
    clearing its own noise**; generous scaling reaches 0.048 pp of 0.445. **B2 is a layout property**
-   (window×window or window×kill); next probe is `rampCastDmg`/`rampSpans` × haste)
+   (window×window or window×kill). **Round 4 ran and closed** (§14, pre-registered before it ran): the
+   stacked-haste / **GCD-floor** probe. **F1 PASSES and is the round's keeper** — three sets cross the
+   floor at three different ratings (64.25 / 215.05 / 243.45), each bracketed to one rating point, and the
+   sim's marginal kinks inside the same point the model's does in all three, so `max(1.5/m, 1.0)` binding
+   at `m ≥ 1.5` is now **certified against the sim** (RULES §2) and the floor leaves the suspect list.
+   **F3 FAILS** — `ΔI(IV+MQG+Zerk) = −0.259 ± 0.032 pp`, negative at 13/13 ratings, worth **−0.114 pp** to
+   B2 against a +0.445 target; retired same-day, and explained as §13.9's per-buff under-credit **failing
+   to stack** (`ΔI ≡ resid(S) − Σ resid(singles)`; it is a *per-window* constant, so it cancels in B2 for
+   the same multiplicity reason). Also banked: **`--var 0` quantizes to integer casts** and is unusable
+   for marginals (TOOLING). **Window×window is out — window × kill is the sole survivor**, and §15 must
+   pre-register it: it is the one axis every probe so far is structurally blind to, since all of them
+   measured steady-state fights that never end)
    and `docs/PHASE9.md` (**performance/refactor**, user-reported CPU cost — notes + hypotheses only so
    far, nothing landed; every change there is gated on byte-identical plans. **§4.7** turns the "fewer
    steps" ask into a *pass-firing census* — a pass is redundant iff its input is already its own fixpoint
