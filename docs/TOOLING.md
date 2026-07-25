@@ -281,6 +281,49 @@ was all search, not scoring). Don't conflate "the count is right" with "the sear
     in-file with the reason, and the report **computes** which labels break the band. Pre-registration must
     fix the **test**, not narrate the expected explanation.
 
+- **`tools/cell-band.mjs`** (durable, **needs the sim**): puts an **error bar on ONE cross-val cell** — the
+  unit `unexplained-gap`'s bootstrap proved is the only one this corpus can resolve. It replays a cell
+  *exactly* as `xval.mjs` computes it (the boss's walls, `WJ=2`, the **mean over wall-jitter variants**, iter
+  6000, `--var 0.5`, `--targets N`) for two plans at one sim haste, across a list of sim **base seeds**
+  (`--seeds`) **and** an arbitrary **number of wall-jitter variants** (`--variants N`). The
+  `mulb`/`VARIANTS`/`shiftSpec` block is copied **verbatim** from `xval.mjs:239-257` so the replay cannot
+  drift from the thing it replays. `--seeds2` runs a second group and prints `sd(group1)/sd(group2)` (that is
+  how the contiguous-seed defect below was measured); `--prefix 1,3,5,9,17,33` prints the **prefix-mean
+  convergence** of the wash (the variants are **nested** — `mulb(9000+v)` — so the corpus's 5 are a prefix of
+  any deeper set, and one deep run yields the whole curve); `--dump` writes the raw per-variant cell.
+  ```
+  RUNNER=$SP/wowsims/runner-ap180 EXPORT=$SP/seedband/export.json node tools/cell-band.mjs \
+    --a "$(cat A.spec.json)" --labelA native --b "$(cat B.spec.json)" --labelB borrowd \
+    --walls 15,42,69,94,105,160,306 --dur 420 --haste 195 --targets 6 \
+    --iter 6000 --seeds 11,100011,200011,300011,400011 --variants 33 --prefix 1,3,5,9,17,25,33
+  ```
+  What it measured on the first cell it was pointed at (PHASE7 §5.17, RULES §8 consequence 6) — all four are
+  reusable facts about **the harness**, not about that cell:
+  - **★★★ A BOSS CELL IS A 5-VARIANT MEAN, AND REPRODUCING ONE BY HAND NEEDS ALL 5.** `xval.mjs:233-245`
+    engages the wall-jitter wash only `if (process.env.BOSS && wallList.length)`; a boss cell is then the mean
+    over `1 + 2*WJITTER = 5` variants at **ITER=6000** (`xval-boss.sh`), while a **class** cell is **1 variant
+    at ITER=10000**. **The corpus is TWO INSTRUMENTS with different noise, and any statistic that pools boss
+    and class cells inherits that.** An earlier hand-reproduction landed 2371.7 vs the log's 2371.4 and cost
+    hours of hunting for a missing input; the missing input was the mean. With the 5 variants replayed it
+    reproduces **exactly** (2371.4 / 2380.0 / 0.3627 vs 0.3626).
+  - **★★★ THE VARIANT COUNT, NOT THE SEED, IS THE BOSS CELL'S ERROR BAR.** Seed noise: sd **0.0058 pp**.
+    Wall-jitter noise: per-variant sd **0.1427 pp**, i.e. **±0.0638 pp (1σ) at N=5** — **12× larger**, and the
+    size of boss cells' median ripple ceiling. `ripplePct` prices **one** wall (the tail); a boss cell has
+    **seven**. Class cells genuinely have one (`downtime`/`aoeWins` are populated **only inside `if (BOSS)`**),
+    so their floor is complete. Grade a boss cell against the **variant** band; a class cell against ripple.
+  - **★★ THE WASH SATURATES IN THE MEAN AT N=5 BUT NOT IN THE VARIANCE** — prefix means are flat from N=5 to
+    N=33 while the SEM falls 0.068 → 0.025. So deepening the wash buys **precision**, never a different
+    answer. And the spread is **bimodal**, gap = **one cast** (3375 damage): the FLOOR LAW below shows up on a
+    walled fight as a **discrete parity mode**. Split the variants by mode before quoting a mean — the
+    parity-free subset is the number with content.
+  - **⚠ `VARIANTS[0]` IS δ=0 BY CONSTRUCTION, SO THE UN-JITTERED GEOMETRY CARRIES 20 % OF EVERY BOSS CELL.**
+    At the measured cell v0 lands in the *parity* mode, so the cell reads **0.3627 where the same draw without
+    v0 reads 0.2953** — +0.067 pp from one hardcoded vector, on the one geometry the wash exists to smear.
+    Recorded, not changed: it moves every boss cell in the committed corpus.
+  - **⚠ DEEPEN A WASH WITH MORE VARIANTS, NEVER A WIDER δ.** KT's walls 94 and 105 are 11 s apart, so
+    `2·WJ ≥ 11` can put them **out of order** and sim a geometrically impossible fight. `cell-band.mjs` has a
+    hard wall-order guard that dies rather than run one; `xval.mjs` never needed it (WJ is fixed at 2).
+
 ## Building the runner (do this once per fresh session)
 
 ```
@@ -536,6 +579,24 @@ all of it, not just the crit sequence).
   seed 19 to the decimal incl. max; far seeds (100000, 10⁶) give genuinely different draws. **For an
   independent replicate, separate base seeds by ≥ iterCount** (e.g., 11 and 10_000_000), or just report
   single-run **SEM = stdev/√iter** (≈0.3 DPS at 150k).
+- **★★★ AND THE COST OF GETTING THAT WRONG IS NOW MEASURED: a contiguous-seed band is EXACTLY ZERO, which
+  PASSES EVERY DELTA (07-25, P7.13-S3).** The rule above was stated from the mechanism; `tools/cell-band.mjs`
+  put a number on it at a real cross-val cell (KT/T=420/@195, iter 6000, two plans 10 s apart). Seeds
+  **12,13,14,15 reproduced seed 11 to the printed decimal on both plans** ⇒ `sd = 0.0000 pp`, band
+  `±0.0000`; the same cell with far seeds (`11,100011,200011,300011,400011`) gave `sd = 0.0058 pp`. Ratio:
+  ∞. **`tools/plan-duel.mjs` defaulted to `11,12,13,14,15` and tests `|mean| > band`, so it declared every
+  nonzero delta significant** — a false-PASS in the one instrument whose whole job is arbitration. Fixed:
+  defaults are spaced by 10⁵ and a **hard guard dies if `min seed gap < iter`**. Audited: no committed
+  verdict rests on the old band (every `plan-duel` control in the docs is sim-free). Two standing lessons:
+  (1) when a band comes out at or near zero, **suspect the design before believing the result** — a zero
+  band is not precision, it is a broken replicate; (2) put the guard **in the tool**, not in the doc — this
+  bullet had said the right thing for weeks while the code shipped the wrong default.
+- **★★ Seed noise is NOT the dominant noise on a boss cell — wall-jitter variant noise is, by 12×.** Same
+  cell: sd across independent seeds **0.0058 pp**, sd across wall-jitter geometries **0.1427 pp** (33
+  variants) ⇒ SEM(N=5) ±0.0638, 95 % **±0.1251**. A cross-val boss cell is a *5-variant mean*, so its error
+  bar comes from the variant draw, not the seed, and adding seeds buys almost nothing. **Grade a boss cell
+  against the variant band; grade a class cell (1 variant) against the ripple floor.** Details and the
+  bimodal one-cast structure of that spread: `tools/cell-band.mjs` in Pieces, PHASE7 §5.17, RULES §8.
 - **Count-preserving vs count-changing (the key rule).** A comparison that keeps the **same set of
   presses** (e.g., shift a cluster 240→245) keeps A and B on the SAME RNG stream → clean CRN pairing →
   sub-DPS effects resolve. A comparison that **adds/removes a press** shifts the PRNG stream from that

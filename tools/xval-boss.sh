@@ -4,8 +4,17 @@
 # Tests whether the planner adapts correctly to a specific PHASE STRUCTURE, not just a fight length.
 #   bash tools/xval-boss.sh                       # default set: Vashj + Al'ar + KT × 2 representative kits
 #   BOSSES="Lady Vashj" KITS="mqg,skull" bash tools/xval-boss.sh
-# Vashj & Al'ar are intermission-only → sim cleanly. KT has an AoE phase simmed as DOWNTIME (genapl has
-# no Arcane-Explosion emission) → its numbers EXCLUDE AoE damage and xval.mjs flags the run.
+# Vashj & Al'ar are intermission-only. KT has an AoE phase, and since task #53 genapl EMITS Arcane
+# Explosion in it — xval.mjs passes `--targets <N>` and the banner reads "AoE phase VALUED". (This
+# header used to claim the AoE window was simmed as downtime with AoE damage excluded; that has been
+# false since #53 landed. Logs older than that carry the old banner — resolve a log basename to its
+# NEWEST copy before drawing any conclusion from it.)
+#
+# ⚠ ITER=6000 HERE vs 10000 IN xval.mjs — AND boss cells are a 5-VARIANT MEAN.  A boss matrix cell is
+# the mean over `1 + 2*WJITTER` wall-jitter variants (xval.mjs:233-245), which only engages when BOSS
+# is set and the preset has walls; class cells are a single variant at ITER=10000.  So the corpus is
+# TWO INSTRUMENTS with different noise, and reproducing a boss cell by hand needs the same 5 variants
+# (tools/cell-band.mjs replays them). Any statistic that pools boss and class cells inherits this.
 #
 # Exit-code contract (shared with tools/xval.mjs): 0 = every boss×kit cell produced a matrix ·
 # 2 = at least one did not.  A `diag=DEFICIT` is an observation, not a failure (see xval-kit.sh).

@@ -85,7 +85,7 @@ const arg = k => { const a = process.argv.find(x => x.startsWith(`--${k}=`)); if
 const flag = k => process.argv.includes(`--${k}`);
 
 const OLD_J = arg('old'), NEW_J = arg('new');
-if (!OLD_J || !NEW_J) die('usage: node plan-duel.mjs --old A.json --new B.json [--old-html X] [--new-html Y] [--sim] [--seeds 11,12,13] [--iter 6000] [--only "case name"]');
+if (!OLD_J || !NEW_J) die('usage: node plan-duel.mjs --old A.json --new B.json [--old-html X] [--new-html Y] [--sim] [--seeds 11,100011,200011] [--iter 6000] [--only "case name"]');
 
 const readJson = p => { try { return JSON.parse(fs.readFileSync(p, 'utf8')); } catch (e) { die(`cannot read ${p}: ${e.message}`); } };
 const A = readJson(OLD_J), B = readJson(NEW_J);
@@ -168,12 +168,29 @@ if (SIM) {
   if (!RUNNER || !BASE) die('--sim needs RUNNER=/path/to/runner and EXPORT_BASE=/path/to/gear-export.json');
   for (const [n, p] of [['RUNNER', RUNNER], ['EXPORT_BASE', BASE]])
     if (!exists(p)) die(`${n}="${p}" does not exist — a missing binary surfaces as an ENOENT stack trace mid-duel rather than as a refusal.`);
-  SEEDS = (arg('seeds') || '11,12,13,14,15').split(',').map(x => parseInt(x, 10));
+  // ★★ MEASURED DEFECT, FIXED 07-25 (P7.13-S3). The old default was `11,12,13,14,15` — CONTIGUOUS
+  // seeds, which TOOLING §"Statistical protocol" says are not independent replicates (per-iteration
+  // seed = base + i, so at iter=6000 seeds 11 and 12 share 5999 of 6000 iterations). `tools/cell-band.mjs`
+  // measured what that costs on a real cell: seeds 12–15 reproduced seed 11 to the printed decimal on
+  // BOTH plans ⇒ **sd = 0.0000, band = ±0.0000**, while independent seeds gave sd 0.0058 pp. A zero band
+  // makes `|mean| > band` TRUE for every nonzero delta, so this tool declared every delta significant —
+  // a false-PASS in the one instrument whose entire job is arbitration. Defaults are now spaced by 10⁵
+  // (≫ any iter we run). Do not "tidy" them back into a contiguous run.
+  SEEDS = (arg('seeds') || '11,100011,200011,300011,400011').split(',').map(x => parseInt(x, 10));
   if (SEEDS.some(x => !Number.isInteger(x))) die('--seeds must be a comma-separated list of integers.');
   // The band below is a spread ACROSS seeds. With fewer than 3 there is no spread to speak of and
   // the tool would print a confident delta with no way to know if it is noise.
   if (SEEDS.length < 3) die(`--seeds needs at least 3 values for a noise band (got ${SEEDS.length}). A delta with no band is a guess with a decimal point.`);
   ITER = arg('iter') || process.env.ITER || '6000';
+  // A band across seeds is only a band if the seeds draw different iterations. Contiguous seeds at
+  // iter=N share N−|Δ| of N iterations and collapse the band to ~0 (measured: exactly 0).
+  {
+    const s = SEEDS.slice().sort((a, b) => a - b);
+    const minGap = Math.min(...s.slice(1).map((v, i) => v - s[i]));
+    if (minGap < +ITER) die(`--seeds are spaced ${minGap} apart but iter=${ITER}: seeds closer than iter share ` +
+      `${+ITER - minGap} of ${ITER} iterations and the resulting "band" is ~0, which passes every delta. ` +
+      `Space base seeds by >= iter (e.g. 11,100011,200011,300011,400011).`);
+  }
   SCRATCH = fs.mkdtempSync(path.join(os.tmpdir(), 'duel-'));
   EXPORT = { base: JSON.parse(fs.readFileSync(BASE, 'utf8')), path: path.join(SCRATCH, 'export.json') };
 }

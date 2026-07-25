@@ -57,6 +57,35 @@
    — measured directly it is **0.040 pp**. ⇒ **Next is NOT a family.** Aggregate re-ranking of these 135
    columns is exhausted; the only honest moves are a **fresh per-cell sim duel**, **more columns** for power,
    or the queued **acceptance-criterion restatement (user call)**. Do not invent a fourth currency.
+   ★★★ **THE PER-CELL DUEL RAN, AND IT ANSWERED P7.13 BY MEASUREMENT — the over-floor list is 18, not 24,
+   and the survivor is ONE NAMED TERM** (`tools/cell-band.mjs`, 07-25; six pre-registered tests, no
+   `index.html` change). Three findings, each standing alone:
+   (1) **The corpus finally has an error bar, and the corpus is TWO INSTRUMENTS.** The ripple floor prices
+   **one** wall (the tail); a boss column has **seven** and is a **5-variant wall-jitter mean**, where a class
+   column has one wall and is a single un-jittered run (`downtime`/`aoeWins` are populated only inside
+   `if (BOSS)`, `xval.mjs:139-163`). Measured at the top boss cell: seed sd **0.0058 pp** — negligible, so the
+   corpus's single-seed design is **vindicated** — vs wall-jitter variant sd **0.1427 pp** ⇒ 95 % band
+   **±0.1251**, *12× the seed band*. **6 of the 9 boss over-floor cells fall inside it**; only
+   `isc+scb/KT/420` at sim-haste 195/95/245 survive. Class cells are untouched and their floor is complete,
+   which fully explains the 2.8× boss over-floor enrichment as a ruler artifact. Two sub-findings recorded:
+   the variant spread is **bimodal, separated by exactly one cast** (PHASE8's FLOOR LAW on a walled fight ⇒
+   quote the parity-free subset, never the mixture), and `VARIANTS[0]` is **δ=0 by construction** so the
+   un-jittered geometry carries **20 %** of every boss cell (worth +0.067 pp here; not acted on — it would
+   move every committed boss cell).
+   (2) **The arbitration tool's band was identically ZERO and is fixed.** `plan-duel.mjs` defaulted to
+   contiguous seeds `11..15`, which at iter 6000 reproduce each other to the printed decimal ⇒ `|mean| > band`
+   passed **every** delta. Defaults now spaced by 10⁵ plus a hard `min gap < iter` guard. No committed verdict
+   rested on it. Lesson: **put the guard in the tool** — TOOLING had stated the rule correctly for weeks.
+   (3) ★★★ **The survivor is 100 % AoE-WINDOW VALUATION.** Ablating `_aoe` (press times, walls, geometries and
+   seed identical) collapses the deficit from **+0.2930 ±0.0068 pp to −0.0063 ±0.0048** — the window accounts
+   for **102 %** of the parity-free gap, so burn model, search and tail lattice are excluded in one
+   measurement. What remains is **within-window placement**: the model packs the cluster against the window's
+   END, the sim wants it **~10 s earlier**, and both candidates sit wholly inside the window so **neither**
+   RULES §9 Correction 1 nor Correction 2 applies. Filed as the **Correction-3 candidate** (RULES §9) — one
+   cell family, cause unnamed, **no engine change**. ⇒ **Phase 7's remaining work is that one term**, plus 15
+   class cells whose floor is complete (top excess 0.1653 pp). Next measurement, to be pre-registered before
+   it runs: sweep the cluster press time 110→140 in the sim on the parity-free geometries and compare to the
+   model's own curve — the *shape* of the gap names the term.
    What landed earlier: three sim-gated scorer terms (RULES §3b — press-snap
    slippage at hard edges; externals snap to the cast lattice, which tempers the IV@0 "ramp
    compression" credit; ramp casts snapshot buffs at cast START), two search passes (polished CS

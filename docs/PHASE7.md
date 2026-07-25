@@ -1160,3 +1160,194 @@ scorer (r 0.7910 vs 0.9337). What remains actionable is exactly three things, no
 a **fresh per-cell sim duel** on a named cell (the unit the corpus *can* resolve), **more columns** to buy the
 power the ranking lacks, or the queued **acceptance-criterion restatement** — still a **user call**, filed in
 ACCEPTANCE's coverage gaps.
+
+---
+
+### ⛔ §5.17 — THE CELL DUEL: the corpus finally gets an ERROR BAR, 6 of the 9 boss deficits dissolve, and the survivor is 100 % AoE-WINDOW VALUATION (07-25)
+
+§5.16f's closing instruction was *"target a cell with a fresh sim, or get more columns — do not invent a
+fourth currency."* This is that cell duel. It answers P7.13 **by measurement** and it closes Phase 7's
+diagnostic mandate: the last surviving deficit is localized to a named, already-documented blind spot.
+
+New instrument: **`tools/cell-band.mjs`** — replays ONE cross-val cell exactly as `xval.mjs` computes it
+(the 7 KT walls, WJ=2, the 5-variant mean, iter 6000, `--var 0.5`, `--targets 6`), for two plans at one
+sim haste, across a list of sim **base seeds** and an arbitrary number of **wall-jitter variants**. The
+`mulb`/`VARIANTS`/`shiftSpec` block is copied **verbatim** from `xval.mjs:239-257` so the replay cannot
+drift from the thing it is replaying.
+
+**Target cell** (top over-floor cell ranked per-cell): `isc+scb / BOSS:Kael'thas Sunstrider / T=420 /
+sim@H=195`, `pct 0.3630`, `ripplePct 0.0865`, `unexp 0.3301 pp`. The two plans differ **only** by a 10 s
+shift of the AP/Zerk/Icon/Gem group (native **130**, borrowed **120**), and *both* presses sit inside KT's
+AoE window **[105,145]**. Everything was pre-registered in `$SP/seedband/PREREG.md` before any number
+existed — S1–S4 first, then S5 and S6 written from a corpus split rather than from this cell's results.
+
+#### S1 REPRODUCTION — PASSED, and it retires an old mystery
+
+Replay at base seed 11: **2371.4 / 2380.0 / pct 0.3627** vs the committed log's **2371.4 / 2380.0 /
+0.3626**. Exact. The earlier hand-reproduction that landed 2371.7 was missing exactly one thing — **a boss
+cell is the MEAN over 5 wall-jitter variants**, not a single run. That rule is now documented in
+`xval-boss.sh`'s header and TOOLING, and this is its certificate.
+
+#### S2 FAR-SEED BAND — the first error bar any cross-val cell has ever had
+
+Independent base seeds `11, 100011, 200011, 300011, 400011` (every gap ≫ iter=6000):
+
+| statistic | value |
+|---|---|
+| mean `pct` | **0.3624 pp** |
+| sd | 0.0058 pp |
+| 95 % band on the mean | ±0.0052 pp → **[0.3572, 0.3676]** |
+| sign (borrowed > native) | **5/5** |
+
+Pre-registered rule (*"band lower edge > 0.2 pp ⇒ the deficit is real at this cell"*): **fires.** Sim seed
+noise is **~0.006 pp — 60× below this cell's deficit and 23× below the corpus median ceiling (0.134 pp).**
+⇒ **`xval.mjs`'s single-seed design is VINDICATED for count-preserving cells** (both plans cast 228): the
+missing seed error bar costs essentially nothing. (Count-**changing** pairs desync CRN and are NOT covered.)
+
+#### S3 CONTIGUOUS UNDERSTATEMENT — worse than predicted: the band is IDENTICALLY ZERO
+
+Seeds `11,12,13,14,15` reproduced seed 11 **to the printed decimal on both plans** (all 2371.4 / 2380.0 /
+0.3627) ⇒ **sd = 0.0000, band = ±0.0000**, versus sd 0.0058 for far seeds. Ratio ∞.
+
+That was `tools/plan-duel.mjs`'s **default** (`--seeds 11,12,13,14,15`), and its verdict test is
+`|mean| > band` — so **the duel declared every nonzero delta significant.** A false-PASS in the one
+instrument whose entire job is arbitration. **FIXED** (defaults spaced by 10⁵, plus a hard
+`minGap >= ITER` guard that refuses to run rather than print a fake band). **No committed verdict rests on
+it** — a doc grep shows the duel's recorded controls C1–C4 were all sim-free and no `--sim` verdict was
+ever recorded. Latent defect, caught by measurement, not by review.
+
+#### S6 WASH-DEPTH CONVERGENCE — prediction FALSIFIED, and it hands over the real error bar
+
+33 nested variants at seed 11 (the corpus's 5 are a **prefix** — `mulb(9000+v)`), prefix means:
+
+| N variants | `pct` | ±SEM |
+|---|---|---|
+| 1 (v0 alone) | 0.6323 | — |
+| 3 | 0.4072 | ±0.1126 |
+| **5 (what `xval.mjs` computes)** | **0.3627** | **±0.0676** |
+| 9 | 0.3344 | ±0.0375 |
+| 17 | 0.3740 | ±0.0368 |
+| 25 | 0.3743 | ±0.0304 |
+| 33 | **0.3652** | ±0.0248 |
+
+**Prediction (`pct(N)` decreases toward the tail-only ceiling 0.0865): FALSIFIED.** The mean does not move
+after N=5; the ceiling is **11 SEM** away at N=33. Deeper washing does not dissolve this deficit.
+
+But the run measured something the prediction never asked for: **the per-variant sd is 0.1427 pp.** At
+`xval.mjs`'s N=5 that is a standard error of **±0.0638 pp (95 %: ±0.1251)** on **every boss cell** — **12×
+the seed band, and the same size as the boss cells' median ripple ceiling (0.1024 pp).** The literal
+falsifier (*"stays inside the S2 seed band across all four N"*) does not fire only because the S2 band is the
+**wrong yardstick**: prefix means scatter with *variant* noise, not seed noise. Under the correct yardstick
+every N ≥ 5 agrees within ±1 SEM. **The wash is saturated in the MEAN and under-sampled in the VARIANCE.**
+
+#### ★★★ Consequence: 6 of the 9 boss over-floor cells fall INSIDE the newly-priced band
+
+`ripplePct` prices **one** wall (the tail). A class fight *has* only one wall — `downtime`/`aoeWins` are
+populated **only inside `if (BOSS)`** (`xval.mjs:139-163`), so class cells are plain fights and their floor
+is complete. A **boss** cell has **seven**, six of them interior and unpriced — exactly the ⚠ that
+`ripple-audit.mjs`'s own header already carried (*"BOSS rows carry a SECOND artifact channel … `ripplePct`
+is a LOWER bound"*). S6 finally prices it:
+
+| kit | boss | T | simH | `pct` | ceiling | excess | survives ±0.1251? |
+|---|---|---|---|---|---|---|---|
+| isc+scb | KT | 420 | 195 | 0.3630 | 0.0865 | 0.2765 | **YES** |
+| isc+scb | KT | 420 | 95 | 0.3770 | 0.1073 | 0.2697 | **YES** |
+| isc+scb | KT | 420 | 245 | 0.2100 | 0.0772 | 0.1328 | **YES** |
+| isc+scb | KT | 420 | 215 | 0.1780 | 0.0827 | 0.0953 | no |
+| mqg+skull | KT | 420 | 100 | 0.1440 | 0.0540 | 0.0900 | no |
+| isc+scb | KT | 420 | 20 | 0.1910 | 0.1248 | 0.0662 | no |
+| mqg+skull | Vashj | 390 | 295 | 0.0740 | 0.0221 | 0.0519 | no |
+| mqg+skull | Vashj | 390 | 235 | 0.0480 | 0.0357 | 0.0123 | no |
+| mqg+skull | Al'ar | 240 | 295 | 0.1270 | 0.1219 | 0.0051 | no |
+
+**The boss over-floor family is 3 cells, not 9 — one kit, one boss, one length, three haste columns.**
+⚠ Honest limit: the 0.1427 pp sd is measured at **one** cell. Transferring it to the other eight is a
+first-order prior, not a measurement — but it transfers *best* exactly where the survivors are (same boss,
+same 7 walls, same T). The 15 **class** over-floor cells are untouched by this: they have no interior walls,
+so their only noise is seed noise (~0.01 pp) and their excesses (up to 0.165 pp) stand.
+
+#### ★★★ The spread is BIMODAL — a ±1-cast parity mode, and it is NOT the deficit
+
+The 33 variants do not scatter smoothly. They fall into two clean clusters (gap 0.337 → 0.611, nothing
+between), and **33/33 are positive** (min 0.2482 — no wall geometry reverses the sign):
+
+| mode | n | mean `pct` | mean Δ | mean Δdamage |
+|---|---|---|---|---|
+| LOW (no parity cast) | 26 | 0.2930 ±0.0068 | 6.95 DPS | 2919 |
+| HIGH (+1 parity cast) | 7 | 0.6341 ±0.0133 | 14.99 DPS | 6294 |
+| mixture (= the cell) | 33 | 0.3654 | 8.65 DPS | 3635 |
+
+The mode separation is **3375 damage — one cast**. This is PHASE8's **FLOOR LAW** (a value window covers
+exactly `floor(D/Δ)` casts) appearing on a boss shape as a **discrete mode**, not as smooth noise: some wall
+geometries give the borrowed plan one extra cast, most do not. Correlations point at the two walls bounding
+the segment that holds both candidate presses — wall **105** (r=0.312, the AoE start) and wall **160**
+(r=0.319) — but **no 1- or 2-wall threshold predicate separates the modes**, so the parity is a joint
+function of the whole geometry, as per-segment truncation compounding predicts.
+
+> ⚠ **Correction to my own first reading of that r(105), made before commit.** I wrote that δ(105) changes
+> the AoE window's *length* "since the 145 end is not a wall". **False — read `shiftSpec`**
+> (`tools/xval.mjs:246-256`): a window end that is not itself a wall inherits its own *start's* δ
+> (`j < 0 ⇒ z + ds[i]`), so `[105,145]` translates **rigidly** and keeps its 40 s length. And `shiftOf(t)`
+> gives every press at 120/130 the same `ds[105]`, so **press-vs-window alignment is invariant under δ(105)
+> too.** What δ(105) actually changes is the **length of the preceding intermission `[94,105]`** — its start
+> takes `ds[94]`, its end `ds[105]` — i.e. how much downtime precedes the window and therefore the cast
+> phase at window entry. The measured correlation stands; only my mechanism for it was wrong.
+
+Two things follow. (1) **The parity channel is a VARIANCE channel here, not the cause** — the LOW mode alone
+(26/33 geometries, no cast flips) still shows **+0.293 pp, 3.4× this cell's ceiling.** (2) **`xval.mjs`
+always includes the un-jittered δ=0 vector as variant 0**, and at this cell v0 sits in the HIGH parity mode
+(0.6323 vs the 33-variant mean 0.3654). So the corpus's cell reads **0.3627 where the same 5-variant draw
+without v0 reads 0.2953 — a +0.067 pp bias from one hardcoded zero vector**, at a cell whose whole excess is
+0.277 pp. Variant 0 gets 20 % weight on precisely the geometry the wash exists to smear. (Design
+observation, recorded not acted on: changing it moves every boss cell in the committed corpus.)
+
+#### ★★★ S5 AoE ABLATION — the answer. 100 % of the parity-free deficit is the AoE window
+
+Same duel, same walls, same 33 geometries, same seed — only `_aoe` deleted from both specs and `--targets`
+dropped, so genapl casts AB through [105,145] instead of AE. Press times identical.
+
+| | AoE window VALUED | AoE window REMOVED |
+|---|---|---|
+| LOW mode (parity-free) | **+0.2930 ±0.0068** | **−0.0063 ±0.0048** |
+| HIGH mode (+1 cast) | +0.6341 ±0.0133 | +0.4110 ±0.0130 |
+| 33-variant mean | 0.3652 ±0.0248 | 0.0949 ±0.0317 |
+| one parity cast worth | 3375 dmg | 3428 dmg |
+
+**With the AoE window removed and the parity mode excluded, the two plans are STATISTICALLY IDENTICAL in the
+sim: −0.0063 ± 0.0048 pp.** The model's ranking of this pair outside the AoE window is *exactly right*. Turn
+the window back on and the model mis-ranks by 0.293 pp. **The AoE window accounts for 102 % of the
+parity-free deficit** — all of it.
+
+Two corroborations fall out. (a) The parity mode is the **same 7 geometries** with and without AoE (S5 adds
+only v26) and is worth **3375 vs 3428 damage** — i.e. it is an ordinary **AB**-train parity cast, entirely
+independent of the AoE valuation. The two channels are cleanly separable. (b) `pct_ablated` (0.0947) is
+**inside** this cell's own ripple ceiling (0.0865, band spanning it) — with the AoE window gone the cell is
+not a deficit at all.
+
+Pre-registered falsifier (*"|pct_ablated − pct_full| < the S2 band ⇒ the AoE window is NOT the cause"*):
+|0.0947 − 0.3652| = **0.2705 pp**, ~50× the band. **Does not fire.** ⚠ The prediction's other clause
+(*"shrinks into the S2 band"*) was ambiguously worded — `pct_ablated` does not flip sign and does not reach
+[0.357,0.368]; the unambiguous falsifier is the one graded, and the parity-free decomposition is stronger
+than either wording asked for.
+
+#### What this localizes, and what it does NOT license
+
+**Phase 7's diagnostic mandate is DISCHARGED for this family.** The residual is not a search miss (§5.16a's
+partition was tautological anyway), not a general scorer bias, and not the tail lattice. It is the
+**AoE-phase weighting** blind spot that CLAUDE.md already names as OPEN — now localized to a specific,
+reproducible, *within-window* error:
+
+> **Both plans place the whole damage/SP cluster ENTIRELY INSIDE the AoE window.** The model prefers it
+> packed against the window **END** (130 → 145); the sim prefers it **10 s EARLIER** (120 → 135/140). This is
+> therefore neither RULES §9 **Correction 1** (SP dilution at the boundary) nor **Correction 2** (exit
+> re-ramp straddle) — both are *boundary* corrections and neither pair straddles a boundary. It is a
+> **new, third, WITHIN-window placement error.**
+
+It licenses **no `index.html` change yet.** What it licenses is the next measurement, which is now obvious
+and cheap: **sweep the cluster press time across the window (110…140) in the sim and compare the sim's
+curve to the model's own**, on the LOW-mode geometries. The model's optimum is at 130 and the sim's is at or
+before 120; the *shape* of that disagreement is what names the term to fix. Pre-register before running.
+
+Filed: the acceptance-criterion restatement remains a **user call** (ACCEPTANCE coverage gaps) — untouched
+here. And the 3-cell survivor list is *narrower* than the 9-cell list it replaces, which is the first time
+this phase's target list got smaller for a reason other than a retraction.

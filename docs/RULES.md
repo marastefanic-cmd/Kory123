@@ -515,6 +515,35 @@ on the patched runner.
      deficit. What stands is the *measurement* (its ceiling is 6× below `inside`'s), never a rank.
      ⇒ **Aggregate re-ranking of this corpus is exhausted. Target a cell with a fresh sim, or get more
      columns — do not invent a fourth currency.**
+  6. **★★★ THE CORPUS IS TWO INSTRUMENTS, AND THE BOSS ONE HAS A ±0.13 pp CHANNEL THAT WAS NEVER PRICED —
+     SO 6 OF THE 9 BOSS DEFICITS ARE NOT DEFICITS** (`tools/cell-band.mjs`, 07-25; PHASE7 §5.17). Measured,
+     on the top over-floor cell, by replaying it across independent sim seeds and across a **nested deepening
+     of the wall-jitter wash**:
+     - **Seed noise is negligible — 0.006 pp** (5 far seeds, sd 0.0058, 95 % ±0.0052, sign 5/5). That is
+       **60×** below the cell's deficit and **23×** below the corpus median ceiling. ⇒ `xval.mjs`'s
+       single-seed design is **VINDICATED for count-preserving cells**; the absent seed error bar costs ~0.
+       (Count-**changing** pairs desync CRN and are not covered by this.)
+     - **Wall-parity noise is NOT negligible — the per-variant sd is 0.1427 pp**, so at `xval.mjs`'s
+       **N=5** wall-jitter variants every **boss** cell carries a standard error of **±0.0638 pp (95 %:
+       ±0.1251)** — **12× the seed band** and the same size as boss cells' median ripple ceiling (0.1024).
+       `ripplePct` prices **one** wall (the tail); a boss cell has **seven**, six interior and unpriced. A
+       **class** cell genuinely has one — `downtime`/`aoeWins` are populated **only inside `if (BOSS)`**
+       (`xval.mjs:139-163`) — so class floors are complete and their 15 over-floor cells stand.
+       ⇒ **the boss over-floor family is 3 cells, not 9** (all `isc+scb / KT / T=420`, at sim-haste 95/195/245).
+     - **Deeper washing does not dissolve the survivor.** Prefix means at N=1/3/5/9/17/25/33 =
+       0.632/0.407/0.363/0.334/0.374/0.374/0.365 — flat after N=5, with the tail-only ceiling **11 SEM**
+       away. **The wash is saturated in the MEAN and under-sampled only in the VARIANCE.**
+     - **The variant spread is BIMODAL, and the mode gap is exactly one cast** (LOW n=26 → +0.293 pp; HIGH
+       n=7 → +0.634 pp; separation **3375 damage**). That is PHASE8's FLOOR LAW showing up on a boss shape as
+       a **discrete parity mode**, not as smooth noise — and it is a **variance** channel, not a cause: the
+       parity-free LOW mode alone is **3.4× the cell's ceiling**. `pct` sign held **33/33** geometries.
+     - **⚠ `xval.mjs` gives the UN-jittered geometry 20 % weight.** `VARIANTS[0]` is δ=0 by construction, and
+       at this cell v0 sits in the HIGH parity mode — so the corpus cell reads **0.3627 where the same
+       5-variant draw without v0 reads 0.2953** (+0.067 pp of bias from one hardcoded vector). Variant 0 gets
+       a fifth of the weight on precisely the geometry the wash exists to smear. Recorded, **not** acted on:
+       changing it moves every boss cell in the committed corpus.
+     - **Deepen a wash with MORE VARIANTS, never a wider δ.** KT's walls 94 and 105 are 11 s apart, so
+       `2·WJ ≥ 11` can reorder them and sim a geometrically impossible fight (`cell-band.mjs` guards this).
   This is the **tail** face of the same integer-vs-continuum law whose **interior-boundary** face is PHASE8's
   FLOOR LAW (a value window covers exactly `floor(D/Δ)` casts in the sim).
   **⚠ The fix is NOT to discretize the scorer.** Swapping the integral for the sim's own sum flips the
@@ -667,6 +696,32 @@ durations the contained region shrinks to the **intersection** of the constraint
     Sim (same-stream CRN, 150k): Icon covering the AoE window exactly beats hanging 5s into the exit
     ramp by **+0.497% vs model +0.501%**. KT's golden already expresses this: its CS-IV@2:05 ends
     exactly at the window end (2:25).
+  - **⚠ OPEN — Correction 3 CANDIDATE: WITHIN-window placement. The model packs the cluster against the
+    window END; the sim wants it ~10 s EARLIER, and this is the ONLY surviving cross-val deficit**
+    (`tools/cell-band.mjs`, 07-25; PHASE7 §5.17. **Not yet a rule — measured at one cell family, cause not
+    yet named, no engine change made.**) On `isc+scb / KT / T=420`, two plans differing *only* by a 10 s
+    shift of the AP/Zerk/Icon/Gem group (model's champion **130**, rival **120**), with **both** presses and
+    all four buff windows **entirely inside** the AoE window [105,145]:
+    - **Ablate the AoE window** — same press times, same walls, same 33 wall geometries, same seed, `_aoe`
+      deleted and `--targets` dropped so genapl casts AB through [105,145] — and, excluding the ±1-cast
+      parity mode, **the two plans are statistically IDENTICAL in the sim: −0.0063 ± 0.0048 pp.** Turn the
+      window back on and the model mis-ranks by **+0.2930 ± 0.0068 pp**. ⇒ **the AoE window accounts for
+      102 % — i.e. all — of the parity-free deficit.** Outside the window the model's ranking of this pair is
+      exactly right, so this is not a burn-model, search, or tail-lattice error.
+    - It is **neither Correction 1 nor Correction 2** — both are *boundary* corrections (SP dilution at the
+      edge; retreat rather than straddle out) and **neither pair straddles a boundary here.** What it is in
+      tension with is how Correction 2 got **interpolated**: its sim evidence compares *flush-with-the-end*
+      against *hanging 5 s past the end*, and it never tested flush-with-the-end against **10 s inside**.
+      The model reads "windows end AT the AoE end" as *pack against the end*; at this cell that is worse than
+      sitting 5–10 s inside it. The rule as written stands; the interpolation between its two tested points
+      is unverified.
+    - Corroboration that the two channels are separable: the parity mode is the **same 7 of 33 geometries**
+      with and without AoE, worth **3375 vs 3428 damage** (an ordinary **AB**-train cast, not an AE cast),
+      and with the window ablated the cell's residual (0.0947) falls **inside** its own ripple ceiling
+      (0.0865) — no deficit left at all.
+    - **Next measurement (pre-register first):** sweep the cluster press time across the window (110…140) in
+      the sim on the parity-free geometries and compare to the model's own curve — the model peaks at 130,
+      the sim at ≤120, and the *shape* of that gap is what names the term to fix.
   - **Haste migrates EARLIER than damage.** A bare AoE window is the max-floor-headroom window, so
     leftover haste (IV/Zerk) takes it from **M(N) > 1** even while the damage cluster still holds Lust
     (grid: disjoint shape at N=3 — CS-IV + Zerk on the window, cluster on Lust). §5's "largest buff that

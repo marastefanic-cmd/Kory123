@@ -309,6 +309,44 @@ cells cannot be ordered by family at all** (07-25, above — three currencies ga
 bootstrap tops the nominal worst family at only 60.8 %). ⇒ **the unit of remaining work is a CELL with a
 fresh sim duel, not a family**, or more columns for power. Do not invent a fourth currency.
 
+**★★★ THAT CELL DUEL HAS NOW BEEN RUN, AND IT RE-PRICES THE OVER-FLOOR LIST: 24 → 18 CELLS (07-25,
+`tools/cell-band.mjs`, PHASE7 §5.17).** The ripple floor prices **one** wall — the tail. A **boss** column has
+**seven** (KT: 15,42,69,94,105,160,306), six of them interior and unpriced, and a boss cell is a *5-variant
+wall-jitter mean* while a class cell is a single un-jittered run. So **the corpus is two instruments with
+different noise**, and grading boss cells against a tail-only floor was grading them against a ruler
+`tools/ripple-audit.mjs`'s own header already called a **lower bound** for them. Measured at the top boss
+cell: seed sd **0.0058 pp** (negligible — the single-seed design is vindicated for count-preserving cells)
+vs wall-jitter variant sd **0.1427 pp** over 33 geometries ⇒ SEM(N=5) ±0.0638, **95 % band ±0.1251**, i.e.
+**12× the seed band** and about the size of boss cells' median ripple ceiling (0.1024). Applying it:
+
+| boss over-floor cell | `pct` | tail ceiling | excess | > ±0.1251? |
+|---|---|---|---|---|
+| `isc+scb` KT T=420 @195 | 0.3630 | 0.0865 | 0.2765 | **SURVIVES** |
+| `isc+scb` KT T=420 @95 | 0.3770 | 0.1073 | 0.2697 | **SURVIVES** |
+| `isc+scb` KT T=420 @245 | 0.2100 | 0.0772 | 0.1328 | **SURVIVES** |
+| `isc+scb` KT @215 | — | — | 0.0953 | inside |
+| `mqg+skull` KT @100 | — | — | 0.0900 | inside |
+| `isc+scb` KT @20 | — | — | 0.0662 | inside |
+| `mqg+skull` Vashj @295 | — | — | 0.0519 | inside |
+| `mqg+skull` Vashj @235 | — | — | 0.0123 | inside |
+| `mqg+skull` Al'ar @295 | — | — | 0.0051 | inside |
+
+⇒ **6 of the 9 boss over-floor cells are not deficits**, and the KT-AoE family shrinks to a 3-cell
+single-kit residue. ⚠ **Two honest limits.** (a) The 0.1427 sd is measured at **one** cell; transferring it
+to the other eight is a first-order prior, strongest exactly where the survivors are (same kit, same fight,
+same length). (b) The **15 class over-floor cells are untouched** — `downtime`/`aoeWins` are populated only
+inside `if (BOSS)` (`tools/xval.mjs:139-163`), so a class fight genuinely has one wall and its ripple floor
+is **complete**. Top class cell stands: `isc+skull long T=293 @130`, excess **0.1653**.
+
+**And the 3 survivors are localized to a single named blind spot.** Ablating the AoE window at the top cell
+(press times, walls, geometries and seed all identical; `_aoe` deleted and `--targets` dropped) collapses the
+deficit from **+0.2930 ±0.0068 pp to −0.0063 ±0.0048 pp** on the parity-free geometries — statistically
+identical. **The AoE window accounts for 102 % of it.** Outside the window the model ranks this pair exactly
+right, so this is **not** a burn-model, search, or tail-lattice error: it is **within-AoE-window placement**
+(the model packs the cluster against the window end; the sim wants it ~10 s earlier). Filed as the
+Correction-3 *candidate* in RULES §9 — measured at one cell family, cause not yet named, **no engine change
+made**. Phase 7's remaining work is that one term.
+
 **★★★ Round 5 proves the B failure is NOT a reference-gear artifact.** The correction was a genuine
 repricing: `xval-round-diff` reports **124 of 345 plan cells changed (35.9%)** across 34/36 tables on a
 −0.4…−1.1% `eff` level shift (KT −6.1…−6.8%). And the verdict did not budge — `deficitTables 34→34`,
@@ -374,10 +412,12 @@ deficit family. ⇒ *"No length-persistent diagonal deficit"* **is not reachable
 low-haste tables at this taper width. **This is a user-facing criterion call**, filed below as a coverage
 gap: the honest form of the test is likely *"deficit below the ripple floor"*, not *"no deficit"*.
 
-**So: not passing yet** — but the accounting has changed. Remaining owners: the two persistent columns
-(Phase 7), PHASE8 (the B2 family, highest-effort scorer work), and the metric-design task for the near-tie
-tail — now merged with the criterion question above, since both say the ruler is too coarse for what is
-left. **The ramp-credit patch is CANCELLED** (there was no defect). Re-run this in full after each.
+**So: not passing yet** — but the accounting has changed **twice**. Remaining owners: the two persistent
+columns (Phase 7), PHASE8 (the B2 family, highest-effort scorer work), and the metric-design task for the
+near-tie tail — now merged with the criterion question above, since both say the ruler is too coarse for what
+is left. **Second repricing (07-25):** the boss half of the over-floor list is down from 9 cells to 3, and
+those 3 are one mechanism — **within-AoE-window placement** (above). So what is left of Phase 7 is *one named
+term at one kit*, plus 15 class cells whose floor is complete and whose top excess is 0.1653 pp. **The ramp-credit patch is CANCELLED** (there was no defect). Re-run this in full after each.
 A performance phase is also open (`docs/PHASE9.md`); by construction it must leave every plan
 byte-identical, so it cannot invalidate a round — but re-run the exact-match suite after each of its
 steps, and if any plan ever *does* move, the round is void.
@@ -408,7 +448,16 @@ steps, and if any plan ever *does* move, the round is void.
   already recorded below (58/135 round-5 columns priced ≤0.02% apart — under the model's *own* resolution).
   Widening the taper toward the tail cast period would shrink the floor, but it also **changes the
   objective** (`KILL_WINDOW` is the half-cast hedge of RULES §8) — do not "fix" the ruler by moving the goal.
-- **KT AoE simmed as downtime** (genapl has no Arcane-Explosion emission) — KT numbers exclude AoE damage.
+- **~~KT AoE simmed as downtime~~ (genapl has no Arcane-Explosion emission) — ~~KT numbers exclude AoE
+  damage.~~ CLOSED at task #53.** `genapl` emits Arcane Explosion for every `_aoe` window and the runner gets
+  `--targets N` (`tools/xval.mjs:133,161,177,265`); the round-5 KT columns are AoE-**valued**. ⚠ Stale copies
+  of this claim survived in several headers long after it was false — when a doc and the code disagree about
+  what a harness emits, **read the code**.
+- **★★ THE FLOOR IS A TAIL-ONLY RULER, SO IT UNDER-PRICES BOSS COLUMNS BY ~0.13 pp** (07-25, above; RULES §8
+  consequence 6). A boss column carries 7 walls and is a 5-variant mean; a class column carries 1 and is a
+  single run. Never pool a boss and a class cell into one statistic without saying which instrument each came
+  from — the 2.8× over-floor enrichment of boss cells was entirely this. Priced now for boss cells
+  (±0.1251), still unpriced for the *interior*-wall contribution at any other boss length or kit.
 - **Ashtongue** (random on-crit proc) is out of the kits — needs a different, stochastic treatment (Phase 7).
 - **No exhaustive ground truth above ~h150** for SP-trinket-free kits (the 5s grid can't express the
   off-grid optimum) — the tool is certified only ≥ the coarse grid there.
@@ -423,8 +472,8 @@ rather than left implied by the gap list above.
 plan against *the best plan a 5-second-grid sim search found*, at 7–11 haste points on 36 fight shapes.
 Every word of that bounds it: the reference is a **grid search**, not an optimum (the gap above already
 concedes there is no exhaustive ground truth over ~h150); the haste points are a **sample** of a
-continuum; the 36 shapes are a **sample** of fight space; and two kits are excluded outright (Ashtongue
-is stochastic and out; KT's AoE is simmed as downtime). So a CLEAN verdict means **"agrees with a
+continuum; the 36 shapes are a **sample** of fight space; and Ashtongue is excluded outright (it is
+stochastic). So a CLEAN verdict means **"agrees with a
 grid-limited reference on the sampled points"** — a strong statement, and a different one from "optimal."
 Read it as the former. It is the best available instrument, not an oracle.
 
