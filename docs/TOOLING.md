@@ -74,6 +74,15 @@ was all search, not scoring). Don't conflate "the count is right" with "the sear
   (Innervate, Mana Tide). Robust to the threshold (DPS flat across `_conserve` 0.2–0.6). Trust-anchored:
   its DPS is within **2.7%** of the export's own native wowsims Arcane rotation. `_noEvo`/`_noAutocast`
   toggle those off. See the **finite-mana harness** section below.
+  **★ Fixed 07-25 (the 07-25 false-pass sweep, task #59).** `_noAutocast` was **read** by `build` but
+  **missing from the known-key set**, so the unknown-key guard rejected the one key this very bullet
+  documents — `unknown spec key(s) _noAutocast`, no APL at all. A guard that *over*-rejects is the same
+  defect class as one that under-rejects; it fails loudly, which is why it was never chased. Two more
+  closed alongside, both mirroring `genapl.mjs`: a **missing or empty CLI spec** fell through to a silent
+  **exit 0 having written nothing**, leaving a **stale outfile** for the runner to sim under the new
+  experiment's name (demonstrated on the pre-fix file); and non-finite press times formatted straight
+  through `` `${t}s` `` into the schedule string. Behaviour-neutral — **6/6 byte-identical** emissions vs
+  the pre-fix file across specs covering every key.
 - **`runner`** (NOT in repo — ~16MB compiled Go binary): a headless single-player sim built from the
   **wowsims TBC-with-APL source** (`wowsims/tbc-new`, module `github.com/wowsims/tbc`, pinned at commit
   **`ade9f39`**). `cmd/runner/main.go` reads an individual gear export, applies an optional `--apl`

@@ -42,8 +42,13 @@ const IDS = {
 // Every spec key this generator understands.  A key that is NOT here used to be dropped in
 // silence — a skull/mqg kit emitted a conserve APL with the trinket press simply ABSENT, and the
 // finite-mana number it fed was wrong while looking entirely fine.
+// `_noAutocast` is READ at the autocast step below but was MISSING from this set, so the guard
+// meant to catch typos rejected the one key it was documented to accept: any caller that asked to
+// suppress the external mana cooldowns got `unknown spec key(s) _noAutocast` and no APL at all.
+// A guard that over-rejects is the same defect class as one that under-rejects — it just fails
+// loudly instead of silently, so it was never chased.
 const KNOWN = new Set([...Object.keys(IDS), '_conserve', '_evo', '_burnWindows', '_intermission',
-                       '_intermissions', '_prestack', '_noEvo']);
+                       '_intermissions', '_prestack', '_noEvo', '_noAutocast']);
 const fmt = arr => (arr||[]).map(t=>`${t}s`).join(', ');
 const sched = (times, id) => ({ action: { schedule: { schedule: fmt(times), innerAction: { castSpell: { spellId: id } } } } });
 const cast = id => ({ castSpell: { spellId: { spellId: id } } });
@@ -57,12 +62,19 @@ const andv = (...vals) => ({ and: { vals } });
 //         _conserve:0.30, _evo:0.06, _burnWindows:[[a,z],..], _intermission(s),
 //         _prestack:N, _noEvo:bool }
 export function build(spec){
+  if (!spec || typeof spec !== 'object' || Array.isArray(spec)) throw new Error(`genconserve: spec must be an object (got ${Array.isArray(spec) ? 'array' : typeof spec})`);
   const pl = [];
   const conserveThresh = spec._conserve ?? 0.35; // AB while mana% above this, else Frostbolt
   const evoThresh      = spec._evo      ?? 0.06; // Evocate when mana% falls below this
   const unknown = Object.keys(spec).filter(k => !KNOWN.has(k));
   if (unknown.length) throw new Error(`genconserve: unknown spec key(s) ${unknown.join(', ')} — would be silently dropped from the APL`);
   for (const k in IDS) if (spec[k] != null && !Array.isArray(spec[k])) throw new Error(`genconserve: spec.${k} must be an array of fire times (got ${typeof spec[k]})`);
+  // A non-finite press time formats straight through `${t}s` ("nulls", "NaNs") into the schedule
+  // string, where it is worth nothing but reads as a scheduled press in the emitted JSON (genapl).
+  for (const k in IDS) {
+    const bad = (spec[k] || []).filter(t => !Number.isFinite(t));
+    if (bad.length) throw new Error(`genconserve: spec.${k} has non-numeric press time(s): ${JSON.stringify(bad)}`);
+  }
   // `|| 1` silently overrode an EXPLICIT _prestack:0, generating a prepull AB at -2.3s for a
   // caller that had asked for a cold open — the exact haste-blind prepull the project forbids in
   // any model-compared sim (genapl header ★★★, RULES §3).  `??` keeps the default without
@@ -124,8 +136,23 @@ export function build(spec){
 }
 
 // Run the CLI only when invoked directly (not when imported by a test harness).
-if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href && process.argv[2]) {
-  const spec = JSON.parse(process.argv[2]);
+// Exit-code contract (shared by every instrument here): 0 = wrote an APL · 2 = could not.
+// The trailing `&& process.argv[2]` meant a MISSING or EMPTY spec fell through to a silent exit 0
+// having written nothing — so `node genconserve.mjs "$spec" out.json` with an unset $spec left a
+// STALE out.json in place and the runner simmed the PREVIOUS experiment's rotation under this
+// experiment's name.  Demonstrated on the pre-fix file: exit 0, outfile untouched.  (Same defect,
+// same day, as tools/genapl.mjs.)
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  if (!process.argv[2]) {
+    console.error('ERROR: usage: node tools/genconserve.mjs \'<spec-json>\' [outfile]   (refusing to exit 0 without writing an APL)');
+    process.exit(2);
+  }
+  let spec;
+  try { spec = JSON.parse(process.argv[2]); }
+  catch (e) { console.error(`ERROR: spec is not valid JSON — ${e.message}`); process.exit(2); }
+  let apl;
+  try { apl = build(spec); }
+  catch (e) { console.error(`ERROR: ${e.message}`); process.exit(2); }
   const out = process.argv[3] || '/dev/stdout';
-  fs.writeFileSync(out, JSON.stringify(build(spec), null, 1));
+  fs.writeFileSync(out, JSON.stringify(apl, null, 1));
 }

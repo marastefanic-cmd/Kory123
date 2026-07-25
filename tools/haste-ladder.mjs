@@ -110,7 +110,13 @@ async function bruteAt(h) {
     const en = {}; for (const k in BUFFS) en[k] = keys.includes(k);
     const cfg = { T, hasteRating: h, sp: 1387, critPct: 38, enabled: en, fixed: { bloodlust: [LUST] }, warnings: [], coldSnap: true, segments: null };
     const best = await optimizeAsync(cfg, 14, () => {});
-    return { v: best.val, s: JSON.stringify(best.s) };
+    // ★ Grade the plan the tool EMITS, not the score it reports.  The 0.15 "pressability slack"
+    // band below is the same width as the val/emitted-plan drift that used to leak through
+    // `optimizeAsync` (worst 0.153 eff casts, PHASE7 §5.14) — so a real miss could hide inside the
+    // band while the reported val looked fine.  The engine now re-scores before resolving, which
+    // makes these equal; scoring `best.s` explicitly means this instrument no longer DEPENDS on
+    // that, and it matches what brute-grid --tool was fixed to do.
+    return { v: simulate(best.s, cfg).robust, s: JSON.stringify(best.s) };
   }, { h, T, LUST, PAIR });
   return { h, top: merged.slice(0, 3).map(m => ({ eff: +(m.v / plain).toFixed(3), key: m.key })),
     toolEff: +(tool.v / plain).toFixed(3), toolPlan: tool.s };

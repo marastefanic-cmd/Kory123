@@ -11,7 +11,10 @@ import fs from 'fs';
 
 const TIE_EPS = 0.02; // eff casts — twins within this are one plateau
 const files = process.argv.slice(2);
-if (!files.length) { console.error('usage: node tools/ladder-analyze.mjs ladder-*.json'); process.exit(1); }
+// Exit 1 means "graded and failing"; "you gave me no files" is `could not grade` = 2 (the contract
+// every other instrument here uses).  A caller whose glob expanded to nothing read this as a real
+// negative verdict.
+if (!files.length) { console.error('ERROR: usage: node tools/ladder-analyze.mjs ladder-*.json   (no input files — nothing to analyse)'); process.exit(2); }
 
 const classify = (key, pairName) => {
   // key = JSON of [IV[], tA[], tB[], AP[], Zerk[]] — derive a coarse layout CLASS for alignment

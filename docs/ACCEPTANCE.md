@@ -143,6 +143,30 @@ the authoritative row-by-row ledger.
   unvalidated `parseFloat(field 5)` that was `xval.mjs`'s worst defect; here `NaN` fails every
   comparison and falls through to `‼ DISAGREE (real ranking flip)` — a false *alarm* rather than a
   false pass, but it corrupts the same gate. Now exit 2 with the offending line.
+- **`tools/genconserve.mjs`** — the finite-mana **conserve** rotation generator (the gearing-EP
+  baseline, `docs/EP.md`). Hardened 07-25 with three fixes, two of them `genapl.mjs`'s defects
+  verbatim: a **missing or empty CLI spec** fell through to a silent **exit 0 having written
+  nothing**, leaving a *stale* outfile the runner then simmed under the new experiment's name
+  (demonstrated on the pre-fix file: `EXIT=0`, outfile still `{"STALE":"previous experiment"}`);
+  non-finite press times formatted straight through `` `${t}s` `` into the schedule. The third runs
+  the *other* way: `_noAutocast` was **read** by `build` but **absent from the known-key set**, so the
+  unknown-key guard rejected the one flag `docs/TOOLING.md:75` documents (`unknown spec key(s)
+  _noAutocast`) and emitted no APL at all. **A guard that over-rejects is the same defect class as one
+  that under-rejects** — it just fails loudly, which is why it went unchased for so long. Verified
+  **6/6 byte-identical** to the pre-fix generator on specs covering every key.
+- **`tools/haste-ladder.mjs`** — the RULES §16 brute-grid ladder marched across gear haste, and the
+  optimizer's continuous **certification** against it. It graded `best.val` — the score the tool
+  *reports* — against the grid optimum, with a `0.15` pressability-slack band. That band is the same
+  width as the worst `val`/emitted-plan drift that used to leak out of `optimizeAsync` (0.153 eff
+  casts, PHASE7 §5.14), so a real miss could sit inside the slack while the reported number looked
+  clean. It now grades `simulate(best.s, cfg).robust` — the plan actually emitted — matching the fix
+  already made to `brute-grid --tool`, so the certification no longer *depends* on the engine
+  re-scoring. Behaviour-neutral on the post-§5.14 engine, proven not asserted: **7/7 ladder cfgs
+  (h=0…300), 0 with drift, worst `0.00e+0`**.
+- **`tools/ladder-analyze.mjs`** — cross-pair band-table compression over the ladder dumps. Exited **1**
+  when handed **no input files**, i.e. a caller whose glob expanded to nothing read "you gave me
+  nothing" as a real negative verdict. Now exit **2**, per the shared contract (0 = graded clean · 1 =
+  graded and failing · 2 = could not grade).
 
 ## Current status (2026-07-25, **round 4** — gathered on the shipped post-§5.11 engine) — NOT PASSING (B)
 All 36 tables re-run on the current engine (cross-haste pooling ON, var0.5, per-wall jitter v2, KT AoE
