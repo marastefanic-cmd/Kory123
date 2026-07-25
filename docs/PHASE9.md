@@ -704,6 +704,12 @@ stable order-canonical form — but stop calling it on the hot path.
 
 #### 4.13.1 The revised landing order (supersedes §4.8's items 1–2)
 
+> **⚠ AMENDED by §4.16.** Two items land *ahead* of everything below, and they change item 5's shape:
+> **(0a) extract the `admit` helper** — the legality prefix written longhand at 9 sites, byte-identical
+> by construction, worth landing on legibility alone; **(0b) hoist `counts(base)`/`clipOf(base)`** out of
+> the candidate loops, which completes a hoist the code already performs for `simulate` at the same
+> scope. After 0a, item 5's "every call site must be converted" becomes **one** call site.
+
 1. **§4.13 native `JSON.stringify` as the memo key** — replaces `sigOf` at `:654` and `:1351`. Biggest
    measured win per line changed (≈1.8 s CPU/solve); miss-not-corruption failure mode.
 2. **§4.12(A) hoist the loop-invariant operand** at `1951`, `2533`, `1983`, `2169` — byte-identical by
@@ -712,7 +718,9 @@ stable order-canonical form — but stop calling it on the hot path.
    with item 1: after it, the key is one native string with no `"|"` concat and no cfg prefix.)*
 4. §4.4 hot-loop allocation — needs a read-the-diff proof, not just a green suite.
 5. §4.1 the repair/sig/counts/clip fusion — biggest win, widest blast radius, do it last. *(Item 1 lowers its
-   payoff slightly: the walk it deletes is now a 0.483 µs native call, not a 1.400 µs JS loop.)*
+   payoff slightly: the walk it deletes is now a 0.483 µs native call, not a 1.400 µs JS loop. §4.15/§4.16
+   narrow it further: emit the extra outputs **opt-in**, and land it behind §4.16's `admit` so there is one
+   consumer that uses all of them rather than 41 sites of which 14 want none.)*
 
 Dropped from the old ladder: **§4.3's sig-swap** (rejected, §4.12.8) and **§3.2/H1's hand-rolled encoder**
 (superseded by item 1). §4.9's two dedups still land ahead of all of this as §4.7's enablers, and §4.7's
@@ -850,3 +858,82 @@ out). Running the tool with the stripping disabled makes the self-test fire and 
 the discrimination is demonstrated rather than asserted. Exit contract as elsewhere: **0 = censused,
 2 = could not census**; zero sites, a missing engine block, or a `repair` definition outside the block
 are all hard errors, because "0 sites to convert" is a result this file cannot legitimately produce.
+
+### 4.16 ★★ The admissibility triple — the *"fewer steps that do the same thing"* answer, found
+
+§4.15 counted the sites. Reading them is what pays: the passes are **not** twelve different candidate
+loops. They are twelve different *accept ladders* sitting behind **one legality prefix, written out
+longhand every time**:
+
+```js
+const rep = repair(cand, cfg);
+if (!sameCounts(counts(BASE), counts(rep))) continue;   // the move kept every use
+if (clipOf(rep) > clipOf(BASE) + 1e-9) continue;        // and clipped no more past the kill
+```
+
+Verbatim — same calls, same order, same `1e-9` — at **5 sites** (`index.html:2208, 2391, 2527, 2576,
+2627`), differing in **nothing but the name of the base variable** (`s` / `base` / `sx`). A 6th
+(`:2766`) is the same triple behind a `JSON.stringify` no-op check; a 7th (`:2306`) folds the clip test
+into a combined condition; two more use the counts half alone. Nine sites, one idea.
+
+**The idea itself is right and is theorycraft** — a candidate is admissible iff it preserves the use
+counts and does not clip more past the kill; the passes then differ in what they do with an admissible
+candidate, and *that* difference is the model. §4.6's refusal to delete a pass is untouched. What is
+duplicated is the sentence, not the rule.
+
+```js
+// one helper, nine callers
+const admit = (cand, base, cfg) => {
+  const rep = repair(cand, cfg);
+  if (!sameCounts(counts(base), counts(rep))) return null;
+  if (clipOf(rep) > clipOf(base) + 1e-9) return null;
+  return rep;
+};
+// at the call site:  const rep = admit(cand, s, cfg); if (!rep) continue;
+```
+
+Byte-identical **by construction**: same three calls, same order, same short-circuit, same epsilon —
+the transform moves text, not arithmetic. (Which is a claim the suite must still *prove*, per the
+standing rule; "by construction" earns it a cheap proof, not an exemption from one.)
+
+#### The larger win is hiding inside it: **two of the prefix's walks are loop-invariant**
+
+The prefix costs five walks per candidate — `repair`, `counts(rep)`, `counts(base)`, `clipOf(rep)`,
+`clipOf(base)` — and **`counts(base)` and `clipOf(base)` do not depend on the candidate.** They are
+recomputed for every candidate in loops that are two and three deep (`:2527` sits inside `for order` ×
+`for li` × the slot build).
+
+Audited per site rather than assumed: at `:2208`, `:2391` and `:2527` the base (`s`, `base`) is assigned
+only **after** the candidate loop ends; at `:2576` and `:2627` the base (`sx`) is assigned only in the
+accept branch, which `break`s the inner loop and then the outer one, returning to an enclosing loop that
+restarts the scan. So the base is invariant for the entire scan at all five.
+
+**And the code already knows this.** Both `sx` sites open their scan with
+
+```js
+const r0 = simulate(sx, cfg).robust;      // hoisted — invariant across the candidate loop
+```
+
+hoisting the *most expensive* invariant walk out by hand, then recomputing the two cheap ones inside.
+This is not a speculative transform; it **completes a hoist the author already started, in the same
+function, at the same scope**. That makes it the safest item in this document — and unlike §4.3's
+rejected swap it *deletes* work rather than trading one encoding for another, so it cannot come back
+measured-slower.
+
+#### This supersedes §4.1's landing plan
+
+§4.1 proposes a `repair` that emits `{s, sig, counts, clip}` and warns that "every call site must be
+converted" — 41 of them, of which §4.15 showed a third want none of it. Through `admit` there is
+**exactly one call site to convert**: the helper. The fused `repair` then has a single consumer, and
+that consumer uses **all** of its outputs, which is precisely the waste §4.15 objected to. The ordering
+that falls out:
+
+1. **`admit` extraction** — pure text motion, 9 sites → 1 helper, byte-identical by construction.
+2. **Hoist `counts(base)`/`clipOf(base)`** out of the candidate loops — now a change to one signature
+   (`admit(cand, baseCounts, baseClip, cfg)`) instead of nine call sites.
+3. **Fuse the walk into `repair`** (§4.1) — behind the one helper, opt-in outputs, all consumed.
+
+Each step is independently landable, independently revertible, and gated by the same exact-match 25/25.
+**Still owed, and not to be skipped:** §4.7's *runtime* census, because everything above is a static
+argument about where the work is written, not a measurement of where it is spent. Step 1 is worth
+landing on legibility alone; steps 2 and 3 must show a profile delta before they are called wins.
