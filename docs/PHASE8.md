@@ -39,6 +39,19 @@ One real finding did come out of it: **★ haste covering the opening ramp is un
 (6/6 haste legs, both hastes) — the model pays it exactly 0.000, and this is a genuine defect of the
 hardcoded axiom. It is not B2: the only ramp-coverage *difference* between the two plans is `Zerk@0` vs
 `Zerk@6` on a ramp `IV@0` already covers in both, worth 0.009–0.027 pp against 0.445.
+**Round 6** (07-25, §16): the **two-plan differential** — stop decomposing, walk the five-press path between
+the two real layouts in both directions. **G1 reproduces §1's headline to four digits** (sim +0.3602%, model
+legacy −0.0204%), and then **★★ G3 FIRES**: one move — `M34`, the **trinket pair** (`Icon 29,183→4,182` +
+`MQG 9→202`) — carries **−0.325 pp of the −0.396 pp endpoint gap, 82% of B2**, same-signed in both
+directions, against a −0.02…−0.06 pp background on the other three moves. The model **over-values the late
+trinket cluster** (`Icon@182` + `MQG@202` stacked on `IV@202` in the last 27 s) relative to the early one
+(`MQG@9` + `Icon@29`). G4 finds a real but small joint residue (0.063 pp, 16%); G5 says every move is
+context-asymmetric but only M34's sign is stable. **The tension that explains five quiet rounds:** §15.5
+priced `Icon` at *exactly* 0.000 and `MQG` at ≤0.053 pp **alone** — the defect is not in either buff's
+valuation but in the two moving **as a pair**. Two structural by-products: wowsims' shared category-1141
+lockout makes **every single-trinket intermediate illegal in both directions** (so M3/M4 are inseparable),
+and **drift magnitude is not a sufficient legality test** — two of the four illegal plans were retimed by
+only 2.0–2.1 s, under one cast interval. §17 pre-registers the split of `M34` into single presses.
 
 Phase 7 fixed everything cheaper: three press-execution scorer terms (RULES §3b), two search passes, the
 metric (var0.5 + wall-jitter), the KT AoE harness, and — the big one — **cross-haste pooling, which makes
@@ -1102,6 +1115,129 @@ Cost: 12 sim runs and 12 model evaluations. Cheap — this should have been roun
 It cannot find a mechanism the two plans don't differ in. If G4 says additive and G3 names M4, the *reason*
 M4 is mispriced still needs its own round. §16 buys **localization**, not explanation — but after three
 rounds of blind exclusion, localization is the thing worth buying.
+
+### 16.5 VERDICT — ★★ **G3 FIRES.** One move carries 82% of B2: the **trinket pair**
+
+Run: `r6diff.sh` (sim: 14 plans, `T=229`, `--haste 70`, `--var 3.0`, `iter=20000`, `seed=11`, cold open,
+infinite mana) · `r6verify.mjs` (G2) · `r6model.mjs` (model: the *same* presses through `simulate`, at both
+the corrected inputs `sp=1450 t5two=on` and the legacy `sp=1387` for continuity) · `r6stat.mjs` (reduction).
+
+**G1 — PASS, exactly.** sim `h40 − h70 = +0.3602 %` (pre-registered +0.360); model legacy `−0.0204 %`
+(pre-registered −0.02). The instrument reproduces §1's headline to four digits, so everything below is
+readable. With the corrected inputs the model reads `−0.0370 %`, i.e. the endpoint residual is
+**−0.3959 pp** (legacy −0.3792 pp) — the number the moves must sum to.
+
+**G2 — the four single-trinket moves are PHYSICALLY UNAVAILABLE, and this was known before any DPS was read.**
+The a-priori shared-lockout check (any two on-use trinket presses ≥ 20 s apart) rejects all four:
+
+| plan | trinket layout | verdict | what the log then did |
+|---|---|---|---|
+| `F_M3` | Icon@4 → MQG@9 | gap 5 s | MQG fired **@25.71** (+16.71 s) |
+| `B_M4` | Icon@4 → MQG@9 | gap 5 s | MQG fired **@25.64** (+16.64 s) |
+| `B_M3` | Icon@183 → MQG@202 | gap 19 s | MQG fired **@204.13** (+2.13 s) |
+| `F_M4` | Icon@183 → MQG@202 | gap 19 s | MQG fired **@204.00** (+2.00 s) |
+
+So **M3 and M4 are not separable at all**: with Icon and MQG both on the 20 s category-1141 timer, *every*
+single-trinket intermediate between the two plans is illegal in *both* directions. They can only be walked
+jointly, as **M34**. That is a structural fact about the layout pair, not a measurement failure.
+
+> ★★ **METHODOLOGICAL UPGRADE — drift magnitude is NOT a sufficient legality test.** §1's lesson was
+> "log-verify the press." Necessary, not sufficient: `B_M3` and `F_M4` were retimed by only **2.13 s / 2.00 s**,
+> *less than one unbuffed cast interval at gear haste 70* (2.5 / 1.0444 = **2.394 s**), and would have passed
+> a naive "fired within a cast" eyeball. Only the structural check caught them. **Run the a-priori legality
+> check first; use the log to confirm it, not to replace it.**
+
+Three *legal* plans exceed the pre-registered 1.5 s tolerance, all on the same press — `AP@188`
+(h40 → 189.51, `F_M5` → 189.51, `F_M34` → 189.75). This is neither snap nor retime but a **cooldown chain**,
+and it is fully determined: h40 asks for AP at 8 and 188 — *exactly* the 180 s cooldown apart — the first
+press boundary-snaps to **9.06**, so AP is not ready until 189.06 and the next cast boundary is 189.51.
+It is deterministic, identical in both legs' inputs, and it lands on **h40**, the plan the sim already
+prefers, so it cannot manufacture B2's sign. It is nevertheless a real model gap and is carried to RULES:
+**the model schedules two presses exactly one cooldown apart; the sim cannot execute that**, because the
+first press always fires late.
+
+**G3 — ★★ FIRES. `M34` carries −0.325 pp of the −0.396 pp endpoint gap: 82% of B2, in one move.**
+All deltas in the `h40 → h70` direction, `Δresid = d_sim − d_model` in pp (primary inputs):
+
+| move | what | d_sim (fwd) | d_model (fwd) | **Δresid (fwd)** | d_sim (bwd) | d_model (bwd) | **Δresid (bwd)** | mean |
+|---|---|---|---|---|---|---|---|---|
+| M1 | AP 8,188→4,192 | −0.158 | −0.146 | −0.012 | −0.032 | +0.051 | −0.083 | −0.047 |
+| M2 | Zerk 0,188→6,192 | −0.366 | −0.422 | +0.056 | +0.007 | +0.112 | −0.104 | −0.024 |
+| M5 | IV 200→202 | +0.011 | +0.014 | −0.003 | +0.032 | +0.155 | −0.122 | −0.063 |
+| **M34** | **Icon 29,183→4,182 + MQG 9→202** | **−0.377** | **−0.126** | **−0.251** | **+0.032** | **+0.431** | **−0.399** | **−0.325** |
+
+(legacy inputs give the same picture: M34 −0.313 pp of a −0.379 pp gap.) The three non-trinket moves sit at
+−0.02 … −0.06 pp — the diffuse background this phase has been measuring for five rounds. M34 is 5–13× larger
+and **same-signed in both directions**. The pre-registered G3 prior named **M4 (MQG 9→202)**; the lockout
+forces Icon along for the ride, but the prior was right about where to look.
+
+**The direction of the error, stated plainly:** *the model over-values the late trinket cluster*
+(`Icon@182` + `MQG@202` stacked on `IV@202`, inside the last 27 s) *relative to the early one*
+(`MQG@9` + `Icon@29`). Forward, the sim charges 0.377% to move the trinkets late and the model charges only
+0.126%; backward, the sim pays ~0.03% for the late cluster and the model pays 0.431%.
+
+**G4 — non-additive, but only just.** `Σ Δresid{M1,M2,M34,M5} = −0.459 pp` vs endpoint `−0.396 pp`;
+`|diff| = 0.063 pp`, over the 0.05 pp threshold. So there **is** a genuine joint residue — the first
+*positive* evidence for one in this phase, as §16.3 required it to be established by measurement — but it is
+**16% of the gap**. The error is 84% localized.
+
+**G5 — asymmetric everywhere** (0.07 – 0.16 pp forward-vs-backward, all four moves). Context modulates every
+move's magnitude; only M34's **sign** is stable. That is what a real interaction looks like, and it is why
+the §16.3 "diffuse" branch does **not** fire.
+
+**★ The finding, and its tension with round 5.** §15.5 measured `Icon`'s solo residual as **exactly 0.000 at
+every position, at both hastes**, and `MQG`'s as ≤ 0.053 pp (all of it clip-boundary snap). Each trinket,
+priced **alone**, is exact. The same two trinkets, moved **together inside this plan**, carry **0.33 pp**.
+Those two statements are both true and they are the phase's answer to why five rounds of single-buff probing
+found nothing: **the defect is not in either buff's valuation — it is in what happens when they move as a
+pair.** That is now localized to two named presses and is cheap to split further. See §17.
+
+**Instrument caveat, recorded not resolved.** The model's displayed plan times are fire times **floored to
+whole seconds**, and the harness feeds those floored integers back to the sim, which re-snaps them to its own
+cast boundaries. The floor is therefore mostly absorbed — except where it crosses a boundary, giving a
+±1-boundary uncertainty per press. It applies to both plans and has applied since §1, but it is an unquantified
+term at roughly the scale of the diffuse background (~0.05 pp) and should be measured before any calibration
+is fitted to numbers that small.
+
+## §17 — ROUND 7, PRE-REGISTERED: split `M34` into single presses (the legal three-step path)
+
+### 17.1 The question
+`M34` moves **both** trinkets. §16.5 shows the pair carries 0.33 pp; it cannot say whether that is MQG, Icon,
+or the two together. The shared 20 s lockout blocks the direct single-move split — but not a **three-step
+path through a parked position**, because a trinket parked mid-fight is legal against both endpoints.
+
+### 17.2 The design — park MQG at 100 s
+Trinket sub-layout only; the rest of the plan is held fixed. Steps, `h40-trinkets → h70-trinkets`:
+
+| step | trinket layout after | gaps | what moves |
+|---|---|---|---|
+| — | `Icon 29,183 · MQG 9` | 20, 154 | (h40 endpoint) |
+| **P1** | `Icon 29,183 · MQG 100` | 71, 83 | **MQG leaves the opener** |
+| **P2** | `Icon 4,182 · MQG 100` | 96, 82 | **Icon alone relocates** |
+| **P3** | `Icon 4,182 · MQG 202` | 178, 20 | **MQG arrives on `IV@202` at the kill** |
+
+Every intermediate clears the 20 s lockout with margin. Run the path in **both rest-contexts** — everything
+non-trinket held at h40, and everything non-trinket held at h70 — so the path's endpoints are exactly the
+four plans §16 already measured (`h40`/`F_M34` and `B_M34`/`h70`). **Cost: 4 new sim runs + 4 model
+evaluations** (the two intermediates × two contexts); the endpoints are reused.
+
+### 17.3 Pre-registered falsifiers
+- **H1 — path additivity.** `Σ Δresid(P1,P2,P3)` must equal `Δresid(M34)` in the *same* context within
+  0.05 pp. If it does not, the parked position at 100 s is not neutral and the split is not a split.
+- **H2 — localization.** Which step clears `|Δresid| ≥ 0.15 pp`? **Prior, stated now: P3** — the only step
+  that stacks a haste trinket onto another haste window (`IV@202`) inside the last 27 s of the fight.
+- **H3 — the Icon control.** P2 moves **only Icon**. §15.5 measured Icon's solo residual at exactly 0.000
+  everywhere. If P2 also reads ≈ 0, Icon is exonerated and the culprit is a single press, `MQG`. If P2 is
+  large, then §15.5's Icon result does not survive context — and the "solo = exact" reading that this whole
+  phase has leaned on is itself in question, which would be the more important finding of the two.
+- **H4 — context sensitivity.** The same step's `Δresid` in the h40-rest vs the h70-rest context. G5 already
+  says context is worth 0.07–0.16 pp; H4 says *which step* is carrying it.
+- **H5 — press verification, mandatory, in the §16.5 order.** A-priori structural legality check **first**,
+  combat log second. A plan that does not fire as requested is discarded, not interpreted.
+
+### 17.4 What this round cannot do
+It cannot explain *why* the surviving press is mispriced — that is round 8. It converts "the trinket pair"
+into "this one press", which is the last decomposition step available before the question becomes mechanistic.
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
