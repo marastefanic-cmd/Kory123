@@ -2377,13 +2377,28 @@ scoring artifact" reading and confirms the miss is purely one of **reach**.
    widen the family by one parameter — for every origin `o` and every co-press second `c`, IV = natural
    chain from `o`, truncated before `c`, then `c`, then re-anchored from `c`; offered twice, with the
    rest of the kit left alone and with it dragged onto the group seconds. 26–236 candidates per case,
-   polish-only, all 25 cases (`$SP/cs-free.mjs`). Result: **`5:40 lust 0:05` ties at +0.000 across 78
-   candidates.** The family does not contain the winner either — because, exactly as in (4), it inherits
-   its origins from the entrant's own `icyVeins` presses. **Two** cases in the corpus gain anything at
-   all, both trivially: `3:20 lust 0:05 drums` **+38.8** (0.011 %) via `o0/cs@179+stack` and `Al'ar`
-   **+8.1** (0.0024 %) via `o1/cs@203`. Rejected twice over — falsified on its motivating case, and even
-   where it wins it buys ~0.005 % for 78–236 extra polishes per case, which is the wrong direction for a
-   phase whose subject is CPU.
+   polish-only, all 25 cases (`$SP/cs-free.mjs`). **Two** cases in the corpus gain anything at all, both
+   trivially: `3:20 lust 0:05 drums` **+38.8** (0.011 %) via `o0/cs@179+stack` and `Al'ar` **+8.1**
+   (0.0024 %) via `o1/cs@203`. Rejected on cost alone — ~0.005 % for 78–236 extra polishes per case is
+   the wrong direction for a phase whose subject is CPU — and rejected again on its motivating case,
+   below.
+
+   **⚠ Its `5:40` row read "+0.000 across 78 candidates", and that row was VACUOUS.** `cs-free.mjs`
+   derives its origins and co-press seconds from **the case's own baseline plan**, and `5:40`'s baseline
+   in `fullPristine.json` **is the winner** (the sweep runs the seed-1337 default, which finds it). The
+   family was generated *from the target*: a tie was the only outcome the test could produce. It could
+   not have failed, so it did not measure anything. Recording it as a falsification was the same species
+   of error as the repricing trap below — a comparison whose two sides were not independent.
+
+   The real question — can the widened family reach `[5,127,307]` **from the 4242 entrant** — is
+   answered separately, and negatively, for a sharper reason than (4)'s. That entrant presses
+   `icyVeins[0,190,310] isc[4,190,310] scb[4,195,315] arcanePower[4,195] berserking[20,200]
+   bloodlust[5]`; the arithmetic co-press set `{t, t+cd, t+dur}` over those presses has its nearest
+   members to the winner's key second at **124** (`isc[4] + 120`) and **125** (`basinHop`'s 5 s grid
+   snap of that same tick). **127 is not a co-press second at all** — it is 125 pushed +2 by
+   cast-boundary snapping downstream. And the 124/125 family was already measured in `cs-align.mjs`:
+   **582400.409**, with polish dragging IV's opener back to 189. The family misses because the second it
+   needs is not in its alphabet — which is a fact about the **anchor grid**, and feeds (L2) below.
 
 ##### ⚠ …and hypothesis 6's first table was WRONG, in this repo's own named way
 
@@ -2407,17 +2422,62 @@ wins, so nothing about the output looks broken. Written into `TOOLING.md` next t
 #### Where this leaves it — and the discipline note
 
 Six mechanisms killed; **do not re-litigate any of them.** But the miss is no longer unexplained in the
-way §5.11 left it: it is now known to live in the **re-hop fixpoint's reach and round budget**, not in
-the seeds, not in the snap, not in the plateau, and not in the scorer. The two concrete leads:
+way §5.11 left it: it is now known to live in the **re-hop fixpoint's reach**, not in the seeds, not in
+the snap, not in the plateau, and not in the scorer. Two leads were opened. **(L1) is now dead too.**
 
-- **(L1) The `stable` early-exit fires a round too early.** At 4242 round 1 hops to no improvement and
-  breaks; at 1337 the *third* round is where the +159.8 lands. `stable` tests whether the **hop**
-  improved, but `normalize` runs *after* the test, so a round that only moves the plan via
-  canonicalization is scored as stable and ends the loop. Whether more rounds fix 4242 is **untested** —
-  and it is a SEARCH change, so §5.10's rule applies: it must be gated on the **full 25**, never the
-  quick tier.
-- **(L2) The re-hop's anchors are entrant-derived**, so a champion in the `190/310` family cannot reach
-  `127/307` no matter how many rounds it gets. If (L1) fails, this is the real wall.
+##### (L1) The `stable` early-exit — FALSIFIED, and the round budget was never the constraint
+
+The lead: `stable` tests whether the **hop** improved, but `normalize` runs *after* the test, so a round
+that moves the plan only via canonicalization is graded stable and ends the loop. At 4242 round 1
+reports stable and the loop exits after two rounds; at 1337 the *third* round is where +159.8 lands.
+
+Tested at the cheapest possible scale, on **scratch copies** of `index.html` (`$SP/mkL1.py`), before any
+corpus sweep — single case, 14 starts, ~30 s each in bare node (`$SP/l1-probe.mjs`):
+
+| variant | change |
+|---|---|
+| `L1base` | unmodified engine + the `globalThis.__SEED` override only |
+| `L1fix`  | `stable` becomes a **real layout fixpoint**: `sigOf(s2) === sigOf(s)` |
+| `L1r6`   | round budget **3 → 6** |
+
+**Both controls run, because a probe whose failure mode is a PASS needs both.**
+
+| seed | control asserts | `L1base` | `L1fix` | `L1r6` |
+|---|---|---|---|---|
+| 1337 | must reach 582688.621 | **582688.620970** | **582688.620970** | **582688.620970** |
+| 4242 | must reproduce 582455.531 | **582455.530709** | **582455.530709** | **582455.530709** |
+
+Positive control passes: neither variant *loses* the good plan where it is currently found (all three
+return `icyVeins[5,127,307]` at 1337). Negative control passes: `L1base` reproduces the miss exactly.
+And the verdict is unambiguous — at 4242 all three return **byte-identical layouts**
+(`icyVeins[0,190,310] isc[4,190,310] scb[4,195,315] arcanePower[4,195] berserking[20,200]`), −233.090.
+
+**More rounds and a stricter stability test change nothing at all** — not the value, not one press
+second. `stable` firing early is a real observation about the *test*, but the loop had genuinely
+converged: it was not being cut short, it had nowhere left to go. (L1) is dead. **Do not re-litigate it.**
+
+##### (L2) The anchor alphabet — the sole surviving lead, now nameable
+
+Reading `basinHop` (`index.html:1285-1360`) sharpens (L2) from "anchors are entrant-derived" into a
+specific, generalisable defect:
+
+- anchors are built from **the entrant's own presses**: each press second `t`, each natural next tick
+  `t + cd` **snapped to a 5 s grid** (`grid = x => Math.round(x/5)*5`, `:1297`), each max-stack onset
+  second off the cast board, and `T − 1`.
+- `cfg.fixed` tracks are excluded from `windows` (`:1289`) but **included** in `anchors` (`:1298`) — so
+  `bloodlust[5]` does contribute anchor 5.
+- a move **teleports one window to one anchor** and is accepted **only on strict improvement**.
+
+Against that, reaching the winner from the 4242 entrant needs a coordinated **3-move** — IV's opener
+`0 → 5`, `190 → 127`, `310 → 307` — with no single leg improving on its own. That is the textbook
+local-search wall, and it explains why no round budget escapes it (which is exactly what (L1) measured).
+
+And the alphabet itself is short by two seconds: the tick that matters is `isc[4] + 120 = 124`, which
+the 5 s grid rounds to **125**, while the winner's second is **127** — 125 pushed +2 by cast-boundary
+snapping downstream. The 124/125 family measures **582400.409** (`cs-align.mjs`), with polish dragging
+IV's opener back to 189. So (L2) carries a concrete candidate fix that is a **rule, not a hand-fitted
+anchor**: *snap next-tick anchors to cast boundaries instead of to a 5 s grid.* Untested. It is a SEARCH
+change, so §5.10 binds — **full 25, `plan-diff`, and a DUEL on every changed cell**, never the quick tier.
 
 **The methodological point, which outranks the finding.** Three perturbation experiments over two
 sessions produced three wrong mechanisms and zero localisation. One stage trace produced the exact pass,
