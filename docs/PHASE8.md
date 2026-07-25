@@ -1571,6 +1571,11 @@ All on the round-8 `C0`/`C1` pair (`Icon` off, rest-context B), so the contrast 
 
 ### 19.4 The apparatus (BUILT and syntax-checked 07-25; NOT yet run)
 
+> ⚠ **AMENDED by §19.7** — kept verbatim as the record of what was pre-registered. Two of the rows below
+> are defective: `r9drift.mjs` **false-passes on empty logs**, and `r9l1stat.mjs` prints a verdict over an
+> empty row set. And this section's *"gate-dirty haste points are excluded from every verdict"* would
+> exclude **100 % of points** (the `BL` drift is 1.21 s vs `CTOL = 0.30`). Read §19.7 before running anything.
+
 Staged in `scratchpad/p8/`, ready to fire the moment the box frees. Written *before* any number
 exists, so the reduction cannot be tuned to the answer it finds:
 
@@ -1614,6 +1619,159 @@ arriving on `IV@202`, and whether its surplus ever becomes a completed cast.
 against the previous round** rather than headline-to-headline. Two rounds can agree on "worst = 0.40%" while
 disagreeing about every plan underneath; the content-diff is what turns that coincidence into a fact. Keep
 archiving each round (`tools/xval-results-archive/<phase>-round<N>/`) — that archive is what made this free.
+
+### 19.7 AMENDMENT (07-25) — the gate false-passed, §19.4's exclusion rule was vacuous, and validating the apparatus found the mechanism for free
+
+Written **before any L0/L1/L2 number exists.** Everything numbered below that *is* already measured comes
+from the **model side and logs already on disk** (zero new sim runs); the new leg's falsifiers (§19.7.4)
+are registered against data that does not exist yet.
+
+#### 19.7.1 The L1 gate FALSE-PASSED — caught by a purpose-built negative control before the round ran
+`r9drift.mjs` (§19.4's "L1 gate") reduced to `if (x.length !== y.length) { print 'COUNT'; exit 0 }` then a
+max-over-presses. **Over zero parsed presses that max is `0`, so it printed `0.000` — perfectly clean.** Two
+*empty* logs graded CLEAN, which is the exact failure mode of the 07-25 sweep: an instrument whose failure
+looks like a pass. Replaced by **`r9press.mjs`**, which holds the guards the old one lacked (missing or
+unreadable file · `< 50` Arcane Blasts in either arm · any expected press key absent) and reports on the
+project's exit-code contract (**0 clean · 1 graded-failing · 2 could-not-grade**), one self-describing
+stdout line, plus the two arms' **executed** press times as a JSON payload.
+
+Proven, not asserted, by **`r9pressctl.sh`** — eight cases, **four of which the instrument is *required* to
+fail**:
+
+```
+  PASS  1 real C0 vs real C1       -> DRIFT    exit 1   maxCtl=1.210 [BL=1.21 AP=0.11 Zerk=0.11 IV=0.1 CS=0]
+  PASS  2 real vs identical copy   -> OK       exit 0   maxCtl=0.000
+  PASS  3 EMPTY vs EMPTY           -> NODATA   exit 2   NODATA(A: 0 Arcane Blasts < 50 — not a real run)
+  PASS  4 real vs EMPTY            -> NODATA   exit 2   NODATA(B: 0 …)
+  PASS  5 real vs AP-press-dropped -> COUNT    exit 1   countBad=AP 2v1
+  PASS  6 real vs truncated run    -> NODATA   exit 2   NODATA(B: 17 Arcane Blasts < 50 …)
+  PASS  7 real vs no-Arcane-Blast  -> NODATA   exit 2   NODATA(B: 0 …)
+  PASS  8 missing file path        -> NODATA   exit 2   NODATA(unreadable B: …)
+  r9press.mjs: 8/8 controls behave — the gate DISCRIMINATES.
+```
+
+A sibling defect in the same apparatus, **still open at the time of writing**: `r9l1stat.mjs` evaluates both
+falsifiers on `rows.filter(x => !x.contam)` and prints a verdict — *"NEITHER fires…"* plus §19.3's
+audit-trigger clause — even when that set is **empty** (Spearman over zero rows is `NaN`, and `!(NaN < CTOL)`
+is `true`, so every point is dropped and the verdict still prints). Fix before L1 runs: hard `exit 2` when
+`ok`, `below`, or `above` is empty.
+
+#### 19.7.2 §19.4's *"gate-dirty haste points are excluded from every verdict"* would exclude **100 %** of points
+Measured off the round-8 logs, at `R = 70`, the arms' **executed** press times:
+
+| press | C0 (`MQG@100`) | C1 (`MQG@202`) | drift |
+|---|---|---|---|
+| `IV` | 0, 20.85, **202.03** | 0, 20.85, **202.13** | 0.10 |
+| `CS` | 20.85 | 20.85 | 0 |
+| `AP` | 5.18, **192.99** | 5.18, **193.10** | 0.11 |
+| `Zerk` | 6.38, **192.99** | 6.38, **193.10** | 0.11 |
+| `BL` | **162.05** | **163.26** | **1.21** |
+
+`1.21 s` against `CTOL = 0.30`, so **every** haste point would be excluded and the round would be vacuous.
+Worse, it is **not a fixable setup error**: C0's `MQG@100` adds ~3 casts inside `[100,120]`, which moves the
+cast boundary nearest 162 — so **the treatment itself re-phases every later press.** No choice of request
+times can make the controls clean.
+
+Round 8 survived this because `K1 − K3` is a **second** difference: the same drift appears in both terms and
+cancels. L1's `Δresid(R)` is a **first** difference at each `R`, so nothing cancels. → the gate is
+re-specified as **accounting, not exclusion** (§19.7.5).
+
+#### 19.7.3 ★★★ THE PRESS-PHASE CONFOUND — the mechanism, found at zero sim cost
+`r9align.mjs` runs the page's own `simulate(sch, cfg, true)` for both arms and aligns its cast stream against
+the sim log **cast for cast** (guards of its own: exit 2 on a missing log, `< 50` AB casts, a missing press
+key, or an empty model cast list).
+
+**The per-cast physics agree**, so this is not a constant error: the sim's first AB prints
+`Cast Time = 1.995 s` = `2.5 / (1.20 × (1 + 70/1577))` ✓, and its quiet-span mean interval is `1.43588` vs the
+model's `1.5 / 1.0444 = 1.43623` ✓. What disagrees is **where the buff windows sit relative to the cast
+cadence**:
+
+```
+CASTS (t < T)     C0  model 229   sim 230        C1  model 230   sim 230
+  differential        model +1      sim  0
+PER-WINDOW        C0  BL@162.05 sim 38 / model 37 · AP@192.99 sim 15 / model 14 · all others equal
+                  C1  every window equal (BL@163.26 38/38 · AP@193.10 15/15 · IV+MQG@202.13 20/20)
+MODEL             C0  robust 650704.8  gcdCapped 0.00s   C1  robust 652593.2  gcdCapped 20.00s
+DRIFT (model cast #n − sim cast #n), by jump:
+  C0  #15 t=17.26 +0.107 · #35 t=41.20 +0.247 · #150 t=192.99 −0.095 · #160 t=203.03 +0.197
+      final +0.479   model last cast 298.77   sim last 299.73
+  C1  #15 +0.107 · #35 +0.247 · #120 t=163.26 −0.325 · #147 t=193.10 −0.105   final −0.055
+```
+
+Every jump time is a **press seam**. The model's C0 stream ends **0.479 s behind** the sim while C1 ends
+**0.055 s ahead** — and that `0.53 s` differential *is* the whole K3 residual:
+
+| | model | sim |
+|---|---|---|
+| `d` (C1 vs C0) | `robust` 652593.2 / 650704.8 = **+0.2902 %** | 2646.4 / 2646.6 = **−0.0076 %** |
+| `Δresid = d_sim − d_model` | | **−0.2978** — round 8's K3 to the pp |
+
+**Why the model is built this way, and why the sim cannot answer it as configured.** `index.html:762-785`
+says so explicitly: at steady state the engine **deliberately** fires a press at the intent time and models
+snap only as an *expected* `slip = prevInterval / 2`, because *"which boundary you land on is set by opener
+timing and latency (a fraction of a GCD, uniformly), so the phase-averaged start the scoring integral wants
+IS the press moment"* — and interior windows are slip-invariant, *"what the start loses the end regains."*
+The sim realizes **one** phase. **`--var 3.0` dithers DURATION, not press phase**, and cast times depend only
+on haste — so 20 000 iterations do **not** average press phase away. Because the treatment re-phases the
+controls (§19.7.2), the two arms realize **different** phases, and the contrast is phase-confounded at first
+order, at ≈ 0.3 pp — exactly the size of the thing being hunted. *(This discharges §19.3's audit-trigger
+clause on its own terms: `--var` does dither duration, the runner is the patched AP-180 build, and the
+expected completed casts are re-derived above.)*
+
+Two concrete phase mechanisms, both read off the logs:
+
+- **(a) Chained-press coverage extension.** Sim `IV#1 [0,20]` + `IV#2` executed at the boundary **20.85**: the
+  cast begun at 19.66 under `IV#1` *completes* at 20.85, so the sim never pays a slow cast and banks
+  **40.85 s** of fast casting where the model's intent-time `IV#2@20` gives exactly 40 s —
+  `0.85 × (1 − 1.197/1.436) ≈ 0.14 s` of stream time, observed as the `+0.247` jump at the seam.
+- **(b) Differential `BL` slide onto a floored cluster.** C0's `BL` fires 162.05, C1's **163.26**. In C1 the
+  sim's `BL` tail then overlaps `IV#3 + MQG@202.13` for 1.13 s, where it is largely wasted at the GCD floor;
+  the model's `BL` ends flush at 202 and wastes nothing. Observed as the model **catching up 0.325 s** at C1
+  cast #120.
+
+*Note on the `+1 castCount`:* it is a **symptom, not the mechanism.** `robust` is a continuous rate integral
+over `scoreStart` (`index.html:862-998`); `castCount` / `casts[]` walk `w.start` and are display-only. The
+phantom differential cast is the 0.53 s stream drift showing up at the truncation boundary.
+
+#### 19.7.4 NEW LEG — **L0, the press-phase sweep** (pre-registered; no number exists)
+Cheaper and more upstream than L1, so it runs first. **Design:** add a common offset `δ` to *all* press
+intents, `δ ∈ {0, 1/12, …, 11/12} × u` with `u` = the base cast interval (`1.436 s` at `R = 70`), both arms,
+and average DPS over `δ`; score the model at each `δ` too (it should be nearly **flat**, since all presses
+shift together and interior windows are slip-invariant). Presses at `t = 0` stay at 0 (a pull-timer press is
+not phase-random); `CS` keeps tracking `IV#2`. Cost is negligible — one run is **1.464 s** wall, so
+2 arms × 12 δ ≈ **35 s**.
+
+- **L0a — PHASE ARTIFACT.** `|Δresid|` on the δ-averaged sim `< 0.10 pp` **while `δ = 0` reproduces
+  ≈ −0.30 pp**. Then K3 — and by extension the B2 family — is a **single-phase measurement artifact**, the
+  scorer's phase-average is *right*, and **no scorer change is warranted**; the fix is to the harness.
+- **L0b — REAL.** `|Δresid| ≥ 0.20 pp` after δ-averaging. The defect survives phase-averaging; L1 and L2
+  proceed exactly as written.
+- **Between 0.10 and 0.20 pp — PARTIAL.** Report the explained fraction, and L1 runs on the δ-averaged
+  contrast rather than at `δ = 0`.
+- **Secondary, explicitly NON-PROMOTABLE** (noticed while designing L0, so it can never be read as a primary
+  result): if `sd(d_sim over δ) ≳ 0.25 pp`, then **any single-phase model-vs-sim contrast below ~0.5 % is at
+  or below measurement noise** — which would re-qualify B2's 0.40 % and the acceptance low-haste slack.
+- **Instrument guard, mandatory before the leg runs:** a δ-sweep that silently ignored `δ` would report
+  `sd = 0` — indistinguishable from L0a. The negative control must therefore include a fixture proving `δ`
+  **moves the executed presses** (and the usual can't-grade set), on the 0/1/2 contract.
+
+#### 19.7.5 L1 re-spec — the gate becomes accounting plus a hard sanity check
+**L1a/L1b thresholds are unchanged.** What changes:
+
+1. A haste point is excluded **only on a genuine can't-grade**: `NODATA`, a control press **COUNT** mismatch,
+   or an arm-identity break. **Control *drift* is no longer an exclusion** — it is *reported per point*
+   (per-key drift, and per-press snap when `REQA`/`REQB` are supplied), so every L1 row carries its own phase
+   structure and the verdict is read knowing it.
+2. `r9l1.sh` / `r9l1model.mjs` switch from `r9drift.mjs` to `r9press.mjs`.
+3. The model leg scores the **executed** press times (`r9press.mjs`'s `OUT=` payload) as primary, keeping the
+   requested-time scoring alongside as the "what we asked for" reference. This is the *second*, independent
+   way to remove the confound — align the model to the sim's realized phase instead of averaging the sim over
+   phase. **L0 and this cross-check must agree**; if they don't, neither is trustworthy and the round stops.
+
+#### 19.7.6 What this amendment does and does not settle
+It does **not** retract §19.1's in-flight-cast/floor candidate — L0a would; L0b leaves it standing. It lands
+no engine change: §19.5 still governs, and any scorer change still waits on acceptance round 4. And it
+changes nothing about §19.6.
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
