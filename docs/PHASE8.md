@@ -80,6 +80,13 @@ holding even when Δ *itself* is manipulated. The model instead books **+1 net c
 is **not** missing the floor (`index.html:819-822`, `:903-904` clamp correctly); hand-arithmetic on the
 log-read intervals reconstructs K3 as ≈ +0.17 pp of *banked fractional cast* plus ≈ +0.12 pp of `AP`-packing
 credit — the §19 hypothesis, and a **sim-setup audit trigger** to be discharged before the model is blamed.
+**§19 is pre-registered** and sharpens that candidate: measured off the log, stacking wins **+0.5 casts**
+(solo +2.8, stacked +3.3) yet the sim's totals are 230 = 230 — so the surplus plausibly ends the fight as an
+**in-flight 231st cast** the sim pays zero for and the continuous integral pays in full. Three sweeps decide
+it: **L1** the haste sweep (`R = 0…400`, running the clipping fraction 0 → 18 %, the only leg that can
+separate "the floor" from everything else), **L2** the `T` sweep at var 0 *and* var 3.0, and **L3** the K2
+repair. §19.3 pre-registers the **self-falsification**: if var 3.0 flattens the sawtooth, truncation cannot
+be B2's 0.29 pp, because that was measured at var 3.0.
 
 Phase 7 fixed everything cheaper: three press-execution scorer terms (RULES §3b), two search passes, the
 metric (var0.5 + wall-jitter), the KT AoE harness, and — the big one — **cross-haste pooling, which makes
@@ -1500,6 +1507,72 @@ that the model over-credits.
 3. **Haste generality.** B2 is a haste-70 case; the floor is only reachable near that gear level, so the
    defect's size is gear-dependent by construction and any fix must be re-validated across the acceptance
    grid before it lands.
+
+---
+
+## §19 — ROUND 9, PRE-REGISTERED: **does the surplus ever become a completed cast?** (+ discharge the audit trigger)
+
+### 19.1 The sharpened question
+§18.6's window arithmetic leaves a hard contradiction **inside the sim's own log**. Measured directly off
+`C0`/`C1` (not hand-derived — cast-to-cast spacing, 20.0 s windows):
+
+| | interval before | interval with `MQG` | casts gained |
+|---|---|---|---|
+| solo (`MQG@100`) | 1.436 s | 1.196 s | **+2.8** |
+| stacked (`MQG@202` on `IV`) | 1.197 s | 1.000 s (floored) | **+3.3** |
+
+Stacking wins by **≈ +0.5 casts** — *after* the floor has already clipped 1.05 % of it — yet the fight totals
+are **230 = 230** and the `var 3.0` DPS is flat to 0.008 %. Both cannot be true unless the surplus goes
+somewhere. The window census says where it does *not* go: `[0,100)` 75 = 75 and `[224,300)` 53 = 53 are
+identical, and the ±1 in `[122,162)`/`[162,202)` is bucket-edge phase, not a rate difference.
+
+**The candidate mechanism is now sharper than "banked fractional cast".** Time saved converts to *damage*
+only when it completes a cast **before `T`**. A stacked buff saves more time than a solo one, so it ends the
+fight further into an **in-flight 231st cast** — which the sim (correctly) pays **zero** for and the model's
+continuous cast-rate integral pays **in full**. That is not J2's truncation (buff *position* near the end,
+falsified by K3) — it is how the integral **rounds** at `T`, and it is driven by *how much time was saved*,
+not by where the buff sat. It is consistent with every round-8 number, including **why K4 is clean**: both
+K4 arms bank the identical solo surplus, so it cancels.
+
+⚠ **Counter-argument that must be tested, not assumed:** `--var 3.0` dithers the duration by ±3 s, which
+should *average over* the truncation sawtooth and make the sim's expected completed casts ≈ the continuous
+integral. If that reasoning is right, truncation cannot explain a 0.29 pp gap and the mechanism is something
+else. **Round 9 exists to decide this, not to confirm it.**
+
+### 19.2 The design — three sweeps, cheapest first
+All on the round-8 `C0`/`C1` pair (`Icon` off, rest-context B), so the contrast is the already-verified K3.
+
+- **L1 — the haste sweep (most diagnostic).** Re-run K3 across gear haste `R ∈ {0, 30, 53, 70, 120, 200,
+  300, 400}`. The stacked arm crosses the floor at `R ≈ 53` (`1.20 × 1.2093 × (1+R/1577) ≥ 1.5`); the solo
+  arm stays unfloored until `R ≈ 379`. So the sweep runs the **clipping fraction from 0 % to ~18 %** while
+  holding the design fixed. *This is the only leg that can separate "the floor" from "everything else."*
+- **L2 — the `T` sweep.** Hold `R = 70`, sweep `T ∈ {300.0, 300.4, 300.8, 301.2}` at **`--var 0`** (the one
+  legitimate use: we *want* the sawtooth, not its average) and again at `--var 3.0`. Truncation predicts a
+  **≈ ±0.44 % sawtooth in `d_sim` at var 0 that flattens at var 3.0**, with `d_model` smooth in both.
+- **L3 — the K2 repair.** The one untested J1 clause. Pair the `MQG`-on-`BL` arm across two fight lengths so
+  the cascade cancels the way K1-vs-K3 does, or park the reference **after** `BL@162`.
+
+### 19.3 Pre-registered falsifiers
+- **L1a — THE FLOOR IS THE MECHANISM.** `Δresid(K3)` is ≈ 0 for `R < 53` and grows monotonically in the
+  clipping fraction above it (Spearman ≥ 0.8 over the 8 points). Reading: the model over-credits precisely
+  the haste the floor throws away. Fix is local to the interval clamp's *accounting*, not the clamp itself.
+- **L1b — FLOOR-INDEPENDENT.** `Δresid(K3)` is materially non-zero **below** `R = 53` (`≥ 0.15 pp` at
+  `R ∈ {0,30}`, where nothing is clipped). Then §18.6's floor story is **wrong** and the defect is in haste
+  composition generally. This is the clause that would retire the round-8 mechanism.
+- **L2a — TRUNCATION.** var-0 `d_sim` swings ≥ 0.30 % across the `T` sweep while `d_model` moves < 0.05 %,
+  **and** the var-3.0 leg flattens to < 0.05 %. If var 3.0 flattens it, truncation is *real but averaged
+  away* — and therefore **cannot** be B2's 0.29 pp, which was measured at var 3.0. That would be a
+  **self-falsification of §19.1's own candidate**, and it is pre-registered as such.
+- **L2b — NOT TRUNCATION.** The var-0 sweep is flat (< 0.10 %). The surplus never was a boundary effect.
+- **★ The audit-trigger clause (CLAUDE.md).** If L1 and L2 both come back negative, the sim is the suspect,
+  not the model: re-derive `C0`/`C1`'s expected completed casts from first principles, verify the runner is
+  the patched AP-180 build, and confirm `--var` dithers duration (not start time) before any scorer change
+  is contemplated.
+
+### 19.4 What this round cannot do
+It cannot land a fix. Any change to the cast-rate integral moves goldens and must wait for acceptance round
+4 to close; and because the defect is gear-dependent **by construction** (the floor is only reachable near
+`R ≈ 53+`), a fix validated at `R = 70` must be re-run across the full acceptance haste grid before it lands.
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
