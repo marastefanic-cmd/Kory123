@@ -1733,7 +1733,7 @@ Two concrete phase mechanisms, both read off the logs:
 over `scoreStart` (`index.html:862-998`); `castCount` / `casts[]` walk `w.start` and are display-only. The
 phantom differential cast is the 0.53 s stream drift showing up at the truncation boundary.
 
-#### 19.7.4 NEW LEG — **L0, the press-phase sweep** (pre-registered; no number exists)
+#### 19.7.4 NEW LEG — **L0, the press-phase sweep** (pre-registered; no number existed when this was written — **verdict in §19.8: L0b, REAL**)
 Cheaper and more upstream than L1, so it runs first. **Design:** add a common offset `δ` to *all* press
 intents, `δ ∈ {0, 1/12, …, 11/12} × u` with `u` = the base cast interval (`1.436 s` at `R = 70`), both arms,
 and average DPS over `δ`; score the model at each `δ` too (it should be nearly **flat**, since all presses
@@ -1772,6 +1772,73 @@ not phase-random); `CS` keeps tracking `IV#2`. Cost is negligible — one run is
 It does **not** retract §19.1's in-flight-cast/floor candidate — L0a would; L0b leaves it standing. It lands
 no engine change: §19.5 still governs, and any scorer change still waits on acceptance round 4. And it
 changes nothing about §19.6.
+
+### 19.8 ★ L0 RESULT (07-25) — **L0b FIRES: the defect is REAL.** Press phase explains only 23 %
+
+The leg ran exactly as §19.7.4 pre-registered it — 12 δ across one full cast interval (`u = 1.436 s` at
+`R = 70`), both arms, `T = 300`, `--var 3.0 --iter 20000 --seed 11`, cold open, infinite mana, Icon OFF —
+and **all 12 δ points were gradeable** (they would have been *all excluded* under §19.4's old rule).
+
+| | value |
+|---|---|
+| mean `d_sim` over δ | **+0.0529 %** |
+| mean `d_model` over δ | **+0.2809 %** |
+| **mean `Δresid`** | **−0.2280 pp** |
+| `Δresid` at δ = 0 alone | −0.2978 pp (round 8's K3, reproduced exactly) |
+| **phase explains** | **23.4 %** of K3 — 76.6 % survives |
+| `sd(d_sim)` / `sd(d_model)` | 0.0492 pp / 0.0171 pp |
+
+**VERDICT — L0b.** `|mean Δresid| = 0.2280 ≥ 0.20 pp`, so the defect survives phase-averaging. §19.1's
+in-flight-cast / floor candidate **stands**, the scorer is genuinely mis-ranking this pair, and **L1 and L2
+proceed exactly as §19.7.5 re-specified them.**
+
+**What phase *was* worth.** §19.7.3's confound is real but small: it accounts for 0.070 of the 0.298 pp. The
+remaining 0.228 pp is a **level** error, not a phase error — see the second secondary below.
+
+**★ Secondary 1 (pre-registered as non-promotable, and it landed on the reassuring side).** `sd(d_sim)` is
+**0.0492 pp**, five times *under* the 0.25 pp note threshold. So press phase is **NOT** a large noise source:
+single-phase model-vs-sim contrasts stand on their own, and **B2's 0.40 % and the acceptance low-haste slack
+are not noise artifacts.** The hedge written into §19.7.4 in case the answer went the other way is discharged
+and does not need to be carried forward.
+
+**★ Secondary 2 (free confirmation of an engine claim).** `sd(d_model) = 0.0171 pp` — the model is, to
+measurement precision, **flat in press phase**, exactly as `index.html:762-785` argues (*"interior windows are
+slip-invariant … what the start loses the end regains"*). That comment is now **certified**, not merely
+plausible, and it narrows the hunt usefully: whatever the scorer gets wrong here, it gets wrong **equally at
+every phase**, so no fix that merely re-times a press can close it.
+
+**★ Structural finding — the sim's executed schedule is a STEP FUNCTION of δ.** Across 12 δ spanning a full
+interval, the sim realized only **6 distinct executed configurations** (`k = 4…9` share one gate record to the
+centisecond), and `d_sim` correspondingly takes only **5 distinct values** (`−0.0680, −0.0076, +0.0567,
++0.0793, +0.0831`). This is *physically correct*: a press snaps to the next cast boundary, so the executed
+plan is piecewise-constant in δ with breakpoints where a press crosses a boundary. Two consequences:
+
+- **Uniform δ-averaging is the right reduction** — each executed configuration is weighted by the width of the
+  δ-interval that produces it, which is exactly its probability under a uniform press phase.
+- **A plateau is expected structure here, not a dead sweep**, and the instrument tells them apart on the right
+  evidence: the *executed* `BL` press spans **1.440 s** (one full `u`), far above `MOVETOL = 0.50`, so
+  `PHASE-DEAD` correctly stayed silent while `k = 4…9` sat still.
+
+**★ K3's sign inversion is phase-fragile; its magnitude gap is not.** Phase-averaged, the sim **agrees with
+the model on the sign** — stacking `MQG` onto `IV@202` really is the better arm — but by **5.3×** less
+(`+0.053 %` vs `+0.281 %`). The apparent *ranking inversion* at round 8 exists at only 3 of 12 phases (where
+`d_sim` is `−0.0076` / `−0.0680`). So the thing to explain is **why the model over-credits a stacked press by
+~5×**, not why it reverses a ranking. That is a sharper target for L1/L2 than round 8 had.
+
+**Apparatus.** `r9l0build.mjs` → `r9l0.sh` → `r9l0model.mjs` → `r9l0stat.mjs`, with `r9l0ctl.sh` at
+**13/13** — 4 builder rejections (dead sweep `DSCALE=0`, `NDELTA=1`, bad haste, healthy build), 5 reducer
+rejections (frozen executed presses ⇒ `PHASE-DEAD`, too few points, missing δ = 0, a zero DPS, missing
+`model.json`), and **3 positive verdict-discrimination cases** (artifact / real / partial data must each reach
+its own verdict) plus a COUNT-excluded point. The headline control is L0's own false-pass risk: a sweep that
+ignored δ produces a flat average indistinguishable from L0a, i.e. it would have *retired the round's own
+candidate by doing nothing*.
+
+**One instrument bug, caught by a guard (record it, it is the pattern working).** The model leg's spell-power
+knob was `SP`, which is the **scratchpad path** in every shell in this project — so `+process.env.SP` was
+`NaN` and the first run scored `sp = NaN`. The output guard fired (`non-finite robust at k=0 C0`) and nothing
+false was reported. But a guard that fires two screens from its cause is a poor guard: the knob is now
+`MODSP` and both `T` and `MODSP` are validated **by name where they are read**. Lesson for the harness
+generally: *validate inputs at the point of parse, not only outputs at the point of use.*
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it

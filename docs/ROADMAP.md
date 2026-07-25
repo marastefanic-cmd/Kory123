@@ -86,7 +86,18 @@
    **15 cast starts in both arms** — the floor law surviving a case where Δ itself was manipulated. The model
    books **+1 net cast (229 → 230)** instead. The scorer is **not** missing the floor; the §19 hypothesis is
    ≈ +0.17 pp of banked fractional cast plus ≈ +0.12 pp of `AP`-packing credit, and per CLAUDE.md that is a
-   **sim-setup audit trigger** to discharge before the model is blamed)
+   **sim-setup audit trigger** to discharge before the model is blamed.
+   **Round 9 discharged that trigger, and the answer was PRESS PHASE: `--var` dithers DURATION, not press
+   phase**, and the treatment re-phases its own controls (a supposedly-fixed `BL` fires 162.05 vs 163.26),
+   so a single-phase contrast is confounded at ≈0.3 pp — exactly the size being hunted (§19.7). But the
+   pre-registered **L0** leg then δ-averaged the sim over a full cast interval and **phase is worth only
+   23 %**: mean `Δresid` = **−0.2280 pp** of the −0.2978 at δ=0, so **L0b fires — the defect is REAL** and
+   §19.1's candidate stands (§19.8). Two by-products matter more than the verdict: `sd(d_sim)` = **0.049 pp**,
+   so **single-phase contrasts are NOT noise** — B2's 0.40 % and the acceptance low-haste slack stand on their
+   own — and `sd(d_model)` = **0.017 pp** *certifies* `index.html:762-785`'s slip-invariance claim, which makes
+   this a **level** error the scorer commits equally at every phase (no re-timing fix can close it).
+   Phase-averaged the sim **agrees on sign** but is **5.3× smaller**, so the target is "the model over-credits
+   a stacked press ~5×", not "the model inverts a ranking". L1/L2 proceed per §19.7.5)
    and `docs/PHASE9.md` (**performance/refactor**, user-reported CPU cost — notes + hypotheses only so
    far, nothing landed; every change there is gated on byte-identical plans. **§4.7** turns the "fewer
    steps" ask into a *pass-firing census* — a pass is redundant iff its input is already its own fixpoint
