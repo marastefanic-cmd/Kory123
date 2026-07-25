@@ -1545,3 +1545,171 @@ fixed window at the cost of clipping further past the kill, and only the +0.5 ro
 It must not ride along with a refactor: if `:2347` wants a clip guard, that is a **model change**, gated by the
 sim and by moved goldens, and it belongs in Phase 7's ledger. Recorded here only because this is where it was
 found. **Do not "fix" it while landing 0a.**
+
+---
+
+## §5 The iteration gate — why the loop was slow, and the three-tier instrument that replaces it
+
+*Opened 07-25 on the user's challenge: "aren't you wasting a lot of time doing too few changes between
+running the full simulation of everything? Can't you come up with a much much much quicker test…"
+Answered by measuring rather than defending — and the defence lost.*
+
+### §5.1 The measurement: the only per-change gate is not fast, and has three holes
+
+`tests/exact-match.mjs` was the per-change confidence check for seven phases. Measured:
+
+| property | measured | consequence |
+|---|---|---|
+| wall time | **9m07s** (`real 9m7.355s`, 25 passed) | not a gate you put behind every edit |
+| parallelism | **none** — 25 cases sequentially in one chromium page | ~4 cores idle on a 4-core box |
+| comparison unit | the **copy-as-text plan of FIRE times, floored to seconds** | a derived, floorable quantity — not the schedule the optimizer chose (see the correction below) |
+| comparison depth | **final state only** | ⚠ a mid-pipeline accept-decision change that later passes wash out goes green on all 25 and bites on case 26 |
+
+The depth row is a **false-pass hole** — this repo's tracked defect class, an instrument whose failure
+mode is a PASS. It is not hypothetical: ladder item 0a (the `admit` extraction) is exactly a mid-pipeline
+change, and §4.21 already found one of its nine sites would have altered behaviour.
+
+> **⚠ SELF-CORRECTION — the "sub-second press shift" hole, as first written here, DOES NOT EXIST.**
+> This section originally claimed exact-match could miss a sub-second schedule shift inside the same
+> floor bucket. Measuring instead of asserting killed it: **all 273 press times across all 25 baked
+> cases are integers** (0 non-integer, by the sweep's own legality audit). Flooring cannot lose a press
+> time that is already whole. Same instrument error as §4.15/§4.21 — reasoning from the *shape* of the
+> code (a `Math.floor` is present) instead of the *values* flowing through it — caught this time before
+> it reached a living doc.
+>
+> **What is actually true, and is the real argument for the differ:** exact-match compares **fire
+> times** — presses snapped to cast boundaries, a *derived* quantity that genuinely can be fractional,
+> which is why it is floored at all. The differ compares **`best.s`, the press schedule the optimizer
+> actually chose.** Those are different quantities, and the schedule is the upstream one: identical
+> schedules always render identical fire times, so the differ is **at least as sensitive**, and strictly
+> more sensitive wherever the fire-time floor absorbs a press change. **Whether such an absorbing case
+> exists in the current corpus is UNMEASURED** — the differ can see it, and no instance has been caught
+> in the wild. Claim no more than that.
+
+Note also what exact-match is *not*, and was never meant to be: it is a **regression** test against
+frozen goldens. It answers "did I change any plan?" — never "is the plan right?" Conflating those is how
+the loop ended up with only two speeds.
+
+### §5.2 The engine runs in BARE NODE — the gate does not need a browser
+
+Confirmed empirically, and it is the finding that unlocks everything else. Host-global census of the
+extracted `<script id="engine-src">` block: `document 0 · navigator 0 · requestAnimationFrame 0 · Worker
+0 · window 95 (assignment only) · performance.now 4 · setTimeout 2 · MessageChannel 1`. The engine is
+DOM-free **by construction** — it already runs inside a Web Worker — so every global it touches exists
+in node 22. It loads and optimizes in plain node: **`load=4ms`**, first case `optimize=1998ms`.
+
+Two extraction facts, both learned the hard way (each cost one failed probe):
+- **`buildSegments` is at `index.html:2960` — in the UI script, NOT the engine block.** So is the whole
+  preset table (`GOLDEN_DEFAULTS`/`GOLDEN_PRESETS`/`BOSS_PRESETS`, `:4125–4190`) and `window.__run`
+  (`:3400`). A node loader must extract those regions *separately* from the engine block.
+- **`counts`/`clipOf` are NOT top-level** — they are nested inside a function at `engine.js:1016-1020`.
+  `BUFFS` (`:39`), `optimizeAsync`, `simulate`, `repair` are top-level. An epilogue that over-requests
+  names fails the whole evaluation with a bare `X is not defined`.
+
+⚠ **Gotcha — node will not EXIT.** `breathe()`'s `MessageChannel` (`engine.js:915-928`, the 40ms budget
+that dodges the 4ms nested-timer clamp) keeps node's event loop ref'd forever. A child must
+`process.exit(0)` deliberately after flushing. Left unhandled, the gate **hangs**, which reads as "slow
+gate" — the same false signal as one that passes wrongly.
+
+### §5.3 The three tiers
+
+The loop had two speeds (9 minutes, or hours) and needed three.
+
+**Tier 0 — plan sweep + full-precision differ (seconds–minutes, every change).**
+`plan-sweep.mjs` runs every baked preset through `optimizeAsync` in bare node, fanned across child
+processes (round-robin index assignment, *not* contiguous blocks — case cost grows with `T` and the
+presets are `T`-ordered, so contiguous slices hand one child every long fight and idle the rest).
+`plan-diff.mjs` then compares two sweeps on **`best.s` at float precision**. Strictly more sensitive
+than the goldens' floored text, and it needs **no golden to maintain** — it diffs A vs B. It tags each
+changed cell `SUB-SEC` when the floored text is identical, which **measures** the §5.1 hole rather than
+asserting it. The sweep also carries a **legality audit** per plan (fractional/negative times, cooldown
+violations, trinket lockout) — orthogonal to a diff, because it catches an illegal plan when there is
+no B at all.
+
+**Measured (3 jobs, on a 4-core box also running the xval campaign — so these are pessimistic):**
+
+| sweep | cases | wall | CPU |
+|---|---|---|---|
+| full corpus | 25/25 | **239.3s** | 651s |
+| `--max-t=200` (QUICK) | 16/25 | **33.2s** | 81s |
+| `tests/exact-match.mjs` for reference | 25/25 | **547s** | ~547s (1 core) |
+
+**The quick tier is ~16× faster than exact-match** and still covers 16 setups including the
+intermission case, Power Infusion, Drums, and 8 boss presets. That is the "much much quicker test."
+
+**Both controls were run, because a differ that only ever says IDENTICAL is the defect class itself:**
+- *Positive* — the same engine swept twice at **different job counts** (3 vs 2), which changes the
+  round-robin partitioning entirely: `PLAN-DIFF IDENTICAL`, 16/16, exit 0. This also **re-certifies
+  determinism as independent of process layout**, which the browser path never tested.
+- *Negative* — a seeded perturbation on a scratch copy (`isc.dur 20→18`): **8 of 16 cases changed**,
+  exit 1, duel work list emitted. The differ fires.
+
+**Tier 1 — `tests/exact-match.mjs` (~9 min today, parallelisable to ~2–3 min).** Keeps its role as the
+*golden* regression gate. The 25 cases are independent, so fanning them across processes is a **harness**
+change only — no engine change, no determinism risk. Run before a commit, not before every edit.
+
+**Tier 2 — the xval acceptance round (hours, once per campaign).** The "are we done yet" measurement.
+Explicitly **not** a per-change gate; see `docs/ACCEPTANCE.md` for what a PASS does and does not prove
+(sampled, grid-limited, table-level).
+
+### §5.4 ★★ Between the tiers: the DUEL — verification scoped to what changed
+
+The user's correction, in full in `docs/TOOLING.md` → *Scope the verification to what CHANGED*. The two
+halves, because they land differently here:
+
+1. **Cost.** A cell whose plan is bit-identical needs no re-sim — the sim didn't change, the plan didn't
+   change, the verdict can't have. So Tier 0's changed set **is** the sim work list, and verification
+   cost scales with the change, not the corpus.
+2. **★ Correctness — the half we had wrong.** A changed cell is **not** verified by "the table still
+   passes." `monoDip`, `diagWorst` and the CLEAN/DEFICIT verdict are *aggregates*, and an aggregate can
+   hold or improve while one cell regressed. Each moved cell needs **old plan vs new plan, simmed
+   head-to-head under one harness.**
+
+⚠ Two constraints on building that duel: it **cannot** be done by subtracting two rounds' tables
+(§20.6's repricing makes round-4 and round-5 scores incomparable — both plans must be re-simmed under
+one current harness), and a plan-diff can only find cells a rule *did* move, never one it *should* have
+moved and didn't. The latter population is the standing-DEFICIT list, already enumerated per round.
+
+### §5.5 Immediate consequence for the landing ladder
+
+Ladder item 0a (§4.13.1) claims *byte-identical by construction*. Under §5.1 that claim was previously
+checkable only by floored text on a final state — the two holes that a mid-pipeline refactor slips
+through. It should now land against **Tier 0 first** (full-precision, sub-second-sensitive), with Tier 1
+as confirmation. §4.21's confirm-the-coverage precondition still stands on top of that, because neither
+tier proves a pass was *exercised* — that is what §4.7's owed runtime census answers.
+
+### §5.6 ★★ Fallout for the perf work itself: cost is ~EXPONENTIAL IN PRESS COUNT, not in T
+
+The sweep's per-case timings are the first clean cost profile the project has, because bare node gives
+one process per case with no browser noise. The shape is stark (full corpus, 3 jobs):
+
+| presses in the solved plan | median solve | example |
+|---|---|---|
+| 7 | 2.0s | `1:40 lust 0:05` (T=100) |
+| 9 | 3.7s | `2:40 lust 0:05` (T=160) |
+| 12 | 28.6s | `4:00 lust 0:05` (T=240) |
+| 14 | 53.4s | `5:45 lust 4:20` (T=345) |
+| 15 | 115.0s | Kael'thas (T=420) |
+| 18 | 168.7s | `7:20 lust 0:05` (T=440) |
+
+**The driver is the number of activations that FIT, not fight length.** Each additional press multiplies
+solve cost by roughly **1.35–2×** — the combinatorial signature of a neighbourhood search over a
+schedule space that grows with every press slot. `T` only matters through how many presses it admits,
+which is why `3:20` (11 presses, T=200) solves in 3.8s while `4:00` (12 presses, T=240) takes 28.6s.
+`T` alone cannot explain that; a press slot opening can.
+
+Two consequences, one for the gate and one for the phase:
+
+1. **The cost is savagely concentrated.** The 5 longest cases are **73% of all CPU** (474s of 651s); the
+   15 cheapest are **8%** (52s). And a single case — `7:20 lust 0:05` at 168.7s — sets an **Amdahl floor
+   the full sweep can never beat no matter how many cores.** That is *why* the quick tier exists, and
+   why the tier boundary is drawn at `T`: it is the cheapest available proxy for press count.
+2. **★ It relocates the perf target.** §1–§4 hunt constant factors (redundant walks, fusable steps,
+   `JSON.stringify` keying). Those are real and worth landing, but this says the *headline* cost is
+   **structural** — a search whose work grows multiplicatively per press slot. A 20% constant-factor win
+   on a 168.7s case is 34s; taking one multiplicative step out of the long-fight search is worth far
+   more. **This does not invalidate the §4 catalogue** (§4.13.1's ladder still lands cheapest-first, and
+   every item is still gated byte-identical) — it adds a target the catalogue does not currently have,
+   and it says where to look once the cheap items are in: **why does an extra press slot cost 1.35–2×,
+   and is that factor irreducible or an artifact of re-exploring settled prefixes?** Open question,
+   deliberately not answered here.

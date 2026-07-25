@@ -41,6 +41,44 @@ seeds), not the sim lying. So when the sim contradicts a clean cast-count with *
 that is a **sim-setup audit trigger** — open the `SIMLOG=1` combat log and find the usage fault — *not*
 evidence the model is wrong. Distrust our *setup* before distrusting either the model or the sim.
 
+### ★★ Scope the verification to what CHANGED — and DUEL what did (user's correction, 07-25)
+
+"The sim is not a routine per-golden gate" says what *not* to do. This says what to do instead, and it
+has two halves. The first is cost, the second is correctness — and the second is the one we were getting
+wrong.
+
+**1. Verification cost scales with CHANGED CELLS, not with corpus size.** If a change leaves a setup's
+plan bit-identical, the sim's old verdict for that cell is still valid — the sim did not change, the
+plan did not change, so the number cannot have changed. Re-simming it buys nothing. So the loop is:
+sweep the model over the corpus (model-only, no sim — seconds), diff the plans, and **the changed set
+IS the work list.** A rule that moves four cells costs four cells of sim time, not a corpus.
+The caveat is the user's own and it is the important one: *unless the sim changed.* A harness edit
+(§20.1's `t5two`, the effective-SP fix, a runner rebuild) invalidates **every** cached verdict,
+changed plan or not — see the repricing trap below.
+
+**2. ★★★ When a plan DOES change, sim OLD plan vs NEW plan head-to-head at that cell.** Do not read
+the aggregate. This is the correction that matters: a round's table-level invariants — `monoDip`,
+`diagWorst`, the CLEAN/DEFICIT verdict — **can all hold or improve while a specific cell got worse.**
+They are summaries, and a summary is exactly the wrong instrument for "did I break this one spot."
+The only thing that answers it is the duel: both plans, same harness, same seed, side by side.
+
+This indicts something already on the books. PHASE8 §20.5 reports **50 of 184 cells changed plan**
+across the round-5 re-baseline with *no verdict flips, `deficitTables` 16→16, `monoDip` 0.00%
+everywhere* — and concludes "read no acceptance signal off the sign or the magnitude of these moves."
+That conclusion was right about the *available* columns and wrong to stop there: the right signal
+exists, it just has to be computed, and 50 duels is tractable.
+
+**⚠ The repricing trap — a duel CANNOT be done by subtracting two rounds' tables.** Round-4 and
+round-5 sim scores are not comparable to each other; §20.6 identified the uniform −0.4…−1.1% `eff`
+band as a REPRICING caused by two harness *input* fixes. Both plans must be **re-simmed under one
+current harness**. That is a new instrument, not a column you can read off existing output.
+
+**⚠ The coverage hole, stated honestly.** A plan-diff finds the cells a rule *did* move. It can never
+find a cell the rule *should* have moved and didn't — the false-pass direction, this repo's tracked
+defect class. That population is not invisible, though: it is exactly the standing-DEFICIT cells,
+which are already enumerated per round. So the honest coverage claim is **changed cells → duel them;
+unchanged deficit cells → still deficits, still on the list** — and neither set is silently dropped.
+
 **Guard against the self-confirming oracle.** If the model is the arbiter and the sim only ever confirms
 it, we can drift. Two habits keep it honest: **proactively sim the known blind spots** (ramp, mana, AoE,
 multi-AP timing) rather than waiting for a golden to look wrong, and **periodically re-anchor** — re-run

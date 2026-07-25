@@ -223,3 +223,30 @@ steps, and if any plan ever *does* move, the round is void.
 - **Ashtongue** (random on-crit proc) is out of the kits — needs a different, stochastic treatment (Phase 7).
 - **No exhaustive ground truth above ~h150** for SP-trinket-free kits (the 5s grid can't express the
   off-grid optimum) — the tool is certified only ≥ the coarse grid there.
+
+### ★★ What a PASS here does and does NOT prove (user's challenge, 07-25)
+
+The user asked directly whether the big test has a logical flaw, and whether it is even a definitive
+"is the tool reliably correct in every scenario." Both deserve a straight answer, so it is written here
+rather than left implied by the gap list above.
+
+**It is a SAMPLED, GRID-LIMITED COMPARISON — not a proof of optimality.** The test compares the model's
+plan against *the best plan a 5-second-grid sim search found*, at 7–11 haste points on 36 fight shapes.
+Every word of that bounds it: the reference is a **grid search**, not an optimum (the gap above already
+concedes there is no exhaustive ground truth over ~h150); the haste points are a **sample** of a
+continuum; the 36 shapes are a **sample** of fight space; and two kits are excluded outright (Ashtongue
+is stochastic and out; KT's AoE is simmed as downtime). So a CLEAN verdict means **"agrees with a
+grid-limited reference on the sampled points"** — a strong statement, and a different one from "optimal."
+Read it as the former. It is the best available instrument, not an oracle.
+
+**⚠ And a PASS is a TABLE-LEVEL summary, so it cannot certify a cell.** `monoDip`, `diagWorst` and the
+CLEAN/DEFICIT verdict are aggregates; they can hold or improve while an individual cell regressed. A
+change that moves plans is therefore **not** verified by "the table still passes" — each moved cell needs
+old-plan-vs-new-plan **simmed head-to-head under one harness**. That duel requirement, its cost model,
+and the repricing trap that stops you doing it by subtracting two rounds' tables are in
+`docs/TOOLING.md` → *Scope the verification to what CHANGED — and DUEL what did*.
+
+**Consequence for how this doc is used:** this test is the *"are we done yet"* measurement — run once
+per campaign, not per change. It is **not** the per-change gate, and it never was one; using it that way
+is what made the iteration loop slow. The per-change gate is the fast plan-diff instrument
+(`docs/PHASE9.md §5`), and the duel is what sits between them.
