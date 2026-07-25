@@ -2008,23 +2008,294 @@ good (default) : isc/icyVeins/scb [5,127,307]  arcanePower [5,307]     — every
 both variants  : isc [4,190,310]  icyVeins [0,190,310]  scb [4,195,315] arcanePower [4,195]
 ```
 
-Read that back: with 14 restarts at seed 1337, **one particular draw** finds the aligned
-`[5,127,307]` basin; the finishing passes cannot reach it from a generic start, so removing that draw
-*or* redrawing it loses 233 points and falls into the basin the passes converge to by default. The good
-plan at this cell is **luck that happens to be baked into the goldens** — not a robustly discoverable
-optimum.
+The obvious reading — *"with 14 restarts at seed 1337 one particular draw finds the aligned
+`[5,127,307]` basin, so the fix is a basin-hop anchor at that layout"* — was written here and is
+**WRONG on both halves. It is retracted; §5.11 has the measured cause.** Kept visible rather than
+deleted, because the *shape* of the error is the lesson: a per-cell symptom ("this cell is fragile
+to restart draws") was read as a per-cell cause ("one draw finds a basin the others miss"), and the
+inference skipped the four passes that stand between a restart draw and the emitted plan. The
+sensitivity was real; the mechanism was invented. **A change in output under a perturbation localises
+the symptom, never the mechanism** — to localise a mechanism you have to open the pipeline and watch
+each stage, which is what §5.11 does.
 
-That makes it a **SEARCH-MISS waiting to happen**: any future edit that perturbs restart draws (adding a
-start, reordering them, changing PRNG consumption anywhere upstream) will silently drop 233 points here,
-and the golden will "churn" for reasons that look unrelated to the edit. The fix is *not* more restarts —
-it is a **basin-hop anchor at the fully-aligned layout**, so the passes can reach `[5,127,307]` from any
-start. That is Phase-7 SEARCH-MISS work, and this cell is a ready-made test case for it.
+What survives: this cell IS a **SEARCH-MISS waiting to happen**, and it is a ready-made test case.
 
 Secondary: `7:20 lust 0:05`'s −52.82 is a uniform −1 s slide (5→4, 22→20, 1→0, 125→124) — near-plateau
 micro-placement, consistent with the known low-haste placement slack, not a basin miss.
 
 Also noted: `6:00 lust 4:20` changed under `starts=1` at **Δ +0.000** with the whole burn block shifted a
-uniform +6 s. §5.11's legibility canonicalization normalizes score-ties *within one run's candidate set*;
+uniform +6 s. PHASE7 §5.11's legibility canonicalization normalizes score-ties *within one run's candidate set*;
 a different restart count yields a different candidate set and so a different plateau representative.
 Expected, not a canonicalization bug — but it means **plan-diff will report tie-only churn on any
 search-parameter change**, and `subSecOnly` will not filter it.
+---
+
+### §5.11 ★★★ THE ENTRANT PLATEAU — the measured cause of the `5:40` fragility, and a corpus-wide defect
+
+§5.10's closing note guessed. This section opened the pipeline. **The guess was wrong in the most
+instructive way: the aligned layout is not found by a lucky restart, because it is not found by ANY
+restart.** It is manufactured downstream — and which downstream pass gets to manufacture it is decided
+by a coin flip on a score plateau.
+
+#### The three probes, and what each ruled out
+
+`$SP/basin-probe.mjs` reconstructs `optimizeCore`'s 14-seed list verbatim (`index.html:1400–1445` —
+naive, packed, phase-anchored, pin-anchored ≤4, kill-anchored, then `randomSchedule` to `starts`) and
+reports where each seed's `polish()` lands. On `5:40 lust 0:05`:
+
+```
+best seed basin : [11] rand12  581657.995      13 distinct basins of 14
+top 6 span      : 19 points
+seeds reaching the good (582662-family) layout : 0 of 14
+```
+
+**Zero.** So "one lucky draw finds the aligned basin" is false at the seed stage — no draw finds it. The
++233 must be created *after* the seed phase, by the snap or by `basinHop`.
+
+`$SP/basin-stages.mjs` runs step 2 (snap top-6 to whole seconds, re-`polish`) and then step 3
+(`basinHop` from **every** top-6 entrant separately, so the question is *which entrants CAN reach it*,
+not *did this run happen to*). Printed at full precision, step 2 is the whole story:
+
+```
+[11] rand12   seedVal=581657.99506929773  snapVal=581647.29654275777   ← LOSES on `>`, by 1.2e-7
+[ 5] rand6    seedVal=581653.93419693795  snapVal=581647.29654275789
+[13] rand14   seedVal=581646.13510873041  snapVal=581647.29654275789
+[10] rand11   seedVal=581645.46925073268  snapVal=581647.29654275789
+[ 6] rand7    seedVal=581643.02195561840  snapVal=581647.29654275789
+[ 0] naive    seedVal=581639.23500505951  snapVal=581639.23500505951
+```
+
+**Four of six snapped candidates are bit-identical**, from visibly different layouts. Step 3 then values
+those tied layouts as far apart as the plan is worth arguing about:
+
+```
+[ 5] rand6  → 582662.018      [ 6] rand7  → 582662.018
+[13] rand14 → 582455.531      [10] rand11 → 581789.158      spread 872.860
+```
+
+> **The defect, stated once.** The snap to whole seconds is a **many-to-one map on score**. Once it has
+> run, "the best snapped candidate" is no longer determined by the snapped scores — they are equal — it
+> is determined by the **sort order of a PRE-snap score the snap has already erased**. `basinHop`, the
+> only pass that can tell these layouts apart, runs *after* the pick. **The pass that chooses the entrant
+> cannot see the difference; the pass that can see it does not get to choose.**
+
+Note also what `[11] rand12` shows: it *led* the pre-snap ranking by 4 points and lands 1.2e-7 *below*
+the plateau after snapping, so a strict `>` discards it. The winning seed and the winning entrant are
+not the same thing, and the pre-snap ranking carries no information about which entrant hops best.
+
+#### How general is it — 9 of 25 cases, 2 of them biting
+
+`$SP/tie-census.mjs` runs only the cheap prefix (seeds → polish → snap → re-polish) on all 25 and
+reports the plateau width at the max. **9/25 pick `basinHop`'s entrant off a plateau of ≥2 DISTINCT
+layouts:** Hydross(2), Fathom-lord Karathress(2), Lady Vashj(2), High Astromancer Solarian(3),
+Kael'thas Sunstrider(2), `2:00 lust 0:05`(2), `2:20 lust 0:05`(2), `2:40 lust 0:07`(2),
+`5:40 lust 0:05`(4). Two more (`4:00 lust 0:05`, `5:00 lust 0:05`) sit at margin **5.8208e-11** — coin
+flips that today's exact `===` comparison merely *fails to notice*.
+
+A plateau is only a **defect** if the tied layouts hop to *different* values. `$SP/tie-spread.mjs` pays
+for that (forks 2 lanes, longest-first, hops every tied entrant on the 9 flagged cases):
+
+| case | T | entrants | post-hop spread | verdict |
+|---|---|---|---|---|
+| `5:40 lust 0:05` | 340 | 4 | **872.860 (0.1498%)** | ⚠ BITES |
+| Kael'thas Sunstrider | 420 | 3 | **380.235 (0.0616%)** | ⚠ BITES |
+| the other 7 | 75–390 | 2–4 | 0.000 | harmless |
+
+**2 of 9 bite — and they are the two most expensive cases in the corpus.** That is not a coincidence:
+more presses ⇒ more near-equivalent layouts ⇒ wider plateaus ⇒ more room for the hop to diverge. The
+defect concentrates exactly where plan value is highest and where §5.6's cost curve makes verification
+most expensive.
+
+Kael'thas is the starkest evidence, because it removes any doubt that the entrant difference is
+*material*:
+
+```
+[13] rand14      berserking[106,286]  → hop output == hop input   (basinHop found NOTHING)
+[ 5] phase@105   berserking[105,285]  → +380.235
+```
+
+**A ONE-SECOND offset in the entrant is the difference between `basinHop` finding +380 and finding
+nothing at all.** Mechanism (`index.html:1296–1312`): every teleport anchor is derived from *the current
+champion's own presses* (`anchors.add(Math.round(t))`, plus `t + BUFFS[k].cd` on a 5 s grid, plus
+max-stack boundaries off `bestS`'s cast board). And `teleportRep` moves every press at second `X`
+**together**. So a fully-aligned layout is exactly one teleport away — *if the anchor exists*. Shift one
+press by one second and the anchor set no longer contains the second that would align it, and the hop is
+blind. **`basinHop`'s reach is entrant-dependent by construction**; the plateau hands it the entrant at
+random.
+
+#### ★★ The tolerance needs no judgement call — ten orders of magnitude of empty space
+
+The obvious objection to "hop the whole plateau" is that "tied" needs a tolerance, and a tolerance is a
+tuned constant, and a tuned constant is a place for a bug to hide. **Measured, it isn't.** Margins from
+the plateau max to the first non-tied candidate, across all 25:
+
+```
+4:00 lust 0:05      5.8208e-11        Morogrim Tidewalker      1.7467
+5:00 lust 0:05      5.8208e-11        Hydross the Unstable     9.9671
+5:40 lust 0:05      1.1642e-10        …  Lady Vashj         2037.7
+                                         3:20 lust 0:05     2698.3
+```
+
+A margin in this corpus is either **≤1.2e-10** (one number computed two ways) or **≥1.7467**. Ten orders
+of magnitude of empty space, and nothing anywhere near a threshold placed between them. So
+`tol = 1e-9 * |val|` is **float-noise detection, not tuning** — it cannot silently reclassify a real
+score difference as a tie, because no real score difference in this corpus is within nine orders of
+magnitude of it.
+
+#### The fix
+
+Collect **every** snapped candidate (not just the `>` winner), then hop the whole score plateau and let
+the pass that can see the difference choose. Three design points, all aimed at not manufacturing churn:
+
+- **`best` is hopped FIRST and improvements must be STRICT (`>`).** A plateau whose members all hop to
+  the same value therefore keeps **exactly** the plan it has today, byte for byte. Only a plateau that
+  actually changes the outcome moves — which the §5.10 rule (a search change must be gated on the full
+  25 and every changed cell dueled) then has to price.
+- **`sigOf`-dedup before hopping.** Kael'thas produces two identical `phase@105` seeds; an identical
+  layout must not be hopped twice. (It cost 0.0 s to find out, purely because `POLISH_CACHES` made the
+  duplicate free — see the caveat below.)
+- **Iterate in the existing rank order**, not a canonical signature order, to keep churn minimal.
+
+**Cost:** the most expensive pass now runs once per plateau member on 9 of 25 cases — estimated ≈ +85 s
+on a 625 s base (**≈ +13.6%**).
+
+#### ★★★ THEN IT WAS RUN — and the plateau is real but very nearly INERT
+
+Built as `$SP/plateau.html` and measured against pristine, case by case. **On both cases where the
+post-hop spread bites, the emitted plan is BIT-IDENTICAL:**
+
+| case | post-hop spread (§ above) | pristine final | plateau-fix final | Δ |
+|---|---|---|---|---|
+| `5:40 lust 0:05` | 872.860 | 582688.620970 | 582688.620970 | **0** |
+| Kael'thas Sunstrider | 380.235 | 617037.203958 | 617037.203958 | **0** |
+| `5:00 lust 0:05` | (near-tie 5.8e-11) | 521998.552858 | 521998.552858 | **0** |
+| `4:00 lust 0:05` | (near-tie 5.8e-11) | 428257.758448 | **428271.474882** | **+13.716** |
+
+The other 7 flagged cases are inert *by construction* (spread 0.000 ⇒ every entrant hops to the same
+value ⇒ `best`-first + strict `>` keeps `best`'s own hop).
+
+> **★★★ THE RESULT THAT MATTERS, and it upgrades caution 1 below from a warning to a measured law:
+> THE DOWNSTREAM PASS STACK ABSORBS THE ENTIRE POST-HOP SPREAD.** An 872-point and a 380-point
+> difference at the `basinHop` boundary both wash out completely by the time a plan is emitted. The
+> groom / tie-break / finishing passes are doing far more work than the entrant choice, and they
+> converge visibly different entrants onto the same final plan.
+
+**So a mid-pipeline measurement is not evidence about the output.** The plateau is genuinely there, the
+spread is genuinely large, the mechanism (§ above, KT's one-second Berserking) is genuinely proven — and
+**none of it reaches the user.** This is the same defect class as §5.7's unreachable guard, rotated:
+there, a guard that could not fire; here, a *finding* that could not surface. **Measuring a real
+difference at an internal boundary and reporting it as a defect is an inference the pipeline has to
+license, and this one didn't.**
+
+And note where the single gain actually came from: `4:00`'s plateau was **not an exact tie** — its margin
+is 5.8208e-11, so today's `===` comparison already separates those candidates. The +13.716 is bought by
+the **tolerance**, not by hopping the exact-tie plateau. The one measured benefit and the headline
+mechanism are unrelated.
+
+**Verdict — NOT LANDED as written.** ≈ +13.6% CPU for +13.716 points on 1 of 25 cases, with the stated
+justification (the 872/380 spreads) measured to have no effect on output. If the tolerance-only gain is
+worth pursuing it should be pursued as its own change, priced on its own evidence, and gated on the full
+25 per §5.10. `$SP/plateau.html` is kept as the reproduction.
+
+#### ★★ Two further hypotheses, both FALSIFIED — the `5:40` seed fragility is still unexplained
+
+1. **"The plateau fix makes `5:40` seed-robust."** No. Under `mulberry32(4242)` the fix yields
+   **582455.530709** — the identical −233.090 regression §5.10 measured on pristine. At that seed the
+   *entire plateau* tops out 233 below: the good entrant is not in the candidate set to be hopped, so
+   hopping all of it changes nothing. **The plateau explains which tied entrant wins; it does not explain
+   why the winning layout exists at one seed and not another.**
+2. **"A whole seed CLASS is missing — align-everything-on-Lust-then-chain."** The good layout is
+   `isc/icyVeins/scb [5,127,307] + arcanePower [5,307]`, which *looks* like a nameable deterministic
+   construction absent from the seed list (naive, packed, phase-, pin-, kill-anchored, random). Built it
+   explicitly (`$SP/align-seed.mjs`) at both plausible origins and hopped each:
+   `align@0 → 582553.499`, `align@5 → 582455.531`. **Neither reaches 582662.** The tell is in the
+   number: a clean cd-chain from the Lust second gives `[5,125,245]`, and the good plan is
+   **`[5,127,307]`** — a +2 s offset and a *skipped* use. That is a cast-boundary/ramp artifact, not an
+   alignment rule, so no tidy seed construction reaches it.
+
+**Standing:** `5:40 lust 0:05` remains a genuine SEARCH-MISS with **no identified mechanism** — three
+candidate explanations tried and killed (lucky-restart basin, entrant plateau, missing align seed). It
+stays on the Phase-7 ledger as an open SEARCH-MISS, and it is still the corpus's best test case for one.
+
+#### ★ Two carried cautions
+
+1. **Post-hop values are NOT final, so a better hop is not a better plan.** The pristine goldens are
+   Kael'thas 617037.204 — **7.26 BELOW** its best post-hop 617044.459 (downstream passes gave some
+   back) — and `5:40` 582688.621 — **26.6 ABOVE** its post-hop 582662.018 (downstream passes improved
+   it). **Now measured, not merely suspected:** the whole 872/380 post-hop spread washes out. **A higher
+   post-hop value is not a lead, it is noise, unless it survives to the emitted plan.**
+2. **A flaw in my own probe, recorded rather than hidden.** `basin-stages.mjs` reused ONE `cfg` object
+   across all six hops, and `POLISH_CACHES` is a `WeakMap` keyed by the `cfg` **object** that persists
+   across `basinHop` calls — so the hops shared one cache. Because `polish()` is pure, a cache hit
+   returns identical bits: **correctness unaffected, TIMINGS contaminated** (one hop reported 1.2 s,
+   another 0.0 s). The values above are trustworthy; the per-hop seconds in that probe's output are not.
+
+---
+
+### §5.12 ★★ The groom early exit — MEASURED on the full 25: plan-neutral, −10.1% CPU
+
+Ladder item **0c** (§4.17(1), sized empirically in §5.8(1)): give the groom loop the early exit its
+sibling fixpoint 1100 lines away already has —
+
+```js
+if (groom >= 1 && unchanged) break;      // unchanged = JSON.stringify(s) compare across the round
+```
+
+#### The structural argument, which is stronger than the census
+
+§5.8(1) tested this empirically: across 25 cases / 50 groom executions, **no execution anywhere exhibits
+the falsifying pattern** (round 1 no-op → round 2 change). That is 50 samples of a universal claim, not a
+proof. The proof is structural:
+
+> **Rounds ≥1 are the SAME deterministic function of `s`.** Each begins with `await challengePass()`
+> (`if (groom > 0) await challengePass();`) and then runs the same sweeps; **round 0 is the only one that
+> skips it.** So if round N≥1 returned `s` unchanged, round N+1 starts from a bit-identical state and
+> must reproduce it. The guard's `groom >= 1` is not a safety margin — it is exactly the condition under
+> which the two rounds are the same function.
+
+**The one audit hole, and it is closed.** The argument holds only if no state *outside* `s` carries
+across a round in a way that could loosen a later accept. Of the 8 `val =` assignment sites inside the
+groom window, **7 are `Math.max(...)`** — monotone by construction. The single bare assignment
+(`val = pick.v`, `index.html:1894`) is guarded by `rr3.robust > val + QTOL` and coupled to
+`s = pick.rep`, so it fires **only when it raises `val`, and only together with the `s` that earned it.**
+`val` is therefore non-decreasing across the loop, and a no-op round leaves it — like `s` — untouched.
+
+#### The gate: full 25, both instruments
+
+```
+PLAN-DIFF compared=25 changed=0 … PLAN-DIFF IDENTICAL
+DUEL: NO CHANGED CELLS
+```
+
+Note this is the case where the **QUICK tier would have been legitimate** — the guard is a control-flow
+skip, not a search change, so §5.10's exponential-cost/blind-spot correlation does not apply. The full 25
+was run anyway because it doubles as the perf measurement.
+
+| run | wall (2 jobs) | CPU |
+|---|---|---|
+| pristine full-25 | 362.7 s | 695.1 s |
+| groom early exit | 333.8 s | **625.1 s (−10.1%)** |
+
+Where it comes from — and it is exactly where §5.6 predicts:
+
+| case | Δ CPU |
+|---|---|
+| `7:20 lust 0:05` | **−23.5 s (−12.8%)** |
+| Kael'thas Sunstrider | **−15.1 s (−12.5%)** |
+| `5:45 lust 4:20` | −7.3 s |
+| `5:00 lust 0:05` | −6.5 s |
+| `4:00 lust 0:05` | −4.8 s |
+
+**Two cases give up 38.6 s of the 70 s.** The apparent +8–11% on the shortest cases is ≤0.6 s absolute —
+scheduler jitter, and their plans are bit-identical, so there is nothing there to explain.
+
+**Status: ready to land, blocked only on the round-5 cross-val campaign releasing `index.html`.** Gate on
+exact-match 25/25 at commit (it also covers the render path, which the sweep never touches).
+
+#### ★ Footnote: this is the item the plateau experiment was going to spend
+
+§5.11 estimated the plateau fix at ≈ +13.6% CPU — *i.e. it would have consumed this entire saving*, and
+it was provisionally accepted on the grounds that correctness outranks speed. It then measured out as
++13.716 points on 1 of 25 cases. **Had the two landed together the net would have been ~0% CPU change for
+~0 plan change, and the ledger would have shown a "correctness fix" paying for itself.** Both were
+measured separately and independently, which is the only reason either verdict is legible.
