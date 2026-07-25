@@ -1569,7 +1569,31 @@ All on the round-8 `C0`/`C1` pair (`Icon` off, rest-context B), so the contrast 
   the patched AP-180 build, and confirm `--var` dithers duration (not start time) before any scorer change
   is contemplated.
 
-### 19.4 What this round cannot do
+### 19.4 The apparatus (BUILT and syntax-checked 07-25; NOT yet run)
+
+Staged in `scratchpad/p8/`, ready to fire the moment the box frees. Written *before* any number
+exists, so the reduction cannot be tuned to the answer it finds:
+
+| file | leg | what it does |
+|---|---|---|
+| `r9l1.sh` | L1 sim | builds the two APLs once (press times are haste-independent), then for each `R` runs the **cascade gate at that haste** followed by the `var 3.0` DPS pair |
+| `r9drift.mjs` | L1 gate | `r8gate.mjs` reduced to one number — max control drift in seconds between `C0` and `C1`, or the literal `COUNT` if a control's press *count* differs (which is not a contrast at all and must never be averaged into a drift figure) |
+| `r9l1model.mjs` | L1 model | the same two **fixed** schedules through the page's own `simulate()` across the sweep — nothing is optimized, so this reads the scorer directly, which is what L1 tests |
+| `r9l1stat.mjs` | L1 reduce | recomputes `m(R)`, `u = 1.5/m` and the clip fraction **from `HASTE_RATING_PER_PCT` and `BUFFS.mqg.value` rather than from a comment**, then resolves L1a/L1b. Gate-dirty haste points are excluded from every verdict |
+| `r9l2.sh` / `r9l2model.mjs` / `r9l2stat.mjs` | L2 | the `T` sweep at both `var 0` and `var 3.0`, with the self-falsification of §19.3 wired into the reduction so it **prints itself** rather than depending on my reading it correctly |
+
+Two design points worth recording because they are the parts most likely to go wrong:
+
+- **The gate re-runs at every haste, not once.** Boundary snapping is haste-dependent, so a contrast
+  that is clean at `R = 70` is *not* automatically clean at `R = 400`. This is the direct descendant
+  of the round-8 lesson that "a structural legality checker is as much a suspect as the plan."
+- **`R = 400` is a free control.** The solo arm crosses the floor at `R ≈ 379`, so at 400 *both* arms
+  clip (stacked 17.5 %, solo 1.05 %). If the floor is the whole story, `Δresid` should stop growing —
+  or turn back — at that point. That prediction is not in §19.3's falsifiers because it was noticed
+  while building the sweep; it is recorded here as a **secondary** observation so it cannot later be
+  promoted into a primary result it was never pre-registered as.
+
+### 19.5 What this round cannot do
 It cannot land a fix. Any change to the cast-rate integral moves goldens and must wait for acceptance round
 4 to close; and because the defect is gear-dependent **by construction** (the floor is only reachable near
 `R ≈ 53+`), a fix validated at `R = 70` must be re-run across the full acceptance haste grid before it lands.
