@@ -22,9 +22,16 @@
    cluster-first; `4:00 lust 0:05` = strict +0.0067 eff casts), 23 byte-identical, suite 25/25.
    **Two phases now stand open behind Phase 7:** `docs/PHASE8.md` (the B2 model-vs-sim ranking error — the
    "joint interaction" framing is **withdrawn**, round 1 traced it to a retimed trinket press and round 2
-   established **THE FLOOR LAW** + two harness input errors; §8 falsifies the SP-under-haste candidate;
-   **§11 pre-registers round 3** — a crossed, one-rating-point test of the law's closed-form step
-   locations, rig built and dry-run verified, blocked on CPU only)
+   established **THE FLOOR LAW** + two harness input errors; §8 falsifies the SP-under-haste candidate.
+   **Round 3 ran and closed** (§11–§13): the law generalizes to **one window, two sampling rules** —
+   value buffs read at cast completion ⇒ `floor`, haste buffs read at cast *start* and frozen ⇒ `ceil`
+   (`cast.go:138`/`:187`), halving the residual and killing the "haste buffs are exempt" claim. Applied to
+   the B2 pair the whole quantization family has the **wrong sign**, so **B2's target rises 0.38 → 0.445 pp**
+   (§13.8; §12's opposite verdict was a sign error, corrected in place). §13.9 then **excludes per-buff
+   valuation entirely** — signed residual positive on all 6 buffs × 13 hastes (a 0.369 pp *level* that
+   cancels in B2, since both plans carry identical window multiplicities) with **no leg's haste slope
+   clearing its own noise**; generous scaling reaches 0.048 pp of 0.445. **B2 is a layout property**
+   (window×window or window×kill); next probe is `rampCastDmg`/`rampSpans` × haste)
    and `docs/PHASE9.md` (**performance/refactor**, user-reported CPU cost — notes + hypotheses only so
    far, nothing landed; every change there is gated on byte-identical plans. **§4.7** turns the "fewer
    steps" ask into a *pass-firing census* — a pass is redundant iff its input is already its own fixpoint

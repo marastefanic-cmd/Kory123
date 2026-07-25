@@ -8,7 +8,17 @@ marginals swept across haste** — which produced the phase's first hard result,
 10/10 with a mechanism proof), a two-correction error decomposition that **zeroes the mean model-vs-sim
 bias** (§7), and a surviving haste-correlated residual whose **sign is wrong for B2** (§8) — a genuine
 falsification: B2 is *not* a single-buff SP-valuation error. §9 records the leads closed this round; §10 is
-the task list for round 3.
+the task list for round 3. **Round 3** (07-24/25, §11–§13): the floor law **survives in a corrected, more
+general form** — one window, **two sampling rules** (value buffs read at cast completion ⇒ `floor`, haste
+buffs read at cast start and frozen ⇒ `ceil`), which halves the model-vs-sim residual and kills the
+"haste buffs are exempt" claim (§13.1/§13.7). But applied to the B2 pair the whole lattice-quantization
+family has the **wrong sign**, so **B2's residual target RISES from 0.38 pp to 0.445 pp** (§13.8) — and
+§12's earlier "correct direction" verdict was a sign error of mine, banner-corrected in place. The round's
+closing result (§13.9): the signed residual is **positive on every buff at every haste** (a 0.369 pp
+*level*, which cancels in B2 because both plans carry identical window multiplicities) with **no haste
+slope on any leg that clears its own noise** — the most generous scaling reaches 0.048 pp against 0.445.
+**B2 is excluded from per-buff valuation entirely; it is a layout property** (window×window or
+window×kill). Round 4's live item is the `rampCastDmg`/`rampSpans` × haste interrogation.
 
 Phase 7 fixed everything cheaper: three press-execution scorer terms (RULES §3b), two search passes, the
 metric (var0.5 + wall-jitter), the KT AoE harness, and — the big one — **cross-haste pooling, which makes
@@ -581,6 +591,81 @@ Two consequences worth carrying forward:
   `isc@29` perfect-fit window) that the *high-haste* plan lands lattice-neutral and the low-haste one does
   not. If a §5b-style lattice-aware scorer is ever built, this is the pattern it would be exploiting, and
   the direction it would push presses.
+
+### 13.9 ★★ The SIGNED residual vs haste — **B2 is not in per-buff valuation at all**
+
+§13.7 scored *magnitudes* to pick the count form. With the form settled, the leftover is the interesting
+object: `residual = sim − prediction`, **signed**, per buff, across all thirteen hastes. This is exactly the
+"single-buff steady-state marginals across haste" battery §4 asked for — round 3's sweep already *is* that
+data; it just needed the right prediction subtracted from it (`scratchpad/p8/resid.mjs`).
+
+**Why the sign and the slope, not the level.** B2's signature is a mispricing that **grows with haste** —
+that is what makes the model prefer h70 where the sim prefers h40. A per-buff error that is flat in haste
+cannot produce it. And in B2's case that is not a soft argument but an exact cancellation: **the two B2
+plans carry identical buff-window multiplicities** (AP ×2, Zerk ×2, Icon ×2, MQG ×1, IV ×3, Lust ×1 — see
+the plans in §13.8). Any per-window valuation error that does not depend on haste appears the same number
+of times in both and **cancels exactly** in `h40 − h70`. Only the haste *derivative* survives.
+
+Residual in pp of total DPS; `+` = the sim beats the model.
+
+```
+              0     40     70     78     79    120    150    157    158    197    198    240    300
+Icon  value+ 0.012+ 0.001+ 0.006+ 0.016+ 0.016+ 0.007+ 0.011+ 0.016-0.000+ 0.096+ 0.011+ 0.010+ 0.002
+AP    value+ 0.027+ 0.009+ 0.019+ 0.041+ 0.042+ 0.028+ 0.035+ 0.049+ 0.003+ 0.035+ 0.037+ 0.027+ 0.005
+SCB   value+ 0.069+ 0.087+ 0.122+ 0.111+ 0.116+ 0.061+ 0.060+ 0.093+ 0.078+ 0.093+ 0.093+ 0.019+ 0.010
+IV    haste+ 0.036+ 0.017+ 0.032+ 0.033+ 0.042+ 0.029+ 0.048+ 0.050+ 0.049+ 0.333+ 0.109+ 0.043+ 0.093
+MQG   haste+ 0.041+ 0.013+ 0.044+ 0.030+ 0.037+ 0.034+ 0.054+ 0.024+ 0.008+ 0.118+ 0.122+ 0.085+ 0.046
+Zerk  haste+ 0.018-0.000-0.010+ 0.021+ 0.003+ 0.020+ 0.032-0.031-0.027+ 0.038+ 0.039+ 0.041+ 0.001
+```
+
+| leg | class | mean pp | sd pp | slope pp/300R | trend/noise | slope w/o R=197 | trend/noise |
+|---|---|---|---|---|---|---|---|
+| Icon | value | 0.0156 | 0.0246 | +0.0143 | 0.58 | −0.0040 | 0.70 |
+| AP | value | 0.0274 | 0.0146 | −0.0067 | 0.46 | −0.0088 | 0.58 |
+| SCB | value | 0.0779 | 0.0342 | −0.0764 | 2.24 | −0.0835 | 2.36 |
+| IV | haste | 0.0703 | 0.0828 | +0.1224 | 1.48 | +0.0658 | 2.49 |
+| MQG | haste | 0.0504 | 0.0362 | +0.0618 | 1.71 | +0.0487 | 1.56 |
+| Zerk | haste | 0.0111 | 0.0243 | +0.0161 | 0.66 | +0.0103 | 0.43 |
+
+**Every residual is positive.** After the corrected count, the sim still beats the model on *every* buff at
+*every* haste, by +0.011 to +0.078 pp per window. Summed with B2's multiplicities that is a **0.369 pp
+level** the model gives away on a full layout — a real number, and a decent share of the ~0.4% absolute
+model-vs-sim agreement we quote. But it is a *level*: identical in both plans, so it contributes **exactly
+zero** to B2. (It is, however, the right place to look if the *absolute* agreement is ever tightened.)
+
+**No leg has a haste trend worth anything.** The largest `trend/noise` in the raw fit is SCB's 2.24 — and
+SCB's slope is **negative**, the wrong direction, and SCB is absent from both B2 plans. IV (1.48) and MQG
+(1.71) are the only positive-sloping legs and both sit inside ~2σ. Scaling every slope by its B2 press
+count — taking all six at face value, including the ones deep inside noise, and letting them all stack in
+whichever direction they happen to point:
+
+```
+layout slope  = 0.476 pp / 300R   →  over B2's 30-rating gap:  0.0476 pp     (target 0.445 → ×9 short)
+   w/o R=197  = 0.241 pp / 300R   →  over B2's 30-rating gap:  0.0241 pp     (            → ×18 short)
+```
+
+> **VERDICT: B2 does not live in any single buff's valuation.** The most generous upper bound this battery
+> permits is ~0.05 pp against a 0.445 pp target — an order of magnitude short, and that is *before* noting
+> that the slopes do not survive their own error bars. Whatever B2 is, it is a property of the **layout**:
+> an interaction between windows, or between windows and the kill boundary, that a single-buff fight with
+> no overlap and no meaningful end effect cannot express. This is consistent with §10's finding that every
+> *isolated* decomposition reports CLEAN, and it converts that from a frustration into a positive result —
+> the isolation batteries are not failing to find B2, they are **excluding** it from their domain.
+
+**The R=197 caveat.** That column is a visible cross-leg outlier (IV +0.333, MQG +0.118, Icon +0.096). It is
+not a mechanism: §13.6 measured the ms-quantization step at ≈196.9, so at R=197 the analytic `Δ(R)` and the
+sim's `.Round(time.Millisecond)` cast time straddle a crossing and disagree by a hair — an instrument
+artifact of the prediction, not of the sim. It is included above unmodified, and the "w/o R=197" columns
+show the verdict does not depend on it (dropping it *halves* the layout slope). Worth knowing that IV's
+trend is the one that firms up when it is dropped (`trend/noise` 1.48 → 2.49, on a slope of +0.066 pp/300R):
+that is a small real haste-dependence in IV's valuation, ~7× too small for B2 but the only survivor here,
+and the natural first candidate if a per-buff term is ever revisited.
+
+**What this rules in.** With per-buff valuation excluded and the whole quantization family retired (§13.8),
+the surviving B2 candidates are all *joint*: window–window interaction (the ramp seen through overlapping
+haste and damage buffs), and window–boundary interaction (how a haste window's compressed time interacts
+with the kill). Round 4's remaining item — the `rampCastDmg` / `rampSpans` × haste interrogation — is
+squarely in that space and is now the next probe, not one of several.
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
