@@ -2456,28 +2456,79 @@ And the verdict is unambiguous — at 4242 all three return **byte-identical lay
 second. `stable` firing early is a real observation about the *test*, but the loop had genuinely
 converged: it was not being cut short, it had nowhere left to go. (L1) is dead. **Do not re-litigate it.**
 
-##### (L2) The anchor alphabet — the sole surviving lead, now nameable
+##### (L2a) The anchor alphabet — FALSIFIED by giving the hop EVERY anchor there is
 
-Reading `basinHop` (`index.html:1285-1360`) sharpens (L2) from "anchors are entrant-derived" into a
-specific, generalisable defect:
+Reading `basinHop` (`index.html:1285-1360`) first sharpened (L2) into a specific, appealing defect:
+anchors are entrant-derived — each press second `t`, each natural next tick `t + cd` **snapped to a 5 s
+grid** (`grid = x => Math.round(x/5)*5`, `:1297`), each max-stack onset off the cast board, and `T − 1`.
+The tick that matters is `isc[4] + 120 = 124`, which the grid rounds to **125**, while the winner's
+second is **127**. Obvious fix, and a rule rather than a hand-fitted anchor: *snap next-tick anchors to
+cast boundaries instead of the grid.*
 
-- anchors are built from **the entrant's own presses**: each press second `t`, each natural next tick
-  `t + cd` **snapped to a 5 s grid** (`grid = x => Math.round(x/5)*5`, `:1297`), each max-stack onset
-  second off the cast board, and `T − 1`.
-- `cfg.fixed` tracks are excluded from `windows` (`:1289`) but **included** in `anchors` (`:1298`) — so
-  `bloodlust[5]` does contribute anchor 5.
-- a move **teleports one window to one anchor** and is accepted **only on strict improvement**.
+**It is wrong, and one probe killed it before a line of engine code was written** (`$SP/l2-reach.mjs`).
+Rather than argue about which anchors are missing, hand the hop **the entire alphabet** — every second
+`0 … T−1` — from the stuck 4242 plan:
 
-Against that, reaching the winner from the 4242 entrant needs a coordinated **3-move** — IV's opener
-`0 → 5`, `190 → 127`, `310 → 307` — with no single leg improving on its own. That is the textbook
-local-search wall, and it explains why no round budget escapes it (which is exactly what (L1) measured).
+| anchor set from the stuck plan | value | vs stuck | polishes | secs |
+|---|---|---|---|---|
+| real anchors (**NEG control**) | 582455.530709 | +0.000 | 66 | 5 |
+| + 127 | 582455.530709 | +0.000 | 73 | 5 |
+| + 5, 127, 307 | 582455.530709 | +0.000 | 78 | 6 |
+| **FULL alphabet `0..T−1`** | **582455.530709** | **+0.000** | **1769** | 89 |
 
-And the alphabet itself is short by two seconds: the tick that matters is `isc[4] + 120 = 124`, which
-the 5 s grid rounds to **125**, while the winner's second is **127** — 125 pushed +2 by cast-boundary
-snapping downstream. The 124/125 family measures **582400.409** (`cs-align.mjs`), with polish dragging
-IV's opener back to 189. So (L2) carries a concrete candidate fix that is a **rule, not a hand-fitted
-anchor**: *snap next-tick anchors to cast boundaries instead of to a 5 s grid.* Untested. It is a SEARCH
-change, so §5.10 binds — **full 25, `plan-diff`, and a DUEL on every changed cell**, never the quick tier.
+**Zero.** 2712 pairs, 1769 polishes, and the best single group-move ties. (Controls: the stuck plan
+repairs to exactly 582455.530709 and the winner polishes to exactly 582688.620970, a confirmed fixed
+point.) Note also that `teleportRep` (`:1260`) is a **group** move — every non-fixed press at second `X`
+shifts together — so this is not a one-press-at-a-time limitation either. The stuck plan is a **strict
+local optimum over the complete single-move neighbourhood**. No anchor rule of any kind can help, and
+cast-boundary snapping would have been pure wasted work. **(L2a) is dead — do not re-litigate it.**
+
+##### ⇒ The real defect: a MISSING SEED CLASS. Located, and the existing machinery does the rest.
+
+If no move reaches the basin, the basin has to be **entered**. Decoding the winner *structurally*
+instead of numerically shows it is not exotic at all — its press seconds are a chain whose gaps come
+from the kit's own cooldowns:
+
+```
+5 --(+120, the trinket cd)--> 125 --(+180, IV/zerk cd)--> 305        (polish then finds the +2 → 127/307)
+```
+
+and every track presses at every group second it is **up** for, with Cold Snap buying Icy Veins one
+extra, and a haste track allowed to **skip the opening group**:
+
+```
+IV  5, 125 (CS: 120 < 180), 305     isc/scb  5, 125, 305  ← SKIPPING the 245 use they could have taken
+AP  5, (185 is not a group second), 305        zerk  (skips group 1) 125, 305
+```
+
+That is **not** what hypothesis (e)'s LOCKSTEP-STACK seed built: (e) advanced greedily on the *shortest*
+cd, so its third group landed at 245 (582553.499). The winner deliberately **skips a use to stay
+stacked**. So the seed class is `origin × gap-chain-drawn-from-the-enabled-cd-set × which haste tracks
+skip group 1` — 80 candidates here, **no hand-fitted seconds**: 125 and 305 fall out of cooldown
+arithmetic (`$SP/l2-seed.mjs`).
+
+| | value | vs stuck | vs winner |
+|---|---|---|---|
+| stuck seed-4242 plan | 582455.530709 | — | −233.090 |
+| hypothesis (e) LOCKSTEP-STACK | 582553.499 | +97.97 | −135.122 |
+| **group-second seed, polish only** | **582662.017896** | **+206.487** | −26.603 |
+| **… then `basinHop`, REAL unmodified anchors** | **582688.620970** | **+233.090** | **+0.000 ← WINNER** |
+
+The seed lands the structure exactly — `berserking[127,307]` already correct — and misses only by the
+whole group sitting at 125/305 instead of 127/307, which `polish` cannot fix because it moves one press
+at a time. **`basinHop` then closes it with its own existing anchors in 3 rounds / 66 polishes / 5 s.**
+Adding the full alphabet to *that* hop changes nothing either — it is not anchor-starved, it never was.
+
+A `GROUP NUDGE` operator (shift every press at a second by ±1/±2/±3 **together**) was also built and is
+**not needed**: +16.929 alone, never reaches. No new operator, no anchor change, no extra rounds —
+**one missing seed class.**
+
+**So the `5:40` miss is fully diagnosed**, by elimination with each alternative independently falsified:
+anchors fine, rounds fine, scorer fine, operator set fine. What remains is to add the group-second seed
+to `optimizeCore`'s start set. That is a SEARCH change, so §5.10 binds in full — **`plan-sweep` on all
+25, `plan-diff`, and a DUEL on every changed cell**, never the quick tier. (Also worth noting for the
+legibility pass: openers 5, 6 and 7 all score **582688.620970** exactly — the winner sits on a tie
+plateau, so canonicalization picks the representative.)
 
 **The methodological point, which outranks the finding.** Three perturbation experiments over two
 sessions produced three wrong mechanisms and zero localisation. One stage trace produced the exact pass,
