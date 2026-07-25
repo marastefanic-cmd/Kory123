@@ -717,9 +717,10 @@ stable order-canonical form — but stop calling it on the hot path.
 
 #### 4.13.1 The revised landing order (supersedes §4.8's items 1–2)
 
-> **⚠ AMENDED by §4.16, §4.17 and §4.18.** Four items land *ahead* of everything below, and one of them
-> changes item 5's shape. All four are provable before they are measured — none may be booked as a
-> speedup until a profile says so.
+> **⚠ AMENDED by §4.16, §4.17, §4.18 and §4.19.** Four items land *ahead* of everything below, and one of
+> them changes item 5's shape. All four are provable before they are measured — none may be booked as a
+> speedup until a profile says so. **§4.19 is the exception and therefore does *not* join them:** it is a
+> predicted speedup, so it goes in the numbered ladder below as **item 1b**.
 >
 > - **(0a) extract the `admit` helper** (§4.16) — the legality prefix written longhand at 9 sites,
 >   byte-identical by construction, worth landing on legibility alone. After it, item 5's "every call
@@ -734,6 +735,12 @@ stable order-canonical form — but stop calling it on the hot path.
 
 1. **§4.13 native `JSON.stringify` as the memo key** — replaces `sigOf` at `:654` and `:1351`. Biggest
    measured win per line changed (≈1.8 s CPU/solve); miss-not-corruption failure mode.
+1b. **§4.19 pool the three unpooled candidate loops** (`:1502`, `:2815`, `:2882`) behind one `polishAll`
+   helper, and rename `cfg._noPool` → `_noHastePool`. Placed here because it touches the same
+   polish/cache path as item 1, so the two are measured in sequence rather than interleaved with unrelated
+   work. Correctness argument is the one already shipped and verified for `basinHop`; two of the three
+   loops are strictly easier than it (running maxima, no break, zero discarded work). **Predicted speedup
+   ⇒ must show a wall-time delta or be recorded as a legibility change.**
 2. **§4.12(A) hoist the loop-invariant operand** at `1951`, `2533`, `1983`, `2169` — byte-identical by
    construction, 1.72× on the equality test.
 3. §4.2 per-cfg memo + §3.3 generational eviction — behaviour-preserving by the eviction argument. *(Composes
@@ -1164,3 +1171,124 @@ comment at `:2799`: it fires on `isc+scb` ("one AP on the Lust cluster beats two
 surviving firing and therefore a **keep**. The open question was never whether it does something; it is
 what it **costs**, and that is a number nobody has, because the one instrument that would have shown it —
 the progress bar — stops just before it starts.
+
+### 4.19 ★★ The worker pool covers two of the five candidate loops — and the split tracks *history*, not independence
+
+§4.18 asked what runs in the unbudgeted tail and found a `polish`-per-candidate loop. This section asks a
+different question of the same code — *which loops run on the pool?* — and the two answers land on the same
+twelve lines. That agreement is the cross-check working; the finding below is independent of it and larger.
+
+#### The census
+
+`poolMap` is called at exactly **two** sites:
+
+| site | loop | reduction |
+|---|---|---|
+| `index.html:1456` | seed phase (`starts = 14` polishes) | argmax over independent results |
+| `index.html:1336` | `basinHop`'s teleport sweep | first-accept-in-iteration-order |
+
+`polish(` appears at **seven** sites. Two are the sequential fallbacks for the pooled loops above
+(`:1353`, `:1461`), one is the pool worker's own body (`:3302`). The remaining **three are
+polish-per-candidate loops that never touch the pool**:
+
+| site | loop | candidates | reduction | discarded work if pooled |
+|---|---|---|---|---|
+| `:1502` | snap-to-whole-seconds | `results.slice(0, 6)` — **6, always** | running max, **no break** | **none** |
+| `:2815` | drop-one-use escape | Σ over unfixed tracks with ≥2 uses of `\|uses\|`, × up to 4 rounds | first-accept, then `break` out of *both* loops | everything past the accepted candidate |
+| `:2882` | Cold-Snap chain search | `chains` (2 base + per-slot compressions at two counts + kill-anchored pair) | running max, **no break** | **none** |
+
+**`POOL` is live at all three.** The proof needs no instrumentation: the escape at `:2822` calls `basinHop`,
+which uses `POOL`, in the same scope, three lines below its own sequential polish loop.
+
+#### The sharpest form of it: `:1502` is twelve lines below `:1456`
+
+The seed loop is pooled and carries the reason in its comment — *"each seed's polish is independent, so the
+pool runs them all at once (order of `results` is by seed index either way — identical to the sequential
+loop)"*. The snap loop sits in the **same function, the same async runner, with `POOL` in scope**, and is a
+*purer* instance of the identical shape: six independent polishes, a running max, no data dependence
+between iterations at all. It was not pooled.
+
+So the pooled/unpooled split does not track independence, difficulty, or cost. It tracks **which loops
+existed when the pool was written**. That is the same disease §4.16 found one level down — there, one
+legality prefix written longhand at nine sites; here, one *candidate-evaluation loop* written at five, two
+of which learned about the pool and three of which did not.
+
+#### Each unpooled reduction is *simpler* than the one already shipped
+
+The pool's correctness argument is already written, already shipped, and already verified (`:1225-1231`):
+*"the pool changes only WHERE a candidate is polished, never which candidate is accepted next. Pooled and
+sequential paths therefore return byte-identical plans (verified)."* `poolMap` keeps results **in item
+order** by construction (`:1247`, and its comment says the reduction depends on it). Against that:
+
+- **`:1502` and `:2882` are strictly easier than `:1336`.** Both are running maxima with strict `>` and no
+  `break`, so *every* candidate is polished either way — there is no accept-order dependence to preserve
+  and **zero discarded work**. Item-ordered results + the same running max = the same bits, for the same
+  reason the seed loop above is already pooled.
+- **`:2815` is basinHop's shape, minus the restart.** An acceptance `break`s the inner loop and then
+  `if (again2) break` exits the outer one, so the scan **ends** at the first accept. One fan-out over all
+  `(key, di)` pairs of the current `s` followed by first-accept-in-order is therefore exact — `basinHop`'s
+  `i += j + 1` restart loop is not even needed. Its waste-on-accept is the same trade the shipped comment
+  already prices as small, and doubly so here: an acceptance requires a strict improvement from *removing*
+  a use.
+
+#### ⚠ `cfg._noPool` is NOT the worker pool — and it reads exactly like it is
+
+`_noPool` is checked at **one** site, `:1379`, inside `optimizeAsync`, where it disables the **cross-haste**
+pooling (`cfg.poolHastes` — the PHASE7 straddle guarantee). Both places that set it (`:1390`, `:2848`) are
+recursive `optimizeCore` calls that must not recurse into haste pooling. It has nothing to do with `POOL`,
+which is gated only at `:1316` and `:1455`.
+
+This matters because a reader arriving at the Cold-Snap comparison sees
+`optimizeCore({ ...cfg, coldSnap: false, _noPool: true }, …)` immediately above the unpooled chain search
+and concludes the CS path deliberately runs off-pool. **It does not.** Rename to `_noHastePool` as part of
+this work; a name that mis-answers the exact question this section asks is a defect in its own right.
+
+#### Sizing — honestly, and with the inference flagged
+
+**The static half is checkable.** Unpooled polishes per solve: **6** (snap, always) **+** `|chains|` (CS,
+whenever Cold Snap was consumed) **+** the escape's scan (≥1 round, always, whenever any unfixed track has
+≥2 uses). At the file's own price for a polish — *"(~0.3–1 s)"*, `:1344` — that is **on the order of 8–30 s
+of strictly sequential polish per solve**, against §1's `wall=31.49 s` on case `long`.
+
+**The Amdahl half is an inference and must be labelled one.** The `~93%` figure at `:1227` is a
+**pre-pool** measurement, and the composition of the remaining 7% was never measured. *If* the 93% divides
+cleanly across `N = max(1, min(8, cores − 2))` workers, post-pool wall ≈ `0.07 + 0.93/N` of the pre-pool
+run, so the sequential remainder is promoted to:
+
+| N | cores | remainder share of new wall clock |
+|---|---|---|
+| 2 | 4 (this box) | 13% |
+| 6 | 8 | 31% |
+| 8 | 10+ | 38% |
+
+with a hard ceiling of **14.3×** however many workers are added. This is also the shape of task #57's
+report: the fast path got faster, so the slow path is what you now feel.
+
+**Do not quote the 31% as measured.** What is measured is that three independent loops run sequentially;
+what is inferred is how much of the wall clock they now own. §4.7's runtime census is what turns the second
+into a number — the same caveat §4.16 and §4.18 close on, unchanged.
+
+#### An open question for that census, not a claim
+
+None of the three unpooled sites consult `polishCacheFor(cfg)` — only `basinHop` does (`:1315`). The snap
+pass polishes rounded top-6 candidates and the escape polishes drop-variants that a later hop may re-teleport
+into; whether those ever repeat is **unknown**, and a hit rate is exactly the sort of number the census
+produces and inspection cannot. Recorded as a question.
+
+#### The refactor
+
+One helper, one place where the pool decision is made — the same shape as §4.16's `admit`:
+
+```js
+// results in ITEM order, pooled or not; each caller keeps its own reduce
+const polishAll = async (cands, cfg) => POOL
+  ? await poolMap(cands, s => ({ kind: "polish", cfg, s }))
+  : cands.map(s => polish(s, cfg));
+```
+
+Five call sites collapse onto it; `:1455`'s `if (POOL)` / `else` fork disappears; the three unpooled loops
+become fan-out + their existing reduce, unchanged.
+
+**Landing.** Unlike §4.13.1's items 0a–0d, this **is** a predicted speedup, so it does not get to be booked
+on inspection: it lands after the freeze, gated at exact-match **25/25** *and* a wall-time re-measure, and
+if the re-measure does not move, it is a legibility change and gets recorded as one.
