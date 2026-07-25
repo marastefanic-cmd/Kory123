@@ -1768,3 +1768,77 @@ latent crash (a missing `got` would have hit `got.split` in the FAIL branch).
 **Remaining honest limit:** exact-match is still a **final-state** comparison (§5.1). Parallelising it
 made it faster, not deeper — a refactor that changes a mid-pipeline accept decision which later passes
 wash out still goes green on all 25. Ladder item 0a is exactly such a change.
+
+### §5.8 The §4.7 RUNTIME census — RUN, on all 25 cases
+
+§4.7 was owed a measurement and §4.21 was owed a coverage check. Both are now numbers. The census ran
+against an instrumented **copy** of `index.html` (§4.14's trick — the repo's engine stayed frozen for the
+xval campaign), and **plan-neutrality was proven before the counts were read**: a full sweep of
+`census.html` vs `index.html` printed `PLAN-DIFF IDENTICAL` on 16/16 cases, so the probes measure the
+shipping optimizer and not a perturbed one.
+
+| key | total | cases firing |
+|---|---|---|
+| `call.repair` | 29,392,572 | 25/25 |
+| `call.simulate` | 29,325,903 | 25/25 |
+| `call.sigOf` | 29,178,232 | 25/25 |
+| `groom.r0.CHANGED` / `.noop` | 50 / 0 | — |
+| `groom.r1.CHANGED` / `.noop` | 28 / 22 | — |
+| `groom.r2.CHANGED` / `.noop` | 1 / 49 | — |
+| `dodgeDowntime.enter` / `.cand` / `.FIRE` | 164 / 4 / 4 | FIRE in **1/25** |
+| `apSnap.cand` / `.FIRE` | 101 / 1 | FIRE in **1/25** |
+
+#### (1) §4.7's groom early exit is empirically sound — and smaller than it looks
+
+The groom loop is entered **exactly twice per case, on all 25** (50 round-0 entries, no exceptions), so
+"three grooms" is really two, uniformly. Round 1 no-ops **44%** of the time (22 of 50) and round 2 no-ops
+**98%** of the time (49 of 50).
+
+The proposed guard is `if (groom >= 1 && unchanged) break;`. It would fire in **19 of 25 cases**.
+
+**The soundness test §4.17's f1=f2 purity argument needed:** does any execution show *round 1 no-op →
+round 2 change*? If one did, the argument would be dead — a no-op round would not imply a converged
+schedule. The single round-2 change in the whole corpus is in `5:00 lust 0:05`, and that case has
+`r1noop=0` — **both** its executions changed in round 1. So across 25 cases / 50 executions, **no
+execution anywhere exhibits the falsifying pattern.** That is not a proof (it is 50 samples of a
+universal claim), but it is the first empirical test the argument has faced and it passed cleanly.
+
+**⚠ Size it honestly.** The guard captures **22 of the 49 wasted round-2 executions**, not all of them.
+You may skip round 2 because round 1 *was* a no-op — never because round 2 *will* be one. The other 27
+wasted rounds follow a round-1 change and are unreachable by this guard. §4.17's "smaller than a whole
+groom round" caveat is now a fraction: **~45% of the waste, not 98%.**
+
+#### (2) §4.21's coverage precondition: CONFIRMED, but far thinner than "likely"
+
+§4.21 asked, before landing item 0a, that the goldens be shown to actually exercise the two Class-D sites
+rather than assumed to. They do — barely:
+
+- **`dodgeDowntime` (`:2666`)** — 164 entries, but only **4 candidates survive `sameCounts`, and all 4
+  fire**, in **one case** (Al'ar). The corpus therefore never exercises this site's *rejection* paths at
+  all: every candidate that reaches the gate is accepted. A conversion that broke the gate's reject
+  behaviour would go green on all 25.
+- **`apSnap` (`:2347`)** — 101 candidates, **1 firing**, in **one case** (`3:20 lust 0:05 drums`).
+
+So each Class-D site is protected by **exactly one golden**. §4.21 wrote "likely, given the boss presets,
+but 'likely' is the wrong confidence for a guard" — the measurement says the instinct was right and the
+margin is one case per site. The decision not to convert them stands on **reading the code**, which was
+always the durable reason; the suite is a thin second line, not a first one.
+
+#### (3) §4.1's fusion premise, as a number
+
+Across the 25 cases the three hot calls run at **repair : simulate : sigOf ≈ 29.39M : 29.33M : 29.18M ≈
+1 : 1 : 1**. §4.15 corrected §4.1's "almost everywhere" claim about *call sites*; this is the *dynamic*
+counterpart and it confirms the fusion premise at runtime — these three walk the same schedule in
+lockstep, so fusing them removes two of every three walks rather than shaving a fraction of one.
+
+Concentration matches §5.6 exactly (cost is exponential in press count):
+
+```
+7:20 lust 0:05          6.98M : 6.98M : 6.97M   168.9s
+6:00 lust 4:20          3.76M : 3.75M : 3.75M    86.4s
+Kael'thas Sunstrider    3.65M : 3.65M : 3.64M   111.3s
+5:45 lust 4:20          2.27M : 2.27M : 2.26M    56.6s
+Lady Vashj              2.25M : 2.24M : 2.23M    52.2s
+```
+
+One case is **6.98M repair calls in 168.9s** — 24% of the corpus's repair traffic in a single fight.
