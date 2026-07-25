@@ -726,6 +726,7 @@ function simulateRaw(schedule, cfg, collect) {
   // part is unchanged. Scoring: ramp casts are scored DISCRETELY (damage around each completion),
   // the cast-rate integral covers everything else — see the scoring section.
   let t = 0, stacks = 0, lastCastStart = -Infinity, prevCastRamp = false, total = 0, totalEarly = 0, robust = 0, gcdCappedTime = 0, castCount = 0;
+  let aoeSegI = -1, aoeExact = false; // per-AoE-segment: is its AE lattice locked to the phase start?
   const boardRamp = []; // ramp casts recorded for the scorer: {s: start, c: completion, e: next boundary}
   const casts = collect ? [] : null;
   while (t < cfg.T + KILL_WINDOW) {
@@ -736,6 +737,12 @@ function simulateRaw(schedule, cfg, collect) {
       if (seg.type === "intermission" && t < seg.end) { t = seg.end; continue; } // boss untargetable: wait it out
       if (seg.type === "intermission") seg = null; // past the last defined phase: plain casting
     }
+    // Is this AoE phase's AE lattice EXACT? It is when the phase's first cast boundary IS the
+    // phase start (it follows an intermission, or the pull): every AE then sits at
+    // phaseStart + k·GCD with no phase freedom — sparse, deterministic boundaries, exactly the
+    // ramp case. After a BURN phase the lattice inherits the AB stream's phase, which the model
+    // itself treats as arbitrary, so there only the phase-averaged slip is defensible.
+    if (seg && seg.type === "aoe" && si !== aoeSegI) { aoeSegI = si; aoeExact = Math.abs(t - seg.start) < 1e-9; }
     // fire pending activations at this press opportunity: a scheduled time in
     // [prevCastEnd, t) was a non-casting gap (press lands exactly there); a
     // time inside the previous cast fires now, with this cast's press
@@ -771,6 +778,15 @@ function simulateRaw(schedule, cfg, collect) {
         // the macro fires it (sim-log-verified: intent 5 in a fresh opener lands 6.5).
         eff = Math.max(minStart, e.ts);
         if (prevCastRamp && e.ts < prevCastEnd - 1e-9) eff = Math.max(minStart, prevCastEnd);
+        // INSIDE AN AoE PHASE the same argument applies to the AE lattice: AEs are instant, so
+        // every one of them is a press opportunity, but a press still fires on the NEXT one — and
+        // when the lattice is exact (above) that boundary is deterministic, so snap to it rather
+        // than phase-average (sim-log-verified on KT's [105,145) lattice: intent 130 fires 130.58,
+        // Δ = 1.1124s anchored at 105.00). This is one-sided, not a wash: an INTERIOR window's slip
+        // cancels (what the start loses the end regains) but a window ending flush with the phase
+        // wall has its slipped tail CLAMPED and loses its last AE outright — the whole of the KT
+        // AoE ranking error (RULES §9 Correction 3). t ≥ minStart is guaranteed by the guard above.
+        else if (seg && seg.type === "aoe") { if (aoeExact) eff = t; else slip = prevInterval / 2; }
         // Expected press-snap SLIPPAGE (closes the §4.3 phase blind spot where it bites). A press
         // landing mid-cast at STEADY state fires at that cast's END; phase is uniform, so the
         // expected slip is half the local interval. Interior windows are slip-invariant (what the
@@ -932,13 +948,21 @@ function simulateRaw(schedule, cfg, collect) {
   const nonAB = s => !!s && (s.type === "intermission" || s.type === "aoe");
   const segAt = tt => { if (!segs) return null; for (let i = 0; i < segs.length; i++) { const sg = segs[i]; if (tt >= sg.start && tt < sg.end) return sg; } return null; };
   const RAMP_JITTER = g.GCD_FLOOR;
-  // A ramp cast's damage STATE snapshots at its START (sim-verified: a buff landing mid-flight or at
-  // the completion instant never touches the in-flight cast — the 242.50 Vashj cast used pre-Icon SP).
-  // Sampling the state across the COMPLETION over-credited every press-snapped ramp-exit window with
-  // ~half of the cast it fired after (the T=98 ramp-exit cluster phantom, ~+0.3 casts). So: buff/SP
-  // state is jitter-averaged around the cast START (ts); the damage TIME — kill taper, wall/AoE
-  // gating — stays at the completion (tc), preserving Phase 4's "damage lands on completion" rule
-  // (midpoint TIME sampling is what once re-created the haste-compresses-the-ramp phantom).
+  // A ramp cast's damage STATE is jitter-averaged around its START (ts). Sampling it across the
+  // COMPLETION over-credited every press-snapped ramp-exit window with ~half of the cast it fired
+  // after (the T=98 ramp-exit cluster phantom, ~+0.3 casts), so START is the rule that ranks with
+  // the sim at a window's FRONT edge — where the press is boundary-snapped, so "completion of the
+  // cast in progress" IS the next cast's start and the two rules coincide.
+  // ⚠ MECHANISM: this is NOT what the sim does. wowsims reads a VALUE buff (+SP, ×dmg) at cast
+  // COMPLETION, unconditionally — re-confirmed on the KT log in both directions (a cast whose AP and
+  // gem faded 1.8s before completion got NO x1.30; a cast that gained the gem 0.01s after starting
+  // still reported its +225 SP at completion). The two rules therefore DISAGREE at a window's BACK
+  // edge, where start-sampling over-credits the last partial cast by frac(D/interval) x premium.
+  // That residual is a known, deliberately UNIMPLEMENTED refinement (RULES 3b.3 + 3b-note: charging
+  // it moves the B2 deficit the wrong way, so it needs its own physics justification and sim gate).
+  // The damage TIME — kill taper, wall/AoE gating — stays at the completion (tc), preserving Phase
+  // 4's "damage lands on completion" rule (midpoint TIME sampling is what once re-created the
+  // haste-compresses-the-ramp phantom).
   const rampCastDmg = (ts, tc) => {
     if (nonAB(segAt(tc))) return 0;                    // completes into downtime/AoE — no AB damage
     const sgD = segAt(tc);                             // damage context (burn mult) at the completion

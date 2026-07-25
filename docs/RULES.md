@@ -739,9 +739,61 @@ durations the contained region shrinks to the **intersection** of the constraint
       start, no phase freedom", which is *exactly* an AoE lattice; and **`:820` `cast: 0`** makes `:853`
       yield `prevCastEnd === t`, so `:785`'s expected-slip fallback is unreachable inside AoE. The
       model's cadence is already right (model Δ 1.1128 vs sim 1.1124 s; Zerk boundary 130.59 vs 130.58)
-      — the missing piece is the **snap**, not the lattice. ⚠ **Not yet patched**: both edits move every
-      AoE-phase plan, so the fix owes plan-sweep + exact-match 25/25 + a DUEL of every changed cell
-      against its previous layout.
+      — the missing piece is the **snap**, not the lattice.
+    - **★ FIXED IN THE MODEL (07-25).** Neither guard was touched — flipping `:855`/`:820` would have
+      dragged the ramp bookkeeping and the AE step function with it. Instead the event-firing branch
+      gained an explicit AoE case, plus a per-segment **anchoring test**: an AoE phase's lattice is
+      EXACT iff the phase's first cast boundary *is* the phase start (`aoeExact`), which holds when it
+      follows an intermission (`:736` jumps `t` to `seg.end`) or the pull. When exact, a press snaps
+      deterministically (`eff = t`, the sparse-boundary case the `:773` comment already argues for);
+      when not — an AoE after a **burn** phase inherits the AB stream's arbitrary phase — it falls back
+      to the phase-averaged `slip = prevInterval / 2`, the only defensible treatment there. So the fix
+      is scoped by the *same* determinism criterion §3b.1 uses, not by segment type alone.
+    - **What it bought** (KT/420/haste195, `isc+scb`, Icon held at 125, press-time curve relative to
+      P=129; sim column parity-free where marked):
+
+      | P | pre-fix | post-fix | sim |
+      |---|---|---|---|
+      | 120 | −0.0672 | −0.0728 | −0.0809* |
+      | 124 | −0.0156 | −0.0000 | — |
+      | 125–129 | 0.0000 | 0.0000 | ~0 |
+      | **130** | **+0.0460** ✗ | **−0.0221** ✓ | −0.2960 |
+      | 131 | −0.1254 | −0.3112 | −0.6013 |
+      | 132 | −0.3765 | −0.4905 | −0.7624 |
+
+      **Every cell moved toward the sim** — this is a mechanism, not a point tune — and the DUEL sign
+      flips: `borrowed − native` goes **−0.0536 pp (prefers native, wrong) → +0.0081 pp (prefers
+      borrowed)**, matching the sim's **+0.2930**. Magnitudes still undershoot (P130 at 7.5 %, P131 52 %,
+      P132 64 % of the sim's), the expected signature of a continuous term approximating a discrete
+      reality; the residual is the **known PHASE8 back-edge over-credit** (§3b.3's mechanism note), which
+      is exactly the term that is deliberately unimplemented. **Blast radius is provably one preset** —
+      KT is the corpus's only case with an `aoe` phase — confirmed by `plan-diff` over the 16 sub-200 s
+      cases: `compared=16 changed=0` (IDENTICAL).
+    - **★ Gated at the GOLDEN'S OWN config too — and there it is a WASH, not a win.** The table above is
+      measured at **haste 195**; the KT golden runs at **haste 0** (`GOLDEN_DEFAULTS`), so those numbers
+      do **not** transfer and the landing owed a second duel at the config the golden actually locks.
+      The fix moves KT's plan (fire times) `AP 125,385 → 130,381` · `Gem 125,265,385 → 130,260,381` ·
+      `Zerk 125,385 → 130,381`; Icon and IV are unchanged, `casts=200` both. Head-to-head, 5 independent
+      base seeds × 9 wall-jitter variants, 6000 iter (90 sims):
+
+      | | model | sim |
+      |---|---|---|
+      | haste **195** (the motivating cell) | ranking error fixed | **+0.2930 pp** |
+      | haste **0** (the golden) | **+0.058 pp** (+259.5 robust = +0.116 effective casts) | **−0.0067 pp** ± 0.0047 (95 % on the mean), per-seed [−0.0127, 0.0000], **0/5 seeds positive** |
+
+      So at the golden the sim mildly prefers the **old** layout — resolvably (the paired duel's SEM is
+      much tighter than a cell's absolute band) but **physically negligibly**: −0.0067 pp of 2102.9 DPS
+      is **−0.14 DPS ≈ 1/75 of one cast**, and ~19× inside the ±0.1251 pp boss-cell band. The model
+      over-claims by ~0.065 pp, which is the same **PHASE8 back-edge over-credit** the h195 undershoot
+      pointed at. **Verdict: LAND** — a mechanism that flips a real 0.29 pp ranking error where it was
+      built, at the cost of a sub-noise trade at one other config, beats leaving a known-wrong term in.
+      ⚠ The lesson generalises: **a fix measured at one haste MUST be re-duelled at the config of any
+      golden it moves** — the AE lattice pitch Δ = `max(1.0, 1.5/m)` is haste-dependent, so whether a
+      window's tail clips the phase wall changes with gear (Δ ≈ 1.11 s at h195-with-IV vs 1.25 s at
+      h0-with-IV). Wall-clipping conclusions are **not** haste-portable.
+    - ⚠ **Open, deliberately unfixed:** a raid **external** (Lust/PI/Drums) called *inside* an AoE phase
+      still takes the `:747`-branch under-slip (`prevCastEnd === t` inside AoE ⇒ no slip at all). No
+      corpus case calls one there; fix it if one ever does.
     - Corroboration that the AoE channel and the ±1-cast **parity** channel are separable: ablate the
       window (same presses, walls, geometries, seed) and the two plans are statistically identical
       (**−0.0063 ± 0.0048 pp**) with the residual inside its own ripple ceiling; the parity mode is the

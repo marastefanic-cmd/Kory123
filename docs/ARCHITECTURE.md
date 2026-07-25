@@ -59,8 +59,10 @@ bit-equal to recomputation; collect=true always computes fresh.
   intervalAt(multDn2)` integrated over piecewise-constant breakpoints (buff-window edges, phase edges,
   T±KW, ramp-span edges) — but each `boardRamp` span is EXCLUDED from the integral and scored as its
   discrete cast instead: `rampCastDmg(ts, tc)` — buff/SP **state** jitter-averaged ±½ GCD around the
-  cast **START** `ts` (snapshot rule, RULES §3b.3 — a window firing at the completion never touches the
-  in-flight cast), damage **time** (kill taper, wall/AoE gating) at the completion `tc` (Phase 4's rule). `scanAt` (~817) is the shared deterministic buff-state scan; `intervalAt` applies
+  cast **START** `ts` (RULES §3b.3; ⚠ the *fix* is right, its old *mechanism* is not — wowsims reads a
+  value buff at cast **completion**, so start-sampling is exact at a window's front edge and
+  over-credits its back edge by `frac(D/Δ)×premium`, the known unimplemented PHASE8 term), damage
+  **time** (kill taper, wall/AoE gating) at the completion `tc` (Phase 4's rule). `scanAt` (~817) is the shared deterministic buff-state scan; `intervalAt` applies
   the **GCD floor** `max(cast/m, 1.0)` statelessly. `total` counts ≤ T; `robust` tapers the last
   half-cast — the optimizer maximizes `robust`.
 - AoE segments: `dmg` uses AE base × `targets` × `aoeCritAmp`, interval = GCD only.

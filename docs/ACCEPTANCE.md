@@ -360,13 +360,43 @@ is **370 SEM** and **98.5 % of exactly one cast**, and all five wall-jitter vari
 same P (sd 0.0018). All three falsifiers fail to fire.
 
 ⇒ **Phase 7's diagnostic mandate is discharged: every residual deficit in this corpus is now explained.**
-What remains is an **engine fix, not a diagnosis** — root-caused to `index.html:855` (`prevCastRamp =
-!isAoe && …`, which switches off the deterministic snap at `:773` precisely where the lattice is most
-deterministic) and `:820` (`cast: 0` ⇒ `prevCastEnd === t`, making `:785`'s slip fallback unreachable
-inside AoE). ⚠ **Not yet patched.** Both edits move every AoE-phase plan, so the fix owes the plan-sweep
-loop, exact-match 25/25, and a head-to-head **DUEL of every changed cell against its previous layout**
-(aggregates can improve while one cell regresses). The **15 class over-floor cells are untouched by this
-finding** — they carry no AoE window — and remain the other half of the acceptance gap.
+★ **THE ENGINE FIX IS LANDED (07-25, PHASE7 §5.19).** Not §5.18's prescribed edit — flipping
+`index.html:855`/`:820` was rejected on inspection because both are load-bearing for the ramp
+bookkeeping and the AE step function. Instead the event-firing branch gained an explicit AoE case plus a
+per-segment **anchoring test**: an AoE phase's AE lattice is EXACT iff the phase's first cast boundary
+*is* the phase start (it follows an intermission, or the pull), and only then does a press snap
+deterministically; after a **burn** phase the lattice inherits the AB stream's arbitrary phase, so the
+phase-averaged slip stands. **The fix is scoped by the same determinism criterion §3b.1 already uses.**
+Every measured press-time cell moved toward the sim (P130 `+0.0460 ✗ → −0.0221 ✓`; P131 `−0.1254 →
+−0.3112`; P132 `−0.3765 → −0.4905`) and the DUEL sign flipped **−0.0536 pp → +0.0081 pp**, matching the
+sim's **+0.2930**. Magnitudes undershoot because the residual is the known **PHASE8 back-edge
+over-credit**, deliberately unimplemented. Blast radius is provably one preset (KT is the corpus's only
+`aoe` phase); `plan-diff` over the 16 sub-200 s cases is IDENTICAL, and KT itself is gated by its own
+head-to-head DUEL plus exact-match 25/25 (**24 passed, 1 failed — Kael'thas only**, the exact predicted
+radius; golden re-recorded). ⚠ **The boss-side acceptance re-run has NOT been re-gathered
+under the fix** — the 3 surviving boss cells are expected to move, but that is a prediction until a
+round is run. The **15 class over-floor cells are untouched by this finding** — they carry no AoE
+window — and remain the other half of the acceptance gap.
+
+**★ The landing DUEL at the GOLDEN's own config (haste 0, not 195) — a sub-noise trade, recorded
+honestly.** The evidence above is all at haste 195; `GOLDEN_DEFAULTS` runs KT at **haste 0**, and the AE
+lattice pitch Δ = `max(1.0, 1.5/m)` is haste-dependent, so wall-clipping conclusions are **not**
+haste-portable. Re-duelled there (5 base seeds × 9 wall-jitter variants, 6000 iter, 90 sims): model
+**+0.058 pp**, sim **−0.0067 ± 0.0047 pp** (0/5 seeds positive) = **−0.14 DPS ≈ 1/75 of a cast**, ~19×
+inside the ±0.1251 pp boss-cell band. So the fix is a **+0.2930 pp win where it was derived and a wash
+at the golden**; it landed on that basis, and the ~0.065 pp over-claim is the known PHASE8 back-edge
+term. Full numbers: PHASE7 §5.20.
+
+**⚠⚠ HARNESS-FIDELITY CAVEAT ON EVERY BOSS TABLE IN THIS DOCUMENT (P7.15, opened 07-25 — PHASE7 §5.21).**
+`tools/xval.mjs:194` feeds the sim `toSpec(best.s)` — **press intents** — where the tool, the goldens and
+`exact-match` all speak **fire times**. When an intent lands inside or just before an intermission the
+model defers it to the phase resume while the sim fires it into the untargetable downtime. Priced on one
+KT plan at haste 0, the *same* plan reads **−1.5432 %** under the intent transcription vs **−0.0104 %**
+under fire times — **5–10× the 0.2–0.4 pp deficits this document is built on.** Some fraction of the
+recorded boss-side deficits may therefore be **harness artifact rather than model error**, and the
+acceptance verdict cannot be called final until P7.15 prices it corpus-wide. ⚠ The convention has **not**
+been changed: every round gathered so far is comparable *because* it was constant, so a switch owes a
+written justification, an announcement here, and a re-gather of the affected tables.
 
 **★★★ Round 5 proves the B failure is NOT a reference-gear artifact.** The correction was a genuine
 repricing: `xval-round-diff` reports **124 of 345 plan cells changed (35.9%)** across 34/36 tables on a

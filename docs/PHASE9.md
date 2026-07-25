@@ -1610,6 +1610,13 @@ Two extraction facts, both learned the hard way (each cost one failed probe):
 that dodges the 4ms nested-timer clamp) keeps node's event loop ref'd forever. A child must
 `process.exit(0)` deliberately after flushing. Left unhandled, the gate **hangs**, which reads as "slow
 gate" — the same false signal as one that passes wrongly.
+  - **★ Its disguise, measured 07-25 (cost: ~30 min).** An ad-hoc probe that omits the exit AND pipes
+    through `| tail -n` presents as a *totally silent hang*: `tail` buffers to EOF, EOF never comes, so
+    the output file stays 0 bytes while the process sits at **0% CPU**. That combination is diagnostic —
+    a genuinely slow solve burns CPU; **zero CPU + zero output = finished, un-exited, tail-buffered.**
+    Confirm by sampling `utime` in `/proc/<pid>/stat` twice 20s apart; if it does not advance, the work is
+    already done and only the exit is missing. Write results to a **file** and exit, as `plan-sweep.mjs`
+    and `census-run.mjs` do — never `| tail` a breathe()-using probe.
 
 ### §5.3 The three tiers
 
@@ -2669,3 +2676,19 @@ should show them netted, not each claiming its own headline.
 > changed in the file; the number moved 9%. Every perf claim in this phase is therefore stated as a
 > delta against a baseline swept **in the same session, at the same `jobs`, under the same load** — a
 > figure lifted out of one table and compared to a figure in another is meaningless.
+
+### 4.21 Incidental datum from P7.14: `simulate()` memoizes, and the memo is already load-bearing
+
+Surfaced by accident while instrumenting the engine for the AoE press-snap fix (PHASE7 §5.19). A trace
+split printed nonsense — `integral d = −742070` — at one press time whose **snapped schedule duplicated
+its neighbour's**; the memo returned the cached result and the injected trace hooks never ran. `robust`
+was correct throughout; only the instrumentation was fooled.
+
+Two things worth carrying into this phase:
+- **The memo already fires on genuine duplicates produced by the search**, not just on repeated
+  re-scoring of one candidate. Any §4.2/§4.13 change to the key must therefore preserve *collision
+  behaviour*, not merely be faster to build.
+- **Instrumentation that hooks inside `simulate()` is silently memo-shadowed.** A census or trace that
+  counts per-call work will under-count by the hit rate. Instrument at the memo *wrapper* (or clear it)
+  when the question is "how much work happens", and inside when the question is "what does one
+  simulation do".

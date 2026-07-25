@@ -99,12 +99,34 @@
    cost **zero extra sim runs** — it fell out of the `SIMLOG=1` logs captured for the legality gate (new
    TOOLING technique: **walk the aura stream and pool damage per state; crit cancels**). ⇒ **Phase 7's
    diagnostic mandate is DISCHARGED — every residual deficit in this corpus is explained.** What is left is
-   an **engine fix, not a diagnosis**: `index.html:855` (`prevCastRamp = !isAoe && …` switches off the
-   deterministic snap at `:773` precisely where the lattice is most deterministic) and `:820` (`cast: 0` ⇒
-   `prevCastEnd === t`, making `:785`'s slip fallback unreachable inside AoE). ⚠ **Not yet patched** — both
-   edits move every AoE-phase plan, so the fix owes plan-sweep + exact-match 25/25 + a **DUEL of every
-   changed cell against its previous layout**. Plus 15 class cells whose floor is complete (top excess
-   0.1653 pp) and which carry no AoE window, so this finding does not touch them.
+   an **engine fix, not a diagnosis**. ★ **THE FIX IS LANDED (07-25, PHASE7 §5.19).** Not via the two
+   guards §5.18 named — flipping `:855`/`:820` drags the ramp bookkeeping and the AE step function with
+   it — but via an explicit AoE case in the event-firing branch plus a per-segment **anchoring test**: an
+   AoE lattice is EXACT iff the phase's first cast boundary *is* the phase start (after an intermission,
+   or at the pull), and only then does a press snap deterministically; after a **burn** phase the lattice
+   inherits the AB stream's arbitrary phase and the phase-averaged slip stands. **Scoped by the same
+   determinism criterion §3b.1 uses, not by segment type.** Every measured press-time cell moved toward
+   the sim and the DUEL sign flipped (`−0.0536 pp` wrong → `+0.0081 pp` right, sim `+0.2930`); magnitudes
+   undershoot because the residual is the known **PHASE8 back-edge over-credit**, which is deliberately
+   unimplemented. Blast radius is provably one preset (KT is the corpus's only `aoe` phase) and
+   `plan-diff` over the 16 sub-200 s cases is IDENTICAL. **Landing gate (PHASE7 §5.20):** exact-match
+   **24/25 — Kael'thas only**, the exact predicted radius, golden re-recorded; and because
+   `GOLDEN_DEFAULTS` runs KT at **haste 0** while every piece of the fix's evidence is at **haste 195**,
+   it was re-duelled at the golden's own config (5 base seeds × 9 wall-jitter variants, 90 sims): model
+   **+0.058 pp**, sim **−0.0067 ± 0.0047 pp** = −0.14 DPS ≈ **1/75 of a cast**, ~19× inside the boss
+   band. So the change is a **0.29 pp win where it was derived and a sub-noise wash at the golden** —
+   landed on that basis. ⚠ Generalisable: Δ = `max(1.0, 1.5/m)` is haste-dependent, so **wall-clipping
+   conclusions are not haste-portable**. Plus 15 class cells whose floor is complete (top
+   excess 0.1653 pp) and which carry no AoE window, so this finding does not touch them.
+
+   ⚠⚠ **P7.15 OPENED — the cross-val harness may be measuring the wrong plan.** `xval.mjs:194` feeds the
+   sim `toSpec(best.s)` = **press intents**, where the tool/goldens/exact-match all speak **fire times**;
+   an intent that lands inside or just before an intermission is deferred by the model but fired into the
+   downtime by the sim. Priced on one KT plan: the *same* plan reads **−1.5432 %** (intents) vs
+   **−0.0104 %** (fire times) — **5–10× the deficits this whole campaign is chasing**, so part of the
+   recorded boss-side deficit may be **harness artifact**. The convention is deliberately **unchanged**
+   (cross-round comparability); P7.15 must price it corpus-wide, then justify + announce + re-gather.
+   ACCEPTANCE carries the caveat on every boss table. (PHASE7 §5.21 · TOOLING duel half 3.)
    What landed earlier: three sim-gated scorer terms (RULES §3b — press-snap
    slippage at hard edges; externals snap to the cast lattice, which tempers the IV@0 "ramp
    compression" credit; ramp casts snapshot buffs at cast START), two search passes (polished CS

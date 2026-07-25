@@ -2622,6 +2622,27 @@ falsify it — the h40 model margin is 0.0145%, under the ±0.02% ruler, so the 
 new is the **two-sidedness**: an unresolvable margin that errs in the *same* direction at both hastes (always
 toward the locally-tuned plan losing) is not noise-shaped. That asymmetry, not the magnitude, is the handle.
 
+## §20 — P7's last residual IS this phase's back-edge term (07-25, cross-reference)
+
+P7.14's AoE press-snap fix (PHASE7 §5.19, RULES §9 Correction 3) landed and moved **every** measured cell
+toward the sim, but its magnitudes undershoot: at the decisive press time it recovers 7.5 % of the sim's
+gap, 52 % at P=131, 64 % at P=132. The residual was traced to a **+474 damage** term the fix *grows* — the
+`RAMP_JITTER` state window catching a buff edge on the first post-AoE ramp cast.
+
+That term is **this phase's `frac(D_eff/Δ) × premium` back-edge over-credit** (§5b, §13.7), arrived at from
+a completely different direction. The KT log re-confirms the mechanism in both directions: a cast running
+`145.14 → 147.36` whose AP (`S12042`) and gem (`S37445`) faded at 145.58/145.59 reported the *unbuffed*
+attacker-mod ratio **1.2361**, identical to a cast with neither buff; a cast starting 260.18 that gained the
+gem at **260.19** reported `SP: 1836.2` (= 1456.2 + 225 + 155) at its 261.21 completion. wowsims reads a
+value buff at **completion**, unconditionally; the model samples state around the **start**.
+
+**Consequence for this phase's charter:** charging the back edge is no longer a lead with one motivation.
+It now has two independent ones — the B2 decomposition (§5/§13) and P7's residual — pulling in *opposite*
+directions on whether to implement it (§8 measured that charging it moves the B2 deficit the wrong way).
+That tension is the sharpest statement of what round 10 would have to resolve: **the term is real, its
+sign against B2 is wrong, so something else in the B2 pair is absorbing it.** Any round-10 design should
+start there rather than opening a new mechanism search.
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance

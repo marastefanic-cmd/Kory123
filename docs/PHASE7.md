@@ -1515,3 +1515,217 @@ must additionally stop collapsing `prevCastEnd` to `t`, or `:785`'s expected-sli
 Both edits move *every* AoE-phase plan, so the DUEL obligation is wide, not narrow.
 
 **The acceptance-criterion restatement remains a user call and is not made here.**
+
+### ⛔ §5.19 — P7.14 LANDED: the cusp is ONE ramp cast, the plateau is TRANSLATION INVARIANCE, and the AoE press-snap fix moves EVERY cell toward the sim (07-25)
+
+§5.18 named the mechanism and specified a fix but explicitly did **not** authorize the patch. This
+section measures the cusp to the individual cast, builds the fix, and gates it.
+
+#### The +368 cusp is localized to exactly one cast — measured, not argued
+
+An instrumented copy of the engine (a scratchpad clone loaded through `loadEngine`, so the repo engine
+stayed clean) split `robust` into its two additive parts and traced every term:
+
+| | P = 129 | P = 130 | Δ |
+|---|---|---|---|
+| `robust` | 800641.88 | 801010.26 | **+368.39** |
+| rate **integral** | — | — | **0.00** |
+| discrete **rampCasts** | — | — | **+368.39** |
+
+All of it lands in **ramp cast index 12**, `tc = 147.374`, damage `2822.5 → 3190.8`. That cast *starts*
+at **145.15** — the first AB after the AoE phase — so with `RAMP_JITTER = g.GCD_FLOOR = 1.0` its
+state-sampling window is **[144.65, 145.65]**. P=130's AP/Gem windows end at exactly **145.0, inside
+that interval**; P=129's end at 144.0, outside it. **The pre-registered jitter-window hypothesis is
+CONFIRMED**: the cusp is a smoothing kernel catching a window edge, not a real placement gain.
+
+#### The interior plateau is exact translation invariance — proven at the bucket level
+
+The same instrument binned the integral by breakpoint. Moving the press 129→130 translates a bucket of
+**84576.58** intact; 139→140 translates **38443.90**; 144→125 translates **5551.03**. The bucket deltas
+sum to **exactly 0.00**. The flat interior is not a coincidence of the corpus — it is the phase-average
+argument holding exactly, which is precisely why the wall spike stands out as an artifact.
+
+#### The fix, and why it is NOT the fix §5.18 specified
+
+§5.18 proposed flipping `:855` (`prevCastRamp = !isAoe && …`) and `:820` (`cast: 0`). Both were
+**rejected on inspection**: they are load-bearing for the ramp bookkeeping and the AE step function, and
+flipping them drags far more than the press treatment. The landed fix instead adds an explicit AoE case
+to the event-firing branch, guarded by a per-segment **anchoring test**:
+
+- An AoE phase's AE lattice is **EXACT** iff the phase's first cast boundary *is* the phase start. That
+  holds when the phase follows an intermission (`:736` jumps `t` to `seg.end`) or starts at the pull.
+  Then every AE sits at `phaseStart + k·Δ` with no phase freedom — sparse, deterministic boundaries,
+  exactly the ramp case `:773`'s own comment argues for — so the press **snaps** (`eff = t`, `slip = 0`).
+- After a **burn** phase the lattice inherits the AB stream's arbitrary phase, which the model itself
+  treats as unknowable, so it falls back to `slip = prevInterval / 2` — the phase-average, the only
+  defensible treatment there.
+
+So the fix is scoped by the **same determinism criterion §3b.1 already uses**, not by segment type. That
+distinction is the whole reason it generalises rather than tuning KT.
+
+**Design risk was retired BEFORE the edit** by emulating the snap with fractional press times: feeding
+the lattice point straight into `simulate()` makes the engine set `eff = e.ts, slip = 0`, reproducing
+exactly what the snap would set. That preview showed both the intended sign flip *and* an unintended
+interaction (`rampcast d = +474.4` — the jitter artifact **growing** under the fix) while the engine was
+still untouched.
+
+#### Result — every cell moved toward the sim
+
+Press-time curve, KT/420/haste195, `isc+scb`, Icon held at 125, relative to P=129:
+
+| P | pre-fix | post-fix | sim |
+|---|---|---|---|
+| 120 | −0.0672 | −0.0728 | −0.0809* (parity-free) |
+| 124 | −0.0156 | −0.0000 | — |
+| 125–129 | 0.0000 | 0.0000 | ~0 (−0.0034 / −0.0017 / +0.0059 / 0) |
+| **130** | **+0.0460** ✗ | **−0.0221** ✓ | −0.2960 |
+| 131 | −0.1254 | −0.3112 | −0.6013 |
+| 132 | −0.3765 | −0.4905 | −0.7624 |
+
+DUEL `borrowed − native`: **−0.0536 pp (prefers NATIVE — the ranking error) → +0.0081 pp (prefers
+BORROWED)**, matching the sim's **+0.2930**. **No cell moved away from the sim** — the signature of a
+mechanism, not a point tune. Magnitudes undershoot (P130 7.5 %, P131 52 %, P132 64 % of the sim's), the
+expected behaviour of a continuous term against a discrete reality.
+
+#### The residual is the ALREADY-CHARTERED PHASE8 term — not a new finding
+
+Chasing the undershoot re-derived, from the KT combat log, that **wowsims reads value-buff state at cast
+COMPLETION, unconditionally** — in both directions: a cast running `145.14 → 147.36` whose AP (`S12042`)
+and gem (`S37445`) faded at 145.58/145.59 reported the *unbuffed* ratio 1.2361 (identical to a cast with
+neither), while a cast starting 260.18 that gained the gem at 260.19 reported `SP: 1836.2` = 1456.2 +
+225 + 155 at its 261.21 completion — **it got the mid-flight buff**.
+
+⚠ **This is NOT new.** `DIARY.md:214` and `PHASE8 §5b` recorded exactly this correction on 07-24. It is
+logged here as **independent re-derivation**, and its value is the link it makes: the **+474 residual
+at P=130 IS the known back-edge over-credit term** (`frac(D/Δ) × premium`), which is deliberately
+unimplemented because charging it moves the B2 deficit the wrong way (PHASE8 §8). **P7's last residual
+and P8's open charter are the same term.** Two pieces of stale living text asserting the falsified
+*mechanism* (`index.html`'s `rampCastDmg` preamble and `ARCHITECTURE.md`'s ramp bullet) were corrected
+in the same commit; RULES §3b.3 already carried the correction.
+
+#### Blast radius — bounded analytically, then confirmed
+
+A survey of `api.cases` found **exactly one** preset with an `aoe` phase: Kael'thas Sunstrider, T=420,
+`aoe [105,145) targets=6`, preceded by an intermission ending exactly at 105 ⇒ lattice-anchored, the
+`aoeExact` branch. `plan-diff` over the 16 sub-200 s cases: **`compared=16 changed=0 subSecOnly=0
+onlyA=0 onlyB=0 errors=0 → IDENTICAL`**. That proves *narrowness*; KT itself is outside `--max-t=200`
+and is gated separately by its own DUEL and by exact-match.
+
+#### Incidental finding, banked for P9
+
+`simulate()` **memoizes**. It surfaced as a nonsense trace split (`integral d = −742070`) at P=125,
+whose snapped schedule duplicated P=124's, so the cached return skipped the trace hooks — `robust` was
+correct throughout. A real datum for the performance phase: the memo exists and is already load-bearing.
+
+#### One thing deliberately left broken
+
+A raid **external** (Lust/PI/Drums) called *inside* an AoE phase still takes the `:747` branch, where
+`prevCastEnd === t` inside AoE means it slips **zero**. No corpus case calls one there. Recorded in
+RULES §9 Correction 3 rather than fixed blind.
+
+---
+
+### ⛔ §5.20 — P7.14 GATED AND LANDED: the blast radius is one preset, the "determinism violation" was my own intent-vs-fire confusion, and the golden's own config reads a sub-noise wash (07-25)
+
+§5.19 built the fix and measured it at **haste 195**. This section is the *landing gate*: what actually
+had to be proven before the golden could be re-recorded.
+
+#### The blast radius, confirmed empirically
+
+`tests/exact-match.mjs` at `JOBS=2` (leaving a core free for a concurrent optimize; **285 s**, materially
+under the documented 9m07s): **24 passed, 1 failed** — and the one that moved is **Kael'thas Sunstrider**,
+exactly the analytic prediction (KT is the corpus's only `aoe` phase). Nothing else in the corpus is
+touched, so per the standing scoping rule nothing else needs re-simming.
+
+| key | BEFORE (`robust 617037.2040`) | AFTER (`robust 617296.6744`) |
+|---|---|---|
+| `isc` | 0, 125, 260, 381 | 0, 125, 260, 381 *(unchanged)* |
+| `icyVeins` | 105, 125, 381 | 105, 125, 381 *(unchanged)* |
+| `arcanePower` | **125, 385** | **130, 381** |
+| `scb` | **125, 265, 385** | **130, 260, 381** |
+| `berserking` | **125, 385** | **130, 381** |
+
+Both `casts = 200`. Model delta **+259.47 robust = +0.1157 effective casts = +0.058 %**.
+
+#### ★★★ THE FALSE ALARM — never compare `best.s` to a rendered plan
+
+Bare node emitted `isc:[0,124,260,381]`, `icyVeins:[93,113,381]` where the browser's rendered plan showed
+`[0,125,260,381]` / `[105,125,381]`. That looks like a **determinism violation**, which would invalidate
+the entire exact-match premise — so it was adjudicated by measurement rather than argument: scoring all
+three candidates (golden / browser / bare-node) under **one** engine copy shows the browser and bare-node
+schedules are **the same plan** — the intents `[0,124,…]` / `[93,113,…]` *fire at* `[0,125,…]` /
+`[105,125,…]`, and both score `robust = 617296.6744`.
+
+**The lesson, which cost ~40 min and must not be re-learned:** `optimizeAsync().s` holds **press intents**;
+the tool, the goldens, and `exact-match` all speak **fire times**. Convert with
+`simulate(s, cfg, true).actEff` before comparing anything to a rendered plan. CLAUDE.md already says it
+("Displayed plan times are fire times (floored seconds), not press intents") and `plan-sweep.mjs`'s own
+header warns of exactly this; the trap is that the *difference itself* looks like non-determinism.
+Determinism is clean by construction — `index.html`'s `tick()` reads `performance.now()` only to decide
+*when to yield*, never a value that enters a score.
+
+#### The DUEL at the golden's own config — and why it had to be re-run
+
+A methodological near-miss worth recording: the §5.19 evidence is all at **haste 195**, and I nearly
+carried it straight onto the golden. `GOLDEN_DEFAULTS` runs KT at **haste 0**. Since the AE lattice pitch
+Δ = `max(1.0, 1.5/m)` is haste-dependent (≈1.11 s at h195-with-IV vs 1.25 s at h0-with-IV), *whether a
+window's tail clips the phase wall is not haste-portable* — the numbers genuinely do not transfer.
+
+Re-run at haste 0, 5 independent base seeds × 9 wall-jitter variants, 6000 iter, 90 sims, 292 s:
+
+```
+   seed  pre-patch  post-patch   Δ(B−A)    pct%
+     11     2102.9     2102.7      -0.2   -0.011
+ 100011     2102.5     2102.4      -0.1   -0.007
+ 200011     2103.0     2102.9      -0.1   -0.003
+ 300011     2102.6     2102.3      -0.3   -0.013
+ 400011     2102.6     2102.6      +0.0    0.000
+ across 9 variants (seed 11): mean -0.0106  sd 0.0097  SEM ±0.0032
+ PRIMARY (n=5): mean pct = -0.0067  sd 0.0052  band(95% on mean) ±0.0047 → [-0.0113, -0.0020]
+ sign: post-patch > pre-patch in 0/5 seeds
+```
+
+**Model +0.058 pp, sim −0.0067 ± 0.0047 pp.** Resolvable (the paired duel's SEM is far tighter than a
+cell's absolute band) but **physically negligible** — −0.14 DPS, ≈1/75 of a cast, ~19× inside the
+±0.1251 pp boss-cell band. Meanwhile the cell the fix was *built for* reads **+0.2930 pp**.
+
+**Verdict: LAND.** A mechanism that flips a real 0.29 pp ranking error at the cell it was derived from,
+scoped by an existing determinism criterion rather than by segment type, at the price of a sub-noise
+trade at one other config, is strictly better than leaving a known-wrong term in the scorer. The ~0.065 pp
+over-claim at haste 0 is the **PHASE8 back-edge over-credit** again — the same residual the h195
+undershoot pointed at, and the same term that is deliberately unimplemented (PHASE8 §8).
+
+### ⛔ §5.21 — P7.15: `xval.mjs` FEEDS THE SIM PRESS INTENTS, NOT FIRE TIMES — a candidate logical flaw in the big test (07-25)
+
+Found while building the duel above, and it is **not** about this fix: it is about the instrument the
+whole acceptance campaign is measured on.
+
+`tools/xval.mjs:194` does `res[H] = { spec: toSpec(bestH), … }` with `bestH = (await optimizeAsync(…)).s`,
+and `toSpec` (`:167`) rounds those **raw press intents** straight into genapl. It never calls
+`simulate(s, cfg, true).actEff`. So the sim is asked to execute a schedule the tool would never print.
+
+The two conventions diverge whenever an intent lands inside or just before an intermission: the model
+defers such a press to the phase resume (`simulate()`'s `if (seg.type === "intermission" && t < seg.end)
+{ t = seg.end; continue; }` walks `t` past the wall), but the **sim** fires at the next real cast
+boundary — still *before* the wall, i.e. into untargetable downtime.
+
+**Priced on the post-P7.14 KT plan at haste 0** (identical plan, both conventions, seed 11 × 5 variants):
+
+| transcription | sim Δ vs pre-patch |
+|---|---|
+| **press intents** (what `xval` feeds) | **−1.5432 %** |
+| **fire times** (what the tool displays) | **−0.0104 %** |
+
+The intent arm burns ~12 s of Icy Veins inside the 94–105 intermission, because that plan's IV **intent**
+is 93 while its **fire time** is 105. **That artifact is 5–10× the 0.2–0.4 pp deficits the acceptance
+campaign has been chasing** — which means some fraction of the "deficits" on the boss side may be harness
+fiction rather than model error.
+
+⚠ **Do NOT silently switch the convention.** Every round already gathered is comparable *because* the
+convention was constant; flipping it invalidates cross-round diffs. The correct sequence is (a) sweep the
+boss corpus computing `best.s` vs `actEff` and count how many emitted specs are mis-transcribed and by how
+much, (b) justify the harness change in writing, (c) announce it in `ACCEPTANCE.md` and **re-gather** the
+affected tables. Tracked as task P7.15.
+
+This is a direct hit on the standing invitation to audit the big test itself: *"It's possible the 'big
+test' also has a logical flaw to it."* It does — in its transcription layer, not its statistics.

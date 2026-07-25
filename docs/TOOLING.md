@@ -127,6 +127,38 @@ it, we can drift. Two habits keep it honest: **proactively sim the known blind s
 multi-AP timing) rather than waiting for a golden to look wrong, and **periodically re-anchor** — re-run
 the trust anchor and a couple of representative goldens end-to-end.
 
+**★★★ 3. A DUEL IS ONLY A DUEL IF THE SIM EXECUTES THE PLAN THE TOOL PRINTS — the intent-vs-fire trap
+(07-25, twice in one session).** `optimizeAsync().s` holds **press intents**. The tool's rows, the
+goldens, and `exact-match` all speak **fire times** (`simulate(s, cfg, true).actEff`). The two differ
+whenever a press lands inside — or just before — an intermission: the model defers it to the phase
+resume (`simulate()` walks `t` to `seg.end`), the sim fires it at the next real cast boundary, still
+inside the untargetable downtime. Two distinct failures came out of this in one afternoon:
+
+- **As a harness bug.** `tools/xval.mjs:194` transcribes `toSpec(best.s)` — raw intents — into genapl,
+  so **the whole cross-val corpus sims schedules the tool would never print.** Priced on one KT plan at
+  haste 0: the *identical* plan reads **−1.5432 %** under the intent transcription and **−0.0104 %**
+  under fire times, because a `93` IV intent (fire time `105`) burns ~12 s of Icy Veins inside the
+  94–105 intermission. **That artifact is 5–10× the deficits the acceptance campaign is chasing.**
+  Tracked as P7.15 (PHASE7 §5.21); ⚠ **do not flip the convention silently** — cross-round comparability
+  depends on it being constant, so a switch owes a written justification, an `ACCEPTANCE.md`
+  announcement, and a re-gather of the affected tables.
+- **As a phantom determinism violation.** Comparing a bare-node `best.s` (`icyVeins:[93,113,381]`)
+  against a browser-rendered plan (`[105,125,381]`) looks like the engine going non-deterministic — the
+  one failure that would invalidate exact-match wholesale. It was neither: scoring both under one engine
+  gave the *same* `robust = 617296.6744`. **Adjudicate, don't infer** — the cost of the check was one
+  30-line script, the cost of believing it was ~40 min.
+
+**Habit:** before any comparison involving a schedule, ask *which convention is each side in?* If one
+side came from `best.s` and the other from a rendered plan, convert first — otherwise it is not a
+measurement, in exactly the sense of the "different code paths" rule above.
+
+**★★ 4. A duel measured at one haste does NOT transfer to another config.** The AE lattice pitch
+Δ = `max(1.0, 1.5/m)` is haste-dependent, so *whether a value window's tail clips a phase wall* changes
+with gear (≈1.11 s at h195-with-IV vs 1.25 s at h0-with-IV). The P7.14 fix reads **+0.2930 pp** at
+haste 195 and **−0.0067 ± 0.0047 pp** at haste 0 — same fix, same fight, opposite sign, both correct.
+So when a change moves a **golden**, re-duel at that golden's own `GOLDEN_DEFAULTS` config; borrowing
+the derivation cell's numbers is the same class of error as reading an aggregate for a cell.
+
 **Scorer vs optimizer — two separate axes.** This settles the *scorer*: the effective-ABs count is the
 objective and the arbiter. It says nothing about the *optimizer's* search-completeness — whether the
 passes actually *find* the count-maximizing plan is a different question (the packing/containment work
