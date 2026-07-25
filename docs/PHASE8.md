@@ -839,6 +839,84 @@ return byte-identical marginals at four ratings, and Berserking's 10 s window me
 exposure — *true*, but far below the resolution of the sub-cast quantity being measured. `--var 3.0`
 dithers the cast phase and recovers the expectation. All numbers above are the var=3.0 half.
 
+## §15 — ROUND 5, PRE-REGISTERED: the **position sweep** (window × kill)
+
+### 15.1 The blind spot, stated exactly
+
+Rounds 3 and 4 measured **one press position** — `AT = 30` in a `T = 100 s` fight — and swept haste, buff
+class, and buff stacking around it. Every one of those quantities is a property of the window *in
+isolation from the fight's end*. So the phase has never asked the one question B2 is shaped like:
+
+> **does the model's error depend on WHERE in the fight the window sits?**
+
+That is the last structural axis, and B2 is exactly a position difference. Restating the two plans by shape
+rather than by press list: **h40 is front-haste / back-damage** (Zerk@0, IV@0, MQG@9, IV@20, then Icon@29),
+**h70 is front-damage / back-haste** (AP@4 + Icon@4 together, then MQG@202 on IV@202). Same buffs, same
+multiplicities (§13.8) — only their **positions** differ. The sim prefers front-haste; the model prefers
+back-haste. Every isolation battery run so far is blind to this by construction, which is precisely why
+they all came back CLEAN.
+
+The model is not neutral here — it **hardcodes** position-independence for haste. `index.html:926-928`:
+*"haste shortens a span but never changes its cast COUNT, and the span hands off to the integral exactly —
+so haste gains nothing from covering the ramp."* RULES §3 states the same as a rule (*"Berserking@0 = @50 =
+@100 in isolation"*). If that axiom is even slightly wrong at the kill boundary or on the ramp, B2 follows
+directly. This round tests the axiom instead of assuming it.
+
+### 15.2 The design — sweep the press position, hold everything else
+
+`T = 100 s`, cold open, infinite mana, `iter = 20000`, `seed = 11`, **`--var 3.0`** (§14.6: `--var 0` is
+unusable for marginals). One buff per leg, pressed once at `AT`:
+
+```
+AT   ∈ { 0, 5, 10, 20, 30, 40, 50, 60, 70, 78, 84, 88 }
+buff ∈ { IV, MQG, Zerk }   (haste)   ∪   { Icon, AP }   (value — the controls)
+R    ∈ { 40, 70 }          (B2's own two gear-haste levels, not a generic grid)
+```
+
+The tail of the `AT` grid is chosen so each duration class crosses into **clipping** on the grid: `T − D`
+is **80** for the `D = 20` buffs (IV, MQG, Icon), **85** for `D = 15` (AP), **90** for `D = 10` (Zerk). So
+78/84/88 straddle all three onsets, and clipping is measured rather than assumed.
+
+Base DPS depends only on `(R)` — `T` is fixed — so it is one run per haste, not one per position.
+
+### 15.3 The quantity
+
+```
+resid(buff, AT, R) = marg_sim(buff, AT, R) − marg_model(buff, AT, R)
+```
+
+and the finding is **`∂resid/∂AT`**. Note this is deliberately *not* "does haste have a position gradient"
+— both model and sim may legitimately have one (the ramp is slower, so a haste window laid on it converts
+to fewer extra casts: `extra = (D/c)·(m_b − m_0)` with `c` larger on the ramp). What matters is whether the
+**model's error** moves with position. Every prior round measured `resid` at a single `AT` and can say
+nothing about its slope.
+
+### 15.4 Pre-registered falsifiers
+
+- **F1 — resolution control.** In the clip region (`AT > T − D`) `marg` must fall steeply for **both** model
+  and sim — a window that only half fits is worth about half. If it does not, the sweep is not varying what
+  it claims to and nothing below is readable.
+- **F2 — the axiom check.** Model haste `marg` must be flat in `AT` to **< 0.02 pp** over the interior range
+  `10 ≤ AT ≤ T − D`. This verifies `index.html:926-928` actually does what its comment claims. A model-side
+  gradient here is a finding on its own, independent of B2.
+- **F3 — exclusion.** If `|resid(AT) − resid(30)| < 0.05 pp` for every buff across the interior range, then
+  **window × kill is excluded too** — and since §13.9 excluded per-buff valuation and §14.6 retired
+  window×window, B2 would have **no surviving candidate expressible in a single-buff fight at all**. That is
+  not a dead end but an instrument verdict: the phase would have to switch to a **two-plan differential**
+  instrument (§16) that measures the h40/h70 pair directly rather than decomposing it.
+- **F4 — the sign.** B2 needs the model to under-rate front-haste / back-damage. Formally it requires
+  ```
+  [resid_haste(early) − resid_haste(late)] + [resid_value(late) − resid_value(early)]  >  0
+  ```
+  If that combination is negative, this joins §8, §13.4, §13.8 and §14.6 in the wrong-signed pile and is
+  retired the same day — no reinterpretation. (Fifth time this clause is written; it has fired four times.)
+- **F5 — the ramp confound.** `AT ∈ {0, 5}` overlaps the 3-cast opening ramp, where the physics genuinely
+  differs for both sides. The **F4 verdict is read from the post-ramp range only** (`AT ≥ 10`) so the ramp
+  cannot fake it; the ramp points are reported separately, as their own datum.
+
+Magnitude scale: B2's positions differ by ~190 s within a 229 s fight, against a 100 s probe, so scaling to
+B2 is done with the **actual press positions of the two plans**, never by extrapolating a per-second slope.
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance
