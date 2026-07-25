@@ -118,7 +118,22 @@
    adversarial haste in the range. Target for **L2**: explain the *position of the sign flip*, not the
    magnitude (**+0.18 pp just past the crossing, ≈0 by `R=200`, absent below**). Instrument 20/20; two
    defect-class lessons in §19.10 (an over-rejecting materiality guard; a fixture that was unrealistic in the
-   very dimension its guard measures)
+   very dimension its guard measures). **L2 then closed the truncation candidate (§19.11): L2b FIRES.**
+   Sliding `T` across one full stacked cast interval at `R=70`, the var-0 `d_sim` swing is **0.0076 %** —
+   39× short of L2a's 0.30 bar and exactly **1.0× the DPS print quantum's swing floor**. The finding is
+   stronger than "flat": truncation is **real and large** (per-arm level sawtooth **0.276 % / 0.284 %**,
+   flattened to 0.045 % / 0.042 % by the ±3 s dither) but **97.3 % COMMON-MODE** — the MQG window ends ≥98 s
+   before the kill and no haste buff is live in either arm after `t≈222`, so both approach `T` in the same
+   haste state and §19.1's required *differential* terminal phase does not exist. The gate's cast accounting
+   agrees independently (**230/230** at three `T`, **231/231** at 301.2 — the arms gain their cast together),
+   and mean `Δresid` at var 3.0 (**−0.1796 pp**) is **24× the entire var-0 swing**, so truncation is excluded
+   by size as well as by mechanism. Cross-leg reproduction is exact (L2's var-3.0 `T=300` row ≡ L1's `R=70`
+   row; the two gate records are byte-identical across independent runner invocations). One new clue on the
+   surviving suspect: at `T=301.2` the model counts **230→231** where the sim counts **231→231** — a one-cast
+   discretization disagreement at the very `T` the sim gains a cast. **§19.10's target stands, minus one
+   suspect.** Instrument 32/32 green first run, and it carries the round's sharpest lesson: **a verdict whose
+   evidence is an ABSENCE needs a positive sensitivity control** (a flat reading and a blind instrument are
+   the same number, and the blind one exits 0)
    and `docs/PHASE9.md` (**performance/refactor**, user-reported CPU cost — notes + hypotheses only so
    far, nothing landed; every change there is gated on byte-identical plans. **§4.7** turns the "fewer
    steps" ask into a *pass-firing census* — a pass is redundant iff its input is already its own fixpoint

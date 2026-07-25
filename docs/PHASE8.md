@@ -1980,6 +1980,88 @@ absent below the crossing** — i.e. explain the *position of the sign flip*, no
 *Apparatus: `$SP/p8/{r9l1.sh,r9l1model.mjs,r9l1stat.mjs}` + `r9l1fixgen.mjs`/`r9l1ctl.sh` (controls), writing
 `r9l1/{req,gate.h*,model,l1}.json` and `l1.txt`.*
 
+### 19.11 ★★ L2 RESULT (07-25) — **L2b FIRES: the surplus was NEVER a boundary effect.** Truncation is real and *large*, but 97 % common-mode
+
+L2 slides the fight length across one full stacked cast interval, `T ∈ {300.0, 300.4, 300.8, 301.2}`, at fixed
+`R = 70` (L1's most adversarial haste), same K3 contrast, sp 1450, t5two on, Icon off, cold open. Both var
+settings run at every `T`: **var 0** (the one pre-registered exception to the no-var-0 rule — here the integer-cast
+sawtooth *is* the hypothesis) and **var 3.0** as its control. 16/16 measurements graded.
+
+| var | `T` | `d_sim` | `d_model` | `Δresid` | model casts | sim casts |
+|---|---|---|---|---|---|---|
+| 0 | 300.0 | +0.0038 | +0.1732 | −0.1695 | 230→230 | 230→230 |
+| 0 | 300.4 | +0.0076 | +0.1730 | −0.1655 | 230→230 | 230→230 |
+| 0 | 300.8 | 0.0000 | +0.1728 | −0.1728 | 230→230 | 230→230 |
+| 0 | 301.2 | +0.0075 | +0.1726 | −0.1651 | **230→231** | **231→231** |
+| 3.0 | 300.0 | −0.0076 | +0.1732 | −0.1808 | 230→230 | 230→230 |
+| 3.0 | 300.4 | −0.0076 | +0.1730 | −0.1806 | 230→230 | 230→230 |
+| 3.0 | 300.8 | −0.0076 | +0.1728 | −0.1804 | 230→230 | 230→230 |
+| 3.0 | 301.2 | −0.0038 | +0.1726 | −0.1764 | **230→231** | **231→231** |
+
+- **L2a — TRUNCATION → FAILS.** It needs a var-0 `d_sim` swing ≥ 0.30 %; the swing is **0.0076 %**, 39× short.
+- **L2b — NOT TRUNCATION → FIRES** (bar < 0.10 %).
+
+**★★ The finding is much stronger than "the sweep is flat", and the difference matters.** Truncation is *not*
+absent — it is one of the biggest effects in the leg. The per-arm **level** sawtooth at var 0 is **C0 0.2763 % /
+C1 0.2839 %**, 38× the instrument's floor, and the ±3 s dither flattens it to **0.0454 % / 0.0416 %** exactly as
+the physics predicts. But it is **97.3 % common-mode**: it cancels in the first difference, leaving 0.0076 % =
+**1.0× the DPS print quantum's swing floor** (0.1 DPS ⇒ 0.0038 pp per contrast, 0.0076 pp per swing of two) —
+i.e. indistinguishable from zero on this ruler.
+
+**Why it is common-mode — read off the schedule, not inferred.** The treatment (MQG@100 vs MQG@202, a 20 s
+window) ends ≥ 98 s before the fight ends, and by `t ≈ 300` **no haste buff is live in either arm** (IV 202→222,
+AP 192→207, Zerk 192→202). Both arms therefore approach `T` in the *same* haste state. §19.1's mechanism
+requires a **differential terminal phase** — a stacked arm ending further into an in-flight cast than the solo
+arm — and the sim says there is none here. The gate's own cast accounting confirms it independently: **230/230
+at three `T` points and 231/231 at `T = 301.2`** — the arms gain their cast *together*.
+
+**Excluded by size as well as by mechanism.** Mean `Δresid` at var 3.0 is **−0.1796 pp — 24× the entire var-0
+swing of the contrast.** Even if every last bit of the swing were truncation, it could not be the residual.
+
+**The self-falsification clause did not arm** (§19.3 conditions it on L2a firing), but its logic corroborates
+anyway: the var-0 → var-3.0 level flattening (0.276 % → 0.045 %) is a direct demonstration that a
+duration-boundary effect **is** averaged away by the dither B2 was measured at. Verdict is identical on the
+REQUESTED reference column (`Δresid ≈ −0.29 pp`, same flatness), so it does not depend on the phase treatment.
+
+**★ One new clue, and it is on the handoff target.** At `T = 301.2` the model's cast counts are **230→231**
+while the sim's are **231→231** — a one-cast discretization disagreement at exactly the `T` where the sim gains
+a cast. That is a *concrete instance* of the boundary discretization L1 localized at the floor crossing: the
+model's continuous rate integral crosses the cast boundary at a slightly different place than THE FLOOR LAW's
+`floor(D/Δ)`, and the disagreement is one arm wide. **L2 removes truncation from the candidate list without yet
+explaining the crossing position** — §19.10's target (*explain the position of the sign flip: +0.18 pp just past
+the crossing, ≈ 0 by `R = 200`, absent below*) stands, now with one fewer suspect and one concrete example of
+the surviving one.
+
+**Cross-leg reproduction (two independent runner invocations).** `r9l1/gate.h70.json` and `r9l2/gate.T300.0.json`
+are byte-identical in `status/maxCtl/abs/A/B`, and L2's (var 3.0, `T = 300.0`) row reproduces L1's `R = 70` row
+exactly: `d_sim −0.0076 %` vs L1 `−0.0076 %`, `d_model 0.1732 %` vs L1 `0.1732 %`. This is now an enforced
+control in the reducer, not an observation.
+
+**Instrument — 32/32 controls, green on the first run** (15 negative + 1 positive on the model leg, 10 negative
++ 6 positive on the reducer). Both pre-§19.7 L2 scripts carried the round's signature defect in a different
+place, and both were rewritten:
+- **The model leg scored the presses we *asked for*, not the ones the sim *ran*** — `d_model` 0.2902 % where the
+  executed-press column gives 0.1732 %, **68 % too large**. Fixed per §19.9; the requested column is retained as
+  a labelled reference so every verdict can be shown to be phase-independent.
+- **The reducer turned a MISSING var-0 leg into a silent no-verdict**: `sw0 = NaN` makes `NaN >= 0.30` and
+  `NaN < 0.10` *both* false, so it printed "both falsifiers fail" and exited **0**, having graded nothing.
+- **★★★ NEW LESSON — a verdict whose evidence is an ABSENCE needs a positive sensitivity control.** "The sweep
+  is flat" is the most dangerous instrument shape there is, because *a flat reading and a blind instrument are
+  the same number* — and the blind one exits 0. L2b therefore may not be reported unless the same instrument, in
+  the same units and at the same bar, has first **demonstrated it can see the effect whose absence it is about
+  to report**: the var-0 LEVEL sawtooth must clear L2b's own 0.10 % bar (it clears it 2.8×), and that bar must
+  itself clear 5× the DPS print quantum's swing floor. The `flatlevel` fixture — a *perfectly flat contrast*
+  whose levels are also flat, on which L2b would otherwise "fire" — is the load-bearing negative control.
+- Two further L2-specific controls the other legs cannot run: **CONTROL 3** — moving only the fight's *end*
+  cannot move a press before it, so the executed presses must be stable across `T` (if they drift, the sweep
+  varied the plan as well as the duration and nothing it measured is a truncation effect); and **CONTROL 4** —
+  L2a is *half-satisfied* by `swing(d_model) < 0.05`, which a model that ignored `T` entirely would meet
+  perfectly, so the model's score level is required to **rise** across the sweep (it rises 0.3546 %, bar 0.05 %),
+  with a `FREEZET=1` fault-injection knob that reproduces exactly that T-blind fault and must be caught.
+
+*Apparatus: `$SP/p8/{r9l2.sh,r9l2model.mjs,r9l2stat.mjs}` + `r9l2fixgen.mjs`/`r9l2ctl.sh` (15 derived fixtures,
+32 controls), writing `r9l2/{req,gate.T*,model}.json`, `dps.txt`, `drift.txt`.*
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance
