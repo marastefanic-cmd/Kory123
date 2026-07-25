@@ -13,11 +13,8 @@ if [ "$#" -lt 1 ] || [ -z "${1:-}" ]; then
   echo "ERROR: usage: bash tools/xval-kit.sh <kit>   (e.g. mqg,skull)" >&2; exit 2
 fi
 KIT="$1"
-REPO=/home/user/Kory123
-SP=/tmp/claude-0/-home-user-Kory123/e436da46-89c3-50bc-bce2-5b6be890f704/scratchpad
-export CHROMIUM=${CHROMIUM:-/opt/pw-browsers/chromium}
-export RUNNER=${RUNNER:-$SP/wowsims/runner-ap180}
-export EXPORT_BASE=${EXPORT_BASE:-$SP/arcane-wowsims-import.json}
+source "$(dirname "${BASH_SOURCE[0]}")/xval-env.sh"   # REPO/SP/CHROMIUM/RUNNER/EXPORT_BASE + preflight
+xval_preflight
 # ★★★ P7.15 transcription convention — see the block in tools/xval-boss.sh. `fire` (default) sims the
 # plan the tool PRINTS; `intent` reproduces pre-07-25 rounds. Stamped on every XVAL-DONE line.
 export EMIT=${EMIT:-fire}

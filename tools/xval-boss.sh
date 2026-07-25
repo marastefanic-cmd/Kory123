@@ -19,11 +19,8 @@
 # Exit-code contract (shared with tools/xval.mjs): 0 = every boss×kit cell produced a matrix ·
 # 2 = at least one did not.  A `diag=DEFICIT` is an observation, not a failure (see xval-kit.sh).
 set -u
-REPO=/home/user/Kory123
-SP=/tmp/claude-0/-home-user-Kory123/e436da46-89c3-50bc-bce2-5b6be890f704/scratchpad
-export CHROMIUM=${CHROMIUM:-/opt/pw-browsers/chromium}
-export RUNNER=${RUNNER:-$SP/wowsims/runner-ap180}
-export EXPORT_BASE=${EXPORT_BASE:-$SP/arcane-wowsims-import.json}
+source "$(dirname "${BASH_SOURCE[0]}")/xval-env.sh"   # REPO/SP/CHROMIUM/RUNNER/EXPORT_BASE + preflight
+xval_preflight
 export ITER=${ITER:-6000}
 # ★★★ P7.15 transcription convention, PINNED here so a boss round can never inherit a stray value from
 # the calling shell: `fire` = the times the tool PRINTS (default since 07-25) · `intent` = the raw press

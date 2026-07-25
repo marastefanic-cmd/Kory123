@@ -481,6 +481,34 @@ go build -tags with_db -o runner ./cmd/runner
   `-tags with_db` will link; the scratchpad clone already has them.
 - Sanity after building: a clean rebuild is byte-identical run-to-run and reproduces the baseline DPS.
 
+### ★★ Where the drivers FIND the runner — `tools/xval-env.sh` (07-25)
+
+`xval-kit.sh` / `xval-boss.sh` / `xval-rerun.sh` each used to hardcode the same absolute scratchpad
+path, and that path **contains a session id**. Two defects in one line:
+
+1. **It leaks a session identifier into a committed, shareable artifact** — the thing CLAUDE.md's
+   identity rule names explicitly. (`tools/ladders/verify{,2,3}.mjs` had the same line, pointing at
+   scratchpad copies of ladder JSONs **that are committed right beside those scripts**; they now read
+   their own directory, and all three still run.)
+2. **It rots silently.** A reclaimed container gets a fresh session dir. `set -u` does *not* catch
+   this — the variables **are** set, just to a dead path — so a campaign fails minutes in, with a
+   confusing error, instead of in the first second.
+
+All three drivers now `source tools/xval-env.sh` and call `xval_preflight`. Resolution is
+**override > discover > loud exit 2**, and the discovery probes by **content, not mtime**: at the time
+this was written the box held **five** sibling scratchpads from earlier sessions and exactly **one**
+had the runner in it, so "take the newest scratchpad" — the obvious repair — would have picked wrong.
+
+```
+bash tools/xval-boss.sh                          # discovers SP automatically
+SP=/path/to/scratchpad bash tools/xval-boss.sh   # or point it explicitly
+RUNNER=... EXPORT_BASE=... bash tools/xval-kit.sh mqg,skull
+```
+
+⚠ `EXPORT_BASE` is the **user's gear export — user data, never committed**; that is why it lives in the
+scratchpad and must be found rather than read from the repo. A missing one is an exit-2 setup failure,
+never a `diag=DEFICIT` observation.
+
 ## Trust anchor — certify the runner reproduces canonical wowsims
 
 The runner is a thin CLI over the same `sim/core` the wowsims web UI uses. To prove it faithfully

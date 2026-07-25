@@ -1,5 +1,8 @@
 import fs from 'fs';
-const dir='/tmp/claude-0/-home-user-Kory123/e436da46-89c3-50bc-bce2-5b6be890f704/scratchpad/';
+// The ladder JSONs are committed right here beside this script, so read from our own directory.
+// (This used to hardcode an absolute scratchpad path containing a SESSION ID: a leak into a
+// shareable artifact, and dead the moment the container is reclaimed. `LADDER_DIR=` overrides.)
+const dir = process.env.LADDER_DIR || new URL('./', import.meta.url).pathname;
 const FILES=[
  {f:'ladder-isc-scb.json',  A:'isc', B:'scb',  lockout:false, sp:['A','B'].filter((_,i)=>['isc','scb'].includes(['isc','scb'][i]))},
  {f:'ladder-isc-skull.json',A:'isc', B:'skull',lockout:true},

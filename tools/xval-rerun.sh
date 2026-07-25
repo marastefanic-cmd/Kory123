@@ -10,11 +10,8 @@
 # checkpoint reached the remote · 2 = something did not.  A `diag=DEFICIT` is an observation, not a
 # failure (see xval-kit.sh) — this driver gathers data, it does not grade the model.
 set -u
-REPO=/home/user/Kory123
-SP=/tmp/claude-0/-home-user-Kory123/e436da46-89c3-50bc-bce2-5b6be890f704/scratchpad
-export CHROMIUM=${CHROMIUM:-/opt/pw-browsers/chromium}
-export RUNNER=${RUNNER:-$SP/wowsims/runner-ap180}
-export EXPORT_BASE=${EXPORT_BASE:-$SP/arcane-wowsims-import.json}
+source "$(dirname "${BASH_SOURCE[0]}")/xval-env.sh"   # REPO/SP/CHROMIUM/RUNNER/EXPORT_BASE + preflight
+xval_preflight
 export ITER=${ITER:-6000}
 export XVDIR=${XVDIR:-$SP/xvcamp7}
 BRANCH=${BRANCH:-claude/wow-arcane-cooldown-optimizer-vbm3as}

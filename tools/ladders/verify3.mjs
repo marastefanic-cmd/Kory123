@@ -1,5 +1,8 @@
 import fs from 'fs';
-const dir='/tmp/claude-0/-home-user-Kory123/e436da46-89c3-50bc-bce2-5b6be890f704/scratchpad/';
+// The ladder JSONs are committed right here beside this script, so read from our own directory.
+// (This used to hardcode an absolute scratchpad path containing a SESSION ID: a leak into a
+// shareable artifact, and dead the moment the container is reclaimed. `LADDER_DIR=` overrides.)
+const dir = process.env.LADDER_DIR || new URL('./', import.meta.url).pathname;
 const parse=k=>{const p=JSON.parse(k);return {iv1:p[0][0],iv2:p[0][1],tA:p[1][0],tB:p[2][0],ap:p[3][0],zerk:p[4][0]};};
 const load=f=>JSON.parse(fs.readFileSync(dir+f,'utf8')).map(r=>({h:r.h,toolEff:r.toolEff,best:r.top[0].eff,
   opt:r.top.filter(t=>t.eff===r.top[0].eff).map(t=>({...parse(t.key),key:t.key})),
