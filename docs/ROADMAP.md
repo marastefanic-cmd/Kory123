@@ -114,7 +114,9 @@
    floor is at most a component. **B2 is therefore a crossing-location error, not a level error:** the sim's
    sign flip is in `(53,70)`, the model's in `(70,120)` — one grid step late. And gating on the sim's own
    0.049 pp noise, the model **inverts nothing it can resolve: 6 AGREE / 0 DISAGREE / 2 ties**, both "ties"
-   being `d_sim` = −0.008 % and 0.000 %. §19.8's "over-credits ~5×" was read at `R=70`, the single most
+   being `d_sim` = −0.008 % and 0.000 % — *hand-computed here; instrumented later in §19.14, which
+   reproduces it exactly and establishes that it is a claim about the **PRESS**, not about B2.*
+   §19.8's "over-credits ~5×" was read at `R=70`, the single most
    adversarial haste in the range. Target for **L2**: explain the *position of the sign flip*, not the
    magnitude (**+0.18 pp just past the crossing, ≈0 by `R=200`, absent below**). Instrument 20/20; two
    defect-class lessons in §19.10 (an over-rejecting materiality guard; a fixture that was unrealistic in the
@@ -153,7 +155,24 @@
    also caught a defect class **in our own pre-registration**: §19.12's additive reference-invariance is a
    **NEAR-ALGEBRAIC control** — computed from the same three per-arm numbers as the thing it checks, so it
    cannot fail for a measurement reason. Kept but relabelled WEAK; the substantive form (re-read the
-   falsifiers against the *other* solo reference) added and passing
+   falsifiers against the *other* solo reference) added and passing.
+   **★★ ROUND 9 CLOSES (§19.14) — and closing it found a false pass in the round's own headline.** §19.10's
+   *"0 DISAGREE"* rank census had **no script, no fixture and no control** — computed by hand, quoted into this
+   file and DIARY, and about to carry a phase-level synthesis, despite being exactly the ABSENCE shape §19.11
+   had just warned about. It now has an instrument (`r9census.mjs`, battery **18/18**) which reproduces the hand
+   count exactly on **both** scoring columns, and whose §19.11 sensitivity control is **real data, not a
+   fixture**: round 6's G1 endpoint pair (`d_sim` **+0.3602** vs `d_model` **−0.0370**, **3.7× BAR**) must read
+   DISAGREE or the run refuses to grade. **★★★ That makes the scope measurable rather than rhetorical:** the *same
+   census* returns DISAGREE on the two-plan pair and 0 DISAGREE on the isolated press at all 8 hastes, so
+   **B2 is real AND no single press inverts anything — both, without contradiction.** A per-press residual below
+   the sim's resolution still flips a resolvable *plan-level* ranking, because §17's path additivity (0.0007 pp)
+   sums it against the terms the model gets right. §19.10 must **not** be read as "B2 isn't real." The
+   confound-removal chain now reads **−0.396** (two plans) → **−0.4068** (one press, ctx B) → **−0.3672** (Icon
+   off) → **−0.2978** (truncation out, J2 falsified) → **−0.2122** (press phase out) → **−0.1808** (L1's `R=70`,
+   the sweep's *peak*, mean **−0.045**). All four legs' pre-registered questions are answered. **The one
+   surviving B2 suspect is the crossing-location error** (sign flip one grid step late, ≈ 20–50 rating
+   too pro-stacking); the strongest candidate for a round 10 is **P3's context asymmetry** (§17.5: −0.2106 ctx A
+   vs −0.4068 ctx B — **0.1962 pp** on the same press), which the clip fraction alone does not explain
    and `docs/PHASE9.md` (**performance/refactor**, user-reported CPU cost — notes + hypotheses only so
    far, nothing landed; every change there is gated on byte-identical plans. **§4.7** turns the "fewer
    steps" ask into a *pass-firing census* — a pass is redundant iff its input is already its own fixpoint

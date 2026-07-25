@@ -2214,6 +2214,101 @@ grade — and does. Green on the first run.
 *Apparatus: `$SP/p8/{r9l3.sh,r9l3model.mjs,r9l3stat.mjs}` + `r9l3fixgen.mjs`/`r9l3ctl.sh`, writing
 `r9l3/{req,gate.<TAG>.h<R>,model,l3}.json`, `dps.txt`, `drift.txt`, `stat.out`.*
 
+### 19.14 ★★ ROUND 9 CLOSE (07-25) — the "0 DISAGREE" census gets an instrument, and it turns out to be a **scope** statement, not an exoneration
+
+Assembling this synthesis started by tracing §19.10's *second* headline — *"the model never inverts a ranking the
+sim can resolve: 6 AGREE / 0 DISAGREE / 2 ties"* — back to the script that produced it. **There was none.**
+`r9l1stat.mjs` computes a Spearman rank *correlation* and never the sign census; `grep -rln DISAGREE` over the
+round's apparatus hits only `r9l0align.mjs` (a different, routes-agree check) and two commit-message drafts. The
+count was done **by hand**, and it had already been quoted into ROADMAP and DIARY and was about to carry a
+phase-level synthesis. It is also an **ABSENCE** claim, which §19.11 established is the most dangerous instrument
+shape there is: a census that *cannot see* an inversion and a census over data *containing none* print the same
+zero, and the blind one exits 0. So it got an instrument before it carried anything.
+
+#### The census
+A haste point is **RESOLVABLE** iff `|d_sim| ≥ BAR`; on resolvable points the two signs are compared (AGREE /
+DISAGREE), and unresolvable points are **ties** carrying no rank information — there is no ranking there to
+invert. `BAR = 2 × 0.0492 = 0.0984 pp`, and its provenance is stated in the instrument because it is a
+**modelling choice, not a measurement of Monte-Carlo error**: `SD = 0.0492 pp` is L0's spread of `d_sim` across
+**press phase** (§19.8), i.e. the width of the sim's own answer when press phase is uncontrolled — which is
+exactly the uncertainty a *plan-level* ranking inherits, since a planner cannot choose phase. It dominates the
+other known floor (the DPS print quantum, 0.1 DPS ⇒ 0.0038 pp per contrast) by **26×**, so it is the binding one.
+Both are printed.
+
+**It reproduces §19.10's hand count exactly, on both scoring columns: `6 AGREE / 0 DISAGREE / 2 ties`
+(6 resolvable), aligned and requested alike.** The two ties are `R=70` (`d_sim −0.0076`, 0.08× BAR) and `R=120`
+(`d_sim` **exactly 0.0000**, 0.00× BAR).
+
+#### ★★ The sensitivity control is REAL DATA, not a fixture — and it is also the reconciliation
+§19.11 requires the instrument to demonstrate it can **SEE** the effect whose absence it reports, in the same
+units and at the same bar. Round 6's **G1 endpoint pair** is that demonstration and needs no synthesis: `d_sim`
+**+0.3602 %** against `d_model` **−0.0370 %** (primary) / **−0.0204 %** (legacy) is a resolvable sim gap —
+**3.7× BAR** — whose model sign is opposite, so the census **must** return DISAGREE on it. It does, on both arms;
+if it did not, the run refuses to grade (exit 2). That pair is **the measurement Phase 8 was opened on**, which
+makes the control double as the reconciliation.
+
+#### ★★★ THE SCOPE CORRECTION — B2 is real **AND** no single press inverts anything, without contradiction
+The *same census*, in the same units at the same bar, returns **DISAGREE** on the two-plan endpoint pair and
+**0 DISAGREE** on the isolated press at all 8 hastes. §19.10's claim is therefore about the **PRESS**, not about
+**B2** — and the difference is not rhetorical, it is two runs of one instrument. The mechanism is §17's measured
+path additivity (0.0007 pp): a per-press residual individually **below the sim's resolution** still flips a
+resolvable **plan-level** ranking, because it sums against the terms the model gets *right*
+(P1 `+0.0057`, P2 `+0.0027`, P3 `−0.4068` → endpoint `−0.3986`). **§19.10 must not be read as "B2 isn't real."**
+It says the model's per-press pricing is never *individually* rank-wrong; B2 is what those prices do in
+aggregate.
+
+#### The confound-removal chain — what survives each control
+Each row is a **different, better-controlled measurement of the same disagreement**, not a term in a
+decomposition — the chain shows what survives, not an additive breakdown:
+
+| stage | `Δresid` | what it removed | where |
+|---|---|---|---|
+| B2 as opened — two whole plans, endpoint gap | **−0.396** | — | §16 |
+| localized to ONE press (`MQG 100 → 202` onto `IV@202`) | −0.2106 (ctx A) / **−0.4068** (ctx B) | 3 of 4 moves; 53–103 % of B2 lands here | §17.5 |
+| `K1`, Icon off | **−0.3672** | the Icon confound | §18.6 |
+| `K3`, identical press with 78 s of runway | **−0.2978** | fight-end truncation (**J2 falsified**) | §18.6 |
+| ALIGNED scoring (model read at the sim's executed presses) | **−0.2122** | press phase (worth only 23 %, §19.8) | §19.9 |
+| `L1` at `R = 70` | **−0.1808** | *nothing* — this is the **peak** of the haste sweep | §19.10 |
+| `L1` sweep mean | **−0.045** (sd 0.086) | — the model has essentially **no average bias across haste** | §19.10 |
+
+#### What round 9 settled, and what survives into a possible round 10
+All four legs are complete and every pre-registered falsifier has an answer: **L0b fires** (the defect is real;
+phase explains 23 %) · **L1a and L1b both fail** (not a level error, not floor-monotone — a **crossing-location**
+error) · **L2b fires** (truncation is real and large but 97 % common-mode, so the surplus was *never* a boundary
+effect) · **L3b and L3c both fire** (`MQG` onto `BL` is priced correctly while `MQG` onto `IV` is not, and
+`Δresid` is a function of the **clip fraction alone** — K2 and K3 unify, **buff composition is RETIRED** as a
+separate suspect). **Round 9 closes here.**
+
+**The one surviving B2 suspect is §19.10's crossing-location error:** the model's sign flip lands one grid step
+late — it stays pro-stacking ≈ 20–50 rating longer than the sim. Everything else has been either falsified or
+absorbed into it. The strongest open question a round 10 could take is **P3's context asymmetry** (§17.5:
+`−0.2106` ctx A vs `−0.4068` ctx B, a spread of **0.1962 pp** on the *same* press), which is unexplained by the
+clip fraction alone and is the only remaining measurement of comparable size.
+
+#### Instrument: 18/18, and two lessons — both of them **my expectations**, not the guards
+`r9censusctl.sh` — 14 negative controls (every guard must fail on data built to break it) and 4 positive ones
+(a guard that over-rejects is the same defect class, so every branch must be reachable). The five fixtures are
+**derived** from the real `l1.json`, and `r9censusfix.mjs` picks the strongest resolvable row **from the data**
+(`R=400`, `d_sim −1.0505`) rather than hardcoding one. The headline control is **`blindctl`** — the sensitivity
+control's *own* control: replace G1 with a same-sign or sub-bar pair and the census must refuse to grade **even
+though its data is untouched and its answer would be identical**. That is §19.13's `blindl1` shape applied one
+level up.
+
+Two controls failed on the first run and **both were wrong needles, not wrong guards** — the standing L1 lesson
+in its mirror form, and each was settled by *probing* rather than by relaxing anything:
+- **`NSD=30` ("everything is a tie")** refuses one step **earlier and more strictly** than expected: at that bar
+  the *sensitivity pair itself* drops below the bar, so the instrument has nothing to say about its own census
+  size. That ordering is correct, so it is now asserted rather than assumed — and the thin-census floor got its
+  **own** control at `NSD=7.2`, the widest bar that still leaves G1 (0.3602) resolvable, where 3 of 8 points
+  survive and `MINRES` fires. Without it `MINRES` would have been dead code hidden behind the sensitivity guard.
+- **`NSD=0.01` unmasks 1 tie, not 2.** `R=70` becomes a resolvable DISAGREE; **`R=120` never can, at any bar,
+  because its `d_sim` is exactly `0.0000`** — a sharper fact than the needle asserted. The message that reports
+  a thin census was also corrected: it claimed "every point is a tie", which is false when 3 are resolvable.
+
+*Apparatus: `$SP/p8/r9census.mjs` + `r9censusfix.mjs`/`r9censusctl.sh`, writing `r9l1/census.json`. Exit contract
+0 = graded · 2 = could not grade; there is deliberately no exit 1, because a census that cannot produce its
+number is a broken instrument, not a verdict.*
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance
