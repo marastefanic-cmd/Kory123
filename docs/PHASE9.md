@@ -1953,31 +1953,78 @@ its own objective* — it could have retained the old layout and scored higher. 
 measurement of search quality**, which is precisely Phase-7's SEARCH-MISS question and Phase-9's *"can we
 cut search work without losing quality?"* question. Cost: one sweep (~27 s on the QUICK tier).
 
-### §5.10 Two INVARIANCE findings from the duel controls — leads, with a coverage caveat
+### §5.10 ★★ Two invariance leads — RAISED on the fast tier, then KILLED by the full corpus
 
-C2 and C2b were meant to be controls. Both produced **zero plan changes**, which makes them findings
-about the optimizer instead:
+C2 and C2b were meant to be controls. Both produced **zero plan changes on the 16 QUICK cases**, which
+looked like two findings about the optimizer:
 
-1. **PRNG-seed invariance.** `mulberry32(1337)` → `mulberry32(4242)`: **0 of 16 plans changed.**
-2. **Restart invariance.** Clamping `starts` 14 → 1 inside `optimizeCore` — dropping 13 of 14 random
-   restarts — gives `PLAN-DIFF IDENTICAL`, **0 of 16 changed**, and cuts CPU **75 s → 61 s (~19 %)**.
+1. **PRNG-seed invariance.** `mulberry32(1337)` → `mulberry32(4242)`: 0 of 16 plans changed.
+2. **Restart invariance.** Clamping `starts` 14 → 1 — dropping 13 of 14 random restarts — gave
+   `PLAN-DIFF IDENTICAL`, 0 of 16 changed, and cut CPU **75 s → 61 s (~19 %)**.
 
-Both were verified live rather than assumed, because a perturbation that silently fails to apply
-produces exactly this result:
+Both were verified live rather than assumed, because a perturbation that silently fails to apply produces
+exactly this result: `rand()` has **exactly one consumer** (`index.html:1108`, the restart-seeding line),
+`starts` **exactly one** (`if (seeds.length >= starts + 8) break;`), and the shifted constant was
+confirmed present in the *loaded* file. The reading was that the finishing-pass stack, not the random
+restarts, determines the plan — making `starts` ~19 % of CPU buying nothing, the cheapest item on the
+ladder.
 
-- `rand()` has **exactly one consumer**, `index.html:1108` — the random-restart seeding line;
-- `starts` is consumed at **exactly one place**, `if (seeds.length >= starts + 8) break;`;
-- the shifted constant was confirmed present in the *loaded* file (`grep -c "mulberry32(4242)"` = 1, and
-  the sweep JSON's recorded `html` path).
+**Both were flagged do-not-act-on pending the full 25, and the full 25 killed both.**
 
-The reading is that the **finishing-pass stack, not the random restarts, determines the plan** — the
-passes converge to the same basin from almost any start. If that holds, `starts` is ~19 % of CPU buying
-nothing, and it is the single cheapest item on the perf ladder.
+| perturbation | QUICK 16 | FULL 25 | verdict |
+|---|---|---|---|
+| `starts` 14→1 | 0 changed | **2 changed** — 1 ★REGRESSION (−233.09), 1 TIE | **REJECTED as a perf cut** |
+| seed 1337→4242 | 0 changed | **2 changed** — both ★REGRESSION (−233.09, −52.82) | restarts are load-bearing |
 
-> ⚠ **COVERAGE CAVEAT — these are LEADS, not landed conclusions.** Both cover only the **16 QUICK cases
-> (T ≤ 200)**. The 9 long cases have the most presses and by far the largest search space — *exactly where
-> random restarts should matter most* — and §5.6 already established that cost is ~exponential in press
-> count, so the QUICK tier is the sub-population least likely to need restarts. The xval corpus is also
-> far wider than the 25 presets. **Do not cut `starts` on this evidence.** The confirming run is the full
-> 25-case sweep plus a spot-check on the xval haste ladder; until then this is a hypothesis with a
-> plausible mechanism, not a result.
+CPU on the full corpus: 695 s → 583 s (16 %). **That 16 % is buying real search quality, on exactly the
+cases that cost the most.** Both duels report `scorerMoved = false` — a search parameter is not a pricing
+one — so the model arbitrates directly and no sim was needed. (It also retroactively licenses
+`plan-diff`'s raw `Δscore` subtraction *in this specific case*: the currencies provably match.)
+
+#### ★★ THE INSTRUMENT LESSON — a fast gate's blind spot is CORRELATED with what makes it fast
+
+This is the generalisable half, and it is a standing hazard for the whole three-tier scheme:
+
+> **§5.6 established that solve cost is ~exponential in press count.** So the QUICK tier is cheap
+> *precisely because* its cases have few presses and a small search space — which is *precisely* the
+> regime where the search is easiest and random restarts are least needed. The QUICK tier is therefore
+> the **systematically wrong place to test a search-quality change**: it is not a random sample of the
+> corpus, it is the sub-population selected for being easy. The fast gate's blind spot is not incidental
+> to its speed; it is the *same property*.
+
+The tier stays — it caught real changes in C3/C4 and it is the right instrument for a **pricing** or
+**refactor** change, where cost and coverage are uncorrelated. But **any change to the SEARCH (starts,
+seeds, anchors, basin hops, accept tolerances, iteration caps) must be gated on the full 25**, because
+the QUICK tier's silence on such a change is uninformative by construction. Cost of doing it right:
+~360 s wall at 2 jobs.
+
+#### ★ A fragility this exposed, worth its own follow-up: `5:40 lust 0:05` rides ONE lucky restart
+
+The −233.090261 regression at `5:40 lust 0:05` is **bit-identical under both perturbations**, and both
+land on the **same** inferior plan:
+
+```
+good (default) : isc/icyVeins/scb [5,127,307]  arcanePower [5,307]     — everything aligned
+both variants  : isc [4,190,310]  icyVeins [0,190,310]  scb [4,195,315] arcanePower [4,195]
+```
+
+Read that back: with 14 restarts at seed 1337, **one particular draw** finds the aligned
+`[5,127,307]` basin; the finishing passes cannot reach it from a generic start, so removing that draw
+*or* redrawing it loses 233 points and falls into the basin the passes converge to by default. The good
+plan at this cell is **luck that happens to be baked into the goldens** — not a robustly discoverable
+optimum.
+
+That makes it a **SEARCH-MISS waiting to happen**: any future edit that perturbs restart draws (adding a
+start, reordering them, changing PRNG consumption anywhere upstream) will silently drop 233 points here,
+and the golden will "churn" for reasons that look unrelated to the edit. The fix is *not* more restarts —
+it is a **basin-hop anchor at the fully-aligned layout**, so the passes can reach `[5,127,307]` from any
+start. That is Phase-7 SEARCH-MISS work, and this cell is a ready-made test case for it.
+
+Secondary: `7:20 lust 0:05`'s −52.82 is a uniform −1 s slide (5→4, 22→20, 1→0, 125→124) — near-plateau
+micro-placement, consistent with the known low-haste placement slack, not a basin miss.
+
+Also noted: `6:00 lust 4:20` changed under `starts=1` at **Δ +0.000** with the whole burn block shifted a
+uniform +6 s. §5.11's legibility canonicalization normalizes score-ties *within one run's candidate set*;
+a different restart count yields a different candidate set and so a different plateau representative.
+Expected, not a canonicalization bug — but it means **plan-diff will report tie-only churn on any
+search-parameter change**, and `subSecOnly` will not filter it.
