@@ -73,6 +73,19 @@ round-5 sim scores are not comparable to each other; §20.6 identified the unifo
 band as a REPRICING caused by two harness *input* fixes. Both plans must be **re-simmed under one
 current harness**. That is a new instrument, not a column you can read off existing output.
 
+**⚠⚠ The same trap on the MODEL side, and it is easier to fall into.** The rule generalises past the
+sim: **never compare a freshly-computed score against a RECORDED one.** A shipped plan does not carry
+`simulate()`'s maximum for its own layout — it carries the *legibility trade* grooming paid for it
+(the `castVal/8` slack on a non-use-adding Cold Snap, `EPS = 0.5`, `coPressAlign`'s designed
+pressability give-back). So `polish(repair(shipped))` scores **higher** than the number the sweep
+recorded for that same plan, on a large fraction of cases, with **no change to anything**. Any probe
+that enumerates a candidate family, polishes each candidate, and asks *"did it beat the shipped
+score?"* is therefore crediting the family with polish's own repricing. The honest baseline is the
+shipped plan pushed through **the identical treatment the candidates get** — `basePolish`, not
+`shipped`. This bit a real probe in PHASE9 §5.13 (hypothesis 6): 7 of 25 rows read "★ BEATS shipped"
+and **5 of them were the baseline out-scoring itself**. Stated as a habit: *if two numbers in one
+comparison were produced by different code paths, the comparison is not a measurement.*
+
 **⚠ The coverage hole, stated honestly.** A plan-diff finds the cells a rule *did* move. It can never
 find a cell the rule *should* have moved and didn't — the false-pass direction, this repo's tracked
 defect class. That population is not invisible, though: it is exactly the standing-DEFICIT cells,

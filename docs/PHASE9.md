@@ -2213,9 +2213,10 @@ worth pursuing it should be pursued as its own change, priced on its own evidenc
    **`[5,127,307]`** — a +2 s offset and a *skipped* use. That is a cast-boundary/ramp artifact, not an
    alignment rule, so no tidy seed construction reaches it.
 
-**Standing:** `5:40 lust 0:05` remains a genuine SEARCH-MISS with **no identified mechanism** — three
-candidate explanations tried and killed (lucky-restart basin, entrant plateau, missing align seed). It
-stays on the Phase-7 ledger as an open SEARCH-MISS, and it is still the corpus's best test case for one.
+**Standing:** `5:40 lust 0:05` remains a genuine SEARCH-MISS. Three candidate explanations were tried
+and killed here (lucky-restart basin, entrant plateau, missing align seed); a fourth, fifth and sixth are
+killed in **§5.13**, which also *localises* the manufacture to a single pass. It stays on the Phase-7
+ledger as an open SEARCH-MISS, and it is still the corpus's best test case for one.
 
 #### ★ Two carried cautions
 
@@ -2299,3 +2300,127 @@ it was provisionally accepted on the grounds that correctness outranks speed. It
 +13.716 points on 1 of 25 cases. **Had the two landed together the net would have been ~0% CPU change for
 ~0 plan change, and the ledger would have shown a "correctness fix" paying for itself.** Both were
 measured separately and independently, which is the only reason either verdict is legible.
+
+---
+
+### §5.13 ★★★ The `5:40` miss, LOCALISED — a stage trace beats another guess
+
+§5.11 closed with three killed hypotheses and no mechanism. Every one of them was a **guess about
+search dynamics** checked by a perturbation, which is exactly the error §5.10's retraction warns about:
+*a perturbation localises the SYMPTOM, never the MECHANISM.* So this round stopped guessing and
+**instrumented the pipeline** instead.
+
+#### The instrument
+
+`$SP/mkstage.py` rewrites a scratch copy of `index.html` (the repo file was frozen for the round-5
+campaign) to call a `__STG(label, s, cfg)` helper that appends `{label, robust, layout}` to a global
+log. Injection sites: each of the 6 snap candidates · post-main-hop · post-groom · each re-hop round's
+entrant · **each of `normalize`'s four components separately** (`coPressAlign` → `spreadLoneHaste` →
+`slideEarliest` → `dodgeDowntime`) · post-drop-one-use · both Cold-Snap branch outcomes · pre- and
+post-final-canonicalization. It also makes the PRNG seed overridable (`globalThis.__SEED`, default
+1337 ⇒ byte-identical), so the good and bad runs are the same binary. `$SP/stage-run.mjs` runs one
+case and prints the trace with per-step deltas. Cost: ~7 min/case — but it answers in one run what
+three perturbation experiments failed to answer at all.
+
+#### What it showed
+
+The good plan is **not** produced by the main basin hop. It is produced by **`rehop#1`** — the *second*
+round of the re-hop↔canonicalize fixpoint at `:2785`:
+
+| stage | seed 1337 | seed 4242 |
+|---|---|---|
+| `01 post-mainhop` | *(cluster family)* | 582455.531 `IV[0,190,310] isc[5,190,310] scb[5,195,315]` |
+| `02 post-groom` | 582528.82 (after −963.7 groom dip) | 581493.57 (−961.96 groom dip) |
+| `03 rehop#0` | `IV[0,126,306] isc[4,126,306] scb[4,126,306] AP[4,306] zerk[126,306]` | walks straight back to the pre-groom layout |
+| `03 rehop#1` | **582688.621 `[5,127,307]` — +159.800** | identical ⇒ `stable=true` ⇒ **break after 2 rounds** |
+
+Two facts fall straight out, neither of which any perturbation could have produced:
+
+1. **The groom dips the plan by ~960 points at BOTH seeds, and the re-hop pays it straight back.**
+   That is a ~960-point round trip per case, every case — and at 4242 the hop returns *the exact
+   pre-groom layout*, so the entire round trip was wasted work. (Do not act on this yet: it is a CPU
+   observation from a 2-case trace, not a measured saving. Filed as a §6 candidate, not a ladder item.)
+2. **The winner is one `teleportRep`-width move from `rehop#0`'s output at 1337** — `{4,126,306}`
+   shifted +1 to `{5,127,307}`, plus IV's opener `0 → 5`. At 4242 the entrant is the `190/310` family
+   instead, from which no anchor reaches `[5,127,307]`, and round 1 already reports `stable` so the
+   loop **exits after two rounds instead of three.** The good plan needs a third round the bad seed
+   never gets.
+
+#### And the winner is a genuine fixed point, not a fluke
+
+`$SP/cs-align.mjs` §A: `repair([5,127,307]…) = 582688.621` and `polish` of it = **the same value**. The
+layout is a stable polish basin that the search simply never *visits*. This kills the last "it's a
+scoring artifact" reading and confirms the miss is purely one of **reach**.
+
+#### Three more hypotheses, all FALSIFIED
+
+4. **"The Cold-Snap press should slide onto a co-press second."** Decoding the winner:
+   `icyVeins[5,127,307]` is IV at Lust, **Cold-Snap→IV at 127**, natural IV at 307 — and 5→127 is
+   **122 s**, i.e. the CS press is deferred onto the 120 s trinket beat (`isc`/`scb` pressed at 5 return
+   at 125). `cs-align.mjs` §B built that family from the seed-4242 champion — 33 candidates, every CS
+   press slid onto every co-press second, with and without dragging the stack along. **Best = the
+   champion itself, −233.090.** Cause of failure, and it is instructive: the champion opens
+   `icyVeins[0,…]` while the winner opens `icyVeins[5,…]`. **Sliding one press cannot repair a wrong
+   *first* press** — the family was anchored on the wrong origin.
+5. **"A LOCKSTEP-STACK seed class is missing."** The winner presses the whole kit together on three
+   group seconds, and its *second* gap is **180** (IV's cd) not 120 — `isc`/`scb` deliberately **skip a
+   use they could have taken** to stay stacked. That is nameable: greedy co-press groups, each firing
+   when the short-cd tracks come up, Cold Snap freeing IV once. Built it (`$SP/stack-seed.mjs`),
+   polished and hopped: **582553.499, −135.122.** Same basin the naive per-track-cd align-chain reached.
+   The construction is right in spirit and still misses.
+6. **"The Cold-Snap CHAIN FAMILY in the code is too narrow."** This one is a claim about the *source*,
+   not about search luck, which is why it was worth running over the whole corpus. `optimizeCore` builds
+   its Cold-Snap candidates as `ch[i<j] = i·cd ; ch[j] = ch[j-1] + dur ; ch[i>j] = ch[j] + (i−j)·cd` —
+   the Cold-Snap press is always taken **ASAP** after the previous Icy Veins window (`+dur`), or the
+   chain is natural (`+cd`). But a Cold-Snap-freed Icy Veins is on **no cooldown at all**: its press
+   second is *free*, and `+dur` is one choice out of many. The winner spends it **122 s late**. So:
+   widen the family by one parameter — for every origin `o` and every co-press second `c`, IV = natural
+   chain from `o`, truncated before `c`, then `c`, then re-anchored from `c`; offered twice, with the
+   rest of the kit left alone and with it dragged onto the group seconds. 26–236 candidates per case,
+   polish-only, all 25 cases (`$SP/cs-free.mjs`). Result: **`5:40 lust 0:05` ties at +0.000 across 78
+   candidates.** The family does not contain the winner either — because, exactly as in (4), it inherits
+   its origins from the entrant's own `icyVeins` presses. **Two** cases in the corpus gain anything at
+   all, both trivially: `3:20 lust 0:05 drums` **+38.8** (0.011 %) via `o0/cs@179+stack` and `Al'ar`
+   **+8.1** (0.0024 %) via `o1/cs@203`. Rejected twice over — falsified on its motivating case, and even
+   where it wins it buys ~0.005 % for 78–236 extra polishes per case, which is the wrong direction for a
+   phase whose subject is CPU.
+
+##### ⚠ …and hypothesis 6's first table was WRONG, in this repo's own named way
+
+The first run of `cs-free.mjs` reported **7 of 25 "★ BEATS shipped"** and I nearly wrote it up that way.
+It was the **REPRICING TRAP** (TOOLING; DIARY 07-25) — reappearing on the *model* side, inside my own
+instrument, one section after I quoted the rule. The probe compared `polish(repair(candidate))` against
+the score the sweep **recorded** for the shipped plan. But a shipped plan does not carry `simulate()`'s
+maximum for its own layout: it carries the **legibility trade grooming paid for it** (`castVal/8`,
+`EPS = 0.5`, `coPressAlign`'s pressability give-back). Re-polishing strips that trade, so
+`polish(repair(shipped))` out-scores the recorded number **with nothing changed at all** — on **7 of 25**
+cases here, by up to +344. Five of the seven "wins" were therefore the baseline out-scoring *itself*,
+and they were tagged `via (shipped)` right there in the output, which is what gave it away. Against the
+honest baseline — the shipped plan pushed through the **identical** treatment the candidates get — the
+count is **2**, and both are noise-scale.
+
+**The rule, generalised past the sim:** *never compare a freshly-computed score against a recorded one;
+if two numbers in one comparison came out of different code paths, the comparison is not a measurement.*
+The trap is easy to re-enter because the contaminated column is the **flattering** one — it manufactures
+wins, so nothing about the output looks broken. Written into `TOOLING.md` next to the sim-side statement.
+
+#### Where this leaves it — and the discipline note
+
+Six mechanisms killed; **do not re-litigate any of them.** But the miss is no longer unexplained in the
+way §5.11 left it: it is now known to live in the **re-hop fixpoint's reach and round budget**, not in
+the seeds, not in the snap, not in the plateau, and not in the scorer. The two concrete leads:
+
+- **(L1) The `stable` early-exit fires a round too early.** At 4242 round 1 hops to no improvement and
+  breaks; at 1337 the *third* round is where the +159.8 lands. `stable` tests whether the **hop**
+  improved, but `normalize` runs *after* the test, so a round that only moves the plan via
+  canonicalization is scored as stable and ends the loop. Whether more rounds fix 4242 is **untested** —
+  and it is a SEARCH change, so §5.10's rule applies: it must be gated on the **full 25**, never the
+  quick tier.
+- **(L2) The re-hop's anchors are entrant-derived**, so a champion in the `190/310` family cannot reach
+  `127/307` no matter how many rounds it gets. If (L1) fails, this is the real wall.
+
+**The methodological point, which outranks the finding.** Three perturbation experiments over two
+sessions produced three wrong mechanisms and zero localisation. One stage trace produced the exact pass,
+the exact round, and the exact entrant — and cost less than any one of them. **When the question is
+"which step does X", instrument the steps. Perturbing the input and reading the output can only ever
+tell you that something is sensitive, never what.**
