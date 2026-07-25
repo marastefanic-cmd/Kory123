@@ -1616,15 +1616,29 @@ gate" — the same false signal as one that passes wrongly.
 The loop had two speeds (9 minutes, or hours) and needed three.
 
 **Tier 0 — plan sweep + full-precision differ (seconds–minutes, every change).**
-`plan-sweep.mjs` runs every baked preset through `optimizeAsync` in bare node, fanned across child
+`tools/plan-sweep.mjs` runs every baked preset through `optimizeAsync` in bare node, fanned across child
 processes (round-robin index assignment, *not* contiguous blocks — case cost grows with `T` and the
 presets are `T`-ordered, so contiguous slices hand one child every long fight and idle the rest).
-`plan-diff.mjs` then compares two sweeps on **`best.s` at float precision**. Strictly more sensitive
-than the goldens' floored text, and it needs **no golden to maintain** — it diffs A vs B. It tags each
-changed cell `SUB-SEC` when the floored text is identical, which **measures** the §5.1 hole rather than
-asserting it. The sweep also carries a **legality audit** per plan (fractional/negative times, cooldown
-violations, trinket lockout) — orthogonal to a diff, because it catches an illegal plan when there is
-no B at all.
+`tools/plan-diff.mjs` then compares two sweeps on **`best.s` at float precision** — the schedule the
+optimizer *chose*, upstream of the fire-time snap the goldens compare. It needs **no golden to
+maintain** (it diffs A vs B) and it compares **by name, not index**, so an inserted preset cannot
+silently shift every later comparison. It tags a changed cell `SUB-SEC` when the floored text is
+identical — a live **detector** for the §5.1 hole, not evidence that the hole is open. The sweep also
+carries a **legality audit** per plan (fractional/negative times, cooldown violations with Icy Veins
+exempt for Cold Snap, the 20s trinket lockout) — orthogonal to a diff, because it catches an illegal
+plan when there is no B at all.
+
+```
+node tools/plan-sweep.mjs index.html A.json [jobs] [--max-t=200]   # before the change
+node tools/plan-sweep.mjs index.html B.json [jobs] [--max-t=200]   # after
+node tools/plan-diff.mjs A.json B.json [--allow-change]
+```
+Exit codes — sweep: `0` swept clean · `1` a plan is ILLEGAL · `2` could not sweep. Differ: `0`
+identical (or changed with `--allow-change`) · `1` a plan changed · `2` could not compare (an error
+cell or a corpus mismatch — *could-not-grade beats every other verdict*). `tools/engine-node.mjs` is
+the shared loader: it extracts the engine block, `buildSegments`, and the preset arrays out of
+`index.html` and evaluates them in one `new Function`, asserting every extraction (a silently-missing
+preset array would make the gate grade **fewer** cases and still report success).
 
 **Measured (3 jobs, on a 4-core box also running the xval campaign — so these are pessimistic):**
 

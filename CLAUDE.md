@@ -48,6 +48,23 @@ the effective-ABs count — sim-verified when a blind spot is in play, per the m
 `GOLDEN_PRESETS`) and drive both the UI (the "Boss presets" / "Debugging presets" strips) and the suite,
 so a preset you confirm in the tool **is** the locked test.
 
+**That gate takes 9m07s, so it is not the every-edit loop.** For that, sweep the same corpus in **bare
+node** (the engine is DOM-free — it already runs in a Web Worker) and diff the two runs at full float
+precision — **~33s for 16 of 25 cases, ~16× faster**:
+```
+node tools/plan-sweep.mjs index.html A.json 3 --max-t=200   # before the change
+node tools/plan-sweep.mjs index.html B.json 3 --max-t=200   # after
+node tools/plan-diff.mjs A.json B.json
+```
+It needs no golden to maintain and prints the **changed-cell work list**. Then run exact-match before
+committing an engine change (it also covers the render path, which the sweep never touches). Full
+rationale, measurements, and both instrument controls: `docs/PHASE9.md §5`.
+
+⚠ **Scope the verification to what CHANGED — and DUEL what did.** If a plan is bit-identical and the sim
+is unchanged, don't re-test it. But if a plan **did** change, sim it head-to-head against its *previous*
+layout at that cell — `monoDip`/`diagWorst`/CLEAN-vs-DEFICIT are **aggregates** and can hold or improve
+while one cell regressed (`docs/TOOLING.md`).
+
 ## `index.html` at a glance
 
 Two script blocks: `<script id="engine-src">` — the pure DOM-free engine + optimizer — then the
