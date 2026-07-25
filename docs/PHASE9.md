@@ -1870,3 +1870,114 @@ line number** so re-anchoring is one edit. It writes no output file on failure.
   2 with *"the probes are not present"* rather than reporting a corpus of zeroes. Zero counts are the
   false-pass mode here — an empty census reads exactly like *"none of these passes ever fire, delete
   them all."*
+
+---
+
+### §5.9 ★★ The DUEL is BUILT — and the control that nearly shipped a confident lie
+
+`tools/plan-duel.mjs` (commit `93680a9`) implements §5.4. `plan-diff.mjs` says **which** cells moved;
+the duel says **whether each move was an upgrade**, cell by cell, because `monoDip`/`diagWorst`/
+CLEAN-vs-DEFICIT are aggregates that can hold or improve while one cell regressed.
+
+```
+node tools/plan-diff.mjs A.json B.json                                   # which cells moved
+node tools/plan-duel.mjs --old A.json --new B.json \
+     --old-html index.html --new-html variant.html [--sim]               # was each move an upgrade?
+```
+
+**It never subtracts two sweeps' recorded scores** (the §20.6 repricing trap): both schedules are
+re-scored under one engine at a time. And it **measures** whether the scorer moved — *does each engine
+price the same schedule identically?* — rather than trusting the caller to declare it.
+
+#### The two asymmetries that let it grade without a sim
+
+A tool that refuses whenever the scorer moves is nearly useless, since most real edits touch pricing.
+Two asymmetries rescue most cells for free:
+
+**(A) THE CONFESSION RULE — circularity has a DIRECTION.** `newEngine(new) > newEngine(old)` is true by
+construction and proves nothing: the search maximized that very objective. But `newEngine(new) <
+newEngine(old)` — the new engine ranking the **old** plan higher — is a *confession*. The search was
+free to keep the old layout and score better under its own currency, and didn't. No repricing can
+manufacture that sign. That is a **SEARCH-MISS** in the Phase-7 sense, gradeable with zero sim runs.
+
+> Note the direction it can move a verdict: **CANNOT-GRADE → FAILURE, never → pass.** Per the standing
+> false-pass doctrine, a refinement that can only get *stricter* cannot introduce the defect class we
+> actually fear. That is why it was safe to add at all.
+
+**(B) THE FEASIBLE-SET GUARD — and it is the reason (A) doesn't lie.** Every model verdict benchmarks
+against `newEngine(old plan)`. That number is meaningless if the new build could not legally *emit* the
+old plan. Measured, not assumed: repair the old plan under the **new** build and check the score
+survives. It is tested **first**, ahead of everything else.
+
+#### ⚠ C4 — the control that earned guard (B), and the general lesson
+
+Guard (B) was **not** in the first implementation, and the tool looked fine: C1–C3 all passed. C4 broke
+it. Change `isc.cd` 120→180 — a **pure constraint change** — and:
+
+- `simulate()`'s pricing of any given schedule is **bit-identical**, so `scorerMoved` reads **FALSE**;
+- the tool therefore took its most confident branch and reported **9 cells as "★ REGRESSION — the search
+  got WORSE under an UNCHANGED objective."**
+
+Every one of those was false. The old `isc:[5,127]` is 122 s apart and simply **illegal** at `cd:180`;
+repair drops the second use and the score falls 2437.8. `newOnOld` was crediting the new engine with an
+ISC use its own rules forbid. The search never regressed — **the feasible set shrank.** With (B): 10
+honest CANNOT-GRADEs, 0 false accusations.
+
+> ★★ **The generalisable lesson: `scorerMoved` and "are these two plans comparable" are DIFFERENT
+> QUESTIONS.** The pricing function and the feasible set can move independently, and a constraint-only
+> edit moves the second while leaving the first provably untouched. Any future comparison instrument
+> that checks only "did the score function change?" inherits this exact false-accusation mode. This one
+> is a false *failure* rather than a false pass, so it is the milder half of the defect class — but a
+> confident, precise, cell-named regression report would have sent us hunting a search bug that does
+> not exist.
+
+#### The controls (re-run all four after any edit to the verdict chain)
+
+| # | perturbation | expected | got |
+|---|---|---|---|
+| C1 | none (index.html vs its census copy) | no changed cells, exit 0 | ✔ |
+| C2 | PRNG seed 1337→4242 | — | 0 of 16 changed (became a finding, §5.10) |
+| C2b | `starts` 14→1 | — | 0 of 16 changed (became a finding, §5.10) |
+| C3 | `isc.dur` 20→18 (**pricing**) | scorerMoved, refuse or confess | 8 changed: 5 ★REGRESSION (confession), 3 refused; exit 2 |
+| C4 | `isc.cd` 120→180 (**constraint**) | refuse — plans not comparable | 10 CANNOT-GRADE, 0 false accusations; exit 2 |
+
+C3's three refusals are each a distinct situation, and the tool now names which: one cell is
+**indifferent** (Δ +0.000 across two visibly different plans — the new engine cannot rank them), two
+**prefer the new plan**, i.e. exactly the direction that proves nothing.
+
+#### A side benefit worth keeping: the duel doubles as a SEARCH-QUALITY probe
+
+C3 produced **5 confessions out of 8 changed cells**. Read that back: perturb any model constant,
+re-optimize, and every confession is a cell where the search demonstrably left value on the table *under
+its own objective* — it could have retained the old layout and scored higher. That is a **cheap, sim-free
+measurement of search quality**, which is precisely Phase-7's SEARCH-MISS question and Phase-9's *"can we
+cut search work without losing quality?"* question. Cost: one sweep (~27 s on the QUICK tier).
+
+### §5.10 Two INVARIANCE findings from the duel controls — leads, with a coverage caveat
+
+C2 and C2b were meant to be controls. Both produced **zero plan changes**, which makes them findings
+about the optimizer instead:
+
+1. **PRNG-seed invariance.** `mulberry32(1337)` → `mulberry32(4242)`: **0 of 16 plans changed.**
+2. **Restart invariance.** Clamping `starts` 14 → 1 inside `optimizeCore` — dropping 13 of 14 random
+   restarts — gives `PLAN-DIFF IDENTICAL`, **0 of 16 changed**, and cuts CPU **75 s → 61 s (~19 %)**.
+
+Both were verified live rather than assumed, because a perturbation that silently fails to apply
+produces exactly this result:
+
+- `rand()` has **exactly one consumer**, `index.html:1108` — the random-restart seeding line;
+- `starts` is consumed at **exactly one place**, `if (seeds.length >= starts + 8) break;`;
+- the shifted constant was confirmed present in the *loaded* file (`grep -c "mulberry32(4242)"` = 1, and
+  the sweep JSON's recorded `html` path).
+
+The reading is that the **finishing-pass stack, not the random restarts, determines the plan** — the
+passes converge to the same basin from almost any start. If that holds, `starts` is ~19 % of CPU buying
+nothing, and it is the single cheapest item on the perf ladder.
+
+> ⚠ **COVERAGE CAVEAT — these are LEADS, not landed conclusions.** Both cover only the **16 QUICK cases
+> (T ≤ 200)**. The 9 long cases have the most presses and by far the largest search space — *exactly where
+> random restarts should matter most* — and §5.6 already established that cost is ~exponential in press
+> count, so the QUICK tier is the sub-population least likely to need restarts. The xval corpus is also
+> far wider than the 25 presets. **Do not cut `starts` on this evidence.** The confirming run is the full
+> 25-case sweep plus a spot-check on the xval haste ladder; until then this is a hypothesis with a
+> plausible mechanism, not a result.
