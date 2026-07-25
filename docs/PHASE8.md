@@ -667,6 +667,93 @@ haste and damage buffs), and window–boundary interaction (how a haste window's
 with the kill). Round 4's remaining item — the `rampCastDmg` / `rampSpans` × haste interrogation — is
 squarely in that space and is now the next probe, not one of several.
 
+## §14 — ROUND 4, PRE-REGISTERED: the **stacked-haste / GCD-floor** probe (window × window)
+
+*Written and committed before the sim ran. §13.9 said B2 is a layout property; this is the first probe
+whose domain actually contains one.*
+
+### 14.1 The structural gap round 3 left
+
+Every round-3 leg pressed **one** buff. Write `m` for the cast-speed multiplier; the AB interval is
+`max(1.5/m, 1.0)` — at 3 stacks the cast time (`2.5 − 3×⅓ = 1.5 s`) and the GCD base are the *same
+number*, so both clamp together and **the floor binds at exactly `m ≥ 1.5`**. Model (`index.html:902`
+`intervalAt`, `GCD_FLOOR: 1.0`) and sim (`core/constants.go:13` `GCDMin = 1s`) agree on the constant.
+
+The largest `m` any single buff reaches anywhere in the round-3 grid is **1.428** (IV at R=300). So:
+
+> **No round-3 measurement ever touched the GCD floor.** The whole battery lives in the regime where
+> haste is linear, and is structurally incapable of saying anything about the regime where it is not.
+
+### 14.2 Why this is B2's regime specifically
+
+At the target's gear (R=70), the two B2 plans sit on opposite sides of that line:
+
+| | its distinguishing haste cluster | `m` | interval | floor? |
+|---|---|---|---|---|
+| **h40** (the sim's winner) | opener: **IV@0 + Zerk@0 + MQG@9** | **1.655** | 1.000 s | deep in it |
+| **h70** (the model's pick) | kill: **IV@202 + MQG@202** | **1.504** | 1.000 s | *barely* over |
+
+h40's opener is a triple stack **43% past** the floor; h70's kill cluster clears it by **0.3%**. A
+mispricing of floor-bound haste is therefore (a) invisible to every single-buff probe by construction,
+(b) differential between exactly these two plans, and (c) a *window × window* effect — the shape §13.9's
+exclusion left standing. It also lands on the one hard-coded modelling assumption in the ramp block
+(`index.html:926`): *"haste shortens a span but never changes its cast COUNT … so haste gains nothing
+from covering the ramp."* That is a statement about the linear regime. h40 presses its stack **into the
+opener ramp**, where casts are `(2.5 − ⅓·stacks)/m` and the floor does **not** bind, while the steady
+state right after it is pinned at 1.0 s. Whether the two sides of that hand-off agree is untested.
+
+### 14.3 The design — crossed on the floor crossing
+
+Same rig as round 3 (T=100, press at t=30, cold open, infinite mana, CRN seed 11, 20k iters), but the leg
+is a **set** of haste buffs pressed together. Each set crosses `m = 1.5` at a rating computed from
+`R* = 1577·(1.5/mult − 1) − rating_add` (`scratchpad/p8/floorcross.mjs`):
+
+| set | mult | +rating | floor crosses at R | in a 0–300 grid |
+|---|---|---|---|---|
+| IV | 1.20 | 0 | 394.3 | never floors |
+| MQG | 1.00 | 330 | 458.5 | never floors |
+| Zerk | 1.10 | 0 | 573.5 | never floors |
+| **IV+MQG** | 1.20 | 330 | **64.3** | ✔ bracket 64/65 |
+| **IV+Zerk** | 1.32 | 0 | **215.1** | ✔ bracket 215/216 |
+| **MQG+Zerk** | 1.10 | 330 | **243.5** | ✔ bracket 243/244 |
+| **IV+MQG+Zerk** | 1.32 | 330 | −115.0 | **floored everywhere** |
+
+Grid: `0 40 64 65 70 120 180 215 216 243 244 280 300`. This is **crossed** in round 3's sense — at 64→65
+only IV+MQG changes regime, at 215→216 only IV+Zerk, at 243→244 only MQG+Zerk, the three singles never,
+and the triple never (it is already floored at R=0). No set is "the one that steps," so a shared artifact
+cannot fake the pattern. Both `--var 0` and `--var 3.0` are run, per §13's dichotomy.
+
+### 14.4 The quantity
+
+Marginals `marg(S,R) = 100·(dps_S − dps_base)/dps_base` for model and sim, then the **interaction**
+
+```
+I(S)  = marg(S) − Σ_{k ∈ S} marg({k})          ΔI(S) = I_sim(S) − I_model(S)
+```
+
+Singles are already measured (round 3), so only the four sets are new. `I` is the part of a stacked
+window that is *not* the sum of its parts — the first quantity in this phase that a single-buff fight
+cannot express. `ΔI` is the model's error in pricing it.
+
+### 14.5 Pre-registered falsifiers
+
+Recorded now so the result cannot be read after the fact (§12's sign error is the reason this list exists):
+
+- **F1 — kink location.** Both model and sim must kink at the bracketed rating, to the point. A kink
+  anywhere else in *either* means the floor itself is mis-modelled, which is a finding regardless of B2.
+- **F2 — exclusion.** If `|ΔI(S)| < 0.05 pp` for all four sets, window×window haste interaction is
+  **excluded** exactly as per-buff valuation was, and B2 must be **window × kill**.
+- **F3 — the sign.** B2 needs the model to *under*-rate h40, whose signature is the always-floored triple.
+  So B2 requires **`ΔI(IV+MQG+Zerk) > 0`**. If it is negative, this joins §8, §13.4 and §13.8 in the
+  wrong-signed pile and is retired the same day — no reinterpretation.
+- **F4 — floor vs composition.** If `ΔI` is large but **flat in R** (no kink at the crossing), the
+  mechanism is not the floor but plain multi-buff composition (multiplicative-vs-additive haste stacking),
+  which is a simpler and more serious bug. Distinguishable only because the grid brackets the crossings.
+
+**Harness checks before reading anything** (the §1 and §13.3 lessons): confirm from `SIMLOG=1` that all
+buffs in a set gain their aura at the **same** timestamp. MQG is the only trinket in any set, so the
+category-1141 shared lockout that invalidated §1 cannot bite — but verify it, do not assume it.
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance
