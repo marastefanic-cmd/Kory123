@@ -330,10 +330,16 @@ grid `0 40 70 78 79 120 150 157 158 197 198 240 300`, with the SCB leg on a 3072
 `scratchpad/p8/r3/r3sweep.txt`. It was held back on a *believed* CPU conflict with the acceptance round;
 timing one runner call at **0.716 s** (⇒ ~4 min for the whole sweep) dissolved that — measure, don't assume.
 
-## §12 — ★ THE FLOOR LAW *IS* A B2 MECHANISM — right direction, ~9.5% of the magnitude
+## §12 — the value-window floor loss on the B2 plans  ⚠ **VERDICT CORRECTED BY §13.8 — SIGN ERROR**
+
+> **⚠ READ §13.8 FIRST.** This section's *table is correct and still used*; its **conclusion was wrong**.
+> It claimed the floor correction "pushes B2 the correct direction, ~9.5% of the magnitude." It does not —
+> I read `swing = L(h40) − L(h70) = +0.036` as *"the sim favours h40 by 0.036"* when `L` is the amount the
+> **sim fails to deliver**, so a larger `L(h40)` means the sim rates h40 **lower**. The term is
+> **anti-B2**. Kept in place, uncorrected in body, because the arithmetic below is the input §13.8 uses.
+
 §8 falsified the **residual** as a B2 mechanism. It never asked what the **floor correction itself** does to
-the ranking, and the two point *opposite* ways. Worth separating, because the answer is the first mechanism
-found that pushes B2 the **correct** direction.
+the ranking. The two do point *opposite* ways as a matter of magnitude-vs-ambient-rate — that part survives.
 
 Why they differ: the residual grows with the *ambient* cast rate, so it punishes h40's Icon-riding-MQG+IV.
 The floor loss is `frac(D/Δ) × premium` — it is **largest when Δ is large**, i.e. at *low* haste, so it
@@ -358,9 +364,11 @@ premium = the buff's per-cast multiplier over a plain AB):
 | h40 | 510732 | 713 | **0.140%** |
 | h70 | 511298 | 529 | **0.104%** |
 
-**Predicted sim bias favouring h40 = 0.036 pp.** The observed model-vs-sim gap is **0.38 pp**. So the floor
-law explains **~9.5%** of B2 — the sign is right, the magnitude is an order of magnitude short. B2 is not the
-floor law wearing a disguise.
+~~**Predicted sim bias favouring h40 = 0.036 pp.** The observed model-vs-sim gap is **0.38 pp**. So the floor
+law explains **~9.5%** of B2 — the sign is right, the magnitude is an order of magnitude short.~~
+**↑ WRONG (see the banner and §13.8).** `L(h40) = 0.140% > L(h70) = 0.104%` is the sim delivering **less**
+of what the model credited *for h40*, so the sim rates h40 **lower** — the term is **anti**-B2 by 0.036 pp.
+The one clause that survives unharmed: **B2 is not the floor law wearing a disguise.**
 
 **The h40 `isc@29` row is the striking one.** `D/Δ = 20.000` *exactly*: at that press the local haste makes
 Δ = 1.000s and a 20s window fits twenty whole casts with nothing left over. h40's Icon window is a
@@ -372,8 +380,10 @@ scorer would change *which* presses it likes, not just their scores. Not a chang
 risk.
 
 **What this does and does not overturn.** §8 stands exactly as written — the *residual*, post-correction,
-still has the wrong sign, and "the model misprices SP under haste" is still retired. §12 adds that the
-*correction it was measured on top of* is itself a small pro-h40 term. Both are real; neither is B2.
+still has the wrong sign, and "the model misprices SP under haste" is still retired. ~~§12 adds that the
+*correction it was measured on top of* is itself a small pro-h40 term.~~ **Corrected:** the correction is a
+small **anti**-h40 term, i.e. it points the *same* way as the residual, not the opposite way. Both are real;
+neither is B2; and together they make B2 slightly **harder**, not easier — §13.8.
 
 ## §13 — ★★★ ROUND 3'S VERDICT: the floor law SURVIVES, in a corrected and **more general** form
 
@@ -382,19 +392,33 @@ required; the fourth **fired**, and chasing it down produced a *stronger* law an
 here changes `index.html` — these are facts about the harness and about what the count should *expect* the
 sim to say, not about the plan the tool emits.
 
-### 13.1 The corrected law
+### 13.1 The corrected law — **one window, two sampling rules**
 
-> **A buff window of duration `D` covers exactly `floor(D_eff / Δ_inside)` casts**, where `Δ_inside` is the
-> cast interval **in force inside the window** and `D_eff` is the window's true aura duration.
-> For a **value** buff `Δ_inside = Δ` (the buff does not move the cast boundaries).
-> For a **haste** buff `Δ_inside = Δ_buffed` (it does).
+> A buff window of duration `D_eff` covers, with `Δ_inside` = the cast interval **in force inside it**:
+>
+> | buff class | wowsims samples it at | casts covered |
+> |---|---|---|
+> | **value** (`+SP`, `×dmg`) | cast **COMPLETION** (`cast.go:216/258/338/356`) | `floor(D_eff / Δ)` |
+> | **haste** (`×speed`, `+rating`) | cast **START** (`cast.go:138`, frozen into `Hardcast.Expires` at `:187`) | `ceil (D_eff / Δ_buffed)` |
+>
+> Both step at the same integer crossings of `D_eff/Δ_inside` — which is exactly why §13.2's step
+> locations all landed while the *count* for the haste class was still wrong. See §13.7 for the
+> measurement that separates them.
 
-Round 2's wording — "value buffs floor, **haste buffs are exempt**" — is **falsified**. The exemption was an
-artifact of having only ever measured haste buffs at `--var 0`; see §13.4. The `Δ_inside` form subsumes
-round 2 exactly (for value buffs it *is* round 2) and predicts three further step locations that round 2
-could not, all of which were then observed out of sample.
+Two things get corrected here, at different times:
 
-Closed form, unchanged: `Δ(R) = 1.5/(1+R/1577)`, step to floor `n` at `R = 1577·(1.5n/D − 1)`.
+1. Round 2's **"haste buffs are exempt"** is falsified — they step, and where the closed form says
+   (§13.2/§13.5). The exemption was an artifact of only ever measuring them at `--var 0` (§13.4).
+2. The **`floor` for the haste class** — which is how I first wrote this section — is *also* wrong, and
+   for a reason that is visible in the source rather than inferable from step locations. A value modifier
+   is read when the cast lands, so a cast in flight at fade is unbuffed → `floor`. **Cast time is computed
+   at cast start and frozen** (`spell.CurCast.CastTime = ApplyCastSpeedForSpell(…)`, then
+   `Hardcast{Expires: sim.CurrentTime + spell.CurCast.CastTime}`), so a cast *begun* one tick before fade
+   runs fast for its **whole** duration → `ceil`. **The sign of the model's bias is opposite between the
+   two classes**, which is the whole reason §13.8 had to be computed.
+
+Closed form, unchanged: `Δ(R) = 1.5/(1+R/1577)`, step at `R = 1577·(1.5n/D − 1)`. (That same `:138` line
+carries the `.Round(time.Millisecond)` behind §13.6's quantization.)
 
 ### 13.2 Scorecard against the four pre-registered falsifiers
 
@@ -447,9 +471,15 @@ sum, not the terms.
 **This is a haste × kill-boundary interaction — i.e. exactly the shape B2 is defined to be** ("the emergent
 joint haste×damage×kill interaction that every isolated decomposition reports CLEAN"). It is the first
 mechanism found that is *invisible to every single-axis decomposition by construction*: isolate haste at
-fixed `T` and the two floors cancel; isolate the kill boundary without a haste window and there is nothing
-to cancel against. **Lead status: live, highest-priority.** Do not act on it in the engine yet — it needs a
-magnitude, measured the way §12 measured the value-window loss.
+fixed `T` and the two quantizers cancel; isolate the kill boundary without a haste window and there is
+nothing to cancel against.
+
+**Lead status after §13.8: DEMOTED, not dead.** The magnitude has now been measured the way §12 measured the
+value-window loss, and it comes out **anti-B2 by 0.030 pp** — the cancellation is real and the mechanism is
+real, but on these two plans it *widens* the gap. What survives as a live lead is the narrower claim: the
+`var=0` cancellation proves the model and the sim disagree about **where a haste window's benefit lands in
+time** (inside the window vs at the kill), and that is a genuine timing-of-value disagreement no single-axis
+probe can see. It is the *shape* of B2 without being its *magnitude*.
 
 ### 13.5 Out-of-sample confirmations (locations not in the round-3 grid)
 
@@ -482,6 +512,75 @@ Also settled in passing: **`--seed` IS wired** (seeds 99/12345 give 2461.3/2461.
 11/12/13); the apparent seed-invariance in earlier rounds was one-decimal DPS output granularity, not a
 dead flag. The IV `var=3.0` jump was checked against that: identical across four seeds and still `+0.228 pp`
 at 200k iterations.
+
+### 13.7 ★ Which count? `floor` vs `ceil`, scored on all six buffs × thirteen hastes
+
+Step locations cannot distinguish `floor(n)` from `ceil(n)` — both step at the same integer crossings, with
+the same step height. What distinguishes them is the **level**: `floor` predicts the sim comes in *below*
+the model everywhere, `ceil` *above*. Scored as mean `|sim − prediction|` in pp
+(`scratchpad/p8/countform.mjs`; sim marginals from `r3/r3sweep.txt`, value legs at `var=0`, haste legs at
+`var=3.0`; SCB carries §13.3's `D_eff = 15.010`):
+
+| leg | class | n range | raw model | `×floor/n` | `×ceil/n` | rule for its class |
+|---|---|---|---|---|---|---|
+| Icon | value | 13.3–15.9 | 0.0407 | **0.0156** | 0.0748 | floor → 0.0156 |
+| AP | value | 10.0–11.9 | 0.1465 | **0.0274** | 0.2996 | floor → 0.0274 |
+| SCB | value | 10.0–11.9 | 0.0622 | 0.0779 | *0.0510* | floor → 0.0779 ⚠ |
+| IV | haste | 16.0–19.0 | 0.1744 | 0.2854 | **0.0703** | ceil → 0.0703 |
+| MQG | haste | 16.1–18.7 | 0.1615 | 0.2786 | **0.0504** | ceil → 0.0504 |
+| Zerk | haste | 7.3–8.7 | 0.0833 | 0.1392 | **0.0217** | ceil → 0.0217 |
+
+| pooled | raw | one rule for both: floor | one rule for both: ceil | ★ per sampling rule |
+|---|---|---|---|---|
+| value | 0.0831 | **0.0403** | 0.1418 | |
+| haste | 0.1397 | 0.2344 | **0.0475** | |
+| **all** | 0.1114 | 0.1373 | 0.0946 | **0.0439** |
+
+**Per-sampling-rule beats the raw model by 2.5× and beats either single rule applied to both classes.** The
+margins are not marginal: forcing `floor` on the haste class is 5× worse than `ceil` on IV and MQG. A
+buff-by-buff vote agrees — 37 of 39 haste points sit closer to `ceil`, and *both* exceptions are at hastes
+where `n` is an exact integer, where `ceil(n) == floor(n)` and the two hypotheses are the same number.
+
+⚠ **The one leg the rule loses is SCB** (`floor` 0.0779 vs `ceil` 0.0510), and it is the leg whose `D_eff`
+is least certain — the 10 ms offset of §13.3 is measured to log granularity, and with `n ≈ 11.00` an error
+of a few ms moves the floor by a whole cast. Its measured 156→157 step (`+0.147 pp`) is also *larger* than
+one floor step should give (`≈0.127`). Recorded as an open wrinkle; it does not move §13.8, where SCB is
+absent from both plans.
+
+### 13.8 ★★ The B2 accounting, both classes — quantization is **anti-B2**, and B2's target rises to 0.445 pp
+
+With opposite-signed biases per class, only the net matters. Computed on the actual B2 plans, with each
+window's `Δ` and `Δ_buffed` read off that plan's own cast stream so overlaps (IV under Lust, Zerk under AP)
+are exact (`scratchpad/p8/hastefrac.mjs`):
+
+| plan | value over-credit `L` | haste under-credit `U` | net model bias `L − U` |
+|---|---|---|---|
+| h40 | 0.140% | 0.075% | **+0.064%** |
+| h70 | 0.104% | 0.105% | **−0.001%** |
+
+Writing `S` for the sim's score and `M` for the model's, quantization says `S(p) = M(p) − L(p) + U(p)`, so
+
+```
+[M(h40) − M(h70)] − [S(h40) − S(h70)]  =  (+0.064) − (−0.001)  =  +0.065 pp
+```
+
+**Quantization predicts the model should read h40 0.065 pp HIGHER than the sim.** Observed (§2): the model
+reads h40 **0.38 pp LOWER** (`sim +0.360%` vs `model −0.02%`). So the whole lattice-quantization family —
+*both* sampling rules, value and haste — has the **wrong sign**, and removing it does not shrink B2 but
+**enlarges** it:
+
+> **B2's residual target is 0.445 pp, not 0.38 pp.**
+
+Two consequences worth carrying forward:
+
+- **The family is retired as a B2 candidate, not just the value half.** §12 retired the residual and
+  (wrongly) promoted the correction; §13.4 promoted the haste half; both are now closed the same way. The
+  remaining mechanism must be worth ~0.445 pp *on its own*, with two ~0.03 pp headwinds against it.
+- **h70's net bias is ≈ 0 by cancellation** (`0.104` vs `0.105`), while h40's is `+0.064`. That is not
+  designed — nothing in the optimizer knows about the lattice — but it is the second time (after §12's
+  `isc@29` perfect-fit window) that the *high-haste* plan lands lattice-neutral and the low-haste one does
+  not. If a §5b-style lattice-aware scorer is ever built, this is the pattern it would be exploiting, and
+  the direction it would push presses.
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it

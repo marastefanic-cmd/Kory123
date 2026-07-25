@@ -141,17 +141,28 @@ So the model is written for the player and the sim samples one corner of the pla
 model to read `frac(D/Δ) × premium` high against any sim A/B of a damage/SP window** (≈+0.036pp measured on
 a clean single-buff marginal) before calling that gap a model bug.
 
-**The law's general form (PHASE8 §13 — this CORRECTS the earlier "haste buffs are exempt" wording):**
-`Δ_inside` is the cast interval **in force inside the window** — for a value buff `Δ_inside = Δ`, for a
-**haste** buff `Δ_inside = Δ_buffed` — and `D_eff` is the window's true aura duration (SCB's is `15.010 s`,
-not `15.000`: it is a *proc* off the Mana Emerald, and its aura lands 10 ms after the cast boundary, which
-is enough to move its step a rating point off AP's). **Haste buffs are NOT exempt.** That belief came from
-only ever measuring them at `--var 0`, where the **fight-end quantizer exactly compensates the window
-floor** — the window loses a fractional cast and hands the time back at the kill, where a fixed `T` re-floors
-it. Jitter the fight (`--var 3.0` > one cast interval) and the end-quantizer phase-averages away, leaving the
-window floor exposed: IV steps at `R≈98.6` and `R≈196.9`, Zerk at `R≈143.4`, while MQG — same `D=20`, smaller
-bonus, no integer crossed — correctly does not. **Practical consequence for the harness:** a haste-window A/B
-is only floor-free at `var=0`, and only because two errors cancel there; never read a `var=0` haste marginal
+**The law's general form — ONE WINDOW, TWO SAMPLING RULES (PHASE8 §13; this CORRECTS the earlier "haste
+buffs are exempt" wording).** `D_eff` is the window's true aura duration and `Δ_inside` the cast interval
+**in force inside it**; which way the partial cast at the back edge rounds depends on **when wowsims reads
+the buff**:
+
+| class | read at | casts covered | model's bias |
+|---|---|---|---|
+| **value** (`+SP`, `×dmg`) | cast **COMPLETION** — a cast in flight at fade is unbuffed | `floor(D_eff / Δ)` | **over**-credits `frac(n)` |
+| **haste** (`×speed`, `+rating`) | cast **START**, then frozen — a cast begun a tick before fade runs fast throughout | `ceil (D_eff / Δ_buffed)` | **under**-credits `ceil(n) − n` |
+
+Both step at the same integer crossings, so step *locations* never distinguish them; the *level* does
+(PHASE8 §13.7: per-sampling-rule fits the sim to 0.0439 pp mean, against 0.1114 raw and 0.0946/0.1373 for
+either single rule forced on both classes). `D_eff` is not always the tooltip duration — **SCB's is
+`15.010 s`**, because it is a *proc* off the Mana Emerald and its aura lands 10 ms after the cast boundary,
+which is enough to move its step a rating point off AP's.
+
+**Haste buffs are NOT exempt.** That belief came from only ever measuring them at `--var 0`, where the
+**fight-end quantizer exactly compensates the window's**, so the two cancel and the window looks flat.
+Jitter the fight (`--var 3.0` > one cast interval) and the end-quantizer phase-averages away, exposing the
+window: IV steps at `R≈98.6` and `R≈196.9`, Zerk at `R≈143.4`, while MQG — same `D=20`, smaller bonus, no
+integer crossed — correctly does not. **Practical consequence for the harness:** a haste-window A/B is only
+quantization-free at `var=0`, and only because two errors cancel there; never read a `var=0` haste marginal
 as evidence about window coverage. Charging the back-edge fraction is a live candidate refinement,
 **not implemented** (it moves the B2 deficit the wrong way — PHASE8 §8 — so it would need its own physics
 justification and sim gate).
