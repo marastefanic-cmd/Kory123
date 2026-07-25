@@ -23,17 +23,25 @@ const jsonOut = jsonIdx >= 0 ? args[jsonIdx + 1] : null;
 const dir = args.filter((a, i) => a !== '--json' && (jsonIdx < 0 || i !== jsonIdx + 1))[0] || path.join(REPO, 'tools/xval-results');
 
 // ── parse every results table (matrix + specs + metadata) ──
-const tables = [];
-for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.txt')).sort()) {
+// A table with NO deficits is a legitimate skip (that is the goal state).  A table that could not
+// be PARSED is not — dropping it silently shrinks the analysed grid while "N target columns" still
+// reads like a full sweep.  Keep the two apart and make the second fatal.
+const tables = [], broken = [], deficitFree = [];
+const files = fs.readdirSync(dir).filter(f => f.endsWith('.txt')).sort();
+if (files.length === 0) {
+  console.error(`ERROR: no *.txt cross-val tables in ${dir} — nothing to diagnose.`);
+  process.exit(2);
+}
+for (const f of files) {
   const txt = fs.readFileSync(path.join(dir, f), 'utf8');
   const done = txt.match(/^XVAL-DONE .*/m);
-  if (!done) continue;
+  if (!done) { broken.push(`${f}: no XVAL-DONE line (crashed run?)`); continue; }
   const kv = Object.fromEntries([...done[0].matchAll(/(\w+)=(\S+)/g)].map(x => [x[1], x[2]]));
   const specs = {};
   for (const m of txt.matchAll(/plan@h(\d+): eff=([\d.]+)\s+(\{.*\})/g)) specs[+m[1]] = JSON.parse(m[3]);
   const lines = txt.split('\n');
   const hdr = lines.findIndex(l => l.startsWith('plan\\sim'));
-  if (hdr < 0) continue;
+  if (hdr < 0) { broken.push(`${f}: no matrix header`); continue; }
   const cols = lines[hdr].trim().split(/\s+/).slice(1).map(Number);
   const M = {};
   for (let i = hdr + 1; i < lines.length; i++) {
@@ -41,6 +49,15 @@ for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.txt')).sort()) {
     const parts = t.split(/\s+/).map(Number);
     M[parts[0]] = Object.fromEntries(cols.map((c, k) => [c, parts[1 + k]]));
   }
+  // An `undefined`/NaN cell makes every `>` comparison false, so a malformed matrix empties
+  // defCols and the table then looks deficit-free rather than unreadable.
+  const badCell = Object.keys(M).map(Number).some(ph => cols.some(c => !Number.isFinite(M[ph][c])));
+  if (!Object.keys(M).length || badCell) { broken.push(`${f}: matrix has missing/non-numeric cells`); continue; }
+  // Every haste column needs its plan spec: `t.specs[h]` undefined makes toSched() return {},
+  // which scores a fight with NO COOLDOWNS — a plausible low number that understates modelBest
+  // and misroutes a SEARCH-MISS into the SCORER-GAP bucket.
+  const missingSpec = cols.filter(h => !specs[h]);
+  if (missingSpec.length) { broken.push(`${f}: no plan@h spec for haste ${missingSpec.join(',')}`); continue; }
   const defCols = [];
   for (const c of cols) {
     if (M[c] == null) continue;
@@ -49,12 +66,23 @@ for (const f of fs.readdirSync(dir).filter(f => f.endsWith('.txt')).sort()) {
     for (const ph of Object.keys(M).map(Number)) if (M[ph][c] > best) { best = M[ph][c]; bestPh = ph; }
     if (best > native) defCols.push({ simH: c, borrowedH: bestPh, simN: native, simB: best });
   }
-  if (!defCols.length) continue;
-  const bossM = f.match(/^boss-([A-Za-z]+)-/);
+  if (!defCols.length) { deficitFree.push(f); continue; }
+  // The recorded class is authoritative; the filename is only a fallback.  A boss table saved
+  // under another name would be re-scored as a plain fight (segments=null) and every
+  // SEARCH-MISS/SCORER-GAP verdict computed on a fight shape that never existed.
+  const boss = kv.class && kv.class.startsWith('BOSS:') ? kv.class.slice(5)
+             : (f.match(/^boss-([A-Za-z]+)-/) || [])[1] || null;
   tables.push({ file: f, kit: kv.kit.split('+'), cls: kv.class, T: +kv.T, lust: +kv.lust,
-    boss: bossM ? bossM[1] : null, specs, defCols, hastes: cols });
+    boss, specs, defCols, hastes: cols });
 }
-console.error(`${tables.length} tables with deficits; ${tables.reduce((n, t) => n + t.defCols.length, 0)} target columns`);
+if (broken.length) {
+  console.error(`ERROR: ${broken.length} of ${files.length} table(s) could not be parsed — the diagnosis\n` +
+                `would cover fewer columns than it claims:`);
+  for (const b of broken) console.error(`  - ${b}`);
+  process.exit(2);
+}
+console.error(`${files.length} tables read (${deficitFree.length} deficit-free); ` +
+              `${tables.length} with deficits; ${tables.reduce((n, t) => n + t.defCols.length, 0)} target columns`);
 
 // ── score everything with the engine ──
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
@@ -69,15 +97,21 @@ for (const t of tables) {
     // spacing by the engine's own chain logic; _prestack/_intermissions are harness-side.
     const K2B = { IV: 'icyVeins', AP: 'arcanePower', Zerk: 'berserking', Icon: 'isc', Gem: 'scb', Skull: 'skull', MQG: 'mqg', BL: 'bloodlust' };
     const toSched = spec => {
+      if (!spec) throw new Error('toSched: missing plan spec — scoring {} would silently model a fight with no cooldowns');
       const s = {};
       for (const k in spec) if (K2B[k] && Array.isArray(spec[k]) && spec[k].length) s[K2B[k]] = spec[k].slice();
+      if (!Object.keys(s).length) throw new Error(`toSched: spec mapped to an EMPTY schedule (keys: ${Object.keys(spec).join(',')})`);
       return s;
     };
     let segments = null;
     if (t.boss) {
       const p = (window.BOSS_PRESETS || []).find(x => x.name.replace(/[^A-Za-z]/g, '') === t.boss);
       if (!p) throw new Error('boss preset not found: ' + t.boss);
-      const rows = (p.phases || []).map(ph => ({ from: ph.from, to: ph.to, type: ph.type, mult: ph.mult || 1, targets: ph.targets || 0 }));
+      // Lurker and Solarian carry the LEGACY `intermission: [from,to]` field and no `phases`;
+      // reading `p.phases || []` drops their downtime entirely (40s of Lurker's 160s fight).
+      // Normalize exactly as the UI's own preset applier does.
+      const rawPhases = p.phases || (p.intermission ? [{ type: "intermission", from: p.intermission[0], to: p.intermission[1] }] : []);
+      const rows = rawPhases.map(ph => ({ from: ph.from, to: ph.to, type: ph.type, mult: ph.mult || 1, targets: ph.targets || 0 }));
       segments = rows.length ? buildSegments(rows, p.T) : null;
     }
     const kitKeys = ['icyVeins', t.kit[0], t.kit[1], 'arcanePower', 'berserking', 'bloodlust'];
