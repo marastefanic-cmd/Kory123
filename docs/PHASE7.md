@@ -1869,3 +1869,67 @@ them for a single consistent round.
 specs under both conventions, and both read **0.000 %** — so the instrument is measuring the flip and
 not its own noise. Any duel row whose "presses moved" column is `(none)` and whose Δ is not 0.000 % would
 be an instrument fault, and there are none.
+
+### §5.23 — ROUND 6 GRADED: the first full `emit=fire` baseline — the 2-column work list SURVIVES the harness fix, KT's isc+scb over-floor survivors DISSOLVE, and the round catches two instrument defects of its own (07-25)
+
+Round 6 is the §5.22 re-gather: all 36 tables under `EMIT=fire`, the P7.14 engine, and the
+reference gear — the first round where the sim provably executes the plan the tool prints. The
+driver self-committed every batch; grading ran the four standing instruments.
+
+#### The headline grades
+
+- **Invariant A holds everywhere**: `monoDip=0.00%` on all 36 tables — the cold-open canary
+  survived the convention flip.
+- **The B banner still FAILS (141/345 borrowed-win columns, 40.9%)** — and per §5.15b that is the
+  expected reading of an existence test over ~90 near-ties per table (borrowed margin median
+  0.034%, native margin median 0.003%, both below the ~0.02% CRN resolution; borrower distance:
+  60.3% adjacent, 0 byte-identical). `deficitTables 34→34`, **zero verdict flips**.
+- **★ The unrigged persistence test names EXACTLY the same two columns as round 5**:
+  `isc-mqg h40` (rival `plan@h70`, **5/5** lengths, margins 0.007–0.384%) and `isc-skull h20`
+  (rival `plan@h100`, **4/5**). The emit=fire correction moved 86/345 plan cells and neither
+  column budged — **the work list is harness-fix-robust, which is the strongest evidence yet that
+  these two are model signal.**
+
+#### Kael'thas under P7.14 + fire — one family dissolves, the other re-shapes
+
+| table | round 5 (intent) | round 6 (fire) |
+|---|---|---|
+| KT `isc+scb` | DEFICIT **0.38%** (the 3 over-floor survivors @95/@195/@245) | DEFICIT **0.09%** `[@sim0: plan@140 > native@0]` |
+| KT `mqg+skull` | DEFICIT 0.15% `[@sim100: plan@30]` | DEFICIT **0.31%** `[@sim0: plan@30 (2185.6) > native@0 (2178.9)]` |
+
+The **isc+scb over-floor survivors are GONE** — 0.09% sits inside the ±0.125 pp wall-jitter band,
+so P7.14 (whose entire evidence base was KT isc+scb at h195) discharged exactly the cells it was
+derived on. The **mqg+skull table re-shaped the other way**: its r5 worst column (@sim100, whose
+borrowed plan duelled 0.000% in §5.22) is gone, replaced by a larger @sim0 deficit — the only
+boss cell above the band in round 6. ⚠ Its native h0 plan presses `AP@109` (4 s into the AoE
+window) where the winning rival presses `AP@105` (flush with the phase start) — filed as the
+round-7 look, **after** the groupSeeds landing (PHASE9 §5.16) re-baselines KT's plans.
+Every other boss cell: Vashj 0.04/0.07, Al'ar 0.03/0.13 — at or inside the band.
+
+#### The round graded its own instruments twice
+
+1. **`artifact=1` on KT mqg+skull was a GUARD FALSE POSITIVE** (`h295 MQG@49` inside `[42,55)`).
+   The guard's premise — "under EMIT=fire simulate() must defer every press past the wall" — is
+   wrong for buff presses: the engine's documented convention is that **gap presses fire in
+   place** (game-true: a trinket is usable while the boss is untargetable; the wall seconds are
+   zero-valued by model and sim alike, and the early press legitimately cycles MQG's 300 s
+   cooldown for its second use). Verified by direct probe: `actEff` returns 49.000 for intent 49.
+   The transcription is FAITHFUL; the guard now reports `wallPress=` info under fire and reserves
+   `artifact=` for intent mode. **The §5.22 artifact class was always the *deferral* mismatch
+   (AoE-anchored walls), never in-place presses.**
+2. **The EFF-AUDIT needed per-table scoping.** Its corpus-global scorer-identity proof (259
+   pinned cells) says nothing about a table with ZERO unchanged specs — and P7.14 is a scoped
+   repricing that changed every KT spec, so KT's eff deltas were being pooled into `worse=` as if
+   they were search regressions. The audit now puts moved cells of pin-less tables in an
+   **`ungraded=`** bucket (round 6: `worse=7 better=5 tie=44 ungraded=30` — the 7 are all class
+   cells, all attributed to `groupSeeds` by PHASE9 §5.16, fix staged; the 30 are KT's repricing
+   plus Vashj-isc-scb's transcription-only re-emission).
+
+#### What this round is, and is not
+
+Round 6 **is** the emit=fire baseline every future round diffs against, and the round that
+hardened three instruments (wall-press guard, EFF-AUDIT scoping, and the exit-1 grade that now
+blocks a regression from riding a green exit). It is **not** a verdict round: the engine that
+gathered it carries the 7 attributed search regressions, so `xval-round-diff` correctly exits 1
+against round 5 until the PHASE9 §5.16 fix lands and the affected cells are re-gathered
+(round 7 — cheap under `DPS_CACHE`: only changed specs cost sims).

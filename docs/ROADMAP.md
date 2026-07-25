@@ -2,9 +2,33 @@
 
 ## Resuming after a context clear (start here)
 
-### ⏳ 0. FRESHEST STATE (07-25) — ROUND 6 IS IN FLIGHT, and it already found a search regression
+### ⏳ 0. FRESHEST STATE (07-25/26) — ROUND 6 IS COMPLETE AND GRADED; the groupSeeds fix is staged
 
 **Read this before anything below it; items 1–2 describe round 5, which round 6 supersedes.**
+
+- ✅ **ROUND 6 GRADED (late 07-25 — full record: PHASE7 §5.23 + DIARY).** 36/36 tables under
+  `emit=fire`: monoDip 0.00% everywhere · **the persistence work list is UNCHANGED and now
+  harness-fix-robust: `isc-mqg h40` (5/5) + `isc-skull h20` (4/5)** · KT isc+scb's 3 over-floor
+  survivors **DISSOLVED** under P7.14+fire (0.38%→0.09%, inside the band); KT mqg+skull re-shaped
+  0.15%→**0.31%** `[@sim0: plan@30 > native@0; native presses AP@109, 4s into the AoE window]` —
+  the round-7 look, after the fix lands. Two instrument defects found and fixed by the round
+  itself: the artifact guard's stale deferral premise (wall presses fire IN PLACE, faithful —
+  `wallPress=` info now, `artifact=` reserved for intent) and the EFF-AUDIT's missing per-table
+  scoping (`ungraded=` bucket for pin-less tables; KT's P7.14 repricing no longer reads as search
+  regressions). Final audit: `worse=7 better=5 tie=44 ungraded=30` — the 7 are the attributed
+  groupSeeds cells below.
+- ★★★ **THE §5.15 REGRESSIONS ARE ATTRIBUTED AND THE FIX IS STAGED (PHASE9 §5.16).** All 7 cells
+  = **groupSeeds ALONE** (groom exit exonerated by single-variable isolation). Mechanism: an
+  ADDITIVE seed class wired through three EXCLUSIVE selection points (seed-fill eviction of
+  randoms · top-6 snap displacement · winner-take-all into basinHop — h160: a +34 snap lead in a
+  dead-end basin traded away +3594 of hop). Fix = fill-first + base-top-6-preserved + hop-both
+  with strict-improvement override (ties carry the old selection — h260's hops tie EXACTLY on two
+  layouts). Validated on all 60 cells of the 6 affected tables: **≥ round 6 everywhere, ≥ round 5
+  at 59/60**; the one residual (`isc-mqg-medlong @h20`, −0.001 eff) is the finishing-tail
+  winner-take-all, documented with two filed remedies (callable `finishLine` double-run;
+  cluster-shift move class). Landing gates in flight: golden A/B sweep + SCORE-AUDIT, then
+  exact-match. Landing also carries a footer build stamp + preset-overwrite flash (user-reported
+  UX trap: a preset load silently resets typed gear).
 
 - **Round 6 = the `emit=fire` re-gather** (task #70). `tools/xval-results/` is being refilled; round 5
   is archived at `tools/xval-results-archive/phase7-round5/` (the last `emit=intent` round — a table
