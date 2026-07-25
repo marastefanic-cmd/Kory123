@@ -5,8 +5,16 @@
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
 2. **Plan in flight: `docs/PHASE7.md` — FIX the cross-val deficits so the acceptance test passes.
-   Status 2026-07-24: the FIXES ARE LANDED (read PHASE7 §5 — the run ledger); the acceptance
-   re-campaign is running.** What landed: three sim-gated scorer terms (RULES §3b — press-snap
+   Status 2026-07-25: the FIXES ARE LANDED and **round 5 is gathered and read (PHASE7 §5.15)**.
+   ★★★ **The work list is TWO kit-columns, not 34 failing tables** — `isc-mqg h40` (rival `plan@h70`
+   beats native at **5/5** fight lengths) and `isc-skull h20` (rival `plan@h100`, 4/5), found by the
+   unrigged consistent-alternative test `tools/xval-persist.mjs`. The `B FAILS on 34/36` banner is an
+   *existence* test over ~90 near-ties per table (the diagonal's own median winning margin is **0.003%**,
+   below the harness's ~0.02% resolution), so it cannot discriminate — the bar stays zero columns, but do
+   not steer work off it (ACCEPTANCE "What the B BANNER can and cannot tell you"). Round 5 also **killed
+   the reference-gear explanation**: the correction moved 124/345 plan cells (35.9%) and *zero* verdicts.
+   Next: `tools/diagnose-deficit.mjs` on those two columns (SEARCH-MISS vs SCORER-GAP), with a
+   magnitude-vs-resolution judgement first — each has a length at 0.007%.** What landed earlier: three sim-gated scorer terms (RULES §3b — press-snap
    slippage at hard edges; externals snap to the cast lattice, which tempers the IV@0 "ramp
    compression" credit; ramp casts snapshot buffs at cast START), two search passes (polished CS
    chain-geometry family; drop-one-use escape), the KT AoE harness gap closed (genapl `_aoe` →

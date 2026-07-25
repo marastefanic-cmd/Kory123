@@ -1,22 +1,23 @@
 # Cross-validation raw matrices — the CURRENT acceptance round
 
-> **⚠ RE-BASELINE IN FLIGHT (round 5, started 07-25).** Round 4 — the previous contents, now snapshotted
-> into `tools/xval-results-archive/phase7-round4/` — was gathered under the **old harness gear**: the model
-> side built its plans without `t5two` and at `sp: 1387`, a mage the sim does not run (PHASE8 §6/§7/§20).
-> The *sim* columns used the real export and were fine; what was suspect is **which plan each row optimized
-> to**. `tools/reference-gear.mjs` fixed that, and this directory is being refilled kit-by-kit on the
-> corrected gear. **Until the trailing `RERUN-DONE failures=0` lands, this round is PARTIAL — a mix of
-> round-4 and round-5 tables — and no acceptance verdict may be read off it.**
+> **✔ ROUND 5 IS COMPLETE (07-25) — this directory is a single, coherent round** on the corrected harness
+> gear (`tools/reference-gear.mjs`: `t5two` + effective `sp: 1450`; PHASE8 §6/§7/§20). All 36 tables carry
+> `XVAL-DONE`. Round 4 — gathered under the old gear, where the model side built its plans without
+> `t5two` and at `sp: 1387`, a mage the sim does not run — is archived at
+> `tools/xval-results-archive/phase7-round4/`.
 >
-> **⚠ And the pre-flight under-predicted this.** PHASE8 §20.2's probe measured the correction as
-> *rank-neutral* (same argmax at every haste on its fight; one 0.011-eff-AB reorder at h150), which was
-> read as "the plans will not move". The round itself says otherwise: `xval-round-diff` on the first four
-> completed tables reports **6 of 40 `(haste → plan)` cells changed**, on a −0.4…−1.1% eff level shift.
-> The probe was one fight family at four hastes; the round is 36 fights at 7–10 hastes each, and
-> rank-neutrality on one fight is simply not the same statement as rank-neutrality everywhere. Nothing
-> about the *decision* changed — the correction is right either way, because a harness must describe the
-> mage the sim runs — but the claim "the headline is not expected to move" is no longer supported and is
-> withdrawn until this round finishes.
+> **What the correction did, measured:** `xval-round-diff` reports **124 of 345 `(haste → plan)` cells
+> changed (35.9%)** across 34/36 tables, on a −0.4…−1.1% eff level shift (KT −6.1…−6.8%) — and
+> `deficitTables 34→34`, **zero verdict flips**, `monoDip` 0.00% on both sides. Two things follow. **(1)
+> PHASE8 §20.2's pre-flight is withdrawn**: it measured the correction as *rank-neutral* on one fight
+> family at four hastes and concluded "the plans will not move"; 36 fights at 7–11 hastes say otherwise.
+> **(2) ★★★ The invariant-B failure is NOT a gear artifact** — correct the gear and the same 34 tables
+> fail by the same widths.
+>
+> **⚠ Per-table widths wander BOTH ways under a pure repricing** — 12 improved, 8 worsened, 16 unchanged
+> (net 0.42 pp over 36 tables), including `scb-skull-short` 0.02%→**0.23%** and `scb-mqg-short`
+> 0.03%→**0.21%**. A table can go from essentially-clean to among-the-worst **with no model change at
+> all**, so never read round-over-round width drift as convergence.
 
 Committed output of the holdout haste-adaptation cross-val (`tools/xval.mjs`, driven by
 `tools/xval-campaign.sh` + `tools/xval-boss.sh`). The scratchpad they are produced in is ephemeral;

@@ -73,6 +73,36 @@ round-5 sim scores are not comparable to each other; §20.6 identified the unifo
 band as a REPRICING caused by two harness *input* fixes. Both plans must be **re-simmed under one
 current harness**. That is a new instrument, not a column you can read off existing output.
 
+**★★★ ONE LEVEL UP — the same trap eats ROUND-OVER-ROUND HEADLINES, and it has now been measured.**
+Half 2 says a table summary cannot answer "did I break this cell." The identical argument applies to a
+whole round's headline versus the previous round's: **a round-level number is a summary too.** Round
+4→5 is the proof. It was a **pure harness repricing** — `tools/reference-gear.mjs` gaining `t5two` and
+effective `sp: 1450`, **zero model change** — and `xval-round-diff` measures it as **124 of 345
+`(haste → plan)` cells moved (35.9%)** across 34/36 tables, with `deficitTables 34→34` and **zero
+verdict flips**. Worse, per-table widths wandered **both ways**: 12 improved, 8 worsened, 16 unchanged
+(net 0.42 pp over 36 tables), including `scb-skull-short` 0.02%→**0.23%** and `scb-mqg-short`
+0.03%→**0.21%**. A table can go from essentially-clean to among-the-worst with **no model change at
+all**. Therefore the tidy-looking series *borrowed-win columns `167 → 145 → 142 → 135`, mean width
+`0.160% → 0.081% → 0.081% → 0.069%`* is **not convergence evidence** — most of that drift is
+repricing. Two rules follow: **(a)** compare a round only to a round gathered under the **same
+harness**; **(b)** a harness edit invalidates the *rankings* too, not just the absolute scores, so
+"rank-neutral, the plans won't move" is a claim that must be **measured on the full grid**, never
+inferred from one fight family (PHASE8 §20.2's pre-flight made exactly that inference and is
+**withdrawn**).
+
+**★★★ And the per-table CLEAN/DEFICIT banner is an EXISTENCE TEST at a near-perfect tie — it grades,
+but it cannot prioritize.** Invariant B as implemented asks "does *any* rival beat native in *any*
+column": ~10 columns × ~9 rivals ≈ **90 comparisons per table**, each decided at a margin whose
+*median when the diagonal wins* is **0.003%** — an order of magnitude under the harness's own
+CRN/10k-iteration resolution (~0.02%). At the observed 39.1% per-column borrowed-win rate, an
+existence test over ~10 columns returns DEFICIT with probability `1 − 0.609¹⁰ ≈ 99.3%`. **The banner
+would read `B FAILS` for a converged model and a broken one alike**, so it must never be used to steer
+work. The bar stays (zero borrowed-win columns, user-directed); the **work list** comes from
+`node tools/xval-persist.mjs`, which asks the structural question instead — *is there ONE rival layout
+that beats native at essentially every fight length?* — and needs no tuned thresholds. It names **2
+columns** where the banner fails 34 tables. Full derivation: ACCEPTANCE "What the B BANNER can and
+cannot tell you"; the corrections are in DIARY (07-25).
+
 **⚠⚠ The same trap on the MODEL side, and it is easier to fall into.** The rule generalises past the
 sim: **never compare a freshly-computed score against a RECORDED one.** A shipped plan does not carry
 `simulate()`'s maximum for its own layout — it carries the *legibility trade* grooming paid for it

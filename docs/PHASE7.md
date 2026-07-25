@@ -1,6 +1,9 @@
 # PHASE 7 — Fix the cross-val deficits (make the acceptance test PASS)
 
-**Status:** IN FLIGHT — diagnostic COMPLETE (§5 run ledger below), fixes landing. Phase 6 gathered the
+**Status:** IN FLIGHT — diagnostic COMPLETE (§5 run ledger below), fixes landing. **Round 5 is gathered
+and read (§5.15): the target list is TWO kit-columns** (`isc-mqg h40`, `isc-skull h20`), not the 34
+failing tables the banner names — and the corrected reference gear moved 35.9% of the plans while moving
+the verdict not at all, so the B failure is not a gear artifact. Phase 6 gathered the
 data and proved the measurement correct; Phase 7 **dives into the results and fixes the root causes** so
 that the next run of `docs/ACCEPTANCE.md` passes fully. This is the "fix" phase the user scoped: *not*
 accept the basin — kill it. **Read §5 first for what is already established this run.**
@@ -31,6 +34,13 @@ NOT pre-classify them (some grow with length, some shrink; that distinction is f
 establish and act on, not to assume). Get the authoritative, un-graded list from:
 `node tools/xval-verify.mjs` (all 167 borrowed-win columns across 36 tables) and
 `node tools/xval-collect.mjs tools/xval-results` (worst cell + locus per table).
+
+> **⚠ SUPERSEDED at round 5 (§5.15b) — read that first.** The snapshot below, and
+> `xval-verify.mjs`'s "length-robust … Phase-7 targets" list, are **not** length-persistence tests: they
+> mean "this borrowed win appears in a long or xl table", which for a 0.02%-scale near-tie is a coin flip
+> that happened to land on a long fight. The real target list is the **2 kit-columns** the unrigged
+> consistent-alternative test names (`tools/xval-persist.mjs`): `isc-mqg h40` and `isc-skull h20`. The
+> *bar* is still every column; the *work list* is those two.
 
 The **long/xl deficits are a sensible place to START** (one per kit, all the shape "a plan built for a
 *neighbor* haste out-sims the native"), because a violation that survives a long fight is least likely to
@@ -579,3 +589,91 @@ did not exist; all 25 presets threw, and the summary still printed **"0/25 prese
 error lines were printed alongside. This is the 07-25 audit's own lesson reproduced first-person, in a
 throwaway script, by the person who had just written the lesson down: *an instrument whose failure mode
 is a PASS must be dry-run against known-nonempty data before its verdict is believed.*
+
+### 5.15 ROUND-5 RESULTS — the corrected gear, and the collapse of the target list from 34 tables to 2 columns
+
+Round 5 = all 36 tables re-gathered on the **corrected reference gear** (`tools/reference-gear.mjs`:
+`t5two` + effective `sp: 1450`; PHASE8 §6/§7/§20), same 36 seeds as rounds 3–4, everything else per the
+locked protocol. Round 4 archived to `tools/xval-results-archive/phase7-round4/`.
+
+**Headline (recomputed by `xval-verify.mjs`, cross-checked by `xval-collect.mjs` — they agree):**
+`monoDip = 0.0000%` on all 36 · **135** borrowed-win columns across 34/36 tables · worst **0.38%**
+(`boss-KT-isc-scb @sim95`, `plan@165` 2238.5 > native 2230.1) · median 0.035% mean 0.069% · ≥0.3%: 3,
+≥0.2%: 12, ≥0.1%: 30 · CLEAN 2/36 (`isc+scb medlong`, `isc+scb xl`).
+
+#### (a) The repricing moved a third of the plans and NONE of the verdict
+
+`node tools/xval-round-diff.mjs tools/xval-results-archive/phase7-round4 tools/xval-results`:
+
+```
+ROUND-DIFF tables=36 compared=36 errored=0 tablesWithPlanChange=34 planCells=124/345 deficitTables=34→34
+verdict flips: none
+```
+
+**124 of 345 plan cells changed (35.9%)** on a −0.4…−1.1% `eff` level shift (KT −6.1…−6.8%) — the
+round-diff's REPRICING signature, exactly as its own header predicts. And the verdict is unmoved:
+`deficitTables 34→34`, zero flips, `monoDip` 0.00% on both sides.
+
+Three conclusions, all load-bearing:
+1. **★★★ The B failure is NOT a reference-gear artifact.** The obvious remaining suspicion after PHASE8
+   §20 — "the model side was optimizing for a mage the sim does not run, of course it loses columns" — is
+   dead. Correct the gear and the same 34 tables fail by the same widths.
+2. **Invariant A was already clean at round 4.** Round 5 confirms monotonicity *survives* the corrected
+   gear; it did not fix anything.
+3. **★★ Per-table widths wander both ways under a pure repricing** — 12 improved, 8 worsened, 16
+   unchanged, net 0.42 pp over 36 tables — including `scb-skull-short` 0.02%→**0.23%** and
+   `scb-mqg-short` 0.03%→**0.21%**. A table can go from essentially-clean to among-the-worst **with no
+   model change at all**, so the round-over-round headline drift (142→135 columns, 0.40%→0.38% worst) is
+   mostly repricing and must **not** be read as convergence. This is the same trap TOOLING names under
+   *"DUEL what changed"*, one level up: it applies to whole rounds, not just cells.
+
+PHASE8 §20.2's pre-flight ("rank-neutral; the plans will not move") is therefore **withdrawn** — it was
+one fight family at four hastes; this is 36 fights at 7–11 hastes each. The *decision* to correct the
+gear stands regardless: a harness must describe the mage the sim runs.
+
+#### (b) ★★★ The target list is 2 columns, not 34 tables — and the old §1 snapshot is superseded
+
+The banner's `B FAILS on 34/36` cannot steer this phase: it is an **existence** test over ~90 near-ties
+per table, and the diagonal's own median winning margin is **0.003%**, below the harness's ~0.02%
+CRN/10k resolution. At the observed 39.1% per-column borrowed-win rate an existence test over ~10
+columns must return DEFICIT ~99.3% of the time. The full argument, with the positive counterpart (pure
+noise would give ~99.8% borrowed-win columns, not 39.1% — so the diagonal genuinely dominates), lives in
+ACCEPTANCE → *"What the B BANNER can and cannot tell you"*.
+
+The test this phase's target list should have been built on is instead: **does one specific rival layout
+beat native at MOST fight lengths?** — the only shape a real `(kit, haste)` adaptation defect can take.
+Unrigged over all 57 kit-columns, no magnitude or distance filter (`node tools/xval-persist.mjs`):
+
+```
+best rival wins 5 of the lengths :   1 columns ★
+best rival wins 4 of the lengths :   1 columns ★
+best rival wins 3 of the lengths :  10 columns
+best rival wins 2 of the lengths :  20 columns
+best rival wins 1 of the lengths :  16 columns
+best rival wins 0 of the lengths :   9 columns
+
+isc-mqg   h40  <- rival plan@h70   wins 5/5  margins% [0.094, 0.007, 0.260, 0.101, 0.073]
+isc-skull h20  <- rival plan@h100  wins 4/5  margins% [0.087, 0.007, 0.066, 0.011]
+```
+
+**THE PHASE-7 TARGET LIST IS THOSE TWO COLUMNS.** §1's snapshot table (12 long/xl loci) and
+`xval-verify.mjs`'s "length-robust (long/xl, non-KT) deficits — Phase-7 targets" list (11 tables) are
+both **superseded**: neither is a length-*persistence* test — they mean "appears in a long or xl table",
+which for a near-tie is a coin flip that happened to land on a long fight. Both surviving columns are
+low-haste (h40, h20), consistent with the recorded low-haste micro-placement slack (DIARY open debts).
+
+⚠ **Both still need a magnitude-vs-resolution judgement before either is called a defect**: each has at
+least one length at 0.007%, well inside the ±0.02% ruler. Diagnose them with
+`tools/diagnose-deficit.mjs` (SEARCH-MISS vs SCORER-GAP) before designing anything.
+
+#### (c) The rigged-sieve correction — recorded so it is not repeated
+
+Before the test above, a three-filter sieve was built (persistence ≥4/5 **AND** borrower ≥2 grid steps
+**AND** magnitude ≥0.10%), thresholds chosen **after** looking at round 5. It named four columns
+(`isc-skull h130` 0.279%, `scb-skull h90` 0.229%, `isc-mqg h20` 0.133%, `isc-mqg h110` 0.101%) — and the
+two tests **disagree completely**. All four sieve survivors fail the unrigged test (best 3/5, magnitudes
+inconsistent by 20×: `isc-skull h130`'s rival h185 gives 0.009% / 0.014% / 0.279%), and **both unrigged
+survivors were rejected by the sieve** (`isc-mqg h40` by the distance filter at maxDist 1; `isc-skull
+h20` by the magnitude filter at 0.087%). Nothing from the sieve is recorded as a finding.
+**Lesson: a sieve whose thresholds you chose after seeing the data is not evidence; the threshold-free
+test that names the only physically possible shape of the defect is.**

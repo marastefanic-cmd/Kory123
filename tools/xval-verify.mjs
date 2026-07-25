@@ -58,7 +58,13 @@ console.log(`(a) worst monoDip: ${(worstMono*100).toFixed(4)}%  ${worstMono>1e-9
 console.log(`(b) worst diagonal deficit: ${(worstDef*100).toFixed(2)}%  [${worstDefAt}]`);
 console.log(`(b) total borrowed-plan-wins columns: ${totalBorrowWinCols}`);
 console.log(`cross-check vs reported diagWorst: ${mismatches.length? 'MISMATCHES:\n  '+mismatches.join('\n  ') : 'all match'}`);
-console.log(`\nlength-robust (long/xl, non-KT) deficits — Phase-7 targets:`);
+// ⚠ This list is a HINT, not a persistence test. "Appears in a long or xl table" is not the same
+// statement as "this (kit, haste) cell is genuinely mis-adapted" — at the 0.02% scale these margins live
+// at, landing on a long fight is a coin flip. The test that grades length-persistence properly is
+// tools/xval-persist.mjs (ACCEPTANCE "What the B BANNER can and cannot tell you"); it names 2 columns
+// where this list names 11 tables, and they barely overlap. Steer work off THAT one.
+console.log(`\nborrowed wins on a long/xl table (non-KT) — a hint about where to look, NOT a persistence`);
+console.log(`test; run \`node tools/xval-persist.mjs\` for the graded target list:`);
 for (const l of longRobust.sort()) if (!/Kael/.test(l)) console.log('  '+l);
 
 // The verdict, with an exit code — so "run it before believing any ledger" is mechanical rather than

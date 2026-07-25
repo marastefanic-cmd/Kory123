@@ -2342,6 +2342,13 @@ That inflation is **30× larger than the correction's real effect**. Deriving `p
 cfgs spread is therefore not tidiness; it is what keeps the band meaning what it says.
 
 ### 20.2 Pre-flight probe — both questions answered **before** a production file was touched
+
+> **⚠ Q2 BELOW IS WITHDRAWN — do not carry it forward.** Its conclusion (*"the argmax is the same plan under
+> every cfg at every haste"* ⇒ "the plans will not move") was overturned at 18 tables in **§20.5** and is
+> formally withdrawn at full grid scale in **§20.7**: the completed round-5 diff moves **124 of 345 plan
+> cells (35.9%)**. **Q1 is untouched** and independently confirmed — it cross-scores a *fixed* plan set and
+> measures the repricing, and the round's −0.4…−1.1% `eff` band reproduces it at the same magnitude.
+
 `$SP/p8/refprobe.mjs`: 4 cfgs × 4 haste points (`h ∈ {0,70,150,300}`, `T=300`, BL@60), each cfg's champion
 cross-scored under **every** cfg. Cross-scoring is what isolates the cfg effect from search noise — column 0 is
 the *same plan* priced four ways.
@@ -2499,6 +2506,57 @@ Its false-pass shape was designed against explicitly: the headline is an **absen
 is also what a wrong path, a filename-convention drift, or a half-written table produces. So zero overlapping
 tables is `exit 2` rather than "identical"; a table that parses to zero plan specs is an error for that table
 rather than a table with nothing changed; and every unmatched file is printed by name.
+
+### 20.7 ★★★ ROUND 5 IS WHOLE — the churn is **35.9%**, and the gear was **not** the deficit
+
+§20.5 closed at 18 of 36 tables with *"treat 27% as the current floor, not a converged figure."* The round has
+since landed complete (all 36 tables carry `XVAL-DONE`; `tools/xval-results/README.md` banner cleared). The
+full-grid diff:
+
+```
+node tools/xval-round-diff.mjs tools/xval-results-archive/phase7-round4 tools/xval-results
+  → planCells 124/345 changed (35.9%) across 34/36 tables
+  → eff level shift  −0.4 … −1.1%   (KT tables −6.1 … −6.8%)
+  → deficitTables 34 → 34 · verdict flips: none · monoDip 0.00% → 0.00%
+```
+
+Three things close here.
+
+**1. §20.5's estimate was low and its direction was right.** 15% → 21% → 27.2% → **35.9%**; the floor framing
+held. §20.2's Q2 pre-flight (*"the argmax is the same plan under every cfg at every haste"* ⇒ "the plans will
+not move") is now **formally withdrawn** at full grid scale: 124 cells moved. The generalizable form in §20.5
+stands as written — *a rank-neutrality result inherits the selection of the cases it was measured on* — and is
+now carried into `docs/TOOLING.md` as a standing rule, because it is a **verification-scoping** law, not a
+Phase-8 anecdote: a harness edit invalidates the *rankings* too, so "rank-neutral" must be measured on the
+full grid, never inferred from one fight family.
+
+**2. ★★★ The invariant-B failure is NOT a reference-gear artifact.** This is the substantive result, and it
+kills the last standing *external* explanation for the acceptance deficit. Round 4's model side built its
+plans for a mage the sim never ran (no `t5two`, `sp: 1387`); the obvious hypothesis was that the cross-val was
+comparing two different mages and that correcting the gear would collapse the deficits. It did not: **the same
+34 tables fail, by the same widths, with zero verdict flips.** Whatever B is measuring, it survives making the
+two sides describe the same character. (What it *is* measuring is §20.5's near-tie population — see 3.)
+
+**3. ⚠ Per-table widths wander BOTH ways, so round-over-round drift is not convergence.** §20.5 called this at
+18 tables (4 better · 3 worse · 11 unchanged); at 36 it is **12 better · 8 worse · 16 unchanged**, net 0.42 pp,
+and the extremes are worse than the partial sample suggested — `scb-skull-short` 0.02% → **0.23%** and
+`scb-mqg-short` 0.03% → **0.21%**, i.e. a table can travel from essentially-clean to among-the-worst **with no
+model change whatsoever**. Consequence for Phase 7's own headline series (borrowed-win columns
+`167 → 145 → 142 → 135`, mean width `0.160% → 0.081% → 0.081% → 0.069%`): **most of that is repricing, not
+progress.** §20.5's "read no acceptance signal off the sign or the magnitude of these moves" is hereby
+promoted from a caveat about *this* correction to the general rule for *any* round pair that does not share a
+harness.
+
+**Where this leaves the Phase-8 question.** Round 5 confirms the *harness inputs* are no longer a candidate
+explanation for B — which is a Phase-8 deliverable discharged, not a Phase-7 fix. The remaining B population
+was re-graded structurally on 07-25 (`tools/xval-persist.mjs`): of 345 columns, 135 carry a borrowed win, but
+only **2** have a rival that beats native at essentially every fight length — `isc-mqg h40` (rival `plan@h70`,
+5/5) and `isc-skull h20` (rival `plan@h100`, 4/5). The other 133 are local near-degeneracy: **0** have a
+byte-identical borrower plan, 59.3% borrow from the *immediately adjacent* haste, and 34.1% sit at or under the
+harness's own ±0.02% resolution. That is the shape §20.5 predicted from first principles — a population
+*selected for near-ties* — measured directly. Full derivation in `docs/ACCEPTANCE.md`
+("What the B BANNER can and cannot tell you"); both surviving columns are low-haste, which ties them to the
+already-recorded low-haste micro-placement debt rather than to anything in this section.
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it

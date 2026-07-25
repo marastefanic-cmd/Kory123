@@ -5,10 +5,12 @@ is the **completion criterion**, re-run after every fix/upgrade phase. Phase 6 b
 future phases fix what it exposes and re-run it. A documented deficit is a **debt to fix, not a state to
 accept** (user-directed).
 
-> **⚠ The current committed round is STALE (07-25).** `tools/xval-results/` was gathered before the harness
-> gear correction (`tools/reference-gear.mjs`; PHASE8 §20), so its model side optimized against `sp: 1387`
-> with no `t5two` — not the gear the sim runs. Measured as rank-neutral at this scale, so the verdicts are
-> unlikely to move; still, **re-baseline before quoting the ledger as authoritative** (`bash tools/xval-rerun.sh`).
+> **The current committed round is round 5 (07-25), gathered on the CORRECTED harness gear**
+> (`tools/reference-gear.mjs`, `t5two` + effective `sp: 1450`; PHASE8 §20). It supersedes round 4, which is
+> archived at `tools/xval-results-archive/phase7-round4/`. The repricing moved **124 of 345 plan cells
+> (35.9%)** and every `eff` by −0.4…−1.1% (KT −6.1…−6.8%) — and moved the verdict **not at all**
+> (`deficitTables 34→34`, zero verdict flips, `monoDip` 0.00% in both). **So the B failure is not a
+> reference-gear artifact** (PHASE7 §6).
 
 Read `docs/DIARY.md` for history and `docs/TOOLING.md` for the sim methodology (esp. the ★★★
 never-prepull rule and the ★ mana trap). **Every harness cfg's gear comes from `tools/reference-gear.mjs`
@@ -37,7 +39,9 @@ For a fight (random by class, or a boss preset) and a trinket kit:
   monotonicity** — the plan the tool builds FOR a haste is, by claim, the best plan AT that haste, so no
   borrowed plan can beat it. CLEAN = native wins every column; any DEFICIT is a **violation**. The bar is
   **zero deficits**, not "small enough" — deficits are not to be graded by fight length or magnitude and
-  tolerated. (A residual measurement subtlety — fixed-length DPS quantization can make two plans clip
+  tolerated. **⚠ But read "What the B BANNER can and cannot tell you" below before using the per-table
+  CLEAN/DEFICIT banner to steer work: the bar is right, the *banner* is an existence test over ~90
+  near-ties and has almost no discriminating power. Prioritize with `tools/xval-persist.mjs`.** (A residual measurement subtlety — fixed-length DPS quantization can make two plans clip
   different partial casts — is itself something the fix phase must design away, e.g. a length-independent
   metric or a by-construction guarantee, so the invariant can hold cleanly. That's how it's *achievable*.)
 
@@ -135,6 +139,22 @@ the authoritative row-by-row ledger.
   **crashed table** (a file with no matrix) was stepped over by a silent `continue` — i.e. an ungraded
   cell of the grid vanished while the verdict still claimed to cover it. Both are now exit-2 errors,
   the second listing the offending files.
+- **`tools/xval-persist.mjs`** — **the CONSISTENT-ALTERNATIVE test: the length-persistence half of
+  invariant B, and the instrument that turns "34/36 tables FAIL" into a work list** (added 07-25; see
+  "What the B BANNER can and cannot tell you"). Groups a kit's five fight-length tables and asks, per
+  haste column, whether any **single** rival haste out-sims native at all-but-at-most-one length — the
+  only shape a genuine haste-*adaptation* defect can take, since the defect would be a property of the
+  `(kit, haste)` cell and fight length is not what causes it. **No magnitude threshold, no
+  borrower-distance threshold, nothing tuned after seeing the data**; the one free choice, "loses at most
+  one length", is what *persistent* means. It also prints the three distributions that justify reading
+  the banner the way that section does (borrowed-win rate, the **native** margin distribution, borrower
+  grid distance). Exit `0` no persistent alternative · `1` ≥1 · `2` could not grade — it *grades*, which
+  is why it uses 1 where `xval.mjs`/`xval-round-diff.mjs` (which *gather*) never do. Controlled in both
+  directions before being believed: empty dir → **2**, a matrix-less table → **2**, synthetic tables with
+  a strictly dominant diagonal → **0** and zero hits, the same tables with one rival injected at
+  `+0.045%` in every length → **1** naming exactly that column. **⚠ It is a PRIORITIZER, not a
+  redefinition of the PASS criterion** — a column it clears still carries a borrowed win that must be
+  explained before the model is complete.
 - **`tools/genapl.mjs`** — model plan → wowsims APLRotation JSON (the bridge that makes a schedule
   simmable). **Never** set `_prestack>0` for a model comparison. Hardened 07-25 against its own
   false-pass shape: an **unknown spec key was dropped in total silence**, so `{"IcyVeins":[20]}` (or
@@ -174,31 +194,40 @@ the authoritative row-by-row ledger.
   nothing" as a real negative verdict. Now exit **2**, per the shared contract (0 = graded clean · 1 =
   graded and failing · 2 = could not grade).
 
-## Current status (2026-07-25, **round 4** — gathered on the shipped post-§5.11 engine) — NOT PASSING (B)
-All 36 tables re-run on the current engine (cross-haste pooling ON, var0.5, per-wall jitter v2, KT AoE
-valued), on the **same 36 seeds as round 3**. Current round in `tools/xval-results/`; earlier rounds
-under `tools/xval-results-archive/` (`phase6/`, `phase7-round2/`, `phase7-round3/`). Invariants
-recomputed with `tools/xval-verify.mjs` and cross-checked by `tools/xval-collect.mjs` — the two agree
-on every headline number.
+## Current status (2026-07-25, **round 5** — the corrected reference gear) — NOT PASSING (B)
+All 36 tables re-gathered on the current engine (cross-haste pooling ON, var0.5, per-wall jitter v2, KT
+AoE valued) **and the corrected harness gear** (`tools/reference-gear.mjs`: `t5two` + effective
+`sp: 1450`), on the **same 36 seeds as rounds 3–4**. Current round in `tools/xval-results/`; earlier
+rounds under `tools/xval-results-archive/` (`phase6/`, `phase7-round2/`, `phase7-round3/`,
+`phase7-round4/`). Invariants recomputed with `tools/xval-verify.mjs` and cross-checked by
+`tools/xval-collect.mjs` — the two agree on every headline number.
 - **Invariant A: PASS** — `monoDip = 0.0000%` on all 36 tables (every row rechecked cell-by-cell).
 - **Invariant B (model side, B1): HOLDS BY CONSTRUCTION** — pooling makes every emitted plan the argmax
   over the cross-haste champion set, so no borrowed plan can out-SCORE a native (verified per run).
-- **Invariant B (sim side): FAILS** — **142** borrowed-win columns across 34/36 tables (bar = zero).
-  Distribution: median 0.044%, mean 0.081%, worst **0.40%**; ≥0.3%: 9, ≥0.2%: 17, ≥0.1%: 34. CLEAN
-  2/36 (`isc+scb medlong`, `isc+scb xl`). The ≥0.3% head is the **B2 scorer-gap family**
-  (`docs/PHASE8.md`; worst case `isc+mqg medlong @sim70`, `plan@40` 2787.5 > native 2776.5). The
-  sub-0.05% tail (half the columns) sits at the fixed-length measurement's quantization scale —
-  eliminating it is a design task (length-independent metric or a sim-side by-construction guarantee),
-  tracked, not excused.
-- Movement Phase 6 → round 3 → round 4: worst 0.77% → 0.40% → **0.40%**; columns 167 → 145 → **142**;
-  KT's 2.68% AoE artifact eliminated at round 3 (now 0.39%, ordinary); mean width 0.160% → 0.081% →
-  0.081%.
+- **Invariant B (sim side): FAILS on the bar** — **135** borrowed-win columns across 34/36 tables
+  (bar = zero). Distribution: median 0.035%, mean 0.069%, worst **0.38%**
+  (`boss-KT-isc-scb @sim95`, `plan@165` 2238.5 > native 2230.1); ≥0.3%: 3, ≥0.2%: 12, ≥0.1%: 30.
+  CLEAN 2/36 (`isc+scb medlong`, `isc+scb xl` — the same two as round 4).
+- **But of those 135, exactly TWO can be a structural adaptation defect** (`tools/xval-persist.mjs`;
+  see "What the B BANNER can and cannot tell you"): `isc-mqg h40` (rival `plan@h70` wins **5/5**
+  lengths) and `isc-skull h20` (rival `plan@h100`, **4/5**). Every other column's best rival is
+  length-inconsistent — the signature of a local near-tie, not of a plan built for the wrong haste.
+  **That two-column list is the Phase-7 work list; the 135 is the bar.**
+- Movement Phase 6 → r3 → r4 → **r5**: worst 0.77% → 0.40% → 0.40% → **0.38%**; columns 167 → 145 →
+  142 → **135**; mean width 0.160% → 0.081% → 0.081% → **0.069%**; KT's 2.68% AoE artifact eliminated
+  at round 3 (now 0.38%, ordinary). **Do not read that drift as progress** — see below.
 
-**Round 4 closes the "engine drift" debt round 3 carried** — the record now matches the shipped engine.
-It also settles what §5.11 was worth: 29/36 tables came back byte-identical, the 7 that moved changed
-at `h0` only and mixed-signed, and the −3 columns are tie-resolution landing where it lands, **not the
-deficit shrinking** (PHASE7 §5.13). Critically, the worst cell is in the byte-identical set — B2 is
-empirically invariant to the tie-break, so PHASE8's charge is unchanged.
+**★★★ Round 5 proves the B failure is NOT a reference-gear artifact.** The correction was a genuine
+repricing: `xval-round-diff` reports **124 of 345 plan cells changed (35.9%)** across 34/36 tables on a
+−0.4…−1.1% `eff` level shift (KT −6.1…−6.8%). And the verdict did not budge — `deficitTables 34→34`,
+**zero verdict flips**, `monoDip` 0.00% before and after. Per-table widths wander *both ways* under a
+pure repricing (12 tables improved, 8 worsened, 16 unchanged; net 0.42 pp over 36 tables), including
+`scb-skull-short` 0.02%→**0.23%** and `scb-mqg-short` 0.03%→**0.21%** — a table can go from
+essentially-clean to among-the-worst with **no model change at all**. Two consequences: the round-over-round
+headline drift above is mostly repricing, not convergence; and PHASE8 §20.2's pre-flight claim that the
+correction was "rank-neutral, the plans will not move" is **withdrawn** (it was one fight family at four
+hastes; this is 36 fights at 7–11 hastes). It also confirms invariant A was already clean at round 4
+rather than being fixed by the new gear.
 
 **Data was certified before being accepted as the record** (the harness audit of 07-25 found 36
 false-pass defects across 14 tools, several of which could have silently corrupted a whole round):
@@ -206,19 +235,22 @@ false-pass defects across 14 tools, several of which could have silently corrupt
 `[0,100,200,300,400]` default an empty `HASTES` would have substituted — all 345 plan rows carry
 `_prestack:0` (cold open, no prepull), no `NaN`/`undefined`, all 36 carry `XVAL-DONE`.
 
-**So: not passing yet.** Remaining owners: PHASE8 (the B2 family, highest-effort scorer work) and the
-metric-design task for the quantization tail. Re-run this in full after each.
+**So: not passing yet.** Remaining owners: the two persistent columns (Phase 7), PHASE8 (the B2 family,
+highest-effort scorer work) and the metric-design task for the near-tie tail. Re-run this in full after each.
 A performance phase is also open (`docs/PHASE9.md`); by construction it must leave every plan
 byte-identical, so it cannot invalidate a round — but re-run the exact-match suite after each of its
 steps, and if any plan ever *does* move, the round is void.
 
 ## Known coverage gaps in the test itself (make the test stronger over time)
-- **Single-worst-cell reporting hides structure.** `XVAL-DONE`/the collector surface one worst cell per
-  table; the raw grids carry more borrowed-plan-wins columns (some on long/XL). A future harness pass
-  should report the FULL set of deficit columns, not just the worst, and flag length-robust ones.
+- **~~Single-worst-cell reporting hides structure.~~ CLOSED (P7.1 + 07-25).** The collector now publishes
+  **every** borrowed-win column with its locus and the full width distribution, and
+  `tools/xval-persist.mjs` grades length-*persistence* properly (the collector's `★` tag is only "this
+  kit×haste also violates on long/xl", which is weaker — it is a hint, not the test).
 - **Wide plateaus make adaptation vacuously "clean."** Where the tool emits one byte-identical plan
   across most of a kit's haste band, the cross-val isn't really testing adaptation there — only the
-  plateau vs. the differing endpoints. Note this when reading a CLEAN result.
+  plateau vs. the differing endpoints. Note this when reading a CLEAN result. *Measured at round 5: this
+  is NOT what is behind the failures — **0 of 135** borrowed-win columns have a borrower plan
+  byte-identical to the native, so every one is a real plan difference (`xval-persist.mjs`).*
 - **KT AoE simmed as downtime** (genapl has no Arcane-Explosion emission) — KT numbers exclude AoE damage.
 - **Ashtongue** (random on-crit proc) is out of the kits — needs a different, stochastic treatment (Phase 7).
 - **No exhaustive ground truth above ~h150** for SP-trinket-free kits (the 5s grid can't express the
@@ -250,3 +282,70 @@ and the repricing trap that stops you doing it by subtracting two rounds' tables
 per campaign, not per change. It is **not** the per-change gate, and it never was one; using it that way
 is what made the iteration loop slow. The per-change gate is the fast plan-diff instrument
 (`docs/PHASE9.md §5`), and the duel is what sits between them.
+
+### ★★★ What the B BANNER can and cannot tell you (07-25, round 5) — the bar is right, the banner is nearly powerless
+
+The user's challenge above was answered for the *test*. Round 5 answered it for the **banner**, and the
+answer is sharper: `xval-verify.mjs`'s `B FAILS` line, and the per-table `CLEAN`/`DEFICIT` tag, **have
+almost no discriminating power — they would read the same for a converged model and a broken one.**
+This does NOT relax the bar (zero borrowed-win columns, user-directed, unchanged). It changes what you
+are allowed to *conclude* from the banner, and therefore how work gets prioritized.
+
+**1. It is an EXISTENCE test, evaluated at a near-perfect tie.** B asks "does *any* rival beat native in
+*any* column" — with ~10 columns × ~9 rivals that is ~90 comparisons per table. And they are not
+comfortable comparisons: in the 210 columns where the diagonal *wins*, its **median winning margin is
+0.003%** — an order of magnitude *below* the harness's own CRN/10k-iteration resolution of ~0.02%
+(PHASE7 §5.4). Most of those 90 comparisons are coin flips at the resolution limit.
+
+**2. So a DEFICIT verdict is close to arithmetically forced.** At the observed per-column borrowed-win
+rate of **39.1%**, an existence test over ~10 columns returns DEFICIT with probability
+`1 − 0.609¹⁰ ≈ 99.3%`. The bar therefore cannot be *reached* by anything short of a model that wins
+every near-tie, and a test that essentially cannot pass measures nothing on the way there — the mirror
+of the project's standing rule that *a test that cannot fail measures nothing* (DIARY). Observed CLEAN is
+2/36 = 5.6%, i.e. **better** than that null (0.7%), which is itself the first hint that the model is not
+the problem.
+
+**3. And the model is genuinely right most of the time.** If every true delta were zero, max-of-9 rivals
+would exceed native with probability `1 − 2⁻⁹ ≈ 99.8%` of columns. Observed is **39.1%** — nowhere near
+noise. The diagonal is *really* dominant in the majority of columns; what fails is the tail of near-ties.
+
+**4. The failures are LOCAL near-degeneracy, not adaptation failure.** Of the 135 borrowed-win columns:
+**0** have a byte-identical borrower plan (so they are real plan differences), but **80 (59.3%) borrow
+from the immediately adjacent haste column** and **114 (84.4%) from within 2 grid steps**; only 7 come
+from ≥5 steps away. Magnitudes: median 0.035%, mean 0.069%, p90 0.191%, max 0.377% — **34.1% are ≤0.02%**
+(at or below CRN resolution) and 77.8% are ≤0.10%. "The plan built for h70 wins at h40" is what a flat
+optimum looks like when measured with a ±0.02% ruler, not what a wrong adaptation rule looks like.
+
+**5. The principled test — and it needs no tuned thresholds.** A length-persistent structural defect at
+`(kit, haste c)` can only have one shape: **one specific rival layout is genuinely better there, so it
+beats native at MOST fight lengths** (the defect is a property of the cell; fight length is not what
+causes it). Run unrigged over all 57 kit-columns — no magnitude filter, no distance filter — the best
+rival's win-count distributes `5/5:1 · 4/5:1 · 3/5:10 · 2/5:20 · 1/5:16 · 0/5:9`, so **exactly two
+columns** carry a consistent (loses ≤1 length) better rival:
+
+| kit-column | rival | wins | per-length margins % |
+|---|---|---|---|
+| `isc-mqg` h40 | `plan@h70` | **5/5** | 0.094, 0.007, 0.260, 0.101, 0.073 |
+| `isc-skull` h20 | `plan@h100` | **4/5** | 0.087, 0.007, 0.066, 0.011 |
+
+That is the tractable Phase-7 target list — **2 of 57 kit-columns, down from "34/36 tables FAIL"** —
+and it is now a committed instrument, `tools/xval-persist.mjs`, rather than a one-off analysis.
+⚠ Even these two need a magnitude-vs-resolution judgement before being called defects: each has at least
+one length at 0.007%, well inside the ±0.02% ruler.
+
+**6. ★★★ The methodological correction that matters most: a sieve whose thresholds you chose after seeing
+the data is not evidence.** Before running the test above, a three-filter sieve was built — persistence
+≥4/5 **AND** borrower ≥2 grid steps **AND** magnitude ≥0.10% — and it reduced the 34 failing tables to
+four columns (`isc-skull h130` 0.279%, `scb-skull h90` 0.229%, `isc-mqg h20` 0.133%, `isc-mqg h110`
+0.101%). The two tests **disagree completely**. All four sieve survivors *fail* the unrigged test (best
+3/5, with magnitudes inconsistent by 20×: `isc-skull h130`'s rival h185 gives 0.009% / 0.014% / 0.279%),
+and **both unrigged survivors had been rejected by the sieve** — `isc-mqg h40` killed by the distance
+filter (maxDist only 1 step), `isc-skull h20` by the magnitude filter (worst 0.087%). Trust the
+threshold-free test that names the only physically possible *shape* of the defect; discard the sieve.
+Nothing from it is recorded as a finding.
+
+**Consequence for the verdict banner:** leave the bar and the banner as they are — `B FAILS` is a true
+statement about a user-directed bar, and softening it would be exactly the "grade the deficit by
+magnitude" move the user overturned. But **never steer work off it.** Read `xval-verify.mjs` for the bar,
+`xval-persist.mjs` for where a defect can actually be, and the collector for the full published
+distribution.
