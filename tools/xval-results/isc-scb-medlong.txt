@@ -1,215 +1,215 @@
 seed=1101  class=medlong  fight=3:40 (220s)  Lust@2:17  trinkets=isc+scb  haste=[0,20,65,95,140,165,195,215,245,400]
-  plan@h0: eff=176.301  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
-  plan@h20: eff=178.555  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
-  plan@h65: eff=183.627  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
-  plan@h95: eff=187.009  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
-  plan@h140: eff=192.081  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
-  plan@h165: eff=194.898  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
-  plan@h195: eff=198.279  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
-  plan@h215: eff=200.534  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
-  plan@h245: eff=203.359  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
-  plan@h400: eff=215.935  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[0,190],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
+  plan@h0: eff=174.675  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
+  plan@h20: eff=176.909  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
+  plan@h65: eff=181.934  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
+  plan@h95: eff=185.284  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
+  plan@h140: eff=190.31  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
+  plan@h165: eff=193.102  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
+  plan@h195: eff=196.452  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
+  plan@h215: eff=198.686  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
+  plan@h245: eff=201.501  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[20,200],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
+  plan@h400: eff=214.028  {"_prestack":0,"BL":[137],"AP":[20,200],"Zerk":[0,190],"Icon":[20,199],"Gem":[20,200],"IV":[0,20,200],"CS":[20]}
 unique plans: 2/10
-2026/07/24 21:44:58 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:44:59 All 4 sims finished successfully.
-2026/07/24 21:44:59 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:44:59 All 4 sims finished successfully.
-2026/07/24 21:44:59 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:00 All 4 sims finished successfully.
-2026/07/24 21:45:00 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:00 All 4 sims finished successfully.
-2026/07/24 21:45:01 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:01 All 4 sims finished successfully.
-2026/07/24 21:45:01 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:02 All 4 sims finished successfully.
-2026/07/24 21:45:02 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:02 All 4 sims finished successfully.
-2026/07/24 21:45:03 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:03 All 4 sims finished successfully.
-2026/07/24 21:45:03 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:04 All 4 sims finished successfully.
-2026/07/24 21:45:04 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:04 All 4 sims finished successfully.
-2026/07/24 21:45:04 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:05 All 4 sims finished successfully.
-2026/07/24 21:45:05 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:05 All 4 sims finished successfully.
-2026/07/24 21:45:06 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:06 All 4 sims finished successfully.
-2026/07/24 21:45:06 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:07 All 4 sims finished successfully.
-2026/07/24 21:45:07 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:07 All 4 sims finished successfully.
-2026/07/24 21:45:07 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:08 All 4 sims finished successfully.
-2026/07/24 21:45:08 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:08 All 4 sims finished successfully.
-2026/07/24 21:45:09 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:09 All 4 sims finished successfully.
-2026/07/24 21:45:09 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:10 All 4 sims finished successfully.
-2026/07/24 21:45:10 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:10 All 4 sims finished successfully.
-2026/07/24 21:45:10 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:11 All 4 sims finished successfully.
-2026/07/24 21:45:11 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:11 All 4 sims finished successfully.
-2026/07/24 21:45:12 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:12 All 4 sims finished successfully.
-2026/07/24 21:45:12 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:13 All 4 sims finished successfully.
-2026/07/24 21:45:13 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:13 All 4 sims finished successfully.
-2026/07/24 21:45:13 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:14 All 4 sims finished successfully.
-2026/07/24 21:45:14 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:14 All 4 sims finished successfully.
-2026/07/24 21:45:15 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:15 All 4 sims finished successfully.
-2026/07/24 21:45:15 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:16 All 4 sims finished successfully.
-2026/07/24 21:45:16 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:16 All 4 sims finished successfully.
-2026/07/24 21:45:16 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:17 All 4 sims finished successfully.
-2026/07/24 21:45:17 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:18 All 4 sims finished successfully.
-2026/07/24 21:45:18 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:18 All 4 sims finished successfully.
-2026/07/24 21:45:18 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:19 All 4 sims finished successfully.
-2026/07/24 21:45:19 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:19 All 4 sims finished successfully.
-2026/07/24 21:45:20 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:20 All 4 sims finished successfully.
-2026/07/24 21:45:20 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:21 All 4 sims finished successfully.
-2026/07/24 21:45:21 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:21 All 4 sims finished successfully.
-2026/07/24 21:45:21 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:22 All 4 sims finished successfully.
-2026/07/24 21:45:22 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:23 All 4 sims finished successfully.
-2026/07/24 21:45:23 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:23 All 4 sims finished successfully.
-2026/07/24 21:45:23 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:24 All 4 sims finished successfully.
-2026/07/24 21:45:24 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:24 All 4 sims finished successfully.
-2026/07/24 21:45:25 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:25 All 4 sims finished successfully.
-2026/07/24 21:45:25 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:26 All 4 sims finished successfully.
-2026/07/24 21:45:26 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:26 All 4 sims finished successfully.
-2026/07/24 21:45:26 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:27 All 4 sims finished successfully.
-2026/07/24 21:45:27 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:28 All 4 sims finished successfully.
-2026/07/24 21:45:28 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:28 All 4 sims finished successfully.
-2026/07/24 21:45:28 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:29 All 4 sims finished successfully.
-2026/07/24 21:45:29 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:30 All 4 sims finished successfully.
-2026/07/24 21:45:30 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:30 All 4 sims finished successfully.
-2026/07/24 21:45:30 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:31 All 4 sims finished successfully.
-2026/07/24 21:45:31 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:31 All 4 sims finished successfully.
-2026/07/24 21:45:31 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:32 All 4 sims finished successfully.
-2026/07/24 21:45:32 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:33 All 4 sims finished successfully.
-2026/07/24 21:45:33 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:33 All 4 sims finished successfully.
-2026/07/24 21:45:33 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:34 All 4 sims finished successfully.
-2026/07/24 21:45:34 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:35 All 4 sims finished successfully.
-2026/07/24 21:45:35 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:35 All 4 sims finished successfully.
-2026/07/24 21:45:35 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:36 All 4 sims finished successfully.
-2026/07/24 21:45:36 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:36 All 4 sims finished successfully.
-2026/07/24 21:45:37 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:37 All 4 sims finished successfully.
-2026/07/24 21:45:37 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:38 All 4 sims finished successfully.
-2026/07/24 21:45:38 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:38 All 4 sims finished successfully.
-2026/07/24 21:45:38 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:39 All 4 sims finished successfully.
-2026/07/24 21:45:39 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:39 All 4 sims finished successfully.
-2026/07/24 21:45:40 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:40 All 4 sims finished successfully.
-2026/07/24 21:45:40 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:41 All 4 sims finished successfully.
-2026/07/24 21:45:41 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:41 All 4 sims finished successfully.
-2026/07/24 21:45:42 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:42 All 4 sims finished successfully.
-2026/07/24 21:45:42 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:43 All 4 sims finished successfully.
-2026/07/24 21:45:43 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:43 All 4 sims finished successfully.
-2026/07/24 21:45:43 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:44 All 4 sims finished successfully.
-2026/07/24 21:45:44 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:44 All 4 sims finished successfully.
-2026/07/24 21:45:45 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:45 All 4 sims finished successfully.
-2026/07/24 21:45:45 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:46 All 4 sims finished successfully.
-2026/07/24 21:45:46 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:47 All 4 sims finished successfully.
-2026/07/24 21:45:47 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:48 All 4 sims finished successfully.
-2026/07/24 21:45:48 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:49 All 4 sims finished successfully.
-2026/07/24 21:45:49 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:50 All 4 sims finished successfully.
-2026/07/24 21:45:50 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:51 All 4 sims finished successfully.
-2026/07/24 21:45:51 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:51 All 4 sims finished successfully.
-2026/07/24 21:45:51 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:52 All 4 sims finished successfully.
-2026/07/24 21:45:52 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:52 All 4 sims finished successfully.
-2026/07/24 21:45:53 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:53 All 4 sims finished successfully.
-2026/07/24 21:45:53 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:54 All 4 sims finished successfully.
-2026/07/24 21:45:54 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:54 All 4 sims finished successfully.
-2026/07/24 21:45:55 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:55 All 4 sims finished successfully.
-2026/07/24 21:45:55 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:56 All 4 sims finished successfully.
-2026/07/24 21:45:56 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:56 All 4 sims finished successfully.
-2026/07/24 21:45:56 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:57 All 4 sims finished successfully.
-2026/07/24 21:45:57 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:57 All 4 sims finished successfully.
-2026/07/24 21:45:58 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:58 All 4 sims finished successfully.
-2026/07/24 21:45:58 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:59 All 4 sims finished successfully.
-2026/07/24 21:45:59 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:45:59 All 4 sims finished successfully.
-2026/07/24 21:45:59 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:46:00 All 4 sims finished successfully.
-2026/07/24 21:46:00 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:46:01 All 4 sims finished successfully.
-2026/07/24 21:46:01 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:46:01 All 4 sims finished successfully.
-2026/07/24 21:46:01 Running 6000 iterations on 4 concurrent sims.
-2026/07/24 21:46:02 All 4 sims finished successfully.
+2026/07/25 06:34:18 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:19 All 4 sims finished successfully.
+2026/07/25 06:34:19 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:19 All 4 sims finished successfully.
+2026/07/25 06:34:19 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:20 All 4 sims finished successfully.
+2026/07/25 06:34:20 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:21 All 4 sims finished successfully.
+2026/07/25 06:34:21 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:21 All 4 sims finished successfully.
+2026/07/25 06:34:21 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:22 All 4 sims finished successfully.
+2026/07/25 06:34:22 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:22 All 4 sims finished successfully.
+2026/07/25 06:34:23 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:23 All 4 sims finished successfully.
+2026/07/25 06:34:23 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:24 All 4 sims finished successfully.
+2026/07/25 06:34:24 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:24 All 4 sims finished successfully.
+2026/07/25 06:34:25 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:25 All 4 sims finished successfully.
+2026/07/25 06:34:25 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:26 All 4 sims finished successfully.
+2026/07/25 06:34:26 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:26 All 4 sims finished successfully.
+2026/07/25 06:34:26 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:27 All 4 sims finished successfully.
+2026/07/25 06:34:27 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:28 All 4 sims finished successfully.
+2026/07/25 06:34:28 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:28 All 4 sims finished successfully.
+2026/07/25 06:34:28 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:29 All 4 sims finished successfully.
+2026/07/25 06:34:29 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:29 All 4 sims finished successfully.
+2026/07/25 06:34:29 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:30 All 4 sims finished successfully.
+2026/07/25 06:34:30 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:31 All 4 sims finished successfully.
+2026/07/25 06:34:31 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:31 All 4 sims finished successfully.
+2026/07/25 06:34:31 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:32 All 4 sims finished successfully.
+2026/07/25 06:34:32 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:32 All 4 sims finished successfully.
+2026/07/25 06:34:33 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:33 All 4 sims finished successfully.
+2026/07/25 06:34:33 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:34 All 4 sims finished successfully.
+2026/07/25 06:34:34 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:34 All 4 sims finished successfully.
+2026/07/25 06:34:34 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:35 All 4 sims finished successfully.
+2026/07/25 06:34:35 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:36 All 4 sims finished successfully.
+2026/07/25 06:34:36 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:36 All 4 sims finished successfully.
+2026/07/25 06:34:37 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:37 All 4 sims finished successfully.
+2026/07/25 06:34:37 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:38 All 4 sims finished successfully.
+2026/07/25 06:34:38 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:38 All 4 sims finished successfully.
+2026/07/25 06:34:38 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:39 All 4 sims finished successfully.
+2026/07/25 06:34:39 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:40 All 4 sims finished successfully.
+2026/07/25 06:34:40 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:40 All 4 sims finished successfully.
+2026/07/25 06:34:40 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:41 All 4 sims finished successfully.
+2026/07/25 06:34:41 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:41 All 4 sims finished successfully.
+2026/07/25 06:34:41 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:42 All 4 sims finished successfully.
+2026/07/25 06:34:42 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:43 All 4 sims finished successfully.
+2026/07/25 06:34:43 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:43 All 4 sims finished successfully.
+2026/07/25 06:34:43 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:44 All 4 sims finished successfully.
+2026/07/25 06:34:44 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:44 All 4 sims finished successfully.
+2026/07/25 06:34:45 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:45 All 4 sims finished successfully.
+2026/07/25 06:34:45 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:46 All 4 sims finished successfully.
+2026/07/25 06:34:46 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:46 All 4 sims finished successfully.
+2026/07/25 06:34:46 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:47 All 4 sims finished successfully.
+2026/07/25 06:34:47 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:47 All 4 sims finished successfully.
+2026/07/25 06:34:48 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:48 All 4 sims finished successfully.
+2026/07/25 06:34:48 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:49 All 4 sims finished successfully.
+2026/07/25 06:34:49 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:49 All 4 sims finished successfully.
+2026/07/25 06:34:50 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:50 All 4 sims finished successfully.
+2026/07/25 06:34:50 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:51 All 4 sims finished successfully.
+2026/07/25 06:34:51 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:51 All 4 sims finished successfully.
+2026/07/25 06:34:51 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:52 All 4 sims finished successfully.
+2026/07/25 06:34:52 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:52 All 4 sims finished successfully.
+2026/07/25 06:34:53 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:53 All 4 sims finished successfully.
+2026/07/25 06:34:53 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:54 All 4 sims finished successfully.
+2026/07/25 06:34:54 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:54 All 4 sims finished successfully.
+2026/07/25 06:34:54 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:55 All 4 sims finished successfully.
+2026/07/25 06:34:55 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:56 All 4 sims finished successfully.
+2026/07/25 06:34:56 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:56 All 4 sims finished successfully.
+2026/07/25 06:34:56 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:57 All 4 sims finished successfully.
+2026/07/25 06:34:57 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:57 All 4 sims finished successfully.
+2026/07/25 06:34:58 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:58 All 4 sims finished successfully.
+2026/07/25 06:34:58 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:59 All 4 sims finished successfully.
+2026/07/25 06:34:59 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:34:59 All 4 sims finished successfully.
+2026/07/25 06:34:59 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:00 All 4 sims finished successfully.
+2026/07/25 06:35:00 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:01 All 4 sims finished successfully.
+2026/07/25 06:35:01 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:01 All 4 sims finished successfully.
+2026/07/25 06:35:01 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:02 All 4 sims finished successfully.
+2026/07/25 06:35:02 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:03 All 4 sims finished successfully.
+2026/07/25 06:35:03 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:03 All 4 sims finished successfully.
+2026/07/25 06:35:03 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:04 All 4 sims finished successfully.
+2026/07/25 06:35:04 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:04 All 4 sims finished successfully.
+2026/07/25 06:35:04 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:05 All 4 sims finished successfully.
+2026/07/25 06:35:05 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:06 All 4 sims finished successfully.
+2026/07/25 06:35:06 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:06 All 4 sims finished successfully.
+2026/07/25 06:35:06 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:07 All 4 sims finished successfully.
+2026/07/25 06:35:07 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:08 All 4 sims finished successfully.
+2026/07/25 06:35:08 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:08 All 4 sims finished successfully.
+2026/07/25 06:35:08 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:09 All 4 sims finished successfully.
+2026/07/25 06:35:09 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:09 All 4 sims finished successfully.
+2026/07/25 06:35:09 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:10 All 4 sims finished successfully.
+2026/07/25 06:35:10 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:11 All 4 sims finished successfully.
+2026/07/25 06:35:11 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:11 All 4 sims finished successfully.
+2026/07/25 06:35:11 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:12 All 4 sims finished successfully.
+2026/07/25 06:35:12 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:12 All 4 sims finished successfully.
+2026/07/25 06:35:12 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:13 All 4 sims finished successfully.
+2026/07/25 06:35:13 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:14 All 4 sims finished successfully.
+2026/07/25 06:35:14 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:14 All 4 sims finished successfully.
+2026/07/25 06:35:14 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:15 All 4 sims finished successfully.
+2026/07/25 06:35:15 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:15 All 4 sims finished successfully.
+2026/07/25 06:35:16 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:16 All 4 sims finished successfully.
+2026/07/25 06:35:16 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:17 All 4 sims finished successfully.
+2026/07/25 06:35:17 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:17 All 4 sims finished successfully.
+2026/07/25 06:35:18 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:18 All 4 sims finished successfully.
+2026/07/25 06:35:18 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:19 All 4 sims finished successfully.
+2026/07/25 06:35:19 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:19 All 4 sims finished successfully.
+2026/07/25 06:35:20 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:20 All 4 sims finished successfully.
+2026/07/25 06:35:20 Running 6000 iterations on 4 concurrent sims.
+2026/07/25 06:35:21 All 4 sims finished successfully.
 
 DPS matrix (row = plan optimized @haste, col = simmed @haste):
 plan\sim        0      20      65      95     140     165     195     215     245     400
