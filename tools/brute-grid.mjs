@@ -121,7 +121,13 @@ for (const h of HASTES) {
       const segments = segSpec ? buildSegments([segSpec], T) : null;
       const cfg = { T, hasteRating: h, sp: 1387, critPct: 38, enabled: en, fixed: { bloodlust: [LUST] }, warnings: [], coldSnap: true, segments };
       const best = await optimizeAsync(cfg, 14, () => {});
-      return { v: best.val, s: JSON.stringify(best.s) };
+      // Grade the plan the tool ACTUALLY EMITS, not the score it reports for it.  optimizeAsync
+      // carries `val` across normalize()/canonicalWindowOrder without re-scoring, and on the
+      // Cold-Snap resolve paths that gap reaches 0.153 eff casts (PHASE7 §5.14) — the same order as
+      // this check's own 0.15 pressability band, so a REAL search miss could have printed PASS.
+      // The grid side uses simulate() on the repaired cell, so this also makes the two sides
+      // apples-to-apples.
+      return { v: simulate(best.s, cfg).robust, s: JSON.stringify(best.s) };
     }, { h, T, LUST, segSpec, PAIR });
     const toolEff = tr.v / plain, gridEff = merged[0].v / plain, d = toolEff - gridEff;
     const verdict = d >= -1e-9 ? 'PASS (≥ grid)' : d >= -0.15 ? 'PASS (within pressability slack)' : 'MISS — investigate';

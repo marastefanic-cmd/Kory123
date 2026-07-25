@@ -488,3 +488,88 @@ it found is not about §5.11 at all.
 *Instrument note:* this comparison was only trustworthy because both instruments were repaired first —
 the collector was silently reading **zero** tables and reporting `PASS ✓` (DIARY 07-25). The two now
 cross-agree exactly on all headline numbers, which is the check that licenses the tables above.
+
+### 5.14 THE `val` / EMITTED-PLAN MISMATCH — the tool reports a score for a plan it does not ship
+
+**What §5.13's loose thread turned out to be.** Chasing why `isc-skull-long@h0` moved 0.008 eff casts
+across a change whose adoption gate is `castVal/1000` ≈ 0.001 casts led away from §5.11 entirely and
+into `optimizeAsync`'s resolve. The finding:
+
+> **`optimizeAsync` can return `{val, s}` where `simulate(s).robust ≠ val`.** All three resolve sites
+> carry `val` across a transform of `s` that is never re-scored. The number the tool reports is the
+> score of a *pre-transform* plan; the plan it emits is the *post-transform* one.
+
+**The three sites** (`index.html`):
+
+| line | path | transform applied after the last scoring | `val` carried from |
+|---|---|---|---|
+| `:2919` | Cold Snap A | `canonicalWindowOrder(normalize(bestN.s))` | `bestN.val` |
+| `:2921` | Cold Snap B | `canonicalWindowOrder(normalize(champ.s))` | `champ.val` (spread) |
+| `:2928` | plain | `canonicalWindowOrder(best.s)` only | `best.val` |
+
+`canonicalWindowOrder` is **not** the culprit — it re-anchors every iteration and gates each swap at
+`simulate(rep) ≥ r0 − castVal/1000` (`:2770-2771`), so it can only leak ~0.001 casts. The leak is
+`normalize()` (`:2785`) = `dodgeDowntime ∘ slideEarliest ∘ spreadLoneHaste ∘ coPressAlign`, which runs
+**after** the last `simulate` on the two Cold-Snap paths. `coPressAlign` alone carries a *designed*
+pressability trade of up to `castVal/8` = 0.125 eff casts (`:2780`) — legitimate as a plan choice,
+but it is spent silently and the reported `val` never learns about it. Four stacked transforms is
+also why the observed worst exceeds any single one's bar.
+
+Note the fixpoint at `:2792-2796` **does** re-score (`const v2 = simulate(s2, cfg).robust; s = s2; val = v2;`).
+So the machinery to do this correctly already exists in the same function — the resolve sites simply
+don't use it.
+
+#### Prevalence (measured, all 25 shipped presets)
+
+Instrument mirrors `tests/exact-match.mjs:52-63` cfg construction exactly; fails loud on pageerror, on
+any preset erroring, and on zero graded rows (see the instrument note below — this mattered).
+
+| preset | `val` | `simulate(emitted s)` | Δ eff casts | CS path |
+|---|---|---|---|---|
+| Al'ar | 334916.588 | 334572.764 | **−0.1533** | yes |
+| 2:40 lust 0:07 | 290605.822 | 290556.321 | −0.0221 | yes |
+| 3:20 lust 0:05 | 360731.659 | 360808.825 | +0.0344 | yes |
+| 3:20 lust 0:05 drums | 367042.610 | 367117.990 | +0.0336 | yes |
+
+**4 / 25 presets drift; worst over-report 0.153 eff casts; every one of them on a Cold-Snap resolve
+path** — exactly the two sites where `normalize()` runs after the last scoring, and none on the plain
+`:2928` path where only the tightly-gated canonicalizer runs. The root cause is confirmed by the
+prevalence pattern, not just by reading the code.
+
+The drift is **bidirectional** (2 over, 2 under), which rules out "a systematic constant to subtract"
+and confirms it is whatever the transform happened to trade on that plan.
+
+#### What it does and does not bear on
+
+- **It does NOT corrupt the acceptance rounds.** `tools/xval.mjs` takes `.s` (the emitted plan) and
+  re-scores it itself — `champ[h] = (await optimizeAsync(...)).s` at `:121`, then `simulate(champ[h], cfg)`
+  at `:125-126`. Both the pooling choice and the reported `eff` are computed from the emitted plan.
+  Rounds 1–4 are unaffected. **This is a negative result and is load-bearing** — it is why §5.13's
+  attribution and the round-4 record stand as written.
+- **It DOES corrupt the number the user reads.** The displayed effective-AB count is the project's
+  stated arbiter for comparing two lines (`CLAUDE.md`), and on ~16% of shipped presets it is the score
+  of a slightly different plan than the one on screen.
+- **It DID enable a false pass in `brute-grid --tool`.** That certification returned `best.val` and
+  compared it to a `simulate`-computed grid optimum under a **0.15** pressability band — the same order
+  as the 0.153 worst over-report, so a genuine search miss up to ~0.30 could print
+  `PASS (within pressability slack)`. **Fixed** (`tools/brute-grid.mjs`): it now grades
+  `simulate(best.s, cfg).robust`, making both sides apples-to-apples.
+- **Its bearing on invariant B is plausible but UNPROVEN.** A plan selected on an inflated `val` and
+  then emitted in a slightly worse normalized form is precisely the "native loses to a borrowed plan"
+  signature. But the `:2918` branch comparison (`bestN.val >= champ.val - bar`) happens *before* the
+  transforms, so recomputing `val` afterwards is expected to change only the reported number, not the
+  emitted plan. **Expected, not verified** — the exact-match suite is the test that settles it, and it
+  has not been run against this change. Do not book this as a B fix until it has.
+
+#### Decision
+
+The fix is to re-score after the transform at all three sites. It is **gated on exact-match 25/25**:
+if any golden moves, the change is not a reporting fix but a plan change, and must be re-argued on
+effective-AB grounds before it lands. Not yet applied.
+
+*Instrument note (the class again).* The first version of the prevalence sweep called a function that
+did not exist; all 25 presets threw, and the summary still printed **"0/25 presets where reported val
+!= simulate"** — a confident CLEAN over **zero graded rows**. It was caught only because the per-preset
+error lines were printed alongside. This is the 07-25 audit's own lesson reproduced first-person, in a
+throwaway script, by the person who had just written the lesson down: *an instrument whose failure mode
+is a PASS must be dry-run against known-nonempty data before its verdict is believed.*
