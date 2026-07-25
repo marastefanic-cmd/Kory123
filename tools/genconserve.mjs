@@ -36,7 +36,14 @@ const IDS = {
   BL:   {spellId:2825, tag:-1},
   Icon: {itemId:29370},
   Gem:  {itemId:22044},
+  Skull:{itemId:32483},   // Skull of Gul'dan (+175 haste on-use, spell 40396)
+  MQG:  {itemId:19339},   // Mind Quickening Gem (+330 haste on-use, spell 23723)
 };
+// Every spec key this generator understands.  A key that is NOT here used to be dropped in
+// silence — a skull/mqg kit emitted a conserve APL with the trinket press simply ABSENT, and the
+// finite-mana number it fed was wrong while looking entirely fine.
+const KNOWN = new Set([...Object.keys(IDS), '_conserve', '_evo', '_burnWindows', '_intermission',
+                       '_intermissions', '_prestack', '_noEvo']);
 const fmt = arr => (arr||[]).map(t=>`${t}s`).join(', ');
 const sched = (times, id) => ({ action: { schedule: { schedule: fmt(times), innerAction: { castSpell: { spellId: id } } } } });
 const cast = id => ({ castSpell: { spellId: { spellId: id } } });
@@ -53,7 +60,14 @@ export function build(spec){
   const pl = [];
   const conserveThresh = spec._conserve ?? 0.35; // AB while mana% above this, else Frostbolt
   const evoThresh      = spec._evo      ?? 0.06; // Evocate when mana% falls below this
-  const prestack = spec._prestack || 1;
+  const unknown = Object.keys(spec).filter(k => !KNOWN.has(k));
+  if (unknown.length) throw new Error(`genconserve: unknown spec key(s) ${unknown.join(', ')} — would be silently dropped from the APL`);
+  for (const k in IDS) if (spec[k] != null && !Array.isArray(spec[k])) throw new Error(`genconserve: spec.${k} must be an array of fire times (got ${typeof spec[k]})`);
+  // `|| 1` silently overrode an EXPLICIT _prestack:0, generating a prepull AB at -2.3s for a
+  // caller that had asked for a cold open — the exact haste-blind prepull the project forbids in
+  // any model-compared sim (genapl header ★★★, RULES §3).  `??` keeps the default without
+  // overriding an explicit 0.
+  const prestack = spec._prestack ?? 1;
 
   // Cold Snap first so its IV-reset lands before the IV schedule evaluates.
   if (spec.CS?.length)   pl.push(sched(spec.CS, IDS.CS));
@@ -62,6 +76,8 @@ export function build(spec){
   if (spec.AP?.length)   pl.push(sched(spec.AP, IDS.AP));
   if (spec.Icon?.length) pl.push(sched(spec.Icon, IDS.Icon));
   if (spec.Gem?.length)  pl.push(sched(spec.Gem, IDS.Gem));
+  if (spec.Skull?.length) pl.push(sched(spec.Skull, IDS.Skull));
+  if (spec.MQG?.length)  pl.push(sched(spec.MQG, IDS.MQG));
   if (spec.Zerk?.length) pl.push(sched(spec.Zerk, IDS.Zerk));
 
   // "burn" predicate: any burn aura up, OR inside an explicit burn window.
