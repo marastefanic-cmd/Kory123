@@ -1,15 +1,20 @@
+> **ARCHIVE — Phase 7, acceptance ROUND 4** (snapshot taken 07-25, before the round-5 re-baseline
+> replaced it). Round 4 is the last round gathered under the **OLD harness gear** — the model side
+> planned for a mage without `t5two` and at `sp: 1387`, which is not the mage the sim runs. That is
+> what round 5 corrects (`tools/reference-gear.mjs`, PHASE8 §20); the two rounds are therefore the
+> before/after pair for that correction, and the point of keeping this one is to be able to diff them
+> table-by-table. Its successor lives in `tools/xval-results/`; the round-by-round narrative is in
+> `docs/ACCEPTANCE.md` and `docs/PHASE7.md`.
+
 # Cross-validation raw matrices — the CURRENT acceptance round
 
-> **⚠ RE-BASELINE IN FLIGHT (round 5, started 07-25).** Round 4 — the previous contents, now snapshotted
-> into `tools/xval-results-archive/phase7-round4/` — was gathered under the **old harness gear**: the model
-> side built its plans without `t5two` and at `sp: 1387`, a mage the sim does not run (PHASE8 §6/§7/§20).
-> The *sim* columns used the real export and were fine; what was suspect is **which plan each row optimized
-> to**. `tools/reference-gear.mjs` fixed that, and this directory is being refilled kit-by-kit on the
-> corrected gear. **Until the trailing `RERUN-DONE failures=0` lands, this round is PARTIAL — a mix of
-> round-4 and round-5 tables — and no acceptance verdict may be read off it.** The pre-flight measurement
-> says the correction is rank-neutral at this scale (same argmax at every haste; one 0.011-eff-AB reorder
-> at h150), so the headline is not expected to move; the reason to re-gather anyway is that a table nobody
-> can name the gear of is not evidence.
+> **⚠ STALE as of 07-25 — gathered under the OLD harness gear.** These tables were produced before
+> `tools/reference-gear.mjs` landed, so the model side built its plans **without `t5two` and at `sp: 1387`**
+> — a mage the sim does not run (PHASE8 §6/§7/§20). The *sim* columns used the real export and are fine;
+> what is suspect is **which plan each row optimized to**. The pre-flight measurement says the correction is
+> rank-neutral at this scale (same argmax at every haste; one 0.011-eff-AB reorder at h150), so these tables
+> are unlikely to move materially — but they are **no longer authoritative**. Re-baseline with
+> `bash tools/xval-rerun.sh` and snapshot these into `tools/xval-results-archive/` first, per the rule below.
 
 Committed output of the holdout haste-adaptation cross-val (`tools/xval.mjs`, driven by
 `tools/xval-campaign.sh` + `tools/xval-boss.sh`). The scratchpad they are produced in is ephemeral;
