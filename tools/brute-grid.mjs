@@ -31,15 +31,37 @@ let T = 80, LUST = 20, segSpec = null, PAIR = ['isc', 'scb'], TOOL = false;
 const argH = [];
 {
   const av = process.argv.slice(2);
+  // There used to be no `else`: an unrecognized flag was dropped in silence AND its numeric
+  // argument then satisfied `Number.isFinite` and became a HASTE POINT.  `--T=100 200 --tool`
+  // therefore certified the DEFAULT T=80 fight at h=200 and h=100, printing a confident
+  // "TOOL eff=… → PASS (≥ grid)" for a configuration nobody asked for.
+  const KNOWN_TRINKETS = new Set(['isc', 'scb', 'skull', 'mqg']);
+  const num = (flag, raw) => {
+    const v = +raw;
+    if (raw === undefined || raw.startsWith('--') || !Number.isFinite(v)) {
+      console.error(`ERROR: ${flag} needs a numeric value (got ${raw === undefined ? '<nothing>' : `"${raw}"`}).`);
+      process.exit(2);
+    }
+    return v;
+  };
   for (let i = 0; i < av.length; i++) {
-    if (av[i] === '--T') T = +av[++i];
-    else if (av[i] === '--lust') LUST = +av[++i];
-    else if (av[i] === '--aoe') { const [a, b, n] = av[++i].split(',').map(Number); segSpec = { type: 'aoe', from: a, to: b, targets: n, mult: 1 }; }
-    else if (av[i] === '--burn') { const [a, b, m] = av[++i].split(',').map(Number); segSpec = { type: 'burn', from: a, to: b, targets: 0, mult: m }; }
-    else if (av[i] === '--pair') { PAIR = av[++i].split(','); if (PAIR.length !== 2) { console.error('--pair wants two of isc,scb,skull,mqg'); process.exit(1); } }
+    if (av[i] === '--T') T = num('--T', av[++i]);
+    else if (av[i] === '--lust') LUST = num('--lust', av[++i]);
+    else if (av[i] === '--aoe') { const [a, b, n] = (av[++i] || '').split(',').map(Number); if (![a, b, n].every(Number.isFinite)) { console.error('ERROR: --aoe wants from,to,targets (e.g. --aoe 40,60,4)'); process.exit(2); } segSpec = { type: 'aoe', from: a, to: b, targets: n, mult: 1 }; }
+    else if (av[i] === '--burn') { const [a, b, m] = (av[++i] || '').split(',').map(Number); if (![a, b, m].every(Number.isFinite)) { console.error('ERROR: --burn wants from,to,mult (e.g. --burn 40,60,2)'); process.exit(2); } segSpec = { type: 'burn', from: a, to: b, targets: 0, mult: m }; }
+    else if (av[i] === '--pair') {
+      PAIR = (av[++i] || '').split(',');
+      if (PAIR.length !== 2) { console.error('ERROR: --pair wants two of isc,scb,skull,mqg'); process.exit(2); }
+      // An unknown key is enabled nowhere and skipped by simulateRaw, so its whole enumeration
+      // axis contributes nothing and a ONE-trinket optimum gets certified as `pair=isc+sbc`.
+      const bad = PAIR.filter(k => !KNOWN_TRINKETS.has(k));
+      if (bad.length) { console.error(`ERROR: --pair has unknown trinket key(s): ${bad.join(', ')} (known: isc scb skull mqg)`); process.exit(2); }
+    }
     else if (av[i] === '--tool') TOOL = true;
-    else if (Number.isFinite(+av[i])) argH.push(+av[i]);
+    else if (/^-/.test(av[i]) || !Number.isFinite(+av[i])) { console.error(`ERROR: unknown argument "${av[i]}".  Supported: --T --lust --aoe --burn --pair --tool, plus bare haste numbers.`); process.exit(2); }
+    else argH.push(+av[i]);
   }
+  if (T <= 5) { console.error(`ERROR: --T must be > 5 (got ${T}) — the enumeration grid would be EMPTY and the certification would pass over zero cells.`); process.exit(2); }
 }
 const HASTES = argH.length ? argH : [160, 220];
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
