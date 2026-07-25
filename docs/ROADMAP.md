@@ -105,7 +105,20 @@
    double-counts the snap by ≈0.72 s, *larger than the confound being removed*; done by patching the engine
    text **in memory** (the page's own Worker trick), never on disk. Corroborations: `maxMove` 0.006 s, residual
    spread **halved** (0.024 vs 0.047), and casts `230→230` at every δ — confirming §19.7.3's "+1 cast" was a
-   symptom. **L1/L2 proceed per §19.7.5**, with L1's model leg required to use the same slip-suppressed copy)
+   symptom. **L1 then ran and reframed the round (§19.10): NEITHER falsifier fires.** Across
+   `R ∈ {0…400}` the model reproduces the *whole* haste dependence of the stacking contrast — sign flip and
+   slope (`d_sim` +0.40 %→−1.05 %, `d_model` +0.33 %→−1.01 %) — with **mean Δresid −0.045 pp (sd 0.086)**, i.e.
+   no average bias. L1b fails (0.116 < 0.15) so **§18.6's floor story is not retired**; L1a fails on *sign*
+   (Spearman(clip %, |Δresid|) = **−0.800**) because the residual **peaks AT the crossing** (`R=70`,
+   `u=0.9898`, −0.181 pp) and decays once clipping is deep — a boundary **discretization** disagreement, so the
+   floor is at most a component. **B2 is therefore a crossing-location error, not a level error:** the sim's
+   sign flip is in `(53,70)`, the model's in `(70,120)` — one grid step late. And gating on the sim's own
+   0.049 pp noise, the model **inverts nothing it can resolve: 6 AGREE / 0 DISAGREE / 2 ties**, both "ties"
+   being `d_sim` = −0.008 % and 0.000 %. §19.8's "over-credits ~5×" was read at `R=70`, the single most
+   adversarial haste in the range. Target for **L2**: explain the *position of the sign flip*, not the
+   magnitude (**+0.18 pp just past the crossing, ≈0 by `R=200`, absent below**). Instrument 20/20; two
+   defect-class lessons in §19.10 (an over-rejecting materiality guard; a fixture that was unrealistic in the
+   very dimension its guard measures)
    and `docs/PHASE9.md` (**performance/refactor**, user-reported CPU cost — notes + hypotheses only so
    far, nothing landed; every change there is gated on byte-identical plans. **§4.7** turns the "fewer
    steps" ask into a *pass-firing census* — a pass is redundant iff its input is already its own fixpoint

@@ -1907,6 +1907,79 @@ per press — the trap above, in the leg where it would be hardest to notice.
 
 *Apparatus: `$SP/p8/r9l0align.mjs`, reading `r9l0/{plans,l0,model,gate.k*}.json`; writes `align.json`.*
 
+### 19.10 ★★ L1 RESULT (07-25) — **NEITHER falsifier fires.** B2 is a **crossing-location** error, not a level error, and the model never inverts a resolvable ranking
+
+L1 sweeps gear haste `R ∈ {0,30,53,70,120,200,300,400}` over the same K3 contrast (`C0` = MQG@100 solo →
+`C1` = MQG@202 stacked onto IV@202), `T=300`, sp 1450, t5two on, Icon off, var 3.0 / 20 000 iter, cold open.
+All 8 points graded (no COUNT, no NODATA). Primary column is §19.9's: executed presses, slip suppressed.
+
+| `R` | `u_stack` | clip % | `d_sim` | `d_model` | `Δresid` | rank |
+|---|---|---|---|---|---|---|
+| 0 | 1.0337 | 0.00 | **+0.3991** | +0.3307 | +0.0684 | AGREE |
+| 30 | 1.0144 | 0.00 | **+0.2052** | +0.3118 | −0.1065 | AGREE |
+| 53 | 1.0001 | 0.00 | **+0.1908** | +0.3070 | −0.1163 | AGREE |
+| 70 | 0.9898 | 1.02 | −0.0076 | +0.1732 | **−0.1808** | *tie* |
+| 120 | 0.9606 | 3.94 | 0.0000 | −0.0454 | +0.0454 | *tie* |
+| 200 | 0.9174 | 8.26 | **−0.3376** | −0.2915 | −0.0461 | AGREE |
+| 300 | 0.8685 | 13.15 | **−0.6017** | −0.6153 | +0.0136 | AGREE |
+| 400 | 0.8245 | 17.55 | **−1.0505** | −1.0107 | −0.0398 | AGREE |
+
+- **L1a — THE FLOOR IS THE MECHANISM → FAILS.** Its first half *holds* (max |Δresid| below the crossing =
+  0.1163 pp < 0.15) but its second half fails **with the opposite sign**: Spearman(clip %, |Δresid|) above the
+  crossing = **−0.800**, not ≥ +0.8. The residual **shrinks** as clipping deepens.
+- **L1b — FLOOR-INDEPENDENT → FAILS** (0.1163 < 0.15). **§18.6's floor story is NOT retired.**
+- Both readings are identical on the REQUESTED reference column (0.1363 pp, ρ = −0.700), so the verdict does
+  not depend on the phase treatment — §19.9's machinery earned its keep by making that checkable.
+
+**★ What actually fires: the residual peaks AT the crossing.** |Δresid| is maximal at `R = 70`
+(`u_stack = 0.9898` — 1 % into the clip, 17 rating past the crossing), and decays to 0.014–0.046 pp once
+clipping is deep. Mean Δresid over the sweep is **−0.045 pp (sd 0.086)** — i.e. **the model has essentially
+no average bias across haste**; it reproduces the whole haste dependence of the stacking contrast, sign flip
+and slope included (+0.40 % → −1.05 % in the sim, +0.33 % → −1.01 % in the model). A defect that is absent
+below a boundary, maximal *at* it, and absent well above it is the signature of a **discretization
+disagreement at the boundary** (the model's continuous rate integral vs THE FLOOR LAW's `floor(D/Δ)`), not of
+a missing mechanism. **The mechanism is mixed, and the floor is at most a component of it.**
+
+**★★ THE REFRAMING — B2 is a crossing-location error.** The sim's sign flip lies in `(53, 70)`; the model's
+lies in `(70, 120)`. **One grid step late** — the model stays pro-stacking ≈ 20–50 rating longer than the sim.
+That single statement accounts for every disagreement in the table, and it is far smaller than the "0.40 %
+ranking error" B2 was opened on.
+
+**★★ And the model never inverts a ranking the sim can resolve.** Gating on the sim's own noise
+(L0 measured `sd(d_sim) = 0.0492 pp`; bar = 2 sd = 0.098 pp): **6 points AGREE on sign, 0 DISAGREE, 2 are
+ties.** Both "inversions" sit at `d_sim = −0.0076 %` and `d_sim = 0.0000 %` — differences 6× and ∞× below the
+sim's ability to tell the arms apart. There is no rank there to invert. §19.8's "the model over-credits a
+stacked press ~5×" was read at `R = 70`, which this sweep shows is **the single most adversarial haste in the
+whole range** — the worst point of a sweep whose mean is −0.045 pp, not a representative one.
+
+**Consistency with L0.** L1's `R = 70` point (`d_sim −0.008 %`, `d_model +0.173 %`) sits inside L0's
+independently-measured phase spread at the same haste (`d_sim +0.053 ± 0.049`, aligned `d_model` 0.162–0.341 %)
+— two different sim runs and two different reductions agreeing at the one haste they share.
+
+**Instrument.** 20/20 controls (9 negative + 1 positive on the model leg, 6 negative + 4 positive on the
+reducer). Two findings from building it, both of the round's signature defect class:
+- **CONTROL 2b — an over-rejecting guard is the same defect as a false pass.** "The slip patch must change the
+  score at *every* (haste, arm)" fails legitimately: at `R=300 / C1` with requested times no press lands
+  mid-cast, so `slip` never fires and the patch is *provably inert there*. Materiality had to become a
+  **sweep-level** requirement with per-row sizes reported (it ran 12/16 on real data), plus a *textual* proof
+  that the replacement took (needle gone, marker present exactly once) which is valid unconditionally.
+- **★ A synthetic fixture must be realistic in the dimension the guard measures.** The first healthy fixture
+  faked executed times as `t + 0.05`, which is **mid-cast** — a shape no gate record can contain, because a sim
+  fires an on-use *between* casts. The model correctly snapped them 1.367 s and correctly refused to grade:
+  the guard was right and the **fixture** was wrong. `r9l1fixgen.mjs` now derives them from the engine's own
+  cast boundaries, iterated to a fixed point, then rounded to the sim log's 2 dp — whose cost, **0.0036 s**, is
+  an unplanned corroboration that L0's real `maxMove = 0.006 s` is exactly what boundary-realistic times
+  should look like. The old naive shape is retained as `$F/midcast`, the load-bearing **negative** control that
+  keeps the generator from being able to talk the guard out of firing.
+
+**Where this leaves the round.** L1 is not negative, so §19.3's audit-trigger clause does not arm. The target
+handed to L2 is much sharper than the one L1 was opened with: **not a level bias, but a +0.18 pp over-credit of
+the stacked arm localized to the neighbourhood just past the floor crossing, decaying to ≈ 0 by `R = 200` and
+absent below the crossing** — i.e. explain the *position of the sign flip*, not the magnitude of the contrast.
+
+*Apparatus: `$SP/p8/{r9l1.sh,r9l1model.mjs,r9l1stat.mjs}` + `r9l1fixgen.mjs`/`r9l1ctl.sh` (controls), writing
+`r9l1/{req,gate.h*,model,l1}.json` and `l1.txt`.*
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance
