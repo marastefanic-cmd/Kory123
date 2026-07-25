@@ -23,11 +23,24 @@
    floor** and the median column is **3.8× below the ruler**. Of the 24 that exceed it, 6 are Kael'thas-420
    (its own AoE + wall-parity channels), 5 are **saturating** on the ceiling (<0.03 pp over, expected since
    the amplitude is peak-to-peak and `diagWorst` maxes over ~10 rivals), 4 are slow-tail residuals — and
-   **9 are `FLOOR-TAIL`, where the ripple is provably ~0 (exactly 0.000 % for three).** That family is the
-   **mirror image** of the ripple-explained one in both haste and length ⇒ a genuinely **second mechanism**.
-   **Next: the FLOOR-TAIL family — cleanest cell `mqg+skull xl T=395 @265`** (deficit 0.090 %, floor exactly
-   0.000 %, `c = 1.000` s, `Nt = 351`, and *not* a boss row, so no wall/AoE channel is available to explain
-   it away).** What landed earlier: three sim-gated scorer terms (RULES §3b — press-snap
+   **9 are `FLOOR-TAIL`, where the ripple is provably ~0 (exactly 0.000 % for three).**
+   ★★★ **FLOOR-TAIL was then WORKED, and it is NOT the target — the target list was mis-ordered by the
+   ruler** (`tools/floor-plateau.mjs` + `tools/ambient-gap.mjs`, 07-25; two pre-registered hypotheses, both
+   **falsified**, no `index.html` change). (1) `H_PLATEAU` — that the floored residual is a *tie-break*
+   failure, the rate integral being flat in surplus haste so the model is indifferent where the sim's
+   Δ=1.0 s lattice is a staircase — is **dead**: at the 12 floored cells the model is *not* indifferent,
+   median |model Δ| is **larger** there (0.0543 % vs 0.0325 %), and the stratification is real (time at the
+   GCD cap 15.6 % vs 5.7 %, p=0.008). (2) The obvious replacement — a mis-sized floor-slack/ramp credit — is
+   **disfavoured on sign**: ρ(capFrac, deficit) = **−0.135**. (3) The decisive move was changing the
+   **currency**: the sim deficit `pct` hides the model's own margin, so the real disagreement is
+   `joint = model Δ + pct`, the amount a fix must close. In that currency the four over-floor families
+   re-rank and **FLOOR-TAIL comes LAST**: `inside` 0.081 pp · **FLOOR-TAIL 0.106 (1.30×)** · KT-AoE 0.236
+   (2.90×) · SATURATED 0.268 (3.29×) · RESIDUAL 0.274 (3.37×). FLOOR-TAIL only *looked* like the sharp
+   target because its own floor is ~0.022 pp, 6× below `inside`'s 0.139 — **it is the least anomalous
+   over-floor family, seen without a ruler over it.** ⇒ **Next: the 15 cells of KT-AoE (6) + SATURATED (5)
+   + RESIDUAL (4)**, which carry ~3× the ambient joint gap. ⚠ Note `SATURATED` was *defined* as
+   "<0.03 pp over the ceiling" — its 3.29× says that label is measuring ceiling-proximity, not smallness,
+   and it must be re-derived before being treated as a mechanism. What landed earlier: three sim-gated scorer terms (RULES §3b — press-snap
    slippage at hard edges; externals snap to the cast lattice, which tempers the IV@0 "ramp
    compression" credit; ramp casts snapshot buffs at cast START), two search passes (polished CS
    chain-geometry family; drop-one-use escape), the KT AoE harness gap closed (genapl `_aoe` →

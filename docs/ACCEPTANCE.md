@@ -254,7 +254,18 @@ Median deficit **0.035%** vs median floor **0.134%** — the typical column is *
 Spearman ρ(floor, deficit) = **+0.118**: the floor *bounds* the deficits but barely *predicts* which are
 worst, so it is a **ceiling, not an explanation** — do not report it as one. The four over-floor families:
 
-- **FLOOR-TAIL (9) — ★ THE SHARP TARGET, and a genuinely NEW partition.** The kill-edge period sits at
+- **FLOOR-TAIL (9) — ~~★ THE SHARP TARGET~~ → ★ RETARGETED, IT IS THE *LEAST* ANOMALOUS OF THE FOUR
+  (07-25).** Worked in PHASE7 §5.16e; two pre-registered hypotheses falsified and the family demoted. The
+  ranking below is by **sim deficit**, which hides the model's own margin — re-ranked in the **joint**
+  currency (`dModel + pct`, the gap a fix must actually close) it reads `inside` **0.081 pp** ·
+  **FLOOR-TAIL 0.106 (1.30×)** · KT-AoE **0.236 (2.90×)** · SATURATED **0.268 (3.29×)** · RESIDUAL
+  **0.274 (3.37×)**. FLOOR-TAIL only looked sharp because its *own* floor is ~0.022 pp, **6× below
+  `inside`'s 0.139** — an ordinary gap with no ruler over it. The remaining target is the **15 cells of
+  KT-AoE + SATURATED + RESIDUAL**. Also dead: `H_PLATEAU` (the model is *not* indifferent at the floor —
+  median |model Δ| is **larger** there, 0.0543% vs 0.0325%) and the floor-slack/ramp-credit candidate
+  (ρ(capFrac, deficit) = **−0.135**, wrong sign). RULES §8 consequence 4. The original reading follows,
+  kept because its *measurements* stand and only its **priority** was wrong:
+  The kill-edge period sits at
   or near the GCD floor, where the ripple is provably ~0 — **exactly 0.000% for three of them**
   (`c = 1.000`, the closed form's built-in zero: at `c = W` the taper smears the lattice perfectly). So
   these deficits have **no tail-lattice explanation at all**. Deficits 0.040–0.166%, and the family's
@@ -267,7 +278,11 @@ worst, so it is a **ceiling, not an explanation** — do not report it as one. T
   AoE + wall-parity channels (coverage gaps below); **not evidence about the scorer.** This family is
   what makes the bound non-vacuous: a 420s fight has ~4× the casts of a 99s one, so its floor is ~4×
   smaller and 6/8 KT columns clear it.
-- **SATURATED (5)** — over by <0.03 pp, i.e. sitting *on* their own ceiling. This is **confirmatory, not
+- **SATURATED (5)** — over by <0.03 pp, i.e. sitting *on* their own ceiling. ⚠ **Re-read this label
+  (07-25):** it is *defined* by proximity to the ceiling, not by smallness, and in the joint currency it is
+  the **second-worst family (0.268 pp, 3.29× ambient)**. "Confirmatory" was inferred from the definition;
+  it must be re-derived before the label is trusted as a mechanism. Original reading: this is
+  **confirmatory, not
   a defect signal**: the amplitude is peak-to-peak and `diagWorst` is a `max` over ~10 rivals, which
   selects precisely for the worst tail phase. Note what it does to the cell `tools/lattice-ripple.mjs`
   independently diagnosed — `isc+skull short T=99 @40`, deficit **0.362%** against a floor of
@@ -280,7 +295,8 @@ worst, so it is a **ceiling, not an explanation** — do not report it as one. T
 instrument at this taper width** — an unmeasurable deficit and no deficit are the *same reading*. It is
 not a proof the model is right there, and it is **not** a licence to discretize the scorer
 (`lattice-ripple.mjs` §3: the discrete sum is a *worse* predictor across a full column, r 0.7910 vs
-0.9337). The actionable output is the over-floor list, and within it FLOOR-TAIL first.
+0.9337). The actionable output is the over-floor list — ~~and within it FLOOR-TAIL first~~ **ordered by the
+JOINT gap, not the sim deficit: KT-AoE / SATURATED / RESIDUAL first, FLOOR-TAIL last** (07-25, above).
 
 **★★★ Round 5 proves the B failure is NOT a reference-gear artifact.** The correction was a genuine
 repricing: `xval-round-diff` reports **124 of 345 plan cells changed (35.9%)** across 34/36 tables on a

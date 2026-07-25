@@ -470,6 +470,21 @@ on the patched runner.
      floor, so the ripple is provably ~0 (exactly 0.000 % for three of them)**. That family's shape is the
      **mirror image** of the ripple-explained one — sim-haste median **240** (min 70), T median **395**
      (min 218), versus **110 / 218** for the explained cells. **One mechanism cannot be behind both.**
+  4. **★★★ MEASURE THE DISAGREEMENT IN THE JOINT CURRENCY, NOT THE SIM DEFICIT — the deficit hides half of
+     it and MIS-RANKS the targets** (`tools/ambient-gap.mjs`, 07-25). A cross-val column reports one number,
+     `pct` = how much the rival beat the model's pick *in the sim*. But the model also had an opinion, by
+     `dModel` = how much it preferred its own pick, re-scored at the **common** haste. The two rankings are
+     apart by the **sum**, and that sum — `joint = dModel + pct` — is what a fix has to close. It changes the
+     answer: ranked by `pct` the over-floor families put **FLOOR-TAIL first**; ranked by `joint` it comes
+     **last of the four** — `inside` **0.081 pp** · FLOOR-TAIL **0.106 (1.30×)** · KT-AoE **0.236 (2.90×)** ·
+     SATURATED **0.268 (3.29×)** · RESIDUAL **0.274 (3.37×)**. FLOOR-TAIL looked sharp only because its own
+     ripple floor is ~0.022 pp, **6× below `inside`'s 0.139** — no ruler was covering an otherwise ordinary
+     gap. ⇒ **A target list built on the masked quantity is a mis-ordered target list.** Two corollaries:
+     the ambient `joint` of ~0.08 pp is mostly `dModel` (median `pct` inside the floor is only 0.025 pp), i.e.
+     **the model is routinely ~0.06 pp more confident than the sim confirms, everywhere**; and the residual is
+     **not homogeneous** (spread 3.37× ⇒ at least one localized mechanism remains, in the *other* three
+     families). See also RULES §2 — the floor's *location* is sim-certified to one rating point, so a floored
+     cell's residual was never likely to be the haste formula.
   This is the **tail** face of the same integer-vs-continuum law whose **interior-boundary** face is PHASE8's
   FLOOR LAW (a value window covers exactly `floor(D/Δ)` casts in the sim).
   **⚠ The fix is NOT to discretize the scorer.** Swapping the integral for the sim's own sum flips the

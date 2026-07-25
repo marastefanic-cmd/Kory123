@@ -51,8 +51,11 @@ import { REF } from './reference-gear.mjs';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const KW = 0.5, W = 2 * KW;
 const TARGETS = process.argv[2];
+// `--json <path>` dumps the priced rows so a follow-up probe can STRATIFY them (e.g. floored-edge vs
+// not) without re-implementing the pricing. One pricing implementation, many readers.
+const JSON_OUT = (() => { const i = process.argv.indexOf('--json'); return i > 0 ? process.argv[i + 1] : null; })();
 if (!TARGETS || !fs.existsSync(TARGETS)) {
-  console.error('usage: node tools/ripple-audit.mjs <targets.json from xval-collect --json>');
+  console.error('usage: node tools/ripple-audit.mjs <targets.json from xval-collect --json> [--json out.json]');
   process.exit(2);
 }
 const cells = JSON.parse(fs.readFileSync(TARGETS, 'utf8'));
@@ -223,6 +226,11 @@ if (indet.length) {
 if (unpriced.length) {
   console.log(`\n=== UNPRICED (${unpriced.length}) — no bound claimed, these stay open ===`);
   for (const u of unpriced) console.log(`  ${u.cell.kit} ${u.cell.class} T=${u.cell.T} @${u.cell.simH} (deficit ${u.cell.pct}%) — ${u.why}`);
+}
+
+if (JSON_OUT) {
+  fs.writeFileSync(JSON_OUT, JSON.stringify(rows, null, 1));
+  console.log(`\nwrote ${rows.length} priced rows -> ${JSON_OUT}`);
 }
 
 console.log(`\nRIPPLE-AUDIT-DONE priced=${rows.length} inside=${inside.length} over=${over.length} indet=${indet.length} unpriced=${unpriced.length} rho=${rho.toFixed(3)} mono=${mono ? 1 : 0} vacuous=${vacuous ? 1 : 0}`);

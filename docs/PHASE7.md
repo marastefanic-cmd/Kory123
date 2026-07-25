@@ -924,3 +924,127 @@ taper width** — *not* that the model is right there. It is emphatically **not*
 scorer (§5.16c's column control, RULES §8's ⚠ clause). And restating the acceptance criterion as *"deficit
 below the ripple floor"* rather than *"no deficit"* is a **user call**, filed in ACCEPTANCE's coverage gaps
 — note that widening `KILL_WINDOW` to shrink the floor would change the **objective itself**.
+
+### ⛔ §5.16e — FLOOR-TAIL WORKED: two hypotheses falsified, and the TARGET LIST WAS MIS-ORDERED (07-25)
+
+§5.16d handed the round-5 residual down to **9 cells** — the `FLOOR-TAIL` family, whose ripple floor is
+provably ~0 because `c → 1.000` ⇒ `W/c → 1`. This section works it. **Both pre-registered hypotheses were
+falsified, and the more useful result is that the family was never the right target.** No `index.html`
+change; `tools/` + `docs/` only.
+
+**Instruments** (each stage `--json`-dumps for the next, so pricing and scoring each exist exactly once):
+
+```
+node tools/xval-collect.mjs tools/xval-results --json /tmp/targets.json
+node tools/ripple-audit.mjs  /tmp/targets.json --json /tmp/priced.json
+node tools/floor-plateau.mjs /tmp/priced.json  --json /tmp/scored.json
+node tools/ambient-gap.mjs   /tmp/scored.json
+```
+
+#### The stratification that motivated it (measurement, and it stands)
+
+Stratifying the 135 priced rows by kill-edge period: floored (`c ≤ 1.10`) n=12 median deficit **0.066 %** vs
+slow (`c > 1.10`) n=123 median **0.033 %** — unconditionally only z=1.41, **p=0.16, not significant**. But
+**haste is a NEGATIVE confounder**: inside the slow stratum, `simH ≥ 200` median **0.020 %** vs `simH < 200`
+median **0.041 %** (z=−2.30, **p=0.021**) — which is just the ripple's own 1/N. Controlling for it therefore
+*strengthens* the floor effect: within `simH ≥ 155`, floored n=10 median **0.074 %** vs slow n=48 median
+**0.018 %** (z=2.29, **p=0.022**); same sign at ≥200 (p=0.034) and ≥230 (p=0.026). ⚠ Those three cutoffs
+overlap heavily — that is **one** test at p≈0.02–0.03, not three.
+
+⚠ **A tempting reading was killed on the way in.** All 9 FLOOR-TAIL cells contain `skull`, against a corpus
+base rate of 51.9 % (naive p=2.7e-3). But `skull` is **Skull of Gul'dan — `kind:"rating"`, +175 haste**
+(`index.html:608`), so its rating is *what floors the edge*: the family is near-tautologically skull-heavy.
+The discriminating check: **off the floor, skull cells have if anything a SMALLER deficit than non-skull ones
+(0.031 % vs 0.036 %, n=59/64).** Confounder, not cause — the operative variable is the floor.
+★ *Lesson: check the buff table before reasoning about a kit.* The first pass of this analysis assumed
+`skull` was a **spell-power** trinket and built an entire story about stacking SP into AP's ×1.30 window.
+Reading `index.html:608` inverted it — `mqg+skull` is haste+haste, and at h=265 `IV(1.20)·(1+(265+175)/1577)
+= 1.535` ⇒ `1.5/1.535 = 0.977` ⇒ clamped to 1.000, exactly the `c = 1.000~` the audit had printed.
+
+#### H_PLATEAU — FALSIFIED (`tools/floor-plateau.mjs`, verdict=VALUATION)
+
+RULES §2 certifies the floor's **location** against the sim to one rating point (§PHASE8 round 4 F1), so the
+suspect was never the formula — it was what the formula does to the **search**:
+
+> `H_PLATEAU`: past the floor the rate integral is exactly **flat** in surplus haste, so the model is
+> **indifferent** among placements differing only in surplus haste. The sim is not: at Δ=1.0 s its cast
+> lattice is a **staircase**. Where the model has a plateau the sim has steps, so the model lands on an
+> arbitrary plateau point (chosen by the legibility/canonical tie-breaks, which are **not** a maximization)
+> while the sim has a best step. Predicts a deficit that is small, one-sided, and concentrated at the floor.
+
+Pre-registered **P1**: median |model Δ| must be **SMALLER** in the floored stratum. Observed the opposite —
+**0.0543 % floored vs 0.0325 % slow** (z=1.29, p=0.20) — so **P3 FALSIFIER fired**. The model is not
+indifferent at the floor; its own margin there is *comparable to the sim deficit it is supposed to be blind
+to*. Indifference is contradicted cell by cell, which does not depend on the between-stratum p-value.
+
+- **P4 SELF-CHECK PASS** — floored cells really are floored: time at the GCD cap **15.6 % vs 5.7 %**
+  (z=2.67, **p=0.0076**). So `c = last.interval` is not picking up one lucky last cast, and the
+  stratification above is a real measurement.
+- **P2** — model prefers native **12/12**. ⚠ This is a **validity check, not evidence**: `dModel ≥ 0` holds
+  **by construction** (native *is* the model's argmax at that haste), so only a search miss can flip it.
+  Zero misses ⇒ pooling did its job. Only the **magnitude** carries content, and that is what P1/P3 tested.
+- **The obvious replacement candidate died on sign.** A mis-sized floor-slack/ramp credit
+  (`index.html:919-931`) is worth **+0.33…+0.41 pp** when the floor binds — big enough that a ~15 % error in
+  it *would be* these deficits. But `Spearman(capFrac, deficit) = −0.135` over all 135: more time at the cap
+  ⇒ *smaller* deficit. Disfavoured before it was pursued. (Post-hoc, so hypothesis-generating only — but a
+  wrong-signed lead is refused either way.)
+
+#### H_AMBIENT — ALSO FALSIFIED, and this is where the real finding is (`tools/ambient-gap.mjs`)
+
+`floor-plateau` produced one post-hoc reading worth a proper test: the **joint** disagreement was nearly flat
+across strata. The sim reports `pct` (rival beat the model's pick), but the model also had an opinion,
+`dModel` (how much it preferred its own pick, re-scored at the **common** haste). The rankings are apart by
+the **sum**, and `joint = dModel + pct` is what a fix must close.
+
+> `H_AMBIENT`: the joint disagreement is a roughly **constant corpus-wide scale** (~0.1 pp) and the ripple
+> floor governs only how much of it is **masked**. Then FLOOR-TAIL is not a family at all — it is the corner
+> where `W/c → 1` removes the ruler and an ordinary gap becomes visible.
+
+| label | n | med joint pp | med sim deficit pp | med floor pp | vs `inside` |
+|---|---|---|---|---|---|
+| inside | 111 | 0.0814 | 0.0250 | 0.1386 | 1.00× |
+| **FLOOR-TAIL** | 9 | **0.1061** | 0.0740 | **0.0221** | **1.30×** |
+| KT-AoE | 6 | 0.2364 | 0.2100 | 0.0865 | 2.90× |
+| SATURATED | 5 | 0.2677 | 0.1930 | 0.1894 | 3.29× |
+| RESIDUAL | 4 | 0.2744 | 0.2600 | 0.1510 | 3.37× |
+
+`AMBIENT-GAP-DONE verdict=AMBIENT-DEAD n=135 rhoJoint=0.187 rhoPct=0.118 a1=1 a2=0 a3=0 spread=3.37`
+
+**A1 PASS** (ρ(joint, floor) = 0.187 < 0.20) · **A2 FAIL** (spread **3.37×** > 2.0) ⇒ **A4 fired, H_AMBIENT
+is dead**: the post-ripple residual is **not** homogeneous, so at least one localized mechanism remains.
+**A3 FAIL** on the point estimate (needed ρ(pct,floor) > ρ(joint,floor); got 0.118 vs 0.187) — ⚠ but those
+are two rank correlations on the *same* 135 rows differing by 0.07; that is not a distinguishable difference
+and A3 should be read as **undecided**, not as a result.
+
+**★★★ The finding: it is NOT FLOOR-TAIL that breaks homogeneity.** The band is broken by **KT-AoE (2.90×),
+SATURATED (3.29×), RESIDUAL (3.37×)**, while **FLOOR-TAIL sits at 1.30× — inside the band, the closest of
+the four over-floor families to ambient.** It only *looked* like the sharp target because its own floor is
+0.022 pp, **6× below `inside`'s 0.139**: ranking by the **masked** quantity mis-ordered the target list.
+⇒ **Retarget to the 15 cells of KT-AoE + SATURATED + RESIDUAL.** And ⚠ `SATURATED` needs re-deriving: it is
+*defined* as "<0.03 pp over the ceiling", and its "confirmatory, not a defect" reading (§5.16d) was inferred
+from that definition — in the joint currency it is the **second-worst family**.
+
+Second corollary, corpus-wide: the ambient joint gap of ~0.081 pp is mostly `dModel` (median `pct` inside the
+floor is only 0.025 pp) ⇒ **the model is routinely ~0.06 pp more confident than the sim confirms,
+everywhere.** That is the instrument's own noise floor in the joint currency, and it is the scale every
+remaining family must be judged against.
+
+#### ⚠ Errors made in this section
+
+1. **An assumption was smuggled into a verdict string.** `ambient-gap`'s A4 falsifier text, as first written,
+   said a failure would mean *"the floored corner carries extra disagreement"* — because FLOOR-TAIL was the
+   family under investigation. A4 fired and the blame lay **elsewhere**. Leaving it would have planted a
+   false claim inside a committed tool. Fixed by making the report **compute** which labels break the band
+   (and naming FLOOR-TAIL's position explicitly when it does not), with the correction dated in-file. The
+   **test** is unchanged. ★ *Lesson: pre-registration must fix the test, not narrate the expected
+   explanation.*
+2. **The `skull`-trinket premise** (above) — assumed SP, is haste. Caught by reading `index.html:608` before
+   it reached a doc, but it had already shaped a paragraph of analysis.
+
+#### ⚠ What this does and does not license
+
+Nothing here localizes anything to a line of the engine, and **no `index.html` change is licensed** by any
+of it. `H_PLATEAU`'s death removes the tie-break story; it is **not** a licence to add a sim-shaped
+quantization term to the scorer — §5.16c's column control already refused that (r 0.7910 vs 0.9337). And the
+acceptance-criterion restatement (*"deficit below the ripple floor"* vs *"no deficit"*) remains a **user
+call**, filed in ACCEPTANCE's coverage gaps.

@@ -228,6 +228,34 @@ was all search, not scoring). Don't conflate "the count is right" with "the sear
     *Being conservative about the NUMBER while being wrong about the DERIVATION is not conservative.*
   - ⚠ **Boss rows carry a second wall-parity channel**, so their floor is a *lower* bound on the artifact
     budget — never read a boss cell's "over the floor" as scorer evidence on its own.
+  - `--json out.json` dumps the priced rows so follow-up probes **stratify one pricing implementation**
+    instead of re-deriving it. Both probes below read it.
+- **`tools/floor-plateau.mjs`** + **`tools/ambient-gap.mjs`** (durable, **no sim needed**): the two
+  pre-registered probes that worked the over-floor residual. Chain (each stage `--json`-dumps for the next,
+  so the pricing and the scoring each exist **once**):
+  ```
+  node tools/xval-collect.mjs tools/xval-results --json /tmp/targets.json
+  node tools/ripple-audit.mjs  /tmp/targets.json --json /tmp/priced.json
+  node tools/floor-plateau.mjs /tmp/priced.json  --json /tmp/scored.json
+  node tools/ambient-gap.mjs   /tmp/scored.json
+  ```
+  `floor-plateau` re-scores **both** plans of a column at the **common** haste through one identical call and
+  asks whether the model is *indifferent* where the GCD floor binds (H_PLATEAU — a tie-break failure) or
+  *confidently wrong* (a valuation error); `ambient-gap` asks whether the post-ripple residual is one
+  homogeneous scale or a localized defect. Both hypotheses were **falsified** — see RULES §8 consequence 4
+  and PHASE7 §5.16e. Three lessons worth copying:
+  - **★★★ MEASURE IN THE JOINT CURRENCY.** `pct` (the sim deficit) is only half the disagreement; the model's
+    own margin `dModel` is the other half, and `joint = dModel + pct` is what a fix must close. Ranking the
+    over-floor families by `pct` vs by `joint` produces **different target lists** — FLOOR-TAIL goes from
+    first to last. A target list built on the masked quantity is a mis-ordered target list.
+  - ⚠ **`dModel ≥ 0` is BY CONSTRUCTION** — the native plan *is* the model's own argmax at that haste, so only
+    a search miss can flip its sign. A "the model prefers native 12/12" line is therefore a **validity check**
+    (pooling removed the search misses), never evidence about magnitudes. Only the magnitude carries content.
+  - ⚠ **Do not put an assumption in a verdict string.** `ambient-gap`'s A4 falsifier text, as first written,
+    asserted that a failure would mean *the floored corner* carried extra disagreement — because that was the
+    family under investigation. A4 fired and the blame lay elsewhere entirely. The clause is now corrected
+    in-file with the reason, and the report **computes** which labels break the band. Pre-registration must
+    fix the **test**, not narrate the expected explanation.
 
 ## Building the runner (do this once per fresh session)
 
