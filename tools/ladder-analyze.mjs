@@ -18,6 +18,9 @@ const classify = (key, pairName) => {
   const [iv, tA, tB, ap, zk] = JSON.parse(key);
   const LUST0 = 20, LUST1 = 60; // ladder fights are T=80, Lust@20
   const cluster = [...tA, ...tB, ...ap]; // damage/SP presses
+  // 0/0 = NaN fails every `<` below and would fall through to the last branch, labelling the band
+  // `cluster@backBridge` — a plausible-looking class rather than an error.
+  if (!cluster.length) throw new Error(`${pairName}: layout key has no damage/SP presses — cannot classify (key=${key})`);
   const cMid = cluster.reduce((s, x) => s + x, 0) / cluster.length;
   const inLust = t => t >= LUST0 - 2 && t < LUST1 - 2;
   const cls = [];
@@ -32,6 +35,13 @@ const all = {};
 for (const f of files) {
   const rows = JSON.parse(fs.readFileSync(f, 'utf8')).sort((a, b) => a.h - b.h);
   const name = f.replace(/^.*ladder-/, '').replace(/\.json$/, '');
+  // An EMPTY dump (what a mis-argued haste-ladder used to write) would contribute zero bands,
+  // print a bare `═══ name ═══` header, and still inflate the `[n/total pairs]` denominator —
+  // while "Worst tool delta anywhere" silently covered only the pairs that had data.
+  if (!Array.isArray(rows) || rows.length === 0) {
+    console.error(`ERROR: ${f} contains no ladder rows — the cross-pair summary would silently exclude it.`);
+    process.exit(2);
+  }
   const bands = [];
   for (const r of rows) {
     const cls = classify(r.top[0].key, name);

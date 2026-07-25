@@ -20,15 +20,38 @@ const WORKERS = 6;
 let T = 80, LUST = 20, PAIR = ['isc', 'scb'], MAX = 300, STEP = 20, OUT = null, BISECT = 10;
 {
   const av = process.argv.slice(2);
+  // A silently-ignored flag is a false pass here: `--max` with a bad value gives MAX=NaN, the
+  // ladder loop `h <= NaN` never runs, and the tool-certification verdict then prints
+  // "no misses ... (0 haste points)" — a PASS over an empty set.  Reject rather than default.
+  const num = (flag, raw) => {
+    const v = +raw;
+    if (raw === undefined || raw.startsWith('--') || !Number.isFinite(v)) {
+      console.error(`ERROR: ${flag} needs a numeric value (got ${raw === undefined ? '<nothing>' : `"${raw}"`}).`);
+      process.exit(2);
+    }
+    return v;
+  };
   for (let i = 0; i < av.length; i++) {
-    if (av[i] === '--T') T = +av[++i];
-    else if (av[i] === '--lust') LUST = +av[++i];
-    else if (av[i] === '--pair') PAIR = av[++i].split(',');
-    else if (av[i] === '--max') MAX = +av[++i];
-    else if (av[i] === '--step') STEP = +av[++i];
-    else if (av[i] === '--bisect') BISECT = +av[++i];
-    else if (av[i] === '--out') OUT = av[++i];
+    if (av[i] === '--T') T = num('--T', av[++i]);
+    else if (av[i] === '--lust') LUST = num('--lust', av[++i]);
+    else if (av[i] === '--pair') {
+      const raw = av[++i];
+      if (raw === undefined || raw.startsWith('--')) { console.error('ERROR: --pair needs two comma-separated trinket keys, e.g. --pair isc,scb'); process.exit(2); }
+      PAIR = raw.split(',');
+      if (PAIR.length !== 2) { console.error(`ERROR: --pair needs exactly two keys (got ${PAIR.length}: "${raw}").`); process.exit(2); }
+    }
+    else if (av[i] === '--max') MAX = num('--max', av[++i]);
+    else if (av[i] === '--step') STEP = num('--step', av[++i]);
+    else if (av[i] === '--bisect') BISECT = num('--bisect', av[++i]);
+    else if (av[i] === '--out') {
+      OUT = av[++i];
+      if (OUT === undefined || OUT.startsWith('--')) { console.error('ERROR: --out needs a path.'); process.exit(2); }
+    }
+    else { console.error(`ERROR: unknown argument "${av[i]}".  Supported: --T --lust --pair --max --step --bisect --out`); process.exit(2); }
   }
+  if (STEP <= 0) { console.error(`ERROR: --step must be > 0 (got ${STEP}) — the ladder would never advance.`); process.exit(2); }
+  if (MAX < 0) { console.error(`ERROR: --max must be >= 0 (got ${MAX}).`); process.exit(2); }
+  if (T <= 5) { console.error(`ERROR: --T must be > 5 (got ${T}) — the brute grid would be empty.`); process.exit(2); }
 }
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
 const G = []; for (let t = 0; t <= T - 5; t += 5) G.push(t);
@@ -41,6 +64,19 @@ async function newWorker() {
   return p;
 }
 const workers = await Promise.all(Array.from({ length: WORKERS }, newWorker));
+// An unknown trinket key is not an error anywhere downstream: `en[k]` never turns it on and
+// simulateRaw skips schedule keys it does not know, so the whole enumeration axis silently
+// contributes nothing and a ONE-trinket optimum gets reported as `pair=isc+sbc`.
+{
+  const bad = await workers[0].evaluate(keys => keys.filter(k => !(k in BUFFS)), PAIR);
+  if (bad.length) {
+    const known = await workers[0].evaluate(() => Object.keys(BUFFS).join(' '));
+    console.error(`ERROR: --pair has unknown trinket key(s): ${bad.join(', ')}`);
+    console.error(`known BUFFS keys: ${known}`);
+    await browser.close();
+    process.exit(2);
+  }
+}
 const plain = (720 + (2.5 / 3.5) * 1387) * (1 + 0.38 * 0.8175);
 
 async function bruteAt(h) {
@@ -114,6 +150,11 @@ while (frontier.length) {
 }
 // report
 const hs = [...points.keys()].sort((a, b) => a - b);
+if (hs.length === 0) {
+  console.error(`ERROR: the ladder is EMPTY (MAX=${MAX}, STEP=${STEP}) — nothing was certified.`);
+  await browser.close();
+  process.exit(2);
+}
 console.log(`\n═══ LADDER SUMMARY (T=${T}, Lust@${LUST}, pair=${PAIR.join('+')}) ═══`);
 let prev = null;
 for (const h of hs) {
@@ -126,3 +167,5 @@ const misses = hs.filter(h => points.get(h).toolEff - points.get(h).top[0].eff <
 console.log(misses.length ? `\nTOOL MISSES at h=${misses.join(',')}` : `\nTOOL: no misses beyond the 0.15 pressability slack at any point (${hs.length} haste points)`);
 if (OUT) fs.writeFileSync(OUT, JSON.stringify([...points.values()].sort((a, b) => a.h - b.h), null, 1));
 await browser.close();
+// 0 = certified clean · 1 = the optimizer missed the brute optimum somewhere · 2 = could not certify.
+process.exit(misses.length ? 1 : 0);
