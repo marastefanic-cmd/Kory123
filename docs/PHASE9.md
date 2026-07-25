@@ -717,9 +717,9 @@ stable order-canonical form — but stop calling it on the hot path.
 
 #### 4.13.1 The revised landing order (supersedes §4.8's items 1–2)
 
-> **⚠ AMENDED by §4.16, §4.17, §4.18 and §4.19.** Four items land *ahead* of everything below, and one of
-> them changes item 5's shape. All four are provable before they are measured — none may be booked as a
-> speedup until a profile says so. **§4.19 is the exception and therefore does *not* join them:** it is a
+> **⚠ AMENDED by §4.16, §4.17, §4.18, §4.19 and §4.20.** Five items land *ahead* of everything below, and
+> one of them changes item 5's shape. All five are provable before they are measured — none may be booked
+> as a speedup until a profile says so. **§4.19 is the exception and therefore does *not* join them:** it is a
 > predicted speedup, so it goes in the numbered ladder below as **item 1b**.
 >
 > - **(0a) extract the `admit` helper** (§4.16) — the legality prefix written longhand at 9 sites,
@@ -732,6 +732,10 @@ stable order-canonical form — but stop calling it on the hot path.
 > - **(0d) band the unbudgeted tail** (§4.18) — display-only, plan-neutral by inspection, and **not a
 >   speedup at all**: it makes the drop-one-use escape visible so it can be profiled and so the bar
 >   stops reading as a hang at 96%.
+> - **(0e) revoke the blob URL and close the stale pool ports** (§4.20) — **UI script only**, so
+>   plan-neutral by *construction* (the headless suite never executes it). Nearly free; fixes a
+>   141.5 KiB-per-interruption Blob leak and an unbounded `MessagePort` accumulation. The third
+>   lifecycle cost — abandoned in-flight `polish` jobs — is **recorded, not fixed**.
 
 1. **§4.13 native `JSON.stringify` as the memo key** — replaces `sigOf` at `:654` and `:1351`. Biggest
    measured win per line changed (≈1.8 s CPU/solve); miss-not-corruption failure mode.
@@ -1292,3 +1296,100 @@ become fan-out + their existing reduce, unchanged.
 **Landing.** Unlike §4.13.1's items 0a–0d, this **is** a predicted speedup, so it does not get to be booked
 on inspection: it lands after the freeze, gated at exact-match **25/25** *and* a wall-time re-measure, and
 if the re-measure does not move, it is a legibility change and gets recorded as one.
+
+### 4.20 ★★ The word in task #57 is *"slow **again**"* — and three of its five named candidates resolve without a profiler
+
+Task #57's description lists five suspects: *"simulate() inner-loop allocation, sigOf/JSON.stringify keying,
+redundant fixpoint re-scoring across the pass stack, breathe() cadence, worker pool sizing."* Three of the
+five have never been touched by this phase. Two of them close here — one falsified, one reframed — and the
+third turns out to be about the **session**, not the solve, which is what the word *again* was pointing at
+all along.
+
+#### (a) `breathe()` cadence — **CLOSED, falsified**
+
+`breathe` is `async`, `await`s another `async` (`tick`), and reads `performance.now()`; there are **20
+`await breathe()` sites** in the engine block. That is the shape of a hot-loop tax, so the suspicion was
+reasonable. It is wrong, on two independent readings:
+
+- **Static.** Checked at six sites — `:1930`, `:2202`, `:2298`, `:2560`, `:2695`, `:2736` — and every one
+  sits on an **outer** loop: a round counter (`snapRound < 6`, `round < 4`), a `(track, use)` index, a
+  per-second list, a fixed-press list. **None is inside the innermost candidate loop.** At `:2202` the
+  contrast is explicit: `breathe` is on the `i` loop over a track's uses, while the `for (let t = 0; t <=
+  cfg.T - 1; t++)` candidate loop directly beneath it runs unbreathed. So `breathe` fires on the order of
+  10²–10³ times per solve, against `repair`'s **2,019,660** (§3.1).
+- **Profile.** `breathe`, `tick` and `performance.now` are all **absent** from §1's top list — from 100,392
+  samples at 200 µs, in a profile that finds room for `cloneS` at 1.5% and `rateAt` at 0.5%.
+
+The second argument is an **absence**, and §19.11 is exactly the warning against those. It is admissible
+here only because the first argument is a presence: the static nesting explains *why* the profile is silent,
+so the two agree for a reason rather than by coincidence. **CLOSED-by-profile, reopenable by §4.7's census.**
+
+#### (b) Worker pool sizing — **reframed: one of the two reserved cores is reserved for a blocked thread**
+
+`:3323`: `const n = Math.max(1, Math.min(8, (navigator.hardwareConcurrency || 4) - 2));`, with the comment
+*"leave headroom for the orchestrating worker and the UI thread"*.
+
+The orchestrating worker does not need headroom **during the phase that matters**. `poolMap` is
+`await Promise.all(items.map(… POOL.run(…)))` — port round-trips — so while a fan-out is in flight the
+orchestrator's thread is idle by construction, and the UI thread is animating a progress bar. On a 4-core
+box that is `n = 2`: **2 of 4 cores busy during the 93% phase.** `− 1` would make it 3 of 4.
+
+**This is a knob to SWEEP, not to argue.** `hardwareConcurrency` reports *logical* cores, so `− 1`
+oversubscribes a hyperthreaded 2-physical machine, and browsers throttle background workers. What the static
+argument buys is only a **shifted prior**: the reservation is half aimed at a thread that is provably
+blocked. A secondary note for the sweep — fan-out width is bounded by candidate count, so `n > 14` cannot
+help the seed phase and `n > 6` cannot help §4.19's snap pass whatever the machine has.
+
+#### (c) ★★ The lifecycle: three accumulations, all on the **interrupted-run** path
+
+*"Again"* is a claim about a session, not a solve, and the interactive loop is: type an input, watch a 30 s
+solve, change your mind. `runOptimize` (`:3339`) handles that with
+`if (engineWorker && engineWorkerBusy) { engineWorker.terminate(); engineWorker = null; }` — so **every
+mid-solve input change** takes the path below.
+
+| # | what accumulates | site | per interruption | fix |
+|---|---|---|---|---|
+| 1 | a `Blob` holding a full copy of the engine block | `:3314` | **141.5 KiB**, pinned for the page's lifetime | one line |
+| 2 | a live, GC-rooted `MessagePort` in every pool worker | `:3297-3303` | `n` ports | small |
+| 3 | abandoned in-flight `polish` jobs | `:3339` | up to `n` × ~0.3–1 s of CPU | **not fixable cheaply** |
+
+1. **`URL.createObjectURL` is called at `:3314` and `revokeObjectURL` appears nowhere in the file.** Each
+   `makeEngineWorker` mints a blob URL over `engine-src`'s text — **141.5 KiB** — and never releases it, so
+   the Blob is pinned for as long as the page lives. The fix is the standard one: keep the URL, revoke it
+   immediately after the `Worker` constructor returns (the worker holds its own reference to the loaded
+   script).
+2. Each interruption re-runs `attachPool`, which posts `n` fresh `MessagePort`s. The pool worker's handler
+   loops `for (const port of e.data.ports) { port.onmessage = … }` and **never closes the ports it
+   registered before**, so every pool worker gains one live port per interruption. A port with an
+   `onmessage` is implicitly started and GC-rooted. This is **memory, not dispatch cost** — messages still
+   go to exactly one port.
+3. `terminate()` kills the orchestrator while up to `n` pool workers are **mid-`polish`**. A worker cannot
+   be interrupted, so each finishes its abandoned job at the file's own price (`:1344`, *"~0.3–1 s"*) and
+   posts into a dead port — burning up to `n` core-seconds *and* making the **new** run's first fan-out
+   queue behind them. This is the one that is felt rather than merely held.
+
+**Sizing, honestly.** (1) and (2) are memory and slow-burning: a hundred interruptions is ~14 MB and a few
+hundred ports — real, worth fixing because it is nearly free, not because it is currently the bottleneck.
+(3) is the CPU one, and it is **irreducible without a cooperative interruption check inside `polish`**: the
+orchestrator's queue dies with the orchestrator, so the only stale work is the one in-flight job per port,
+and nothing outside `polish` can stop it. **Record it; do not fix it.** The comment at `:3320` calls a dead
+port *"harmless"*, and for correctness it is — the cost is a stutter on the next run, which is precisely
+task #57's complaint.
+
+#### Why none of this can move a plan, and why it still waits
+
+All three sites are in the **UI script**, not the engine block — so they are plan-neutral *by construction*,
+not by inspection: they do not run in the worker that computes a schedule, and the headless suite never
+executes them at all.
+
+**They still wait for the campaign.** Not because of the engine freeze — because `tools/xval-*.sh` load
+`index.html` per case, so editing the file mid-round would mix two baselines inside one round, and every
+line anchor in these docs would shift under a round that is still citing them. **Do not touch `index.html`
+until `RERUN-DONE`.**
+
+#### The pattern across §4.18–§4.20
+
+Three consecutive readings of the same subsystem — the progress bands (§4.18), the pool's coverage (§4.19),
+the pool's lifecycle (§4.20) — none of which needed a CPU cycle, all found by reading code that a shipped
+comment had already described. **The comments describe the design as intended; a census describes it as
+built.** Where the two differ is where the phase's findings have been.
