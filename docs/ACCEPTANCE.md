@@ -387,16 +387,55 @@ inside the ±0.1251 pp boss-cell band. So the fix is a **+0.2930 pp win where it
 at the golden**; it landed on that basis, and the ~0.065 pp over-claim is the known PHASE8 back-edge
 term. Full numbers: PHASE7 §5.20.
 
-**⚠⚠ HARNESS-FIDELITY CAVEAT ON EVERY BOSS TABLE IN THIS DOCUMENT (P7.15, opened 07-25 — PHASE7 §5.21).**
-`tools/xval.mjs:194` feeds the sim `toSpec(best.s)` — **press intents** — where the tool, the goldens and
-`exact-match` all speak **fire times**. When an intent lands inside or just before an intermission the
-model defers it to the phase resume while the sim fires it into the untargetable downtime. Priced on one
-KT plan at haste 0, the *same* plan reads **−1.5432 %** under the intent transcription vs **−0.0104 %**
-under fire times — **5–10× the 0.2–0.4 pp deficits this document is built on.** Some fraction of the
-recorded boss-side deficits may therefore be **harness artifact rather than model error**, and the
-acceptance verdict cannot be called final until P7.15 prices it corpus-wide. ⚠ The convention has **not**
-been changed: every round gathered so far is comparable *because* it was constant, so a switch owes a
-written justification, an announcement here, and a re-gather of the affected tables.
+**✅ HARNESS-FIDELITY CAVEAT — RESOLVED AND ANNOUNCED (P7.15, closed 07-25 — PHASE7 §5.22).**
+`tools/xval.mjs` used to feed the sim **press intents** where the tool, the goldens and `exact-match` all
+speak **fire times**. When an intent lands inside or just before an intermission the model defers it to
+the phase resume while the sim fires it into the untargetable downtime. **This is the announcement §5.21
+owed:**
+
+- **THE CONVENTION HAS CHANGED. `tools/xval.mjs` now defaults to `EMIT=fire`** — floored fire times, the
+  plan the tool actually prints. `EMIT=intent` reproduces pre-07-25 rounds bit-for-bit; an unrecognised
+  value exits 2. Every run stamps `emit=` on its header **and** on `XVAL-DONE`. **⚠ A LOG WITH NO
+  `emit=` PREDATES THE SWITCH AND IS `intent`** — that is the rule for classifying any stale table.
+- **⚠⚠ EVERY BOSS TABLE IN THIS DOCUMENT WAS GATHERED UNDER `emit=intent`** and must be **re-gathered
+  under `emit=fire` before any acceptance verdict is called.** Class-side tables are structurally immune
+  (class fights build no `segments`) but will be re-gathered with them for one consistent round.
+- **The deficits are NOT harness fiction — this is the load-bearing result.** Priced corpus-wide over the
+  banked 60 plans: only **2 (3 %)** are true artifacts, and because fire times are **floored**, only
+  **18/60** specs change at all. **The 3 surviving over-floor deficit cells (`isc+scb` KT @95/@195/@245)
+  are not among the 18** — their specs are bit-identical under both conventions, so the transcription bug
+  **cannot** be what produced them. The alarming −1.5432 % headline in §5.21 was one post-P7.14 plan, not
+  the corpus.
+- **⚠ New failure mode to watch on re-gather: the artifact's sign is INVERTED from the prediction.**
+  Intent *inflated* the two artifact plans by ~0.26 % (an MQG press deferred past a wall gains 5 s at the
+  front, but its 300 s cooldown pushes the second press past the fight end). **An inflated plan sitting
+  in a BORROWED column manufactures a phantom deficit** — so some recorded deficits may vanish on
+  re-gather rather than merely shift.
+- **A `simulate()`-independent ARTIFACT GUARD now runs on every round** and stamps `artifact=N` on
+  `XVAL-DONE`. Under `emit=fire` it must read **0**; see TOOLING lesson 6.
+
+**⚠⚠ STANDING LIMITATION OF THIS ENTIRE DOCUMENT: THE TEST IS PURELY RELATIVE (named 07-25).**
+Every table here answers one question — *does the plan optimized at haste H beat every borrowed plan when
+simmed at H?* That detects **misallocation across haste**. It is blind, **by construction**, to uniform
+error: every cell could sit 2 % below the true optimum and the diagonal would still come back CLEAN. The
+sim trust anchor certifies the **physics**, not the **search**. So "ACCEPTANCE PASSING" will mean *"no
+plan is beaten by a plan built for different gear"* — it will **not** mean *"every plan is optimal."*
+
+The absolute anchor for the second question is `tools/brute-grid.mjs --tool` (exhaustive 5 s-grid
+enumeration vs the real optimizer; ~0.6 min/haste point). **First standing run, 07-25, T=80 Lust@20 —
+9/9 PASS, 6 exact ties, worst Δ −0.062 (inside the 0.15 pressability slack):**
+
+| fight | h0 | h195 | h300 |
+|---|---|---|---|
+| plain, `isc+scb` | **PASS** +0.000 | **PASS** +0.000 | **PASS** −0.010 |
+| plain, `mqg+skull` | **PASS** −0.062 | **PASS** +0.031 | **PASS** +0.000 |
+| **AoE [40,60]×6**, `isc+scb` | **PASS** −0.018 | **PASS** +0.000 | **PASS** +0.000 |
+
+The AoE row is the load-bearing one: that is the regime the acceptance deficits live in, so a
+systematic search weakness there was the most plausible hypothesis — and it does not exist. Run this
+after any optimizer or pass-order change. ⚠ Its reach is narrow (T=80, 5 s lattice, 6 tracked
+cooldowns) — a PASS means the search is not *systematically* broken on a fight it can enumerate, not
+that the search is optimal on a 7-minute boss.
 
 **★★★ Round 5 proves the B failure is NOT a reference-gear artifact.** The correction was a genuine
 repricing: `xval-round-diff` reports **124 of 345 plan cells changed (35.9%)** across 34/36 tables on a

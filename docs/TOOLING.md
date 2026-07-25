@@ -152,6 +152,28 @@ inside the untargetable downtime. Two distinct failures came out of this in one 
 side came from `best.s` and the other from a rendered plan, convert first — otherwise it is not a
 measurement, in exactly the sense of the "different code paths" rule above.
 
+**✅ RESOLVED 07-25 (P7.15, PHASE7 §5.22) — `EMIT=fire` is now the default, and the artifact priced out
+SMALL.** Two things had to be separated before any of it made sense:
+
+| | what happens | is it a bug? |
+|---|---|---|
+| **CLIP** | press is in targetable time, the buff **tail** runs into a wall | **NO — correctly priced.** `simulate()` accrues no cast rate inside an intermission, so the model already charged it. KT opens `Icon@0` against a wall at 0:15 in *every* plan. |
+| **ARTIFACT** | the **press time itself** is inside an intermission | **YES** — the model scored the buff from the resume, the sim starts it mid-downtime. |
+
+The first scan reported "123 s of buff spent while untargetable" and read as a catastrophe. **92 % of it
+was legitimate clipping.** On the banked round-7 corpus (60 plans): ARTIFACT **2 plans (3 %), 10.0 s** —
+and because `EMIT=fire` **floors**, sub-second slip is a *no-op* (only **18/60** specs change at all).
+**The 3 surviving over-floor deficit cells are not among the 18** — bit-identical under both
+conventions — so the acceptance deficits are model signal, not harness fiction.
+
+**★ The sign was INVERTED from the prediction, and the mechanism generalizes.** Intent was expected to
+*deflate* those plans (buff burned in downtime); the duel says it **inflated** them by ~0.26 %.
+`MQG@100` deferred to `105` gains 5 s at the front, but the 300 s cooldown pushes the second press
+`400 → 405` against a fight that ends at **420** — the gain is repaid with interest at the truncated
+tail. **Consequence to remember: an inflated plan in a BORROWED column can manufacture a phantom
+deficit.** The original framing only worried about cells looking *worse*; over-valuation is the second,
+independent reason the convention had to be fixed.
+
 **★★ 4. A duel measured at one haste does NOT transfer to another config.** The AE lattice pitch
 Δ = `max(1.0, 1.5/m)` is haste-dependent, so *whether a value window's tail clips a phase wall* changes
 with gear (≈1.11 s at h195-with-IV vs 1.25 s at h0-with-IV). The P7.14 fix reads **+0.2930 pp** at
@@ -159,10 +181,99 @@ haste 195 and **−0.0067 ± 0.0047 pp** at haste 0 — same fix, same fight, op
 So when a change moves a **golden**, re-duel at that golden's own `GOLDEN_DEFAULTS` config; borrowing
 the derivation cell's numbers is the same class of error as reading an aggregate for a cell.
 
+**★★★ 5. THE IDENTITY FILTER RUNS FIRST — before pricing an effect, check whether the input differs at
+all (07-25).** This is lesson 1 ("verification cost scales with CHANGED CELLS") generalized from plan
+*outputs* to **every** input of every instrument, and it was being applied to only half the pipeline.
+
+The demonstration is P7.15's own tooling. Three instruments were built to price the transcription
+artifact; the one that actually settled it asked *"do the emitted specs even change?"* — 30 seconds to
+write, instant to run, decisive answer (**18/60 change; none of the deficit cells**). It was built
+**third**. The two expensive arms measured how much an effect was worth on a population that was 70 %
+identity.
+
+**Habit:** for any A-vs-B question, compute the *changed set* first, with the cheapest possible
+comparison, and let it define the work. `plan-diff` already does this for plans. It applies equally to
+specs, gear, harness config, and goldens.
+
+**The concrete payoff — `DPS_CACHE`, a lossless content-addressed sim cache (`tools/xval.mjs`).** The
+sim is deterministic given `(spec, gear, haste, T, iterations, seed, targets, runner)`; verified, not
+assumed — three runs of one APL at `iter=2000`, seed 11 gave **2152.4 / 2152.4 / 2152.4**. So a
+re-gather can key every sim on exactly that tuple and pay only for the cells whose spec actually moved —
+**across rounds, not just within one.** On P7.15's numbers that is ~70 % of a boss round for free, with
+*identical* numbers rather than approximated ones.
+- `DPS_CACHE=<dir>` overrides the location (default `$TMPDIR/arcane-dps-cache`); `DPS_CACHE=0` disables.
+- **`DPS_CACHE_VERIFY=1` re-sims every cached entry and exits 2 on any mismatch.** The determinism
+  assumption is load-bearing, so it stays *auditable* rather than merely believed. Run it after any
+  runner rebuild.
+- `runSim()` is the **only** path to the runner, so the cache cannot be bypassed and the NaN trap applies
+  to cached and fresh alike. The key includes the runner's `path:size:mtime` and a hash of the gear
+  export's *content*, so a rebuilt runner or an edited export invalidates the cache automatically —
+  the repricing trap in lesson 1 is handled by construction, not by remembering.
+- `XVAL-DONE` stamps `cache=<hits>/<total>`. That is **provenance, not a performance stat**: it says how
+  much of this round was replayed, so a suspiciously-cheap round is visible in its own log.
+
+**★★★ 6. THE HARNESS AND THE MODEL SHARE `simulate()` — a standing CORRELATED-ERROR risk (07-25).**
+`xval.mjs` computes the fire times it feeds the sim using the same function whose correctness the duel
+is meant to certify. **If `simulate()` is wrong, the model and the transcription are wrong identically,
+the sim agrees, and the round reports CLEAN.** This is not hypothetical — it has already happened once,
+as the Vashj phase-drop bug (model and sim wrong the *same* way, `diag=CLEAN`).
+
+⚠ **`EMIT=fire` INCREASES this coupling**, because the harness input now routes through `simulate()`
+where it previously bypassed it. That is still the right call — a duel must execute the plan the tool
+prints — but it converts an incidental risk into a structural one, so it earns a check that does not
+share the suspect code.
+
+**The check: the ARTIFACT GUARD (`tools/xval.mjs`, after the plans are emitted).** It reads **only the
+emitted spec** — the literal JSON genapl consumes, including the `_intermissions` table that came
+straight off the boss preset — and asks one arithmetic question: *does any press land inside a window
+where the boss is untargetable?* No engine, no `simulate()`, no shared state. Under `EMIT=fire` the
+answer **must be zero**, because `simulate()` walks its clock to `seg.end` before firing
+(`index.html:737`). A nonzero count is a `simulate()`-independent alarm: either that walk is not
+happening or the emission path lost it. It **reports rather than gates** (under `EMIT=intent` a nonzero
+count is *expected* — it is the P7.15 artifact itself), and `artifact=N` is stamped on `XVAL-DONE` so the
+count lands in the round's permanent record instead of on a screen someone happened to be watching.
+
+**Generalization:** any time an instrument computes its own input with the code under test, write down
+what an *independent* recomputation of that input would be, and run it. It is usually arithmetic on a
+table both sides already agree on.
+
+**★★★ 7. THE ACCEPTANCE TEST IS PURELY RELATIVE — it cannot see UNIFORM error (07-25).** The cross-val
+asks exactly one question: *does the plan optimized at haste H beat every borrowed plan when simmed at
+H?* That detects **misallocation across haste**. It is blind, by construction, to every cell sitting the
+same distance below the true optimum — the diagonal would come back perfectly CLEAN. The sim trust
+anchor (~0.4 % agreement) certifies the **physics**, not the **search**, so a systematic search weakness
+— the optimizer consistently missing one *kind* of layout — is invisible to the entire campaign.
+
+**The absolute anchor already exists: `tools/brute-grid.mjs --tool`.** Full 5 s-grid exhaustive
+enumeration (7.9M cells, ~0.6 min/haste point) versus the real optimizer on the same fight. In-tool
+"exact mode" is permanently rejected as a *product* feature; that rejection never applied to using
+enumeration as a **research check**, and this is the gap it fills.
+
+**First run of it as a standing anchor (07-25, T=80, Lust@20) — 9/9 PASS:**
+
+| fight | h0 | h195 | h300 |
+|---|---|---|---|
+| plain, `isc+scb` | **PASS** +0.000 | **PASS** +0.000 | **PASS** −0.010 |
+| plain, `mqg+skull` | **PASS** −0.062 | **PASS** +0.031 | **PASS** +0.000 |
+| **AoE [40,60]×6**, `isc+scb` | **PASS** −0.018 | **PASS** +0.000 | **PASS** +0.000 |
+
+The tool searches at 1 s resolution and the grid at 5 s, so `tool ≥ grid` is the pass condition and a
+small negative Δ inside the 0.15 pressability band is expected. **Six of the nine are exact ties with the
+exhaustive optimum and the worst is −0.062**, i.e. the search is not leaving anything on the table on a
+fight this instrument can enumerate — **including an AoE-window fight**, which is the regime P7.14 and
+the surviving deficits live in and the one where a systematic search weakness was most plausible. **Run this after any optimizer/pass-order
+change** — it is the only instrument in the project that answers "is the search near the actual best
+plan," and it costs a minute.
+
+⚠ **Its coverage is real but narrow**: T=80, a 5 s lattice, 6 tracked cooldowns, one Lust pin. It cannot
+certify a 7-minute boss fight. Treat a PASS as "the search is not systematically broken on a fight this
+instrument can enumerate", not as "the search is optimal."
+
 **Scorer vs optimizer — two separate axes.** This settles the *scorer*: the effective-ABs count is the
 objective and the arbiter. It says nothing about the *optimizer's* search-completeness — whether the
 passes actually *find* the count-maximizing plan is a different question (the packing/containment work
 was all search, not scoring). Don't conflate "the count is right" with "the search reached it."
+Lesson 7 above is the instrument for the second axis; lessons 1–4 are the first.
 
 ## Pieces
 
@@ -579,6 +690,67 @@ RULES §13), which is a stronger anchor than a ~100-DPS-noise A/B. A plain singl
 **no blind spot** (no ramp/mana/AoE/multi-AP), so the model's cast-count is the arbiter (methodology, top of
 this file). Re-run an actual APL sim only if a Drums/PI case ever lands on a blind spot (e.g. an
 intermission-exit or AoE phase).
+
+## ★★ Should we sim NAKED / hit-capped / no-crit / no-damage-roll to make the numbers cleaner? (07-25)
+
+A user question worth a standing answer, because four of the five ideas in it are safe-but-not-worth-it,
+one is an outright **trap**, and the question surfaces **one real gap** that had not been named.
+
+**The framing that decides all of it: the sim has TWO jobs, and they want opposite things.**
+1. **Physics trust anchor** — certify the formulas and constants the effective-AB count is built on
+   (~0.4 % absolute agreement with `wowsimcli`). This job needs the sim to be an *independent* model of
+   TBC. Every stochastic element stripped out moves it closer to being *our own model*, and a reference
+   that has been simplified toward the thing it is checking has stopped being a reference.
+2. **Layout duelist** — rank plan A vs plan B. This job only needs *differences*, so variance reduction
+   is pure profit here.
+
+So the general rule: **never strip the trust-anchor runs; a reduced-variance config would be legitimate
+for duels only, and only after proving it preserves ranking.** Now the specifics.
+
+| idea | bias on RANKING | verdict |
+|---|---|---|
+| **Sim naked** (trinkets only) | changes the operating point, does **not** remove it | ✗ **No — and it would be less general, not more.** See below. |
+| **Force 100 % hit** (kill the irreducible 1 % miss) | **none** — a miss costs a cast and deals 0, so it is a flat `×(1−m)` on *every* layout equally | ✓ safe, ✗ not worth it (see "what it would buy") |
+| **Average spell damage, no min-max roll** | **none** — zero-mean noise | ✓ safe, ✗ not worth it |
+| **0 % crit** | **⚠ NOT NEUTRAL — this one is a real trap** | ✗ **No.** |
+| **Fewer iterations off the back of the above** | — | ✗ the saving is already banked elsewhere |
+
+**★★★ Why 0 % crit is a trap.** Crit *is* a constant multiplier on a single-target fight, which is why
+`MECHANICS §4` says it cancels. But it does **not** cancel on an AoE phase: `aoeCritAmp(N, crit)` models
+Clearcasting→Arcane Potency, where an N-target AE cast takes N proc rolls and the resulting +30 % crit
+lands on the next cast. Its magnitude is **crit-dependent** (+8.6 %/target at 6 targets, crit 38 %, and
+it *falls as crit rises*). Zeroing crit therefore changes `M(N)`, which changes the AoE-vs-single-target
+weighting — i.e. it changes the ranking in **exactly the regime P7.14 and the surviving deficits live
+in.** A "consistency" simplification that silently reweights the contested case is worse than the noise
+it removes.
+
+**★ Why naked does not generalize.** Gear is not a contaminant here; it is the *operating point*. It
+enters through haste (which sets the cast lattice the windows land on) and spell power (which sets what
+an additive +SP buff is worth *relative* to a haste buff). Going naked does not delete that dependence —
+it moves it to a low-haste, low-SP point **no real player occupies**, and it is still exactly one point.
+Lesson 4 (a duel does not transfer across configs) applies to naked as much as to geared. Generality
+comes from **sweeping the axis**, not from picking a different single value on it. Also worth noting
+the practical objection the question raised itself: naked is not hit-capped, so it would add variance
+while claiming to remove it.
+
+**✅ THE REAL GAP THE QUESTION FOUND: we sweep HASTE but never SP.** The cross-val sweeps haste
+exhaustively — that is the entire acceptance campaign. Spell power is held at one value (`REF.sp`, one
+gear set). But an **additive** +SP buff (Icon, Skull) is worth relatively *less* the higher base SP is,
+while a **multiplicative** haste buff is not — so the SP/haste trade the planner is constantly making is
+evaluated at exactly one point on an axis that provably tilts it. Nothing in the record says whether a
+plan optimal at `REF.sp` stays optimal at, say, ±300 SP. **Tracked as a new task (SP-axis cross-val);
+this is the generalisation instrument the "sim naked" instinct was reaching for, and the correct form of
+it.**
+
+**What the variance ideas would actually buy — and why it is less than it looks.** The largest variance
+reduction available to a paired comparison is **common random numbers**, and we already have it: every
+duel arm runs the same fixed seed, so the *difference* is far better resolved than either absolute DPS.
+That is also why the thin-looking noise floor (boss band ±0.1251 pp against 0.2–0.4 pp deficits) is not
+worth chasing — it is the *absolute* band, and the comparisons that matter are paired. On top of that,
+the wall-clock argument for fewer iterations was **answered losslessly by `DPS_CACHE`** (lesson 5):
+~70 % of a re-gather now costs zero sims with *identical* numbers, which is strictly better than the same
+saving bought by degrading the physics. **Conclusion: keep the sim honest, keep the seed paired, cache
+the repeats.**
 
 ## Statistical protocol (read this — the old "seeds 11/19" habit was wrong)
 

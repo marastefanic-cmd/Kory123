@@ -25,6 +25,12 @@ export CHROMIUM=${CHROMIUM:-/opt/pw-browsers/chromium}
 export RUNNER=${RUNNER:-$SP/wowsims/runner-ap180}
 export EXPORT_BASE=${EXPORT_BASE:-$SP/arcane-wowsims-import.json}
 export ITER=${ITER:-6000}
+# ★★★ P7.15 transcription convention, PINNED here so a boss round can never inherit a stray value from
+# the calling shell: `fire` = the times the tool PRINTS (default since 07-25) · `intent` = the raw press
+# intents every round BEFORE 07-25 was gathered with. Rounds under the two conventions are NOT
+# comparable cell-for-cell — the marker is stamped on each XVAL-DONE line (`emit=…`) so a log says
+# which it is; a log with no `emit=` predates the switch and is `intent`. See ACCEPTANCE, PHASE7 §5.21.
+export EMIT=${EMIT:-fire}
 XVDIR=${XVDIR:-$SP/xvcamp}; mkdir -p "$XVDIR"
 # Two structural kit classes: SP-trinket present (isc,scb) and SP-trinket absent / haste-heavy (mqg,skull).
 KITS=${KITS:-"mqg,skull isc,scb"}

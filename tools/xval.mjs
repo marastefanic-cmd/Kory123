@@ -13,10 +13,15 @@
 //       a borrowed plan won somewhere. NO tolerance is applied — weigh a deficit by fight length
 //       (short/medium sub-1% = plan-to-plan boundary quantization, unconfirmed; long/XL = real).
 // Env: CHROMIUM, RUNNER (default scratchpad runner-ap180), EXPORT_BASE (a gear export to trinket-swap),
-//      KIT=a,b, TCLASS=short|…|xl, HASTES=…, BOSS="Lady Vashj"|…, ITER, SCRATCH.
+//      KIT=a,b, TCLASS=short|…|xl, HASTES=…, BOSS="Lady Vashj"|…, ITER, SCRATCH,
+//      EMIT=fire|intent (P7.15 transcription convention — default `fire`, the plan the tool prints),
+//      DPS_CACHE=<dir>|0 (content-addressed sim cache, lossless — see the block below),
+//      DPS_CACHE_VERIFY=1 (re-sim every cached entry and exit 2 on any mismatch).
 import { createRequire } from 'module';
 import { execFileSync } from 'child_process';
+import crypto from 'crypto';
 import fs from 'fs';
+import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
 import { REF, plainCastInPage } from './reference-gear.mjs';
@@ -57,7 +62,43 @@ const ITER = process.env.ITER || '10000';
 // the haste floor, and it scales as 1/N (short fights only). Derivation + the do-not-discretize control:
 // `node tools/lattice-ripple.mjs`, RULES §8, TOOLING (metric bullets).
 const VAR = process.env.VAR || '0.5';
+// ★★★ P7.15 — which convention the genapl spec is written in. `fire` (default) = the times the tool
+// PRINTS; `intent` = the optimizer's raw press intents, the pre-07-25 behaviour, kept ONLY so an old
+// round can be reproduced. A typo must not silently pick a convention: every table in ACCEPTANCE is
+// comparable across rounds *because* the convention was constant, so an unrecognised value exits 2.
+const EMIT = process.env.EMIT || 'fire';
+if (EMIT !== 'fire' && EMIT !== 'intent') {
+  console.error(`ERROR: EMIT="${EMIT}" must be "fire" (the plan the tool prints) or "intent" (pre-07-25 rounds).`);
+  process.exit(2);
+}
 
+// ★★★ CONTENT-ADDRESSED DPS CACHE (07-25) — the re-gather accelerator.
+//
+// A round re-sims all ~60 cells from scratch even when a change moved only a handful of specs
+// (the P7.15 floor scan: 18 of 60 banked specs changed, 42 were byte-identical). The runner is
+// DETERMINISTIC at a fixed seed — verified, not assumed: three runs of one APL at iter=2000 gave
+// 2152.4 / 2152.4 / 2152.4 — so an identical (spec, gear, haste, dur, var, iter, seed, targets,
+// runner binary) tuple has an identical answer and re-running it buys nothing. Cache the DPS keyed
+// on exactly those inputs and a re-gather pays only for the cells that actually moved.
+//
+// This is LOSSLESS, not an approximation, and that distinction is the whole point — the key includes
+// every input the number depends on:
+//   · the SHIFTED spec (post wall-jitter), so each variant caches separately
+//   · the export CONTENT (gear/trinkets), not its path — a rebuilt export with the same name is a
+//     different experiment
+//   · the runner's path+size+mtime — a rebuilt `runner-ap180` invalidates everything, which is the
+//     failure this repo has already had once (the stale unpatched runner, TOOLING).
+// DPS_CACHE=0 disables it. DPS_CACHE_VERIFY=1 runs the sim ANYWAY and exits 2 on a mismatch — so the
+// determinism assumption stays auditable instead of load-bearing-and-unchecked. Entries are one file
+// per key, written via rename (atomic), so parallel xval processes cannot corrupt each other.
+const CACHE_ON = process.env.DPS_CACHE !== '0';
+const CACHE_VERIFY = process.env.DPS_CACHE_VERIFY === '1';
+const CACHE_DIR = (process.env.DPS_CACHE && process.env.DPS_CACHE !== '0' && process.env.DPS_CACHE !== '1')
+  ? process.env.DPS_CACHE : path.join(os.tmpdir(), 'arcane-dps-cache');
+if (CACHE_ON) fs.mkdirSync(CACHE_DIR, { recursive: true });
+const rstat = fs.statSync(RUNNER);
+const RUNNER_ID = `${RUNNER}:${rstat.size}:${rstat.mtimeMs}`;
+let cacheHit = 0, cacheMiss = 0;
 
 // ── seeded draw (mulberry32) ──
 let s = SEED;
@@ -103,7 +144,7 @@ else {
   }
 }
 const fmtT = x => `${Math.floor(x/60)}:${String(x%60).padStart(2,'0')}`;
-console.log(`seed=${SEED}  class=${cls||'any'}  fight=${fmtT(T)} (${T}s)  Lust@${fmtT(LUST)}  trinkets=${PAIR.join('+')}  haste=[${HASTES.join(',')}]`);
+console.log(`seed=${SEED}  class=${cls||'any'}  fight=${fmtT(T)} (${T}s)  Lust@${fmtT(LUST)}  trinkets=${PAIR.join('+')}  haste=[${HASTES.join(',')}]  emit=${EMIT}`);
 
 // trinket → {itemId, genapl key}
 // item = the EQUIPPABLE item that provides the on-use (goes in a trinket slot); key = the genapl
@@ -135,7 +176,7 @@ if (!Number.isFinite(PLAIN) || PLAIN <= 0) { await browser.close(); console.erro
 // exactly the model's M(N) physics, RULES §9). The old "simmed as downtime" KT caveat is CLOSED.
 let out0;
 try {
-out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS, POOL_ENV, REF, plain }) => {
+out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS, POOL_ENV, REF, plain, EMIT }) => {
   let segments = null, downtime = [], aoeWins = [], aoeTargets = 0, fightT = T, lust = LUST;
   if (BOSS) {
     // An exact name always wins; a SUBSTRING that matched several presets used to silently take the
@@ -163,12 +204,27 @@ out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS, POOL_ENV
   }
   const kit = ["icyVeins", PAIR[0], PAIR[1], "arcanePower", "berserking", "bloodlust"];
   const en = {}; for (const k in BUFFS) en[k] = kit.includes(k);
-  const toSpec = s => {
-    const spec = { _prestack: 0, BL: (s.bloodlust || []).map(Math.round) }; // COLD OPEN — the model never prepulls (genapl header ★; PHASE6 §4.7). NEVER change to >0.
-    if (s.arcanePower) spec.AP = s.arcanePower.map(Math.round);
-    if (s.berserking) spec.Zerk = s.berserking.map(Math.round);
-    for (const tk of PAIR) if (s[tk]) spec[TMETA[tk].key] = s[tk].map(Math.round);
-    const ivs = (s.icyVeins || []).slice().sort((a, b) => a - b).map(Math.round);
+  // ★★★ P7.15 (07-25) — TRANSCRIPTION CONVENTION. `best.s` holds press INTENTS; the plan the tool
+  // PRINTS, and the windows the model SCORES, are FIRE times: the intent snapped forward to the next
+  // cast boundary (`simulate(s, cfg, true).actEff`). The map is many-to-one — an intent inside an
+  // intermission fires at the resume (simulate walks `t` past the wall), and since the P7.14 AoE
+  // press-snap an intent before an AoE phase fires on that phase's AE lattice. genapl schedules every
+  // cooldown UNCONDITIONALLY (only Arcane Blast is gated on `_intermissions`), so feeding intents made
+  // the sim press mid-downtime and burn buff the model never charged — up to −1.5 % on one KT plan.
+  // A duel is only a duel if the sim executes the plan the tool prints, so EMIT=fire is the default.
+  // Fire times are FLOORED, matching index.html's display convention exactly (a press at floor(F) ≤ F
+  // snaps to the same boundary); intents keep Math.round so `EMIT=intent` reproduces pre-07-25 rounds
+  // bit-for-bit. The convention is printed in the header and stamped on XVAL-DONE — never silent.
+  const toSpec = (s, cfg) => {
+    const eff = EMIT === 'fire' ? (simulate(s, cfg, true).actEff || {}) : null;
+    // In fire mode emit EXACTLY what fired: a press the model's repair legalized away has no actEff
+    // entry, and handing it to the sim would grant a buff window the model never scored.
+    const at = k => (eff ? (eff[k] || []) : (s[k] || [])).slice().sort((a, b) => a - b).map(eff ? Math.floor : Math.round);
+    const spec = { _prestack: 0, BL: at('bloodlust') }; // COLD OPEN — the model never prepulls (genapl header ★; PHASE6 §4.7). NEVER change to >0.
+    if (s.arcanePower) spec.AP = at('arcanePower');
+    if (s.berserking) spec.Zerk = at('berserking');
+    for (const tk of PAIR) if (s[tk]) spec[TMETA[tk].key] = at(tk);
+    const ivs = at('icyVeins');
     const ivOut = [], csOut = []; let cd = -1e9;
     for (const t of ivs) { if (t < cd - 1e-6) csOut.push(t); ivOut.push(t); cd = t + BUFFS.icyVeins.cd; }
     if (ivOut.length) spec.IV = ivOut;
@@ -193,11 +249,11 @@ out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS, POOL_ENV
     const cfg = mkCfg(H);
     let bestH = champ[H], bestV = simulate(champ[H], cfg).robust;
     if (POOL) for (const h of HASTES) { if (h === H) continue; const v = simulate(champ[h], cfg).robust; if (v > bestV + 1e-7) { bestV = v; bestH = champ[h]; } }
-    res[H] = { spec: toSpec(bestH), eff: +(bestV / plain).toFixed(3) };
+    res[H] = { spec: toSpec(bestH, cfg), eff: +(bestV / plain).toFixed(3) };
   }
   const wallList = [...downtime, ...aoeWins].map(w => w[0]).sort((a, b) => a - b);
   return { res, fightT, lust, aoeTargets, wallList };
-}, { HASTES, T, LUST, PAIR, TMETA, BOSS: process.env.BOSS || null, POOL_ENV: process.env.POOL || "1", REF, plain: PLAIN });
+}, { HASTES, T, LUST, PAIR, TMETA, BOSS: process.env.BOSS || null, POOL_ENV: process.env.POOL || "1", REF, plain: PLAIN, EMIT });
 } catch (e) {
   // An in-page throw (boss not found / ambiguous / optimizer error) surfaced as an unhandled rejection
   // and exited 1 — "graded and failing" under the contract, when nothing was graded at all.
@@ -209,6 +265,46 @@ await browser.close();
 if (perr) { console.error('PAGEERROR', perr); process.exit(2); }
 const plans = out0.res;
 const FIGHT_T = out0.fightT;   // boss overrides T for the sim/labels below
+
+// ★★★ P7.15 — THE INDEPENDENT ARTIFACT GUARD (07-25). Decouples the harness from the thing under test.
+//
+// The standing correlated-error risk (TOOLING lesson 6): xval computes the fire times it feeds the sim
+// with `simulate()` — the same function whose correctness the duel is supposed to certify. If
+// `simulate()`'s intermission handling is wrong, the model and the transcription are wrong IDENTICALLY
+// and the comparison reads CLEAN. That has already happened once (the Vashj phase-drop bug). EMIT=fire
+// *increases* the coupling, because the harness input now routes through `simulate()` where it used to
+// bypass it — still the right call (the harness must execute the plan the tool prints), but it earns a
+// check that does not share the suspect code.
+//
+// This guard is that check. It reads ONLY the emitted spec — the literal JSON genapl will consume,
+// including the `_intermissions` table that came straight off the boss preset — and asks one arithmetic
+// question: does any press land inside a window where the boss is untargetable? No engine, no
+// `simulate()`, no shared state. Under EMIT=fire the answer MUST be zero, because `simulate()` walks its
+// clock to `seg.end` before firing (index.html:737). A nonzero count therefore means either
+// `simulate()` is not doing that, or the emission path dropped it — and the guard sees it either way.
+//
+// It REPORTS, it does not gate: under EMIT=intent a nonzero count is expected (it is the very artifact
+// P7.15 priced), so exiting here would make old rounds unreproducible. `artifact=` is stamped on
+// XVAL-DONE so the count is in the record of every round rather than only on a screen someone watched.
+const ART_KEYS = ['BL', 'AP', 'Zerk', 'Icon', 'Gem', 'Skull', 'MQG', 'IV', 'CS'];
+const artifacts = [];
+for (const h of HASTES) {
+  const sp = plans[h].spec, wins = sp._intermissions || [];
+  if (!wins.length) continue;
+  for (const k of ART_KEYS) {
+    for (const t of (sp[k] || [])) {
+      const w = wins.find(([a, b]) => t >= a && t < b);
+      if (w) artifacts.push(`h${h} ${k}@${t} inside intermission [${w[0]},${w[1]})`);
+    }
+  }
+}
+if (artifacts.length) {
+  const how = EMIT === 'fire'
+    ? '⚠⚠ UNEXPECTED under EMIT=fire — simulate() should have deferred these to the phase resume. This is a\n     simulate()-INDEPENDENT alarm: either the intermission walk (index.html:737) is not firing, or the\n     emission path lost it. Investigate BEFORE trusting this round.'
+    : 'expected under EMIT=intent — this IS the P7.15 artifact (the sim burns buff while untargetable).';
+  console.log(`  ARTIFACT GUARD: ${artifacts.length} press(es) emitted inside an intermission — ${how}`);
+  for (const a of artifacts) console.log(`     ${a}`);
+}
 if (process.env.BOSS) console.log(`  BOSS=${process.env.BOSS}  T=${FIGHT_T}  Lust@${out0.lust}${out0.aoeTargets ? `  AoE phase VALUED: AE windows ×${out0.aoeTargets} targets (--targets)` : ''}`);
 
 for (const h of HASTES) console.log(`  plan@h${h}: eff=${plans[h].eff}  ${JSON.stringify(plans[h].spec)}`);
@@ -255,27 +351,51 @@ const shiftSpec = (spec, ds) => {
   }
   return s;
 };
+const EXPORT_HASH = crypto.createHash('sha1').update(fs.readFileSync(EXPORT)).digest('hex').slice(0, 12);
+// One sim = one cache entry. `runSim` is the ONLY path to the runner, so the cache cannot be bypassed
+// by accident, and every guard below (the NaN trap especially) applies to cached and fresh alike.
+const runSim = (shifted, sh, ph, vi) => {
+  const key = CACHE_ON ? crypto.createHash('sha1').update(JSON.stringify({
+    spec: shifted, sh, T: FIGHT_T, VAR, ITER, seed: 11, mana: '100000000',
+    targets: out0.aoeTargets || 0, exp: EXPORT_HASH, runner: RUNNER_ID,
+  })).digest('hex') : null;
+  const cf = key ? path.join(CACHE_DIR, key + '.json') : null;
+  let cached = null;
+  if (cf && fs.existsSync(cf)) {
+    try { const v = JSON.parse(fs.readFileSync(cf, 'utf8')).dps; if (Number.isFinite(v)) cached = v; } catch { /* corrupt entry → re-sim */ }
+  }
+  if (cached !== null && !CACHE_VERIFY) { cacheHit++; return cached; }
+
+  const p = path.join(SCRATCH, `plan_${ph}_v${vi}.apl.json`);
+  execFileSync('node', [path.join(REPO, 'tools/genapl.mjs'), JSON.stringify(shifted), p]);
+  const args = ['--export', EXPORT, '--apl', p, '--dur', String(FIGHT_T), '--var', VAR, '--iter', ITER, '--seed', '11', '--mana', '100000000', '--haste', String(sh), '--quiet', '--tag', 'm'];
+  if (out0.aoeTargets) args.push('--targets', String(out0.aoeTargets));
+  const out = execFileSync(RUNNER, args, { encoding: 'utf8' });
+  const dps = parseFloat(out.trim().split(/\s+/)[4]);
+  // ★ THE WORST FAILURE THIS HARNESS HAD.  A NaN here propagates through `acc` into the whole
+  // matrix, and BOTH invariant loops below compare with `>` — which is FALSE for NaN — so monoDip
+  // stayed 0.00% and diag stayed CLEAN.  A runner that changed its output format, printed a warning
+  // line first, or errored to stdout would have produced a confident double PASS over zero real data.
+  if (!Number.isFinite(dps)) {
+    console.error(`ERROR: could not parse DPS (whitespace field 5) from runner output for plan@${ph} sim@${sh} variant ${vi}.`);
+    console.error(`  last line was: ${JSON.stringify(out.trim().split('\n').pop() || '')}`);
+    process.exit(2);
+  }
+  // The cache is only lossless if the runner really is deterministic. VERIFY mode proves it per-entry
+  // instead of trusting the one-off check — a silent drift here would poison every round that follows.
+  if (cached !== null && cached !== dps) {
+    console.error(`ERROR: DPS_CACHE_VERIFY mismatch for plan@${ph} sim@${sh} variant ${vi}: cached ${cached} vs fresh ${dps}.`);
+    console.error(`  The runner is NOT deterministic for a fixed seed, or the cache key is missing an input. Cache is UNSAFE — delete ${CACHE_DIR} and run with DPS_CACHE=0.`);
+    process.exit(2);
+  }
+  cacheMiss++;
+  if (cf) { const tmp = cf + '.' + process.pid + '.tmp'; fs.writeFileSync(tmp, JSON.stringify({ dps })); fs.renameSync(tmp, cf); }
+  return dps;
+};
 const M = {};
 for (const ph of HASTES) { M[ph] = {}; for (const sh of HASTES) {
   let acc = 0;
-  for (let vi = 0; vi < VARIANTS.length; vi++) {
-    const p = path.join(SCRATCH, `plan_${ph}_v${vi}.apl.json`);
-    execFileSync('node', [path.join(REPO, 'tools/genapl.mjs'), JSON.stringify(shiftSpec(plans[ph].spec, VARIANTS[vi])), p]);
-    const args = ['--export', EXPORT, '--apl', p, '--dur', String(FIGHT_T), '--var', VAR, '--iter', ITER, '--seed', '11', '--mana', '100000000', '--haste', String(sh), '--quiet', '--tag', 'm'];
-    if (out0.aoeTargets) args.push('--targets', String(out0.aoeTargets));
-    const out = execFileSync(RUNNER, args, { encoding: 'utf8' });
-    const dps = parseFloat(out.trim().split(/\s+/)[4]);
-    // ★ THE WORST FAILURE THIS HARNESS HAD.  A NaN here propagates through `acc` into the whole
-    // matrix, and BOTH invariant loops below compare with `>` — which is FALSE for NaN — so monoDip
-    // stayed 0.00% and diag stayed CLEAN.  A runner that changed its output format, printed a warning
-    // line first, or errored to stdout would have produced a confident double PASS over zero real data.
-    if (!Number.isFinite(dps)) {
-      console.error(`ERROR: could not parse DPS (whitespace field 5) from runner output for plan@${ph} sim@${sh} variant ${vi}.`);
-      console.error(`  last line was: ${JSON.stringify(out.trim().split('\n').pop() || '')}`);
-      process.exit(2);
-    }
-    acc += dps;
-  }
+  for (let vi = 0; vi < VARIANTS.length; vi++) acc += runSim(shiftSpec(plans[ph].spec, VARIANTS[vi]), sh, ph, vi);
   M[ph][sh] = acc / VARIANTS.length;
 } }
 
@@ -304,4 +424,7 @@ for (const sh of HASTES) { const native = M[sh][sh];
 const diagClean = diagWorst <= 1e-6;
 console.log(`\n(a) haste-monotonicity [OBSERVED, not interpreted]: worst downward dip = ${(monoWorst*100).toFixed(2)}%` + (monoWorst > 0 ? `  [${monoAt}]` : ''));
 console.log(`(b) DIAGONAL DOMINANCE: ${diagClean ? 'CLEAN — native dominates every column' : `DEFICIT ${(diagWorst*100).toFixed(2)}%  [${diagAt}]`}`);
-console.log(`XVAL-DONE seed=${SEED} kit=${PAIR.join('+')} class=${process.env.BOSS ? 'BOSS:'+process.env.BOSS.replace(/[^A-Za-z]/g,'') : (cls||'any')} T=${FIGHT_T} lust=${out0.lust} var=${VAR} wj=${WJ} monoDip=${(monoWorst*100).toFixed(2)}% diag=${diagClean ? 'CLEAN' : 'DEFICIT'} diagWorst=${(diagWorst*100).toFixed(2)}%`);
+// `cache=` is part of the PROVENANCE, not a performance stat: a reader must be able to tell whether a
+// round was freshly simmed or partly reused. hit+miss is the sim count either way, so the two numbers
+// also confirm the matrix is complete.
+console.log(`XVAL-DONE seed=${SEED} kit=${PAIR.join('+')} class=${process.env.BOSS ? 'BOSS:'+process.env.BOSS.replace(/[^A-Za-z]/g,'') : (cls||'any')} T=${FIGHT_T} lust=${out0.lust} var=${VAR} wj=${WJ} emit=${EMIT} artifact=${artifacts.length} cache=${cacheHit}/${cacheHit + cacheMiss}${CACHE_VERIFY ? '+verify' : ''} monoDip=${(monoWorst*100).toFixed(2)}% diag=${diagClean ? 'CLEAN' : 'DEFICIT'} diagWorst=${(diagWorst*100).toFixed(2)}%`);

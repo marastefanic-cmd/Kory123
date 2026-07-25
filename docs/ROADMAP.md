@@ -119,14 +119,34 @@
    conclusions are not haste-portable**. Plus 15 class cells whose floor is complete (top
    excess 0.1653 pp) and which carry no AoE window, so this finding does not touch them.
 
-   ⚠⚠ **P7.15 OPENED — the cross-val harness may be measuring the wrong plan.** `xval.mjs:194` feeds the
-   sim `toSpec(best.s)` = **press intents**, where the tool/goldens/exact-match all speak **fire times**;
-   an intent that lands inside or just before an intermission is deferred by the model but fired into the
-   downtime by the sim. Priced on one KT plan: the *same* plan reads **−1.5432 %** (intents) vs
-   **−0.0104 %** (fire times) — **5–10× the deficits this whole campaign is chasing**, so part of the
-   recorded boss-side deficit may be **harness artifact**. The convention is deliberately **unchanged**
-   (cross-round comparability); P7.15 must price it corpus-wide, then justify + announce + re-gather.
-   ACCEPTANCE carries the caveat on every boss table. (PHASE7 §5.21 · TOOLING duel half 3.)
+   ✅ **P7.15 CLOSED (07-25) — the harness WAS measuring the wrong plan, but the deficits are real.**
+   `xval.mjs` fed the sim **press intents** where the tool/goldens/exact-match all speak **fire times**.
+   Now `EMIT=fire` by default (floored fire times = the plan the tool prints); `EMIT=intent` reproduces
+   pre-07-25 rounds; the value is stamped on every header and on `XVAL-DONE`, and **a log with no `emit=`
+   is `intent`**. Priced corpus-wide over the banked 60 plans, the alarm deflated hard: the first
+   "123 s of downtime burn" was **92 % legitimate CLIP** (a buff *tail* into a wall is already charged);
+   true ARTIFACTs are **2 plans (3 %), 10.0 s**, and because fire times are **floored** only **18/60**
+   specs change at all. **★ The 3 surviving over-floor deficit cells are not among the 18** — bit-identical
+   under both conventions — so the boss deficits are **model signal, not harness fiction.** ⚠ Two things
+   to carry forward: the artifact's sign is **inverted** (intent *inflated* two plans ~0.26 % via an MQG
+   cooldown cascade past the fight end), so an inflated **borrowed** plan can manufacture a **phantom
+   deficit**; and the 2/60 rate is pre-P7.14 and expected to rise. **⚠⚠ Every boss table in ACCEPTANCE is
+   `emit=intent` and must be re-gathered under `emit=fire` before any verdict.** (PHASE7 §5.22 ·
+   TOOLING lesson 3 · ACCEPTANCE harness-fidelity block.)
+
+   ✅ **Three methodology blindspots named and CLOSED with instruments (07-25).** (1) **Identity filter
+   first** — price nothing before checking whether the input differs at all; landed as **`DPS_CACHE`**, a
+   lossless content-addressed sim cache (runner determinism *verified*: 2152.4 ×3 at fixed seed), keyed on
+   runner `path:size:mtime` + gear-export content hash so a rebuild self-invalidates, with
+   `DPS_CACHE_VERIFY=1` to re-sim and exit 2 on mismatch. ~70 % of a boss re-gather now costs zero sims.
+   (2) **The acceptance test is purely RELATIVE** and cannot see uniform error; the absolute anchor is
+   `tools/brute-grid.mjs --tool`, now run as a standing check — **6/6 PASS** across `isc+scb` and
+   `mqg+skull` at h0/h195/h300 (worst Δ −0.062, inside the 0.15 pressability slack), plus an AoE-window
+   fight. (3) **The harness shares `simulate()` with the model** (a correlated-error risk that already bit
+   once, as the Vashj phase-drop bug, and which `EMIT=fire` *increases*); paid for with a
+   `simulate()`-independent **ARTIFACT GUARD** — pure arithmetic on the emitted spec + the preset's own
+   `_intermissions` table — that must read 0 under `emit=fire` and stamps `artifact=N` on `XVAL-DONE`.
+   (TOOLING lessons 5–7 · DIARY corrections ledger.)
    What landed earlier: three sim-gated scorer terms (RULES §3b — press-snap
    slippage at hard edges; externals snap to the cast lattice, which tempers the IV@0 "ramp
    compression" credit; ramp casts snapshot buffs at cast START), two search passes (polished CS

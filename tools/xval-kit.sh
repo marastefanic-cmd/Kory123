@@ -18,6 +18,9 @@ SP=/tmp/claude-0/-home-user-Kory123/e436da46-89c3-50bc-bce2-5b6be890f704/scratch
 export CHROMIUM=${CHROMIUM:-/opt/pw-browsers/chromium}
 export RUNNER=${RUNNER:-$SP/wowsims/runner-ap180}
 export EXPORT_BASE=${EXPORT_BASE:-$SP/arcane-wowsims-import.json}
+# ★★★ P7.15 transcription convention — see the block in tools/xval-boss.sh. `fire` (default) sims the
+# plan the tool PRINTS; `intent` reproduces pre-07-25 rounds. Stamped on every XVAL-DONE line.
+export EMIT=${EMIT:-fire}
 XVDIR=${XVDIR:-$SP/xvcamp}; mkdir -p "$XVDIR"
 # This lookup used to run UNCHECKED.  A kit missing from the JSON raises KeyError, python3 exits
 # non-zero, and `$(...)` swallows that into HASTES="" — which the old xval.mjs read as "unset" and

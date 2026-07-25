@@ -1729,3 +1729,143 @@ affected tables. Tracked as task P7.15.
 
 This is a direct hit on the standing invitation to audit the big test itself: *"It's possible the 'big
 test' also has a logical flaw to it."* It does — in its transcription layer, not its statistics.
+
+---
+
+### ✅ §5.22 — P7.15 ANSWERED AND LANDED: the artifact is real, SMALL on the banked corpus, and does NOT touch the surviving deficits (07-25)
+
+§5.21 opened this with one alarming number (**−1.5432 %** on a single post-P7.14 KT plan) and three
+obligations: (a) price it corpus-wide, (b) justify the change in writing, (c) announce + re-gather.
+All three are discharged here. The headline is **deflationary** — and the deflation matters more than
+the alarm did, because it says the acceptance campaign was **not** chasing harness fiction.
+
+#### (a) The price, measured four independent ways
+
+**★★★ FIRST: the distinction that turns a catastrophe into a rounding error — CLIP vs ARTIFACT.**
+A buff window overlapping an intermission is two completely different events, and conflating them is
+what made the first scan read as a disaster:
+
+| | what happens | is it a bug? |
+|---|---|---|
+| **CLIP** | press is in targetable time, the buff **tail** runs into a wall | **NO — correctly priced.** `simulate()` accrues no cast rate inside an intermission, so the model already charged it. KT opens `Icon@0` against a wall at 0:15 in *every* plan: 5 s clipped, deliberately. |
+| **ARTIFACT** | the **press time itself** is inside an intermission | **YES.** `index.html:737` walks the model's clock past the wall before firing, so the model scored the buff from the resume while the sim starts it mid-downtime. Pure transcription damage. |
+
+The first cut of the scan reported "123 s of buff spent while the boss was untargetable", which reads
+as damning. **92 % of it was legitimate clipping.** Reading `genapl.mjs:20-90` — which establishes that
+every cooldown is an *unconditional* `schedule` action and only Arcane Blast is gated on
+`_intermissions` — is what forced the split. Cost of the check: one file read. Cost of believing the
+first number: a re-gather of the entire corpus chasing a bug that mostly is not there.
+
+**The four arms**, all over the banked round-7 boss gather (`xvcamp7`, 6 files, 60 plans, PRE-P7.14):
+
+| arm | tool | cost | result |
+|---|---|---|---|
+| **cheap** — parse the emitted spec, arithmetic only | `tools/xval-spec-downtime.mjs` | instant | **CLIP 19 plans (32 %), 113.0 s** (all correct) · **ARTIFACT 2 plans (3 %), 10.0 s** |
+| **retro** — replay each banked spec through the CURRENT engine, read `actEff` | `tools/xval-retro-transcribe.mjs` | seconds | **31/60 plans (52 %)** have a press firing >0.5 s late; **2 plans (3 %), 10.0 s** convert that to downtime burn — *exact agreement with the cheap arm* |
+| **floor** — how many specs actually CHANGE once fire times are floored | scan | instant | **18/60 (30 %)** change; **42 unchanged** |
+| **duel** — what is the flip **worth in DPS**, same plan, both transcriptions | `tools/xval-emit-duel.mjs` | ~30 min/kit | **20 cells duelled** — see the table below; only **2** are material |
+
+**The duel, in full** (boss instrument's own 5-variant wall jitter, iter 6000, seed 11; Δ% is *going to*
+fire times, so negative = the intent convention had been reading high):
+
+| boss / kit | n | meanΔ | worst | notes |
+|---|---|---|---|---|
+| KT `isc+scb` | 2 | −0.004 % | −0.007 % | one 1 s slip on five tracks; one identical spec (null control) |
+| KT `mqg+skull` | 4 | **−0.130 %** | **−0.267 %** | **the only material cells** — @235 / @265, the two true ARTIFACTs |
+| Vashj `isc+scb` | 10 | +0.001 % | +0.005 % | many presses move, none of it matters |
+| Vashj `mqg+skull` | 4 | +0.017 % | +0.065 % | |
+
+**★★★ The strongest single result here: 18 of the 20 duelled cells are worth ≤0.065 %, and 16 of them
+≤0.007 %.** Lady Vashj is *entirely* immune (mean +0.001 % / +0.017 %) despite plenty of presses moving —
+her intermissions never sit under a press. So the flip is not a broad repricing of the corpus; it is a
+**point fix on two cells**, and every other cell moves well inside the ±0.1251 pp boss band. Note the
+sign flips *both* ways across the corpus (Vashj is mildly positive), which is what a genuine 1 s
+lattice perturbation should look like — only the two artifact cells are systematically one-sided.
+
+**★ The floor scan is the load-bearing one, and it was a surprise.** `EMIT=fire` floors
+(`Math.floor`), matching the tool's display convention. A press that slips 130 → 130.94 floors straight
+back to **130** — the *same integer the intent convention emitted*. So the ~52 % raw divergence rate
+collapses to **30 %** of specs that differ at all, and the rest of the divergence is invisible to the
+sim by construction. Sub-second slip is a **no-op under this convention**, which is a good property:
+it means the flip perturbs far less of the corpus than the raw divergence rate suggests.
+
+**★★★ AND THE RESULT THAT MATTERS FOR ACCEPTANCE: the 3 surviving over-floor deficit cells are
+NOT among the 18.** `isc+scb` on Kael'thas at **@95 / @195 / @245** carry divergences of 0.56–0.97 s —
+every one of which floors back to its own intent. Their specs are **bit-identical under both
+conventions**, so the transcription bug **cannot** be what produced them. The banked boss deficits are
+**model signal, not harness fiction.** That directly retires the §5.21 worry that "some fraction of the
+deficits may be harness artifact". The same holds for KT `mqg+skull`'s banked
+`DEFICIT 0.15% [@sim100: plan@30 (2295.9) > native@100 (2292.6)]`: plan@30's sole change is
+`Zerk128→129`, which duels at **0.000 %**.
+
+**★★★ THE SIGN WAS INVERTED, and the mechanism is worth keeping.** The prediction going in was that the
+intent convention *deflates* the artifact plans (it burns buff in downtime, so it should sim *worse*).
+The duel says the opposite: intent **inflated** them by ~0.26 %. Tracing it:
+
+- `MQG@100` is deferred by the model past KT's short **[94,105)** intermission, so its fire time is `105`.
+  On that press alone the fire convention *gains* 5 s of targetable buff — as predicted.
+- But MQG has a **300 s cooldown**, so the second press moves `400 → 405` — and the fight ends at **420**.
+  The 5 s gained at the front is paid back with interest at the back, where the window is truncated.
+- Net: the *plan the tool prints* is genuinely worth ~0.26 % less here than the plan the sim was
+  previously being handed. The intent transcription was not merely mis-describing the plan — it was
+  describing a **better** plan, one the tool never proposed.
+
+⚠ **The consequence is what matters: an inflated plan can manufacture a PHANTOM DEFICIT.** A deficit is
+declared when a *borrowed* plan out-sims the *native* one. If the borrowed column happens to be one of
+the inflated artifact plans, the deficit is an artifact of the transcription, not of the search. This is
+a failure mode the §5.21 framing did not anticipate (it worried only about deflation making cells look
+*worse*), and it is a second, independent reason the convention had to be fixed.
+
+⚠ **The 2/60 figure is measured on PRE-P7.14 plans and does NOT transfer forward.** P7.14's AoE
+press-snap (`index.html:789`, `if (aoeExact) eff = t`) makes intent→fire many-to-one over
+multi-second gaps — the §5.21 plan had IV **intent 93 / fire 105**, a 12 s gap where the pre-P7.14
+corpus's worst is 5 s. The post-P7.14 rate is therefore expected to be **higher**, which is exactly why
+the convention had to be fixed **before** the next gather rather than after: run under the old
+convention, the P7.14 fix would have read as a regression it is not.
+
+#### (b) Why fire times are the correct convention (the written justification §5.21 owed)
+
+The tool **displays** fire times, floored to whole seconds. A press issued at `floor(F) ≤ F` snaps to
+the same cast boundary as `F` itself, so a spec written in floored fire times causes the sim to realize
+**the plan the tool prints** — which is the entire point of a duel. Feeding intents instead biases the
+sim's realized layout **earlier** than the model's scored layout, by the whole snap distance, and every
+observed divergence has the same sign (fire ≥ intent, because a snap only moves forward). A systematic
+one-sided bias in the instrument is strictly worse than a small perturbation, regardless of its size.
+
+Note this justification does **not** depend on the artifact being large. Even at 2/60 it would hold:
+the harness should execute the plan under test. The corpus price only tells us how much of the existing
+record has to be re-read, not whether the change is right.
+
+#### (c) The change, announced and made non-silent
+
+`tools/xval.mjs` gains **`EMIT=fire|intent`**, defaulting to `fire`:
+- `fire` (default) = `Math.floor(simulate(s, cfg, true).actEff)` — the plan the tool prints. It emits
+  **exactly what fired**: a press `repair()` legalized away has no `actEff` entry and is therefore not
+  handed to the sim, where the old path would have granted a buff window the model never scored.
+- `intent` = `Math.round(best.s)` — the pre-07-25 behaviour, kept **only** so an old round can be
+  reproduced bit-for-bit.
+- An unrecognised value **exits 2** rather than silently picking one, because every table in
+  `ACCEPTANCE.md` is cross-round comparable *precisely because* the convention was constant.
+- The value is stamped on the header line **and** on `XVAL-DONE` (`emit=…`). **A log with no `emit=`
+  predates the switch and is `intent`** — recorded in `tools/xval-boss.sh` so a stale log can always be
+  classified. Both wrappers pin `EMIT=${EMIT:-fire}` so a boss round can never inherit a stray value.
+
+**Status: the boss tables in `ACCEPTANCE.md` are `emit=intent` and must be re-gathered under
+`emit=fire` before any acceptance verdict is called.** The class-side tables are structurally immune
+(class fights build no `segments`, so there is no intermission-deferral divergence — only the opener
+`prevCastRamp` snap, bounded by one cast and unclamped, i.e. second-order) but will be re-gathered with
+them for a single consistent round.
+
+#### The instruments, kept
+
+| tool | what it answers |
+|---|---|
+| `tools/xval-spec-downtime.mjs` | CLIP vs ARTIFACT on a banked round, no engine, no sim — instant triage |
+| `tools/xval-retro-transcribe.mjs` | where would these banked presses fire under **today's** engine? |
+| `tools/xval-emit-duel.mjs` | what is the flip **worth in DPS**, same plan, both transcriptions, boss instrument's own 5-variant wall jitter |
+| `tools/xval-transcribe-audit.mjs` | the expensive arm: re-optimizes with the current engine to get the **post-P7.14** rate |
+
+**★ The duel carries its own null control.** KT `isc+scb` @95 and KT `mqg+skull` @0 have *identical*
+specs under both conventions, and both read **0.000 %** — so the instrument is measuring the flip and
+not its own noise. Any duel row whose "presses moved" column is `(none)` and whose Δ is not 0.000 % would
+be an instrument fault, and there are none.
