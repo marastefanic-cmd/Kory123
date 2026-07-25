@@ -2062,6 +2062,73 @@ place, and both were rewritten:
 *Apparatus: `$SP/p8/{r9l2.sh,r9l2model.mjs,r9l2stat.mjs}` + `r9l2fixgen.mjs`/`r9l2ctl.sh` (15 derived fixtures,
 32 controls), writing `r9l2/{req,gate.T*,model}.json`, `dps.txt`, `drift.txt`.*
 
+### 19.12 LEG L3, PRE-REGISTERED (07-25) — **the K2 repair.** Written before any L3 number exists
+
+§19.2 reserved L3 for *"the K2 repair — the one untested J1 clause."* Round 8 voided K2 (`A0→A2`, MQG stacked
+onto **`BL`** rather than `IV`) because `AP#2`/`Zerk#2` moved **−0.89 s** uncancelled and the model dropped a
+cast (180 → 179). Two things have changed since, and both are what make the repair possible:
+
+1. **§19.9's aligned scoring.** A cascade in the *controls* is no longer disqualifying — it is priced, by
+   scoring the model at the sim's **executed** press times with `index.html:785`'s expected-snap term
+   suppressed. L1 and L2 both carried verdicts at `status = DRIFT, maxCtl = 1.21 s` on exactly this basis. K2's
+   contamination is therefore a **measurement** problem that round 9 already solved, not a design flaw.
+2. **§19.10's reframing.** The defect is not a level error but a **crossing-location** error, localized to the
+   neighbourhood of the GCD-floor crossing. That turns L3 from "one more cell" into a sharp test.
+
+#### The structural fact that makes L3 decisive
+Recomputed from the page's own constants (`hastePerPct 15.77`, `mqgRating 330`, `ab3Base 1.5`, `gcdFloor 1.0`):
+
+| `R` | 0 | 30 | 53 | 70 | 120 | 200 | 300 | 400 |
+|---|---|---|---|---|---|---|---|---|
+| clip %, **`BL`+MQG** | 4.58 | 6.36 | 7.68 | **8.64** | 11.33 | 15.32 | 19.83 | 23.89 |
+| clip %, `IV`+MQG (L1) | 0.00 | 0.00 | 0.00 | 1.02 | 3.94 | 8.26 | 13.15 | 17.55 |
+
+**`BL`+MQG (×1.30 × ×1.209) is floored at EVERY gear haste in the range — its crossing is at `R = −72`, which
+is unreachable.** So the BL contrast *never visits* the place L1 localized the defect, while its clip range
+(4.6 %→23.9 %) heavily overlaps L1's (0 %→17.6 %). That makes L3 a direct test of whether `Δresid` is a
+function of the **clip fraction alone**, with the stacking partner irrelevant.
+
+#### The arms — `T = 300`, rest-context B, `Icon` off, cold open, sp 1450, t5two on, var 3.0 / 20 000 iter
+| arm | `MQG` | window | stacked with | runway | role |
+|---|---|---|---|---|---|
+| `C0` | 100 | 100–120 | — (solo) | 180 s | **reproduction control** — must re-derive L1's `dps.txt` exactly |
+| `D0` | **140** | 140–160 | — (solo, ends 2 s before `BL`) | 140 s | reference for the BL contrast |
+| `D1` | **170** | 170–190 | **`BL` 162–202 only** | 110 s | treatment — the repaired K2 |
+
+`D1`'s window is *entirely* inside `BL` and touches nothing else (`AP#2`/`Zerk#2` start at 192, `IV#3` at 202),
+so it is a **pure `BL` stack**. `D0` sits 30 s earlier, solo, with the same order of runway — a far better
+matched reference than round 8's `A0` (`MQG@100`, 70 s away). Both runways are ≫ K3's 78 s, which §18.6 already
+proved is ample, so **kill-proximity is out of the design entirely**. Same 8 haste points as L1, so every
+comparison is like-for-like.
+
+#### Pre-registered falsifiers
+- **L3a — J1's K2 CLAUSE FIRES.** `|Δresid(D0→D1)| ≥ 0.15 pp` at `R = 70`. Reading: the model mis-composes
+  overlapping haste multipliers regardless of partner — and `BL`'s larger multiplier should if anything make
+  it worse. J1 then stands on **both** clauses and "buff composition" survives as a suspect.
+- **L3b — J1's K2 CLAUSE FAILS; K2 IS CLEAN.** `|Δresid| < 0.05 pp` at `R = 70`. Then §18.6's *"the model
+  mis-composes two overlapping haste multipliers"* is **too broad**: stacking onto `BL` is priced correctly
+  while stacking onto `IV` is not, and the distinguishing feature is not "stacking".
+- **★ L3c — THE UNIFICATION** (registered *after* L1's result and *before* any L3 number, and labelled as such
+  so it can never be read as an original round-8 prediction). Across the whole sweep,
+  `max |Δresid(D0→D1)| < 0.10 pp` **and** its mean is within `0.06 pp` of L1's mean over its own well-clipped
+  points, **−0.0067 pp** (`R ∈ {120,200,300,400}`). Reading: one boundary-discretization curve, indexed by clip
+  fraction; the stacking partner is irrelevant; K2 and K3 unify and **buff composition is retired as a separate
+  suspect**.
+- **L3d — was the contamination material?** (secondary, cannot carry a verdict). Round 8's voided K2 read
+  `+0.0402 pp`. If the repaired number agrees within `0.05 pp`, the contamination was real but **immaterial to
+  the answer**; if it differs by `≥ 0.15 pp`, voiding K2 was materially correct. Recorded either way.
+
+#### Controls this leg must carry
+- **Reproduction.** `C0`'s DPS at every `R` must equal `r9l1/dps.txt` **exactly** — same seed, iterations,
+  `var`, `T`, haste, different output directory. (L2 established that this reproduces byte-exactly.)
+- **Reference-invariance.** `Δresid(C0→D1) − Δresid(C0→D0)` must equal `Δresid(D0→D1)` within `0.02 pp`, so the
+  verdict cannot be an artifact of which solo press was chosen as the reference.
+- **Expected gate status: `DRIFT`.** `D0`'s `MQG@140` precedes `BL@162` and `D1`'s does not, so `BL` will slide
+  between the arms exactly as it did in L1/L2. Recorded, not excluding (§19.7.5).
+- **Sensitivity (the §19.11 lesson).** L3b and L3c are both **absence** verdicts, so the instrument must first
+  demonstrate it can see a residual of the size being denied: the same reduction, run on L1's `R = 70` row,
+  must return `−0.1808 pp`. A flat reading is not reportable until that passes.
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance
