@@ -86,8 +86,30 @@ the authoritative row-by-row ledger.
   truth for granularity; read by `xval-kit.sh`).
 - **`tools/xval-kit.sh`** — one kit across all five fight-classes. `bash tools/xval-kit.sh mqg,skull`.
   Tees matrices to `$XVDIR/<kit>-<class>.txt`; seeds deterministically (`1000 + cksum(kit)%9000 + classIdx`).
-- **`tools/xval-campaign.sh`** / **`tools/xval-boss.sh`** — all six kits (2-concurrent, `ITER=6000`) /
-  the boss-shape tables (Vashj + Al'ar + KT × representative kits, with `--targets N` on AoE phases).
+- **`tools/xval-campaign.sh`** / **`tools/xval-boss.sh`** — all six kits (2-concurrent, `ITER=6000`;
+  `KITS=…` overridable) / the boss-shape tables (Vashj + Al'ar + KT × representative kits, with
+  `--targets N` on AoE phases).
+- **★ The three wrappers above + `xval-rerun.sh` carried the false-pass class ONE LEVEL UP** (fixed
+  07-25, each demonstrated on the pre-fix file rather than argued). None consulted the exit status of
+  the `node xval.mjs` it launched, none consulted the `python3` haste-set lookup, and each printed its
+  completion banner unconditionally — so HEAD's `xval-kit.sh bogus1` printed five `XVAL-FAIL` lines and
+  then **`KIT-DONE bogus1`, exit 0**, and HEAD's campaign printed **`CAMPAIGN-DONE`, exit 0** over three
+  children that had all exited 2. Now: every launch is graded on `rc` **and** its `XVAL-DONE` line;
+  banners carry `clean=/deficit=/failed=` counts; a nonzero failure count prints
+  `KIT-|BOSS-|CAMPAIGN-|RERUN-INCOMPLETE` and exits **2**. Three further defects closed in
+  `xval-rerun.sh`: `wait $PIDS` returns only the **last** pid's status (a first-kit death was
+  invisible — replicated: two children, first exits 2, `wait $PIDS` returns 0); the restart-skip probe
+  checked only the two **endpoint** classes, so a kit whose middle classes failed was skipped forever;
+  and `git push … || true` let a "durable checkpoint" silently never reach the remote (now retried with
+  backoff, then loud). Exit-code contract throughout: `0` graded clean · `1` graded and failing ·
+  `2` could not grade. **Exit 1 is unused by design** on this path — a `diag=DEFICIT` is an
+  *observation*, not a failure; `xval.mjs` gathers data and does not grade the model.
+  Both halves of the lesson were exercised: seven **negative** controls (missing/empty kit arg, unknown
+  kit, empty haste set, nonexistent `RUNNER`, unset `EXPORT_BASE`, …) each required to exit **2**, and a
+  **positive** control on healthy data — `KITS="scb,mqg"` × all five classes, `monoDip=0.00%
+  diag=CLEAN diagWorst=0.00%` on every row, `KIT-DONE scb-mqg clean=5 deficit=0 failed=0` →
+  `CAMPAIGN-DONE kits=1 failed=0`, exit **0**. A guard that only ever rejects is its own kind of
+  broken instrument; this one still grades real data.
 - **`tools/xval-collect.mjs`** — a results directory → the CLEAN/DEFICIT ledger markdown, every
   borrowed-win column + length-robust loci (`--json` exports the target list); asserts `monoDip ≈ 0`.
   **★ Zero tables is a hard error (exit 2), never a pass** — fixed 07-25 after a dry run on a scratch
@@ -108,7 +130,19 @@ the authoritative row-by-row ledger.
   cell of the grid vanished while the verdict still claimed to cover it. Both are now exit-2 errors,
   the second listing the offending files.
 - **`tools/genapl.mjs`** — model plan → wowsims APLRotation JSON (the bridge that makes a schedule
-  simmable). **Never** set `_prestack>0` for a model comparison.
+  simmable). **Never** set `_prestack>0` for a model comparison. Hardened 07-25 against its own
+  false-pass shape: an **unknown spec key was dropped in total silence**, so `{"IcyVeins":[20]}` (or
+  any typo) emitted a well-formed APL with that cooldown simply **absent**, the sim ran, printed a
+  plausible DPS, and every comparison built on it was wrong with nothing saying so — now a hard error
+  listing the known keys, matching the guard `genae.mjs` already had. Also: a missing/empty spec used
+  to fall through to a silent **exit 0 having written nothing**, leaving a *stale* outfile for the
+  runner to sim under the new experiment's name (now exit 2); non-numeric press times formatted
+  straight through `${t}s` into the schedule (now rejected); and `_prestack>0` announces itself on
+  stderr. Verified byte-identical to the pre-fix generator on 5 healthy specs covering every key.
+- **`tools/explore.mjs`** — the P4.measure ramp-blindness gate. Its runner parse was the same
+  unvalidated `parseFloat(field 5)` that was `xval.mjs`'s worst defect; here `NaN` fails every
+  comparison and falls through to `‼ DISAGREE (real ranking flip)` — a false *alarm* rather than a
+  false pass, but it corrupts the same gate. Now exit 2 with the offending line.
 
 ## Current status (2026-07-25, **round 4** — gathered on the shipped post-§5.11 engine) — NOT PASSING (B)
 All 36 tables re-run on the current engine (cross-haste pooling ON, var0.5, per-wall jitter v2, KT AoE

@@ -6,6 +6,9 @@
 #   BOSSES="Lady Vashj" KITS="mqg,skull" bash tools/xval-boss.sh
 # Vashj & Al'ar are intermission-only → sim cleanly. KT has an AoE phase simmed as DOWNTIME (genapl has
 # no Arcane-Explosion emission) → its numbers EXCLUDE AoE damage and xval.mjs flags the run.
+#
+# Exit-code contract (shared with tools/xval.mjs): 0 = every boss×kit cell produced a matrix ·
+# 2 = at least one did not.  A `diag=DEFICIT` is an observation, not a failure (see xval-kit.sh).
 set -u
 REPO=/home/user/Kory123
 SP=/tmp/claude-0/-home-user-Kory123/e436da46-89c3-50bc-bce2-5b6be890f704/scratchpad
@@ -19,16 +22,40 @@ KITS=${KITS:-"mqg,skull isc,scb"}
 # Default bosses: the three the user named. IFS='|' so multi-word names survive.
 BOSSES=${BOSSES:-"Lady Vashj|Al'ar|Kael'thas Sunstrider"}
 IFS='|' read -ra BLIST <<< "$BOSSES"
+nok=0; ndef=0; nfail=0
 for boss in "${BLIST[@]}"; do
   btag=$(echo "$boss" | tr -cd 'A-Za-z')
   for kit in $KITS; do
     ktag=$(echo "$kit" | tr ',' '-')
-    hs=$(python3 -c "import json;print(','.join(map(str,json.load(open('$REPO/tools/xval-haste-sets.json'))['$kit'])))")
+    # Unchecked before: a KeyError here left hs="" and the cell was graded on the coarse default
+    # grid instead of this kit's breakpoint straddle — with nothing in the log to say so.
+    if ! hs=$(python3 -c "import json,sys;d=json.load(open(sys.argv[1]));print(','.join(map(str,d[sys.argv[2]])))" "$REPO/tools/xval-haste-sets.json" "$kit" 2>&1); then
+      echo "ERROR: no haste set for kit \"$kit\" in tools/xval-haste-sets.json" >&2
+      echo "  python3 said: $hs" >&2
+      exit 2
+    fi
+    if [ -z "$hs" ]; then
+      echo "ERROR: haste set for kit \"$kit\" is EMPTY — refusing to fall back to the coarse default grid." >&2; exit 2
+    fi
     seed=$(( 5000 + $(echo "$boss$kit" | cksum | cut -d' ' -f1) % 4000 ))
     out="$XVDIR/boss-${btag}-${ktag}.txt"
     KIT="$kit" BOSS="$boss" HASTES="$hs" SCRATCH="$SP/xv-boss-${btag}-${ktag}" \
       node "$REPO/tools/xval.mjs" "$seed" > "$out" 2>&1
-    grep -E "^XVAL-DONE" "$out" || echo "XVAL-FAIL boss-${btag}-${ktag} (see $out)"
+    rc=$?
+    # rc was consulted nowhere and `BOSS-DONE` printed unconditionally, so a boss whose preset failed
+    # to resolve (or whose page threw) left the run looking complete.  Grade on rc AND the line.
+    line=$(grep -E "^XVAL-DONE" "$out" | tail -1)
+    if [ "$rc" -ne 0 ] || [ -z "$line" ]; then
+      nfail=$((nfail+1))
+      echo "XVAL-FAIL boss-${btag}-${ktag} rc=$rc (see $out)"
+      tail -3 "$out" >&2
+    else
+      echo "$line"
+      case "$line" in *diag=DEFICIT*) ndef=$((ndef+1)) ;; *) nok=$((nok+1)) ;; esac
+    fi
   done
 done
-echo "BOSS-DONE"
+if [ "$nfail" -gt 0 ]; then
+  echo "BOSS-INCOMPLETE clean=$nok deficit=$ndef failed=$nfail"; exit 2
+fi
+echo "BOSS-DONE clean=$nok deficit=$ndef failed=0"

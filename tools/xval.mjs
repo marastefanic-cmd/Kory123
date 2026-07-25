@@ -38,6 +38,12 @@ fs.mkdirSync(SCRATCH, { recursive: true });
 const RUNNER = process.env.RUNNER;
 const EXPORT_BASE = process.env.EXPORT_BASE;
 if (!RUNNER || !EXPORT_BASE) { console.error('set RUNNER=/path/to/runner-ap180 EXPORT_BASE=/path/to/export.json'); process.exit(2); }
+// Only UNSET was checked.  The wrappers default RUNNER to a scratchpad path that may not exist (the
+// scratchpad is ephemeral — runner-ap180 has been lost to it before), and the first thing that path
+// meets is execFileSync, which throws an ENOENT stack trace mid-matrix rather than saying so up front.
+for (const [name, p] of [['RUNNER', RUNNER], ['EXPORT_BASE', EXPORT_BASE]]) {
+  if (!fs.existsSync(p)) { console.error(`ERROR: ${name}="${p}" does not exist.`); process.exit(2); }
+}
 const ITER = process.env.ITER || '10000';
 // Kill-time variation (s). 0.5 is the MODEL-MATCHED metric: the scorer's `robust` (KILL_WINDOW=0.5s
 // linear taper) is exactly expected damage under a uniform kill in [T−0.5, T+0.5]. var10 asks a

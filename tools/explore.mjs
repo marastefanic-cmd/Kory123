@@ -212,7 +212,17 @@ function simCrossCheck(sc, cs, rows, flagged) {
     const aplPath = path.join(tmp, 'a.apl.json');
     execFileSync('node', [genapl, JSON.stringify(spec), aplPath], { stdio: ['ignore', 'ignore', 'inherit'] });
     const line = execFileSync(RUNNER, ['--export', GEAR, '--apl', aplPath, '--dur', String(sc.T), '--var', '0', '--iter', '30000', '--seed', '7', '--mana', '100000000', '--haste', String(h), '--tag', 't', '--quiet'], { encoding: 'utf8' });
-    return parseFloat(line.trim().split(/\s+/)[4]); // col 5 = meanDPS (simsweep.sh convention)
+    const dps = parseFloat(line.trim().split(/\s+/)[4]); // col 5 = meanDPS (simsweep.sh convention)
+    // Same unvalidated parse that was xval.mjs's worst defect. Here an unparseable line makes `ds`
+    // NaN, and since every NaN comparison is false the verdict falls through to "‼ DISAGREE (real
+    // ranking flip)" — a false ALARM rather than a false pass, but it corrupts the P4.measure gate
+    // just the same, and this gate is the one that decides whether de-ramp-blinding is worth doing.
+    if (!Number.isFinite(dps)) {
+      console.error(`ERROR: could not parse DPS (whitespace field 5) from runner output at haste ${h}.`);
+      console.error(`  last line was: ${JSON.stringify(line.trim().split('\n').pop() || '')}`);
+      process.exit(2);
+    }
+    return dps;
   };
   const scoresAt = h => rows.find(r => r.h === h).scores;
   const idxOf = combo => cs.findIndex(c => sc.place.every(p => c[p.key] === combo[p.key]));

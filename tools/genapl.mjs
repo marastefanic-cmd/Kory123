@@ -13,6 +13,7 @@
 // ramp-isolation experiment that is NOT compared to the cold-open model — and even then, know that
 // the fixed prepull time makes it haste-non-monotone.
 import fs from 'fs';
+import { pathToFileURL } from 'url';
 
 const AB = 30451;
 const AE = 27082;   // Arcane Explosion — cast during `_aoe` windows (see the AB-spam block)
@@ -35,9 +36,31 @@ function sched(times, id){
 }
 
 // spec: { IV:[..], AP:[..], CS:[..], Zerk:[..], BL:[..], Icon:[..], Gem:[..], _prestack:N }
+// Every key `build` understands.  A key NOT in this set used to be dropped in total silence, which is
+// this harness's dominant failure mode wearing a new hat: `{IcyVeins:[20]}` (or `icon`, or any typo)
+// emitted a well-formed APL with that cooldown simply ABSENT, the sim ran happily, printed a plausible
+// DPS, and every comparison built on it was wrong with nothing anywhere saying so.
+const SPEC_KEYS = new Set(['IV','AP','CS','Zerk','BL','Icon','Gem','Skull','MQG',
+                           '_prestack','_intermission','_intermissions','_aoe']);
+const TIME_KEYS = ['IV','AP','CS','Zerk','BL','Icon','Gem','Skull','MQG'];
+
 export function build(spec){
+  if (!spec || typeof spec !== 'object' || Array.isArray(spec)) throw new Error(`genapl: spec must be an object (got ${Array.isArray(spec) ? 'array' : typeof spec})`);
+  const unknown = Object.keys(spec).filter(k => !SPEC_KEYS.has(k));
+  if (unknown.length) throw new Error(`genapl: unknown spec key(s): ${unknown.join(', ')} — known: ${[...SPEC_KEYS].join(' ')}. Refusing to emit an APL that silently omits a cooldown.`);
+  // A non-finite press time formats straight through `${t}s` ("nulls", "NaNs") into the schedule
+  // string, where it is worth nothing but looks like a scheduled press in the emitted JSON.
+  for (const k of TIME_KEYS) {
+    if (spec[k] === undefined || spec[k] === null) continue;
+    if (!Array.isArray(spec[k])) throw new Error(`genapl: spec.${k} must be an array of seconds (got ${typeof spec[k]})`);
+    const bad = spec[k].filter(t => !Number.isFinite(t));
+    if (bad.length) throw new Error(`genapl: spec.${k} has non-numeric press time(s): ${JSON.stringify(bad)}`);
+  }
   const pl = [];
   const prestack = spec._prestack ?? 0;  // COLD OPEN by default (model never prepulls — see header ★★★). >0 only for non-model ramp-isolation experiments.
+  // ★★★ The rule that is easiest to violate by accident and impossible to see in the output: a
+  // prepull's fixed −2.3s is haste-blind, so a model-compared haste sweep goes non-monotone.
+  if (prestack > 0) console.error(`genapl: WARNING — _prestack=${prestack} (NOT a cold open). Valid ONLY for a ramp-isolation experiment; NEVER for a sim compared to the model (RULES §3, TOOLING ★★★).`);
   // Cold Snap first so its IV-reset lands before the IV schedule evaluates.
   if (spec.CS?.length)   pl.push(sched(spec.CS, IDS.CS));
   if (spec.BL?.length)   pl.push(sched(spec.BL, IDS.BL));
@@ -88,8 +111,21 @@ export function build(spec){
   };
 }
 
-if (process.argv[2]) {
-  const spec = JSON.parse(process.argv[2]);
+// CLI. Exit-code contract (shared by every instrument here): 0 = wrote an APL · 2 = could not.
+// `if (process.argv[2])` alone meant a MISSING or EMPTY spec fell through to a silent exit 0 having
+// written nothing — so `node genapl.mjs "$spec" out.json` with an unset $spec left a STALE out.json
+// in place, and the runner then simmed the previous experiment's plan under this experiment's name.
+if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {
+  if (!process.argv[2]) {
+    console.error('ERROR: usage: node tools/genapl.mjs \'<spec-json>\' [outfile]   (refusing to exit 0 without writing an APL)');
+    process.exit(2);
+  }
+  let spec;
+  try { spec = JSON.parse(process.argv[2]); }
+  catch (e) { console.error(`ERROR: spec is not valid JSON — ${e.message}`); process.exit(2); }
+  let apl;
+  try { apl = build(spec); }
+  catch (e) { console.error(`ERROR: ${e.message}`); process.exit(2); }
   const out = process.argv[3] || '/dev/stdout';
-  fs.writeFileSync(out, JSON.stringify(build(spec), null, 1));
+  fs.writeFileSync(out, JSON.stringify(apl, null, 1));
 }
