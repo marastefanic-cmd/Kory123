@@ -147,6 +147,11 @@ NOTES — design candidates, each still owing a measurement and a byte-identical
 
 ### 4.1 ★ The big one: **five walks over the same schedule per candidate**
 
+> **⚠ AMENDED by §4.15 — "almost everywhere" is measured at 20%.** A static call-site census puts the
+> full quadruple at **8 of 41 `repair` sites**, with **14 bare** (schedule only). The fusion is still the
+> big one, but it must emit its extra outputs **opt-in**, not unconditionally, or it pays new cost at a
+> third of its own sites. §4.1's `sigOf` sub-claim survives intact.
+
 The pass stack's inner loop is, almost everywhere, this shape:
 
 ```js
@@ -226,6 +231,12 @@ merging P is byte-identical *by construction*, so the exact-match suite is a suf
 **Do §4.9(A) first.** The accept path this instrument hooks currently exists in *five identical copies*;
 collapsing them to one turns "instrument every accept site consistently" from a five-way opportunity for
 error into a one-line change.
+
+> **⚠ AMENDED by §4.14 — that dependency is a preference, not a block.** §4.9(A) is an engine edit, so
+> reading this as a prerequisite made the census wait on the acceptance freeze. It doesn't have to:
+> **§4.14** instruments a *copy* of the engine source in a blank second page (the same trick the shipped
+> Blob worker already uses), so the census runs against today's frozen `index.html` without modifying it.
+> Land §4.9(A) because five copies of one accept path is a defect, not because the census needs it.
 
 **Instrument (additive only, same monkeypatch trick as §3.1):** for each pass record
 1. **entries** — how often it runs;
@@ -707,3 +718,135 @@ Dropped from the old ladder: **§4.3's sig-swap** (rejected, §4.12.8) and **§3
 (superseded by item 1). §4.9's two dedups still land ahead of all of this as §4.7's enablers, and §4.7's
 census still runs in a CPU gap rather than in this order. Gate at **every** step: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs`
 = 25/25, plus a wall-time re-measure so each step's real win is recorded next to its predicted one.
+
+### 4.14 ★ The census does NOT need the engine to unfreeze — instrument a COPY of the source
+
+§4.7 reads as blocked. It says *"Do §4.9(A) first"*, §4.9(A) is an edit to `polish()`, and the engine is
+frozen until the acceptance round closes — so the one measurement that could answer *"which steps do the
+same thing"* looks gated behind the thing it was supposed to inform. **It isn't, and the proof is already
+in the file.**
+
+**The mechanism.** `index.html:3280-3283` builds the optimizer worker *from the engine tag's own text* —
+`document.getElementById('engine-src').textContent` → Blob → `Worker`. That is a standing, shipped proof
+that the engine block **runs standalone from its source string**, with no DOM and no UI script. A census
+tool can therefore do exactly what the worker does, with one extra step in the middle:
+
+```
+page A: goto file://index.html          → read engine-src textContent, and BOSS_PRESETS /
+                                          GOLDEN_PRESETS / GOLDEN_DEFAULTS off window
+node:   textual insertion of counters   → instrumented source (index.html NEVER written)
+page B: about:blank + addScriptTag      → run the corpus against the instrumented engine
+```
+
+`index.html` is read, never modified; the freeze is respected in the strict sense (the shipped artifact is
+byte-identical) rather than the loose one.
+
+**Why a blank second page and not a re-eval over the loaded engine.** §3.1's monkeypatch works because a
+top-level `function` declaration in a classic script becomes a property of the global object, so reassigning
+it intercepts the engine's own internal calls. That trick has a hard ceiling, and it is the reason §3.1 could
+only count *named top-level functions* and could never see inside `polish()`: the engine block also has
+**fifteen top-level `const`/`let` declarations**, which are script-scoped rather than global properties, and
+re-declaring one in a second classic script throws `SyntaxError: Identifier … has already been declared`.
+A fresh page has no prior declarations, so the instrumented copy is the *only* copy and every internal call
+site — including the five accept paths buried inside `polish()` — is the instrumented one.
+
+Corollary worth writing down because it is easy to trip over: `BOSS_PRESETS`, `GOLDEN_PRESETS` and
+`GOLDEN_DEFAULTS` live in the **UI** script (`:4125-4190`), not the engine, so page B does not get them by
+construction. They must be read off page A's `window` and passed in **as data**. A census that quietly built
+its own fight table instead would be measuring a corpus nobody has agreed on.
+
+**★ The failure mode this instrument has, and the guard it therefore requires.** A textual instrument fails by
+**not matching its anchor** — the insertion is silently skipped, that pass is never counted, and the census
+reports **zero firings**. Zero firings is precisely the verdict that *retires a pass*. That is §19.11's shape
+exactly: a conclusion whose entire evidence is an absence, reached by an instrument whose commonest bug
+produces the same absence. Two guards are mandatory, and neither is optional politeness:
+
+1. **Every insertion asserts its anchor matched exactly once.** `split(anchor).length - 1 !== 1` ⇒ print which
+   anchor and `exit 2`. Not "warn and continue" — the whole value of the run is destroyed by one silent skip,
+   and `exit 2` is this project's "could not grade".
+2. **A positive control per counter.** Before any pass is called redundant, a counter *known* to be non-zero
+   (`polish` entries, `repair` calls) must actually be non-zero on the same run. A census whose controls are
+   all zero is measuring a page that never ran, and must refuse to grade rather than report a clean sweep.
+
+**★ And the trust basis: the instrumented engine must still emit the same plans.** Before a single count is
+believed, run a sample of the goldens through page B and compare the emitted plan text to page A's
+uninstrumented output. If they differ, the census describes a *different optimizer* and every number in it is
+about code we do not ship. This is cheap — the tool already holds both pages — and it is the only thing that
+makes the counts mean anything. (It is also a second, independent check on guard 1: an insertion that landed
+in the wrong place is far more likely to change a plan than to keep it.)
+
+**What this changes in the plan.** §4.7's census moves out from behind the engine freeze and behind §4.9(A):
+it can run in any CPU gap between acceptance rounds, on today's shipped engine, and its output is what tells
+us whether §4.9's merges are safe rather than the other way round. §4.9(A) is still worth landing on its own
+merits — five character-identical copies of one accept path is a defect regardless of what the census says —
+it is simply **no longer a prerequisite**, so the dependency §4.7 records ("do §4.9(A) first") is downgraded
+from *blocking* to *nice, because instrumenting one site beats instrumenting five*.
+
+**Unchanged:** the census is hours of CPU on 4 cores and still **must not overlap an acceptance round**
+(§4.7). The freeze was never the binding constraint — the box is.
+
+### 4.15 ★ The static call-site census — and it CORRECTS §4.1's "almost everywhere"
+
+`tools/pass-sites.mjs` (static; reads text, never runs the engine, so it costs no CPU and is safe to
+run while an acceptance round saturates the box). It answers the question §4.1 answered in prose:
+*how many sites does the fusion have to convert, and what does each of them actually want?*
+
+```
+node tools/pass-sites.mjs [--sites]
+```
+
+Result on `index.html` (engine block = lines 565–2943):
+
+```
+PASS-SITES repairSites=41 fullQuadruple=8 anyGuard=27 bare=14 shapes=7
+```
+
+| shape (which walks follow the `repair` within 8 lines) | sites |
+|---|---|
+| **bare** — none of the three guards | **14** |
+| `counts`+`clip`+`simulate` — the full quadruple | **8** |
+| `simulate` only | 7 |
+| `counts`+`simulate` | 5 |
+| `clip`+`simulate` | 5 |
+| `counts` only · `counts`+`clip` | 1 · 1 |
+
+**§4.1 says *"The pass stack's inner loop is, almost everywhere, this shape"* — at the site level that
+is wrong.** The full quadruple is **8 of 41 sites, 20%**, and a **third of all sites (14) are bare**:
+they call `repair` and consume only the schedule. So the fusion must **not** be all-or-nothing. A
+`repair` that unconditionally emits `{s, sig, counts, clip}` would compute three outputs that 14 sites
+throw away and that another 19 only partially use — paying new cost to remove old cost, on a third of
+its own call sites. The shape that survives the census is an **opt-in output mask** (or a caller-provided
+scratch record that the caller only reads the fields it wants), which is a strictly larger design than
+§4.1 sketched.
+
+**⚠ What this census does NOT say — and the distinction is the whole point.** A site count sizes the
+**conversion work**; it does not size the **win**. §3.1's runtime census puts `repair` at **2.02M calls**,
+and one bare site inside the hottest loop outweighs all eight quadruple sites if they sit in cold
+branches. **Static tells you how many places you must not get wrong; only §4.7's runtime pass-firing
+census tells you which of them are worth touching.** Neither replaces the other, and the landing order
+in §4.13.1 must be driven by the runtime one.
+
+Two sub-claims of §4.1 **survive** the census:
+- *"no separate `sigOf` walk at all — 1.98M walks deleted"*. `sigOf` has only **3 textual occurrences**
+  in the engine block (its definition included), so those ~2M walks come from it being called **inside
+  `simulate`**, not from a spray of call sites. Fusing it into `repair` therefore needs `simulate` to
+  accept a precomputed sig — exactly the overload §4.1 proposes — and the site conversion for this half
+  is genuinely small.
+- The `cloneS`/`repair` pairing. Static counts **42 `cloneS` vs 41 `repair`** sites; §4.5's runtime
+  numbers are **2.08M vs 2.02M**. Two independent directions agree on a ~1:1 ratio, which is *consistent*
+  with the clone-then-repair pairing §4.5 hypothesizes — though it does not prove the calls are pairwise
+  matched, which remains a runtime question.
+
+**Instrument note (it is the reason the numbers above are not the first ones this tool printed).** The
+first draft counted **42** sites and 64 `simulate` occurrences. `index.html:2248` is a *comment* —
+"…without this, `repair()` would move only the cooldown-bound icon…" — and the 8-line classification
+window was reading commented-out guards as live ones. This file carries its theorycraft **inline by
+design**, so its prose mentions `repair`, `simulate` and `clipOf` constantly; a census that cannot tell
+comment from code over-counts in both directions at once. Fixed by stripping line comments before every
+test, and — per the 07-25 ledger, *"hit-count assertions prove the instrument ran; only a negative
+control proves it discriminates"* — the fix is backed by a **built-in self-test** on a fixture carrying
+exactly that pathology (a comment naming `repair()`, a live site whose only `sameCounts` is commented
+out). Running the tool with the stripping disabled makes the self-test fire and the tool **exit 2**, so
+the discrimination is demonstrated rather than asserted. Exit contract as elsewhere: **0 = censused,
+2 = could not census**; zero sites, a missing engine block, or a `repair` definition outside the block
+are all hard errors, because "0 sites to convert" is a result this file cannot legitimately produce.

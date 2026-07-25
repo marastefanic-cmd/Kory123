@@ -2388,6 +2388,85 @@ haste-*differential* is ≈`+0.07 pp` across 0→300, comparable to §8's residu
 residual is a per-buff *marginal* and this is a whole-plan *level*, so the two are not commensurable without
 re-running §5's probe.
 
+### 20.5 ⚠ **§20.2's Q2 is OVERTURNED by the round it was meant to predict** — rank-neutral on one fight ≠ rank-neutral
+
+§20.2 concluded *"the argmax is the same plan under every cfg at every haste"* and that finding was carried
+forward — into the landing commit, into the `xval-results` banner, into the round-5 launch decision — as
+**"the plans will not move."** The round-5 re-baseline falsifies that reading almost immediately.
+
+`tools/xval-round-diff.mjs` (built for this comparison; see §20.6) on the first four completed round-5 tables
+against their round-4 predecessors:
+
+| table | plan cells changed | eff level shift | diagWorst r4 → r5 |
+|---|---|---|---|
+| `isc-scb-short` | **3 / 10** | −1.108% … −0.930% | 0.25% → 0.25% |
+| `isc-scb-medium` | 0 / 10 | −0.693% … −0.639% | 0.11% → 0.11% |
+| `isc-scb-medlong` | 0 / 10 | −0.922% … −0.883% | CLEAN → CLEAN |
+| `isc-scb-long` | **4 / 10** | −0.778% … −0.692% | **0.05% → 0.11%** ⚠ worse |
+| `mqg-skull-short` | **2 / 10** | −0.758% … −0.669% | **0.04% → 0.02%** better |
+| `mqg-skull-medium` | **1 / 10** | −0.509% … −0.437% | 0.15% → 0.15% |
+| `mqg-skull-medlong` | **4 / 10** | −0.806% … −0.689% | 0.09% → 0.09% |
+| `mqg-skull-long` | **3 / 10** | −0.647% … −0.556% | 0.19% → 0.19% |
+
+**17 of 80 cells — 21% — changed plan.** Not one, not "one adjacent pair at h150". No verdict *flipped*
+(CLEAN↔DEFICIT) in either direction, and `monoDip` stayed 0.00% everywhere, so invariant A is untouched.
+
+**Why the probe was wrong, and it is not a bug in the probe.** §20.2 measured **one fight** (`T=300`, BL@60) at
+**four** haste points. Round 5 is **36 fights** at **7–10** haste points each — roughly 300 cells against the
+probe's 4. Rank-neutrality is a property of a *cell*, and a −0.6% repricing that leaves the argmax alone on a
+generic 300 s fight will still flip cells wherever two plans sat within 0.6% of each other. Those near-ties are
+not rare; they are the *entire subject* of Phase 7, which exists because plans optimized at neighbouring hastes
+score within a fraction of a percent of one another. **A probe on the median case cannot bound behaviour on a
+population selected for near-ties** — and the acceptance corpus is exactly such a population, by design.
+
+**The generalizable form (this is the part to carry forward):** *a rank-neutrality result inherits the
+selection of the cases it was measured on.* Measuring it on a typical case and applying it to a corpus chosen
+for marginal cases is the same error shape as validating a tie-break on a case that has no ties.
+
+**What does NOT change.** The correction itself is right on grounds that never depended on Q2: a model-vs-sim
+harness must describe the mage the sim runs, or the comparison is between two different mages. Q2 was only ever
+an estimate of *how much re-gathering would move* — a scheduling input, not a justification. §20.2's Q1 table
+is untouched: it cross-scores a fixed plan set and measures the repricing, which the −0.4…−1.1% band here
+independently confirms at the same magnitude.
+
+**⚠ And the churn does not move the deficits in one direction.** The first four tables happened to contain the
+only improvement (`mqg-skull-short`, 0.04% → 0.02%) and an early draft of this section read that as the
+correction tightening the answer. The next four contain its mirror: **`isc-scb-long` gets WORSE, 0.05% → 0.11%**,
+on 4/10 changed cells. That is the expected shape of a repricing rather than a fix — the correction makes the
+harness describe the right mage, which re-ranks near-ties in whichever direction each near-tie happened to sit;
+it was never a change to the *model*, so there is no reason for it to reduce a deficit. **Read no acceptance
+signal off the sign of these moves.** The acceptance question is asked of round 5 on its own terms, once whole.
+
+**Status:** partial. This is 8 of 36 tables; the full comparison goes in when the round lands. The churn is
+running at 21%, so every per-cell claim in the Phase-7 ledger that was read off round 4 needs re-reading off
+round 5 rather than assumed forward.
+
+### 20.6 The round diff becomes an instrument — and it separates a tie-break from a repricing
+
+`tools/xval-results/README.md` has always said that comparing a round *table-by-table* against its predecessor
+is what let PHASE7 §5.13 prove B2 unchanged "at zero measurement cost". That comparison was being done by hand,
+two or three tables at a time, which is why an archive kept for exactly this purpose kept getting spent on spot
+checks. `tools/xval-round-diff.mjs` does it over a whole round: per table, which `(haste → plan)` cells changed,
+both invariants side by side, and the **eff level shift**.
+
+The eff column turns out to be the useful one, because it separates the only two ways a round can differ:
+
+- **plans move, `eff ≈ +0.000%` ⇒ a TIE-BREAK.** The score is unchanged; the search picked differently among
+  equals. Nothing that is optimized moved, so nothing needs re-verifying.
+- **plans move, `eff` shifts in a consistent band ⇒ a REPRICING.** The scorer changed and the plan churn is
+  downstream of it. Every ranking gathered under the old scorer is stale.
+
+Both are confirmed against real pairs, and the first is a genuine check on the tool rather than a demo:
+**round3 → round4** — the §5.11 legibility canonicalization, a pure tie-break — comes out as 10/345 cells
+changed at ±0.001% eff, *independently reproducing §5.13's hand-derived conclusion from the raw tables*.
+**round4 → round5** is unmistakably the other shape. A round-4-against-itself run reports 0/345 and exit 0,
+so the tool is exercised in both directions.
+
+Its false-pass shape was designed against explicitly: the headline is an **absence** ("0 plans changed"), which
+is also what a wrong path, a filename-convention drift, or a half-written table produces. So zero overlapping
+tables is `exit 2` rather than "identical"; a table that parses to zero plan specs is an error for that table
+rather than a table with nothing changed; and every unmatched file is printed by name.
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance

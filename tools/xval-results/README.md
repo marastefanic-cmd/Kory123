@@ -6,10 +6,17 @@
 > The *sim* columns used the real export and were fine; what was suspect is **which plan each row optimized
 > to**. `tools/reference-gear.mjs` fixed that, and this directory is being refilled kit-by-kit on the
 > corrected gear. **Until the trailing `RERUN-DONE failures=0` lands, this round is PARTIAL — a mix of
-> round-4 and round-5 tables — and no acceptance verdict may be read off it.** The pre-flight measurement
-> says the correction is rank-neutral at this scale (same argmax at every haste; one 0.011-eff-AB reorder
-> at h150), so the headline is not expected to move; the reason to re-gather anyway is that a table nobody
-> can name the gear of is not evidence.
+> round-4 and round-5 tables — and no acceptance verdict may be read off it.**
+>
+> **⚠ And the pre-flight under-predicted this.** PHASE8 §20.2's probe measured the correction as
+> *rank-neutral* (same argmax at every haste on its fight; one 0.011-eff-AB reorder at h150), which was
+> read as "the plans will not move". The round itself says otherwise: `xval-round-diff` on the first four
+> completed tables reports **6 of 40 `(haste → plan)` cells changed**, on a −0.4…−1.1% eff level shift.
+> The probe was one fight family at four hastes; the round is 36 fights at 7–10 hastes each, and
+> rank-neutrality on one fight is simply not the same statement as rank-neutrality everywhere. Nothing
+> about the *decision* changed — the correction is right either way, because a harness must describe the
+> mage the sim runs — but the claim "the headline is not expected to move" is no longer supported and is
+> withdrawn until this round finishes.
 
 Committed output of the holdout haste-adaptation cross-val (`tools/xval.mjs`, driven by
 `tools/xval-campaign.sh` + `tools/xval-boss.sh`). The scratchpad they are produced in is ephemeral;
@@ -21,6 +28,26 @@ the old one into `tools/xval-results-archive/<phase>-round<N>/` *first* (append-
 **table-by-table against its predecessor** is what let Phase 7 §5.13 prove B2 unchanged by the §5.11
 tie-break at zero measurement cost. Two rounds can agree on a headline while disagreeing about every
 plan underneath, and only the archive can tell them apart.
+
+That comparison is now an instrument rather than a stack of hand-run `diff`s:
+
+```
+node tools/xval-round-diff.mjs tools/xval-results-archive/phase7-round4 tools/xval-results [--full]
+```
+
+Per table it prints how many `(haste → plan)` cells changed and which, both invariants side by side,
+and — the useful column — the **eff level shift**, which separates the only two ways a round can
+differ:
+
+| signature | meaning | follow-up |
+|---|---|---|
+| plans move, **eff ≈ +0.000%** | a **tie-break** — the score is unchanged, the search just picked differently among equals | none; nothing it optimizes moved |
+| plans move, **eff shifts in a consistent band** | a **repricing** — the scorer changed and the plan changes are downstream | every ranking gathered under the old scorer is stale |
+
+Both are confirmed on real pairs: round3→round4 (§5.11 canonicalization) is 10/345 cells at ±0.001%,
+independently reproducing §5.13's hand-derived conclusion; round4→round5 (the reference-gear
+correction) is the other shape. It exits **2 when it could not compare** — zero overlapping tables, or
+a table still being written — because "0 plans changed" is also what a misread directory prints.
 
 ## What's here
 - `<kit>-<class>.txt` — one full run per (trinket kit × fight-length class). Each file contains:
@@ -52,6 +79,7 @@ bash tools/xval-campaign.sh                      # 6 kits × 5 classes  (writes 
 bash tools/xval-boss.sh                          # Vashj / Al'ar / KT × representative kits
 node tools/xval-collect.mjs tools/xval-results   # → the CLEAN/DEFICIT ledger markdown
 node tools/xval-verify.mjs tools/xval-results    # → the independent recompute + verdict (exit 0/1/2)
+node tools/xval-round-diff.mjs <prev-round-dir> tools/xval-results   # → what changed vs the last round
 ```
 Run the verifier before believing the ledger — it is a second, independent implementation of both
 invariants, and it exits **2 when it could not grade** (empty directory, or a crashed table with no
