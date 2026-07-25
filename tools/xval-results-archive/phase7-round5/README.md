@@ -1,27 +1,34 @@
+> **ARCHIVE — Phase 7, acceptance ROUND 5** (snapshot taken 07-25, before the round-6 re-gather
+> replaced it). Round 5 is the last round gathered under **`emit=intent`** — `tools/xval.mjs` fed the
+> sim the optimizer's raw press *intents* where the tool, the goldens and `exact-match` all speak
+> **fire times** (P7.15, PHASE7 §5.22). Every `XVAL-DONE` line here therefore carries **no `emit=`
+> stamp**, which is the rule for classifying a stale table. It is also the last round gathered
+> **before the P7.14 AoE press-snap fix** (PHASE7 §5.19) and before PHASE9's `groupSeeds` seed class
+> landed, so its KT rows and any plan the new seed class reaches are pre-fix. Round 6 corrects all
+> three at once; the point of keeping this one is the table-by-table diff (`tools/xval-round-diff.mjs`).
+> Its successor lives in `tools/xval-results/`; the narrative is in `docs/ACCEPTANCE.md` and
+> `docs/PHASE7.md`.
+
 # Cross-validation raw matrices — the CURRENT acceptance round
 
-> **⏳ ROUND 6 IS BEING GATHERED (07-25) — this directory is INCOMPLETE until it holds 36 tables.**
-> Until then, do **not** read a verdict off it: a partial directory is exactly the shape the collector
-> and the verifier were hardened against (both exit 2 on no/unparseable data, but neither can know that
-> 20 tables is "all of them"). Round 5 — the last round gathered under **`emit=intent`**, before the
-> P7.14 AoE press-snap fix and before PHASE9's `groupSeeds` — is archived at
-> `tools/xval-results-archive/phase7-round5/`.
+> **✔ ROUND 5 IS COMPLETE (07-25) — this directory is a single, coherent round** on the corrected harness
+> gear (`tools/reference-gear.mjs`: `t5two` + effective `sp: 1450`; PHASE8 §6/§7/§20). All 36 tables carry
+> `XVAL-DONE`. Round 4 — gathered under the old gear, where the model side built its plans without
+> `t5two` and at `sp: 1387`, a mage the sim does not run — is archived at
+> `tools/xval-results-archive/phase7-round4/`.
 >
-> **Why round 6 exists — three changes at once, all of them landed after round 5 was gathered:**
-> 1. **`EMIT=fire` (P7.15, PHASE7 §5.22)** — the sim is now fed the **fire times the tool prints**, not
->    the optimizer's raw press *intents*. Round 5's tables carry **no `emit=` stamp**, which is the rule
->    for classifying a stale table.
-> 2. **The P7.14 AoE press-snap fix (PHASE7 §5.19)** — changes KT's plans (KT is the corpus's only `aoe`
->    preset), so the 3 surviving over-floor boss cells are expected to move.
-> 3. **PHASE9's `groupSeeds` (§5.14)** — a new seed class. Bit-identical on the golden corpus, but the
->    corpus holds the PRNG seed fixed and is structurally blind to a robustness fix, so plans on *these*
->    fights may move.
+> **What the correction did, measured:** `xval-round-diff` reports **124 of 345 `(haste → plan)` cells
+> changed (35.9%)** across 34/36 tables, on a −0.4…−1.1% eff level shift (KT −6.1…−6.8%) — and
+> `deficitTables 34→34`, **zero verdict flips**, `monoDip` 0.00% on both sides. Two things follow. **(1)
+> PHASE8 §20.2's pre-flight is withdrawn**: it measured the correction as *rank-neutral* on one fight
+> family at four hastes and concluded "the plans will not move"; 36 fights at 7–11 hastes say otherwise.
+> **(2) ★★★ The invariant-B failure is NOT a gear artifact** — correct the gear and the same 34 tables
+> fail by the same widths.
 >
-> **⚠ Watch for the INVERTED artifact sign on the `emit` half** (ACCEPTANCE, P7.15): `intent` *inflated*
-> two of the banked 60 plans by ~0.26% (an MQG press deferred past a wall gains time at the front, but
-> its 300 s cooldown then pushes the second press past the fight end). An inflated plan sitting in a
-> **borrowed** column manufactures a **phantom deficit** — so some round-5 deficits may **vanish** here
-> rather than merely shift. Every `XVAL-DONE` must read `emit=fire` and **`artifact=0`**.
+> **⚠ Per-table widths wander BOTH ways under a pure repricing** — 12 improved, 8 worsened, 16 unchanged
+> (net 0.42 pp over 36 tables), including `scb-skull-short` 0.02%→**0.23%** and `scb-mqg-short`
+> 0.03%→**0.21%**. A table can go from essentially-clean to among-the-worst **with no model change at
+> all**, so never read round-over-round width drift as convergence.
 
 Committed output of the holdout haste-adaptation cross-val (`tools/xval.mjs`, driven by
 `tools/xval-campaign.sh` + `tools/xval-boss.sh`). The scratchpad they are produced in is ephemeral;
