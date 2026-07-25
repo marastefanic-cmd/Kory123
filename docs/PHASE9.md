@@ -2697,3 +2697,89 @@ Two things worth carrying into this phase:
   counts per-call work will under-count by the hit rate. Instrument at the memo *wrapper* (or clear it)
   when the question is "how much work happens", and inside when the question is "what does one
   simulation do".
+
+### §5.15 ★★★ THE −8.5% CPU LANDING IS NOT PLAN-NEUTRAL OFF-CORPUS — 3 search regressions, found by the acceptance round, invisible to every gate we had (07-25)
+
+§5.12 (groom early exit) and §5.14 (`groupSeeds`) landed together on the strength of one sentence:
+**`PLAN-DIFF compared=25 changed=0` — 25/25 bit-identical, −8.5% CPU.** §5.14 even wrote down the
+caveat that the sweep "holds the PRNG seed fixed and is structurally blind to a robustness fix, so
+plans on *other* fights may move". It did not draw the consequence: *if a plan moves, nothing we run
+checks which way it moved.*
+
+The PHASE7 round-6 re-gather is the first corpus these two changes have met that is not the goldens.
+On its first 10 class tables (100 `(haste → plan)` cells, round 5 vs round 6):
+
+```
+EFF-AUDIT unchangedSpecs=82 scorerMoved=0 movedSpecs=18 → worse=3 better=0 tie=15
+```
+
+| cell | round 5 eff | round 6 eff | Δ |
+|---|---|---|---|
+| `mqg-skull-medlong` @h265 | 204.883 | 204.812 | **−0.0347 %** |
+| `mqg-skull-medlong` @h160 | 195.754 | 195.742 | −0.0061 % |
+| `mqg-skull-long` @h100 | 233.225 | 233.218 | −0.0030 % |
+
+**`better=0`.** Eighteen plans moved; fifteen were exact ties, three got worse, and *not one got
+better*. That is the signature of a search that lost ground, not one that traded around.
+
+#### Why this is airtight without a single sim
+
+`eff` is the **model's own** effective-AB score — the quantity the optimizer maximizes. So the
+inference needs only one premise: that the two rounds share a scorer. The audit **proves** it rather
+than assuming it — **82 cells whose spec is byte-identical score byte-identically**, to the last digit
+(`scorerMoved=0`). With the scorer pinned, every eff delta is attributable to the search alone, and a
+*lower* eff means round 6's optimizer rejected a layout that round 5's had found and that its own
+objective prefers. No sim, no noise band, no judgement call.
+
+The h265 cell shows it is not a rounding wobble either — the plan genuinely restructured:
+
+```
+A  eff=204.883  AP:[3,183]  MQG:[60]   Skull:[40,178]
+B  eff=204.812  AP:[4,205]  MQG:[140]  Skull:[40,160]
+```
+
+while h0/h30 on the same table moved `AP:[3,183]→[4,184]` at **identical eff to six figures** — a real
+tie-break sitting right next to a real regression, in the same table. The per-table eff *range* column
+prints `-0.035%..+0.000%` for both together, which is exactly why the range was not enough.
+
+#### The gate hole, stated precisely
+
+- `exact-match` compares **final rendered plans**. Bit-identical ⇒ silent.
+- `plan-sweep`/`plan-diff` compare `best.s` and *do* carry a `Δscore` per changed cell — but the file
+  says outright that it "does NOT answer *is the new plan better*", and nothing grades on the sign.
+- On the goldens both changes produced `changed=0`, so `Δscore` was **never populated at all**. The
+  one field that would have caught this was structurally guaranteed to be empty on the only corpus it
+  was run against.
+
+**The missing rule: for a change that touches only the SEARCH, the model's own objective must be
+non-decreasing at every cell.** `Δscore < 0` is then a defect by definition, not an observation.
+That check costs nothing — both instruments already have both numbers.
+
+#### Landed here
+
+`tools/xval-round-diff.mjs` gains the **EFF-AUDIT** block: scorer-identity proof + moved-plan split by
+sign + the named regression list. Exit stays **0** — the file's exit contract is quoted in
+`tools/xval-results/README.md` and callers grade on it, so this is made loud, not fatal.
+
+**Open (deliberately not decided here):**
+1. Should EFF-AUDIT's `worse>0` become **exit 1**? It is a genuine grade, but it changes a published
+   contract; decide it with the user, not silently.
+2. **`plan-diff` should get the same rule** — flag `dScore < 0` — which *is* the every-edit gate and
+   is where this should have been caught.
+3. **Attribution is still owed**: groom-exit vs `groupSeeds` vs their interaction. Cheap and sim-free —
+   re-optimize `mqg+skull` medlong (T=226, lust=0) @h265 against `git show <pre-landing>:index.html`,
+   one variable at a time. **Needs idle cores; do not run it against the live acceptance campaign.**
+
+#### What it does NOT invalidate
+
+Round 6 remains the `emit=fire` re-baseline the acceptance docs demand, and the acceptance test was
+already failing, so this is not a verdict round. But **the final verdict must not be read off an engine
+carrying a known search regression** — fix and attribute first. Sizing it honestly: 3 of 100 class
+cells, worst 0.035 % — small, one-directional, and the deficit it inflates (`mqg-skull-medlong`
+0.09 % → 0.12 %) is nowhere near the zero-deficit bar that is actually blocking acceptance.
+
+**★ The instrument lesson, and it is the same one §4.15/§4.21 taught in a different costume:** a gate
+that reports an *absence* ("0 plans changed") certifies nothing about the cases it never produced. Both
+landings were gated on plan-**identity**, which is strictly stronger than score-non-decrease *where it
+holds* — and says exactly nothing where it does not. The stronger check bought the weaker one's
+coverage for free on 25 cases and zero coverage everywhere else.

@@ -33,8 +33,16 @@
 //
 // ★ A ROUND DIFF IS AN OBSERVATION, NOT A GRADE.  Exit codes follow the project contract:
 //   0 = compared cleanly · 2 = COULD NOT compare.  Exit 1 is unused on purpose — "12 plans changed"
-// is data for a human, and no threshold here decides whether the model got better.  Only the sim
-// columns can say that, and this tool does not touch them.
+// is data for a human, and no threshold here decides whether the model got better.
+//
+// ⚠ THAT LAST SENTENCE USED TO END "Only the sim columns can say that, and this tool does not touch
+// them."  PARTLY FALSIFIED 07-25 (PHASE9 §5.15).  When the two rounds share a scorer — which this tool
+// can now PROVE, by checking that every byte-identical spec scores byte-identically — a moved plan
+// whose eff went DOWN is a search regression by definition, with no sim required: the optimizer
+// rejected a layout it had previously found and its own objective prefers.  Hence the EFF-AUDIT block
+// at the bottom.  The exit code is deliberately left at 0 anyway: this file's contract is quoted in
+// tools/xval-results/README.md and callers grade on it, so the finding is made LOUD rather than fatal.
+// Whether it should become exit 1 is an open question recorded in §5.15, not a decision made silently.
 //
 // ★ THE FALSE-PASS SHAPE THIS TOOL HAS.  Its headline is an ABSENCE ("0 plans changed"), which is
 // exactly what a misread directory, a filename convention drift, or an unparseable table also
@@ -100,6 +108,16 @@ console.log(`${both.length} table(s) in both${onlyA.length ? `, ${onlyA.length} 
 let nErr = 0, nTablesChanged = 0, nCells = 0, nCellsChanged = 0;
 let defA = 0, defB = 0;
 const flips = [], changedTables = [];
+// EFF AUDIT (added 07-25, see PHASE9 §5.15). Two questions the per-table eff RANGE cannot answer,
+// because a ±0.000%..+0.000% band hides both:
+//   1. Did the SCORER move? Every cell whose spec is byte-identical must score byte-identically. If
+//      any does not, the two rounds were gathered by different scorers and NO eff delta below is
+//      attributable to the search.
+//   2. Among the cells whose plan DID move, how do they split by sign? For a change that touches only
+//      the SEARCH, the model's own objective must be non-decreasing at every cell — a strictly worse
+//      eff is a search regression BY DEFINITION, provable without a single sim.
+let effSame = 0, effScorerMoved = 0, effTie = 0;
+const effWorse = [], effBetter = [];
 
 for (const f of both) {
   const a = parse(path.join(DA, f)), b = parse(path.join(DB, f));
@@ -133,6 +151,22 @@ for (const f of both) {
     console.log(`      h${h}  A eff=${a.specs[h].eff}  ${JSON.stringify(a.specs[h].spec)}`);
     console.log(`      h${h}  B eff=${b.specs[h].eff}  ${JSON.stringify(b.specs[h].spec)}`);
   }
+
+  for (const h of H) {
+    const x = a.specs[h], y = b.specs[h];
+    if (canon(x.spec) === canon(y.spec)) {
+      effSame++;
+      if (x.eff !== y.eff) {
+        effScorerMoved++;
+        console.log(`    ⚠ SCORER MOVED @h${h}: identical spec, eff ${x.eff} → ${y.eff}`);
+      }
+    } else {
+      const d = y.eff - x.eff;
+      if (d < 0) effWorse.push({ f, h, a: x.eff, b: y.eff, d });
+      else if (d > 0) effBetter.push({ f, h, a: x.eff, b: y.eff, d });
+      else effTie++;
+    }
+  }
 }
 
 for (const f of onlyA) console.log(`  (only in A, not compared) ${f}`);
@@ -144,6 +178,28 @@ console.log(`\nROUND-DIFF tables=${both.length} compared=${both.length - nErr} e
 if (flips.length) { console.log('verdict flips:'); for (const x of flips) console.log(`  ${x}`); }
 else console.log('verdict flips: none');
 if (changedTables.length) console.log(`tables with ≥1 plan change: ${changedTables.map(f => f.replace(/\.txt$/, '')).join(', ')}`);
+
+// ── the eff audit verdict ────────────────────────────────────────────────────────────────────────
+console.log(`\nEFF-AUDIT unchangedSpecs=${effSame} scorerMoved=${effScorerMoved} ` +
+            `movedSpecs=${effWorse.length + effBetter.length + effTie} ` +
+            `→ worse=${effWorse.length} better=${effBetter.length} tie=${effTie}`);
+if (effScorerMoved) {
+  console.log(`⚠⚠ THE SCORER CHANGED between these rounds (${effScorerMoved} identical spec(s) scored differently).`);
+  console.log(`   This is a REPRICING. No eff delta below is attributable to the search, and every ranking`);
+  console.log(`   gathered under the old scorer is stale — see the eff column note at the top of this file.`);
+} else if (effSame) {
+  console.log(`   Scorer identity CONFIRMED on ${effSame} unchanged spec(s) — so every eff delta above is`);
+  console.log(`   attributable to the SEARCH alone.`);
+}
+if (effWorse.length && !effScorerMoved) {
+  console.log(`⚠⚠ SEARCH REGRESSION — ${effWorse.length} cell(s) where B's plan scores LOWER on B's own objective:`);
+  for (const w of effWorse.sort((p, q) => p.d / p.a - q.d / q.a)) {
+    console.log(`   ${w.f.replace(/\.txt$/, '').padEnd(28)} @h${String(w.h).padEnd(4)} ` +
+                `${w.a} → ${w.b}   Δ=${w.d.toFixed(4)} (${(w.d / w.a * 100).toFixed(4)}%)`);
+  }
+  console.log(`   A pure-search change may move a plan only to an EQUAL or BETTER score. Attribute each cell`);
+  console.log(`   to the landing that caused it before reading an acceptance verdict off this round.`);
+}
 
 // Errored tables mean the comparison is INCOMPLETE, and an incomplete comparison whose headline is
 // "nothing changed" is the false-pass shape this tool is built to avoid.  Refuse to be read as clean.
