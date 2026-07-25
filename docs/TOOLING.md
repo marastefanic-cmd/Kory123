@@ -195,6 +195,39 @@ was all search, not scoring). Don't conflate "the count is right" with "the sear
     shows a spurious loss vs an interior placement (the sim drops the truncated tail casts; the model credits
     them proportionally). When cross-checking placement, keep the buff **interior** (lengthen `--dur`) or the
     fight-end masquerades as a real placement effect. Verified: IV pre-Lust ≡ post-Lust to 0.00% once interior.
+- **`tools/lattice-ripple.mjs`** (durable, **no sim needed**): derives and verifies the **tail-lattice
+  ripple** — the sum-vs-integral residual between the sim's expected damage and the model's rate integral
+  (RULES §8). Three argv-selectable sections: `ripple` (the `1 − W/c` table, verified to 4 decimals, with
+  the `c = 1.000 → exactly 0` sanity check), `cell` (re-scores one disputed cross-val cell under both
+  scorers), `column` (**the do-not-discretize control** — all 11 plan rows of one column, continuous vs
+  discrete vs sim, `r` and RMSE). Default `all`. **Read section 3 before believing section 2:** the single
+  cell makes the discrete sum look like a fix; the column shows it is a worse predictor.
+- **`tools/ripple-audit.mjs`** (durable, **no sim needed**): prices **every** cross-val deficit column
+  against that ripple floor, so a residual can be compared to the instrument's own resolution before it is
+  called a model defect. Two commands:
+  ```
+  node tools/xval-collect.mjs tools/xval-results --json /tmp/targets.json
+  node tools/ripple-audit.mjs /tmp/targets.json
+  ```
+  It is pure **arithmetic on the model's own cast list** — legitimate only because every round-5 column was
+  measured at `--var 0.5`, i.e. at the taper width the closed form assumes. Reports
+  `ripplePct = 100·(1 − W/c)/Nt` per column, `inside`/`over` buckets, an **INDETERMINATE** bucket for cells
+  whose verdict flips with the ambiguous kill-edge period (no false pass in *either* direction), Spearman
+  ρ(floor, deficit), and an over-floor family split. Two design notes worth copying into future probes:
+  - **Five predictions are PRE-REGISTERED in the file header, written before the first run** — including a
+    **vacuity guard** (`BOUND UNINFORMATIVE` if >95% of columns sit inside AND the median floor exceeds 3×
+    the median deficit — *an upper bound that everything satisfies is not evidence*), a **discrimination**
+    requirement (the Kael'thas-420 family, which carries its own AoE + wall-parity channels, must EXCEED
+    the bound), and an **arithmetic self-check** (median floor must fall monotonically short→xl, since
+    `Nt` grows with fight length). The guard's second clause did trip; only the 80.2% coverage kept the
+    result informative.
+  - **`c` is the KILL-EDGE period (`last.interval`), not a min/mean over the last few casts.** A first cut
+    used min-over-last-3 as a "conservative" (smaller-`c` ⇒ smaller-floor) bound; it broke the monotonicity
+    self-check and mislabelled a low-haste cell. The taper is only `W = 1.0 s` wide, so only casts
+    completing in `[T−0.5, T+0.5]` can contribute, and a min can reach back into a different buff regime.
+    *Being conservative about the NUMBER while being wrong about the DERIVATION is not conservative.*
+  - ⚠ **Boss rows carry a second wall-parity channel**, so their floor is a *lower* bound on the artifact
+    budget — never read a boss cell's "over the floor" as scorer evidence on its own.
 
 ## Building the runner (do this once per fresh session)
 

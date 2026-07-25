@@ -835,3 +835,92 @@ whole-plan **+1s translation** that the sim prefers by 0.073% while the model pr
 ⚠ Do **not** promote the trinket-stacking reading to a rule on 2 of 4 rows; it is listed because it is
 the only repeated contrast, and because `isc-skull` short's rival also pulls `IV` to 0 — i.e. it may be
 the (c) ramp mechanism wearing a different hat rather than an independent stacking rule.
+
+---
+
+### ⛔ §5.16d — THE 135 PRICED CORPUS-WIDE: 80% below the ruler, and the residual is 9 CELLS (07-25)
+
+*(Appended after §5.16c. Instrument: `tools/ripple-audit.mjs`. No sim runs — see below for why that is
+legitimate rather than a shortcut.)*
+
+§5.16c closed the disputed cell by deriving the **tail-lattice ripple** (`1 − W/c` casts peak-to-peak,
+RULES §8). This section extends it from **one cell to all 135** round-5 deficit columns, which converts the
+acceptance failure from a population to be attacked cell-by-cell into a **9-cell target list**.
+
+**Why it needs no sim.** Every round-5 column was measured at `--var 0.5` — precisely the taper width the
+closed form assumes — so the floor is *arithmetic on the model's own cast list*:
+
+> `ripplePct = 100 · (1 − W/c) / Nt`, `W = 1.0 s`, `c` = the **kill-edge** cast period (`last.interval`),
+> `Nt = robust / dmg_tail` = the fight total expressed in **tail-cast equivalents**.
+
+`Nt` is not a raw cast count on purpose: the tail cast is unbuffed, so dividing by casts would credit the
+fight with buffed casts it does not have at the edge and would **overstate** the floor.
+
+**Five predictions were pre-registered in the tool's header before the first run** (P1 coverage ≥70% ·
+P2 `ρ(floor, deficit) > 0` · P3 the Kael'thas-420 family must EXCEED the bound or the bound is meaningless ·
+P4 a **vacuity guard** — `BOUND UNINFORMATIVE` if >95% inside AND median floor >3× median deficit ·
+P5 an arithmetic self-check that median floor falls monotonically short→xl). **All five pass:**
+
+```
+RIPPLE-AUDIT-DONE priced=135 inside=97 over=24 indet=14 unpriced=0 rho=0.118 mono=1 vacuous=0
+P5 median floor by class:  short 0.282  medium 0.183  medlong 0.112  long 0.101  xl 0.078  (%)
+```
+
+| bucket | n | reading |
+|---|---|---|
+| **inside the floor** | **97 / 121 decided = 80.2%** | deficit is under the instrument's own resolution |
+| INDETERMINATE | 14 | verdict flips with the ambiguous kill-edge period; held out of **both** buckets |
+| **over the floor** | **24** | the gradeable set — and what makes the bound non-vacuous |
+
+Median deficit **0.035%** vs median floor **0.134%**: the typical column is **3.8× below the ruler**. But
+`ρ = +0.118` is *weak*, so the honest reading is that the floor is a **ceiling, not an explanation** — it
+bounds the artifact budget, it does not predict which cells spend it. Out-of-sample support the derivation
+was never fitted to: §5.16c's cell **saturates its own ceiling to 0.002 pp** (0.362% vs 0.360%).
+
+**The 24 split four ways, and only one way is evidence about the scorer:**
+
+- **KT-AoE (6)** — Kael'thas 420 s, including the two worst columns overall (0.377% / 0.363%). Carries its
+  own AoE and wall-parity channels ⇒ **no scorer inference**; it is what makes the bound discriminating (P3).
+- **SATURATED (5)** — over by **<0.03 pp**, sitting *on* their ceiling. Confirmatory, not a defect signal:
+  the amplitude is peak-to-peak and `diagWorst` is a `max` over ~10 rivals, which selects for the worst
+  tail phase.
+- **RESIDUAL (4)** — genuinely over with a slow tail (`c` = 1.20–1.50 s): `isc+skull long 293 @130`
+  (0.279 / 0.114) · `isc+mqg medlong 229 @40` (0.260 / 0.170) · `mqg+skull long 283 @0` (0.193 / 0.151) ·
+  `isc+skull xl 417 @70` (0.080 / 0.049).
+- **★ FLOOR-TAIL (9) — THE SHARP TARGET, and a genuinely NEW partition.** Kill-edge period at/near the GCD
+  floor ⇒ **the ripple is provably ~0, exactly 0.000% for three of them**, against deficits of
+  0.040–0.166%. And the family's *shape* is the **mirror image** of the ripple-explained one: sim-haste
+  median **240** (min 70) and T median **395** (min 218), versus **110 / 218** for the explained cells
+  (computed and printed by the tool, not asserted). **One mechanism cannot be behind both.**
+
+| FLOOR-TAIL cell | deficit % | floor % | `c` (s) | `Nt` |
+|---|---|---|---|---|
+| **`mqg+skull` xl T=395 @265** ← *cleanest in the whole ledger* | **0.090** | **0.000** | 1.000 | 351 |
+| `scb+skull` medlong 218 @260 | 0.166 | 0.034 | 1.073 | — |
+| `isc+skull` xl 417 @155 | 0.129 | 0.009 | 1.034 | — |
+| `scb+skull` long 366 @240 | 0.088 | 0.029 | 1.080 | — |
+| `mqg+skull` Vashj 390 @295 | 0.074 | 0.022 | 1.051 | — |
+| `mqg+skull` xl 395 @70 | 0.066 | 0.030 | 1.082 | — |
+| `isc+skull` xl 417 @130 | 0.049 | 0.013 | 1.047 | — |
+| `mqg+skull` Vashj 390 @235 | 0.048 | 0.036 | 1.082~ | — |
+| `isc+skull` xl 417 @260 | 0.040 | 0.000 | 1.000 | — |
+
+**Next step is `mqg+skull xl T=395 @265`**: floor *exactly* zero, and **not a boss row** — no wall and no
+AoE phase — so **no artifact channel is available to explain it away.** Every other family above has one.
+
+**⚠ Two errors made inside this audit, both caught by the pre-registered checks rather than by review.**
+(1) The 28 cells whose tails were not a constant regime were first priced with `c` = **min over the last 3
+casts**, reasoned as *conservative* (smaller `c` ⇒ smaller floor). The P5 monotonicity check **flipped to
+FAIL** and a low-haste cell landed in FLOOR-TAIL where it is physically nonsense: the ripple is set by the
+lattice spacing **at the kill edge**, the taper is only 1.0 s wide, and a `min` reaches back into a
+*different buff regime*. Fixed to `last.interval`, `min` retained as a sensitivity read, and any cell whose
+verdict flips between the two reported **INDETERMINATE**. *Being conservative about the NUMBER while being
+wrong about the DERIVATION is not conservative.* (2) The first FLOOR-TAIL write-up **asserted** a
+"high-haste/long-fight" shape with a low-haste cell visible in its own printed list; fixed by making the
+tool compute and print both families' distributions.
+
+**⚠ What "inside the floor" does and does not license.** It says the deficit is **unmeasurable at this
+taper width** — *not* that the model is right there. It is emphatically **not** a licence to discretize the
+scorer (§5.16c's column control, RULES §8's ⚠ clause). And restating the acceptance criterion as *"deficit
+below the ripple floor"* rather than *"no deficit"* is a **user call**, filed in ACCEPTANCE's coverage gaps
+— note that widening `KILL_WINDOW` to shrink the floor would change the **objective itself**.

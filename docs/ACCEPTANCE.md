@@ -229,6 +229,59 @@ rounds under `tools/xval-results-archive/` (`phase6/`, `phase7-round2/`, `phase7
   142 → **135**; mean width 0.160% → 0.081% → 0.081% → **0.069%**; KT's 2.68% AoE artifact eliminated
   at round 3 (now 0.38%, ordinary). **Do not read that drift as progress** — see below.
 
+**★★★ THE 135 DECOMPOSES: 80% of it is BELOW the instrument's own resolution, and what is left splits
+into FOUR families with different mechanisms (07-25, `tools/ripple-audit.mjs`).** Every round-5 column
+was measured at `--var 0.5`, so the tail-lattice ripple floor `1 − W/c` (RULES §8) can be priced on each
+one *arithmetically, with no sim run*: `ripplePct = 100·(1 − W/c)/Nt`, where `c` is the **kill-edge**
+lattice period and `Nt = robust/dmg_tail` is the fight total in tail-cast equivalents (the tail cast is
+unbuffed, so a raw cast count would overstate the floor). Reproduce with:
+```
+node tools/xval-collect.mjs tools/xval-results --json /tmp/targets.json
+node tools/ripple-audit.mjs /tmp/targets.json
+```
+All five predictions were **pre-registered in the tool header before the first run** and all five pass —
+including a vacuity guard that would have declared the bound uninformative, and an arithmetic self-check
+(median floor must fall with fight length, since it is 1/N: **0.282 → 0.183 → 0.112 → 0.101 → 0.078%**
+across short→xl, MONOTONE ✓).
+
+| bucket | n | reading |
+|---|---|---|
+| **inside the floor** | **97 / 121** determinate (**80.2%**) | the deficit is smaller than the ripple the metric carries — **unmeasurable at this taper width**, not "correct" |
+| **INDETERMINATE** | 14 | the kill-edge period is ambiguous (non-flat tail) and the verdict *flips* between the two defensible reads — claimed for neither side |
+| **over the floor** | 24 | the only cells a real model defect can still live in |
+
+Median deficit **0.035%** vs median floor **0.134%** — the typical column is **3.8× below** the ruler.
+Spearman ρ(floor, deficit) = **+0.118**: the floor *bounds* the deficits but barely *predicts* which are
+worst, so it is a **ceiling, not an explanation** — do not report it as one. The four over-floor families:
+
+- **FLOOR-TAIL (9) — ★ THE SHARP TARGET, and a genuinely NEW partition.** The kill-edge period sits at
+  or near the GCD floor, where the ripple is provably ~0 — **exactly 0.000% for three of them**
+  (`c = 1.000`, the closed form's built-in zero: at `c = W` the taper smears the lattice perfectly). So
+  these deficits have **no tail-lattice explanation at all**. Deficits 0.040–0.166%, and the family's
+  shape is the **mirror image** of the ripple family: sim-haste median **240** (min 70) and T median
+  **395** (min 218), versus **110 / 218** for the ripple-explained cells. **One mechanism cannot be
+  behind both.** Cleanest single target in the ledger: `mqg+skull xl T=395 @265` — deficit **0.090%**,
+  floor **exactly 0.000%**, and *no walls and no AoE* (not a boss row), so no other artifact channel is
+  available either.
+- **KT-AoE (6)** — Kael'thas at 420s, incl. the two worst cells overall (0.377%, 0.363%). Carries its own
+  AoE + wall-parity channels (coverage gaps below); **not evidence about the scorer.** This family is
+  what makes the bound non-vacuous: a 420s fight has ~4× the casts of a 99s one, so its floor is ~4×
+  smaller and 6/8 KT columns clear it.
+- **SATURATED (5)** — over by <0.03 pp, i.e. sitting *on* their own ceiling. This is **confirmatory, not
+  a defect signal**: the amplitude is peak-to-peak and `diagWorst` is a `max` over ~10 rivals, which
+  selects precisely for the worst tail phase. Note what it does to the cell `tools/lattice-ripple.mjs`
+  independently diagnosed — `isc+skull short T=99 @40`, deficit **0.362%** against a floor of
+  **0.360%**, saturating to **0.002 pp**. The closed form was derived without being fitted to that
+  number, so this is an out-of-sample hit on the mechanism.
+- **RESIDUAL (4)** — genuinely over with a slow tail (part ripple, part something else); needs
+  decomposition before it means anything.
+
+⚠ **What "inside the floor" does and does not license.** It means the cell **cannot be resolved by this
+instrument at this taper width** — an unmeasurable deficit and no deficit are the *same reading*. It is
+not a proof the model is right there, and it is **not** a licence to discretize the scorer
+(`lattice-ripple.mjs` §3: the discrete sum is a *worse* predictor across a full column, r 0.7910 vs
+0.9337). The actionable output is the over-floor list, and within it FLOOR-TAIL first.
+
 **★★★ Round 5 proves the B failure is NOT a reference-gear artifact.** The correction was a genuine
 repricing: `xval-round-diff` reports **124 of 345 plan cells changed (35.9%)** across 34/36 tables on a
 −0.4…−1.1% `eff` level shift (KT −6.1…−6.8%). And the verdict did not budge — `deficitTables 34→34`,

@@ -13,8 +13,21 @@
    below the harness's ~0.02% resolution), so it cannot discriminate — the bar stays zero columns, but do
    not steer work off it (ACCEPTANCE "What the B BANNER can and cannot tell you"). Round 5 also **killed
    the reference-gear explanation**: the correction moved 124/345 plan cells (35.9%) and *zero* verdicts.
-   Next: `tools/diagnose-deficit.mjs` on those two columns (SEARCH-MISS vs SCORER-GAP), with a
-   magnitude-vs-resolution judgement first — each has a length at 0.007%.** What landed earlier: three sim-gated scorer terms (RULES §3b — press-snap
+   ★★★ **Round 5 is now DECOMPOSED, and the residual is 9 cells, not 135** (`tools/ripple-audit.mjs`,
+   07-25). `diagnose-deficit` under pooling returns `SEARCH-MISS 0 · SCORER-GAP 135`, which is
+   **tautological** (pooling makes every alternative reachable, so nothing can be classed a search miss —
+   a `POOL=0` round would be needed to restore that axis). So the 135 were priced instead against the
+   **tail-lattice ripple floor** — the instrument's own resolution, `100·(1 − W/c)/Nt`, pure arithmetic on
+   the model's cast list since every column was already measured at `--var 0.5` (RULES §8, five predictions
+   pre-registered before the first run, all five pass): **97/121 = 80.2 % of decided columns are BELOW the
+   floor** and the median column is **3.8× below the ruler**. Of the 24 that exceed it, 6 are Kael'thas-420
+   (its own AoE + wall-parity channels), 5 are **saturating** on the ceiling (<0.03 pp over, expected since
+   the amplitude is peak-to-peak and `diagWorst` maxes over ~10 rivals), 4 are slow-tail residuals — and
+   **9 are `FLOOR-TAIL`, where the ripple is provably ~0 (exactly 0.000 % for three).** That family is the
+   **mirror image** of the ripple-explained one in both haste and length ⇒ a genuinely **second mechanism**.
+   **Next: the FLOOR-TAIL family — cleanest cell `mqg+skull xl T=395 @265`** (deficit 0.090 %, floor exactly
+   0.000 %, `c = 1.000` s, `Nt = 351`, and *not* a boss row, so no wall/AoE channel is available to explain
+   it away).** What landed earlier: three sim-gated scorer terms (RULES §3b — press-snap
    slippage at hard edges; externals snap to the cast lattice, which tempers the IV@0 "ramp
    compression" credit; ramp casts snapshot buffs at cast START), two search passes (polished CS
    chain-geometry family; drop-one-use escape), the KT AoE harness gap closed (genapl `_aoe` →

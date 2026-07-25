@@ -453,6 +453,23 @@ on the patched runner.
      at R=10 (at `c=1.219 / 1.463`, n=81 casts). ⇒ On short/low-haste tables at this taper width,
      *"no length-persistent diagonal deficit"* **is not reachable by construction**, and a residual below the
      ripple floor is not evidence of a model defect.
+  3. **Priced across the WHOLE corpus, it accounts for 80 % of the acceptance failure — and proves a
+     SECOND mechanism exists** (`tools/ripple-audit.mjs`, all 135 round-5 deficit columns, 07-25). Every
+     column was already measured at `--var 0.5`, so the floor is pure arithmetic on the model's own cast
+     list — no sim needed: `ripplePct = 100·(1 − W/c)/Nt`, with `c` = the **kill-edge** period (`last.interval`
+     — *not* a min/mean over the last few casts: the taper is only 1.0 s wide, so only casts completing in
+     `[T−0.5, T+0.5]` can contribute) and `Nt = robust/dmg_tail` (the fight total in **tail-cast
+     equivalents**, since the tail cast is unbuffed and a raw cast count would overstate the floor).
+     Result: **97/121 = 80.2 % of decided columns sit INSIDE the floor** (14 INDETERMINATE — verdict flips
+     with the ambiguous edge period, held out of both buckets), median deficit **0.035 %** vs median floor
+     **0.134 %** = the typical column is **3.8× below the ruler**. Spearman `ρ(floor, deficit) = +0.118`:
+     positive, but weak ⇒ the floor is a **ceiling, not an explanation**. Out-of-sample confirmation: the
+     worst non-KT cell saturates its own ceiling to **0.002 pp** (`isc+skull short T=99 @40`: deficit
+     0.362 % vs floor 0.360 %) — a number the closed form was never fitted to. And the bound is **not
+     vacuous**: 24 columns EXCEED it, of which **9 are `FLOOR-TAIL` — kill-edge period at/near the GCD
+     floor, so the ripple is provably ~0 (exactly 0.000 % for three of them)**. That family's shape is the
+     **mirror image** of the ripple-explained one — sim-haste median **240** (min 70), T median **395**
+     (min 218), versus **110 / 218** for the explained cells. **One mechanism cannot be behind both.**
   This is the **tail** face of the same integer-vs-continuum law whose **interior-boundary** face is PHASE8's
   FLOOR LAW (a value window covers exactly `floor(D/Δ)` casts in the sim).
   **⚠ The fix is NOT to discretize the scorer.** Swapping the integral for the sim's own sum flips the
