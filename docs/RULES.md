@@ -96,6 +96,18 @@ casts**, so it should sit on the fastest part of the window.
   **IV pre-Lust ≡ IV post-Lust to 0.00%** once both are interior (100s/140s fights, `tools/explore.mjs`
   cross-check). Above the floor the pull gains only via floor headroom (its ramp casts sit further from
   the cap).
+- **★ MEASURED EXCEPTION — a haste window that COVERS THE OPENING RAMP is worth ~+0.08 pp more in the
+  sim than the model pays** (PHASE8 §15.5 F5; not yet patched). Position sweep, `T=100`, `var 3.0`,
+  20k iters: `resid@AT=0 − resid@AT=10` is **+0.094 / +0.098 / +0.040** (IV / MQG / Zerk at R=40) and
+  **+0.092 / +0.088 / +0.061** at R=70 — **6/6 positive**, mean **+0.079 pp** — while the model's haste
+  marginal is flat in position to **0.0000 pp** across the whole interior (so it credits the ramp overlap
+  exactly zero). The bullet above is right about the *steady* stream and wrong on the ramp: there the cast
+  interval isn't the steady-state one, so shortening it genuinely changes the count. Note the effect is
+  ramp-**coverage**, not being-early: `AT=5` shows no bonus, because the ramp ends at 6.34 s (R=40) /
+  6.22 s (R=70) and a press at 5 snaps to the next cast boundary, already past it. Magnitude is small
+  (≈ 0.03 pp once diluted to a 229 s fight, less again when another window already covers the ramp — §14.6
+  saturation), and it is **not** B2's mechanism. Left unpatched deliberately: it would move goldens, and
+  no scorer change lands while an acceptance round is gathering.
 - **Sim-setup caveat (a trap, not a model gap).** In a *fixed-duration* sim, a haste buff jammed against
   the fight **end** (e.g. IV@1:00 in a strict 1:20 fight) shows a spurious ~1.4% loss vs pull, because the
   sim doesn't credit the truncated tail casts proportionally. The **model is right** to score pre≈post as

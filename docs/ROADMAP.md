@@ -42,7 +42,19 @@
    the same multiplicity reason). Also banked: **`--var 0` quantizes to integer casts** and is unusable
    for marginals (TOOLING). **Window×window is out — window × kill is the sole survivor**, and §15 must
    pre-register it: it is the one axis every probe so far is structurally blind to, since all of them
-   measured steady-state fights that never end)
+   measured steady-state fights that never end. **Round 5 ran and closed** (§15, pre-registered): the
+   **position sweep**. **F2 passes exactly** — the model's haste marginal is flat in press position to
+   **0.0000 pp**, so the position-independence axiom (`index.html:926-928`) is implemented to the last
+   digit. **F4 FAILS** — `Σ = −0.063 pp` (R=40) / `−0.109 pp` (R=70) where B2 needs positive; the two
+   "live" position flags are both **clip-boundary snap** in a last-second band **neither B2 plan enters**
+   (tails of 9 s and 7 s). Window × kill retired same-day — the clause's fifth firing — which leaves **B2
+   with no candidate expressible in a single-buff fight at all**, so the phase switches instrument class
+   to the **two-plan differential** (§16: walk the five-move path between the two real plans, both
+   directions, and localize the residual to a move). **★ One real finding banked:** haste covering the
+   **opening ramp** is under-credited ~**+0.079 pp** (6/6 haste legs, both hastes) — a genuine defect in
+   that axiom, recorded in RULES §3 and DIARY's open debts, deliberately **unpatched** (it would move
+   goldens; nothing lands mid-acceptance-round). It is not B2 either: the only ramp-coverage difference
+   between the plans is `Zerk@0` vs `Zerk@6` on a ramp `IV@0` covers in both, worth 0.009–0.027 pp)
    and `docs/PHASE9.md` (**performance/refactor**, user-reported CPU cost — notes + hypotheses only so
    far, nothing landed; every change there is gated on byte-identical plans. **§4.7** turns the "fewer
    steps" ask into a *pass-firing census* — a pass is redundant iff its input is already its own fixpoint

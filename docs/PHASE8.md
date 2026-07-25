@@ -28,7 +28,17 @@ identically to `resid(S) − Σ resid(singles)`, so §13.9's per-buff under-cred
 it is a **per-window** constant (ratio ≈ ⅓ for three buffs, no R-trend) and therefore cancels in B2 for the
 same multiplicity reason §13.9's level did. **Window×window is out; window × kill is the sole survivor**,
 and it is the one every probe so far is structurally blind to (all have measured steady-state fights that
-never end). §15 must pre-register it.
+never end). §15 must pre-register it. **Round 5** (07-25, §15): the **position sweep** (window × kill),
+pre-registered. **F2 passes exactly** — the model's haste marginal is flat in press position to
+**0.0000 pp**, so `index.html:926-928` really does implement the position-independence axiom to the last
+digit. **F4 FAILS**, `Σ = −0.063 pp` (R=40) / `−0.109 pp` (R=70) where B2 needs positive; retired same-day,
+the fifth firing of that clause. With per-buff valuation excluded (§13.9), window×window retired (§14.6)
+and now window×kill retired, **B2 has no candidate expressible in a single-buff fight at all** — F3's
+pre-registered consequence, so the phase switches instrument class to the **two-plan differential** (§16).
+One real finding did come out of it: **★ haste covering the opening ramp is under-credited by ~+0.079 pp**
+(6/6 haste legs, both hastes) — the model pays it exactly 0.000, and this is a genuine defect of the
+hardcoded axiom. It is not B2: the only ramp-coverage *difference* between the two plans is `Zerk@0` vs
+`Zerk@6` on a ramp `IV@0` already covers in both, worth 0.009–0.027 pp against 0.445.
 
 Phase 7 fixed everything cheaper: three press-execution scorer terms (RULES §3b), two search passes, the
 metric (var0.5 + wall-jitter), the KT AoE harness, and — the big one — **cross-haste pooling, which makes
@@ -916,6 +926,182 @@ nothing about its slope.
 
 Magnitude scale: B2's positions differ by ~190 s within a 229 s fight, against a 100 s probe, so scaling to
 B2 is done with the **actual press positions of the two plans**, never by extrapolating a per-second slope.
+
+### 15.5 VERDICT — the axiom **holds exactly**; F4 is **wrong-signed** (retired); one new right-signed datum: **haste on the ramp**
+
+Run: `r5sweep.sh` (sim: 5 legs × 12 positions × 2 hastes + 2 bases) and `r5model.mjs` (model: the *same*
+presses through `simulate`), `T = 100`, cold open, infinite mana, `iter = 20000`, `seed = 11`, `--var 3.0`.
+
+Harness pre-verified in the combat log first, per the §1/§13.3 lesson — a press that does not fire when
+requested has faked a result in this phase twice already: `IV@0` gains `[0.00]` fades `[20.00]`; `IV@88`
+gains `[88.07]` fades `[100.00]` (**cut by the kill** — clipping is measured, not assumed); `Zerk@88` gains
+`[88.07]` fades `[98.07]` (still interior, exactly as the grid intends).
+
+**F1 — PASS, 8/8.** Both sides lose the same large amount when the window is pushed past its clip onset,
+so the sweep does vary what it claims to:
+
+| R | leg | clip onset | move | sim Δmarg | model Δmarg |
+|---|---|---|---|---|---|
+| 40 | IV | 80 | 78→88 | −1.799 | −1.781 |
+| 40 | MQG | 80 | 78→88 | −1.817 | −1.817 |
+| 40 | Icon | 80 | 78→88 | −0.522 | −0.562 |
+| 40 | AP | 85 | 84→88 | −0.656 | −0.945 |
+| 70 | IV | 80 | 78→88 | −1.729 | −1.778 |
+| 70 | MQG | 80 | 78→88 | −1.738 | −1.781 |
+| 70 | Icon | 80 | 78→88 | −0.486 | −0.560 |
+| 70 | AP | 85 | 84→88 | −0.591 | −0.942 |
+
+**F2 — PASS, and the axiom is *exact*.** The model's haste marginal over the whole interior range has a
+spread of **0.0000 pp** — IV, MQG and Zerk, at both hastes, all twelve interior positions. `index.html:926-928`
+does precisely what its comment claims: haste is credited as position-independent to the last digit. (The
+value legs are not expected to be flat and aren't: AP moves 0.0068 / 0.0061 pp, which is press-snap, not a
+gradient.) So the axiom under test is **real**, not an approximation the code drifted away from — and
+therefore any sim-side position dependence in a haste marginal shows up undiluted in `resid`.
+
+**F3 — the interior is excluded. Both "live" flags are clip-boundary snap, not a gradient.**
+`max |resid(AT) − resid(30)|` over the interior, and the same with the single grid point adjacent to each
+buff's clip onset dropped:
+
+| R | leg | interior | max dev (all) | max dev (drop boundary pt) |
+|---|---|---|---|---|
+| 40 | IV | 10..78 | 0.054 | **0.018** |
+| 40 | MQG | 10..78 | 0.053 | **0.018** |
+| 40 | Zerk | 10..88 | 0.045 | 0.009 |
+| 40 | Icon | 10..78 | 0.000 | 0.000 |
+| 40 | AP | 10..84 | **0.279** | **0.004** |
+| 70 | IV | 10..78 | 0.035 | 0.035 |
+| 70 | MQG | 10..78 | 0.026 | 0.026 |
+| 70 | Zerk | 10..88 | 0.022 | 0.013 |
+| 70 | Icon | 10..78 | 0.000 | 0.000 |
+| 70 | AP | 10..84 | **0.222** | **0.004** |
+
+AP's 0.279/0.222 is *entirely* `AT = 84` — one cast short of its 85 s clip onset, where the window ends
+~1 s before the kill and the last completion snaps across the boundary in the sim but not in the model.
+Same story for IV/MQG at `AT = 78`. Away from that last-second band the model's error is flat in position
+to **≤ 0.035 pp** (≤ 0.018 at R = 40). **Both B2 plans leave a tail** — h40's last window closes at 220
+(`IV@200`), h70's at 222 (`IV@202`), i.e. 9 s and 7 s before the 229 s kill — so neither plan sits in the
+band where this artifact lives. It cannot be B2's mechanism.
+
+**F4 — WRONG SIGN at both hastes. Window × kill is RETIRED.** The pre-registered combination
+`[resid_haste(early) − resid_haste(late)] + [resid_value(late) − resid_value(early)]`, read from the
+post-ramp interior only (`early = 10`, `late = 70`) so the ramp cannot fake it:
+
+| R | haste early−late (IV / MQG / Zerk) | value late−early (Icon / AP) | Σ |
+|---|---|---|---|
+| 40 | −0.031  −0.031  +0.004 | −0.000  −0.004 | **−0.063 pp** |
+| 70 | −0.053  −0.039  −0.018 | +0.000  +0.000 | **−0.109 pp** |
+
+B2 needs this **positive**. It is negative at both hastes, and *more* negative at B2's own gear haste. Per
+§15.4's clause — *"retired the same day, no reinterpretation"* — window × kill joins §8, §13.4, §13.8 and
+§14.6 in the wrong-signed pile. That clause has now fired **five times out of five**.
+
+**F5 — ★ the ramp datum: right-signed, genuinely new, and far too small.** Reported separately exactly as
+pre-registered, because `AT ∈ {0, 5}` is different physics for both sides. `resid@0 − resid@10`:
+
+| R | IV | MQG | Zerk | Icon | AP |
+|---|---|---|---|---|---|
+| 40 | **+0.094** | **+0.098** | **+0.040** | +0.027 | −0.279 |
+| 70 | **+0.092** | **+0.088** | **+0.061** | +0.027 | +0.085 |
+
+The three haste legs are **6/6 positive, mean +0.079 pp** — the sim pays a haste window ~0.08 pp *more*
+when it covers the opening ramp, and the model, by F2's exactly-verified axiom, pays it **+0.000**. That is
+a direct, measured contradiction of `index.html:926-928` in the one place the axiom was always weakest: on
+the ramp the cast interval is *not* the steady-state one, so shortening it does change the count. `AT = 5`
+shows no bonus because the ramp ends at 6.34 s (R=40) / 6.22 s (R=70) and a press at 5 snaps to the *next*
+cast boundary — already past it; the effect is genuinely ramp-**coverage**, not merely being-early. The
+value legs are inconsistent between hastes (AP −0.279 vs +0.085) and must not be leaned on.
+
+**But it does not pay B2, and the first scaling of it was wrong.** The helper first scaled this as *"h40
+stacks two haste buffs on the ramp"* — that is incorrect and is corrected here: **h70 presses `IV@0` too**
+(§ target table). The only ramp-coverage *difference* between the two plans is one press: **h40 `Zerk@0`
+vs h70 `Zerk@6`** — and Zerk@6 fires after the ramp ends (5.2 s with IV@0 already up). So the differential
+is one Zerk, on a ramp another window already covers:
+
+```
+solo Zerk ramp bonus (R=70)              +0.061 pp   (T = 100)
+× 229/100 fight-length dilution          +0.027 pp   ← maximally optimistic
+× §14.6 per-window saturation (≈ ⅓)      +0.009 pp   ← consistent with round 4
+                                  target  +0.445 pp
+```
+
+**16–50× short.** It is the phase's first right-signed structural finding since round 2, and it is a real
+model defect worth recording — but it is not B2.
+
+**Structural consequence — F3's clause fires anyway.** Per-buff valuation is excluded (§13.9), window ×
+window is retired wrong-signed (§14.6), window × kill is retired wrong-signed (this round). Those were the
+three axes along which a **single-buff fight** can differ. **B2 therefore has no surviving candidate
+expressible as a single-buff marginal**, which is an instrument verdict, not a dead end: the phase must
+stop decomposing and measure the h40/h70 pair **directly**, as §15.4's F3 pre-registered. See §16.
+
+**Carried into RULES:** the ramp datum is the live model defect this round produced. It is *not* patched
+here — a scorer change while an acceptance round is gathering is forbidden, and a +0.08 pp haste-on-ramp
+credit would move goldens. It is recorded as a known, measured under-credit with its magnitude.
+
+## §16 — ROUND 6, PRE-REGISTERED: the **two-plan differential** (stop decomposing; walk the path)
+
+### 16.1 Why the instrument class must change
+
+Every round so far has asked *"what does the model get wrong about a buff?"* and answered it in a fight
+containing **one** buff. Three rounds of that have excluded all three axes such a fight can vary (§15.5).
+The remaining possibility is that the error is not a property of any buff but of **this pair of layouts** —
+in which case no single-buff experiment can ever see it, however many are run. That is a falsifiable claim
+and this round tests it by measuring the two real plans and the path between them.
+
+### 16.2 The design — a five-move path, walked in both directions
+
+The two plans differ in exactly five presses (§ target table). Enumerate the moves h40 → h70:
+
+| # | move | what it is |
+|---|---|---|
+| M1 | `AP 8→4, 188→192` | damage window pulled forward / pushed back |
+| M2 | `Zerk 0→6, 188→192` | **the ramp-coverage differential** (§15.5 F5) |
+| M3 | `Icon 29→4, 183→182` | SP off the haste burst, onto the opener |
+| M4 | `MQG 9→202` | **the big one** — a haste trinket moved 193 s |
+| M5 | `IV 200→202` | 2 s nudge (control: should be ~0) |
+
+Two passes, all on the full B2 fight (`T = 229`, `Lust@162`, gear haste 70, `isc+mqg`, CS@20 in both):
+
+- **forward** — start from h40, apply one move at a time, everything else held at h40;
+- **backward** — start from h70, apply the *inverse* of one move at a time, everything else held at h70.
+
+Each intermediate plan is scored in the sim (`seed 11`, `iter 20000`, `--var 3.0`) and in the model
+(`simulate` with the same fixed presses). The quantity is, per move,
+
+```
+Δresid(M) = [sim(plan+M) − sim(plan)] − [model(plan+M) − model(plan)]      (in pp of base)
+```
+
+Cost: 12 sim runs and 12 model evaluations. Cheap — this should have been round 4.
+
+### 16.3 Pre-registered falsifiers
+
+- **G1 — reproduction control.** The two endpoints must reproduce the known gap in *this* harness: sim
+  h40 − h70 ≈ **+0.360%**, model ≈ **−0.02%**. If they don't, the instrument is mis-built and nothing below
+  is readable. (This is the §1 bug's descendant and is non-negotiable.)
+- **G2 — press verification, mandatory.** Every intermediate plan's combat log is checked: each requested
+  press gains its aura within 1.5 s of the request, no press is silently dropped (trinket category 1141),
+  no window is retimed. A plan that does not fire as requested is **discarded, not interpreted**. Twice
+  burned (§1, §13.3).
+- **G3 — localization.** If some single move carries `|Δresid| ≥ 0.15 pp`, the phase has, for the first
+  time, a **named culprit**, and round 7 is that move's mechanism. Prior (stated now, before the run):
+  **M4** — it is the only move large enough to matter and the only one that crosses the Lust window.
+- **G4 — additivity.** Compare `Σ Δresid(M1..M5)` against the endpoint gap. If they agree within 0.05 pp
+  the error is **localized and additive** (and G3 names it). If `Σ` is much smaller, the error is
+  **genuinely joint across moves** — which would be the first *positive* evidence for a joint effect in
+  this phase, as opposed to round 1's withdrawn version, and would be established by measurement rather
+  than assumed.
+- **G5 — order symmetry.** Any move whose forward and backward `Δresid` differ by more than 0.05 pp marks
+  where the interaction lives; that pair (move × context) is round 7's target. If forward and backward
+  agree everywhere **and** G4 says additive **and** no move clears G3's 0.15 pp, the verdict is **diffuse**:
+  the gap is an accumulation of many ~0.05 pp under-credits (consistent with §13.9's per-buff level, §14.6's
+  per-window saturation constant, and §15.5's ramp bonus), and the phase turns from mechanism-hunting to
+  **global calibration** — which is a different, and much less satisfying, kind of answer, but a real one.
+
+### 16.4 What this round cannot do
+
+It cannot find a mechanism the two plans don't differ in. If G4 says additive and G3 names M4, the *reason*
+M4 is mispriced still needs its own round. §16 buys **localization**, not explanation — but after three
+rounds of blind exclusion, localization is the thing worth buying.
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
