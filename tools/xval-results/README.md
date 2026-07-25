@@ -54,6 +54,27 @@ independently reproducing §5.13's hand-derived conclusion; round4→round5 (the
 correction) is the other shape. It exits **2 when it could not compare** — zero overlapping tables, or
 a table still being written — because "0 plans changed" is also what a misread directory prints.
 
+**★ Read the trailing `EFF-AUDIT` line too — the per-table eff *range* hides the thing that matters**
+(added 07-25, PHASE9 §5.15). A table printing `eff -0.035%..+0.000%` can be a pure tie-break, a pure
+regression, or both at once in adjacent cells. The audit splits it:
+
+```
+EFF-AUDIT unchangedSpecs=82 scorerMoved=0 movedSpecs=18 → worse=3 better=0 tie=15
+```
+
+- `scorerMoved` counts cells whose spec is **byte-identical** but whose eff is not. It must be **0**;
+  any other value means the rounds were gathered by different scorers and **no** eff delta is
+  attributable to the search. This is a *proof*, not an assumption — it is what licenses everything else.
+- With the scorer pinned, `worse` is a **search regression by definition and needs no sim**: the
+  optimizer rejected a layout it had previously found and its own objective prefers. A pure-search
+  change may move a plan only to an equal or better score.
+
+It found three such cells on round5→round6 (the −8.5% CPU landing), which every existing gate had
+missed because they gate on plan-*identity* and were only ever run on a corpus where plans didn't move.
+The exit code is still 0 — this file's exit contract is quoted above and callers grade on it — so the
+finding is loud, not fatal. **Do not read a final acceptance verdict off a round whose EFF-AUDIT shows
+`worse > 0`;** attribute the regression first.
+
 ## What's here
 - `<kit>-<class>.txt` — one full run per (trinket kit × fight-length class). Each file contains:
   the fight header (seed, length, Lust time, trinkets, haste set), the per-haste optimized plan specs,
