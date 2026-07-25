@@ -2535,3 +2535,137 @@ sessions produced three wrong mechanisms and zero localisation. One stage trace 
 the exact round, and the exact entrant — and cost less than any one of them. **When the question is
 "which step does X", instrument the steps. Perturbing the input and reading the output can only ever
 tell you that something is sensitive, never what.**
+
+---
+
+### §5.14 ★★★ `groupSeeds` — the fix LANDED, and the instrument lesson that came with it
+
+§5.13 root-caused the `5:40 lust 0:05` search-miss to **a missing seed class**. This section is the
+landing: what shipped, how it was bounded, what was measured and rejected along the way, and — the part
+worth more than the fix — **why the corpus differ said IDENTICAL and that was the correct result.**
+
+#### What shipped
+
+`groupSeeds(cfg)` (`index.html`, immediately above `mulberry32`), one line into `optimizeCore`'s seed
+list between the kill-anchored seed and the random fill. It builds the RULES §4b **chain** entrants
+directly:
+
+```
+origin × gap-chain-drawn-from-the-enabled-cd-set × which long-cd track skips group 1
+```
+
+- **origins** = `{0} ∪ round(fixed press seconds)`, first 3 — no hand-fitted seconds anywhere.
+- **chains** = DFS over the *enabled cooldown periods themselves* (`5 —+120→ 125 —+180→ 305`),
+  **maximal only** (a prefix hands every track strictly fewer uses ⇒ dominated), depth ≤ 6, ≤ 24 chains.
+- each track presses at every group second it is legally up for; **Cold Snap grants Icy Veins exactly one
+  early repeat** inside the chain.
+- **skip variants** = `[null, ...longs]`, `longs = tracks whose cd exceeds the shortest enabled cd` —
+  **linear in tracks, not `2^n`**. This is the clause hypothesis (e) got wrong: the winner *declines a
+  use it could have taken*, to stay stacked.
+- deduped by `sigOf` after `repair`.
+
+#### Bounding it — the cost was never the question, but it was asked anyway
+
+| | |
+|---|---|
+| worst family size on the corpus | **40** (`7:20 lust 0:05`) |
+| total generation cost, all 25 cases | **88 ms** |
+| cases producing 0 chains (fight too short) | Hydross · Karathress · Solarian · `1:40` · `2:00` |
+| representative sizes | KT 20 · Vashj 16 · Al'ar 16 · `5:40` 24 · lust-4:20 cases 12 |
+
+#### ★★ The top-K score cut was BUILT, MEASURED, and REJECTED
+
+The obvious economy is to pre-score the family with `simulate()` and polish only the best K. It was
+measured (`$SP/l3-rank.mjs`, full-family polish on all 25, 33.1 s) and it is **self-defeating**:
+
+| case | candidates | raw rank of the polish-best | loss at top-3 |
+|---|---|---|---|
+| `7:20 lust 0:05` | 40 | **13** | 1057.640 |
+| `6:00 lust 4:20` | 12 | **12** (dead last) | 917.094 |
+| `5:45 lust 4:20` | 12 | **12** (dead last) | 917.094 |
+| Lady Vashj | 16 | 7 | 2718.557 |
+| **corpus total** | | | **top1 −24814.300 · top3 −8087.794** |
+
+> **★★ A SEED'S RAW SCORE IS NOT A PROXY FOR ITS BASIN.** These seeds exist precisely because the good
+> layout is *unreachable by local moves* — so ranking them by the local objective they are there to
+> escape selects against the ones that work. The generator is cheap; the polish is the expense; and the
+> cheap thing cannot be used to budget the expensive one. **Ship the full family.**
+
+#### The gate — full 25, both tiers (a SEARCH change, so §5.10 binds: never the quick tier alone)
+
+```
+QUICK (--max-t=200, 16 cases)  PLAN-DIFF compared=16 changed=0 … IDENTICAL
+FULL  (25 cases)               PLAN-DIFF compared=25 changed=0 subSecOnly=0 onlyA=0 onlyB=0 errors=0
+                               PLAN-DIFF IDENTICAL          (0 illegal, 0 errors, both sweeps)
+```
+
+**DUEL: not required — 0 changed cells**, so there was nothing to grade head-to-head.
+
+#### ★★★ A PLAN-NEUTRAL DIFF IS NOT AN INERT CHANGE — the instrument lesson
+
+The 25-case differ came back **byte-identical**, which on any other change in this phase would have read
+as *"landed nothing."* It is not, and the reason is structural: **the corpus sweep holds the PRNG seed
+fixed at 1337**, and §5.10 already established that at 1337 `5:40` finds the winner **by luck** — "ONE
+lucky restart out of 14." A robustness fix restores the winner on the seeds where luck ran out; on the
+seed where it didn't, the output is unchanged **by definition**.
+
+> ★★★ **CHOOSE THE INSTRUMENT BY THE AXIS THE CHANGE ACTS ON.** `plan-diff` varies *the case* and holds
+> *the seed*. A fix whose whole content is "stop depending on the seed" is invisible to it — not weakly
+> visible, **structurally invisible**. Running it was still right (it proves the 24 other cases did not
+> move), but reading it as the verdict would have thrown away a working fix as a no-op.
+
+The instrument that *can* see it varies the seed. `$SP/l1-probe.mjs` on `5:40 lust 0:05`, six seeds,
+base (`index.html` at HEAD) vs group:
+
+| seed | base | group | Δ |
+|---|---|---|---|
+| 1337 (default) | 582688.620970 ✓ | 582688.620970 ✓ | +0.000 |
+| 4242 | 582455.530709 ✗ | **582688.620970 ✓** | **+233.090** |
+| 7 | 582688.620970 ✓ | 582688.620970 ✓ | +0.000 |
+| 99 | 582455.530709 ✗ | **582688.620970 ✓** | **+233.090** |
+| 2024 | 582678.947125 ✗ | **582688.620970 ✓** | +9.674 |
+| 31337 | 582455.530709 ✗ | **582688.620970 ✓** | **+233.090** |
+
+**2 of 6 → 6 of 6**, the identical layout every time
+(`arcanePower[5,307] berserking[127,307] bloodlust[5] icyVeins[5,127,307] isc[5,127,307] scb[5,127,307]`),
+and *faster* on the seeds it fixes (19–22 s vs 31–52 s) — the good entrant reaches its fixpoint in fewer
+hop rounds than the bad one spends failing to escape.
+
+**Regression control on the same axis** (a fix that only ever *adds* seeds still has to be shown not to
+move anything else): `5:00 lust 0:05`, `4:00 lust 0:05`, `5:45 lust 4:20` × seeds {1337, 4242, 99} —
+**every cell bit-identical** between base and group (521998.552858 / 428257.758448 / 589246.601154).
+**Zero regressions.**
+
+#### What this closes
+
+Open debt (a) `5:40 lust 0:05` — **CLOSED.** Eight mechanisms were proposed for it across two sessions;
+seven were falsified, the eighth (reachability) named the real one. RULES §4b now carries the
+theorycraft, so the next kit-limited miss can be written down by hand from cooldown arithmetic before
+any search is run.
+
+
+#### The INTERACTION gate — the one thing neither change had been tested for
+
+Both landings were measured **against pristine, separately** (§5.12 groom, §5.14 `groupSeeds`) and never
+against *each other*. That is a real gap: `groupSeeds` adds entrants, the groom exit changes when a round
+stops improving them, and "each is plan-neutral alone" does not imply "both are plan-neutral together."
+So after landing both into `index.html`, the pair was swept back-to-back against `git show HEAD:index.html`
+on **idle cores**:
+
+```
+PRISTINE (HEAD)                    SWEEP OK cases=25/25 jobs=3 wall=228.7s cpu=635s errors=0 illegal=0
+COMBINED (groom exit+groupSeeds)   SWEEP OK cases=25/25 jobs=3 wall=216.5s cpu=581s errors=0 illegal=0
+PLAN-DIFF compared=25 changed=0 subSecOnly=0 onlyA=0 onlyB=0 errors=0
+PLAN-DIFF IDENTICAL
+```
+
+**Net: −8.5% CPU, −5.3% wall, 25/25 plans bit-identical.** Less than the groom exit's −10.1% alone, and
+that is the expected sign: `groupSeeds` *buys* robustness with up to 40 extra polishes on the longest
+case, so the combined figure is the groom saving minus the seed cost. Both are worth having; the ledger
+should show them netted, not each claiming its own headline.
+
+> **★ ABSOLUTE CPU IS NOT COMPARABLE ACROSS SWEEPS — only the within-pair delta is.** The same pristine
+> engine measures **695.1 s at `jobs=2` (§5.12, contended) and 635 s at `jobs=3` (here, idle)**. Nothing
+> changed in the file; the number moved 9%. Every perf claim in this phase is therefore stated as a
+> delta against a baseline swept **in the same session, at the same `jobs`, under the same load** — a
+> figure lifted out of one table and compared to a figure in another is meaningless.

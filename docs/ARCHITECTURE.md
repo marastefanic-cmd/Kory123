@@ -101,10 +101,25 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   yields — no computed value reads it, so one-setup-⇒-one-schedule is untouched. `basinHop`,
   `challengePass`, `coPressAlign`, `spreadLoneHaste`, `slideEarliest`, `dodgeDowntime` are `async` for
   this reason alone; their logic is unchanged.
-- **Seeds** (~1180–1225): all-at-0, backward-packed, phase-anchored (`seg.start` / intermission
-  `seg.end`), **pinned-raid-call anchored** (stacks every track on each Lust/Drums/PI second), and a
+- **Seeds** (~1446–1491, in this order): all-at-0 (`naiveSchedule`), backward-packed
+  (`packedSchedule`), phase-anchored (`seg.start` / intermission `seg.end`, capped at `starts + 8`),
+  **pinned-raid-call anchored** (stacks every track on each Lust/Drums/PI second, first 4), a
   **kill-anchored seed** (each track's last use as late as it fully runs, siblings packed backward by
-  cd — the terminal-burst basin forward-packing can't reach).
+  cd — the terminal-burst basin forward-packing can't reach), then **`groupSeeds`** (below), then
+  random fill to `starts`.
+- **`groupSeeds(cfg)`** (~1134, Phase 9 §5.14 — the RULES §4b **chain law** made reachable): builds
+  *chain* entrants — `origin × gap-chain × which long-cd track skips group 1`. Origins are `{0} ∪
+  round(fixed press seconds)` (first 3); a chain is a DFS over the **enabled cooldown periods**
+  themselves (`5 —+120→ 125 —+180→ 305`), **maximal chains only** (a prefix gives every track strictly
+  fewer uses ⇒ dominated), depth ≤ 6, ≤ 24 chains. Each track then presses at every group second it is
+  legally up for; Cold Snap grants Icy Veins **one** early repeat inside the chain; the `skip` variants
+  let one long-cd track **decline the opening group** to keep its remaining uses stacked (linear in
+  tracks, not `2^n`). Deduped by `sigOf` after `repair`. **≤ 40 candidates, ~88 ms across all 25 cases**
+  — and no score cut: pre-ranking candidates by raw `simulate()` is measurably self-defeating (the
+  polish-best sat at raw rank 13/40 and 12/12; a top-3 cut loses 8087.794 corpus-wide). Every other seed
+  class places a track on *its own* cadence, so a stacked chain that declines an available use is
+  unreachable from all of them — from a non-chain entrant `basinHop` gains **+0.000** even with every
+  anchor `0..T−1`.
 - **`polish`** hill-climb (~1068): `SHIFTS` ±1..±90 incl. ±3/±6 (ramp-boundary hops) and ±30/±60,
   per-index + suffix-shift + add-a-use + a **joint window move** (all uses sharing a press second shift
   as one block — co-pressed clusters cross valleys together) + a drop-one/relocate escape.
@@ -120,7 +135,11 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   cast).
 - **`challengePass`** (~1132, called 3×): re-anchors each track's cadence at pull / raid calls /
   phase edges; offers the last use onto other buffs' seconds; IV/Cold-Snap end-chains. Guards robust.
-- **Groom loop** ×3 (~1208): Pass 1 haste-actives local search (±45, `nulled`/floored tie-break,
+- **Groom loop** ×3 (~1714, with an **early exit** — Phase 9 §5.12: rounds ≥1 are the same
+  deterministic function of `s` (each opens with `challengePass()`; only round 0 skips it) and `val` is
+  non-decreasing, so a no-op round ⇒ every remaining round is a no-op. `if (groom >= 1 && unchanged)
+  break;` — plan-neutral on all 25; −10.1% CPU measured alone, −8.5% netted with `groupSeeds`, §5.14):
+  Pass 1 haste-actives local search (±45, `nulled`/floored tie-break,
   ~1215–1280) · Pass 2 damage/SP cluster move (~1286–1401) · Pass 3 ±8 ensemble (~1406–1462) · macro
   snap · legibility merges (has a hard `nulled` veto ~1598) · downtime slide to `seg.end` (~1610).
 - **Drop-one-use escape** (after the fixpoint, before the CS gate — Phase 7): offers each single-use

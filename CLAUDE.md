@@ -162,6 +162,10 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/PHASE9.md` — **performance / refactor notes** (CPU + latency, under a byte-identical-plans
   constraint). Measure-first: baseline profile, call census, hypothesis table with verdicts, and the
   refactor catalogue (redundant walks, fusable steps) with a cheapest-and-safest-first landing order.
+  **§5 is the phase's larger contribution: the FAST ITERATION GATE** (`plan-sweep` + `plan-diff` +
+  `plan-duel`) that replaced "re-run everything after every edit" — read it before designing any
+  verification. Two changes LANDED 07-25: the groom early exit and the `groupSeeds` class (§5.12–§5.14),
+  together −8.5% CPU with all 25 plans bit-identical.
 - `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
   into ROADMAP). **No plan in flight. Phase 5 (AoE phases) is COMPLETE** — verdict: an AoE phase is a

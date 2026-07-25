@@ -1123,6 +1123,52 @@ function packedSchedule(cfg) {
   }
   return repair(s, cfg);
 }
+// Group-second seeds: on kit-limited fights the winning layout is a CHAIN — a handful of group
+// seconds spaced by the KIT'S OWN cooldowns (5 —+120→ 125 —+180→ 305), with every track pressing at
+// each group second it is UP for. Cold Snap buys Icy Veins one early repeat inside a chain, and a
+// track whose cooldown exceeds the chain's tightest gap cannot take every group second — so GIVING
+// UP the opening one, to keep its remaining uses stacked with the others, is a real choice and gets
+// its own seed. The naive/packed/pinned/kill seeds each place a track on ITS OWN cadence, so a
+// stacked chain that declines an available use is unreachable from all of them: from a non-chain
+// entrant the basin hop gains +0.000 even when handed EVERY anchor 0..T-1 (PHASE9 §5.13).
+function groupSeeds(cfg) {
+  const keys = scheduledKeys(cfg), free = keys.filter(k => !cfg.fixed[k]);
+  if (free.length < 2) return [];
+  const T = Math.round(cfg.T);
+  const cds = [...new Set(free.map(k => BUFFS[k].cd))].sort((a, b) => a - b);
+  const origins = [...new Set([0, ...Object.values(cfg.fixed).flat().map(t => Math.round(t))])]
+    .filter(o => o >= 0 && o < T - 1).sort((a, b) => a - b).slice(0, 3);
+  const chains = [];
+  for (const o of origins) (function walk(seq, t) {
+    let ext = false;
+    if (seq.length < 6) for (const g of cds) {
+      const n = t + g;
+      if (n < T - 1) { ext = true; seq.push(n); walk(seq, n); seq.pop(); }
+    }
+    // MAXIMAL chains only: a prefix gives every track strictly fewer uses, so it is dominated
+    if (!ext && seq.length >= 2 && chains.length < 24) chains.push(seq.slice());
+  })([o], o);
+  const longs = free.filter(k => BUFFS[k].cd > cds[0]);
+  const out = [], seen = new Set();
+  for (const G of chains) for (const skip of [null, ...longs]) {
+    const s = {};
+    for (const key of keys) {
+      if (cfg.fixed[key]) { s[key] = cfg.fixed[key].slice(); continue; }
+      const cd = BUFFS[key].cd, times = [];
+      let extra = key === "icyVeins" && cfg.coldSnap;   // Cold Snap: ONE early repeat inside the chain
+      for (let i = key === skip ? 1 : 0; i < G.length; i++) {
+        if (!times.length || G[i] - times[times.length - 1] >= cd - 1e-9) times.push(G[i]);
+        else if (extra) { times.push(G[i]); extra = false; }
+      }
+      s[key] = times;
+    }
+    const rep = repair(s, cfg), sg = sigOf(rep);
+    if (seen.has(sg)) continue;
+    seen.add(sg);
+    out.push(rep);
+  }
+  return out;
+}
 function mulberry32(a) {
   return function () {
     a |= 0; a = (a + 0x6D2B79F5) | 0;
@@ -1441,6 +1487,7 @@ function optimizeCore(cfg, starts, onProgress) {
       }
       seeds.push(repair(s, cfg));
     }
+    for (const gs of groupSeeds(cfg)) seeds.push(gs);
     while (seeds.length < starts) seeds.push(randomSchedule(cfg, rand));
     const results = [];
     let best = null;
@@ -1664,7 +1711,7 @@ function optimizeCore(cfg, starts, onProgress) {
         // Groom three times: the snap/merge stages after the aesthetic sweeps
         // can shuffle a press off its clean spot (and a merge can strand a
         // partner on an emptied row); the extra cycles re-groom to a fixed point.
-        for (let groom = 0; groom < 3; groom++) {
+        for (let groom = 0; groom < 3; groom++) { const __groomBefore = JSON.stringify(s);
         // the structured alternatives get a second hearing once grooming has
         // reshaped the plan — a chain that lost against the raw snap can win
         // against the groomed line (and vice versa)
@@ -2099,6 +2146,15 @@ function optimizeCore(cfg, starts, onProgress) {
           }
           if (!merged) break;
         }
+        // EARLY EXIT. Rounds >=1 are the SAME deterministic function of `s`
+        // (each begins with challengePass(); round 0 is the only one that skips it).
+        // So if round N>=1 returned `s` unchanged, round N+1 starts from the identical
+        // state and must reproduce it — the remaining rounds are provably no-ops.
+        // `val` cannot loosen a later accept either: 7 of its 8 assignments in this
+        // window are Math.max, and the 8th only fires together with the `s` that
+        // raised it. Census (PHASE9 §5.8) agrees: 0 of 50 invocations ever showed
+        // "round 1 no-op -> round 2 change". Worth −10% CPU (PHASE9 §5.12).
+        if (groom >= 1 && JSON.stringify(s) === __groomBefore) break;
         }
         // A ready cooldown near the kill is always worth pressing — clipped
         // final windows are kept whenever they add damage; the press plan tags

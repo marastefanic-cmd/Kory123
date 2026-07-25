@@ -173,8 +173,23 @@
    surviving B2 suspect is the crossing-location error** (sign flip one grid step late, ≈ 20–50 rating
    too pro-stacking); the strongest candidate for a round 10 is **P3's context asymmetry** (§17.5: −0.2106 ctx A
    vs −0.4068 ctx B — **0.1962 pp** on the same press), which the clip fraction alone does not explain
-   and `docs/PHASE9.md` (**performance/refactor**, user-reported CPU cost — notes + hypotheses only so
-   far, nothing landed; every change there is gated on byte-identical plans. **§4.7** turns the "fewer
+   and `docs/PHASE9.md` (**performance/refactor**, user-reported CPU cost; every change there is gated on
+   byte-identical plans. **LANDED 07-25 — two changes.** (i) the **groom-loop early exit** (§5.12):
+   rounds ≥1 are the same deterministic function of `s`, so a no-op round proves the rest are no-ops —
+   `PLAN-DIFF changed=0`, DUEL no cells, **−10.1% CPU** (7:20 −12.8%, KT −12.5%). (ii) **`groupSeeds`**
+   (§5.14): the missing seed class that closes the `5:40 lust 0:05` SEARCH-MISS root-caused in §5.13 —
+   chain entrants spaced by the kit's own cooldowns, with a long-cd track allowed to decline the opening
+   group (now RULES **§4b**). Corpus differ **IDENTICAL ×25**, and that is the *correct* result: the
+   sweep holds the PRNG seed fixed, so it is structurally blind to a robustness fix — the seed axis shows
+   **2/6 → 6/6** with zero regressions on a 3-case × 3-seed control. A top-K score cut was measured and
+   **rejected** (polish-best at raw rank 13/40 and 12/12; top-3 loses 8087.794 corpus-wide).
+   **Netted, both together** (the interaction gate neither had alone, swept back-to-back vs `HEAD` on
+   idle cores): **−8.5% CPU / −5.3% wall, 25/25 bit-identical** — the groom saving minus `groupSeeds`'
+   extra polishes. Absolute CPU is **not** comparable across sweeps (the same pristine engine measures
+   695.1 s at `jobs=2` and 635 s at `jobs=3`); only a within-session, same-`jobs` pair means anything.
+   The phase's larger deliverable is **§5's iteration gate** — bare-node `plan-sweep` + `plan-diff` +
+   the sim-free `plan-duel`, ~16× faster than exact-match on the quick tier — which is what made the
+   above tractable. **§4.7** turns the "fewer
    steps" ask into a *pass-firing census* — a pass is redundant iff its input is already its own fixpoint
    on the whole corpus — and **§4.9** records the two dedups that need no measurement at all: polish()'s
    five identical accept paths and the block-shift primitive written twice. **§4.12 corrects §4.3**, which

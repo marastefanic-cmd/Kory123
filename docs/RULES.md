@@ -241,6 +241,35 @@ damage-buffed casts — Lust is the usual vehicle, not the objective.
   +0.1–0.2% — model and sim now agree on that ordering too, see the §7-era icon-count history in
   ROADMAP). Nothing to implement: the current optimizer emits the winning plan on its own.
 
+### 4b. THE CHAIN LAW — a kit-limited fight's winning layout is a chain of *group seconds* spaced by the kit's OWN cooldowns *(Phase 9 §5.13; structural, model-derived)*
+
+§4 says *where* to concentrate cooldowns when the fight hands you a Lust. This says what the whole
+layout looks like when the fight is long enough that cooldowns come back but too short to spend them
+freely — the **kit-limited** regime, which is most real fights. Two claims, both falling out of §1:
+
+1. **The presses collapse onto a handful of shared seconds ("group seconds"), and the spacing between
+   those seconds is drawn from the enabled cooldowns' own periods** — not from the fight clock, not
+   from the Lust timer. On `5:40 lust 0:05` with `isc+scb+AP+IV+zerk` the winner is
+   `5 —(+120, the trinket cd)→ 125 —(+180, the IV/zerk cd)→ 305`, and every track presses at every
+   group second it is **up** for. This is §11 (containment) applied transitively: if buff A wants to
+   contain buff B, and B's next use is one B-cooldown later, then A's next use wants to be there too.
+   Cold Snap buys Icy Veins **one extra** press inside such a chain (the 120 gap is < IV's 180).
+2. **★ A long-cooldown track may DECLINE a use it could legally take, in order to stay stacked.** On
+   that same fight Berserking (cd 180) *skips the opening group* and presses `125, 305` — giving up the
+   `5` use — and `isc/scb` skip the `245` use they were entitled to. A greedy "press it the moment it's
+   up" line advances on the *shortest* cd and lands its third group at 245 instead of 305: that layout
+   scores **582553.499 vs the winner's 582688.621 (−135.1)**. Availability is not an argument for
+   pressing; **stacking is worth more than a use** whenever the declined use would land outside every
+   other track's window.
+
+**Why this is in the rules and not just in the optimizer.** Every seed the search had built a track on
+*its own* cadence (naive/packed/pinned/kill-anchored), so a stacked chain that declines an available use
+was **unreachable** — verified exhaustively: from a non-chain entrant, the basin hop gains **+0.000**
+even when handed every anchor `0..T−1` (2712 pairs / 1769 polishes). The chain is now generated directly
+as a seed class (`groupSeeds`, `docs/ARCHITECTURE.md`), which is why it is worth stating as
+theorycraft: *given a kit and a fight length, you can write the candidate layout down by hand from the
+cooldown arithmetic alone.*
+
 ## 5. Icy Veins slides out of Lust as haste gear grows *(now REALIZED in the search, sim-verified)*
 
 At ~0 haste, IV belongs in Lust (packed, per #4). This isn't received mage-forum wisdom taken on faith —
