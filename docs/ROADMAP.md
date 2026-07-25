@@ -72,7 +72,21 @@
    check FIRST), the **cooldown chain** (`AP@[8,188]` is exactly one CD apart and cannot execute: 9.06 ⇒
    189.51), and the **cascade gate** (a press moving slides every downstream boundary-snapped press — `IV#3`
    by 1.00 s — so *"hold the rest fixed" is a property of the request, not the execution*; differential
-   contrasts must now verify the controls held to < 0.30 s))
+   contrasts must now verify the controls held to < 0.30 s).
+   **Round 8 ran and answered §18's question: it is the STACK, not the kill** (§18.6). With `Icon` off, `MQG`
+   is the only on-use trinket and the crossed design becomes legal. **K1 reproduces the P3 step (−0.367 pp)**,
+   but so does **K3 — the identical press position with 78 s of runway (−0.298 pp, 81 % of K1)** — while a
+   **solo** haste buff pressed *at the kill* is priced correctly (**K4 +0.0115 pp**; model and sim agree to
+   0.012 pp). **J2 (fight-end truncation) is falsified**, so the fix is not in how the integral terminates at
+   `T`; K1−K3 = −0.069 pp is a small residual kill term. K2 (stacked on `BL`) was contaminated by the cascade
+   gate and carries no verdict, leaving one J1 clause untested. **The combat log finally names a mechanism:**
+   the stacked arm casts at **exactly 1.000 s for twenty seconds — the GCD floor** (unfloored `IV×MQG×gear`
+   = 0.9896 s, so ~1.05 % of the stacked haste is clipped), the sim's window census is **exactly symmetric**
+   (solo `MQG` +3 casts, stacked `MQG` +3 casts, fight total 230 = 230), and `AP`'s 15 s value window covers
+   **15 cast starts in both arms** — the floor law surviving a case where Δ itself was manipulated. The model
+   books **+1 net cast (229 → 230)** instead. The scorer is **not** missing the floor; the §19 hypothesis is
+   ≈ +0.17 pp of banked fractional cast plus ≈ +0.12 pp of `AP`-packing credit, and per CLAUDE.md that is a
+   **sim-setup audit trigger** to discharge before the model is blamed)
    and `docs/PHASE9.md` (**performance/refactor**, user-reported CPU cost — notes + hypotheses only so
    far, nothing landed; every change there is gated on byte-identical plans. **§4.7** turns the "fewer
    steps" ask into a *pass-firing census* — a pass is redundant iff its input is already its own fixpoint

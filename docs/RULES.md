@@ -40,6 +40,17 @@ stacking: `(1+ratingHaste) × 1.30 Lust × 1.20 IcyVeins × 1.10 Berserking …`
   the sim's marginal slope turns over inside the **same** point the model's does, while the three singles
   (which never cross anywhere on the grid) kink nowhere. The cast and the GCD clamp *together* because a
   3-stack AB is `2.5 − 3×⅓ = 1.5 s` = `GCD_BASE` exactly, which is why one crossing governs both.
+- **★★ A haste buff pinned AT the floor buys the same casts as one that isn't — measured directly, in
+  whole casts** (PHASE8 §18.6, 07-25). Same fight (`T=300`, gear haste 70), one 20 s `MQG` window moved
+  between a **solo** parking spot and a **stacked** one on `IV@202`. The stacked window runs at *exactly*
+  **1.000 s per cast for twenty seconds** (unfloored `IV × MQG × gear = 1.5157` ⇒ `1.5/1.5157 = 0.9896 s`,
+  so **~1.05 % of the stacked haste is clipped**); the solo window runs at **1.195 s**, nothing clipped.
+  The sim's census is symmetric to the cast: **solo `MQG` +3 casts, stacked `MQG` +3 casts, fight total
+  230 = 230**, and `AP`'s 15 s value window covers **15 cast starts in both arms** — §RULES-4's floor law
+  holding even when **Δ itself** is manipulated. This is the strongest form yet of "haste stacked on an
+  already-floored window is worth ~0" (§16). ⚠ **The scorer does not fully honour it**: `simulate()` clamps
+  the interval correctly (`index.html:819-822`, `:903-904`) but still books **+1 net cast** for the stacked
+  press. Open, unpatched, tracked in PHASE8 §18.6 — no scorer change lands mid-acceptance-round.
 
 ## 3. Ramp is irrelevant for haste, relevant for damage/spellpower
 

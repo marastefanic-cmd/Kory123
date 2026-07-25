@@ -66,6 +66,20 @@ execution* — and it is ctx **B** (controls still to 0.10 s) that carries the *
 what rules the confound out rather than merely bounding it. §18 pre-registers the 2×2 that separates P3's two
 conflated causes — **the stack** (two haste multipliers composing) vs **the kill** (a haste window with no
 runway left to cash its saved time) — now legal at last because `Icon` can be switched off.
+**Round 8** (07-25, §18): the 2×2 crossing, with `Icon` off. **★★★ J1 fires, J2 is FALSIFIED — it is the
+stack, not the kill.** K1 reproduces P3 (**−0.367 pp**), but so does **K3, the same press position with 78 s
+of runway (−0.298 pp, 81 % of K1)**, while a **solo** haste buff *at the kill* is priced correctly (K4
+**+0.0115 pp**, model and sim agreeing to 0.012 pp). So the fix does **not** live in how the integral
+terminates at `T`. K2 carries no verdict (H5b: `AP#2`/`Zerk#2` slid −0.89 s), leaving J1's on-`BL` clause
+untested; K1−K3 = −0.069 pp is a small residual kill term (≈19 %). And for the first time the **combat log
+names a mechanism**: in the stacked arm the casts run at **exactly 1.000 s from 202.13 to 222.13 — the GCD
+floor** (unfloored `IV×MQG×gear` would be 0.9896 s, so ~1.05 % of the haste is clipped), the sim's window
+census is **exactly symmetric** (`MQG` solo buys +3 casts, `MQG` stacked buys +3 casts, fight total 230 = 230),
+and `AP`'s 15 s value window covers **15 cast starts / 14 contained casts in both arms** — the floor law
+holding even when Δ *itself* is manipulated. The model instead books **+1 net cast (229 → 230)**. The scorer
+is **not** missing the floor (`index.html:819-822`, `:903-904` clamp correctly); hand-arithmetic on the
+log-read intervals reconstructs K3 as ≈ +0.17 pp of *banked fractional cast* plus ≈ +0.12 pp of `AP`-packing
+credit — the §19 hypothesis, and a **sim-setup audit trigger** to be discharged before the model is blamed.
 
 Phase 7 fixed everything cheaper: three press-execution scorer terms (RULES §3b), two search passes, the
 metric (var0.5 + wall-jitter), the KT AoE harness, and — the big one — **cross-haste pooling, which makes
@@ -1376,6 +1390,116 @@ It cannot localize the fix inside `simulate()` — it partitions the defect into
 "fight-end termination", which are different code paths and different fixes. It also cannot rule out that
 the same defect exists at other haste levels; B2 is a haste-70 case and the fix must be re-validated across
 the acceptance grid before it lands.
+
+### 18.6 VERDICT — ★★★ **J1 fires, J2 is falsified.** It is the **stack**, not the kill — and the sim log names the mechanism: **the GCD floor**
+
+Run: `$SP/p8/r8cross.sh` (sim leg) · `r8gate.mjs` (H5b) · `r8model.mjs` (model leg) · `r8stat.mjs` (reduction).
+`--var 3.0 --iter 20000 --seed 11`, gear haste 70, cold open, infinite mana, `Icon` OFF in every arm.
+
+**H5 (a-priori legality): passes** on all six arms — after a bug **in the checker, not the plans**: the first
+run rejected every arm with `IV@0 -> IV@20 (< 180s CD)` because the checker omitted the **Cold Snap
+exemption**. `CS@20` resets `IV`'s cooldown, so `IV@0,20` is legal and is the entire point of the CS chain.
+G2 press verification: *all legal plans fire as requested.*
+
+**H5b (the cascade gate): fires on all four contrasts** — the reference `MQG@100` precedes `BL@162`, so
+Bloodlust slides **162.05 → 163.26 (+1.21 s)** in every non-reference arm. Two facts rescue the round:
+
+- the shift is **identical (+1.21 s) in all four contrasts**, and A0/A1 vs C0/C1 have byte-identical execution
+  up to 229 (`IV#3` 202.03→202.13, `AP#2` 192.99→193.10, `Zerk#2` 192.99→193.10 in *both* pairs) — so it is
+  **common-mode and cancels in the K1-vs-K3 second difference**, which is the comparison the round turns on;
+- **K2 is additionally and genuinely contaminated**: `AP#2` and `Zerk#2` move **−0.89 s**, uncancelled by
+  anything, and the model also drops a cast (179 vs 180). **K2 carries no verdict.**
+
+#### The four contrasts
+
+| K | arms | `T` | stacked | kill | `d_sim` | `d_model` | **Δresid** | model casts | status |
+|---|---|---|---|---|---|---|---|---|---|
+| **K1** | A0→A1 | 229 | ✓ | ✓ | +0.0000 | +0.3672 | **−0.3672** | 180 → 180 | **DEFECT** |
+| **K2** | A0→A2 | 229 | ✓ | — | −0.4491 | −0.4893 | +0.0402 | 180 → 179 | **contaminated (H5b)** |
+| **K3** | C0→C1 | 300 | ✓ | — | −0.0076 | +0.2902 | **−0.2978** | 229 → **230** | **DEFECT** |
+| **K4** | C0→C2 | 300 | — | ✓ | +0.0038 | −0.0078 | +0.0115 | 229 → 229 | clean |
+
+Legacy config agrees throughout (K1 −0.3852, K3 −0.3124, K4 +0.0126) — the finding does not depend on the
+`sp`/`t5two` calibration. Sim DPS: A0 2739.0, A1 2739.0, A2 2726.7, C0 2646.6, C1 2646.4, C2 2646.7.
+
+- **K1 reproduces §17.5's P3** at −0.367 pp against the pre-registered ≈ −0.41. The small shortfall is
+  expected: `Icon` is now off. **The instrument measures the right thing.**
+- **J2 is FALSIFIED.** K3 is the *identical press position* with **78 s of runway** and still carries
+  **−0.298 pp — 81% of K1**. A haste buff that has three quarters of the fight left to cash its saved time
+  is mispriced just as badly. **The defect is not fight-end truncation**, so the fix does *not* live in how
+  the integral terminates at `T`.
+- **J1 FIRES on both tested clauses.** `|K3| = 0.298 ≥ 0.15` and `|K4| = 0.0115 < 0.05`. **A solo haste buff
+  is priced correctly even at the kill** (the model's own −0.008% against the sim's +0.004%: agreement to
+  0.012 pp). **J1's `|K2| ≥ 0.15` clause is UNTESTED** — that cell needs a repair arm (below).
+- **J4 — a small interaction survives.** `K1 − (K3 + K4) = −0.081 pp`; equivalently `K1 − K3 = −0.069 pp` is
+  the residual **kill** contribution *at an identical press position*. It is above the 0.05 additivity
+  threshold but ≈19% of the effect. **Stacking carries ≈81%.**
+
+#### The mechanism — read straight off the combat log
+
+The concrete restatement first: **the model believes `MQG@202` buys a whole extra cast at `T=300` (229 → 230);
+the sim's DPS says it buys nothing (−0.008%).** The `C0`/`C1` logs say why.
+
+**1. The stacked window is pinned at the GCD floor.** In `C1` the casts from `202.13` to `222.13` are spaced
+**exactly 1.000 s** — twenty-one casts, no drift. That is `GCD_FLOOR`. Unfloored, `IV × MQG × gear
+= 1.20 × 1.2093 × 1.0444 = 1.5157`, and a 3-stack AB is `1.5 / 1.5157 = 0.9896 s`: **the last ~1.05% of the
+stacked haste is clipped away by the floor.** Solo `MQG` (`C0` @100) runs at **1.195 s** — comfortably above
+the floor, nothing clipped. The floor is *only* reachable by stacking, which is exactly why the defect is
+stack-conditional.
+
+**2. The sim's window census is exactly symmetric.**
+
+| window | C0 (`MQG@100`) | C1 (`MQG@202`) | Δ |
+|---|---|---|---|
+| `[100,122)` — C0's MQG | **19** | 16 | **+3 for C0** |
+| `[122,162)` | 27 | 28 | −1 |
+| `[162,202)` | 37 | 36 | +1 |
+| `[202,224)` — C1's MQG | 19 | **22** | **+3 for C1** |
+| **fight total** | **230** | **230** | **0** |
+
+`MQG` solo buys **+3 casts**; `MQG` stacked buys **+3 casts**. The ±1 in the intervening windows is the phase
+lead being carried and reabsorbed. **The sim's answer is not "small" — it is exactly zero.**
+
+**3. `AP`'s value window covers the same casts either way — THE FLOOR LAW, confirmed a third time.** The model's
+remaining credit is buff-into-buff packing: `AP@192` runs 192.99–207.99 (C0) / 193.10–208.10 (C1), `D = 15.00 s`
+in both, and the stacked arm casts faster inside it. The log says it gains nothing:
+
+> **C0: 15 cast starts, 14 fully-contained casts. C1: 15 cast starts, 14 fully-contained casts.**
+
+A 15 s value window covers the same count whether the interval inside it is 1.197 s or 1.000 s. Round 2's
+floor law (`floor(D/Δ)`) now has a case where Δ itself was manipulated and the count *still* did not move.
+
+**4. The scorer is not missing the floor — the arithmetic is subtler.** `index.html:819-822` and `:903-904`
+apply `interval = max(cast, max(GCD_FLOOR, GCD_BASE/m))`, so `simulate()` does clamp. Hand-reconstructing the
+20 s marginal (`Δ_solo` 1.436 → 1.1877; `Δ_stacked` 1.197 → 1.000):
+
+| | casts before | casts after | gain |
+|---|---|---|---|
+| solo `MQG` | 13.93 | 16.84 | **+2.91** |
+| stacked, **unfloored** | 16.71 | 20.21 | +3.50 |
+| stacked, **floored** | 16.71 | 20.00 | **+3.29** |
+
+So a *continuous* cast-rate integral — floor included — still hands stacking **+0.38 casts** (≈ +0.17% of 229),
+and the residual ≈ +0.12 pp is the `AP`-packing credit §18.6-3 just showed to be worth zero. **+0.17 + 0.12
+≈ +0.29 pp = K3, reconstructed to the observed value.** The sim's discrete chain, by contrast, rounds the
+0.38-cast lead into the ±1 window shuffle above and re-synchronizes: by `t ≈ 190` C1 is *0.11 s behind* C0
+despite C0 having spent its `MQG` ninety seconds earlier.
+
+⚠ **This decomposition is hand-arithmetic on log-read intervals, not an instrumented measurement** — it is the
+§19 hypothesis, not a result. And per CLAUDE.md a clean model number disagreeing with a sim number is a
+**sim-setup audit trigger** first: §19 must ask whether the sim's re-synchronization is physical (a real
+cast chain that cannot bank a sub-cast lead across a floored stretch) or an artifact, *before* concluding
+that the model over-credits.
+
+#### What round 8 leaves open
+1. **K2's cell (stacked on `BL`) is untested** — the one unmeasured clause of J1. It needs an arm whose
+   controls hold still: either a reference parked **after** `BL`, or an `MQG`-on-`BL` arm paired across two
+   fight lengths so the cascade cancels the way K1-vs-K3 does.
+2. **Which of the two sub-terms dominates** — the banked fractional cast (~0.17 pp) or the `AP`-packing
+   credit (~0.12 pp). They are different fixes in different code paths.
+3. **Haste generality.** B2 is a haste-70 case; the floor is only reachable near that gear level, so the
+   defect's size is gear-dependent by construction and any fix must be re-validated across the acceptance
+   grid before it lands.
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
