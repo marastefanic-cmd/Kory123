@@ -230,24 +230,48 @@ was all search, not scoring). Don't conflate "the count is right" with "the sear
     budget — never read a boss cell's "over the floor" as scorer evidence on its own.
   - `--json out.json` dumps the priced rows so follow-up probes **stratify one pricing implementation**
     instead of re-deriving it. Both probes below read it.
-- **`tools/floor-plateau.mjs`** + **`tools/ambient-gap.mjs`** (durable, **no sim needed**): the two
-  pre-registered probes that worked the over-floor residual. Chain (each stage `--json`-dumps for the next,
+- **`tools/floor-plateau.mjs`** + **`tools/ambient-gap.mjs`** + **`tools/unexplained-gap.mjs`** (durable,
+  **no sim needed**): the three pre-registered probes that worked the over-floor residual — and, in the end,
+  established that it **cannot be worked in aggregate at all**. Chain (each stage `--json`-dumps for the next,
   so the pricing and the scoring each exist **once**):
   ```
   node tools/xval-collect.mjs tools/xval-results --json /tmp/targets.json
-  node tools/ripple-audit.mjs  /tmp/targets.json --json /tmp/priced.json
-  node tools/floor-plateau.mjs /tmp/priced.json  --json /tmp/scored.json
-  node tools/ambient-gap.mjs   /tmp/scored.json
+  node tools/ripple-audit.mjs   /tmp/targets.json --json /tmp/priced.json
+  node tools/floor-plateau.mjs  /tmp/priced.json  --json /tmp/scored.json
+  node tools/ambient-gap.mjs    /tmp/scored.json
+  node tools/unexplained-gap.mjs /tmp/scored.json
   ```
   `floor-plateau` re-scores **both** plans of a column at the **common** haste through one identical call and
   asks whether the model is *indifferent* where the GCD floor binds (H_PLATEAU — a tie-break failure) or
   *confidently wrong* (a valuation error); `ambient-gap` asks whether the post-ripple residual is one
-  homogeneous scale or a localized defect. Both hypotheses were **falsified** — see RULES §8 consequence 4
-  and PHASE7 §5.16e. Three lessons worth copying:
-  - **★★★ MEASURE IN THE JOINT CURRENCY.** `pct` (the sim deficit) is only half the disagreement; the model's
-    own margin `dModel` is the other half, and `joint = dModel + pct` is what a fix must close. Ranking the
-    over-floor families by `pct` vs by `joint` produces **different target lists** — FLOOR-TAIL goes from
-    first to last. A target list built on the masked quantity is a mis-ordered target list.
+  homogeneous scale or a localized defect; `unexplained-gap` corrects `ambient-gap`'s currency and then
+  bootstraps the ranking it produces. All three hypotheses were **falsified** — see RULES §8 consequences 4–5
+  and PHASE7 §5.16e–f. Six lessons worth copying:
+  - **★★★ BOOTSTRAP A RANKING BEFORE YOU TARGET FROM IT.** Three successive currencies (`pct`, `joint`,
+    `unexplained`) produced **three different orderings** of the same four families, and each time the natural
+    move was to declare the new top the target. The measurement that settled it was a **seeded 20 000-resample
+    bootstrap** of the 135 columns: the nominal worst family tops only **60.8 %** of them. The between-family
+    differences (~0.1 pp) are the size of the instrument's own per-cell ceiling (corpus median 0.134 pp) — the
+    ranking was **noise-dominated**, so no currency could ever have ordered it, and the instrument-dependence
+    was a property of the **data**, not of the formulas. Two rounds of re-ranking were the wrong kind of work.
+    Cost of the check: ~20 lines and one second. Run it *first* next time.
+  - **★★ SUBTRACT AN ARTIFACT BUDGET ONLY FROM THE TERM THAT HAS ONE.** `joint = dModel + pct` adds a
+    **ripple-bounded** term to an **unbounded** one (`dModel` is model-vs-model — no sim, so no lattice), and
+    family ceilings differ **9×**. Comparing that sum across families largely compares **ceilings**, which is
+    how it promoted SATURATED — the family *defined* by having its `pct` covered by a large ceiling — to
+    second-worst and got its label wrongly flagged for re-derivation. The corrected form is
+    `unexplained = dModel + max(0, pct − ripplePct)`.
+  - **★★ MEASURE A TERM, DON'T SUBTRACT TWO MEDIANS.** "The model is ~0.06 pp over-confident everywhere" came
+    from `median(joint) − median(pct)` = 0.0814 − 0.0250. **Medians are not additive.** Measured directly,
+    `median(dModel)` inside the floor is **0.0398 pp** — the claim survived, the number was inflated ~40 %.
+  - ⚠ **A RATIO SPREAD IS A DEFECTIVE CRITERION NEAR ZERO.** `unexplained`'s max/min across labels *rose*
+    (3.37× → 4.34×) while **every** family's absolute gap fell (top −42 %) — the ratio grew only because the
+    minimum fell further (−55 %). One term's spread is literally *infinite* (a median of exactly 0.0000 by
+    construction). Pre-register an **absolute** threshold when the quantities can approach zero.
+  - **★★★ MEASURE IN THE JOINT CURRENCY** (what survives of consequence 4). `pct` (the sim deficit) is only
+    half the disagreement; the model's own margin `dModel` is the other half. Ranking by `pct` alone put
+    FLOOR-TAIL first purely because its ceiling is 6× smaller than ambient — an ordinary gap with no ruler
+    over it. That specific correction stands; the *ranking* built on it did not.
   - ⚠ **`dModel ≥ 0` is BY CONSTRUCTION** — the native plan *is* the model's own argmax at that haste, so only
     a search miss can flip its sign. A "the model prefers native 12/12" line is therefore a **validity check**
     (pooling removed the search misses), never evidence about magnitudes. Only the magnitude carries content.

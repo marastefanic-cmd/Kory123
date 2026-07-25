@@ -36,11 +36,28 @@
    `joint = model Δ + pct`, the amount a fix must close. In that currency the four over-floor families
    re-rank and **FLOOR-TAIL comes LAST**: `inside` 0.081 pp · **FLOOR-TAIL 0.106 (1.30×)** · KT-AoE 0.236
    (2.90×) · SATURATED 0.268 (3.29×) · RESIDUAL 0.274 (3.37×). FLOOR-TAIL only *looked* like the sharp
-   target because its own floor is ~0.022 pp, 6× below `inside`'s 0.139 — **it is the least anomalous
-   over-floor family, seen without a ruler over it.** ⇒ **Next: the 15 cells of KT-AoE (6) + SATURATED (5)
-   + RESIDUAL (4)**, which carry ~3× the ambient joint gap. ⚠ Note `SATURATED` was *defined* as
-   "<0.03 pp over the ceiling" — its 3.29× says that label is measuring ceiling-proximity, not smallness,
-   and it must be re-derived before being treated as a mechanism. What landed earlier: three sim-gated scorer terms (RULES §3b — press-snap
+   target because its own floor is ~0.022 pp, 6× below `inside`'s 0.139 — no ruler was covering an
+   otherwise ordinary gap.
+   ⛔ **AND THEN THE WHOLE FAMILY-TARGETING PROGRAMME DIED — the corpus cannot rank these families at all**
+   (`tools/unexplained-gap.mjs`, 07-25; 6 pre-registered predictions, `verdict=ORDERING-FRAGILE`, no
+   `index.html` change). `joint` is itself defective: it adds an **unbounded** term (`dModel`, model-vs-model,
+   no sim ⇒ no lattice ⇒ no artifact budget) to a **ripple-bounded** one, and family ceilings differ **9×**
+   (0.022 vs 0.189 pp), so cross-family `joint` mostly compares **ceilings**. The corrected currency —
+   `unexplained = dModel + max(0, pct − ripplePct)` — gives a **third** ordering, and **no family holds its
+   rank across the three**: RESIDUAL 1st→1st→3rd · KT-AoE 2nd→3rd→**1st** · SATURATED 3rd→2nd→**last** ·
+   FLOOR-TAIL 4th→4th→2nd. A seeded 20 000-resample bootstrap says why: the nominal worst family tops only
+   **60.8 %** of resamples (FLOOR-TAIL 14.5 %, RESIDUAL 15.5 %, SATURATED 9.2 %) — **the ~0.1 pp
+   between-family differences are the size of the instrument's own per-cell ceiling (corpus median 0.134 pp).** The
+   instrument-dependence is a property of the **data**, not of the formulas. Two of my own claims retract:
+   **SATURATED is VINDICATED** (0.037 pp = 0.92× ambient, mean rank 4.03 of 5 — the *least* anomalous family;
+   it does **not** need re-deriving, and `joint` flattered its defect precisely because it is *defined* by
+   having its `pct` covered by a large ceiling), and **FLOOR-TAIL's "least anomalous" is withdrawn as a
+   superlative** (2nd at 2.63× ambient in `unexplained`; the measurement stands, the rank never did). Also
+   corrected: the "model is ~0.06 pp over-confident everywhere" figure came from **subtracting two medians**
+   — measured directly it is **0.040 pp**. ⇒ **Next is NOT a family.** Aggregate re-ranking of these 135
+   columns is exhausted; the only honest moves are a **fresh per-cell sim duel**, **more columns** for power,
+   or the queued **acceptance-criterion restatement (user call)**. Do not invent a fourth currency.
+   What landed earlier: three sim-gated scorer terms (RULES §3b — press-snap
    slippage at hard edges; externals snap to the cast lattice, which tempers the IV@0 "ramp
    compression" credit; ramp casts snapshot buffs at cast START), two search passes (polished CS
    chain-geometry family; drop-one-use escape), the KT AoE harness gap closed (genapl `_aoe` →

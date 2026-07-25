@@ -1048,3 +1048,115 @@ of it. `H_PLATEAU`'s death removes the tie-break story; it is **not** a licence 
 quantization term to the scorer — §5.16c's column control already refused that (r 0.7910 vs 0.9337). And the
 acceptance-criterion restatement (*"deficit below the ripple floor"* vs *"no deficit"*) remains a **user
 call**, filed in ACCEPTANCE's coverage gaps.
+
+### ⛔ §5.16f — THE FAMILY TARGET LIST IS NOT SUPPORTABLE: three currencies, three orderings, and a bootstrap that kills all three (07-25)
+
+§5.16e's headline was that ranking the over-floor families by the sim deficit `pct` **mis-ordered** them, and
+that the right currency was `joint = dModel + pct`. That re-ranking is now **itself falsified**, by a defect I
+found in my own committed currency within minutes of pushing it.
+
+**The defect.** `joint` adds a term that carries a **known instrument budget** (`pct`, capped by the
+tail-lattice ripple `ripplePct`) to one that carries **none at all** (`dModel` is model-vs-model — it is
+scored twice by the engine at a common haste, with no sim and therefore no Δ=1.0 s lattice anywhere in it).
+Family ceilings differ **9×** (FLOOR-TAIL 0.022 pp vs SATURATED 0.189 pp), so comparing `joint` *across*
+families largely compares **ceilings**. And SATURATED is *by construction* the family whose `pct` is almost
+entirely covered by its own large ceiling — so `joint` flatters its defect more than any other family's,
+which is exactly why §5.16e wrongly promoted it to second-worst and demanded its label be re-derived.
+
+**The corrected currency.** Subtract the budget from the term that *has* one; do not subtract it from the term
+that does not:
+
+```
+unexplained = dModel + max(0, pct − ripplePct)
+```
+
+Read as a **lower bound on the model's valuation error** on that pair: the sim ranks the rival ahead by `pct`,
+of which at most `ripplePct` can be sum-vs-integral artifact, so at least `pct − ripplePct` is a real ordering
+the model got backwards — and the model *additionally* scored its own pick ahead by `dModel`, which no
+artifact excuses. `tools/unexplained-gap.mjs`, six predictions (U1–U6) pre-registered before the first run:
+
+```
+node tools/ripple-audit.mjs   $SP/targets.json --json $SP/priced.json
+node tools/floor-plateau.mjs  $SP/priced.json   --json $SP/scored.json
+node tools/unexplained-gap.mjs $SP/scored.json
+```
+
+| label | n | joint pp | **unexplained pp** | of which `dModel` | of which `pct−ceiling` | ceiling pp |
+|---|---|---|---|---|---|---|
+| inside | 111 | 0.0814 | **0.0398** | 0.0398 | 0.0000 | 0.1386 |
+| FLOOR-TAIL | 9 | 0.1061 | **0.1047** | 0.0487 | 0.0519 | 0.0221 |
+| KT-AoE | 6 | 0.2364 | **0.1592** | 0.0325 | 0.1328 | 0.0865 |
+| SATURATED | 5 | 0.2677 | **0.0367** | 0.0101 | 0.0051 | 0.1894 |
+| RESIDUAL | 4 | 0.2744 | **0.1045** | 0.0127 | 0.0901 | 0.1510 |
+
+```
+UNEXPLAINED-GAP-DONE verdict=ORDERING-FRAGILE n=135 spread=4.34 jointSpread=3.37 top=none u1=1 u2=0 u6=0
+```
+
+**U1 SATURATED — PASS, and it retracts a claim I committed.** 0.0367 pp vs `inside`'s 0.0398 = **0.92×** —
+*below* ambient, against a pre-registered threshold of ≤1.5×. §5.16d's "confirmatory, not a defect signal"
+reading is **VINDICATED**, and §5.16e's demand that the label be re-derived **over-penalized precisely the
+family the currency was worst for.** Corrected in ROADMAP / ACCEPTANCE / RULES §8 in the same commit.
+
+**U2 SHRINKAGE — FAIL, U3 FALSIFIER FIRED.** The max/min spread across labels *rose*, 3.37× → **4.34×**. ⚠ But
+read what drove it: **every** family's number came down (top 0.2744 → 0.1592, −42 %), and the ratio grew only
+because the *minimum* came down further (0.0814 → 0.0367, −55 %). A **ratio spread over near-zero medians is a
+defective criterion** — the `pct−ceiling` term's own spread is literally **infinite** (`inside`'s median is
+exactly 0.0000 by construction). So U2 failed on a threshold I chose badly, not on the correction; and U3's
+canned diagnosis ("the residual is dominated by `dModel`") is **not** supported either — the `dModel`-only
+spread is 4.83×, but its *level* is uniformly small (range 0.0101–0.0487 pp) while `pct−ceiling` ranges
+0.0000–0.1328 pp. The top family's gap is driven by `pct−ceiling` 4:1 over `dModel`. Both halves of U3's
+if-clause are wrong; the honest reading is that the **criterion** broke, and the pre-registered instruction
+that followed it — *do not keep inventing currencies until one agrees* — is the part that binds.
+
+**U6 SENSITIVITY — FAIL, `verdict=ORDERING-FRAGILE`, so no target may be named.** Recomputed against
+`ripplePctAlt` (the min-over-last-3 edge period), FLOOR-TAIL / KT-AoE / SATURATED are **bit-identical**, but
+**RESIDUAL swings +49 %** (0.1045 → 0.1553) and jumps FLOOR-TAIL:
+
+```
+primary  KT-AoE > FLOOR-TAIL > RESIDUAL > inside > SATURATED
+alt      KT-AoE > RESIDUAL > FLOOR-TAIL > inside > SATURATED
+```
+
+⚠ My first reading of this was **wrong and I checked before writing it down**: from the primary column alone
+(0.1047 vs 0.1045) it looks like a tie-flip between two effectively-equal families, which would have made U6
+an over-strict criterion. It is not — RESIDUAL genuinely moves half its own value when the ambiguous edge
+period is chosen the other way, which is a real reason not to name it, and n=4 with 14/135 cells INDETERMINATE
+between the two periods is why. **U6 stands on its merits.**
+
+**★★★ THE POST-HOC STABILITY MEASUREMENT — the actual finding, and it kills the programme, not just a rank.**
+U4's fallback conclusion ("the ordering is INSTRUMENT-DEPENDENT") rested on an **n=3 anecdote**: three formulas
+I wrote gave three orderings. That is an observation about three arbitrary formulas, not a measurement of
+whether this corpus can rank these families at all. So — per this project's own rule that *a claim about a
+population should be printed by the tool, not asserted by the author* — the tool now measures it: **20 000
+seeded bootstrap resamples** (fixed LCG seed; the output reproduces bit-for-bit) of the 135 columns, per-label
+medians recomputed each time, with **no pass/fail threshold attached**.
+
+| label | P(tops the list) | mean rank |
+|---|---|---|
+| KT-AoE | **60.8 %** | 1.56 |
+| RESIDUAL | 15.5 % | 2.63 |
+| FLOOR-TAIL | 14.5 % | 2.26 |
+| SATURATED | 9.2 % | 4.03 |
+| inside | 0.0 % | 4.49 |
+
+The nominal worst family holds first place in only **60.8 %** of resamples, and three of the four candidate
+families each take it a non-trivial share of the time. ⇒ **the ~0.1 pp between-family differences are the same
+size as the instrument's own per-cell ceiling (corpus median 0.134 pp), so the ranking is noise-dominated and NO
+currency could have ordered them.** The instrument-dependence is a property of the **data**, not of my
+formulas — which means §5.16e's re-ranking and this section's re-re-ranking were both **the wrong kind of
+work**. Three rounds of arithmetic over one 135-column corpus cannot produce a target, because the corpus does
+not contain one.
+
+Also corrected here: §5.16e's *"the model is routinely ~0.06 pp more confident than the sim confirms"* was
+obtained by **subtracting `inside`'s median `pct` (0.0250) from its median `joint` (0.0814)**. Medians do not
+subtract. Measured directly, `inside`'s median `dModel` is **0.0398 pp**. The qualitative claim (a real,
+non-zero, corpus-wide model over-confidence) survives; the number was inflated ~40 %.
+
+**⚠ What this does and does not license.** It licenses **retiring the family-targeting programme** and
+retracting two of my own committed claims. It licenses **no `index.html` change whatsoever** — nothing here
+localizes anything to a line of the engine, and §5.16c's full-column control still refuses a discretized
+scorer (r 0.7910 vs 0.9337). What remains actionable is exactly three things, none of them another currency:
+a **fresh per-cell sim duel** on a named cell (the unit the corpus *can* resolve), **more columns** to buy the
+power the ranking lacks, or the queued **acceptance-criterion restatement** — still a **user call**, filed in
+ACCEPTANCE's coverage gaps.

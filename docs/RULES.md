@@ -479,12 +479,42 @@ on the patched runner.
      **last of the four** — `inside` **0.081 pp** · FLOOR-TAIL **0.106 (1.30×)** · KT-AoE **0.236 (2.90×)** ·
      SATURATED **0.268 (3.29×)** · RESIDUAL **0.274 (3.37×)**. FLOOR-TAIL looked sharp only because its own
      ripple floor is ~0.022 pp, **6× below `inside`'s 0.139** — no ruler was covering an otherwise ordinary
-     gap. ⇒ **A target list built on the masked quantity is a mis-ordered target list.** Two corollaries:
-     the ambient `joint` of ~0.08 pp is mostly `dModel` (median `pct` inside the floor is only 0.025 pp), i.e.
-     **the model is routinely ~0.06 pp more confident than the sim confirms, everywhere**; and the residual is
-     **not homogeneous** (spread 3.37× ⇒ at least one localized mechanism remains, in the *other* three
-     families). See also RULES §2 — the floor's *location* is sim-certified to one rating point, so a floored
-     cell's residual was never likely to be the haste formula.
+     gap. ⇒ **A target list built on the masked quantity is a mis-ordered target list.** Corollary: the
+     ambient `joint` of ~0.08 pp is mostly `dModel` — measured directly, the **median `dModel` inside the
+     floor is 0.040 pp**, i.e. the model is routinely ~0.04 pp more confident than the sim confirms,
+     *everywhere*. ⚠ An earlier version of this line said **~0.06 pp**, obtained by subtracting `inside`'s
+     median `pct` (0.025) from its median `joint` (0.081): **medians do not subtract.** Corrected 07-25 by
+     measuring the term itself. See also RULES §2 — the floor's *location* is sim-certified to one rating
+     point, so a floored cell's residual was never likely to be the haste formula.
+     ⚠ **This consequence's *ranking* is superseded by consequence 5** — `joint` is itself a defective
+     currency, and no family ordering from this corpus survives. What stands here is that `pct` alone hides
+     half the disagreement, and that FLOOR-TAIL's #1-by-`pct` was a small-ceiling artifact.
+  5. **★★★ DO NOT TARGET A FAMILY — THREE CURRENCIES GAVE THREE ORDERINGS, AND THE CORPUS CANNOT RANK THEM
+     AT ALL** (`tools/unexplained-gap.mjs`, 07-25). Consequence 4's `joint` adds an **unbounded** term
+     (`dModel` is model-vs-model — no sim, so no lattice and no artifact budget) to a **bounded** one (`pct`,
+     capped by `ripplePct`), and family ceilings differ **9×** (FLOOR-TAIL 0.022 pp vs SATURATED 0.189), so a
+     cross-family `joint` comparison largely compares **ceilings**. Subtract the budget from the term that
+     *has* one: `unexplained = dModel + max(0, pct − ripplePct)` — a lower bound on the model's valuation
+     error. The ordering then changes for the **third** time (medians, pp; bootstrap = P(this family is worst)):
+
+     | family | by `pct` | by `joint` | by `unexplained` | P(worst) |
+     |---|---|---|---|---|
+     | RESIDUAL | 1st (0.260) | 1st (0.274) | 3rd (0.105) | 15.5 % |
+     | KT-AoE | 2nd (0.210) | 3rd (0.236) | **1st (0.159)** | 60.8 % |
+     | SATURATED | 3rd (0.193) | 2nd (0.268) | **last (0.037)** | 9.2 % |
+     | FLOOR-TAIL | 4th (0.074) | 4th (0.106) | 2nd (0.105) | 14.5 % |
+     **Not one family holds its rank.** A seeded 20 000-resample bootstrap of the 135 columns settles why: the
+     nominal worst tops only **60.8 %** of resamples and three of four families each take first place a
+     non-trivial share of the time. ⇒ **the ~0.1 pp between-family differences are the same size as the
+     instrument's own per-cell ceiling (corpus median 0.134 pp), so no currency could have ranked them** — the
+     instrument-dependence is a property of the **data**, not of the formulas. Two claims this retracts:
+     **SATURATED is VINDICATED** (0.037 pp = **0.92× ambient**, mean rank 4.03 of 5 — the *least* anomalous
+     family; `joint` flattered its defect precisely because SATURATED is *defined* by having its `pct` nearly
+     covered by its own large ceiling), and **FLOOR-TAIL's "least anomalous of the four" is withdrawn as a
+     superlative** — it returns to 2nd at 2.63× ambient once its near-zero ceiling excuses none of its
+     deficit. What stands is the *measurement* (its ceiling is 6× below `inside`'s), never a rank.
+     ⇒ **Aggregate re-ranking of this corpus is exhausted. Target a cell with a fresh sim, or get more
+     columns — do not invent a fourth currency.**
   This is the **tail** face of the same integer-vs-continuum law whose **interior-boundary** face is PHASE8's
   FLOOR LAW (a value window covers exactly `floor(D/Δ)` casts in the sim).
   **⚠ The fix is NOT to discretize the scorer.** Swapping the integral for the sim's own sum flips the
