@@ -320,3 +320,76 @@ the perf win (one fewer duplicated walk) is incidental.
 Both are gated the same way as everything else: exact-match 25/25. Unlike 4.1–4.5 neither changes what is
 computed, so a *failing* suite after either one means the refactor was wrong, never that the plans moved
 legitimately — there is no `--update` branch here.
+
+### 4.10 The §4.9 patch, written out (line anchors RE-VERIFIED 07-25 against `index.html`)
+
+*(§4.9 says what to collapse; this is the code, so the landing is mechanical the moment the engine unfreezes.
+Anchors confirmed by re-read: accept sites **1149, 1155, 1165, 1186, 1207**; block-shift twins **1179–1181**
+and **1258–1260**; `polish()` spans **1137–1216**; `teleportRep` **1256–1263**. The three non-conforming
+accept sites are **1341, 1354, 2816** — 1341/1354 read a `cache.get(sig).val` rather than simulating, so they
+share the `> x + 1e-7` rule and nothing else. Leave them alone.)*
+
+**(A) One accept path.** Insert at the top of `polish()`, after `let s = seed, val = simulate(s, cfg).robust;`:
+
+```js
+  // ONE accept path for every move family: clone → mutate → repair → simulate → strict-improve.
+  // A mutator returning false VETOES before repair/simulate (the joint move's moved<2 rule).
+  const tryMove = mutate => {
+    const cand = cloneS(s);
+    if (mutate(cand) === false) return false;
+    const rep = repair(cand, cfg);
+    const v = simulate(rep, cfg).robust;
+    if (v > val + 1e-7) { s = rep; val = v; return true; }
+    return false;
+  };
+```
+
+Then each family becomes its mutator, keeping its own `break` target:
+
+| site | now | after |
+|---|---|---|
+| 1145–1149 | single-use shift | `if (tryMove(c => { c[key][i] += d; })) { improved = true; break; }` |
+| 1150–1156 | suffix shift | `if (i < s[key].length - 1 && tryMove(c => { for (let j = i; j < c[key].length; j++) c[key][j] += d; })) { improved = true; break; }` |
+| 1161–1165 | add-a-use | `if (tryMove(c => { c[key].push(extra); })) { improved = true; break; }` |
+| 1177–1186 | joint window move | `if (tryMove(c => shiftBlock(c, cfg, X, d) >= 2)) { improved = true; break outerW; }` |
+| 1202–1207 | escape/drop-one | `if (tryMove(c => { c[key][j] += d; c[key].splice(i, 1); })) { improved = true; break outer; }` |
+
+**Why byte-identical, argued not assumed.** (i) Every mutator performs the *same statements in the same order*
+on the same freshly-cloned object — no float expression is rewritten, only relocated. (ii) `cloneS(s)` moves
+from the call site into the helper, but `s` is unchanged between the old clone point and the old mutate point
+in all five, so the cloned bits are identical. (iii) The veto returns **before** `repair`/`simulate`, exactly
+where the old `continue` sat, so the *sequence of `simulate` calls* is unchanged — which matters because the
+memo's `CAP` eviction is call-order-dependent (eviction can only force a recompute, never change a value, but
+keeping the sequence identical means we don't even need that argument). (iv) `improved = true` stays at the
+call site rather than inside the helper, so the suffix-shift's guard (`i < s[key].length - 1`) still
+short-circuits before any clone.
+
+⚠ **One thing that is NOT free:** the helper creates an arrow closure per candidate — ~22 per `(key, i)` in the
+SHIFTS loop. That is allocation in the hottest loop in the file, i.e. the same class of cost §4.4/H3 is trying
+to *remove*. Predicted to be noise next to `cloneS + repair + simulate` (µs vs. ns), but the landing gate is
+**25/25 AND a wall-time re-measure**; if it regresses, hoist the five mutators to module scope taking
+`(c, ctx)` instead of closing over `key/i/d`. Do not land it on the census argument alone.
+
+**(B) One block-shift.** New top-level function next to `teleportRep`:
+
+```js
+// Press-windows are magnets: a cluster at one press second moves as a block or not at all.
+// Shared by polish()'s joint window move and basinHop's teleport. Returns how many uses moved.
+function shiftBlock(cand, cfg, X, delta) {
+  let moved = 0;
+  for (const key in cand) {
+    if (cfg.fixed[key]) continue;
+    for (let i = 0; i < cand[key].length; i++) if (Math.round(cand[key][i]) === X) { cand[key][i] += delta; moved++; }
+  }
+  return moved;
+}
+```
+
+`teleportRep`'s body collapses to `const cand = cloneS(baseS); shiftBlock(cand, cfg, pr.X, pr.A - pr.X); return repair(cand, cfg);`.
+The one arithmetic difference is that `pr.A - pr.X` is now evaluated **once** instead of per matching use —
+identical by IEEE determinism (both operands are plain numbers, unchanged across the loop). The `moved < 2`
+guard stays at polish's call site as `>= 2` inside the mutator, per §4.9(B).
+
+**Landing order within §4.9:** (B) first — it is 8 lines, touches two call sites, and cannot interact with the
+accept path. Then (A). Re-run `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` after
+each, separately, so a failure names its own cause.
