@@ -52,6 +52,20 @@ valuation but in the two moving **as a pair**. Two structural by-products: wowsi
 lockout makes **every single-trinket intermediate illegal in both directions** (so M3/M4 are inseparable),
 and **drift magnitude is not a sufficient legality test** — two of the four illegal plans were retimed by
 only 2.0–2.1 s, under one cast interval. §17 pre-registers the split of `M34` into single presses.
+**Round 7** (07-25, §17): the split, walked through a **parked** `MQG@100` so every intermediate clears the
+lockout. **★★★ B2 IS ONE PRESS.** H1 passes decisively (path additivity to **0.0007 / 0.0003 pp**, ~70× under
+the bar), **H3 exonerates `Icon`** (moving it alone costs **+0.0044 / +0.0027 pp**, confirming §15.5's exact
+0.000 survives context), and **H2 fires on the pre-registered step P3** — `MQG 100 → 202`, arriving on
+`IV@202` — worth **−0.2106 pp (ctx A) / −0.4068 pp (ctx B)**, i.e. **53–103 % of the whole −0.396 pp gap**,
+with H4 showing P3 carries essentially all of the context asymmetry (0.196 pp of it, vs 0.05 and 0.002 for
+the other steps). Stated plainly: moving `MQG` off a solo parking spot onto `IV` at the end of the fight, the
+**model pays +0.26…+0.36 % and the sim pays ≈ 0**. Legacy inputs agree throughout. A third structural
+by-product, now a standing gate: H5's a-priori check passed on all 8 plans, but the **cast-phase cascade**
+still slid `IV#3` by 1.00 s across ctx-A's P3 — *"hold the rest fixed" is a property of the request, not the
+execution* — and it is ctx **B** (controls still to 0.10 s) that carries the **larger** residual, which is
+what rules the confound out rather than merely bounding it. §18 pre-registers the 2×2 that separates P3's two
+conflated causes — **the stack** (two haste multipliers composing) vs **the kill** (a haste window with no
+runway left to cash its saved time) — now legal at last because `Icon` can be switched off.
 
 Phase 7 fixed everything cheaper: three press-execution scorer terms (RULES §3b), two search passes, the
 metric (var0.5 + wall-jitter), the KT AoE harness, and — the big one — **cross-haste pooling, which makes
@@ -1238,6 +1252,130 @@ evaluations** (the two intermediates × two contexts); the endpoints are reused.
 ### 17.4 What this round cannot do
 It cannot explain *why* the surviving press is mispriced — that is round 8. It converts "the trinket pair"
 into "this one press", which is the last decomposition step available before the question becomes mechanistic.
+
+### 17.5 VERDICT — ★★★ **B2 is ONE PRESS.** H1 passes, H2 fires on P3, H3 **exonerates Icon**
+
+All four pre-registered falsifiers resolved, both input configs agree, and the pre-registered priors on H2
+and H3 were both correct. Instruments: `$SP/p8/r7path.sh` (sim leg, 8 plans) · `r7model.mjs` (model leg) ·
+`r7stat.mjs` (reduction) · `r6verify.mjs` (H5). `T=229 · haste 70 · Lust@162 · CS@20 · var 3.0 · 20 000 iter
+· seed 11 · cold open · infinite mana`.
+
+**The path, primary inputs (`sp=1450`, `t5two` on).** Δresid = `d_sim − d_model`, both in %.
+
+| step | what moves | ctx | `d_sim` | `d_model` | **Δresid** |
+|---|---|---|---|---|---|
+| P1 | `MQG 9 → 100` (leaves the opener) | A | −0.5850 | −0.5399 | −0.0450 |
+| P2 | `Icon 29,183 → 4,182` (**Icon alone**) | A | +0.1588 | +0.1544 | **+0.0044** |
+| P3 | `MQG 100 → 202` (arrives on `IV@202`) | A | +0.0505 | +0.2610 | **−0.2106** |
+| P1 | `MQG 9 → 100` | B | −0.0973 | −0.1030 | +0.0057 |
+| P2 | `Icon 29,183 → 4,182` (**Icon alone**) | B | +0.1767 | +0.1740 | **+0.0027** |
+| P3 | `MQG 100 → 202` | B | −0.0468 | +0.3600 | **−0.4068** |
+
+- **H1 — path additivity: PASSES, and not marginally.** ctx A `Σ = −0.2512` vs endpoint `−0.2505`
+  (|diff| **0.0007 pp**); ctx B `Σ = −0.3983` vs `−0.3986` (|diff| **0.0003 pp**). Both are ~70× under the
+  0.05 pp bar. The parked position at 100 s is neutral: the split is a real split, and the endpoints
+  reproduce §16.5's `M34` exactly. Legacy inputs (`sp=1387`, `t5two` off) agree: 0.0010 / 0.0002 pp.
+- **H2 — localization: FIRES on P3, as pre-registered.** P3 is the only step clearing 0.15 pp, in both
+  contexts and both input configs (primary −0.2106 / −0.4068; legacy −0.2120 / −0.4241). Against the
+  −0.396 pp endpoint gap, **P3 alone is 53 % (ctx A) to 103 % (ctx B) of B2.**
+- **H3 — the Icon control: PASSES. Icon is EXONERATED.** P2 moves only Icon and reads **+0.0044 / +0.0027 pp**
+  — an order of magnitude under the bar, and consistent with §15.5's "Icon solo = exactly 0.000". §15.5
+  survives context. The alternative branch (that the whole phase's "solo = exact" reading was wrong) does
+  not fire.
+- **H4 — context sensitivity: P3 carries all of it.** |A − B| per step: P1 **0.0508**, P2 **0.0017**,
+  P3 **0.1962** pp. G5's "context is worth 0.07–0.16 pp" is localized to the same press.
+
+**★ The finding, stated as sharply as the data allows.** Moving `MQG` from a solo mid-fight parking spot
+onto `IV@202` in the last 27 s, the **model pays +0.26 to +0.36 %** and the **sim pays ≈ 0** (+0.05 % / −0.05 %,
+i.e. inside its own 0.0036 % resolution × the run-to-run spread). B2 is not a diffuse accumulation, not an
+emergent joint interaction, and not the Icon: **the model over-values one press — `MQG` stacked onto `IV` at
+the end of the fight — by 0.21–0.41 pp.**
+
+**★★ A confound, and the reason ctx B is the leg to trust.** H5's a-priori structural check passed on all 8
+plans (Icon/MQG never within 20 s ⇒ no category-1141 retime). But the *log* check shows the **cast-phase
+cascade** moving presses we asked to hold fixed — a trinket move perturbs every downstream boundary-snapped
+press:
+
+| ctx | plan | `IV#3` fires | `AP#2` fires |
+|---|---|---|---|
+| A | S0 / S1 / S2 / S3 | 200.76 / 202.00 / 202.00 / **201.00** | 189.51 / 189.65 / 189.65 / 189.75 |
+| B | S0 / S1 / S2 / S3 | 202.12 / 202.03 / 202.03 / **202.13** | 192.07 / 192.99 / 192.99 / 193.10 |
+
+Across ctx-A's P3 the third Icy Veins slides **1.00 s** — a 20 %-haste window moving by nearly half a cast,
+while we claim "only MQG moved". Across ctx-B's P3 it moves **0.10 s**. So **ctx B's P3 is the clean
+measurement — and it is the *larger* of the two (−0.4068 vs −0.2106)**, which is what rules the confound out
+as the cause rather than merely bounding it. (The `AP@188 → 189.5–189.8` drift is round 6's cooldown chain:
+`AP@8` snaps to 9.06, so `AP#2` cannot fire before 189.06. It is present in every ctx-A plan and differences
+out.) Generalized: **"hold the rest fixed" is a property of the request, not of the execution** — round 8
+gates on it explicitly (H5b below).
+
+**A non-finding, recorded so it is not re-derived.** Deterministic AB cast counts from the `--var 0 --iter 1`
+legality logs are 181 (AS0) and **180 for all seven other plans** — i.e. the P3 arms sit in the same integer
+bucket. This is *not* evidence that the sim gains no casts from `MQG@202`: `--var 0` quantizes to integer
+casts (★★ §11), which is exactly why the measurement runs at `--var 3.0`. The counts are reported here only
+to document that AS0's outlier +0.585 % P1 drop in ctx A is a whole-cast step change, not a smooth marginal.
+
+## §18 — ROUND 8, PRE-REGISTERED: **is it the stack, or is it the kill?** (the 2×2 that §14 could not run)
+
+### 18.1 The question
+`P3` moves `MQG` from `100` to `202` and conflates exactly two causes:
+
+- **(a) the stack** — at 202 `MQG` lands on `IV@202`, so two haste multipliers compose. The model composes
+  them multiplicatively and prices the marginal cast rate accordingly.
+- **(b) the kill** — 202 is 27 s from the end of a 229 s fight, so the time the buff saves has almost no
+  runway left in which to be converted into a completed cast.
+
+Every earlier round hit this wall because `Icon`'s 20 s category-1141 lockout pinned `MQG` out of most
+positions. **H3 has now exonerated `Icon` — so round 8 turns it OFF**, `MQG` becomes the only on-use trinket,
+the lockout constraint disappears entirely, and the crossed design §14 wanted becomes legal.
+
+### 18.2 The design — cross {stacked, solo} × {mid-fight, at the kill}
+Rest-context **B only** (the clean leg): `BL@162 · AP@4,192 · Zerk@6,192 · IV@0,20,202 · CS@20`, `Icon`
+**disabled**, gear haste 70. `MQG` is the only thing that moves. Two fight lengths, because `IV`'s 180 s
+cooldown (`IV@0,20` + Cold Snap ⇒ `IV#3` no earlier than 200) makes "stacked **and** at the kill" reachable
+only at `T=229`, and "stacked **and** mid-fight" reachable only by extending the fight:
+
+| arm | `T` | `MQG` | cell | runway after the buff |
+|---|---|---|---|---|
+| **A0** | 229 | 100 | reference — solo, mid | 109 s |
+| **A1** | 229 | 202 | **stacked (`IV`) × kill** — reproduces P3 | 7 s |
+| **A2** | 229 | 170 | **stacked (`BL` 162–202) × mid** | 39 s |
+| **C0** | 300 | 100 | reference — solo, mid | 180 s |
+| **C1** | 300 | 202 | **stacked (`IV`) × mid** — same press, 78 s of runway | 78 s |
+| **C2** | 300 | 272 | **solo × kill** | 8 s |
+
+Six sim runs, six model evaluations. `MQG`'s 300 s cooldown means one press in every arm; no arm can gain a
+second use of anything at `T=300` (`IV` 202+180, `AP` 192+180, `Zerk` 192+180 all exceed 300), so the
+schedules are directly comparable within a length.
+
+### 18.3 The quantity
+The four contrasts, each `Δresid = d_sim − d_model` against its own-length reference:
+
+- **K1** `A0→A1` — stacked × kill. **Must reproduce ≈ −0.41 pp**, or the instrument is not measuring §17's P3.
+- **K2** `A0→A2` — stacked × mid (on `BL`, the bigger multiplier).
+- **K3** `C0→C1` — **the decisive contrast**: the *identical press position* as A1, with 78 s of runway.
+- **K4** `C0→C2` — solo × kill.
+
+### 18.4 Pre-registered falsifiers
+- **J1 — the stacking hypothesis.** `|K3| ≥ 0.15` and `|K2| ≥ 0.15` and `|K4| < 0.05`. Reading: the model
+  mis-composes two overlapping haste multipliers; fight position is irrelevant. Fix lands in the cast-rate
+  integral's buff composition.
+- **J2 — the kill-proximity hypothesis.** `|K4| ≥ 0.15` and `|K2| < 0.05` and `|K3| < 0.05`. Reading: the
+  model over-credits a haste window that has no runway left to cash its saved time into a completed cast —
+  a **tail-truncation** gap. Fix lands in how the integral terminates at `T`.
+- **J3 — both, additively.** `K1 ≈ K2 + K4` within 0.05 pp with both terms ≥ 0.10 pp.
+- **J4 — neither / interaction.** K1 reproduces but K2, K3, K4 are all < 0.10 pp. Then the defect needs
+  *both* conditions simultaneously and round 9 must probe the joint cell directly rather than its margins.
+- **H5b — the cascade gate (new, from §17.5).** For every contrast, the fire times of all **non-`MQG`**
+  presses must move by **< 0.30 s** between the two arms. A contrast that violates it is reported as
+  *contaminated* and does not carry a verdict. This is the a-priori-legality lesson extended: structural
+  legality is necessary, not sufficient — the log must also show the *controls* held still.
+
+### 18.5 What this round cannot do
+It cannot localize the fix inside `simulate()` — it partitions the defect into "buff composition" vs
+"fight-end termination", which are different code paths and different fixes. It also cannot rule out that
+the same defect exists at other haste levels; B2 is a haste-70 case and the fix must be re-validated across
+the acceptance grid before it lands.
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it

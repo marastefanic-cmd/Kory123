@@ -54,7 +54,25 @@
    **opening ramp** is under-credited ~**+0.079 pp** (6/6 haste legs, both hastes) — a genuine defect in
    that axiom, recorded in RULES §3 and DIARY's open debts, deliberately **unpatched** (it would move
    goldens; nothing lands mid-acceptance-round). It is not B2 either: the only ramp-coverage difference
-   between the plans is `Zerk@0` vs `Zerk@6` on a ramp `IV@0` covers in both, worth 0.009–0.027 pp)
+   between the plans is `Zerk@0` vs `Zerk@6` on a ramp `IV@0` covers in both, worth 0.009–0.027 pp.
+   **Rounds 6 and 7 ran and closed, and between them they LOCALIZED B2 COMPLETELY** (§16.5, §17.5). Round 6
+   walked the five-press path between the two real layouts in both directions: **G1 reproduces §1's headline
+   to four digits** (sim +0.3602 %, model −0.0204 %), and **G3 fires** — one move, the **trinket pair**,
+   carries **−0.325 pp of the −0.396 pp gap (82 %)**, same-signed both ways, against a −0.02…−0.06 pp
+   background. Round 7 then split the pair by parking `MQG` at 100 s so every intermediate clears the
+   category-1141 lockout: **path additivity holds to 0.0007 / 0.0003 pp**, the **`Icon`-only step costs
+   +0.0044 / +0.0027 pp — `Icon` is EXONERATED** (§15.5's exact 0.000 survives context), and the entire
+   defect sits on **one press: `MQG 100 → 202`, arriving on `IV@202`** — **−0.2106 pp / −0.4068 pp, 53–103 %
+   of the whole gap**, and carrying essentially all of the context asymmetry (0.196 pp of it). Stated
+   plainly: **the model pays +0.26…+0.36 % for moving `MQG` onto `IV` at the end of the fight, and the sim
+   pays ≈ 0.** §18 is pre-registered and crosses {stacked, solo} × {mid-fight, at the kill} — legal at last
+   because `Icon` can now be switched off — to decide between **haste-multiplier composition** and
+   **fight-end truncation**. Three method by-products banked in TOOLING: **drift magnitude is not a legality
+   test** (two illegal plans retimed by only 2.0–2.1 s, under one cast interval — run the a-priori structural
+   check FIRST), the **cooldown chain** (`AP@[8,188]` is exactly one CD apart and cannot execute: 9.06 ⇒
+   189.51), and the **cascade gate** (a press moving slides every downstream boundary-snapped press — `IV#3`
+   by 1.00 s — so *"hold the rest fixed" is a property of the request, not the execution*; differential
+   contrasts must now verify the controls held to < 0.30 s))
    and `docs/PHASE9.md` (**performance/refactor**, user-reported CPU cost — notes + hypotheses only so
    far, nothing landed; every change there is gated on byte-identical plans. **§4.7** turns the "fewer
    steps" ask into a *pass-firing census* — a pass is redundant iff its input is already its own fixpoint

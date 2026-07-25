@@ -462,6 +462,42 @@ of the tool are legal; **hand-written probe specs are the exposure.**
 Press lag is real but modest and boundary-driven: a press fires at the next cast boundary, so it lands
 ~0.05–0.1s late inside a fast hasted window and up to ~1.2s late during the cold opener ramp (2.5s casts).
 
+### ★★ Verifying a hand-built spec — the order matters, and drift magnitude is NOT a legality test
+
+The natural check ("did anything fire far from where I asked?") **is not sufficient**, and PHASE8 §16.5
+proved it on live data. Of the four illegal plans that round, two were retimed by only **2.13 s and 2.00 s**
+— *less than one unbuffed cast interval at gear haste 70* (`2.5 / 1.0444 = 2.394 s`). A drift threshold
+loose enough to accept honest press lag is automatically loose enough to accept a lockout retime.
+
+**Run the checks in this order:**
+
+1. **A-priori structural legality, before any sim run.** Every on-use trinket pair ≥ 20 s apart; no two
+   presses of the same cooldown closer than its cooldown. A spec that fails here is *discarded*, never
+   measured and never interpreted.
+2. **Combat-log fire times, to confirm step 1 — not to replace it.**
+3. **★ The cascade gate, for differential probes.** When a probe claims "only X moved", check the fire
+   times of the **controls** too. A press moving perturbs every downstream boundary-snapped press: in
+   PHASE8 §17.5 a pure trinket move slid the third Icy Veins by **1.00 s** in one rest-context (and only
+   0.10 s in the other). *"Hold the rest fixed" is a property of the request, not of the execution.*
+   Require controls to move < 0.30 s between the two arms, or report the contrast as contaminated.
+
+**★ The cooldown chain — two presses exactly one cooldown apart cannot execute.** Press lag compounds
+forward: request `AP@[8, 188]` (exactly 180 s apart) and the first press boundary-snaps to **9.06**, so AP
+is not ready until 189.06 and the second fires at the next boundary, **189.51**. This is deterministic, not
+noise, and it is why "an exact-cooldown-apart pair" is a structurally different plan in the sim than in the
+model. Leave ≥ 2 s of slack in a hand-built spec, or expect the second press late by one boundary.
+
+**Log-format facts (all verified, all easy to get wrong):**
+- Player lines carry a source prefix: `[  5.18] [Player (#1)] Casting {SpellID: 12042} (Cost = …)`. A grep
+  without the prefix also matches pet/raid lines.
+- **Bloodlust has no `Casting` line at all** — it is applied *to* the player, so it appears only as
+  `Aura gained: {SpellID: 2825, Tag: -1}`. **Cold Snap has no aura** — only a `Casting` line. A press
+  verifier must union both event kinds and dedupe (the two events of one press land < 0.05 s apart).
+- Match **exact** id strings (`SpellID: 12472`, not `12472`) *and* guard the trailing digit (`2825` is a
+  prefix of `28250`), or the match silently lands in the `t=0` raid-buff block.
+- The reference implementation of all of the above is `$SP/p8/r6verify.mjs` (takes a directory of
+  `<name>.log` + `<name>.spec.json` + a `manifest.json`).
+
 **★ RUNNER PROVENANCE — one true binary.** The canonical runner is built from the scratchpad `wowsims`
 clone (`ade9f39` + `apl-schedule-strict-ready.patch` + `ap-cd-at-cast.patch`):
 `go build -tags with_db -o runner-ap180 ./cmd/runner`. A stale pre-patch binary once sat at the
