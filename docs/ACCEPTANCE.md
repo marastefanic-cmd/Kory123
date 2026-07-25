@@ -110,32 +110,40 @@ the authoritative row-by-row ledger.
 - **`tools/genapl.mjs`** — model plan → wowsims APLRotation JSON (the bridge that makes a schedule
   simmable). **Never** set `_prestack>0` for a model comparison.
 
-## Current status (2026-07-24, round 3 — the post-Phase-7-fix full run) — NOT PASSING (B), improved
-All 36 tables re-run on the fixed engine (cross-haste pooling ON, var0.5, per-wall jitter v2, KT AoE
-valued). Current round in `tools/xval-results/`; earlier rounds under `tools/xval-results-archive/`
-(`phase6/`, `phase7-round2/`). Invariants recomputed with `tools/xval-verify.mjs`.
+## Current status (2026-07-25, **round 4** — gathered on the shipped post-§5.11 engine) — NOT PASSING (B)
+All 36 tables re-run on the current engine (cross-haste pooling ON, var0.5, per-wall jitter v2, KT AoE
+valued), on the **same 36 seeds as round 3**. Current round in `tools/xval-results/`; earlier rounds
+under `tools/xval-results-archive/` (`phase6/`, `phase7-round2/`, `phase7-round3/`). Invariants
+recomputed with `tools/xval-verify.mjs` and cross-checked by `tools/xval-collect.mjs` — the two agree
+on every headline number.
 - **Invariant A: PASS** — `monoDip = 0.0000%` on all 36 tables (every row rechecked cell-by-cell).
 - **Invariant B (model side, B1): HOLDS BY CONSTRUCTION** — pooling makes every emitted plan the argmax
   over the cross-haste champion set, so no borrowed plan can out-SCORE a native (verified per run).
-- **Invariant B (sim side): FAILS** — 145 borrowed-win columns across 34/36 tables (bar = zero).
-  Distribution: median 0.042%, mean 0.081%, worst **0.40%**; ≥0.3%: 9. The ≥0.3% head is the **B2
-  scorer-gap family** (`docs/PHASE8.md` — the pull-anchored-haste joint interaction; worst case isc+mqg
-  medlong @70). The sub-0.05% tail (half the columns) sits at the fixed-length measurement's
-  quantization scale — eliminating it is a design task (length-independent metric or a sim-side
-  by-construction guarantee), tracked, not excused.
-- Movement Phase 6 → round 3: worst 0.77% → 0.40%; KT's 2.68% AoE artifact eliminated (now 0.39%,
-  ordinary); mean width halved (0.160% → 0.081%).
+- **Invariant B (sim side): FAILS** — **142** borrowed-win columns across 34/36 tables (bar = zero).
+  Distribution: median 0.044%, mean 0.081%, worst **0.40%**; ≥0.3%: 9, ≥0.2%: 17, ≥0.1%: 34. CLEAN
+  2/36 (`isc+scb medlong`, `isc+scb xl`). The ≥0.3% head is the **B2 scorer-gap family**
+  (`docs/PHASE8.md`; worst case `isc+mqg medlong @sim70`, `plan@40` 2787.5 > native 2776.5). The
+  sub-0.05% tail (half the columns) sits at the fixed-length measurement's quantization scale —
+  eliminating it is a design task (length-independent metric or a sim-side by-construction guarantee),
+  tracked, not excused.
+- Movement Phase 6 → round 3 → round 4: worst 0.77% → 0.40% → **0.40%**; columns 167 → 145 → **142**;
+  KT's 2.68% AoE artifact eliminated at round 3 (now 0.39%, ordinary); mean width 0.160% → 0.081% →
+  0.081%.
+
+**Round 4 closes the "engine drift" debt round 3 carried** — the record now matches the shipped engine.
+It also settles what §5.11 was worth: 29/36 tables came back byte-identical, the 7 that moved changed
+at `h0` only and mixed-signed, and the −3 columns are tie-resolution landing where it lands, **not the
+deficit shrinking** (PHASE7 §5.13). Critically, the worst cell is in the byte-identical set — B2 is
+empirically invariant to the tie-break, so PHASE8's charge is unchanged.
+
+**Data was certified before being accepted as the record** (the harness audit of 07-25 found 36
+false-pass defects across 14 tools, several of which could have silently corrupted a whole round):
+6 distinct per-kit haste grids each correctly matched to its kit — none is the coarse
+`[0,100,200,300,400]` default an empty `HASTES` would have substituted — all 345 plan rows carry
+`_prestack:0` (cold open, no prepull), no `NaN`/`undefined`, all 36 carry `XVAL-DONE`.
 
 **So: not passing yet.** Remaining owners: PHASE8 (the B2 family, highest-effort scorer work) and the
 metric-design task for the quantization tail. Re-run this in full after each.
-
-**Engine drift since round 3 — a full re-run is OWED.** The round-3 tables were gathered before the
-§5.11 legibility fix landed. That fix is *almost* score-neutral but not entirely: the packing pass's
-second anchor base (`A2`) is a **strict** search win, so the shipped engine can now emit a *different,
-better* plan on some cells than the one round 3 measured (observed: `4:00 lust 0:05`, +0.0067 eff
-casts). The rule stands — **the engine that ships must match the acceptance record** — so round 4 must
-be gathered on the post-§5.11 engine before any pass/fail claim is made from these numbers. Round 3's
-verdict (A passes, B fails with 145 columns) is the best current estimate, not the record.
 A performance phase is also open (`docs/PHASE9.md`); by construction it must leave every plan
 byte-identical, so it cannot invalidate a round — but re-run the exact-match suite after each of its
 steps, and if any plan ever *does* move, the round is void.
