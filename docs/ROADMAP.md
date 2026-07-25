@@ -17,7 +17,14 @@
   scoping (`ungraded=` bucket for pin-less tables; KT's P7.14 repricing no longer reads as search
   regressions). Final audit: `worse=7 better=5 tie=44 ungraded=30` — the 7 are the attributed
   groupSeeds cells below.
-- ★★★ **THE §5.15 REGRESSIONS ARE ATTRIBUTED AND THE FIX IS STAGED (PHASE9 §5.16).** All 7 cells
+- ★★★ **THE §5.15 REGRESSIONS ARE ATTRIBUTED AND THE FIX IS ★LANDED★ (PHASE9 §5.16; 07-26).**
+  Golden gate: 24/25 bit-identical + **Kael'thas strictly better (Δscore +17.79, terminal cluster
+  381→396)**, golden re-recorded on the arbiter rule; exact-match re-run and green post-update.
+  CPU: +16.5% vs the −8.5% landing (net ≈ +6.6% vs pre-§5.12) — reclaim candidates open in
+  PHASE9 §4. The landing also carries the footer build stamp and the preset-overwrite flash.
+  **Next: ROUND 7 — re-gather the cells fix moved** (the 7 healed class cells + KT under the
+  better plan; cheap under DPS_CACHE) so the acceptance ledger reflects the landed engine, then
+  the round-diff vs round 6 must read `worse=0`. All 7 cells
   = **groupSeeds ALONE** (groom exit exonerated by single-variable isolation). Mechanism: an
   ADDITIVE seed class wired through three EXCLUSIVE selection points (seed-fill eviction of
   randoms · top-6 snap displacement · winner-take-all into basinHop — h160: a +34 snap lead in a

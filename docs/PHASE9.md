@@ -2804,3 +2804,119 @@ that reports an *absence* ("0 plans changed") certifies nothing about the cases 
 landings were gated on plan-**identity**, which is strictly stronger than score-non-decrease *where it
 holds* — and says exactly nothing where it does not. The stronger check bought the weaker one's
 coverage for free on 25 cases and zero coverage everywhere else.
+### §5.16 ★★★ ATTRIBUTION AND FIX — the §5.15 regressions are GROUPSEEDS ALONE, through three eviction/winner-take-all sites; the groom exit is exonerated (07-25)
+
+§5.15 owed an attribution: groom early exit (§5.12) vs `groupSeeds` (§5.14) vs interaction, and by
+the time it ran the list had grown from 3 regressed cells to **7** (the full-30-table EFF-AUDIT:
+`movedSpecs=52 → worse=7 better=5 tie=40`). The instrument is a bare-node reproduction of
+`xval.mjs`'s exact champion-search + cross-haste pooling (`attr-cell.mjs`, scratchpad; engine-node
+`loadEngine` + the engine's own `GAME` for the plain normalizer), validated by reproducing the
+committed round-6 `mqg-skull-medlong` table **bit-for-bit** — all 10 effs AND all 10 emitted
+fire-time specs — before any variant was graded.
+
+**Single-variable isolation, worst table (`mqg-skull-medlong`, cells @h160 −0.0061% and @h265
+−0.0347%):** four engine variants built off HEAD by removing one landing at a time.
+
+| variant | @h160 | @h265 | reads as |
+|---|---|---|---|
+| base (both changes removed) | 195.754 | 204.883 | = round 5, bit-for-bit |
+| groom-exit only | 195.754 | 204.883 | = round 5 — **groom exonerated** |
+| groupSeeds only | 195.742 | 204.812 | = round 6 — **the whole regression** |
+| full (= HEAD) | 195.742 | 204.812 | = round 6 |
+
+The same isolation at `isc-mqg-medlong @h20` (the smallest cell, −0.0005%) reads identically:
+base = groom = r5, seeds = r6. **Every attributed cell is GROUPSEEDS ALONE; the groom early exit
+has zero confirmed casualties**, consistent with §5.12's determinism argument. (The base variant
+matching round 5 bit-for-bit on full tables also re-confirms P7.14 is inert on class fights.)
+
+#### The mechanism is not one bug but THREE — all the same shape: an ADDITIVE seed class wired
+#### through EXCLUSIVE selection points
+
+`groupSeeds` was designed as pure addition ("a missing seed class"). The pipeline it was added to
+has three winner-take-all narrows, and at each one an added entrant can EVICT the entrant that was
+going to win:
+
+1. **The seed fill** (`for (gs of groupSeeds) seeds.push(gs); while (seeds.length < starts)
+   seeds.push(randomSchedule(...))`) — group seeds count TOWARD `starts`, so once the structured
+   count passes 14 the random starts are silently displaced (the h265 trace: `n=14` with 10 group
+   seeds present ⇒ every random start gone, and one of those randoms found the winner). Note the
+   PRNG stream itself is safe (`rand` is drawn per random actually pushed), the COUNT was the bug.
+2. **The snap stage's top-6 cut** (`results.sort(); slice(0, 6)` with `best = null` — the final is
+   rebuilt EXCLUSIVELY from the six snapped candidates) — a group entrant with a high raw val
+   crowds a base entrant out of the six, and §5.14's own headline ("a seed's raw score is not a
+   proxy for its basin", polish-best at raw rank 13/40) says exactly why that displacement loses.
+3. **Winner-take-all into `basinHop`** — measured at h160: the group entrant out-snaps the base
+   winner by **+34** (536986 vs 536952), its basin is a dead end (hop gains **+0**), the displaced
+   base winner's basin climbs **+3594** (to 540547). A 0.006% raw lead traded for a 0.66% final
+   loss.
+
+#### The fix (LANDED): additive seeds get additive plumbing
+
+Three edits, each restoring "adding entrants never removes entrants":
+
+- **Fill first, append after.** Randoms fill to `starts` BEFORE the group seeds are appended, and
+  the group range is tagged (`grpStart`). The pre-landing entrant population is a superset floor.
+- **The six base snaps stay; group snaps ADD.** `topBase = top-6 of non-group` (the pre-landing
+  cut, exactly), plus every group entrant above that bar as EXTRA snap candidates, tracked as a
+  separate `bestGrp`.
+- **Hop both; the base hop is a STRICT-improvement override.** When the group entrant led at the
+  snap (i.e. when the old single-winner rule would have carried it), BOTH lines are hopped and the
+  old selection stands unless the base hop strictly beats it. ⇒ the engine differs from the landed
+  one exactly where the base basin provably wins (h160: +3560), and nowhere else; §5.14's `5:40`
+  win is preserved (its group entrant strictly wins). The first cut of this rule broke ties toward
+  the BASE line and promptly lost a legitimate round-6 gain (`scb-skull-xl @h260`, +0.005) — the
+  probe showed the two hops meeting at **exactly** 1059624.234589852 on two different layouts, the
+  tail lottery deciding. Ties are real; the tie must carry the old selection or the fix
+  manufactures the very regression class it closes.
+
+**Validation (model-side, all 6 affected tables re-swept end to end — 60 cells):** the fix is
+**≥ round 6 at every cell**, ≥ round 5 at 59/60, all 7 regressions healed to round-5 values
+except the documented h20 hair, and BOTH round-6 improvements kept (`scb-skull-xl @h260` via the
+tie rule — the cell the first-cut tie-to-base rule lost; `isc-skull-xl @h260` via a strict group
+win). Unmoved cells reproduce both rounds exactly — no new churn.
+
+**The golden gate (full 25, jobs=3, same session):** `PLAN-DIFF compared=25 changed=1` —
+24 goldens bit-identical, scorer pinned on all 24 (`SCORE-AUDIT … scorerMoved=0 → worse=0
+better=1 tie=0`), and the ONE change is **Kael'thas at Δscore +17.79, strictly better on the
+model's own objective**: the terminal cluster re-parks 381→396 with the third trinket uses
+260→265 — a placement the evicted entrants could never offer. Golden re-recorded on the
+arbiter rule (a search-only change under a proven-pinned scorer is graded by the model's own
+count; the +0.006-cast delta is ~20× below the sim's ±0.125 pp boss band, so a sim duel cannot
+resolve it either way — the §5.20 sub-noise precedent).
+
+**The CPU price, measured honestly (same session, same jobs):** sweep A (landed engine) 638 s
+CPU / 273.8 s wall → sweep B (fix) **743 s CPU (+16.5 %) / 284.9 s wall (+4 %)**. The −8.5 %
+§5.12+§5.14 win is given back and slightly more (net ≈ +6.6 % vs the pre-landing baseline):
+the restored random polishes plus the occasional second hop are the cost of the monotonicity.
+Reclaim candidates stay open in §4 (the admissibility triple §4.16, the `admit` patch §4.21) —
+and the tail-refactor remedy below would double as a reclaim site.
+
+#### ⚠ The residual: the finishing tail is ONE MORE winner-take-all, deliberately not fixed tonight
+
+Two measured cells, one in each direction, same root: after the hop, the finishing stack
+(challengePass/groom/marginal-relocation/CS-comparison) runs on ONE line, and its outcome is not
+monotone in its entry value.
+- `isc-mqg-medlong @h20` (−0.001 eff vs r5): the group line legitimately leads at hop-exit (+101),
+  both lines would gain ~+1500 in the tail, and the BASE line's tail run ends **+2.77 higher** —
+  the winner-take-all inverts. The two final layouts differ by a joint 1 s shift of the terminal
+  co-press cluster (`AP/Zerk@187, Icon@182` vs `@188/183`), a move no existing pass can make (each
+  track moves alone; a co-pressed cluster only moves together).
+- `scb-skull-xl @h260` (+0.005 eff, the direction round 6 got LUCKY): hop-exit exact tie, the
+  group line's tail run wins. fix3b keeps this by the tie rule; nothing guarantees the next such
+  cell falls the kept way.
+
+Two specified remedies, filed for follow-up with the h20+h260 pair as the ready-made two-sided
+test (the same way §5.10 filed the 5:40 basin anchor that became §5.14):
+- **The airtight one:** extract the finishing tail into a callable `finishLine(entrant)` and run
+  it on BOTH lines when the group leads at hop-exit, comparing FINAL vals. This is a genuine
+  Phase-9 refactor (the tail is ~700 lines ending in the Cold-Snap branch's own nested resolves)
+  and doubles tail CPU exactly when `grpLeads`, which the traces say is common on kit-limited
+  fights — measure before landing. It also serves §4's "fewer steps that do the same thing":
+  a callable tail is testable in isolation.
+- **The cheap one that may moot it:** a **cluster-shift move class** (shift a whole co-press
+  cluster ±N seconds as one move) in the groom alphabet — the missing move the h20 fixpoint gap
+  demonstrates, and plausibly useful beyond this cell.
+
+Until one lands, the acceptance verdict carries the note: the engine is ≥ round 6 at every
+measured cell and ≥ round 5 at 6 of the 7 attributed cells, with a −0.001-eff known hair at
+`isc-mqg-medlong @h20` vs the superseded round-5 engine.

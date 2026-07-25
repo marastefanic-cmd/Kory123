@@ -107,8 +107,11 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   (`packedSchedule`), phase-anchored (`seg.start` / intermission `seg.end`, capped at `starts + 8`),
   **pinned-raid-call anchored** (stacks every track on each Lust/Drums/PI second, first 4), a
   **kill-anchored seed** (each track's last use as late as it fully runs, siblings packed backward by
-  cd — the terminal-burst basin forward-packing can't reach), then **`groupSeeds`** (below), then
-  random fill to `starts`.
+  cd — the terminal-burst basin forward-packing can't reach), then **random fill to `starts`**, then
+  **`groupSeeds`** (below) appended as pure EXTRAS past `starts`, tagged from `grpStart`. ⚠ The order
+  is load-bearing (PHASE9 §5.16): group seeds used to be pushed *before* the fill and counted toward
+  `starts`, silently evicting one random start per chain seed — an additive seed class must never
+  remove entrants, and three of round 6's search regressions traced to exactly that.
 - **`groupSeeds(cfg)`** (~1134, Phase 9 §5.14 — the RULES §4b **chain law** made reachable): builds
   *chain* entrants — `origin × gap-chain × which long-cd track skips group 1`. Origins are `{0} ∪
   round(fixed press seconds)` (first 3); a chain is a DFS over the **enabled cooldown periods**
@@ -125,13 +128,19 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
 - **`polish`** hill-climb (~1068): `SHIFTS` ±1..±90 incl. ±3/±6 (ramp-boundary hops) and ±30/±60,
   per-index + suffix-shift + add-a-use + a **joint window move** (all uses sharing a press second shift
   as one block — co-pressed clusters cross valleys together) + a drop-one/relocate escape.
-- **`basinHop`** (~1170, runs on the champion after the top-6 integer snaps): window-teleport
-  self-consistency guard — re-bases each press-window block on every other window's anchor, each
-  track's natural next cd-tick, every **ramp-exit boundary** (the first full-stack cast after each
-  cold start, read from the champion's own board — the h160-class descent-valley basin sits exactly
-  there, one fast cast off any 5s-grid anchor) + the kill anchor, re-polishes, keeps strict
-  improvements, to fixpoint. This is what guarantees "never worse than a plan reachable from the
-  search's own anchors" (the Phase-4 misses all fell to it).
+- **`basinHop`** (~1170, runs after the integer snaps — which snap the top-6 **non-group** results
+  exactly as pre-groupSeeds, PLUS any group entrant above that bar, tracked separately as `bestGrp`):
+  window-teleport self-consistency guard — re-bases each press-window block on every other window's
+  anchor, each track's natural next cd-tick, every **ramp-exit boundary** (the first full-stack cast
+  after each cold start, read from the champion's own board — the h160-class descent-valley basin
+  sits exactly there, one fast cast off any 5s-grid anchor) + the kill anchor, re-polishes, keeps
+  strict improvements, to fixpoint. This is what guarantees "never worse than a plan reachable from
+  the search's own anchors" (the Phase-4 misses all fell to it). ★ **Two-arm hop when a group
+  entrant snap-leads** (PHASE9 §5.16): the base champion is hopped ALWAYS and the snap-leading group
+  entrant ADDITIONALLY, the old single-winner selection standing unless the base hop strictly beats
+  it (ties carry the group line — hop values tie EXACTLY on distinct layouts, measured). A raw/snap
+  lead is not a basin lead: at one round-6 cell the group entrant led the snap by +34 and its basin
+  dead-ended while the displaced base basin climbed +3594.
 - Tie-break helpers (local closures): `anchored` ~1087, `overlapOf` ~1103, `joinsRow` ~1116,
   `counts`/`sameCounts` ~1122/1123, `clipOf` ~1126. `castVal`/`QTOL` ~1077/1078 (tie tolerance = one
   cast).

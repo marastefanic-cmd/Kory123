@@ -429,6 +429,11 @@
   .capsheet .tablebox { max-height: 420px; overflow-y: auto; }
   .capsheet td.capped { color: var(--warn); }
   @media (prefers-reduced-motion: reduce) { .progress i { transition: none; } }
+  /* preset-load visibility: fields a chip load just changed flash briefly, so a preset
+     silently overwriting typed gear (haste especially) is visible instead of a mystery */
+  .pflash { animation: pflash 1.6s ease-out; }
+  @keyframes pflash { 0%, 35% { background: var(--accent-soft, rgba(120,160,255,.35)); } 100% { background: transparent; } }
+  .stamp { text-align: right; font-size: 11px; color: var(--ink-3, #888); opacity: .7; padding: 6px 2px 10px; }
 </style>
 </head>
 <body>
@@ -560,6 +565,7 @@
   </section>
 
   <footer class="assump" id="assump" hidden></footer>
+  <div class="stamp" title="Update this stamp whenever index.html changes — it identifies stale copies.">build 2026-07-25b</div>
 </div>
 
 <script id="engine-src">
@@ -1511,8 +1517,9 @@ function optimizeCore(cfg, starts, onProgress) {
       }
       seeds.push(repair(s, cfg));
     }
-    for (const gs of groupSeeds(cfg)) seeds.push(gs);
     while (seeds.length < starts) seeds.push(randomSchedule(cfg, rand));
+    const grpStart = seeds.length;
+    for (const gs of groupSeeds(cfg)) seeds.push(gs);
     const results = [];
     let best = null;
     (async () => {
@@ -1564,14 +1571,19 @@ function optimizeCore(cfg, starts, onProgress) {
             return true;
           };
         })();
+        results.forEach((r, i) => { if (i >= grpStart) r.grp = true; });
         results.sort((a, b) => b.val - a.val);
         best = null;
+        let bestGrp = null;
         {
-          const top = results.slice(0, 6);
+          const topBase = results.filter(r => !r.grp).slice(0, 6);
+          const bar = topBase.length ? topBase[topBase.length - 1].val : -Infinity;
+          const top = [...topBase, ...results.filter(r => r.grp && r.val > bar)];
           for (let ci = 0; ci < top.length; ci++) {
             const snapped = repair(Object.fromEntries(Object.entries(top[ci].s).map(([k, ts]) => [k, ts.map(Math.round)])), cfg);
             const p = polish(snapped, cfg);
-            if (!best || p.val > best.val) best = p;
+            if (top[ci].grp) { if (!bestGrp || p.val > bestGrp.val) bestGrp = p; }
+            else if (!best || p.val > best.val) best = p;
             onProgress(0.10 + 0.04 * (ci + 1) / top.length, "Snapping to whole seconds");
             await tick();
           }
@@ -1590,7 +1602,25 @@ function optimizeCore(cfg, starts, onProgress) {
           onProgress(prog, stage.label);
         };
         setStage(0.14, 0.72, "Basin-hop (main sweep)");
-        best = await basinHop(best, cfg, async f => { stageFrac(f); await tick(); });
+        // A raw lead is not a basin lead (the groupSeeds class's own lesson): a chain entrant that
+        // out-snaps the base champion may still sit in a dead-end basin — and the reverse holds
+        // too, which is why the base hop always runs. The group candidate is hopped ADDITIONALLY,
+        // exactly when the old single-winner rule would have selected it (a strict snap lead), and
+        // the final is the max of the two hops: ≥ the pre-groupSeeds pipeline (base hop is a floor)
+        // AND ≥ the single-winner pipeline (its selection is one of the two arms), by construction.
+        const grpLeads = bestGrp && bestGrp.val > best.val;
+        if (grpLeads) {
+          // The old single-winner rule carried the snap leader (here: the group entrant) through
+          // everything. The base line's hop is run as a STRICT-improvement override only — at a
+          // hop-value tie the old selection stands, so this engine differs from the single-winner
+          // one exactly where the base basin provably beats the chain basin (h160: +3560), and
+          // nowhere else. (Ties are real: h260 hops meet at 1059624.234589852 on two layouts.)
+          const hb = await basinHop(best, cfg, async f => { stageFrac(f); await tick(); });
+          best = await basinHop(bestGrp, cfg, async f => { stageFrac(f); await tick(); });
+          if (hb.val > best.val) best = hb;
+        } else {
+          best = await basinHop(best, cfg, async f => { stageFrac(f); await tick(); });
+        }
         // ——— tie-breaks among damage-equal plans (never lose damage: v ≥ val−EPS) ———
         let s = best.s, val = best.val;
         setStage(0.72, 0.82, "Grooming (ties & legibility)");
@@ -4138,10 +4168,14 @@ function applyState(s) {
   el("ck-phases").checked = state.complicated;
   el("phasecol").classList.toggle("on", state.complicated);
   renderPhaseRows();
-  el("in-haste").value = s.haste ?? 0;
-  el("in-len").value = s.len ?? "5:00";
-  el("in-sp").value = s.sp ?? 1150;
-  el("in-crit").value = s.crit ?? 25;
+  // flash the fields this load CHANGES — a preset overwrites gear too (deliberate: it carries
+  // the full input setup), and a silent haste reset reads as "the tool ignores my haste"
+  for (const [id, v] of [["in-haste", s.haste ?? 0], ["in-len", s.len ?? "5:00"], ["in-sp", s.sp ?? 1150], ["in-crit", s.crit ?? 25]]) {
+    const inp = el(id), was = inp.value;
+    inp.value = v;
+    inp.classList.remove("pflash");
+    if (String(was) !== String(inp.value)) { void inp.offsetWidth; inp.classList.add("pflash"); }
+  }
   buildBuffList();
   el("in-haste").dispatchEvent(new Event("input"));
   } finally { applyingPreset = false; }
