@@ -2394,22 +2394,33 @@ re-running §5's probe.
 forward — into the landing commit, into the `xval-results` banner, into the round-5 launch decision — as
 **"the plans will not move."** The round-5 re-baseline falsifies that reading almost immediately.
 
-`tools/xval-round-diff.mjs` (built for this comparison; see §20.6) on the first four completed round-5 tables
-against their round-4 predecessors:
+`tools/xval-round-diff.mjs` (built for this comparison; see §20.6) on the **18 completed round-5 tables**
+against their round-4 predecessors (the round's two remaining kit pairs and the six bosses were still running):
 
 | table | plan cells changed | eff level shift | diagWorst r4 → r5 |
 |---|---|---|---|
+| `isc-mqg-short` | **5 / 10** | −0.889% … −0.752% | 0.19% → 0.19% |
+| `isc-mqg-medium` | **3 / 10** | −0.605% … −0.513% | **0.38% → 0.09%** better |
+| `isc-mqg-medlong` | **6 / 10** | −0.865% … −0.737% | **0.40% → 0.26%** better |
+| `isc-mqg-long` | **3 / 10** | −0.684% … −0.635% | 0.09% → 0.09% |
 | `isc-scb-short` | **3 / 10** | −1.108% … −0.930% | 0.25% → 0.25% |
 | `isc-scb-medium` | 0 / 10 | −0.693% … −0.639% | 0.11% → 0.11% |
 | `isc-scb-medlong` | 0 / 10 | −0.922% … −0.883% | CLEAN → CLEAN |
 | `isc-scb-long` | **4 / 10** | −0.778% … −0.692% | **0.05% → 0.11%** ⚠ worse |
+| `isc-scb-xl` | **1 / 10** | −0.742% … −0.700% | CLEAN → CLEAN |
+| `isc-skull-short` | **4 / 11** | −0.966% … −0.841% | 0.36% → 0.36% |
+| `isc-skull-medium` | **1 / 11** | −0.608% … −0.509% | 0.23% → 0.23% |
+| `isc-skull-medlong` | **4 / 11** | −0.782% … −0.691% | **0.07% → 0.02%** better |
+| `isc-skull-long` | **5 / 11** | −0.698% … −0.609% | **0.21% → 0.28%** ⚠ worse |
 | `mqg-skull-short` | **2 / 10** | −0.758% … −0.669% | **0.04% → 0.02%** better |
 | `mqg-skull-medium` | **1 / 10** | −0.509% … −0.437% | 0.15% → 0.15% |
 | `mqg-skull-medlong` | **4 / 10** | −0.806% … −0.689% | 0.09% → 0.09% |
 | `mqg-skull-long` | **3 / 10** | −0.647% … −0.556% | 0.19% → 0.19% |
+| `mqg-skull-xl` | **1 / 10** | −0.675% … −0.603% | **0.07% → 0.09%** ⚠ worse |
 
-**17 of 80 cells — 21% — changed plan.** Not one, not "one adjacent pair at h150". No verdict *flipped*
-(CLEAN↔DEFICIT) in either direction, and `monoDip` stayed 0.00% everywhere, so invariant A is untouched.
+**50 of 184 cells — 27.2% — changed plan.** Not one, not "one adjacent pair at h150". 16 of the 18 tables
+carry at least one changed cell. No verdict *flipped* (CLEAN↔DEFICIT) in either direction — `deficitTables`
+is 16 → 16 — and `monoDip` stayed 0.00% on every table, so invariant A is untouched.
 
 **Why the probe was wrong, and it is not a bug in the probe.** §20.2 measured **one fight** (`T=300`, BL@60) at
 **four** haste points. Round 5 is **36 fights** at **7–10** haste points each — roughly 300 cells against the
@@ -2429,17 +2440,39 @@ an estimate of *how much re-gathering would move* — a scheduling input, not a 
 is untouched: it cross-scores a fixed plan set and measures the repricing, which the −0.4…−1.1% band here
 independently confirms at the same magnitude.
 
-**⚠ And the churn does not move the deficits in one direction.** The first four tables happened to contain the
-only improvement (`mqg-skull-short`, 0.04% → 0.02%) and an early draft of this section read that as the
-correction tightening the answer. The next four contain its mirror: **`isc-scb-long` gets WORSE, 0.05% → 0.11%**,
-on 4/10 changed cells. That is the expected shape of a repricing rather than a fix — the correction makes the
-harness describe the right mage, which re-ranks near-ties in whichever direction each near-tie happened to sit;
-it was never a change to the *model*, so there is no reason for it to reduce a deficit. **Read no acceptance
-signal off the sign of these moves.** The acceptance question is asked of round 5 on its own terms, once whole.
+**⚠ And the churn does not move the deficits in one direction — now settled at 18 tables.** The first four
+tables happened to contain the only improvement then visible (`mqg-skull-short`, 0.04% → 0.02%) and an early
+draft of this section read that as the correction tightening the answer. The next four contained its mirror
+(`isc-scb-long`, 0.05% → 0.11%, worse). At 18 tables the tally is **4 better · 3 worse · 11 unchanged**:
 
-**Status:** partial. This is 8 of 36 tables; the full comparison goes in when the round lands. The churn is
-running at 21%, so every per-cell claim in the Phase-7 ledger that was read off round 4 needs re-reading off
-round 5 rather than assumed forward.
+| direction | tables |
+|---|---|
+| better | `isc-mqg-medium` (0.38→0.09) · `isc-mqg-medlong` (0.40→0.26) · `isc-skull-medlong` (0.07→0.02) · `mqg-skull-short` (0.04→0.02) |
+| worse | `isc-scb-long` (0.05→0.11) · `isc-skull-long` (0.21→0.28) · `mqg-skull-xl` (0.07→0.09) |
+| unchanged | the other 11 |
+
+That is the expected shape of a repricing rather than a fix — the correction makes the harness describe the
+right mage, which re-ranks near-ties in whichever direction each near-tie happened to sit; it was never a
+change to the *model*, so there is no reason for it to reduce a deficit. Note that the two largest single
+moves are both improvements (`isc-mqg-medium` −0.29 pp, `isc-mqg-medlong` −0.14 pp) and it would be just as
+wrong to read *that* as a fix: a bigger move means a bigger near-tie gap was crossed, not a better model.
+**Read no acceptance signal off the sign or the magnitude of these moves.** The acceptance question is asked
+of round 5 on its own terms, once whole.
+
+**Status:** partial. This is **18 of 36 tables** — `isc-scb` and `mqg-skull` complete (5 each), `isc-mqg` and
+`isc-skull` missing only their `xl` table (both were mid-write when the diff ran); the two remaining kit pairs
+(`scb-mqg`, `scb-skull`) and the six boss tables go in when the round lands. The churn estimate has only grown as the
+sample has (4 tables → 15%, 8 → 21%, 18 → **27.2%**), so treat 27% as the current floor, not a converged
+figure, and **every per-cell claim in the Phase-7 ledger that was read off round 4 needs re-reading off
+round 5 rather than assumed forward.**
+
+**One instrument note, because it nearly became a false defect report.** The first invocation of the diff was
+`node tools/xval-round-diff.mjs A B | tail -50; echo "EXIT=$?"`, which printed `EXIT=0` — and `0` under the
+tool's own contract means *graded clean*, i.e. a complete comparison. It is not: `$?` after a pipeline is the
+**last** command's status, so that `0` was `tail`'s. Re-run with output redirected to a file, node exits **2**
+(*could not grade*), correctly, because two tables were mid-write. The tool was right and the invocation was
+wrong — the same shape as §14's stale-runner and §20.1's `t5two`: **when an instrument reports success,
+check that you are reading the instrument's answer and not the plumbing's.**
 
 ### 20.6 The round diff becomes an instrument — and it separates a tie-break from a repricing
 
