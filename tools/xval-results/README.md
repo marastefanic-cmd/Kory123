@@ -1,5 +1,13 @@
 # Cross-validation raw matrices — the CURRENT acceptance round
 
+> **⚠ STALE as of 07-25 — gathered under the OLD harness gear.** These tables were produced before
+> `tools/reference-gear.mjs` landed, so the model side built its plans **without `t5two` and at `sp: 1387`**
+> — a mage the sim does not run (PHASE8 §6/§7/§20). The *sim* columns used the real export and are fine;
+> what is suspect is **which plan each row optimized to**. The pre-flight measurement says the correction is
+> rank-neutral at this scale (same argmax at every haste; one 0.011-eff-AB reorder at h150), so these tables
+> are unlikely to move materially — but they are **no longer authoritative**. Re-baseline with
+> `bash tools/xval-rerun.sh` and snapshot these into `tools/xval-results-archive/` first, per the rule below.
+
 Committed output of the holdout haste-adaptation cross-val (`tools/xval.mjs`, driven by
 `tools/xval-campaign.sh` + `tools/xval-boss.sh`). The scratchpad they are produced in is ephemeral;
 **these files are the durable record** the ledger is assembled from.

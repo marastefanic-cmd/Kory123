@@ -13,6 +13,7 @@ import { createRequire } from 'module';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { REF, plainCastInPage } from './reference-gear.mjs';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { chromium } = createRequire(path.join(REPO, 'tests', 'package.json'))('playwright-core');
 
@@ -77,15 +78,20 @@ const workers = await Promise.all(Array.from({ length: WORKERS }, newWorker));
     process.exit(2);
   }
 }
-const plain = (720 + (2.5 / 3.5) * 1387) * (1 + 0.38 * 0.8175);
+// ★ LOAD-BEARING, not display.  The MISS verdict below is `toolEff − gridEff < −0.15` — a DIFFERENCE
+// of two plain-normalized numbers — so getting `plain` out of step with the cfg rescales the band
+// itself.  Derived from the same REF the cfgs spread, and from the engine's own GAME table (the old
+// hand-typed `(720 + (2.5/3.5)*1387) * (1 + 0.38*0.8175)` could not follow either).
+const plain = await workers[0].evaluate(plainCastInPage, REF);
+if (!Number.isFinite(plain) || plain <= 0) { console.error(`ERROR: bad plain-cast normalizer ${plain}`); await browser.close(); process.exit(2); }
 
 async function bruteAt(h) {
   const slices = Array.from({ length: WORKERS }, (_, w) => ivPairs.filter((_, i) => i % WORKERS === w));
-  const results = await Promise.all(workers.map((p, w) => p.evaluate(({ h, myPairs, G, T, LUST, PAIR }) => {
+  const results = await Promise.all(workers.map((p, w) => p.evaluate(({ h, myPairs, G, T, LUST, PAIR, REF }) => {
     const [tA, tB] = PAIR;
     const keys = ["icyVeins", tA, tB, "arcanePower", "berserking", "bloodlust"];
     const en = {}; for (const k in BUFFS) en[k] = keys.includes(k);
-    const cfg = { T, hasteRating: h, sp: 1387, critPct: 38, enabled: en, fixed: { bloodlust: [LUST] }, warnings: [], coldSnap: true, segments: null };
+    const cfg = { T, hasteRating: h, ...REF, enabled: en, fixed: { bloodlust: [LUST] }, warnings: [], coldSnap: true, segments: null };
     const sim = typeof simulateRaw !== 'undefined' ? simulateRaw : simulate;
     const top = [];
     for (const [iv1, iv2] of myPairs) {
@@ -101,14 +107,14 @@ async function bruteAt(h) {
       }
     }
     return top;
-  }, { h, myPairs: slices[workers.indexOf(p)], G, T, LUST, PAIR })));
+  }, { h, myPairs: slices[workers.indexOf(p)], G, T, LUST, PAIR, REF })));
   const seen = new Map();
   for (const t of results.flat()) if (!seen.has(t.key) || seen.get(t.key) < t.v) seen.set(t.key, t.v);
   const merged = [...seen.entries()].map(([key, v]) => ({ key, v })).sort((a, b) => b.v - a.v);
-  const tool = await workers[0].evaluate(async ({ h, T, LUST, PAIR }) => {
+  const tool = await workers[0].evaluate(async ({ h, T, LUST, PAIR, REF }) => {
     const keys = ["icyVeins", PAIR[0], PAIR[1], "arcanePower", "berserking", "bloodlust"];
     const en = {}; for (const k in BUFFS) en[k] = keys.includes(k);
-    const cfg = { T, hasteRating: h, sp: 1387, critPct: 38, enabled: en, fixed: { bloodlust: [LUST] }, warnings: [], coldSnap: true, segments: null };
+    const cfg = { T, hasteRating: h, ...REF, enabled: en, fixed: { bloodlust: [LUST] }, warnings: [], coldSnap: true, segments: null };
     const best = await optimizeAsync(cfg, 14, () => {});
     // ★ Grade the plan the tool EMITS, not the score it reports.  The 0.15 "pressability slack"
     // band below is the same width as the val/emitted-plan drift that used to leak through
@@ -117,7 +123,17 @@ async function bruteAt(h) {
     // makes these equal; scoring `best.s` explicitly means this instrument no longer DEPENDS on
     // that, and it matches what brute-grid --tool was fixed to do.
     return { v: simulate(best.s, cfg).robust, s: JSON.stringify(best.s) };
-  }, { h, T, LUST, PAIR });
+  }, { h, T, LUST, PAIR, REF });
+  // ★ Refuse to grade an uncomputed number.  `REF` is spread into the cfgs above, and object spread of
+  // `undefined` is silently legal (`{...undefined}` === `{}`) — so dropping it from an evaluate argument
+  // does not throw, it just strips sp/critPct/t5two and yields NaN.  Every NaN comparison is false, so
+  // `toolEff - grid < -0.15` would read as a clean PASS here (brute-grid's ladder falls the other way and
+  // prints MISS).  That is the false-pass class exactly; stop instead.
+  if (!Number.isFinite(tool.v) || !merged.length || !Number.isFinite(merged[0].v)) {
+    console.error(`ERROR: h=${h} produced a non-finite score (tool=${tool.v}, grid=${merged[0]?.v}) — cannot certify.`);
+    await browser.close();
+    process.exit(2);
+  }
   return { h, top: merged.slice(0, 3).map(m => ({ eff: +(m.v / plain).toFixed(3), key: m.key })),
     toolEff: +(tool.v / plain).toFixed(3), toolPlan: tool.s };
 }

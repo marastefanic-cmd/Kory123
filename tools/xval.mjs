@@ -19,6 +19,7 @@ import { execFileSync } from 'child_process';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { REF, plainCastInPage } from './reference-gear.mjs';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { chromium } = createRequire(path.join(REPO, 'tests', 'package.json'))('playwright-core');
 // Exit-code contract (shared by every instrument here): 0 = graded clean · 1 = graded and failing ·
@@ -116,6 +117,10 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || 
 const page = await browser.newPage();
 let perr = null; page.on('pageerror', e => (perr = String(e)));
 await page.goto('file://' + path.join(REPO, 'index.html'));
+// The reference gear, from ONE place (tools/reference-gear.mjs) — the model must be told the gear the
+// sim actually runs, and `plain` must be derived from the SAME object as the cfg or `eff` is rescaled.
+const PLAIN = await page.evaluate(plainCastInPage, REF);
+if (!Number.isFinite(PLAIN) || PLAIN <= 0) { await browser.close(); console.error(`ERROR: bad plain-cast normalizer ${PLAIN}`); process.exit(2); }
 
 // BOSS mode: override the random fight with a boss preset's shape (T, Lust, phases). The kit stays
 // the drawn/KIT pair (we test each kit ON the boss's fight shape). Intermission phases sim cleanly
@@ -125,7 +130,7 @@ await page.goto('file://' + path.join(REPO, 'index.html'));
 // exactly the model's M(N) physics, RULES §9). The old "simmed as downtime" KT caveat is CLOSED.
 let out0;
 try {
-out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS, POOL_ENV }) => {
+out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS, POOL_ENV, REF, plain }) => {
   let segments = null, downtime = [], aoeWins = [], aoeTargets = 0, fightT = T, lust = LUST;
   if (BOSS) {
     // An exact name always wins; a SUBSTRING that matched several presets used to silently take the
@@ -153,7 +158,6 @@ out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS, POOL_ENV
   }
   const kit = ["icyVeins", PAIR[0], PAIR[1], "arcanePower", "berserking", "bloodlust"];
   const en = {}; for (const k in BUFFS) en[k] = kit.includes(k);
-  const plain = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * 1387) * (1 + 0.38 * (GAME.CRIT_MULT - 1));
   const toSpec = s => {
     const spec = { _prestack: 0, BL: (s.bloodlust || []).map(Math.round) }; // COLD OPEN — the model never prepulls (genapl header ★; PHASE6 §4.7). NEVER change to >0.
     if (s.arcanePower) spec.AP = s.arcanePower.map(Math.round);
@@ -168,7 +172,7 @@ out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS, POOL_ENV
     if (aoeWins.length) spec._aoe = aoeWins;             // Arcane Explosion during AoE windows
     return spec;
   };
-  const mkCfg = h => ({ T: fightT, hasteRating: h, sp: 1387, critPct: 38, enabled: en, fixed: { bloodlust: [lust] }, warnings: [], coldSnap: true, segments });
+  const mkCfg = h => ({ T: fightT, hasteRating: h, ...REF, enabled: en, fixed: { bloodlust: [lust] }, warnings: [], coldSnap: true, segments });
   // CROSS-HASTE POOLING (B1 dominance by construction, ACCEPTANCE): solve each haste ONCE to get the
   // champion set C = {champ(h)}, then EMIT at each H the argmax over C scored at H. This is exactly the
   // engine's `cfg.poolHastes` mechanism (verified equivalent), deduplicated so each champ is computed
@@ -188,7 +192,7 @@ out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS, POOL_ENV
   }
   const wallList = [...downtime, ...aoeWins].map(w => w[0]).sort((a, b) => a - b);
   return { res, fightT, lust, aoeTargets, wallList };
-}, { HASTES, T, LUST, PAIR, TMETA, BOSS: process.env.BOSS || null, POOL_ENV: process.env.POOL || "1" });
+}, { HASTES, T, LUST, PAIR, TMETA, BOSS: process.env.BOSS || null, POOL_ENV: process.env.POOL || "1", REF, plain: PLAIN });
 } catch (e) {
   // An in-page throw (boss not found / ambiguous / optimizer error) surfaced as an unhandled rejection
   // and exited 1 — "graded and failing" under the contract, when nothing was graded at all.

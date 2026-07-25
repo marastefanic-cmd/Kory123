@@ -217,11 +217,27 @@
    (not the folklore 0.4–0.6 — that's the OOM-idle rotation; a Frostbolt-conserving mage never idles).
    **No plan in flight.** **The model / cast-counting was RIGHT on Vashj; the sim was wrong because of the
    drop bug — fix the sim, don't distrust the model.**
-3. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 25/25).
-4. The sim harness (`runner` binary, gear export, `wowsims/tbc-new` source) persists in the session
+3. **★ HARNESS GEAR CORRECTED (07-25) — the committed cross-val tables are STALE until re-baselined.**
+   PHASE8 §6/§7's correction has LANDED (§20): the model cfgs every harness builds now describe the gear
+   the sim actually runs — **Tirisfal 2pc (`t5two`) and effective SP 1450**, not the nameplate 1387 — from
+   **one** module, `tools/reference-gear.mjs`, **spread** into each cfg (`{ T, hasteRating: h, ...REF, … }`).
+   §6 had pre-registered this as "add `t5two` to both cfg builders"; it was really **seven sites in six
+   spellings across five tools**, including a bare literal `2241`. Six tools rewired (`xval`, `xval-model`,
+   `diagnose-deficit`, `haste-ladder`, `brute-grid`, `explore`); `index.html` and `tests/monotonicity.mjs`
+   deliberately **excluded** (§7: neither correction is a model change). Measured before landing: the
+   correction is **rank-neutral at the acceptance scale** — same argmax plan at every haste, one 0.011-eff-AB
+   reorder at h150 — and moves a plan's score by **−0.56…−0.67 %** (the AP repricing; the ×1.2 cancels in
+   `eff` only because `plain` now carries it). **What this means for the ledger:** `tools/xval-results/`
+   (36 tables) was gathered with the *old* cfg, so the plans in it were chosen by a slightly mis-specified
+   model. Rank-neutrality says the tables are unlikely to move materially — but they are no longer
+   *authoritative*, and **§7's decomposition table (`+0.0084 pp` mean bias) predates `t5two` outright and
+   must be recomputed before it is quoted again.** Next action: `bash tools/xval-rerun.sh` (restart-safe,
+   checkpoints into `tools/xval-results/`, `ITER=6000`) — §6's other half.
+4. Baseline check: `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` (expect 25/25).
+5. The sim harness (`runner` binary, gear export, `wowsims/tbc-new` source) persists in the session
    **scratchpad** and survives `/clear` *within the same session* — check it's there before rebuilding
    (`docs/TOOLING.md`); only a brand-new session needs a rebuild. Sim-gate every golden that moves.
-5. Constraints (also in `CLAUDE.md`): commit to branch `claude/wow-arcane-cooldown-optimizer-vbm3as`
+6. Constraints (also in `CLAUDE.md`): commit to branch `claude/wow-arcane-cooldown-optimizer-vbm3as`
    with the configured author/trailers; never leak identity or a model id into `index.html` or any
    pushed artifact; no PR unless asked; keep determinism; keep these docs current in the same commit.
 

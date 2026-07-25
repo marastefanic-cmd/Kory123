@@ -23,6 +23,7 @@
 import { createRequire } from 'module';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { REF, plainCastInPage } from './reference-gear.mjs';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { chromium } = createRequire(path.join(REPO, 'tests', 'package.json'))('playwright-core');
 
@@ -76,17 +77,24 @@ async function newWorker() {
   return p;
 }
 const workers = await Promise.all(Array.from({ length: WORKERS }, newWorker));
+// ★ LOAD-BEARING, not display.  The --tool certification below grades a MISS on
+// `toolEff − gridEff < −0.15` — a DIFFERENCE of two plain-normalized numbers — so a `plain` out of
+// step with the cfg rescales the band.  One derivation, from the same REF the cfgs spread and from
+// the engine's own GAME table (the old hand-typed `(720 + (2.5/3.5)*1387) * (1 + 0.38*0.8175)`
+// could follow neither).  Hoisted out of the per-haste loop: it does not depend on haste.
+const plain = await workers[0].evaluate(plainCastInPage, REF);
+if (!Number.isFinite(plain) || plain <= 0) { console.error(`ERROR: bad plain-cast normalizer ${plain}`); await browser.close(); process.exit(2); }
 
 const segLabel = segSpec ? (segSpec.type === 'aoe' ? `, AoE [${segSpec.from},${segSpec.to}]×${segSpec.targets}` : `, Burn [${segSpec.from},${segSpec.to}]×${segSpec.mult}`) : '';
 for (const h of HASTES) {
   const t0 = Date.now();
   const slices = Array.from({ length: WORKERS }, (_, w) => pairs.filter((_, i) => i % WORKERS === w));
-  const results = await Promise.all(workers.map((p, w) => p.evaluate(({ h, myPairs, G, T, LUST, segSpec, PAIR }) => {
+  const results = await Promise.all(workers.map((p, w) => p.evaluate(({ h, myPairs, G, T, LUST, segSpec, PAIR, REF }) => {
     const [tA, tB] = PAIR;
     const keys = ["icyVeins", tA, tB, "arcanePower", "berserking", "bloodlust"];
     const en = {}; for (const k in BUFFS) en[k] = keys.includes(k);
     const segments = segSpec ? buildSegments([segSpec], T) : null;
-    const cfg = { T, hasteRating: h, sp: 1387, critPct: 38, enabled: en, fixed: { bloodlust: [LUST] }, warnings: [], coldSnap: true, segments };
+    const cfg = { T, hasteRating: h, ...REF, enabled: en, fixed: { bloodlust: [LUST] }, warnings: [], coldSnap: true, segments };
     // the memo would only thrash here (7.9M unique schedules) — enumerate against the raw scorer
     const sim = typeof simulateRaw !== 'undefined' ? simulateRaw : simulate;
     const top = []; // keep top-40 raw cells; dedupe by repaired layout later
@@ -103,23 +111,22 @@ for (const h of HASTES) {
       }
     }
     return top;
-  }, { h, myPairs: slices[workers.indexOf(p)], G, T, LUST, segSpec, PAIR })));
+  }, { h, myPairs: slices[workers.indexOf(p)], G, T, LUST, segSpec, PAIR, REF })));
   // merge + dedupe by repaired layout
   const seen = new Map();
   for (const t of results.flat()) if (!seen.has(t.key) || seen.get(t.key) < t.v) seen.set(t.key, t.v);
   const merged = [...seen.entries()].map(([key, v]) => ({ key, v })).sort((a, b) => b.v - a.v);
-  const plain = (720 + (2.5 / 3.5) * 1387) * (1 + 0.38 * 0.8175); // same formula as in-page (≈2242.2)
   console.log(`\n=== h=${h} pair=${PAIR.join('+')} (T=${T}, Lust@${LUST}${segLabel}; full 5s grid, ${(pairs.length * Math.pow(G.length, 4) / 1e6).toFixed(1)}M cells, ${((Date.now() - t0) / 60000).toFixed(1)} min) ===`);
   for (const m of merged.slice(0, 5)) console.log(`  eff=${(m.v / plain).toFixed(3)}  [IV,${PAIR[0]},${PAIR[1]},AP,Zerk]=${m.key}`);
   if (TOOL) {
     // certification: the real optimizer (sequential in-page path — the tested one) vs the grid optimum.
     // The tool searches at 1s resolution, so tool ≥ grid is a PASS (it may out-resolve the 5s grid);
     // tool < grid − 0.15 eff casts (the pressability slack, monotonicity EPS) is a real search MISS.
-    const tr = await workers[0].evaluate(async ({ h, T, LUST, segSpec, PAIR }) => {
+    const tr = await workers[0].evaluate(async ({ h, T, LUST, segSpec, PAIR, REF }) => {
       const keys = ["icyVeins", PAIR[0], PAIR[1], "arcanePower", "berserking", "bloodlust"];
       const en = {}; for (const k in BUFFS) en[k] = keys.includes(k);
       const segments = segSpec ? buildSegments([segSpec], T) : null;
-      const cfg = { T, hasteRating: h, sp: 1387, critPct: 38, enabled: en, fixed: { bloodlust: [LUST] }, warnings: [], coldSnap: true, segments };
+      const cfg = { T, hasteRating: h, ...REF, enabled: en, fixed: { bloodlust: [LUST] }, warnings: [], coldSnap: true, segments };
       const best = await optimizeAsync(cfg, 14, () => {});
       // Grade the plan the tool ACTUALLY EMITS, not the score it reports for it.  optimizeAsync
       // carries `val` across normalize()/canonicalWindowOrder without re-scoring, and on the
@@ -128,7 +135,13 @@ for (const h of HASTES) {
       // The grid side uses simulate() on the repaired cell, so this also makes the two sides
       // apples-to-apples.
       return { v: simulate(best.s, cfg).robust, s: JSON.stringify(best.s) };
-    }, { h, T, LUST, segSpec, PAIR });
+    }, { h, T, LUST, segSpec, PAIR, REF });
+    // ★ `REF` above is LOAD-BEARING and was once dropped from this very argument object.  Object spread
+    // of `undefined` is silently legal (`{...undefined}` === `{}`), so the omission did not throw: the
+    // cfg simply lost sp/critPct/t5two, `simulate` returned NaN, and every NaN comparison being false
+    // walked the verdict ladder down to "MISS — investigate".  A graded verdict off a number that was
+    // never computed is the false-verdict class; refuse to grade instead.
+    if (!Number.isFinite(tr.v)) { console.error(`ERROR: the tool run at h=${h} scored ${tr.v} — cannot certify (a cfg field is missing, not a search miss).`); await browser.close(); process.exit(2); }
     const toolEff = tr.v / plain, gridEff = merged[0].v / plain, d = toolEff - gridEff;
     const verdict = d >= -1e-9 ? 'PASS (≥ grid)' : d >= -0.15 ? 'PASS (within pressability slack)' : 'MISS — investigate';
     console.log(`  TOOL eff=${toolEff.toFixed(3)}  vs grid ${gridEff.toFixed(3)}  Δ=${d >= 0 ? '+' : ''}${d.toFixed(3)}  → ${verdict}`);

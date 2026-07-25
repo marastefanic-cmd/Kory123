@@ -11,6 +11,7 @@ import { createRequire } from 'module';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { REF, plainCastInPage } from './reference-gear.mjs';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { chromium } = createRequire(path.join(REPO, 'tests', 'package.json'))('playwright-core');
 const args = process.argv.slice(2);
@@ -69,10 +70,13 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || 
 const page = await browser.newPage();
 page.on('pageerror', e => { console.error('PAGEERROR', String(e)); process.exit(2); });
 await page.goto('file://' + path.join(REPO, 'index.html'));
+// The reference gear, from ONE place (tools/reference-gear.mjs).
+const PLAIN = await page.evaluate(plainCastInPage, REF);
+if (!Number.isFinite(PLAIN) || PLAIN <= 0) { await browser.close(); console.error(`ERROR: bad plain-cast normalizer ${PLAIN}`); process.exit(2); }
 
 let totalCols = 0, tables = 0;
 for (const t of fights) {
-  const r = await page.evaluate(async ({ t }) => {
+  const r = await page.evaluate(async ({ t, REF, plain }) => {
     const kitKeys = ['icyVeins', t.kit[0], t.kit[1], 'arcanePower', 'berserking', 'bloodlust'];
     const en = {}; for (const k in BUFFS) en[k] = kitKeys.includes(k);
     let segments = null;
@@ -88,7 +92,7 @@ for (const t of fights) {
       const rows = rawPhases.map(ph => ({ from: ph.from, to: ph.to, type: ph.type, mult: ph.mult || 1, targets: ph.targets || 0 }));
       segments = rows.length ? buildSegments(rows, p.T) : null;
     }
-    const mk = h => ({ T: t.T, hasteRating: h, sp: 1387, critPct: 38, enabled: en, fixed: { bloodlust: [t.lust] }, warnings: [], coldSnap: true, segments });
+    const mk = h => ({ T: t.T, hasteRating: h, ...REF, enabled: en, fixed: { bloodlust: [t.lust] }, warnings: [], coldSnap: true, segments });
     const plans = {};
     for (const h of t.hastes) plans[h] = (await optimizeAsync(mk(h), 14, () => {})).s;
     const defCols = [];
@@ -97,10 +101,13 @@ for (const t of fights) {
       const native = simulate(plans[H], cfg).robust;
       let best = native, bestPh = H;
       for (const h of t.hastes) { const v = simulate(plans[h], cfg).robust; if (v > best + 1e-7) { best = v; bestPh = h; } }
-      if (bestPh !== H) defCols.push({ H, bestPh, margin: +((best - native) / 2241).toFixed(3) });
+      // `margin` is in EFFECTIVE CASTS, so it divides by the plain-cast normalizer — which used to be
+      // the bare literal 2241 (plain at sp=1387, no T5).  A magic number is the drift-prone spelling
+      // of a formula: it cannot follow the gear it was derived from.  Now it comes from REF.
+      if (bestPh !== H) defCols.push({ H, bestPh, margin: +((best - native) / plain).toFixed(3) });
     }
     return { defCols };
-  }, { t });
+  }, { t, REF, plain: PLAIN });
   tables++;
   totalCols += r.defCols.length;
   const s = r.defCols.length ? r.defCols.map(d => `@${d.H}←${d.bestPh}(+${d.margin})`).join(' ') : 'CLEAN';

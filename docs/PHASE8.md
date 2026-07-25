@@ -2309,6 +2309,85 @@ in its mirror form, and each was settled by *probing* rather than by relaxing an
 0 = graded · 2 = could not grade; there is deliberately no exit 1, because a census that cannot produce its
 number is a broken instrument, not a verdict.*
 
+## §20 — ★ The §6/§7 harness correction LANDS (07-25) — and it was **not** "add two fields"
+
+§6 pre-registered the fix as *"add `t5two: true` to both cfg builders … and re-baseline."* Executing it found
+that the pre-registration had **mis-sized its own scope**: the reference gear was written not in two places but
+in **seven, in six spellings**, across five tools — `sp: 1387` inline in each cfg; the plain-cast normalizer
+hand-typed twice as `(GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * 1387) * (1 + 0.38 * (GAME.CRIT_MULT - 1))`, twice
+more as the fully-numeric `(720 + (2.5/3.5)*1387) * (1 + 0.38*0.8175)`, and once as the **bare literal `2241`**
+(`xval-model.mjs:100`, the divisor of a reported margin).
+
+So the defect is **duplication**, and adding a field to two of seven sites would have left five still describing
+a different mage than the sim runs. The fix is one module — **`tools/reference-gear.mjs`** — exporting
+`REF = Object.freeze({ sp: 1450, critPct: 38, t5two: true })` plus a `plainCastInPage` normalizer evaluated in
+*page* scope, so it reads the engine's own `GAME` table instead of re-typing the constants. Every harness cfg is
+now built by **spreading** it: `{ T, hasteRating: h, ...REF, enabled, … }`. Spreading rather than naming the
+fields is the whole point: `sp` is conspicuous and `t5two` is not, and `cfg.t5two ? 1.2 : 1` reads a *missing*
+key as `false` — so a hand-written cfg loses the invisible field and keeps printing plausible numbers. That is
+`genapl`'s silent-key-drop shape (DIARY 07-25) applied to a **20% mis-valuation of the whole AB stream**.
+
+Rewired: `xval.mjs`, `xval-model.mjs`, `diagnose-deficit.mjs`, `haste-ladder.mjs`, `brute-grid.mjs`,
+`explore.mjs`. Deliberately **not** rewired, per §7's scope statement and now with a comment at each site
+saying so: `index.html` (its `GOLDEN_DEFAULTS.gear` is the frozen fixture the 25 goldens are pinned to) and
+`tests/monotonicity.mjs` (a property assertion that must hold at *any* gear, and is never sim-compared).
+
+### 20.1 ★ `plain` is LOAD-BEARING in two of the six — the correction could have faked a triumph
+`eff = robust/plain` is a ratio, so wherever `eff` is merely *printed* the normalizer cancels and a wrong one
+is harmless. But `haste-ladder.mjs` and `brute-grid.mjs --tool` grade a search **MISS** on
+`toolEff − gridEff < −0.15` — a **difference** of two normalized numbers. Give the cfg its `t5two` ×1.2 and
+*not* the normalizer and every `eff` inflates by exactly 1.2: the 0.15-eff-cast band silently narrows to 0.125
+true casts, and every reported effective-AB count jumps 20% — which reads as a spectacular model improvement.
+That inflation is **30× larger than the correction's real effect**. Deriving `plain` from the same `REF` the
+cfgs spread is therefore not tidiness; it is what keeps the band meaning what it says.
+
+### 20.2 Pre-flight probe — both questions answered **before** a production file was touched
+`$SP/p8/refprobe.mjs`: 4 cfgs × 4 haste points (`h ∈ {0,70,150,300}`, `T=300`, BL@60), each cfg's champion
+cross-scored under **every** cfg. Cross-scoring is what isolates the cfg effect from search noise — column 0 is
+the *same plan* priced four ways.
+
+**Q1 — does `t5two` cancel in the ratio?** No, and the residual is exactly the intended physics:
+
+| h | `t5two` only | `sp` only | both |
+|---|---|---|---|
+| 0 | −0.638% | −0.031% | −0.669% |
+| 70 | −0.606% | −0.036% | −0.642% |
+| 150 | −0.593% | −0.039% | −0.631% |
+| 300 | −0.560% | −0.038% | −0.597% |
+
+Neither 0 nor +20%. The ×1.2 on every AB *does* cancel — **provided `plain` carries it** — and what survives is
+the **AP repricing**: additive T5 pooling gives ×1.25 where the model priced ×1.30 (−3.85% on AP casts, ≈16% of
+fight value). The magnitude is itself the check — a `plain`/cfg mismatch would have printed ≈+20%, not ≈−0.6%.
+
+**Q2 — rank-neutral, or merely level-shifting?** Rank-neutral at the acceptance scale. The **argmax is the same
+plan under every cfg at every haste.** Only `h150` — the one haste point with 4 distinct plans — reorders at
+all, and only one adjacent pair: `col3` moves 2nd → 4th, magnitude `0.0077 → −0.0031` eff-ABs (~0.004%), three
+orders of magnitude below the ~0.3 pp scale acceptance decides on. §6's "nearly rank-preserving" claim survives
+contact with acceptance-shaped plans.
+
+*(Side observation, not a finding: at `ITER=14` a case's own-cfg search can land 0.18 eff-ABs below the best
+plan any of the four searches found — a low-iteration artifact; acceptance runs `ITER=6000`. The cross-matrix
+is immune by construction, since it scores the same plan set under every cfg.)*
+
+### 20.3 ★★ The rewire's own smoke test caught a live drop — `{...undefined}` is silently legal
+`brute-grid.mjs:138` threaded `REF` into the *grid* evaluate and not the `--tool` one. Object spread of
+`undefined` does not throw (`{...undefined}` === `{}`), so the certification cfg simply lost `sp`, `critPct`
+and `t5two`; `simulate` returned `NaN`; and since every `NaN` comparison is false, the verdict ladder fell
+through to **`MISS — investigate`** — a graded verdict computed from a number that never existed. In
+`haste-ladder` the identical drop falls the *other* way (`NaN < −0.15` is false ⇒ a clean **PASS**), which is
+the false-pass class proper. Both instruments now refuse to grade a non-finite score (exit 2), and the drop is
+fixed. **The lesson is the method, not the bug: `node --check` passed this file, and so did a grep for `REF`.
+Running it did not.**
+
+### 20.4 ⚠ Consequence — §7's decomposition table is now STALE
+§7's rows (raw `+0.0895 pp` → `+ floor +0.0414` → `+ floor + effSP 1450` = **`+0.0084 pp`**) were computed on a
+harness **without `t5two`**. Its headline — *"the model's single-buff SP valuation is unbiased once the harness
+is described correctly"* — is therefore an *incompletely*-corrected number, and must be recomputed before it is
+quoted again. Flagged, not re-derived here. Related and explicitly **not** extrapolated: the correction's
+haste-*differential* is ≈`+0.07 pp` across 0→300, comparable to §8's residual span of 0.25 pp — but §8's
+residual is a per-buff *marginal* and this is a whole-plan *level*, so the two are not commensurable without
+re-running §5's probe.
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance

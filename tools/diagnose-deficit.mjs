@@ -15,6 +15,7 @@ import { createRequire } from 'module';
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { REF, plainCastInPage } from './reference-gear.mjs';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { chromium } = createRequire(path.join(REPO, 'tests', 'package.json'))('playwright-core');
 const args = process.argv.slice(2);
@@ -89,10 +90,13 @@ const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || 
 const page = await browser.newPage();
 let perr = null; page.on('pageerror', e => (perr = String(e)));
 await page.goto('file://' + path.join(REPO, 'index.html'));
+// The reference gear, from ONE place (tools/reference-gear.mjs).
+const PLAIN = await page.evaluate(plainCastInPage, REF);
+if (!Number.isFinite(PLAIN) || PLAIN <= 0) { await browser.close(); console.error(`ERROR: bad plain-cast normalizer ${PLAIN}`); process.exit(2); }
 
 const dossiers = [];
 for (const t of tables) {
-  const out = await page.evaluate(({ t }) => {
+  const out = await page.evaluate(({ t, REF, plain }) => {
     // spec (genapl keys, FIRE-time seconds) → engine schedule (buff keys). CS is derived from IV
     // spacing by the engine's own chain logic; _prestack/_intermissions are harness-side.
     const K2B = { IV: 'icyVeins', AP: 'arcanePower', Zerk: 'berserking', Icon: 'isc', Gem: 'scb', Skull: 'skull', MQG: 'mqg', BL: 'bloodlust' };
@@ -116,10 +120,9 @@ for (const t of tables) {
     }
     const kitKeys = ['icyVeins', t.kit[0], t.kit[1], 'arcanePower', 'berserking', 'bloodlust'];
     const en = {}; for (const k in BUFFS) en[k] = kitKeys.includes(k);
-    const plain = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * 1387) * (1 + 0.38 * (GAME.CRIT_MULT - 1));
     const res = [];
     for (const d of t.defCols) {
-      const cfg = { T: t.T, hasteRating: d.simH, sp: 1387, critPct: 38, enabled: en, fixed: { bloodlust: [t.lust] }, warnings: [], coldSnap: true, segments };
+      const cfg = { T: t.T, hasteRating: d.simH, ...REF, enabled: en, fixed: { bloodlust: [t.lust] }, warnings: [], coldSnap: true, segments };
       const scores = {};
       for (const h of t.hastes) scores[h] = simulate(toSched(t.specs[h]), cfg).robust;
       let bestPh = d.simH, bestV = scores[d.simH];
@@ -135,7 +138,7 @@ for (const t of tables) {
         modelBestPh: bestPh, modelBest: +(bestV / plain).toFixed(4), tracks });
     }
     return res;
-  }, { t });
+  }, { t, REF, plain: PLAIN });
   if (perr) { console.error('PAGEERROR', perr); process.exit(2); }
   for (let i = 0; i < t.defCols.length; i++) {
     const d = t.defCols[i], r = out[i];

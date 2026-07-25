@@ -20,6 +20,7 @@ import fs from 'fs';
 import os from 'os';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { REF } from './reference-gear.mjs';
 
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(__dir, '..');
@@ -40,7 +41,6 @@ const RAMP_T = 7;
 
 // ── scenarios: fixed raid pins + placeable mage cooldowns, each over a candidate-time grid ──
 // Times are seconds. Keep sets small — every candidate combination is scored, so this is a product.
-const SP = 1387, CRIT = 38;
 const SCENARIOS = [
   {
     // Cap thresholds (GCD cap = +50% haste, 15.77 rating/%), which set the meaningful sweep points:
@@ -118,11 +118,13 @@ const comboKey = (place, c) => place.map(p => `${p.key}@${c[p.key]}`).join(' ');
 
 async function scoreScenario(sc) {
   const cs = combos(sc.place);
-  const rows = await page.evaluate(({ sc, cs, SP, CRIT }) => {
+  const rows = await page.evaluate(({ sc, cs, REF }) => {
     const keys = [...Object.keys(sc.pins), ...sc.place.map(p => p.key)];
     const enabled = {}; for (const k in BUFFS) enabled[k] = keys.includes(k);
-    const mkcfg = h => ({ T: sc.T, hasteRating: h, sp: SP, critPct: CRIT, enabled, fixed: sc.pins, warnings: [], coldSnap: false, segments: null });
-    const plain = h => { const g = mkcfg(h); return (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * g.sp) * (1 + (g.critPct / 100) * (GAME.CRIT_MULT - 1)); };
+    const mkcfg = h => ({ T: sc.T, hasteRating: h, ...REF, enabled, fixed: sc.pins, warnings: [], coldSnap: false, segments: null });
+    // Derived FROM the cfg, so it cannot drift from it — including `t5two`, whose ×1.2 must appear on
+    // both sides of the ratio or every `eff` here inflates by 20% (tools/reference-gear.mjs ★).
+    const plain = h => { const g = mkcfg(h); return (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * g.sp) * (1 + (g.critPct / 100) * (GAME.CRIT_MULT - 1)) * (g.t5two ? 1.2 : 1); };
     const out = [];
     for (const h of sc.haste) {
       const cfg = mkcfg(h), p = plain(h);
@@ -134,7 +136,7 @@ async function scoreScenario(sc) {
       out.push({ h, scores });
     }
     return out;
-  }, { sc, cs, SP, CRIT });
+  }, { sc, cs, REF });
   return { cs, rows };
 }
 

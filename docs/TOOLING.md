@@ -156,6 +156,42 @@ log to stderr: every `[t] Casting {SpellID}` (with Cast Time / GCD / Effective T
 when a press actually fires, whether it's off-GCD, when a cooldown is ready. (Earlier notes wrongly
 claimed the runner had no combat-log flag.)
 
+## ★ THE REFERENCE GEAR — one module, spread, never re-typed
+
+A model-vs-sim harness is only measuring anything if the **model cfg describes the gear the sim actually
+runs** — i.e. the reference export. **`tools/reference-gear.mjs` is the single source of truth for that**, and
+every harness that builds a cfg for comparison imports it:
+
+```js
+import { REF, plainCastInPage } from './reference-gear.mjs';
+const plain = await page.evaluate(plainCastInPage, REF);          // page scope: reads the engine's own GAME
+const cfg   = { T, hasteRating: h, ...REF, enabled: en, /* … */ };  // ★ SPREAD it — never name the fields
+```
+
+`REF = { sp: 1450, critPct: 38, t5two: true }` — the export wears **Tirisfal 2pc** (AP prices additively with
+the T5 bonus, and every AB carries ×1.2) and **Tirisfal 4pc** (+70 SP on crit at 88–94% uptime ⇒ effective SP
+≈ 1450, not the nameplate 1387). Provenance and the measurement: PHASE8 §6, §7, §20.
+
+- **★ Spread it, don't name the fields.** `cfg.t5two ? 1.2 : 1` reads a *missing* key as `false`, so a
+  hand-written cfg that forgets it is a silent 20% mis-valuation of the whole AB stream that still prints
+  plausible numbers — `genapl`'s silent-key-drop shape (DIARY 07-25). Spreading makes forgetting *impossible*
+  rather than merely unlikely. This is why the correction was a **module**, not two added fields: the gear had
+  drifted into **seven hand-written spellings across five tools**, including a bare literal `2241`.
+- **★ `plain` must come from the same object as the cfg.** `eff = robust/plain` is a ratio, so where `eff` is
+  only displayed the normalizer cancels — but `haste-ladder.mjs` and `brute-grid.mjs --tool` grade a search
+  MISS on `toolEff − gridEff < −0.15`, a **difference** of two normalized numbers. A cfg with ×1.2 and a
+  `plain` without it inflates every `eff` by exactly 1.2, narrowing that band to 0.125 true casts and reading
+  as a 20% model improvement — 30× the correction's real effect (≈ −0.6%).
+- **★★ Thread it into EVERY `page.evaluate` that builds a cfg, and verify by RUNNING.** `{...undefined}` is
+  silently legal in JS, so omitting `REF` from one evaluate argument does not throw — it strips the gear and
+  yields `NaN`, and every `NaN` comparison being false sends the verdict wherever the ladder happens to fall
+  (PASS in `haste-ladder`, MISS in `brute-grid`). `node --check` and a `grep REF` both missed exactly this;
+  a 20-second smoke run found it. Both certifiers now exit 2 rather than grade a non-finite score.
+- **⚠ NOT for `index.html`, NOT for `tests/`.** Neither correction is a model change (PHASE8 §7): the SP figure
+  is a property of *this export's* gear and the T5 bonus of *this export's* set. `index.html`'s
+  `GOLDEN_DEFAULTS.gear` is the frozen fixture the 25 goldens are pinned to, and `tests/monotonicity.mjs`
+  asserts a property that must hold at **any** gear. Neither is sim-compared; neither imports this.
+
 ## Running a clean comparison
 
 ```

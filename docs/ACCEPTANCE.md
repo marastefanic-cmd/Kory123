@@ -5,8 +5,14 @@ is the **completion criterion**, re-run after every fix/upgrade phase. Phase 6 b
 future phases fix what it exposes and re-run it. A documented deficit is a **debt to fix, not a state to
 accept** (user-directed).
 
+> **⚠ The current committed round is STALE (07-25).** `tools/xval-results/` was gathered before the harness
+> gear correction (`tools/reference-gear.mjs`; PHASE8 §20), so its model side optimized against `sp: 1387`
+> with no `t5two` — not the gear the sim runs. Measured as rank-neutral at this scale, so the verdicts are
+> unlikely to move; still, **re-baseline before quoting the ledger as authoritative** (`bash tools/xval-rerun.sh`).
+
 Read `docs/DIARY.md` for history and `docs/TOOLING.md` for the sim methodology (esp. the ★★★
-never-prepull rule and the ★ mana trap). The run that first built and executed this test is archived at
+never-prepull rule and the ★ mana trap). **Every harness cfg's gear comes from `tools/reference-gear.mjs`
+— spread it, never re-type it** (TOOLING "THE REFERENCE GEAR"). The run that first built and executed this test is archived at
 `docs/archive/07-phase6-xval-run.md` (cited across the docs as *PHASE6 §x*).
 
 ---

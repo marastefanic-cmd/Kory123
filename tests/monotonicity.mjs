@@ -48,6 +48,10 @@ for (const c of CASES) {
   const rows = await page.evaluate(async ({ c, STEP, HMAX }) => {
     const kit = c.kit || ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking', 'bloodlust'];
     const enabled = {}; for (const k in BUFFS) enabled[k] = kit.includes(k);
+    // Deliberately NOT `tools/reference-gear.mjs`'s REF: that module describes THE GEAR THE SIM RUNS,
+    // and exists so a model-vs-sim harness cannot describe a different mage than the one being simmed.
+    // This file sims nothing.  It asserts a PROPERTY — more haste never scores less — that must hold at
+    // ANY gear, so its gear is an arbitrary fixture and pinning it here is the point, not drift.
     const mkcfg = h => ({ T: c.T, hasteRating: h, sp: 1387, critPct: 38, enabled, fixed: c.pins || {}, warnings: [], coldSnap: true, segments: null });
     const plain = h => { const g = mkcfg(h); return (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * g.sp) * (1 + (g.critPct / 100) * (GAME.CRIT_MULT - 1)); };
     const out = []; let prevS = null;
