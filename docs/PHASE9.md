@@ -1842,3 +1842,31 @@ Lady Vashj              2.25M : 2.24M : 2.23M    52.2s
 ```
 
 One case is **6.98M repair calls in 168.9s** — 24% of the corpus's repair traffic in a single fight.
+
+#### Reproducing it — the census is now a tool, not a one-off
+
+`tools/census-build.mjs` (injector) + `tools/census-run.mjs` (fork-based runner):
+
+```
+node tools/census-build.mjs index.html /tmp/census.html
+node tools/plan-sweep.mjs index.html   A.json 3 --max-t=200
+node tools/plan-sweep.mjs /tmp/census.html B.json 3 --max-t=200
+node tools/plan-diff.mjs A.json B.json          # MUST print PLAN-DIFF IDENTICAL
+node tools/census-run.mjs /tmp/census.html census.json
+```
+
+**Anchoring is by LINE NUMBER, deliberately.** `dodgeDowntime`'s accept line is *not* unique in
+`index.html` — it appears twice — so a text-substitution build would silently instrument the wrong site
+and produce a plausible-looking census of the wrong pass. Each probe carries the source line it expects;
+on a mismatch the builder searches the file and, when the text is uniquely findable, **prints the new
+line number** so re-anchoring is one edit. It writes no output file on failure.
+
+**Both controls run on the builder itself.**
+- *Positive* — rebuilding from today's `index.html` produces a file **byte-identical (`cmp`) to the
+  `census.html` the numbers above came from**. That is a stronger reproduction proof than re-deriving
+  the counts, which could agree by coincidence of a compensating error.
+- *Negative* — a one-line shift of `index.html` gives `CENSUS-BUILD ERROR: anchor 565 … it is now at
+  line 566`, **exit 2, no file written**; and pointing `census-run.mjs` at an *uninstrumented* file exits
+  2 with *"the probes are not present"* rather than reporting a corpus of zeroes. Zero counts are the
+  false-pass mode here — an empty census reads exactly like *"none of these passes ever fire, delete
+  them all."*
