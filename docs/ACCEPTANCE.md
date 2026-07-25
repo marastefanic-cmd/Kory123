@@ -247,17 +247,57 @@ false-pass defects across 14 tools, several of which could have silently corrupt
 `[0,100,200,300,400]` default an empty `HASTES` would have substituted — all 345 plan rows carry
 `_prestack:0` (cold open, no prepull), no `NaN`/`undefined`, all 36 carry `XVAL-DONE`.
 
-**★★ The worst non-KT column in round 5 has a named candidate mechanism, and it is an existing debt.**
-`isc-skull short T=99 @sim40 ← plan@70`, **0.362%**, differs from native in **one track**: `IV[8,28]` vs
-`IV[0,20]` (Icon and Skull byte-identical). The model prices the pair 0.006% apart, because it credits
-haste covering the opening ramp at **exactly 0.000** (`index.html:926-928`) — the ramp under-credit debt
-already measured at ~+0.079 pp (PHASE8 §15.5 F5; DIARY open debts), and the ramp is a large fraction of a
-99s fight. Filed as a **lead with a pre-registered test**, not a finding: patching the ramp credit must
-flip the opening-haste-window cells specifically and leave the flat per-press population alone. PHASE7 §5.16c.
+**★★★ The worst non-KT column in round 5 is DIAGNOSED, and it is an INSTRUMENT ARTIFACT, not a model
+defect.** `isc-skull short T=99 @sim40 ← plan@70`, **0.362%**, differs from native in **one track**:
+`IV[8,28]` vs `IV[0,20]` (Icon and Skull byte-identical), and the model prices the pair 0.006% apart.
 
-**So: not passing yet.** Remaining owners: the two persistent columns (Phase 7), the ramp-credit patch
-(scorer change — lands after the round closes, duel-gated per moved cell), PHASE8 (the B2 family,
-highest-effort scorer work) and the metric-design task for the near-tie tail. Re-run this in full after each.
+*The first attribution was wrong and is withdrawn.* That 0.006% was blamed on the model crediting
+ramp-covering haste at exactly 0.000 (`index.html:926-928`) — the "ramp under-credit debt". **Falsified two
+ways.** (1) `tools/ramp-marginal.mjs`: the model's ramp credit is *exactly floor-slack recovery* — 0.0000
+floor-free (provably the right answer) and +0.33…+0.41 pp when the floor binds — so there is no
+under-credit to patch (RULES §3). (2) **Both layouts in this cell are floor-free at the opening** (IV alone
+at R=40 ⇒ m=1.2304, steady cast 1.219 s, 0.219 s of slack), so **no ramp physics is in play here at all**
+and the model's 0.006% is *correct*.
+
+**The real mechanism is the tail-lattice ripple** (RULES §8, `tools/lattice-ripple.mjs`). The sim counts
+**integer** casts under the kill taper; the model integrates its **continuum limit**. Same width
+(`KILL_WINDOW = 0.5` ≡ `--var 0.5`), different kind — a sawtooth of `1 − W/c` casts, `0.3164` at this
+fight's tail rate `c = 1.4629 s`. Evaluating the *sim's own* expected-cast sum on the *model's own* cast
+list settles it with no wowsims run:
+
+| scorer | native | rival | rival vs native |
+|---|---|---|---|
+| **continuous** (the model) | 242539.5 | 242524.5 | **−0.0062%** ← reproduces the reported model gap exactly |
+| **discrete** (the sim's formula) | 239621.7 | 241070.6 | **+0.6046%** ← sign flip |
+| wowsims measured | 3040.7 | 3051.7 | **+0.3617%** |
+
+The tail diagnostics name the cause outright: **native's last cast completes at 99.6216 s — past
+`T+KW = 99.5`, weight 0, a wholly wasted cast** — while the rival's completes at 99.3041 s (weight 0.196)
+and fits one more. `tail-flat=true` for both, so the lattice extension is legitimate. **The disputed 0.36%
+is which side of the kill window the last cast falls on** — the razor-edge whole-cast parity trap
+`xval.mjs` names for `var=0`, surviving at `var=0.5` because the taper (1.0 s) is *narrower* than the tail
+cast period (1.463 s).
+
+**⚠ And the fix is NOT to discretize the scorer** — the full-column control refuses it. All 11 plan rows
+scored at sim-haste 40: the discrete sum picks the sim's argmax (row 70) where the integral picks 40, so it
+*does* fix the disputed ranking — but across the column it is a **worse predictor on both metrics**
+(`r = 0.7910` / RMSE 0.2948 vs the integral's `r = 0.9337` / RMSE 0.2431) with large two-signed errors
+(+0.669, +0.469, −0.241 pp). Discretization adds variance without removing bias, independently re-deriving
+`index.html:875-877` (a per-cast sum *was* the old model; its quantization produced the phantom gains).
+
+**⚠⚠ This puts a POSITIVE-BIASED FLOOR under the metric itself.** `diagWorst` is a `max` over ~10 rival
+rows of a two-signed ripple, each row carrying an independent tail phase, so **its expectation is positive
+even for a perfect model**: `+0.037/+0.065%` at R=1 rising to `+0.094/+0.165%` at R=10 (Monte-Carlo, 20k
+seeded, at `c = 1.219/1.463`, n=81). Because the ripple is a *fixed cast count*, the percentage scales as
+`1/N` — **the artifact is short-fight-and-low-haste only**, which is exactly the shape of the residual
+deficit family. ⇒ *"No length-persistent diagonal deficit"* **is not reachable by construction** on short,
+low-haste tables at this taper width. **This is a user-facing criterion call**, filed below as a coverage
+gap: the honest form of the test is likely *"deficit below the ripple floor"*, not *"no deficit"*.
+
+**So: not passing yet** — but the accounting has changed. Remaining owners: the two persistent columns
+(Phase 7), PHASE8 (the B2 family, highest-effort scorer work), and the metric-design task for the near-tie
+tail — now merged with the criterion question above, since both say the ruler is too coarse for what is
+left. **The ramp-credit patch is CANCELLED** (there was no defect). Re-run this in full after each.
 A performance phase is also open (`docs/PHASE9.md`); by construction it must leave every plan
 byte-identical, so it cannot invalidate a round — but re-run the exact-match suite after each of its
 steps, and if any plan ever *does* move, the round is void.
@@ -272,6 +312,22 @@ steps, and if any plan ever *does* move, the round is void.
   plateau vs. the differing endpoints. Note this when reading a CLEAN result. *Measured at round 5: this
   is NOT what is behind the failures — **0 of 135** borrowed-win columns have a borrower plan
   byte-identical to the native, so every one is a real plan difference (`xval-persist.mjs`).*
+- **★★★ THE METRIC HAS A POSITIVE-BIASED RESOLUTION FLOOR, so `diagWorst = 0` is not reachable by
+  construction on short/low-haste tables** (07-25; RULES §8, `tools/lattice-ripple.mjs`). The sim counts
+  integer casts under the kill taper, the model integrates the continuum limit; the residual is a sawtooth
+  of `1 − W/c` casts (`W = 1.0 s`, `c` = tail cast period) — **exactly 0 at the GCD floor**, `0.32` casts at
+  `c = 1.463 s`. `diagWorst` then takes a **`max` over ~10 rival rows** of that *two-signed* quantity, each
+  row with an independent tail phase, so its **expectation is positive for a flawless model**:
+  `+0.094…+0.165%` at R=10 on an 81-cast fight. Since the ripple is a fixed cast count, the percentage
+  scales as `1/N` — the floor is **short-fight and low-haste only**, which is precisely where the residual
+  deficits live. **Two things follow.** (a) A cell below the floor is **not evidence of a model defect** —
+  the round-5 worst non-KT column is now diagnosed as exactly this. (b) **The criterion itself needs
+  restating** — plausibly *"deficit below the ripple floor for the table's tail rate"* rather than *"no
+  deficit"*. That is a **user call and is NOT being made unilaterally**; until it is made, read a
+  short/low-haste DEFICIT under ~0.1–0.2% as *at the ruler's limit*. This compounds the model-side limit
+  already recorded below (58/135 round-5 columns priced ≤0.02% apart — under the model's *own* resolution).
+  Widening the taper toward the tail cast period would shrink the floor, but it also **changes the
+  objective** (`KILL_WINDOW` is the half-cast hedge of RULES §8) — do not "fix" the ruler by moving the goal.
 - **KT AoE simmed as downtime** (genapl has no Arcane-Explosion emission) — KT numbers exclude AoE damage.
 - **Ashtongue** (random on-crit proc) is out of the kits — needs a different, stochastic treatment (Phase 7).
 - **No exhaustive ground truth above ~h150** for SP-trinket-free kits (the 5s grid can't express the

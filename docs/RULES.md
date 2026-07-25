@@ -107,18 +107,35 @@ casts**, so it should sit on the fastest part of the window.
   **IV pre-Lust ≡ IV post-Lust to 0.00%** once both are interior (100s/140s fights, `tools/explore.mjs`
   cross-check). Above the floor the pull gains only via floor headroom (its ramp casts sit further from
   the cap).
-- **★ MEASURED EXCEPTION — a haste window that COVERS THE OPENING RAMP is worth ~+0.08 pp more in the
-  sim than the model pays** (PHASE8 §15.5 F5; not yet patched). Position sweep, `T=100`, `var 3.0`,
-  20k iters: `resid@AT=0 − resid@AT=10` is **+0.094 / +0.098 / +0.040** (IV / MQG / Zerk at R=40) and
-  **+0.092 / +0.088 / +0.061** at R=70 — **6/6 positive**, mean **+0.079 pp** — while the model's haste
-  marginal is flat in position to **0.0000 pp** across the whole interior (so it credits the ramp overlap
-  exactly zero). The bullet above is right about the *steady* stream and wrong on the ramp: there the cast
-  interval isn't the steady-state one, so shortening it genuinely changes the count. Note the effect is
-  ramp-**coverage**, not being-early: `AT=5` shows no bonus, because the ramp ends at 6.34 s (R=40) /
-  6.22 s (R=70) and a press at 5 snaps to the next cast boundary, already past it. Magnitude is small
-  (≈ 0.03 pp once diluted to a 229 s fight, less again when another window already covers the ramp — §14.6
-  saturation), and it is **not** B2's mechanism. Left unpatched deliberately: it would move goldens, and
-  no scorer change lands while an acceptance round is gathering.
+- **★ RAMP COVERAGE IS FLOOR-SLACK RECOVERY, AND THE MODEL PAYS IT CORRECTLY — the old "model gap"
+  reading is WITHDRAWN.** The bullet above ("haste is position-independent") is exact **only** floor-free;
+  the model's credit for a haste window covering the opening ramp is *exactly* the floor slack it recovers,
+  which is the whole of the physics. Two regimes, `tools/ramp-marginal.mjs` (pre-registered decision rule
+  in its header; `T=100`, AT ∈ {0,5,10,20,30,40}, AT=20 as the interior baseline):
+  - **Floor-free (no Lust) ⇒ EXACTLY 0.0000 pp, all 6 legs** (IV/MQG/Zerk × R∈{40,70}), with
+    *bit-identical* `robust` values (e.g. `156409.113097` six times for IV@R=40). **This is right**, by
+    algebra: coverage `= 3 + (Dh + T − Rb − D)/c` and interior `= 3 + (Dh − Rb + T − D)/c` are the same
+    expression (both 68.000 casts at `T=100`). Whatever casts fall in the window, their total *base*
+    cast-time is exactly what fills `D` at the hastened rate.
+  - **Floor binding (Lust@0) ⇒ the model PAYS**: **+0.3298** (IV R=40) · **+0.3455** (MQG R=40) ·
+    **+0.4063** (IV R=70) · **+0.4077** (MQG R=70) pp, monotone in the wasted slack (0.062 → 0.086 s/cast).
+  - **The within-regime control that nails the mechanism:** **Berserking under the same Lust reads exactly
+    0.0000** at both hastes — its steady cast is 1.023 s (R=40) / 1.004 s (R=70), i.e. the floor does *not*
+    bind. Same Lust, same ramp, weaker haste buff ⇒ zero. Nothing but floor slack is in play.
+  - **Independent cross-check:** a from-scratch hand derivation predicted **+0.27 casts** for IV+Lust@R=40
+    (m=1.599: coverage 89.99 vs interior 89.72); +0.3298 pp on ~89.7 casts = **+0.296 casts**. Agrees.
+  ⇒ **`index.html:919-931`'s design-intent comment is correct as written** (it describes the floor-free
+  case, and the board loop at `:797-822` applies window haste to the ramp's cast durations, so the floored
+  case is paid automatically). **There is no axiom to fix and no patch is queued.**
+  **What of the sim's +0.079 pp, then?** PHASE8 §15.5 F5's sweep (`var 3.0`, 20k iters) measured
+  `resid@AT=0 − resid@AT=10` at **+0.094 / +0.098 / +0.040** (R=40) and **+0.092 / +0.088 / +0.061** (R=70),
+  6/6 positive, mean **+0.079 pp** — but it was **single-buff, therefore floor-free** (IV at R=40:
+  m = 1.0254×1.20 = 1.230 ⇒ steady 1.219 s, 0.219 s of slack), the regime where **0.000 is the correct
+  answer**. So the sim's premium is a residual (0.054 casts on 68) with **no identified mechanism**. Per
+  CLAUDE.md that is a **sim-setup audit trigger, not a model bug**, and PHASE8 §7 forbids encoding a sim
+  lattice artifact into `index.html`. Note the effect is ramp-**coverage**, not being-early: `AT=5` shows no
+  bonus, because the ramp ends at 6.34 s (R=40) / 6.22 s (R=70) and a press at 5 snaps to the next cast
+  boundary, already past it. It is **not** B2's mechanism either.
 - **Sim-setup caveat (a trap, not a model gap).** In a *fixed-duration* sim, a haste buff jammed against
   the fight **end** (e.g. IV@1:00 in a strict 1:20 fight) shows a spurious ~1.4% loss vs pull, because the
   sim doesn't credit the truncated tail casts proportionally. The **model is right** to score pre≈post as
@@ -415,6 +432,35 @@ on the patched runner.
   window is kept to a **half-cast** (smooths the exact-second boundary, doesn't distort placement).
   Reacting to an early death (pop cooldowns sooner) is the player's live job. Result: terminal bursts
   align to end **at** the kill (e.g. KT: last IV+Icon at 6:40, ending at 7:00).
+- **★★★ THE TAIL-LATTICE RIPPLE — the model's integral and the sim's cast count differ by a bounded
+  sawtooth, and that difference is a RESOLUTION FLOOR on every cross-val cell** (`tools/lattice-ripple.mjs`).
+  The sim's expected damage under a uniform kill in `[T−KW, T+KW]` is *exactly*
+  `Σ_i dmg_i · clamp((T + KW − tc_i)/W, 0, 1)` with `W = 2·KW = 1.0 s`; the model computes its
+  **continuum limit** (the rate integral, `index.html:990`). The taper **width** matches
+  (`KILL_WINDOW = 0.5`, `index.html:717` ≡ xval's `--var 0.5`); the **kind** does not — and sum-vs-integral
+  is the *entire* residual. Its peak-to-peak, derived and verified numerically to 4 decimals, is
+  > **`ripple = 1 − W/c` casts**, where `c` = the **tail** cast period.
+  **Exactly 0 at the GCD floor** (`c = W = 1.0 s`, where the taper spans a whole cast period and smears the
+  lattice perfectly) and growing as the tail slows: `c=1.023 → 0.0225` · `1.219 → 0.1796` ·
+  `1.463 → 0.3164` · `1.600 → 0.3750` casts. A **fixed** number of casts over a fight of `N` casts ⇒ the
+  **percentage scales as 1/N**, so the artifact is **low-haste-only and short-fight-only** — exactly the
+  signature of the acceptance test's residual deficit family. Two consequences:
+  1. **A cell can show a real sim deficit with a flawless model.** Demonstrated on the round-5 worst non-KT
+     cell (§ ACCEPTANCE): the disputed 0.36 % is *which side of the kill window the last cast falls on*.
+  2. **`diagWorst` is positively biased by construction** — it is a `max` over ~10 rival rows of a
+     *two-signed* ripple, each row carrying an independent tail phase, so its expectation is **positive even
+     for a perfect model**: Monte-Carlo (20k, seeded) gives `+0.037/+0.065 %` at R=1 and `+0.094/+0.165 %`
+     at R=10 (at `c=1.219 / 1.463`, n=81 casts). ⇒ On short/low-haste tables at this taper width,
+     *"no length-persistent diagonal deficit"* **is not reachable by construction**, and a residual below the
+     ripple floor is not evidence of a model defect.
+  This is the **tail** face of the same integer-vs-continuum law whose **interior-boundary** face is PHASE8's
+  FLOOR LAW (a value window covers exactly `floor(D/Δ)` casts in the sim).
+  **⚠ The fix is NOT to discretize the scorer.** Swapping the integral for the sim's own sum flips the
+  disputed cell toward the sim (−0.0062 % → +0.6046 % vs the sim's +0.3617 %) — and is a **worse predictor
+  across the whole 11-row column** (`r = 0.7910` / RMSE 0.2948 vs the integral's `r = 0.9337` / RMSE 0.2431),
+  with large two-signed errors (+0.669, +0.469, −0.241 pp). Discretization adds **variance**; it does not
+  remove **bias**. That independently re-derives `index.html:875-877`: a per-cast sum **was** the old model
+  and its quantization produced the phantom "press 2 s before Lust" gains. The integral stays.
 - **Where Cold Snap's extra IV goes — COUNT-maximal chain first, then flux** *(mapped with the certified
   tool across T=100–430, Lust@5)*. The mechanics that make this dangerous to over-generalize
   (user-flagged): **the CS-IV press RESTARTS the 180s cadence from wherever it lands**, so the whole

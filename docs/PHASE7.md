@@ -767,6 +767,52 @@ opening-haste-window placement — with the flat per-press population unmoved. I
 different population, the mechanism is wrong. ⚠ The patch is a **scorer** change: it moves goldens, so it
 lands after the round closes, gated by exact-match + the duel (`tools/plan-duel.mjs`) on every moved cell.
 
+> #### ⛔ §5.16c RESOLVED — 07-25: the pre-registered ramp-patch test above is VOID, and the cell is an INSTRUMENT ARTIFACT
+>
+> *(Appended, not rewritten — this doc is the historical record. The paragraphs above state what was
+> believed on the evidence then; this states what the follow-up probes found. Read them in order.)*
+>
+> **The ramp mechanism is falsified twice over, so there is no patch to run the test on.**
+> 1. `tools/ramp-marginal.mjs` (pre-registered decision rule in its header) shows the model's ramp-coverage
+>    credit is **exactly floor-slack recovery**: **0.0000 pp floor-free**, which the algebra proves is the
+>    *correct* answer (coverage `3 + (Dh + T − Rb − D)/c` ≡ interior `3 + (Dh − Rb + T − D)/c`), and
+>    **+0.3298/+0.3455/+0.4063/+0.4077 pp** for IV/MQG at R=40/70 once Lust drives the steady cast into the
+>    1.0 s floor — with **Berserking under the same Lust at exactly 0.0000** as the within-regime control
+>    (its steady cast, 1.023/1.004 s, never crosses the floor). PHASE8 §15.5 F5's flat reading came from a
+>    **single-buff, therefore floor-free** sweep, where 0.000 is right. ⇒ **`index.html:919-931` is correct
+>    as written**; the sim's +0.079 pp is a residual with no identified mechanism (a *sim-setup audit
+>    trigger* per CLAUDE.md, not a model bug — PHASE8 §7 forbids encoding it).
+> 2. **This specific cell has no ramp physics in it.** Both layouts are **floor-free at the opening** (IV
+>    alone at R=40 ⇒ m=1.2304, steady cast 1.219 s, 0.219 s slack), so the model's 0.006% is *correct*.
+>
+> **What the 0.362% actually is: the tail-lattice ripple** (RULES §8, `tools/lattice-ripple.mjs`). The sim's
+> expected damage under a uniform kill in `[T−KW, T+KW]` is a **sum over integer casts**; the model computes
+> its **continuum limit**. Same taper width (`KILL_WINDOW = 0.5` ≡ `--var 0.5`), different kind — residual
+> `1 − W/c` casts, **exactly 0 at the GCD floor**, `0.3164` at this fight's tail rate `c = 1.4629 s`.
+> Evaluating the sim's own formula on the model's own cast list (no wowsims run needed):
+> **continuous −0.0062%** (reproducing this section's 0.006% to the digit — the instrument is validated) vs
+> **discrete +0.6046%** — a **sign flip** — against wowsims' **+0.3617%**. The diagnostics name it:
+> native's last cast completes at **99.6216 s, past `T+KW = 99.5`, weight 0 — wholly wasted**; the rival's at
+> **99.3041 s** (weight 0.196) and it fits one more. It is the razor-edge whole-cast parity trap `xval.mjs`
+> documents for `var=0`, surviving at `var=0.5` because the taper (1.0 s) is **narrower** than the tail cast
+> period (1.463 s).
+>
+> **⚠ Do NOT read that as "discretize the scorer."** The full-column control (all 11 rows at sim-haste 40)
+> shows the discrete sum picks the sim's argmax (row 70) where the integral picks 40 — fixing the disputed
+> ranking — while being a **worse predictor across the column**: `r = 0.7910` / RMSE 0.2948 vs the integral's
+> `r = 0.9337` / RMSE 0.2431, with two-signed errors up to +0.669 pp. Discretization adds variance without
+> removing bias, which independently re-derives `index.html:875-877` (the per-cast sum *was* the old model
+> and produced the phantom "press 2 s before Lust" gains). **The integral stays.**
+>
+> **Consequences for this phase.** (i) The §5.16c pre-registered test cannot be run and is retired
+> unresolved-by-void, not failed. (ii) The corpus-wide LEAD above (first haste window earlier, 33 vs 18,
+> z≈2.1) **loses its proposed mechanism** and drops back to an unexplained correlation — it must not be
+> cited as ramp evidence. (iii) The (d) caveat *"it may be the (c) ramp mechanism wearing a different hat"*
+> is void for the same reason. (iv) `diagWorst` itself is **positively biased for a perfect model**
+> (`+0.094…+0.165%` at R=10, n=81) because it maxes a two-signed ripple over ~10 rival rows — which merges
+> with §5.16b's 58/135 resolution finding into one conclusion: **on short/low-haste tables the ruler, not the
+> model, is the binding constraint.** The criterion restatement is a user call (ACCEPTANCE, coverage gaps).
+
 #### (d) The two persistent columns, at track level
 
 `tools/diagnose-deficit.mjs` dossiers only the **best** borrower per column, while `xval-persist.mjs`

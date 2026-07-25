@@ -58,11 +58,16 @@
    (tails of 9 s and 7 s). Window × kill retired same-day — the clause's fifth firing — which leaves **B2
    with no candidate expressible in a single-buff fight at all**, so the phase switches instrument class
    to the **two-plan differential** (§16: walk the five-move path between the two real plans, both
-   directions, and localize the residual to a move). **★ One real finding banked:** haste covering the
-   **opening ramp** is under-credited ~**+0.079 pp** (6/6 haste legs, both hastes) — a genuine defect in
-   that axiom, recorded in RULES §3 and DIARY's open debts, deliberately **unpatched** (it would move
-   goldens; nothing lands mid-acceptance-round). It is not B2 either: the only ramp-coverage difference
-   between the plans is `Zerk@0` vs `Zerk@6` on a ramp `IV@0` covers in both, worth 0.009–0.027 pp.
+   directions, and localize the residual to a move). **One finding banked, and later WITHDRAWN as a model
+   defect:** the sim pays ~**+0.079 pp** for haste covering the **opening ramp** (6/6 haste legs, both
+   hastes) where the model paid 0.0000. That was read as "a genuine defect in that axiom" — **and it is
+   not.** `tools/ramp-marginal.mjs` shows the model's ramp credit is *exactly* floor-slack recovery: **0.0000
+   floor-free** (which the algebra proves is the right answer — F5's sweep was single-buff, hence floor-free)
+   and **+0.33…+0.41 pp when the floor binds**, with a Berserking control at exactly 0.0000 and a hand
+   derivation agreeing to +0.296 vs +0.27 casts. The model is structurally correct; the sim's premium is a
+   residual with no identified mechanism ⇒ a **sim-setup audit trigger**, not a patch (RULES §3, PHASE8 §7).
+   It is not B2 either: the only ramp-coverage difference between the plans is `Zerk@0` vs `Zerk@6` on a
+   ramp `IV@0` covers in both, worth 0.009–0.027 pp.
    **Rounds 6 and 7 ran and closed, and between them they LOCALIZED B2 COMPLETELY** (§16.5, §17.5). Round 6
    walked the five-press path between the two real layouts in both directions: **G1 reproduces §1's headline
    to four digits** (sim +0.3602 %, model −0.0204 %), and **G3 fires** — one move, the **trinket pair**,

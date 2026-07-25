@@ -46,11 +46,16 @@ for (const [name, p] of [['RUNNER', RUNNER], ['EXPORT_BASE', EXPORT_BASE]]) {
   if (!fs.existsSync(p)) { console.error(`ERROR: ${name}="${p}" does not exist.`); process.exit(2); }
 }
 const ITER = process.env.ITER || '10000';
-// Kill-time variation (s). 0.5 is the MODEL-MATCHED metric: the scorer's `robust` (KILL_WINDOW=0.5s
-// linear taper) is exactly expected damage under a uniform kill in [T−0.5, T+0.5]. var10 asks a
-// different question (±10s kill hedging the model deliberately does not price, RULES §8) and adds a
-// late-window premium; var0 is the razor-edge whole-cast parity trap. See ACCEPTANCE (PHASE7 metric
-// decision).
+// Kill-time variation (s). 0.5 matches the scorer's kill-window WIDTH: `robust` tapers linearly over
+// [T−0.5, T+0.5] (KILL_WINDOW=0.5s, index.html:717). var10 asks a different question (±10s kill hedging
+// the model deliberately does not price, RULES §8) and adds a late-window premium; var0 is the
+// razor-edge whole-cast parity trap. See ACCEPTANCE (PHASE7 metric decision).
+// ★★★ 07-25: 0.5 matches the WIDTH, NOT THE KIND — it is not "exactly" the model's objective (that
+// claim is withdrawn). The sim SUMS over its integer cast lattice; the model integrates the continuum
+// limit. Residual = a tail-phase sawtooth of peak-to-peak (1 − W/c) casts, W = 1.0s (exactly 0 at the
+// GCD floor, 0.32 casts at c=1.463s) — so the parity trap SHRINKS at var0.5 but does not vanish below
+// the haste floor, and it scales as 1/N (short fights only). Derivation + the do-not-discretize control:
+// `node tools/lattice-ripple.mjs`, RULES §8, TOOLING (metric bullets).
 const VAR = process.env.VAR || '0.5';
 
 

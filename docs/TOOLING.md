@@ -280,7 +280,8 @@ node tools/genapl.mjs '<specA>' A.apl.json
 runner --export gear.json --apl A.apl.json --dur 420 --var 0.5 --iter 30000 --seed 11 --mana 100000000 --tag A --quiet
 # repeat for specB; compare column 5.
 ```
-- **`--var 0.5` is the default read** (the model-matched kill window — see the metric bullets below).
+- **`--var 0.5` is the default read** (it matches the scorer's kill-window **width** — but only the
+  width; there is a derivable `1 − W/c`-cast residual, see the metric bullets below).
   `--var 0` is still useful for count-preserving CRN A/Bs (lowest pairing noise) but MUST be confirmed
   at var0.5 (var0's whole-cast parity flipped the §16 h150 gate's sign once). `--mana 100000000` =
   infinite (isolate the overlay from mana). `--haste N` tests gear breakpoints.
@@ -457,16 +458,42 @@ all of it, not just the crit sequence).
   desynced sample and mislead. Measure count-changing questions (e.g. 3-vs-4 icons) with
   **far-separated-seed replicates + large N**, never a single nearby-seed pair.
 - **`--var 0` vs `--var 10` — and the MODEL-MATCHED read, `--var 0.5` (Phase 7).** `--var V` draws the
-  kill uniformly in [T−V, T+V]; intermissions stay fixed. The scorer's `robust` objective (KILL_WINDOW =
-  0.5s linear taper) is **exactly** expected damage under a uniform kill in [T−0.5, T+0.5] — so
-  **var 0.5 asks the sim the same question the model answers** and is the cross-val/acceptance metric.
-  var0 is the razor-edge whole-cast-parity trap (measured: the §16 h150 ramp-hug pair flips −0.08% →
-  +0.37% from var0 to var0.5 — the var0 read was a stranded whole cast, the var0.5 read matches the
-  model's +0.25 casts to 0.01%). var10 asks a *different* question — ±10s kill hedging the model
-  deliberately does not price (RULES §8) — and adds a late-window premium (measured on 15 cross-val
-  columns: var10 deltas shrink 2–4× at var0.5). Use var0 only for count-preserving CRN A/Bs where its
-  low noise helps, and confirm at var0.5; gate model preferences at var0.5. No kill-variance setting
-  clears an **intermission-wall** effect (walls stay fixed) — that needs wall-jitter, below.
+  kill uniformly in [T−V, T+V]; intermissions stay fixed. The scorer's `robust` objective is a
+  KILL_WINDOW = 0.5s linear taper over [T−0.5, T+0.5] (`index.html:717`), the **same window width** the
+  sim draws at `--var 0.5` (`xval.mjs:49-54`) — so var 0.5 is the closest question the sim can be asked,
+  and is the cross-val/acceptance metric. var0 is the razor-edge whole-cast-parity trap (measured: the
+  §16 h150 ramp-hug pair flips −0.08% → +0.37% from var0 to var0.5 — the var0 read was a stranded whole
+  cast, the var0.5 read matches the model's +0.25 casts to 0.01%). var10 asks a *different* question —
+  ±10s kill hedging the model deliberately does not price (RULES §8) — and adds a late-window premium
+  (measured on 15 cross-val columns: var10 deltas shrink 2–4× at var0.5). Use var0 only for
+  count-preserving CRN A/Bs where its low noise helps, and confirm at var0.5; gate model preferences at
+  var0.5. No kill-variance setting clears an **intermission-wall** effect (walls stay fixed) — that
+  needs wall-jitter, below.
+- **★★★ "MODEL-MATCHED" MATCHES THE WIDTH, NOT THE KIND — var 0.5 has a RESIDUAL, and it is derivable
+  (07-25).** The bullet above used to say var 0.5 asks *exactly* the model's question. That word is
+  **withdrawn.** The sim sums over its **integer cast lattice**, `f(T) = Σ_i clamp((T + KW − tc_i)/W, 0,
+  1)` with `W = 2·KW = 1.0s`; the model integrates that sum's **continuum limit**, `g(T) = ((T − KW) +
+  W/2)/c`. The difference is a sawtooth in the tail phase with **peak-to-peak = `1 − W/c` casts** —
+  verified numerically to 4 decimals by `tools/lattice-ripple.mjs ripple`: `c=1.000 → 0.0000` (exactly
+  zero at the GCD floor, the built-in sanity check: at `c = W` the taper smears the lattice perfectly) ·
+  `1.023 → 0.0225` · `1.219 → 0.1796` · `1.463 → 0.3164` · `1.600 → 0.3750`. Consequences for how you
+  read a sim number:
+  - **The razor-edge parity trap is NOT confined to var0.** It shrinks by `1 − W/c` but survives at
+    var 0.5 whenever the **tail cast period exceeds the 1.0s taper** — i.e. at every haste below the
+    floor. Demonstrated at `c = 1.463 s`: 0.316 casts of two-signed slack, enough to flip the sign of a
+    0.006% model gap (`tools/lattice-ripple.mjs cell` → continuous −0.0062%, discrete +0.6046%, wowsims
+    +0.3617%). A var0.5 read is a *gate*, not an oracle, on short low-haste fights.
+  - **It is fixed casts, so it scales as 1/N** — negligible on a 420s fight, material on a 99s one. Any
+    residual disagreement whose signature is "short **and** low-haste" should be priced against
+    `1 − W/c` **before** it is called a model defect. This is the **tail** face of the same
+    integer-vs-continuum law whose **interior-boundary** face is PHASE8's FLOOR LAW.
+  - ⚠ **The fix is NOT to discretize the scorer.** Summing the sim's own formula over the model's own
+    cast lattice does pick the sim's argmax on the cell that motivated it, but across all 11 rows of
+    that column it is a **worse** predictor of the sim on both metrics (r 0.7910 vs 0.9337, RMSE 0.2948
+    vs 0.2431 pp) — see RULES §8 and `index.html:875-877`. Run
+    `node tools/lattice-ripple.mjs` (default `all`) and read **section 3** before believing section 2.
+  - **Lesson (DIARY):** matching an objective's *width* is not matching the objective. When two scorers
+    are declared equivalent, **derive the residual**; don't check that the parameters agree.
 - **Wall-jitter (boss tables — `xval.mjs` `WJITTER`, default 2) — INDEPENDENT per-wall shifts, and why.**
   Within a wall-bounded segment the cast train is phase-locked to the exit (the re-ramp), so a plan
   realizes haste value only in **whole casts** before the next wall — a deterministic per-segment
@@ -494,7 +521,7 @@ all of it, not just the crit sequence).
 | question you ask the sim | trustworthy? | why / what fixed it |
 |---|---|---|
 | **absolute DPS of one plan** | ✅ ~0.4% abs vs `wowsimcli` | the trust-anchor procedure ("Trust anchor", above) — re-certify per fresh session |
-| **A vs B, same press count** | ✅ sub-DPS resolvable | CRN pairing cancels the whole RNG inventory; use one seed, `--var 0.5` |
+| **A vs B, same press count** | ✅ sub-DPS resolvable | CRN pairing cancels the whole RNG inventory; use one seed, `--var 0.5`. ⚠ *statistically* resolvable ≠ *structurally* comparable: at var0.5 the tail lattice still leaves `1 − W/c` casts of two-signed slack (0.32 at c=1.463), so on a short low-haste fight a sub-0.1% gap can be pure ripple |
 | **A vs B, different press count** | ⚠️ noise-limited | the streams desync (shared-stream rule) — needs far-separated seeds + large N, never a nearby-seed pair |
 | **an intermission / wall-bounded plan** | ✅ *since* the `APLActionSchedule` fix | the schedule silently DROPPED on-cooldown presses (next section) — every pre-patch intermission number was garbage. Requires the patched runner (`RUNNER PROVENANCE`) **and** wall-jitter v2, because fixed walls phase-lock cast parity |
 | **an AoE phase** | ✅ *since* Phase 5 | `--targets N` + `_aoe` emission in `genapl` (AE was previously simmed as downtime). AE constants verified exact vs `arcane_explosion.go`; KT's 2.68% AoE artifact went to 0.39% (ordinary) once AoE was actually valued |
