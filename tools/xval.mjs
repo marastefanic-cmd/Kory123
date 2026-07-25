@@ -21,12 +21,23 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const { chromium } = createRequire(path.join(REPO, 'tests', 'package.json'))('playwright-core');
-const SEED = parseInt(process.argv[2] || '1', 10) >>> 0;
+// Exit-code contract (shared by every instrument here): 0 = graded clean · 1 = graded and failing ·
+// 2 = COULD NOT GRADE.  Everything below that exits 2 is a guard against this harness's dominant
+// failure mode: a misconfiguration that still produces a full, plausible matrix and a confident PASS.
+//
+// `parseInt('abc') >>> 0` is 0, so a mistyped seed used to run seed 0 in silence — and a campaign
+// loop feeding a bad seed would emit rows that look like independent samples but are all one fight.
+const SEED_ARG = process.argv[2] ?? '1';
+if (!/^\d+$/.test(String(SEED_ARG).trim())) {
+  console.error(`ERROR: seed must be a non-negative integer (got "${SEED_ARG}") — parseInt would have silently graded seed 0.`);
+  process.exit(2);
+}
+const SEED = parseInt(SEED_ARG, 10) >>> 0;
 const SCRATCH = process.env.SCRATCH || '/tmp/xval-' + SEED;
 fs.mkdirSync(SCRATCH, { recursive: true });
 const RUNNER = process.env.RUNNER;
 const EXPORT_BASE = process.env.EXPORT_BASE;
-if (!RUNNER || !EXPORT_BASE) { console.error('set RUNNER=/path/to/runner-ap180 EXPORT_BASE=/path/to/export.json'); process.exit(1); }
+if (!RUNNER || !EXPORT_BASE) { console.error('set RUNNER=/path/to/runner-ap180 EXPORT_BASE=/path/to/export.json'); process.exit(2); }
 const ITER = process.env.ITER || '10000';
 // Kill-time variation (s). 0.5 is the MODEL-MATCHED metric: the scorer's `robust` (KILL_WINDOW=0.5s
 // linear taper) is exactly expected damage under a uniform kill in [T−0.5, T+0.5]. var10 asks a
@@ -43,14 +54,42 @@ const rnd = () => { s |= 0; s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >
 // CS→IV grants IV +1 in each). Ranges chosen so each class cleanly hits its use counts.
 const TCLASS = { short: [75, 115], medium: [150, 195], medlong: [205, 255], long: [265, 375], xl: [385, 460] };
 const cls = process.env.TCLASS;
-const [tlo, thi] = cls && TCLASS[cls] ? TCLASS[cls] : [90, 420];
+// A mistyped or renamed TCLASS used to fall through to the generic [90,420] band in silence: the run
+// then drew a fight from an entirely different LENGTH CLASS than the campaign row it was filed under,
+// and every downstream table inherited the mislabel.
+if (cls && !TCLASS[cls]) {
+  console.error(`ERROR: TCLASS="${cls}" is not a known class (known: ${Object.keys(TCLASS).join(' ')}) — refusing to fall back to the generic length band.`);
+  process.exit(2);
+}
+const [tlo, thi] = cls ? TCLASS[cls] : [90, 420];
 const T = tlo + Math.floor(rnd() * (thi - tlo + 1));
 const LUST = Math.floor(rnd() * Math.max(1, T - 40));
 const TRK = ["isc", "scb", "skull", "mqg"];
 let PAIR;
-if (process.env.KIT) { PAIR = process.env.KIT.split(','); }        // explicit kit (campaign mode)
-else { const i = Math.floor(rnd() * 4); let j = Math.floor(rnd() * 3); if (j >= i) j++; PAIR = [TRK[i], TRK[j]]; }
-const HASTES = process.env.HASTES ? process.env.HASTES.split(',').map(Number) : [0, 100, 200, 300, 400];
+if (process.env.KIT) {                                             // explicit kit (campaign mode)
+  PAIR = process.env.KIT.split(',').map(x => x.trim());
+  // A KIT that wasn't exactly two known, DISTINCT keys used to slip through: a duplicate key equipped
+  // the same trinket in both slots and graded a ONE-trinket kit under the two-trinket label, and a
+  // third key was dropped silently.  An unknown key only threw later, at the TMETA lookup, far from
+  // the cause.
+  if (PAIR.length !== 2 || PAIR.some(k => !TRK.includes(k)) || PAIR[0] === PAIR[1]) {
+    console.error(`ERROR: KIT="${process.env.KIT}" must be exactly two DISTINCT keys from ${TRK.join(',')}.`);
+    process.exit(2);
+  }
+} else { const i = Math.floor(rnd() * 4); let j = Math.floor(rnd() * 3); if (j >= i) j++; PAIR = [TRK[i], TRK[j]]; }
+// `HASTES=` PRESENT-BUT-EMPTY was falsy and got swallowed by the coarse default — and that is a live
+// path: xval-kit.sh builds it from a `python3` lookup that can fail and still let the run proceed.
+// The matrix would then be graded on a haste grid that never sampled the kit's breakpoints, and could
+// report `diag=CLEAN` for a kit whose adaptation was never actually tested.  Only UNSET takes the default.
+let HASTES;
+if (process.env.HASTES === undefined) HASTES = [0, 100, 200, 300, 400];
+else {
+  HASTES = process.env.HASTES.split(',').map(x => x.trim()).filter(x => x !== '').map(Number);
+  if (!HASTES.length || !HASTES.every(Number.isFinite)) {
+    console.error(`ERROR: HASTES="${process.env.HASTES}" did not parse to a non-empty list of numbers — refusing to fall back to the coarse [0,100,200,300,400] grid.`);
+    process.exit(2);
+  }
+}
 const fmtT = x => `${Math.floor(x/60)}:${String(x%60).padStart(2,'0')}`;
 console.log(`seed=${SEED}  class=${cls||'any'}  fight=${fmtT(T)} (${T}s)  Lust@${fmtT(LUST)}  trinkets=${PAIR.join('+')}  haste=[${HASTES.join(',')}]`);
 
@@ -78,15 +117,30 @@ await page.goto('file://' + path.join(REPO, 'index.html'));
 // `_aoe` windows cast Arcane Explosion (27082), and the runner gets `--targets N` (the extra
 // dummies are inert outside the window — AB is single-target — so only the AE window is worth ×N,
 // exactly the model's M(N) physics, RULES §9). The old "simmed as downtime" KT caveat is CLOSED.
-const out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS, POOL_ENV }) => {
+let out0;
+try {
+out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS, POOL_ENV }) => {
   let segments = null, downtime = [], aoeWins = [], aoeTargets = 0, fightT = T, lust = LUST;
   if (BOSS) {
-    const p = (window.BOSS_PRESETS || []).find(x => x.name === BOSS || x.name.toLowerCase().includes(BOSS.toLowerCase()));
-    if (!p) throw new Error('boss preset not found: ' + BOSS);
+    // An exact name always wins; a SUBSTRING that matched several presets used to silently take the
+    // first one — grading a different boss than the caller named, filed under the caller's label.
+    const all = window.BOSS_PRESETS || [];
+    const exact = all.filter(x => x.name === BOSS);
+    const hits = exact.length ? exact : all.filter(x => x.name.toLowerCase().includes(BOSS.toLowerCase()));
+    if (!hits.length) throw new Error('boss preset not found: ' + BOSS);
+    if (hits.length > 1) throw new Error(`BOSS="${BOSS}" is AMBIGUOUS — matches ${hits.map(x => x.name).join(' | ')}`);
+    const p = hits[0];
     fightT = p.T; lust = (p.pins && p.pins.bloodlust && p.pins.bloodlust[0]) || 0;
-    const rows = (p.phases || []).map(ph => ({ from: ph.from, to: ph.to, type: ph.type, mult: ph.mult || 1, targets: ph.targets || 0 }));
+    // Mirror index.html's preset normalization: two SHIPPED presets (The Lurker Below, High
+    // Astromancer Solarian) carry the LEGACY single-window `intermission:[from,to]` and no `phases`.
+    // Reading only `p.phases` dropped their downtime entirely — the model planned a plain fight and
+    // genapl cast straight through the boss-untargetable window, so model and sim were wrong the SAME
+    // way, the matrix looked ordinary, and the run reported `diag=CLEAN` for a boss whose defining
+    // feature had been deleted.
+    const rawPhases = p.phases || (p.intermission ? [{ type: "intermission", from: p.intermission[0], to: p.intermission[1] }] : []);
+    const rows = rawPhases.map(ph => ({ from: ph.from, to: ph.to, type: ph.type, mult: ph.mult || 1, targets: ph.targets || 0 }));
     segments = rows.length ? buildSegments(rows, fightT) : null;
-    for (const ph of (p.phases || [])) {
+    for (const ph of rawPhases) {
       if (ph.type === 'intermission') downtime.push([ph.from, ph.to]);
       if (ph.type === 'aoe') { aoeWins.push([ph.from, ph.to]); aoeTargets = Math.max(aoeTargets, ph.targets || 0); }
     }
@@ -129,6 +183,13 @@ const out0 = await page.evaluate(async ({ HASTES, T, LUST, PAIR, TMETA, BOSS, PO
   const wallList = [...downtime, ...aoeWins].map(w => w[0]).sort((a, b) => a - b);
   return { res, fightT, lust, aoeTargets, wallList };
 }, { HASTES, T, LUST, PAIR, TMETA, BOSS: process.env.BOSS || null, POOL_ENV: process.env.POOL || "1" });
+} catch (e) {
+  // An in-page throw (boss not found / ambiguous / optimizer error) surfaced as an unhandled rejection
+  // and exited 1 — "graded and failing" under the contract, when nothing was graded at all.
+  await browser.close();
+  console.error('ERROR: in-page setup/optimization failed — ' + String((e && e.message) || e));
+  process.exit(2);
+}
 await browser.close();
 if (perr) { console.error('PAGEERROR', perr); process.exit(2); }
 const plans = out0.res;
@@ -151,7 +212,15 @@ console.log(`unique plans: ${Object.keys(uniq).length}/${HASTES.length}`);
 // with the wall that starts its segment (the raid tracks the boss). A RIGID translation (one δ for
 // everything — the first design) preserves every segment's internal parity and washes NOTHING.
 // WJITTER=2 → 1 nominal + 2·WJ jitter variants with per-wall δ_i ∈ [−WJ, +WJ].
-const WJ = (process.env.BOSS && (out0.wallList || []).length) ? +(process.env.WJITTER ?? 2) : 0;
+// `??` does NOT catch an EMPTY string, so `WJITTER=` (a wrapper whose lookup produced nothing) gave
+// `+'' === 0` and silently disabled the wall-jitter wash — on exactly the phase-boss tables that need
+// it, leaving the per-segment cast-parity artifact unwashed and indistinguishable from a real deficit.
+let WJ = 0;
+if (process.env.BOSS && (out0.wallList || []).length) {
+  const wjEnv = process.env.WJITTER;
+  WJ = (wjEnv === undefined || wjEnv === '') ? 2 : +wjEnv;
+  if (!Number.isFinite(WJ) || WJ < 0) { console.error(`ERROR: WJITTER="${wjEnv}" must be a non-negative number.`); process.exit(2); }
+}
 const walls = out0.wallList || [];
 const mulb = seed => () => { seed |= 0; seed = (seed + 0x6D2B79F5) | 0; let t = Math.imul(seed ^ (seed >>> 15), 1 | seed); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
 const VARIANTS = [walls.map(() => 0)];
@@ -180,7 +249,17 @@ for (const ph of HASTES) { M[ph] = {}; for (const sh of HASTES) {
     const args = ['--export', EXPORT, '--apl', p, '--dur', String(FIGHT_T), '--var', VAR, '--iter', ITER, '--seed', '11', '--mana', '100000000', '--haste', String(sh), '--quiet', '--tag', 'm'];
     if (out0.aoeTargets) args.push('--targets', String(out0.aoeTargets));
     const out = execFileSync(RUNNER, args, { encoding: 'utf8' });
-    acc += parseFloat(out.trim().split(/\s+/)[4]);
+    const dps = parseFloat(out.trim().split(/\s+/)[4]);
+    // ★ THE WORST FAILURE THIS HARNESS HAD.  A NaN here propagates through `acc` into the whole
+    // matrix, and BOTH invariant loops below compare with `>` — which is FALSE for NaN — so monoDip
+    // stayed 0.00% and diag stayed CLEAN.  A runner that changed its output format, printed a warning
+    // line first, or errored to stdout would have produced a confident double PASS over zero real data.
+    if (!Number.isFinite(dps)) {
+      console.error(`ERROR: could not parse DPS (whitespace field 5) from runner output for plan@${ph} sim@${sh} variant ${vi}.`);
+      console.error(`  last line was: ${JSON.stringify(out.trim().split('\n').pop() || '')}`);
+      process.exit(2);
+    }
+    acc += dps;
   }
   M[ph][sh] = acc / VARIANTS.length;
 } }
