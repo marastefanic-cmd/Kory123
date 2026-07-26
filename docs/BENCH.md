@@ -199,6 +199,34 @@ mean ≈ 0, sign flipping. **Noise.**
 - CRN pairing (deliberately reusing one seed across two arms) is still correct and still wanted —
   the trap is only in treating *nearby* seeds as *independent*.
 
+## 3d. ✅ GEAR-B TRUST ANCHOR — CERTIFIED 07-26 (runner == wowsimcli to the decimal)
+
+The rebuilt rig was cross-checked against the upstream canonical CLI on a **byte-identical request**
+(`runner --dumpreq` writes the built `RaidSimRequest`; `wowsimcli sim --infile` consumes exactly it),
+gear-B export, `--dur 145 --var 0 --iter 10000 --seed 1`:
+
+| | DPS avg | stdev | max |
+|---|---|---|---|
+| `runner-ap180` (ours, patched) | 1146.9 | 86.1 | 1586.3 |
+| `wowsimcli` (upstream) | 1146.9094876137967 | 86.13208492668227 | 1586.2720464676802 |
+
+**Exact to every printed digit.** This is the anchor TOOLING calls for (*"runner == wowsimcli to the
+decimal"*) and it certifies three things at once: the clone is the right source, the two patches did
+not disturb the baseline physics, and the gear-B export loads identically through both paths.
+
+Both binaries are reproducible from the repo:
+```
+git clone https://github.com/wowsims/tbc-new.git && cd tbc-new && git checkout ade9f39
+git apply  <repo>/tools/wowsims-patches/apl-schedule-strict-ready.patch
+patch -p0 < <repo>/tools/wowsims-patches/ap-cd-at-cast.patch
+protoc -I=./proto --go_out=./sim/core ./proto/*.proto     # needs protoc-gen-go@v1.36.10
+mkdir -p cmd/runner && cp <repo>/tools/wowsims-patches/runner-main.go cmd/runner/main.go
+go build -tags with_db -o runner-ap180 ./cmd/runner
+go build -tags with_db -o wowsimcli    ./cmd/wowsimcli
+```
+⚠ Re-run this anchor **before any gating session**, and **again whenever the export is re-taken** —
+it is the cheapest possible check that the rig is the one the numbers were gathered on.
+
 ## 4. What this does NOT fix
 
 - Hit rating / miss floor: there is a hard **1 % miss floor** no hit rating clears (DIARY 07-24), so
