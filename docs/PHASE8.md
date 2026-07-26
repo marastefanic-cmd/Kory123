@@ -3068,6 +3068,45 @@ half by analogy to the value half.** `cfg.boundaryCharge` is therefore value-onl
   when the rig returns the question is one command, not a rebuild. And §25.2's memo trap is now
   closed for every future cfg field.
 
+## §26 — PHASE 8 CLOSING STATEMENT: the charter is DISCHARGED; B2 itself is not solved (07-26)
+
+Phase 8 was opened to explain the B2 model-vs-sim ranking error. Its charter narrowed over rounds
+to one deliverable — **implement the per-window continuous-vs-discrete boundary charge** (§21.4).
+**That deliverable is now discharged, with a negative result.** This section states exactly what is
+settled, so no future session re-opens a closed question or inherits an overstated one.
+
+### 26.1 SETTLED — do not re-open
+
+| # | Finding | Where |
+|---|---|---|
+| 1 | The boundary charge is **implemented** in `simulate()` (`cfg.boundaryCharge`, value half, priced from the anchored board by counterfactual) | §25.1 |
+| 2 | **Its sign gate FAILS: 6/7 fight lengths worse.** Robust to a 15 % premium correction | §25.3–25.4 |
+| 3 | The whole lattice-quantization family is **anti-B2 at every length tested**, and *strongest* in the shortest, pure-opener cell — so it is not a terminal-region story | §22, §23 |
+| 4 | §13.8's retirement of the family **survives** §21.5's invalidation of its flat ruler; the anchored ruler is 4.3× *more* anti-B2 | §22.4 |
+| 5 | The **haste half is not a count mismatch** — displaced casts are not lost. Do not model it by analogy to the value half | §25.5 |
+| 6 | F3's 0.0724 pp residual is **not a third mechanism**; the additive test is ill-posed (terms interact at 1.10× the residual) | §24 |
+| 7 | **B2's bias is U-shaped in length** (−0.197 / −0.116 mean / −0.397), 7/7 negative on the corrected harness | §23.1 |
+| 8 | ★ **A term dominating the ASYMMETRY implies nothing about its sign in the LEVELS** — §21.4's collapse-to-one-term was an invalid inference from a valid measurement | DIARY 07-26 |
+
+### 26.2 NOT settled — the successor question
+
+**B2 itself is unexplained.** The residual target stands at **≈0.445 pp** (§13.8), now with a
+U-shaped length profile (§23) and **0.16–0.91 pp of quantization headwind** against it depending on
+length. Any candidate must be worth ~0.445 pp *on its own*, must produce more bias at both ends of
+the length range than in the middle, and must survive the sign test that killed this family.
+
+This is **new work, not Phase 8's remainder** — Phase 8 asked whether the boundary charge was the
+mechanism, and the answer is no. It is also **sim-gated**: every remaining candidate is a
+model-vs-sim question and the rig is gone (§22.6). Tracked in ROADMAP as the successor item.
+
+### 26.3 What ships
+
+`cfg.boundaryCharge` ships **OFF and unreferenced** — nothing in the UI, presets, tests or tools
+sets it. The OFF path is proven identical to pre-phase behaviour (`SCORE-AUDIT scorerMoved=0`,
+`PLAN-DIFF IDENTICAL`, exact-match 25/25), so the phase changes **no plan the tool has ever
+produced**. It is kept rather than reverted because it is implemented, audited and gated: when the
+rig returns, the fidelity question is one command instead of a rebuild.
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance

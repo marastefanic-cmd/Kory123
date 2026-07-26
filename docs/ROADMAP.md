@@ -25,6 +25,13 @@
   `assets/database/db.bin`**, so TOOLING's "DB assets are generated, not committed" blocker has
   expired. `TOOLING.md`'s build recipe is flagged known-stale. **Everything Phase 8 still owes is a
   sim question**, so nothing further lands until a runner exists and the trust anchor is re-certified.
+- ✅✅ **PHASE 8'S CHARTER IS DISCHARGED (PHASE8 §26) — with a NEGATIVE result.** The phase narrowed
+  to one deliverable, "implement the per-window boundary charge", and that is done: implemented,
+  audited, gated, **sign gate FAILED (6/7 lengths worse)**, shipped OFF. Eight findings are now
+  SETTLED and must not be re-opened — see the §26.1 table. ⚠ **B2 itself is NOT solved**: the
+  residual target stands at **≈0.445 pp**, now constrained to a **U-shaped length profile** with
+  **0.16–0.91 pp of quantization headwind** against it. That is the SUCCESSOR question, not Phase
+  8's remainder — and it is **sim-gated**, so it cannot start until the rig is restored (§22.6).
 - ✅ **THE CHARGE IS IMPLEMENTED AND GATED — AND IT SHIPS OFF (PHASE8 §25).** The finale was executed,
   not just proxied: `cfg.boundaryCharge` (default OFF) prices each value window from the board's own
   anchored lattice (`nModel` continuous cast-equivalents − `nSim` completions inside the window) ×
