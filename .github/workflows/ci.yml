@@ -1,0 +1,151 @@
+# CI — there was none before 2026-07-26 (PHASE11 §3.5).
+#
+# ── THE ORDERING PRINCIPLE: CHEAPEST USEFUL GATE FIRST ───────────────────────────────────────────
+# `fast` needs no browser, no Go toolchain and no network beyond the checkout — it is ~40 s and it
+# catches the failure classes this project actually ships: a protocol constant drifting, the wasm not
+# booting, and the engine→planspec→genapl→simreq→wasm chain breaking end to end. `page` adds a browser
+# (~1 min) for the seam nothing else can reach. `plans` is the 5–7 min plan-identity gate and runs on
+# pushes to master, not on every PR commit.
+#
+# ── ★ EVERY JOB CARRIES A NEGATIVE CONTROL, AND THAT IS NOT OPTIONAL ─────────────────────────────
+# PHASE11's own rule: *"every new CI job needs a negative control (a deliberately-broken input that
+# must fail) before its green is believed."* This project has shipped **two** gates whose failure mode
+# was a pass — B7 (`sim-duel`'s main-guard compares `import.meta.url` to an unencoded path, so on any
+# path needing percent-encoding the whole self-check exits 0 having asserted nothing) and B8
+# (`sim-request`'s `RUNNER` gate sat above its runner-free invariants, so without a runner even those
+# never ran). A green CI that inherits those is worse than no CI, because it converts "unchecked" into
+# "checked". Where a test ships its own self-test, we run it and require it to FAIL.
+#
+# ── WHAT IS DELIBERATELY NOT HERE ────────────────────────────────────────────────────────────────
+# · The native runner (`tests/sim-request.mjs` §1+§2, `tests/sim-duel.mjs`'s cross-check). It needs Go
+#   + protoc + a clone at the pin — ~10-15 min cold. `tests/page-equiv.mjs` covers the seam that
+#   matters (page == module) with no rig at all; the native cross-check stays a local/periodic gate.
+#   See docs/GEAR-AGNOSTIC.md §4 for why both engines exist.
+# · A sim-DPS regression gate. Absolute DPS is not stable across a wasm rebuild by design, and gating
+#   on it would fight the one thing the project rebuilds deliberately.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  fast:
+    name: fast gates (no browser, no rig)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # Protocol invariants: asserts the VALUES (var != 0, cold open, infinite mana, seed spacing >=
+      # iterations, hit cap). Sharing a constant makes both sides agree; it cannot make the shared
+      # value correct, which is what these guard. Runs with no rig — that is B8's fix being exercised.
+      - name: protocol invariants (sim-request §0)
+        run: node tests/sim-request.mjs
+
+      # NEGATIVE CONTROL for the above: a deliberately-broken protocol must fail. `--var 0` is the
+      # exact value TOOLING bans (it quantizes DPS to integer casts and has faked a result twice), so
+      # if the invariant check cannot see it, the check is decoration.
+      - name: '↳ negative control: a banned protocol value must FAIL'
+        run: |
+          set -e
+          node -e '
+            const fs=require("fs");
+            let s=fs.readFileSync("sim/benchmark.mjs","utf8");
+            const before=s;
+            s=s.replace(/variation:\s*0\.5/, "variation: 0");
+            if (s===before) { console.error("SEED FAILED: could not find `variation: 0.5` in sim/benchmark.mjs — the negative control is not testing what it claims."); process.exit(2); }
+            fs.writeFileSync("sim/benchmark.mjs", s);
+          '
+          if node tests/sim-request.mjs > /tmp/neg.log 2>&1; then
+            echo "::error::sim-request PASSED with variation: 0 — the invariant gate asserts nothing."
+            cat /tmp/neg.log; git checkout -- sim/benchmark.mjs; exit 1
+          fi
+          echo "negative control OK — the banned value was caught:"; tail -3 /tmp/neg.log
+          git checkout -- sim/benchmark.mjs
+
+      # The shipped wasm boots and produces a duel. Cheap smoke over the whole engine surface.
+      #
+      # ⚠ `run: node tests/sim-duel.mjs` on its own would be a B7-shaped gate: that bug made the file
+      # exit 0 having printed NOTHING and asserted nothing (reproduced 07-26 — old guard on a path with
+      # a space: rc=0, zero lines of output; fixed guard, same path: a full duel). The fix is in, but a
+      # step that only checks the exit code cannot tell the two apart. So require the OUTPUT.
+      - name: wasm smoke (sim-duel)
+        run: |
+          set -o pipefail
+          node tests/sim-duel.mjs | tee /tmp/duel.log
+          grep -q "paired delta" /tmp/duel.log || {
+            echo "::error::sim-duel exited 0 but produced no duel — the self-check did not run (PHASE11 B7 shape)."
+            exit 1; }
+
+      # End-to-end: engine -> planspec -> genapl -> simreq -> wasm, on a real preset, both arms.
+      - name: bench smoke (end-to-end chain)
+        run: node tools/bench.mjs --preset "2:00 lust 0:05" --vs naive --iter 2000
+
+  page:
+    name: page == terminal (browser)
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: install test deps
+        working-directory: tests
+        run: npm ci
+      # playwright-core ships no browser; install the one matching the pinned version.
+      - name: install chromium
+        working-directory: tests
+        run: npx --yes playwright@1.62.0 install --with-deps chromium
+
+      # The claim sim/README.md rests on, and the one `sim-request` CANNOT check without a native
+      # runner (PHASE11 §1.2 F5: it proves module == runner, never page == runner). B1 lived here.
+      - name: page == terminal request
+        working-directory: tests
+        run: node page-equiv.mjs
+
+      # NEGATIVE CONTROL: seeds B1's exact bug (drop `targets` on the AoE case) and REQUIRES a
+      # failure. --self-test inverts its own exit contract, so a green here means the break was caught.
+      - name: '↳ negative control: seeded break must be CAUGHT'
+        working-directory: tests
+        run: node page-equiv.mjs --self-test
+
+  plans:
+    name: plan identity (exact-match)
+    # The 5-7 min gate. On PRs it is the one that matters most, but it is also the one that will be
+    # re-run on every push, so it is scoped to master pushes plus an explicit label on PRs.
+    if: github.event_name == 'push' || contains(github.event.pull_request.labels.*.name, 'run-exact-match')
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: install test deps
+        working-directory: tests
+        run: npm ci
+      - name: install chromium
+        working-directory: tests
+        run: npx --yes playwright@1.62.0 install --with-deps chromium
+
+      # 25 cases, exact-match against tests/golden.json. Covers the render path, which the fast
+      # plan-sweep loop never touches.
+      # ⚠ A green here is NOT evidence about trinket ORDERING: exact-match declares its own ALL_BUFFS
+      # and never calls applyState, so the two-slot clamp at index.html:5114 is invisible to it
+      # (PHASE10-RESUME §3b). Do not read this job as covering that.
+      - name: exact-match (25 cases)
+        working-directory: tests
+        run: node exact-match.mjs
