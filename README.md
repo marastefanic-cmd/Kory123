@@ -1,4 +1,7 @@
-# Arcane Burn Planner — TBC Cooldown Overlay Optimizer
+# Arcane Burn Planner — WoW Anniversary Cooldown Optimizer for Arcane Mages
+
+*(the page itself is titled "WoW Anniversary cooldown optimizer for Arcane mages"; "Arcane Burn Planner"
+remains the project/repo name)*
 
 A single-file web app for **TBC Anniversary-realm Arcane mages** that finds the optimal way to
 overlay your on-use / proc haste and spell-power cooldowns over a fight, and gives you a
@@ -8,10 +11,9 @@ second-screen schedule to follow during the pull.
 
 - Enter your **gear haste rating** and **fight length**
 - Check the cooldowns you actually have; enter the raid-called times for **Bloodlust / Drums / Power Infusion** (or leave blank to let the planner place them)
-- Hit **Find optimal overlay** — you get the burn timeline, an activation schedule with windows,
-  a live **cap sheet**, and a **Pressboard**: one row per press (time + spell icons), with a live
-  follow mode — a next-up banner counts down to each press and the row highlight tracks the fight
-  (or read it as an agenda if the fight drifts off last week's timing)
+- Hit **Find optimal overlay** — you get the burn timeline, a live **cap sheet**, and the
+  **activation schedule**: one line per press second (time + spell icons + what each buff does),
+  grouped into the windows they burn in, plus a copy-as-text plan for your second screen
 - **Save the setup as a boss preset** (stored in your browser) and recall it next raid week
 
 The intended weekly loop: sim/gem/enchant your gear in [wowsims](https://wowsims.com/tbc/), take that
@@ -119,8 +121,8 @@ fight is accounted for honestly without a broad ±variance hedge — which would
 burst a few seconds off its clean spot for a sub-cast gain you'd never execute. So the output is the
 sturdy, logical line: damage/spellpower buffs snapped to fully cover their cluster, and the terminal
 Icy Veins + Icon aligned to **end at the kill**. Reacting to a boss that dies early is your live job
-(pop the burst sooner), not something baked into the plan. The Pressboard shows **press moments** (one
-row = one macro press); when the buffs land on the next cast boundary, the row says so in words.
+(pop the burst sooner), not something baked into the plan. The activation schedule shows **press
+moments** — one line per second you press something, everything pressed together on that one line.
 
 **Leftover haste goes to the earliest efficient spot.** Once every damage cooldown is spent, a haste
 buff with nothing left to overlay is pure haste — position-independent, so the score is flat across

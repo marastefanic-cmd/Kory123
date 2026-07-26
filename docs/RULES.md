@@ -77,7 +77,7 @@ casts**, so it should sit on the fastest part of the window.
   - **The plan displays FIRE times (user-directed).** Every intent second inside one ramp cast fires at
     the same boundary, so the whole band is score-identical — and printing the intent (`slideEarliest`
     canonicalizes to the band's *earliest* member) read as ramp-blind ("0:04 press Icon/AP/gem" for a
-    burst firing at 5.4s). The schedule table, copy-text, and press board now print, sort, and group by
+    burst firing at 5.4s). The activation schedule and copy-text now print, sort, and group by
     the **effective fire time floored to the second** ("activated 0:05", co-rowed with a 0:05 Lust
     call): pressing at the printed second is exact, since any press inside the band fires at the same
     boundary. Intents stay internal (cooldown math).

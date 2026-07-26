@@ -206,12 +206,42 @@ against post-hoc rationalisation — not against a bad inference embedded in the
 
 ---
 
+### 07-26 — the UI rework: one board, one honest assumptions page
+
+Not a model phase — a **first-time-user** phase, done at the user's direction on the published site.
+Four things landed, none of them touching the engine (all 25 exact-match plans bit-identical):
+
+1. **The live Pressboard is DELETED** — the play/stop/reset clock, the next-up countdown banner, the
+   timeline playhead, and the `follow`/`pressPlan` machinery behind them. It was a second copy of the
+   plan competing with the schedule for the reader's attention, and a stopwatch is not what a raider
+   reads mid-pull.
+2. **The activation schedule inherits its layout** (below the timeline, where it already sat): the old
+   one-row-per-buff table repeated the same timestamp on consecutive rows, which reads as *separate
+   actions* when it is really **one macro press**. It is now one line per press second with the
+   co-pressed activations clustered as icon tiles, inside window cards that keep the burst-level
+   readouts (peak haste, AB cast time, mana to spam). Copy-as-text is untouched — it is the golden.
+3. **The model assumptions were re-verified against the engine, and one was WRONG** — see the ledger
+   entry below. They are now sectioned by subject, carry per-claim `sim-verified` / `beta` /
+   `not modeled` chips, render at page load (not only after a run), and have a masthead button that
+   scrolls to them.
+4. **`Beta` badges on Ashtongue, Drums and Power Infusion** (user call): their physics is
+   source-verified but their *placement* has never been certified end-to-end against the sim, and the
+   tool should say so rather than let a first-time user assume every number carries equal weight.
+
+Also: the masthead is a short title + eyebrow + three-step strip instead of a four-sentence paragraph
+(titled "WoW Anniversary cooldown optimizer for Arcane mages"), and the phase editor's type dropdown
+no longer overlays its own label while its trailing number field carries its unit inline (`× damage`,
+`targets`) instead of relying on the user's intuition.
+
+---
+
 ## The corrections ledger — what we believed, and what disproved it
 
 The most valuable part of this diary. Each entry: the belief, why we held it, what overturned it, and
 where the corrected truth now lives. **Do not silently re-open these** — if you think one is wrong again,
 add a *new* entry rather than deleting the old.
 
+| 07-26 | **The shipped "Model assumptions" told users the AB stack ramp was NOT modeled** — "Arcane Blast is modeled at a steady 3 stacks… every candidate plan pays [the ramp] equally, so it never changes which overlay wins." True when written; **false since Phase 4 landed the exact ramp.** | Re-read the engine while rewriting the assumptions for the UI rework: `simulate` opens at **0 stacks**, runs the ramp casts at their true 2.5/2.17/1.83s lengths, re-ramps after every ≥8s AB gap, and scores them **discretely** — and RULES §3 records the consequence the old text denied (damage windows step off the ramp, sim-confirmed +0.10–0.44%). The user-facing doc had simply not been pruned when the model changed. ★ **Living docs include the ones inside the product.** `index.html`'s assumption list is a living doc with a *bigger* audience than `docs/` — prune it in the same commit as the model change. Also fixed in the same pass: the trinket-lockout bullet named only Skull + MQG when `OFF_TRINKETS` has always included the Icon. | `index.html` `renderAssumptions()`; RULES §3, §17. |
 | 07-26 | **The sim rig's source was "not publicly recoverable."** Asserted after the container was recycled, on three seemingly independent proofs: a full clone of `wowsims/tbc` had no `ade9f39` and had never contained either patch target; `proxy.golang.org` returned `unknown revision ade9f39`; and GitHub refuses bare SHAs. A substitute rig was then built on the archived legacy repo. | **ALL THREE PROOFS SEARCHED THE WRONG REPOSITORY.** The repo is **`wowsims/tbc-new`** — which declares Go module `github.com/wowsims/tbc`. I *derived* the clone URL from `runner-main.go`'s imports instead of reading it, and it is written plainly in **four** places (`TOOLING`, `SOURCES.md`, `README.md`, `archive/07 §6`). `ade9f39` is right there (`ade9f39cc`, *"Merge PR #421 fix/armor-reduction"*), both patches apply, `assets/database/*.bin` are committed, the `archive/07` provenance checks pass (`innerSpell`=3, `CD.Use`=0), and `runner-ap180` builds. **Nothing was lost.** ★★ **THE LESSON — independent methods sharing one derived premise are not independent.** Three techniques agreeing felt like overwhelming evidence and was worth exactly as much as the premise underneath them, which was never checked against a doc that stated it outright. **When a search comes back empty, re-verify the search TARGET before believing the absence.** Sibling of this session's other three (round-4 collector, vacuous F3, `cfgSigOf` memo): each was a confident null produced by an instrument pointed slightly wrong. Two real gaps in the recipe were found and are now written down (`sim/core/proto` must be `protoc`-generated with a plugin matching the repo's protobuf v1.36.10; `cmd/runner/` must be created from `runner-main.go`). The gear export is absent **by design** — user data, never committed (`archive/07 §6.3`). | TOOLING "Building the runner"; ROADMAP §0. |
 
 | 07-26 | **The boundary charge's first sign gate came back a CLEAN NULL** — `ON` and `OFF` bit-identical at all seven fight lengths. Read at face value that says the charge is a no-op: implemented, wired, and simply too small to matter. | **IT WAS NEVER COMPUTED (PHASE8 §25.2 / PHASE9 §5.19).** `simulate()` memoizes on `cfgSigOf(cfg)`, which enumerates scoring inputs **by hand** — `T, hasteRating, sp, critPct, coldSnap, t5two, enabled, fixed, segments` — and the new `boundaryCharge` field was not in it, so the `ON` call hit the `OFF` cache entry and returned it. No error, no warning, and the result looked like a *clean measurement of nothing*. Once the field was added to the signature the charge was worth **−278.7 damage** on the very first probe. ★ **Rule now recorded at the function: every cfg field that can change a SCORE must appear in the signature.** The list is hand-maintained and nothing checks it against the fields `simulateRaw` actually reads, so a `Proxy`-wrap guard (collect keys read, assert ⊆ signature) is filed in PHASE9 §4 — the structural fix, not just this instance. **Third member of this session's family and the most dangerous: the round-4 collector passed on ZERO data, §21.5's F3 compared a quantity against ITSELF, and this one cached the answer to a different question. All three fail as a confident-looking PASS/null.** | PHASE8 §25.2; PHASE9 §5.19. |

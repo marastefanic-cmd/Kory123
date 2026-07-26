@@ -6,6 +6,21 @@
 
 **Read this first — it supersedes the round-6/7 block below on what to do next.**
 
+- 🎨 **UI REWORK LANDED (07-26, user-directed; engine untouched, exact-match 25/25 bit-identical).**
+  For first-time legibility on the published site: the live **Pressboard is deleted** (board, clock,
+  play/stop/reset, next-up banner, timeline playhead, `follow`/`pressPlan` code) and the **activation
+  schedule adopted its visuals** — one line per press *second* with co-pressed activations clustered as
+  icon tiles, inside window cards carrying peak haste / AB cast / mana. Copy-as-text (the golden) is
+  byte-identical. The **model assumptions** were re-verified claim-by-claim against the engine — **one
+  was stale and wrong** (it still said the AB stack ramp was *not* modeled, contradicting Phase 4 and
+  RULES §3; the trinket-lockout bullet also omitted the Icon) — and are now sectioned, verdict-chipped
+  (`sim-verified` / `beta` / `not modeled`), rendered at page load, and reachable from a masthead
+  button. **Beta badges** mark Ashtongue / Drums / Power Infusion (user call: source-verified physics,
+  placement never sim-certified end-to-end). Masthead shortened and retitled "WoW Anniversary cooldown
+  optimizer for Arcane mages"; phase-editor dropdown no longer overlays its label and its trailing
+  number field states its unit (`× damage`, `targets`). Record: DIARY 07-26 + its ledger row;
+  ARCHITECTURE `renderSchedule`/`renderAssumptions`.
+
 - ✗ **THE BOUNDARY CHARGE MUST NOT BE IMPLEMENTED (PHASE8 §22; 07-26).** The Phase-8 finale was
   "implement the per-window continuous-vs-discrete charge". It is **falsified on sign**: re-priced
   against the *anchored* lattice (the shape §21.5 proved the flat `frac(D/Δ)` gets wrong), the value
@@ -802,7 +817,7 @@ TOOLING). Findings, all sim-measured on the fixed rig:
   intent to the nearest whole second); the model plan stays visible as dashed ghost bars; a second tile
   row compares the custom layout to the model (Δ% damage + the four headline metrics with deltas, live
   during the drag via memoized `simulate()`); re-locking validates with `repair()` (violations listed +
-  flagged, auto-fix offered) and regenerates the activation schedule/pressboard/copy-text from the
+  flagged, auto-fix offered) and regenerates the activation schedule/copy-text from the
   custom plan. "Debug export" copies input + model output + custom timeline + stats/deltas/validation
   as one paste, including an `evalsched`-ready JSON block (round-trip verified against
   `tests/evalsched.mjs` — identical totals). Full internals: ARCHITECTURE "Timeline customization".

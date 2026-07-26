@@ -44,7 +44,7 @@ Returns `{total, totalEarly, robust, castCount, gcdCappedTime, casts, actEff, dp
 `cfgSigOf(cfg) + sigOf(schedule)` (string key, so pool workers hit despite receiving cfg as a
 structured clone per job), bounded by a wholesale clear at 120k entries. Purity ⇒ hits are
 bit-equal to recomputation; collect=true always computes fresh.
-- A discrete cast loop builds the press board / activation times (does NOT accumulate damage);
+- A discrete cast loop builds the cast list / activation times (does NOT accumulate damage);
   intermissions fast-forward (`t = seg.end`). **Ramp-aware (RULES §3):** stacks open at 0 (no prestack)
   and re-ramp after every ≥8s AB gap (`lastCastStart` + `DEBUFF_DUR`; AE casts neither build nor
   refresh); ramp casts run at true lengths and are recorded to `boardRamp`. **Press-snap:** an
@@ -228,7 +228,7 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   cast's END — a whole band of intents is exactly equivalent, and `slideEarliest` canonicalizes the
   tie to its *earliest* member ("0:04" for a burst that fires at 5.4s — reads as ramp-blind, which
   the engine is not). Rather than re-canonicalizing intents, the schedule table, copy-text, and
-  press board all print (and sort/group by) `a.sec = Math.floor(effective fire time)` from `actEff`
+  activation schedule both print (and sort/group by) `a.sec = Math.floor(effective fire time)` from `actEff`
   (`scheduleRows`); the intent stays internal. Pressing at the printed second is exact — any press
   inside the band fires at the same boundary. Scoped to the opener ramp only (post-intermission presses stay on the phase exit,
   `dodgeDowntime`'s legible anchor). Runs OUTSIDE the fixpoint so it can't ping-pong with
@@ -304,31 +304,41 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   **deterministic** haste step-curve (`multNoAti` — no averaged Ashtongue proc, RULES §14) + area fill,
   three reference lines (**+50% GCD cap**, **"cap if Ashtongue" ≈ +40.8%** when ATI on, **+25% "4× FB"**
   filler soft cap — RULES §15), phase bands (intermission hatched, AoE/burn tinted with ×N badges),
-  buff-uptime lanes with press ticks. `scheduleRows`/`renderSchedule` build the window table (peak-haste /
-  AB-cast / floor also read the deterministic `multNoAti`/`castDn`/`capDn`); rows print, sort, and group by
-  the **fire-time second** `a.sec` (see the display bullet in the optimizer section); `btn-copy` emits the
+  buff-uptime lanes with press ticks. `scheduleRows`/`renderSchedule` build the **activation schedule**
+  (peak-haste / AB-cast / floor also read the deterministic `multNoAti`/`castDn`/`capDn`); rows print, sort,
+  and group by the **fire-time second** `a.sec` (see the display bullet in the optimizer section); `btn-copy` emits the
   canonical copy-as-text plan the tests compare (`exact-match.mjs` mirrors the same `a.sec` convention). (The dashed leeway bands that used to overlay the lanes
   are **permanently rejected** — user decision, RULES §14; `leewayZones()` is deleted.)
 - **Per-window target mana** (`scheduleRows`, ~2939): each window carries `w.mana` = the AB-spam spend
   over its burst span (`GAME.AB.MANA_FLAT 195 × (1 + 0.75·stacks) + 30% under AP`, per-cast real stacks,
   AoE casts excluded — SOURCES). Shown as the blue `.manatag` chip with a net-of-regen tooltip. Pure
   read over the existing cast list; **mana never feeds the optimizer** (layout-first). Display-only.
-- **`pressPlan(run)`** (~3423): builds the press board rows only (one row per macro press moment,
-  co-pressed items grouped). The placement-reasoning tags and leeway bands it used to emit are
-  **permanently rejected** (user decision — a plateau tie for one press is conditional on every other
-  press staying put; RULES §14); rows carry no `.tag`, and the old inference logic lives only in git
-  history. Do not restore.
+- **`renderSchedule(run)`** (~3970): the activation schedule is a **press board**, not a table — inside
+  each window card (header = window index, first press second, peak haste / AB cast / at-GCD-floor, mana
+  chip) it emits **one `.prow` per press SECOND**, with every co-pressed activation clustered as
+  icon+code `.ptile`s plus a names line (`buffEffect` renders the old third column, "+30% haste for 40s").
+  Rationale: repeated timestamps in the old one-row-per-buff table read as separate actions when they are
+  one macro. The live **Pressboard** section (play/stop/reset clock, next-up banner, timeline playhead) and
+  its `pressPlan`/`follow*` machinery are **DELETED** (2026-07-26 UI rework) — the schedule now carries that
+  layout. Placement-reasoning tags and leeway bands stay **permanently rejected** (user decision — a plateau
+  tie for one press is conditional on every other press staying put; RULES §14); the old inference logic
+  lives only in git history. Do not restore.
+- **`renderAssumptions()`** (~4390): the "Model assumptions" footer — **static** (no `run` argument), so it
+  renders at page load and the masthead's `#btn-assump` link always has a scroll target. Sectioned by
+  subject with per-claim `sim-verified` / `beta` / `not modeled` verdict chips; the `beta` chips match
+  `BETA_KEYS` (Ashtongue, Drums, Power Infusion) in the setup UI. Keep it in sync with RULES/MECHANICS —
+  it is the user-facing statement of the model.
 
 ## Timeline customization — unlock → drag → lock → validate (+ debug export)
 UI-only module (after the copy handler, ~3990); the engine block is untouched and the model's run is
 never mutated — `lastRun` stays the optimizer's output, the hand-edited intent schedule lives in
 `CUSTOM.s`, and `activeRun()` = the locked custom run if one exists, else `lastRun` (what `btn-copy`
-and the pressboard read). A fresh "Find optimal overlay" run calls `customReset()`.
+reads). A fresh "Find optimal overlay" run calls `customReset()`.
 - **Unlock** (`#btn-edit` → `enterEdit`): clones `best.s`, re-renders the timeline via
   `renderTimeline(run, opts)` — the new optional second arg: `opts.ghost` draws the MODEL plan as
   dashed outline bars in every lane (always shown while a custom timeline exists), `opts.editing`
   wraps each planner press in a draggable `<g class="pressg">`, `opts.illegal` flags presses. No
-  opts ⇒ byte-identical to the old render. Schedule table + pressboard dim (`.stale`) until lock.
+  opts ⇒ byte-identical to the old render. The activation schedule dims (`.stale`) until lock.
 - **Drag** (`attachDrag`): pointer-events on the SVG; the bar follows the pointer, a bubble shows the
   whole second the press will snap to, and **release locks the intent to the nearest full second**
   (the search's own granularity; clamped to `[0, T−1]`). Bars always render at the engine's actual
@@ -341,7 +351,7 @@ and the pressboard read). A fresh "Find optimal overlay" run calls `customReset(
   Updates in realtime during a drag: rAF-throttled `simulate()` at the snapped second (memoized —
   a revisited second is a cache hit), full refresh on release.
 - **Lock** (`tryLock`): the validator IS `repair()` — `validateCustom` diffs the schedule against
-  `repair(CUSTOM.s, cfg)`; legal ⇔ fixpoint. Legal → the activation schedule, pressboard, and
+  `repair(CUSTOM.s, cfg)`; legal ⇔ fixpoint. Legal → the activation schedule and
   copy-text regenerate from the custom plan (`CUSTOM.run`, `isCustom: true`; copy-text gains a
   "CUSTOM timeline" marker line). Illegal → lock refused: per-press violations listed in `#edit-msg`
   (moved/dropped, with the earliest legal time), offending bars flagged, and an **auto-fix** button
