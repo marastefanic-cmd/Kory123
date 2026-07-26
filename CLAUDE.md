@@ -4,8 +4,14 @@ Read this first. It orients you on the project; the `docs/` files hold the detai
 
 ## What this repo is
 
-A single-file, self-contained **TBC 2.4.3 Arcane-mage cooldown-overlay planner**:
-`index.html` (open it in a browser — no build, no deps). You enter a fight (length, Bloodlust
+A **TBC 2.4.3 Arcane-mage cooldown-overlay planner**: `index.html` (open it in a browser — no build,
+no deps). The app itself is still ONE self-contained file; alongside it sits an **optional** in-page
+sim verifier (`sim/`) that lazily loads the real wowsims engine as WebAssembly when the user presses
+"Check in the benchmark sim" — a visitor who never presses it downloads exactly `index.html` and
+nothing else. **`sim/benchmark.mjs` is the single definition of the duel protocol**, imported by the
+page AND by `tools/plan-duel.mjs`/the tests; never retype a protocol constant into a new instrument.
+
+You enter a fight (length, Bloodlust
 timing, intermission/AoE phases) and it computes the **optimal moment to press each on-use
 cooldown** (Icy Veins, Arcane Power, Icon of the Silver Crescent, Serpent-Coil gem, Berserking),
 plus a burn timeline, a per-window activation schedule, and a copy-as-text plan. Alongside it:
@@ -45,8 +51,22 @@ one through the actual optimizer, compares the copy-as-text plan to `golden.json
 regenerates goldens (do this ONLY after an intentional change, and only when each changed plan improves
 the effective-ABs count — sim-verified when a blind spot is in play, per the methodology in
 `docs/TOOLING.md`). The two preset arrays are defined once in `index.html` (`BOSS_PRESETS` +
-`GOLDEN_PRESETS`) and drive both the UI (the "Boss presets" / "Debugging presets" strips) and the suite,
+`GOLDEN_PRESETS`) and drive both the UI (the "Boss presets" / "Reference fights" strips) and the suite,
 so a preset you confirm in the tool **is** the locked test.
+
+### The sim gates (added 07-26 — they need no rig)
+
+```
+node tests/sim-duel.mjs                      # the shipped wasm runs; prints a duel
+RUNNER=/path/to/runner node tests/sim-duel.mjs      # + asserts wasm == native runner
+RUNNER=/path/to/runner node tests/sim-request.mjs   # protocol invariants + page == terminal request
+```
+`sim-duel` works from the repo alone (it loads the committed `sim/sim.wasm`). `sim-request` is the
+**anti-drift gate** and needs a native runner — it asserts the protocol *values* (var ≠ 0, cold open,
+seed spacing…), that both committed characters' request templates are fresh `--dumpreq`s, and that the
+request the **website** builds equals the one the **runner** builds, field for field. It **skips
+loudly** without `RUNNER` rather than passing quietly. Run it after touching anything under `sim/`,
+`tools/genapl-core.mjs`, or a character export.
 
 **That gate takes 9m07s, so it is not the every-edit loop.** For that, sweep the same corpus in **bare
 node** (the engine is DOM-free — it already runs in a Web Worker) and diff the two runs at full float
@@ -59,6 +79,14 @@ node tools/plan-diff.mjs A.json B.json
 It needs no golden to maintain and prints the **changed-cell work list**. Then run exact-match before
 committing an engine change (it also covers the render path, which the sweep never touches). Full
 rationale, measurements, and both instrument controls: `docs/PHASE9.md §5`.
+
+**And when a changed cell needs the SIM, that is one command and no setup:**
+```
+node tools/bench.mjs --preset "2:00 lust 0:05" --vs naive     # ~10s, cold, from the repo alone
+```
+It solves with the real engine, transcribes the plan, sims it against a never-press control, and
+prints the sim Δ (with a seed band) **beside the model's Δ**, flagging a sign disagreement. Same
+backbone as the website's button — `docs/BENCH.md §6`.
 
 ⚠ **Scope the verification to what CHANGED — and DUEL what did.** If a plan is bit-identical and the sim
 is unchanged, don't re-test it. But if a plan **did** change, sim it head-to-head against its *previous*
@@ -148,6 +176,14 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/RULES.md` — the theorycraft rules, each with its sim evidence (derived from MECHANICS.md).
 - `docs/ARCHITECTURE.md` — `index.html` internals and the optimizer pass order.
 - `docs/TOOLING.md` — the wowsims sim harness (how to verify a plan) and its gotchas.
+- `docs/BENCH.md` — **the standing sim practice**, and `tools/bench.mjs`, the tool that implements it.
+  **Reach for `node tools/bench.mjs --preset X --vs naive` before building any rig**: it runs the
+  committed `sim/sim.wasm` (no clone, no protoc, no `go build`, no `RUNNER`/`EXPORT_BASE`), prints the
+  sim Δ with a seed band next to the model's Δ, and shares its whole backbone with the website's
+  verification button — so one change moves both fronts.
+- `sim/README.md` — the **in-page** sim verifier: the shared chain (`planspec` → `genapl-core` →
+  `simreq` → `sim.wasm`), the gear-agnostic reference character, the wasm-equals-native proof, and the
+  rebuild recipe. The terminal harness and the button are ONE code path by construction.
 - `docs/ROADMAP.md` — status, current work, and open questions.
 - `docs/ACCEPTANCE.md` — **the standing completion test.** The holdout haste-adaptation cross-val the
   model must pass FULLY before it's called complete (monoDip=0 everywhere + no length-persistent

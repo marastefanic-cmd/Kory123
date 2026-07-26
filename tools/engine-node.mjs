@@ -49,7 +49,7 @@ export function loadEngine(htmlPath) {
     // GAME is returned so node tools can compute the plain-cast normalizer from the engine's own
     // constants table (reference-gear.mjs doctrine: read GAME, never re-type 720 / 2.5÷3.5 / 0.8175).
     api = new Function('window', 'self', `${eng}\n${bs}\n${presets}\n
-      return { optimizeAsync, simulate, repair, buildSegments, BUFFS, GAME,
+      return { optimizeAsync, simulate, repair, buildSegments, naiveSchedule, BUFFS, GAME,
                cases: [...window.BOSS_PRESETS, ...window.GOLDEN_PRESETS],
                nBoss: window.BOSS_PRESETS.length, nGolden: window.GOLDEN_PRESETS.length,
                defaults: window.GOLDEN_DEFAULTS };`)(win, globalThis);
@@ -58,6 +58,7 @@ export function loadEngine(htmlPath) {
     process.exit(2);
   }
   need(typeof api.optimizeAsync === 'function', 'optimizeAsync missing from the engine block.');
+  need(typeof api.naiveSchedule === 'function', 'naiveSchedule missing from the engine block (tools/bench.mjs --vs naive needs it).');
   need(Array.isArray(api.cases) && api.cases.length > 0, 'fight table came out empty.');
   need(api.nBoss > 0 && api.nGolden > 0, `preset arrays look wrong: boss=${api.nBoss} golden=${api.nGolden}`);
   return api;

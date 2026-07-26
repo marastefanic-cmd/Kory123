@@ -15,6 +15,71 @@ physically-impossible result that silently corrupts any haste comparison (docs/a
 fixed rotation ever sims non-monotone in haste, **check for a prepull first.** The only legitimate
 `_prestack>0` use is a deliberate ramp-isolation experiment that is NOT compared to the model.
 
+## ★ THE VERIFICATION NOW SHIPS IN THE PAGE (07-26) — same chain, one button
+
+`index.html` has a **"Check in the benchmark sim"** button that runs the real wowsims engine *in the browser*
+(WebAssembly) and duels two layouts head-to-head. It is **not** a second implementation — every link
+of the chain is the harness's own code:
+
+```
+plan → sim/planspec.mjs → tools/genapl-core.mjs → sim/simreq.mjs → sim/sim.wasm
+```
+
+- `genapl-core.mjs` is `genapl.mjs`'s pure core, split out so the CLI and the page import the SAME
+  builder (the split is proven output-identical).
+- `planspec.mjs` is the **transcription convention** — FIRE times, floored, Cold-Snap split,
+  `_intermissions`/`_aoe`, `_prestack: 0` — i.e. `xval.mjs`'s `toSpec`, in a file both can use.
+- `simreq.mjs` patches `sim/model-ref-request.json`, which **is the runner's own `--dumpreq` output**,
+  so the page's request is the runner's request minus the fields a duel varies.
+- `sim.wasm` is the patched build at `ade9f39` (both patches; `bash sim/build-wasm.sh` rebuilds it).
+- **`sim/benchmark.mjs` is THE duel protocol** — variation 0.5, infinite mana, 10k iterations, seed 11,
+  the tie band, the rating conversions, cold open. `tools/plan-duel.mjs` imports it too, and
+  `runnerFlags()` generates the native command line from it, so `--var 0.5` is never retyped.
+  ★ If you write a new sim instrument, import BENCH; do not copy its numbers.
+
+**Two gates, both negative-controlled.** `tests/sim-request.mjs` asserts (a) the protocol *invariants*
+(var ≠ 0, cold open, seed spacing — sharing a constant cannot make it correct), (b) that
+`model-ref-request.json` is a fresh `--dumpreq` of `model-ref.json`, and (c) that the request the PAGE
+builds equals the one the NATIVE runner builds across plain / geared / Cold-Snap / intermission / AoE /
+odd-stat cases. Semantic comparison: protojson's `EmitUnpopulated` defaults equal a missing field, a
+non-default present on one side only does not.
+
+**The equality that licenses all of it:** `tests/sim-duel.mjs` runs the shipped wasm and the native
+`runner` on identical inputs and asserts agreement — measured **1351.5 vs 1351.5** and **1345.6 vs
+1345.6** DPS at 10k iterations, despite the wasm using `RunRaidSim` and the runner
+`RunRaidSimConcurrent`. Re-run it after any rebuild; a drift there invalidates the button.
+
+**Gear-agnostic reference character** (`sim/model-ref.json`): no gear, no consumes, no raid buffs,
+standard Arcane talents, spell hit pinned at the 16% cap, infinite mana, cold open, `var 0.5`. The
+user's SP / crit / haste rating are injected as flat bonuses — the four inputs the planner already
+collects. **Absolute DPS is therefore meaningless and the UI says so; only the paired difference (same
+seed, common random numbers) is reported.** Full rationale and the known gaps: `sim/README.md`.
+
+**What it cannot do, and refuses rather than fakes:** Drums / Power Infusion / Ashtongue have no
+genapl press (both arms run without them, and the UI names what it dropped); Burn phases have no
+encounter knob at all, so the button declines.
+
+## ★ THE AGENT-FACING BENCH: `tools/bench.mjs` (07-26) — start here, it needs no rig
+
+Before building a runner or hand-rolling an experiment, try:
+
+```
+node tools/bench.mjs --preset "2:00 lust 0:05" --vs naive      # ~10s, cold, from the repo alone
+```
+
+It solves the plan with the real engine, transcribes it, sims it against a **never-press control**
+(BENCH.md §2.1's difference-in-differences), and prints the sim Δ with a seed band **next to the
+model's Δ**, flagging a sign disagreement as a finding. It runs the **committed `sim/sim.wasm`**, so
+there is no clone / protoc / go build / scratchpad probe and no `RUNNER`+`EXPORT_BASE` to resolve —
+which is what phases 6–8 spent real time re-establishing every session. It is also the SAME chain the
+website's button runs (§ below), so an agent's number and a user's number cannot drift apart.
+Full contract, the two characters, and why the model cfg is forced to match the simmed character:
+`docs/BENCH.md` §6.
+
+The native runner is still needed for exactly one thing: `tests/sim-request.mjs`, the gate that proves
+the wasm path and the native path agree. Build it per "Building the runner" below when you need to
+re-certify, not to run an experiment.
+
 ## Methodology — the model is the objective, the sim calibrates it
 
 The planner already knows, deterministically, every cast, every buff window, and every timing in a
@@ -690,7 +755,20 @@ A press *also* cannot fire while its own cooldown is still running — a press s
 cooldown fires when the cd clears (which may be a later boundary). These two facts drive the
 intermission-resume behavior below.
 
-## ★★ `--var 0` QUANTIZES TO INTEGER CASTS — never measure a marginal with it
+## ★★ `--var 0` QUANTIZES TO INTEGER CASTS — never measure a marginal with it *(now MEASURED, 07-26)*
+
+**Settled with a pre-registered experiment** (`tools/var-decision.mjs`, BENCH §3): mean casts is flat
+across **1.5 s** of fight length then jumps **+0.97 casts in a single 0.1 s step** (step concentration
+19× vs 1.5× at var 0.5). The decisive consequence: when two arms differ in **terminal cast rate** — a
+haste window over the kill vs interior, i.e. RULES §8's most routine call — the measured effect swings
+**−32.8 → −0.9 → −31.8 DPS** across 0.1 s of fight length (worst step **31.4 DPS vs 3.3** at var 0.5).
+And `--var 0` is **not** quieter: seed band **0.06/0.40** vs **0.04/0.25** DPS — it is *worse on its own
+claim*, because a fixed duration parks the fight end exactly on the discontinuity.
+
+★ **The nuance that let `--var 0` survive:** the quantization **cancels** in a paired difference
+whenever both arms truncate identically (measured: two such pairs tied to the decimal). So a var-0
+result is not automatically wrong — it is unfalsifiable without checking whether the arms share a
+terminal lattice, which is a worse property than being simply wrong.
 
 **Use `--var 3.0` for any buff-marginal or A/B measurement. `--var 0` is not "the clean deterministic
 answer", it is a resolution failure**, and it has now faked a result twice (PHASE8 §13's "haste buffs are

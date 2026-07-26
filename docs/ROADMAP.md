@@ -6,6 +6,75 @@
 
 **Read this first — it supersedes the round-6/7 block below on what to do next.**
 
+- 🎨 **UI REWORK LANDED (07-26, user-directed; engine untouched, exact-match 25/25 bit-identical).**
+  For first-time legibility on the published site: the live **Pressboard is deleted** (board, clock,
+  play/stop/reset, next-up banner, timeline playhead, `follow`/`pressPlan` code) and the **activation
+  schedule adopted its visuals** — one line per press *second* with co-pressed activations clustered as
+  icon tiles, inside window cards carrying peak haste / AB cast / mana. Copy-as-text (the golden) is
+  byte-identical. The **model assumptions** were re-verified claim-by-claim against the engine — **one
+  was stale and wrong** (it still said the AB stack ramp was *not* modeled, contradicting Phase 4 and
+  RULES §3; the trinket-lockout bullet also omitted the Icon) — and are now sectioned, verdict-chipped
+  (`sim-verified` / `beta` / `not modeled`), rendered at page load, and reachable from a masthead
+  button. **Beta badges** mark Ashtongue / Drums / Power Infusion (user call: source-verified physics,
+  placement never sim-certified end-to-end). Masthead shortened and retitled "WoW Anniversary cooldown
+  optimizer for Arcane mages"; phase-editor dropdown no longer overlays its label and its trailing
+  number field states its unit (`× damage`, `targets`). Record: DIARY 07-26 + its ledger row;
+  ARCHITECTURE `renderSchedule`/`renderAssumptions`.
+- 🧪 **THE BENCH IS NOW A TOOL — `tools/bench.mjs` (07-26, user-directed).** `docs/BENCH.md` had
+  declared the gear-agnostic bench the standing practice hours earlier but **nothing implemented it**
+  (all 15 sim-capable tools still resolved `RUNNER`+`EXPORT_BASE` from a scratchpad). Now:
+  `node tools/bench.mjs --preset "2:00 lust 0:05" --vs naive` → **~10s, cold, from the repo alone**,
+  because it runs the committed `sim/sim.wasm`. Implements BENCH §2.1 (never-press control), prints a
+  **seed band on the paired difference** and the **model's Δ beside the sim's** with a sign-agreement
+  check, and **forces the model cfg to the simmed character** (spreads `REF` — the first version
+  reproduced PHASE8 §6/§7's two-different-mages defect and mispriced a duel 1.434% → 1.314%).
+  Same backbone as the website button; `tests/sim-request.mjs` now gates BOTH committed characters.
+  ✅ **The `--var` conflict is SETTLED (07-26, measured):** `tools/var-decision.mjs` decides for
+  **0.5**. At var 0 the effect size of a real difference swings a whole cast (−32.8 → −0.9 → −31.8 DPS)
+  for a 0.1s change in the kill second whenever the arms differ in terminal cast rate, and var 0 is
+  **not** quieter (seed band 0.06/0.40 vs 0.04/0.25) — a fixed duration sits *on* the discontinuity.
+  It cancels only when both arms truncate identically, which is why the convention survived. BENCH §3
+  and TOOLING ★★ now carry the numbers.
+  ✅ **Drums/PI exclusion re-diagnosed:** not a genapl gap — upstream never flags those spells
+  `SpellFlagAPL`, so no APL can press them, and the attempt is a **silent** no-op (bit-identical DPS).
+  Patchable via a third wowsims patch if the default kit ever needs to verify whole.
+- 🔬 **THE SIM SHIPS IN THE PAGE (07-26, user-directed; engine untouched, exact-match 25/25).**
+  A **"Check in the benchmark sim"** button runs the real wowsims engine as WASM in the browser and duels the
+  model plan against your hand-edited timeline (or against "mash on cooldown" when there isn't one).
+  **Not a second implementation** — `planspec` → `genapl-core` → `simreq` → `sim.wasm`, every link
+  shared with the terminal harness, and `tests/sim-duel.mjs` asserts the shipped wasm equals the
+  native runner to the printed decimal. **Gear-agnostic**: fixed synthetic mage, the user's SP/crit/
+  haste injected, hit-capped, infinite mana, cold open, `var 0.5` — absolute DPS is meaningless and
+  the UI says so, only the paired same-seed difference is reported. Refuses Burn phases (no encounter
+  knob) and names Drums/PI/Ashtongue as dropped (no genapl press). ~10s for both arms at 10k
+  iterations. **Follow-up same day (two user calls):** the button is renamed **"Check in the benchmark
+  sim"** and carries a **"?"** dialog spelling out that it is NOT a sim of the user's gear (plus how to
+  read the gap, and what it can't see); and every protocol constant now lives ONCE in
+  `sim/benchmark.mjs` — imported by the page, `tools/plan-duel.mjs` and both tests, with
+  `runnerFlags()` generating the native command line — backed by `tests/sim-request.mjs`, which asserts
+  the page's request equals the runner's field-for-field, plus protocol invariants (because sharing a
+  constant proves agreement, never correctness). Record: `sim/README.md`, TOOLING ★ section, DIARY 07-26.
+  ✅ **The search-miss alarm LANDED (07-26).** Lock a hand-edited timeline that is **legal** and scores
+  higher than the optimizer's own output **under `robust`** (not `total` — the tiles' headline is
+  at-kill damage, and beating that while losing `robust` is the objective working), and the page says
+  so loudly, in effective casts, and asks for the Debug export — which now carries the sim
+  transcription and a ready-to-run `tools/bench.mjs` command. This is `plan-duel.mjs`'s confession
+  rule in the UI: no repricing can manufacture that direction, so it is gradeable with no sim at all.
+  **Still open:** a Drums press needs an upstream `SpellFlagAPL` patch (see below); a multi-seed error
+  bar in the page would double the ~10s wall clock, so the fixed tie band stays for now.
+- 📝 **COPY AUDIT of everything the user reads (07-26, user-directed; engine untouched, exact-match
+  25/25).** `index.html` + `README.md` verified claim-by-claim against the engine. **README carried the
+  same disproven ramp claim in three places**, two deleted features (press price tags, clipped-press
+  value tags), a superseded press-timing description, and **IV-crossover numbers that do not reproduce**
+  ("~100 rating" ×3 and "~150–200" ×1; re-measured: **~15** for IV+Icon, ~80 with AP in the cluster,
+  never-in-Lust with a full opener kit — RULES §5 had this right all along). Page side: plain-language
+  rewrite with tooltips on the result tiles and the timeline legend, "Debugging presets" → "Reference
+  fights" collapsed behind a `<details>`, and a **"Show the numbers behind each claim"** toggle that
+  hides the technically-true-but-irrelevant mechanism by default. **Two missing statements added**: the
+  search is multi-start local + polish (**a very good plan, not a proven-optimal one**, with
+  ACCEPTANCE's residual behind the fold) and the output is deterministic/reproducible. DIARY 07-26 +
+  its second ledger row.
+
 - ✗ **THE BOUNDARY CHARGE MUST NOT BE IMPLEMENTED (PHASE8 §22; 07-26).** The Phase-8 finale was
   "implement the per-window continuous-vs-discrete charge". It is **falsified on sign**: re-priced
   against the *anchored* lattice (the shape §21.5 proved the flat `frac(D/Δ)` gets wrong), the value
@@ -802,7 +871,7 @@ TOOLING). Findings, all sim-measured on the fixed rig:
   intent to the nearest whole second); the model plan stays visible as dashed ghost bars; a second tile
   row compares the custom layout to the model (Δ% damage + the four headline metrics with deltas, live
   during the drag via memoized `simulate()`); re-locking validates with `repair()` (violations listed +
-  flagged, auto-fix offered) and regenerates the activation schedule/pressboard/copy-text from the
+  flagged, auto-fix offered) and regenerates the activation schedule/copy-text from the
   custom plan. "Debug export" copies input + model output + custom timeline + stats/deltas/validation
   as one paste, including an `evalsched`-ready JSON block (round-trip verified against
   `tests/evalsched.mjs` — identical totals). Full internals: ARCHITECTURE "Timeline customization".

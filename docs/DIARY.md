@@ -206,12 +206,260 @@ against post-hoc rationalisation — not against a bad inference embedded in the
 
 ---
 
+### 07-26 — the UI rework: one board, one honest assumptions page
+
+Not a model phase — a **first-time-user** phase, done at the user's direction on the published site.
+Four things landed, none of them touching the engine (all 25 exact-match plans bit-identical):
+
+1. **The live Pressboard is DELETED** — the play/stop/reset clock, the next-up countdown banner, the
+   timeline playhead, and the `follow`/`pressPlan` machinery behind them. It was a second copy of the
+   plan competing with the schedule for the reader's attention, and a stopwatch is not what a raider
+   reads mid-pull.
+2. **The activation schedule inherits its layout** (below the timeline, where it already sat): the old
+   one-row-per-buff table repeated the same timestamp on consecutive rows, which reads as *separate
+   actions* when it is really **one macro press**. It is now one line per press second with the
+   co-pressed activations clustered as icon tiles, inside window cards that keep the burst-level
+   readouts (peak haste, AB cast time, mana to spam). Copy-as-text is untouched — it is the golden.
+3. **The model assumptions were re-verified against the engine, and one was WRONG** — see the ledger
+   entry below. They are now sectioned by subject, carry per-claim `sim-verified` / `beta` /
+   `not modeled` chips, render at page load (not only after a run), and have a masthead button that
+   scrolls to them.
+4. **`Beta` badges on Ashtongue, Drums and Power Infusion** (user call): their physics is
+   source-verified but their *placement* has never been certified end-to-end against the sim, and the
+   tool should say so rather than let a first-time user assume every number carries equal weight.
+
+Also: the masthead is a short title + eyebrow + three-step strip instead of a four-sentence paragraph
+(titled "WoW Anniversary cooldown optimizer for Arcane mages"), and the phase editor's type dropdown
+no longer overlays its own label while its trailing number field carries its unit inline (`× damage`,
+`targets`) instead of relying on the user's intuition.
+
+**Then a full copy audit of everything the user reads** (`index.html` + `README.md`), at the user's
+direction — verify, rewrite in plain language, and hide what is technically true but irrelevant:
+
+- **`README.md` carried the SAME disproven ramp claim in three places**, plus two features that no
+  longer exist (per-press "price tags", clipped-press value tags — both permanently rejected), plus a
+  description of press timing ("the phase-averaged start the integral wants is the press itself") that
+  Phase 7's press-execution physics had superseded. All corrected against RULES §3/§3b.
+- **The IV-out-of-Lust crossover numbers in the README were stale AND self-inconsistent** ("~100
+  rating" in three places, "~150–200" in a fourth) — see the ledger row below.
+- **Plain-language pass on the page:** the four result tiles now carry tooltips explaining what they
+  mean (a first-time reader could not have known what "effective casts" was); the timeline legend
+  states each reference line in words with the mechanism on hover; the fight-column and phase-editor
+  hints stop reciting model internals; "Debugging presets" — a name that means nothing to a mage — is
+  now "Reference fights — test cases, not bosses", collapsed behind a `<details>`.
+- **The assumptions block got a "Show the numbers behind each claim" toggle** (`.deep` spans, hidden by
+  default): the player-relevant claim stays visible, the mechanism (per-cast proc bookkeeping, the SP
+  coefficient formula, the exclusive-category source read, the full tie-break order) is one click away.
+- **Two things were MISSING and are now stated**: that the search is multi-start local + polish, i.e.
+  **a very good plan, not a proven-optimal one** (with ACCEPTANCE's open residual — median 0.035%,
+  worst 0.38% — behind the fold), and that the output is **deterministic and reproducible** from the
+  copy-text. A tool whose button says "Find optimal overlay" owes the reader the first one.
+
+---
+
+### 07-26 — the sim comes to the page (gear-agnostic, same chain, one button)
+
+The user's ask: *"a button in the HTML that does exactly what we do — wired up so it's clickable"*,
+gear-agnostic (only SP / crit / haste, which the planner already collects), under the model's own
+assumptions (infinite mana, cold open), reusing the established verification rather than a new one.
+
+**Scouted first, built second.** The rig rebuilt from `tools/wowsims-patches/` exactly as TOOLING
+documents (clone `wowsims/tbc-new@ade9f39cc`, both patches apply, `innerSpell`=3 / `CD.Use`=0, protoc
+v1.36.10, 18 MB runner). Then the decisive experiment: **`GOOS=js GOARCH=wasm`** builds the same
+engine to **22.8 MB (4.1 MB gzipped)** — and upstream already ships `sim/wasm/main.go` exposing
+`raidSimJson(request)`, so no new Go had to be written. Measured **wasm == native runner to the
+printed decimal** (1351.5/1351.5 and 1345.6/1345.6 DPS at 10k iterations) despite the wasm running
+`RunRaidSim` and the runner `RunRaidSimConcurrent`. That equality is the whole licence for the
+feature, and `tests/sim-duel.mjs` now asserts it.
+
+Deliberate choices, each with a reason:
+- **No server.** Netlify Functions would have meant a Go binary in a lambda, a 10s timeout, and an
+  abuse surface on a free site. WASM in the page costs nothing per click and can't be rate-limited
+  into uselessness.
+- **The artifact is committed, not built at deploy time** — the bytes users run are the audited
+  bytes, and a deploy cannot break because upstream moved.
+- **The request is not hand-assembled.** The first attempt built the `RaidSimRequest` by hand and got
+  the raid proto wrong (`debuffs` lives inside `raid`; a party carries `buffs`, not `bonuses`). It now
+  patches `sim/model-ref-request.json`, which *is* the runner's own `--dumpreq` output.
+- **`genapl.mjs` was split into a pure `genapl-core.mjs` + CLI** (proven output-identical), so the
+  page and the terminal share one APL builder. Same for the transcription convention
+  (`sim/planspec.mjs`) — fire times, floored, Cold-Snap split, the rule whose earlier violation cost
+  −1.5% on a KT plan.
+- **Gear-agnostic** by construction: fixed synthetic mage, no gear/buffs/consumes, hit pinned at the
+  16% cap (202 rating; a 1% miss floor is irreducible and cancels), infinite mana, cold open,
+  `var 0.5`. **Absolute DPS is meaningless and the UI says so** — only the paired, same-seed
+  difference is reported.
+- **It declines what it cannot do**: Burn phases have no encounter knob (refused outright), and
+  Drums / PI / Ashtongue have no genapl press (both arms run without them; the UI names the omission).
+- **A "too close to call" band** (|Δ| < 0.05%) so the button reports noise as noise, and a warning
+  when the sim and the model disagree on *sign* — the shape a scorer gap actually takes.
+
+Wall clock in a browser: ~10s for both arms at 10 000 iterations each, run concurrently in two
+workers. Cold-start adds the one-time ~4 MB download.
+
+**Same-day follow-up, two user calls.**
+
+*(1) "Make it obvious this isn't a sim of their gear."* The button is now **"Check in the benchmark
+sim"**, with a **"?"** dialog that opens on demand — *"It is not a simulation of your character. It
+never asks for your gear, and it couldn't use it if you gave it to us. It runs the benchmark this
+project uses to check its own model."* — plus what the benchmark character is, how to read the number
+(**"read the gap, not the DPS"**), and what it can't see. The result panel repeats the short form next
+to the number and links back to the dialog, because that is where the misreading would happen.
+
+*(2) "I don't want the page to reuse it verbatim — that smells like we change one and not the other."*
+Correct, and it was already true: `--var 0.5` and `--mana 100000000` were typed into `plan-duel.mjs`,
+the seed into three files, `22.08` into two. Fixed properly rather than documented:
+
+- **`sim/benchmark.mjs` is now the one definition** of the duel protocol. The page, `plan-duel.mjs`,
+  `sim-duel.mjs` and `sim-request.mjs` all import it, and `runnerFlags()` **generates the native
+  command line** from the same object — so the shell invocation cannot drift from what the page sends.
+- **What is deliberately NOT shared: the character.** `reference-gear.mjs` (the cross-val's real geared
+  export — a file that already says "NOT for index.html") answers a different question from
+  `model-ref.json` (the synthetic benchmark mage). They must be free to differ.
+- **And it is checked, not trusted.** `tests/sim-request.mjs` asserts the page's request equals the
+  native runner's, field for field, across plain / geared / Cold-Snap / intermission / AoE / odd-stat
+  cases — with *semantic* protojson comparison (an `EmitUnpopulated` default equals a missing field; a
+  non-default present on one side only does not).
+
+★ **The lesson from the negative control.** The first attempt at one — flip `BENCH.variation` to 0.6 —
+**passed**, because both sides read the same constant and therefore still agreed. Sharing a value can
+only ever prove *agreement*, never *correctness*; a typo propagates to both consumers and the equality
+gate waves it through. So a second, complementary gate was added: **protocol invariants** that assert
+the values themselves (variation ≠ 0 with the reason, cold open, mana ≥ 1e7, seeds spaced ≥ iterations,
+hit cap 16). The real negative control — break *one* side — then failed as it should.
+
+---
+
+### 07-26 — the bench becomes the practice: `tools/bench.mjs`
+
+The user asked whether the new gear-agnostic approach should become the standing way this project
+sims — noting that phases 6/7/8 kept *setting it up again* and that the repo held no consistent tool.
+Checking rather than agreeing produced a better answer than either of us had:
+
+- **`docs/BENCH.md` already declared exactly that**, written hours earlier the same day: it supersedes
+  the ad-hoc reference-export convention, **reverses the "never commit an export" policy** (that policy
+  was what made the rig unreproducible when a container recycled), and specifies
+  difference-in-differences as the primary normalisation.
+- **But nothing implemented it.** No tool read `tools/bench/export.json`; all 15 sim-capable tools
+  still resolved `RUNNER` + `EXPORT_BASE` out of a session scratchpad. The design had been standing
+  practice on paper for a few hours and zero runs.
+
+So the answer was not "adopt the new thing" but **"implement the thing you already decided"** —
+`tools/bench.mjs`, BENCH.md §2.1 with a never-press control, a seed band on the *paired* difference,
+and the model's own Δ printed alongside with a sign-agreement check.
+
+**What the sim/ work actually contributed was the missing half: zero setup.** BENCH.md §5 requires
+that "a fresh container must be able to produce a number from the repo alone" — true only in the sense
+that you could *rebuild* the runner (clone, protoc, `go build`, ~2 min + network). With the committed
+`sim/sim.wasm` it is now literally true: **~10 s, cold, `node tools/bench.mjs --preset X --vs naive`**.
+The native runner keeps exactly one job — `tests/sim-request.mjs`, the gate that proves the wasm and
+the native path agree.
+
+**Two traps found while building it, both by the repo's own prior scar tissue:**
+
+1. **The model cfg must describe the character the sim runs.** The first working version simmed gear-B
+   while scoring the model at the *preset's* gear (sp 1387, no T5) — reproducing PHASE8 §6/§7's
+   defect, where "agrees/disagrees" compares two different mages. Fixed by having each character carry
+   its model parameters and **spreading `REF` from `tools/reference-gear.mjs`** rather than re-typing
+   it, exactly as that file's own ★ instructs. The model Δ moved 1.434% → 1.314% on the same duel when
+   the operating point was corrected — a real repricing that had been silently wrong.
+2. **The tool finished its work and then hung** at 1.9% CPU, looking (through `tail`) exactly like a
+   slow tool. `breathe()`'s MessageChannel and the Go runtime inside the wasm both keep node's event
+   loop ref'd. `tools/plan-sweep.mjs` had already met this and documented the fix — *"a gate that
+   HANGS reads as a slow gate, which is the same false signal as one that passes wrongly"* — so the
+   fix was one `process.exit(0)` and a comment pointing at its ancestor.
+
+**One conflict was left open rather than silently resolved.** BENCH.md §3's RNG table lists `--var 0`
+as "standard for gates"; TOOLING ★★ says `--var 0` quantizes DPS to a staircase and has faked a result
+twice. §2.1's control does not rescue it (the difference of two staircases is still a staircase, and
+quantization is not zero-mean, so pairing cannot cancel it). `tools/bench.mjs` defaults to **0.5** —
+TOOLING's rule, and what the website uses, so both fronts agree — and the conflict is now written into
+BENCH.md §3 as a **user call**, to be resolved there and in `sim/benchmark.mjs` in one edit.
+
+---
+
+### 07-26 — two claims put to the instrument instead of to memory
+
+**`--var 0` vs `--var 0.5`: SETTLED, and neither doc had it quite right.** The user asked for it to be
+decided once and for all, noting their intuition said 0 while they remembered earlier sessions landing
+on 0.5. `tools/var-decision.mjs` is the pre-registered experiment (decision rule written before the
+first run). Result: **0.5**, on evidence that surprised in three places —
+
+- The **staircase is real and huge**: mean casts flat for 1.5 s, then **+0.97 casts in one 0.1 s step**
+  (concentration 19× vs 1.5×).
+- **But it cancels in a paired comparison** whenever both arms truncate identically — the
+  pre-registered "decisive" test came back a **tie**, twice. That is *why* `--var 0` survived: it is
+  not wrong in the comparisons people happened to run.
+- **It bites where the arms differ in terminal cast RATE** — the planner's most routine call. Measured:
+  the size of a real effect swings **−32.8 → −0.9 → −31.8 DPS** across 0.1 s of fight length (worst
+  step 31.4 vs 3.3 DPS). Nobody controls the kill second to a tenth.
+- **And `--var 0` is not quieter, which was its entire justification**: seed band 0.06/0.40 vs
+  0.04/0.25 DPS. Removing a random source made the estimator *worse*, because a fixed duration parks
+  the fight end exactly **on** the discontinuity and any residual jitter is amplified into whole-cast
+  jumps. The variation was doing the smoothing.
+
+★ **The methodological lesson is the tie, not the win.** The pre-registered decisive test failed to
+decide, and the honest response was to ask *why* — which produced the actual mechanism (cancellation
+under a shared terminal lattice) and a sharper experiment. A tie on a pre-registered test is
+information about the test.
+
+**"The sim can't press Drums or PI" — right conclusion, wrong reason, found by the user asking "how
+come it can do Bloodlust?"** The shipped copy said the *harness* had no press for a raid external.
+The truth is one layer down and is an upstream fact: a spell is APL-addressable only if registered
+with **`SpellFlagAPL`**. `registerBloodlustCD` has it; `drumsSpellConfig` (35476) and
+`registerExternalConsecutiveCDApproximation` (PI, 10060) do not — they are auto-fired `MajorCooldown`s,
+i.e. the sim's scheduler picks the timing, which is precisely what a press-timing duel must not
+delegate. **Measured, and this is the bad part: scheduling them produces no error and no effect —
+2128.9 DPS with and without, bit-identical, zero aura uptime.** A silent no-op, the harness's signature
+failure mode wearing the engine's clothes. It is **patchable** (a third entry in
+`tools/wowsims-patches/` adding the flag, at the cost of re-certifying the trust anchor) and that is
+now recorded rather than assumed impossible. Ashtongue stays genuinely unpressable: it is a proc.
+
+---
+
+### 07-26 — closing the session: the alarm that was recommended twice and built once
+
+Session-end sweep for anything discussed but never built. One thing survived the audit: the
+**search-miss alarm**, which I had recommended in two separate turns and filed in ROADMAP as a
+"next step" without ever writing it. Built now.
+
+**What it is:** lock a hand-edited timeline that is **legal** and outscores the optimizer's own output
+**under `robust`**, and the page says so loudly — in effective casts — and asks for the Debug export.
+This is `tools/plan-duel.mjs`'s **confession rule** moved into the UI: `newEngine(hand-edit) >
+newEngine(model plan)` cannot be manufactured by repricing, because the search was free to keep the
+better layout and score better by its own measure and didn't. It is therefore gradeable **with no
+simulator at all**, and it can only ever turn "no finding" into "bug", never into a false green.
+
+Three things had to be right, and two are easy to get wrong:
+1. **Compare `robust`, not `total`.** The comparison tiles' headline is at-kill damage; the optimizer
+   maximizes the kill-window-smoothed `robust` (RULES §8). Beating `total` while losing `robust` is
+   the objective working, not a miss — wiring the alarm to the visible number would have made it cry
+   wolf on every terminal-window edit.
+2. **The plan must be legal** — `repair()` fixpoint. Out-scoring from outside the feasible set proves
+   nothing, because the search was never allowed there.
+3. **Threshold in meaningful units** — effective casts, not damage, and > 0.01 so float ties and
+   sub-cast tie-breaks stay quiet.
+
+Verified both directions: a legal-but-worse edit gets the ordinary "Validated" message; a plan that
+genuinely beats `robust` trips the banner with the gain printed.
+
+**And the Debug export now carries the sim transcription plus a ready-to-run
+`node tools/bench.mjs …` line**, so a user's bug report arrives reproducible: paste the command, get a
+sim number in ~3 seconds. Tested end-to-end against the actual `dist/` deploy artifact, including the
+netlify build command run verbatim.
+
+---
+
 ## The corrections ledger — what we believed, and what disproved it
 
 The most valuable part of this diary. Each entry: the belief, why we held it, what overturned it, and
 where the corrected truth now lives. **Do not silently re-open these** — if you think one is wrong again,
 add a *new* entry rather than deleting the old.
 
+| 07-26 | **`--var 0` is "already standard for gates"** (BENCH.md §3's RNG table, written the same day) — fewer random sources ought to mean a cleaner A/B. | **Measured against `--var 0.5` side by side** (`tools/var-decision.mjs`, pre-registered). `--var 0` quantizes mean casts into a staircase (+0.97 casts in one 0.1 s step after 1.5 s flat), and where two arms differ in **terminal cast rate** it swings the measured size of a real effect **−32.8 → −0.9 → −31.8 DPS** for a 0.1 s change in the kill second. It is also **not quieter** — seed band 0.06/0.40 vs 0.04/0.25 DPS — because a fixed duration parks the fight end *on* the discontinuity, so residual jitter becomes whole-cast jumps. ★ The subtle part: the quantization **cancels** whenever both arms truncate identically, which is why two pre-registered "decisive" pairs tied and why the convention survived unchallenged. A var-0 result is therefore not reliably wrong — it is *unfalsifiable without checking whether the arms share a terminal lattice*, which is worse. | BENCH §3 (settled); TOOLING ★★; `sim/benchmark.mjs`. |
+| 07-26 | **"The sim harness has no press for Drums / Power Infusion"** — stated in the shipped UI as though it were a genapl limitation. | **User challenge: "How come it can do Bloodlust? That feels like a hasty assumption."** It was. The real reason is upstream: only spells registered with **`SpellFlagAPL`** are APL-addressable. Bloodlust has it; Drums (35476) and PI (10060) do not — they are auto-fired `MajorCooldown`s. Verified empirically, and the failure is **silent**: scheduling them gives *no error and no effect* (2128.9 DPS either way, zero aura uptime). Conclusion unchanged, reason corrected, and it is now known to be **patchable** rather than impossible. | `sim/planspec.mjs` header; the in-page dialog; `sim/README.md`. |
+| 07-26 | **"Icy Veins leaves Lust at ~100 haste rating"** — stated three times in `README.md`, with "~150–200 rating" in a fourth spot, as a sim-verified headline result. | **Re-measured on the current engine** during the copy audit (`tools/engine-node.mjs`, 2:40 fight, Lust@0:05, sweeping h0–h300): the crossover is **kit-dependent and far lower**. IV+Icon leaves Lust by **~15 rating**; with Arcane Power in the cluster it is ~80 (the SP payout pays for a little overcapping); and with a full opener kit (Drums + Skull) the window is floored from h0, so IV is **never** in Lust at any gear level. This matches RULES §5, which had recorded ~15/~80 all along — the README simply never got the update, and its two numbers disagreed with each other in the same document. ★ **A number repeated in four places is not four confirmations.** Self-consistency inside one doc was never checked, and the contradiction sat in public copy. When auditing user-facing text, re-derive the numbers from the engine rather than from the neighbouring paragraph. | README "The optimizer" / "Bloodlust overlay rules"; RULES §5. |
+| 07-26 | **The shipped "Model assumptions" told users the AB stack ramp was NOT modeled** — "Arcane Blast is modeled at a steady 3 stacks… every candidate plan pays [the ramp] equally, so it never changes which overlay wins." True when written; **false since Phase 4 landed the exact ramp.** | Re-read the engine while rewriting the assumptions for the UI rework: `simulate` opens at **0 stacks**, runs the ramp casts at their true 2.5/2.17/1.83s lengths, re-ramps after every ≥8s AB gap, and scores them **discretely** — and RULES §3 records the consequence the old text denied (damage windows step off the ramp, sim-confirmed +0.10–0.44%). The user-facing doc had simply not been pruned when the model changed. ★ **Living docs include the ones inside the product.** `index.html`'s assumption list is a living doc with a *bigger* audience than `docs/` — prune it in the same commit as the model change. Also fixed in the same pass: the trinket-lockout bullet named only Skull + MQG when `OFF_TRINKETS` has always included the Icon. | `index.html` `renderAssumptions()`; RULES §3, §17. |
 | 07-26 | **The sim rig's source was "not publicly recoverable."** Asserted after the container was recycled, on three seemingly independent proofs: a full clone of `wowsims/tbc` had no `ade9f39` and had never contained either patch target; `proxy.golang.org` returned `unknown revision ade9f39`; and GitHub refuses bare SHAs. A substitute rig was then built on the archived legacy repo. | **ALL THREE PROOFS SEARCHED THE WRONG REPOSITORY.** The repo is **`wowsims/tbc-new`** — which declares Go module `github.com/wowsims/tbc`. I *derived* the clone URL from `runner-main.go`'s imports instead of reading it, and it is written plainly in **four** places (`TOOLING`, `SOURCES.md`, `README.md`, `archive/07 §6`). `ade9f39` is right there (`ade9f39cc`, *"Merge PR #421 fix/armor-reduction"*), both patches apply, `assets/database/*.bin` are committed, the `archive/07` provenance checks pass (`innerSpell`=3, `CD.Use`=0), and `runner-ap180` builds. **Nothing was lost.** ★★ **THE LESSON — independent methods sharing one derived premise are not independent.** Three techniques agreeing felt like overwhelming evidence and was worth exactly as much as the premise underneath them, which was never checked against a doc that stated it outright. **When a search comes back empty, re-verify the search TARGET before believing the absence.** Sibling of this session's other three (round-4 collector, vacuous F3, `cfgSigOf` memo): each was a confident null produced by an instrument pointed slightly wrong. Two real gaps in the recipe were found and are now written down (`sim/core/proto` must be `protoc`-generated with a plugin matching the repo's protobuf v1.36.10; `cmd/runner/` must be created from `runner-main.go`). The gear export is absent **by design** — user data, never committed (`archive/07 §6.3`). | TOOLING "Building the runner"; ROADMAP §0. |
 
 | 07-26 | **The boundary charge's first sign gate came back a CLEAN NULL** — `ON` and `OFF` bit-identical at all seven fight lengths. Read at face value that says the charge is a no-op: implemented, wired, and simply too small to matter. | **IT WAS NEVER COMPUTED (PHASE8 §25.2 / PHASE9 §5.19).** `simulate()` memoizes on `cfgSigOf(cfg)`, which enumerates scoring inputs **by hand** — `T, hasteRating, sp, critPct, coldSnap, t5two, enabled, fixed, segments` — and the new `boundaryCharge` field was not in it, so the `ON` call hit the `OFF` cache entry and returned it. No error, no warning, and the result looked like a *clean measurement of nothing*. Once the field was added to the signature the charge was worth **−278.7 damage** on the very first probe. ★ **Rule now recorded at the function: every cfg field that can change a SCORE must appear in the signature.** The list is hand-maintained and nothing checks it against the fields `simulateRaw` actually reads, so a `Proxy`-wrap guard (collect keys read, assert ⊆ signature) is filed in PHASE9 §4 — the structural fix, not just this instance. **Third member of this session's family and the most dangerous: the round-4 collector passed on ZERO data, §21.5's F3 compared a quantity against ITSELF, and this one cached the answer to a different question. All three fail as a confident-looking PASS/null.** | PHASE8 §25.2; PHASE9 §5.19. |
