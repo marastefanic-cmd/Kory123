@@ -38,6 +38,9 @@ bash tools/xval-status.sh          # processes · tables complete · cache size
    node tools/xval-band.mjs    /tmp/targets.json      # §5's grading rule: real at ≥3 seeds?
    ```
    ⚠ **36 tables or no verdict** — a partial directory is not a result.
+   ⚠ **The band's SCOPE is pre-registered in §8.18** (persistence hits ∪ over-floor/INDETERMINATE
+   cells; everything else counted-but-not-banded). Banding the whole ledger is 6–10 CPU-hours, so the
+   selection had to be fixed *before* the widths were visible — do not re-choose it after reading them.
 2. **Restate `docs/ACCEPTANCE.md`** with a gear-B status block written as a **first measurement, never
    a delta** against round 5/7 (BENCH §1 forbids the comparison). It must carry: the protocol stamp ·
    invariant A · B1-by-construction · B2's column count, distribution and CLEAN count · **plateau

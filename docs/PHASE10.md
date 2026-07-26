@@ -639,3 +639,46 @@ to any future campaign management.
 content-addressed on inputs, not on run identity, so every killed cell resumed from **218 cached
 plans and 1213 cached sims**. Nothing computed was lost — only wall-clock, and only for the cells
 that were mid-flight. That is the property to protect in any future rework of the driver.
+
+## 8.18 ★ PRE-REGISTERED BEFORE THE ROUND LANDED — which columns get the ≥3-seed band
+
+§5 pre-registers the **grading rule** (*real only if it survives at ≥3 seeds with |Δ| > 1σ of the
+paired band*) but not the **scope**: which of the round's borrowed-win columns actually get banded.
+That gap matters, because the band is the round's one remaining *sim* cost and the corpus is far too
+big to band exhaustively — so the selection would otherwise be made while looking at the widths, and
+ACCEPTANCE §6 is unambiguous about what that is worth (*"a sieve whose thresholds you chose after
+seeing the data is not evidence"*). Written down here at **11/36 tables**, before any of the six
+`isc-mqg` / `scb-*` families existed on disk.
+
+**The measured cost, which is why a scope is needed at all.** `xval-band.mjs` re-sims both plans at
+3 seeds, reproducing the cell's own geometry — so a **class** column is `3 × 2 × 1 = 6` sims and a
+**boss** column is `3 × 2 × 5 = 30` (WJITTER=2's five variants). One seed of the round is `BENCH`'s
+own, so ≈⅓ are cache hits. At §8.5's measured rates that is ~25–70 s for a class column, ~5 min for
+a Vashj/Al'ar column, and **~34 min for a KT column** (6 targets, ≈103 s/sim). A gear-A-sized ledger
+banded whole would be 6–10 CPU-hours on a box that has just spent 50.
+
+**The scope, as a rule and not a threshold.** Band the **union** of two sets, each of which is the
+output of an existing instrument rather than a number chosen here:
+
+1. **Every column `tools/xval-persist.mjs` names** — a rival that wins at all-but-at-most-one fight
+   length. ACCEPTANCE §5 argues this is the *only shape* a genuine haste-adaptation defect can take,
+   so these are graded however wide they are, including the ones sitting at 0.007 %.
+2. **Every column `tools/ripple-audit.mjs` puts `over the floor` or `INDETERMINATE`** — the cells a
+   real model defect can still live in, plus the ones whose verdict *flips* between the two
+   defensible reads of the kill-edge period. INDETERMINATE is banded deliberately: it is claimed for
+   neither side, and a paired band is exactly the measurement that can claim it.
+
+**Not banded: `inside the floor` and non-persistent.** For those the ruler is already coarser than
+the deficit, so a band cannot change any verdict they support — it would only re-measure an
+unmeasurable quantity more precisely-looking. Their **count is published** in the ACCEPTANCE block
+alongside the banded ones; per §5's "no silent caps", a column that was not graded must be visible as
+not-graded, never absorbed into a total.
+
+**If the union still overruns the box**, band in descending round-1 `pct` and name the dropped
+columns explicitly — with their loci, so the list is resumable rather than merely honest.
+
+⚠ **What the band does NOT do: relax the bar.** ACCEPTANCE's B2 bar is **zero borrowed-win columns**,
+user-directed and unchanged; `xval-band.mjs` prints that in its own footer. "Not resolvable" is a
+statement about this instrument at this iteration count — it prioritizes work, it does not retire a
+column. The failure mode this paragraph exists to prevent is reporting *"N real, M not resolvable"*
+and quietly treating `M` as passed.
