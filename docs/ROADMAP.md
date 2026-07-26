@@ -2,7 +2,7 @@
 
 ## Resuming after a context clear (start here)
 
-### ▶ NEXT: PHASE 10 — re-baseline acceptance on GEAR B (`docs/PHASE10.md`, planned 07-26)
+### ▶ IN EXECUTION: PHASE 10 — re-baseline acceptance on GEAR B (`docs/PHASE10.md`; started 07-26)
 
 **Read this before resuming any model work.** The reference character was re-exported on 07-26 and the
 entire gear-A corpus archived, so **ACCEPTANCE has no current reading**, and every open debt below —
@@ -10,11 +10,33 @@ B2 ≈0.445pp, the low-haste basin, the KT/AoE cells — is denominated in a cur
 exists. B2's sim preference has already moved ~0.39pp *and changed sign* across the baselines
 (BENCH §3e), so Phase-8 work started today would aim at a number that is not there.
 
-Phase 10 re-measures the whole thing with `tools/bench.mjs` (~10s per duel, no rig), one settled
-protocol (`--var 0.5`, diff-in-diff, model cfg forced to the simmed character), and restates the
-ledger **as first measurements, not deltas** — BENCH §1 forbids diffing against round 7. ⚠ It opens
-with a **shakedown on known-shape cells**, because the new instrument has run gates and a handful of
-duels, not a corpus.
+**Where it stands (execution log: `docs/PHASE10.md` §8).**
+- ✅ **The §4.1 shakedown PASSED** 4/4 cells on all four gate conditions (§8.1).
+- ✅ **The instrument is fully certified** (§8.8): shipped wasm **==** native runner; `sim-request`
+  anti-drift gate **9/9**; gear-B trust anchor **runner ≡ wowsimcli to every printed digit**,
+  reproducing BENCH §3d exactly from a rig rebuilt in a container that never saw the original; and
+  `exact-match` **25/25**. ⚠ §1.3's "the ceremony is gone" is true as *convenience*, **not** as
+  availability — `protoc` installs, the clone and Go proxy are reachable, and the full rig rebuilds in
+  ~4 minutes. It is still the only way to run the anti-drift gate or regenerate a `--dumpreq` template.
+- ⚠ **§4.2 as written had no executable path** (§8.3): `bench.mjs` is a two-arm duel and the
+  acceptance test *is* an N×N matrix. Closed by **`tools/xval-bench.mjs`** — `xval.mjs`'s protocol on
+  `bench.mjs`'s engine, every link imported not reimplemented, reproducing `bench.mjs` to the decimal
+  on a shared cell, driven by **`tools/xval-bench-campaign.sh`** (+ `tools/xval-checkpoint.sh`, which
+  commits and pushes completed tables so hours of compute survive a container reclaim). All 36 seeds
+  redraw the **gear-A fights exactly**, so the holdout sample is unchanged and only the baseline is new.
+- 🔄 **Round 1 is gathering** into `tools/xval-results/` at `ITER=6000 · var 0.5 · seed 11 · mana 1e8 ·
+  cold open · emit=fire · pooling ON · WJITTER=2 on boss tables`, all stamped (§8.6).
+- ★★★ **The audit's biggest finding is NOT about acceptance (§8.7): the SHIPPED in-page sim is blind
+  to Bloodlust and every trinket.** `sim/model-ref.json` wears nothing and sets
+  `raidBuffs.bloodlust: false`, and wowsims treats a press of an unworn on-use as a **bit-identical
+  no-op**. Two plans differing *only* in where the Icon goes (74 s apart) read **exactly 0.000 DPS**;
+  Lust moved 55 s, likewise **0.000**. Fixed-character controls read **+0.756 %** and **+1.290 %**. So
+  the button answers *"too close to call"* to the two most consequential questions the tool answers.
+  Guard landed (`bench.mjs` refuses such a duel; `--kit a,b` equips a pair); **the fix needs
+  `index.html` and waits for the round** (§8.5 — the plan cache keys on its bytes, so an edit mid-round
+  would assemble a matrix from two engines). ⚠ It must also confront a structural limit: wowsims has
+  **two** trinket slots and the planner offers **four** on-use trinkets, so a kit naming three can
+  never be fully equipped and the UI has to *say so*.
 
 ### ⏳ 0. FRESHEST STATE (07-26) — PHASE 8's FINALE IS FALSIFIED; the sim rig is GONE and is the next task
 
