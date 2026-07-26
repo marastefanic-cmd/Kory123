@@ -4,8 +4,10 @@ Read this first. It orients you on the project; the `docs/` files hold the detai
 
 ## What this repo is
 
-A single-file, self-contained **TBC 2.4.3 Arcane-mage cooldown-overlay planner**:
-`index.html` (open it in a browser — no build, no deps). You enter a fight (length, Bloodlust
+A **TBC 2.4.3 Arcane-mage cooldown-overlay planner**: `index.html` (open it in a browser — no build,
+no deps). The app itself is still ONE self-contained file; alongside it sits an **optional** in-page
+sim verifier (`sim/`) that lazily loads the real wowsims engine as WebAssembly when the user presses
+"Verify in the sim" — a visitor who never presses it downloads exactly `index.html` and nothing else. You enter a fight (length, Bloodlust
 timing, intermission/AoE phases) and it computes the **optimal moment to press each on-use
 cooldown** (Icy Veins, Arcane Power, Icon of the Silver Crescent, Serpent-Coil gem, Berserking),
 plus a burn timeline, a per-window activation schedule, and a copy-as-text plan. Alongside it:
@@ -148,6 +150,9 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/RULES.md` — the theorycraft rules, each with its sim evidence (derived from MECHANICS.md).
 - `docs/ARCHITECTURE.md` — `index.html` internals and the optimizer pass order.
 - `docs/TOOLING.md` — the wowsims sim harness (how to verify a plan) and its gotchas.
+- `sim/README.md` — the **in-page** sim verifier: the shared chain (`planspec` → `genapl-core` →
+  `simreq` → `sim.wasm`), the gear-agnostic reference character, the wasm-equals-native proof, and the
+  rebuild recipe. The terminal harness and the button are ONE code path by construction.
 - `docs/ROADMAP.md` — status, current work, and open questions.
 - `docs/ACCEPTANCE.md` — **the standing completion test.** The holdout haste-adaptation cross-val the
   model must pass FULLY before it's called complete (monoDip=0 everywhere + no length-persistent

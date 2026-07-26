@@ -1,0 +1,130 @@
+{
+  "player": {
+    "name": "ModelReference",
+    "race": "RaceTroll",
+    "class": "ClassMage",
+    "equipment": {
+      "items": []
+    },
+    "talentsString": "2500052300030150330125--053500031003001",
+    "consumes": {},
+    "profession1": "ProfessionUnknown",
+    "profession2": "ProfessionUnknown",
+    "mage": {
+      "options": {
+        "classOptions": {
+          "defaultMageArmor": "MageArmorMageArmor"
+        }
+      }
+    },
+    "rotation": {
+      "type": "TypeAPL"
+    },
+    "bonusStats": {
+      "stats": [
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        201.85,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        0.0
+      ]
+    }
+  },
+  "raidBuffs": {},
+  "partyBuffs": {},
+  "debuffs": {},
+  "encounter": {
+    "duration": 300,
+    "durationVariation": 0.5,
+    "executeProportion20": 0.2,
+    "executeProportion35": 0.35,
+    "targets": [
+      {
+        "id": 31146,
+        "name": "Raid Target",
+        "level": 73,
+        "mobType": "MobTypeDemon",
+        "stats": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          7700,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "minBaseDamage": 4000,
+        "swingSpeed": 2,
+        "parryHaste": false
+      }
+    ]
+  }
+}

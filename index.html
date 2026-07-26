@@ -477,6 +477,31 @@
   .prow .pnames { grid-column: 2; font-size: 12px; color: var(--ink-2); }
   .prow .pnames .pn + .pn::before { content: " · "; color: var(--muted); }
   .prow .pnames .peff { color: var(--muted); }
+
+  /* sim verification panel */
+  .simbox {
+    margin-top: 10px; padding: 12px 14px; border-radius: 10px;
+    background: var(--panel); border: 1px solid var(--hairline); font-size: 13px; color: var(--ink-2);
+  }
+  .simbox .simhead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .simbox .simhead b { color: var(--ink); font-family: var(--font-display); letter-spacing: 0.04em; }
+  .simbox .simhead .simsub { color: var(--muted); font-size: 12px; }
+  .simarms { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 8px; }
+  .simarm {
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 8px; padding: 9px 12px;
+  }
+  .simarm .k { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+  .simarm .v { font: 600 20px var(--font-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+  .simarm .v small { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+  .simarm.win { border-color: color-mix(in srgb, var(--good) 45%, transparent); }
+  .simverdict { font-size: 13.5px; color: var(--ink); margin-bottom: 6px; }
+  .simverdict.good { color: var(--good); }
+  .simverdict.bad { color: var(--warn); }
+  .simverdict.tie { color: var(--ink-2); }
+  .simbox .simnote { font-size: 12px; color: var(--muted); }
+  .simbox .simnote code { font-family: var(--font-mono); font-size: 11.5px; }
+  .simbar { height: 4px; background: var(--grid); border-radius: 2px; overflow: hidden; margin: 8px 0; }
+  .simbar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
   label.check.complicated { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
   label.check.complicated input { accent-color: var(--accent); width: 15px; height: 15px; }
   #phase-editor { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
@@ -631,6 +656,7 @@
         <div class="toolbar">
           <h3>Burn timeline</h3>
           <div class="vbtns">
+            <button class="copy" id="btn-sim" title="Run this plan through the real wowsims engine, head-to-head against the baseline (or against your hand-edited timeline). Same simulator, same settings this project uses to verify the model.">Verify in the sim</button>
             <button class="copy" id="btn-edit">Unlock timeline for customization</button>
             <button class="copy" id="btn-revert" hidden>Revert to model plan</button>
             <button class="copy" id="btn-debug">Debug export</button>
@@ -638,6 +664,7 @@
         </div>
         <p class="note" id="viz-note"></p>
         <div class="warnbar" id="edit-msg" hidden></div>
+        <div class="simbox" id="simbox" hidden></div>
         <div class="chartbox" id="chartbox">
           <div class="tip" id="tip"></div>
         </div>
@@ -4374,6 +4401,154 @@ function debugExportText() {
   L.push("", "Notes for whoever debugs this: times are SECONDS from pull. `intents` are press intents (the schedule the engine takes); `fireTimes` are when each press actually fires (displayed plan times = floor(fireTime)). The `evalsched` object is ready to run as  node tests/evalsched.mjs '<that json>'  to score both layouts under the model scorer; to sim-verify a layout, build an APL per docs/TOOLING.md (genapl — keep _prestack:0)." + (cfg.t5two ? " ⚠ Tirisfal-2pc is ON here but evalsched.mjs's harness cfg has no t5 field — compare via the stats above, or add t5two to its cfg." : ""));
   return L.join("\n");
 }
+/* ═══════════════ sim verification (the real wowsims engine, in the page) ═══════════════
+   THE SAME VERIFICATION THIS PROJECT RUNS IN THE TERMINAL, wired to a button. The chain is
+   shared code, not a re-implementation:
+
+     plan → sim/planspec.mjs → tools/genapl-core.mjs → sim/simreq.mjs → sim/sim.wasm
+
+   `genapl-core` is the very module the cross-val harness drives; `planspec` is the transcription
+   convention (FIRE times, floored, Cold-Snap split) that harness uses; `simreq` patches the runner's
+   own `--dumpreq` output; and `sim.wasm` is the patched wowsims build (ap-cd-at-cast +
+   apl-schedule-strict-ready, `ade9f39`) — measured EQUAL to the native runner to the printed decimal
+   (tests/sim-duel.mjs). So a number the button prints is a number the terminal would print.
+
+   GEAR-AGNOSTIC BY DESIGN: the sim runs a fixed synthetic mage (no gear, no buffs, hit-capped,
+   infinite mana, cold open) with your SP / crit / haste injected — the four numbers the planner
+   already asks for. Absolute DPS is therefore NOT your DPS; only the paired difference means
+   anything, and only the difference is reported. Both arms share one seed (common random numbers),
+   which is what makes a 0.1% difference readable at all.
+
+   Everything loads LAZILY on first click (the wasm is ~22 MB, ~4 MB over the wire), and the whole
+   feature is optional: if the modules or the worker can't load (opening index.html from a file://
+   path blocks both), the button says so and the rest of the tool is unaffected. */
+const SIM = { mods: null, workers: [], busy: false, base: new URL("./sim/", location.href).href };
+const SIM_ITERS = 10000;   // paired CRN at 10k resolves the mean to ~0.02% (TOOLING)
+const SIM_SEED = 11;
+const SIM_TIE = 0.05;      // |Δ| below this is noise, not a result — say so rather than crown a winner
+
+async function simModules() {
+  if (SIM.mods) return SIM.mods;
+  const [planspec, simreq, genapl, template] = await Promise.all([
+    import("./sim/planspec.mjs"),
+    import("./sim/simreq.mjs"),
+    import("./tools/genapl-core.mjs"),
+    fetch(SIM.base + "model-ref-request.json").then(r => {
+      if (!r.ok) throw new Error(`model-ref-request.json (HTTP ${r.status})`);
+      return r.json();
+    }),
+  ]);
+  SIM.mods = { planspec, simreq, genapl, template };
+  return SIM.mods;
+}
+// One worker per arm: the two arms then run concurrently instead of back to back.
+function simRun(request, idx) {
+  return new Promise((resolve, reject) => {
+    let w = SIM.workers[idx];
+    if (!w) { w = new Worker(SIM.base + "duel-worker.js"); SIM.workers[idx] = w; }
+    const id = Math.random().toString(36).slice(2);   // message correlation only — never model input
+    const onMsg = e => {
+      if (e.data.id !== id) return;
+      w.removeEventListener("message", onMsg);
+      e.data.ok ? resolve(e.data) : reject(new Error(e.data.error));
+    };
+    w.addEventListener("message", onMsg);
+    w.addEventListener("error", ev => reject(new Error(ev.message || "sim worker failed")), { once: true });
+    w.postMessage({ id, base: SIM.base, request });
+  });
+}
+function simBox(html) { const b = el("simbox"); b.hidden = false; b.innerHTML = html; }
+const simPct = v => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "%";
+
+async function runSimDuel() {
+  if (SIM.busy) return;
+  const run = lastRun; if (!run) return;
+  const btn = el("btn-sim");
+  SIM.busy = true; btn.disabled = true; btn.textContent = "Loading sim…";
+  try {
+    const { planspec, simreq, genapl, template } = await simModules();
+
+    // Arm B is your hand-edited timeline when there is one (the interesting question), otherwise the
+    // "mash everything on cooldown" baseline the tiles already quote — which turns the button into
+    // "prove the plan in the real engine".
+    const custom = CUSTOM.locked && CUSTOM.run ? CUSTOM.run : null;
+    const armA = { label: "Model plan", run };
+    const armB = custom
+      ? { label: "Your timeline", run: custom }
+      : { label: "Mash on cooldown", run: { cfg: run.cfg, best: { s: run.naive }, optR: simulate(run.naive, run.cfg, true) } };
+
+    const A = planspec.planToSpec(armA.run, BUFFS);
+    const B = planspec.planToSpec(armB.run, BUFFS);
+    const skipped = [...new Set([...A.skipped, ...B.skipped])];
+    if (A.burn || B.burn) {
+      simBox(`<div class="simverdict bad">Can't verify a Burn phase.</div><div class="simnote">A Burn window is a
+        model construct — "Arcane Blast damage ×N" — and the simulator has no such knob to set, so there is nothing
+        honest to compare. Intermissions and AoE phases do verify.</div>`);
+      return;
+    }
+    const cfg = run.cfg;
+    const opts = { sp: cfg.sp, critPct: cfg.critPct, hasteRating: cfg.hasteRating, T: cfg.T,
+                   iterations: SIM_ITERS, seed: SIM_SEED, targets: Math.max(A.targets, B.targets) };
+
+    btn.textContent = "Simulating…";
+    simBox(`<div class="simhead"><b>Running ${SIM_ITERS.toLocaleString()} iterations per side…</b>
+      <span class="simsub">both sides on the same seed, in the real wowsims engine</span></div>
+      <div class="simbar"><i style="width:35%"></i></div>`);
+
+    const t0 = performance.now();
+    const [rA, rB] = await Promise.all([
+      simRun(simreq.buildRequest(template, { ...opts, apl: genapl.build(A.spec) }), 0),
+      simRun(simreq.buildRequest(template, { ...opts, apl: genapl.build(B.spec) }), 1),
+    ]);
+    const dA = simreq.dpsOf(rA.result), dB = simreq.dpsOf(rB.result);
+    if (!dA || !dB) throw new Error("the sim returned no DPS — see the browser console");
+    const wall = ((performance.now() - t0) / 1000).toFixed(1);
+
+    const delta = 100 * (dA.avg / dB.avg - 1);
+    const tie = Math.abs(delta) < SIM_TIE;
+    // The model's own verdict on the same pair, for comparison — a disagreement in SIGN is the
+    // finding worth chasing (it is how a scorer gap shows itself).
+    const mDelta = 100 * (armA.run.optR.total / armB.run.optR.total - 1);
+    const agree = tie || Math.sign(delta) === Math.sign(mDelta) || Math.abs(mDelta) < 1e-9;
+
+    const verdict = tie
+      ? `<div class="simverdict tie">Too close to call — ${simPct(delta)} is inside the noise floor at this iteration count.</div>`
+      : delta > 0
+        ? `<div class="simverdict good">The model plan wins by ${simPct(delta)} in the sim.</div>`
+        : `<div class="simverdict bad">${esc(armB.label)} beats the model plan by ${simPct(-delta)} in the sim.</div>`;
+
+    simBox(`
+      <div class="simhead"><b>wowsims verification</b>
+        <span class="simsub">${SIM_ITERS.toLocaleString()} iterations per side · same seed · ${wall}s</span></div>
+      <div class="simarms">
+        <div class="simarm${delta > 0 && !tie ? " win" : ""}"><div class="k">${esc(armA.label)}</div>
+          <div class="v">${dA.avg.toFixed(1)}<small>DPS</small></div></div>
+        <div class="simarm${delta < 0 && !tie ? " win" : ""}"><div class="k">${esc(armB.label)}</div>
+          <div class="v">${dB.avg.toFixed(1)}<small>DPS</small></div></div>
+      </div>
+      ${verdict}
+      <div class="simnote">
+        ${agree ? "" : `<b style="color:var(--warn)">The sim and the model disagree on which side is better</b>
+          (the model has it at ${simPct(mDelta)}). That is worth investigating, not ignoring — use Debug export and check the plan by hand.<br>`}
+        These DPS numbers are <b>not your DPS</b>: the sim runs a fixed, gear-less mage with your
+        ${cfg.sp} spell damage, ${cfg.critPct}% crit and ${cfg.hasteRating} haste rating injected, hit-capped,
+        infinite mana, no prepull — the model's own assumptions. Only the <i>difference</i> between the two
+        sides is meaningful, and both sides ran identical fights (same seed), which is what makes a
+        fraction of a percent readable.
+        ${skipped.length ? `<br><b style="color:var(--warn)">Not included in the sim:</b> ${esc(skipped.join(", "))} —
+          the schedule harness has no press for ${skipped.length > 1 ? "these" : "this"}, so both sides were simulated without ${skipped.length > 1 ? "them" : "it"}.` : ""}
+      </div>`);
+  } catch (err) {
+    const offline = location.protocol === "file:";
+    simBox(`<div class="simverdict bad">Couldn't run the sim.</div><div class="simnote">${
+      offline ? "This page was opened from a local file, and browsers block loading the simulator that way. Use the hosted site, or serve the folder over http (<code>npx serve</code>)."
+              : esc(String(err.message || err))}</div>`);
+  } finally {
+    SIM.busy = false; btn.disabled = false; btn.textContent = "Verify in the sim";
+  }
+}
+el("btn-sim").addEventListener("click", runSimDuel);
+
 el("btn-debug").addEventListener("click", () => {
   if (!lastRun) return;
   copyToClipboard(debugExportText(), el("btn-debug"), "Debug export", "Copy failed — clipboard blocked");

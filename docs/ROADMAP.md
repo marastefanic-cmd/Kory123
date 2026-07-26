@@ -20,6 +20,19 @@
   optimizer for Arcane mages"; phase-editor dropdown no longer overlays its label and its trailing
   number field states its unit (`× damage`, `targets`). Record: DIARY 07-26 + its ledger row;
   ARCHITECTURE `renderSchedule`/`renderAssumptions`.
+- 🔬 **THE SIM SHIPS IN THE PAGE (07-26, user-directed; engine untouched, exact-match 25/25).**
+  A **"Verify in the sim"** button runs the real wowsims engine as WASM in the browser and duels the
+  model plan against your hand-edited timeline (or against "mash on cooldown" when there isn't one).
+  **Not a second implementation** — `planspec` → `genapl-core` → `simreq` → `sim.wasm`, every link
+  shared with the terminal harness, and `tests/sim-duel.mjs` asserts the shipped wasm equals the
+  native runner to the printed decimal. **Gear-agnostic**: fixed synthetic mage, the user's SP/crit/
+  haste injected, hit-capped, infinite mana, cold open, `var 0.5` — absolute DPS is meaningless and
+  the UI says so, only the paired same-seed difference is reported. Refuses Burn phases (no encounter
+  knob) and names Drums/PI/Ashtongue as dropped (no genapl press). ~10s for both arms at 10k
+  iterations. Record: `sim/README.md`, TOOLING ★ section, DIARY 07-26.
+  **Next steps if it earns its keep:** teach genapl a Drums press so the default kit verifies whole;
+  a multi-seed error bar instead of a fixed tie band; and the search-miss alarm (a legal hand-edit
+  that out-scores the model under its OWN scorer is a confession, gradeable with no sim at all).
 - 📝 **COPY AUDIT of everything the user reads (07-26, user-directed; engine untouched, exact-match
   25/25).** `index.html` + `README.md` verified claim-by-claim against the engine. **README carried the
   same disproven ramp claim in three places**, two deleted features (press price tags, clipped-press

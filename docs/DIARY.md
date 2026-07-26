@@ -257,6 +257,48 @@ direction — verify, rewrite in plain language, and hide what is technically tr
 
 ---
 
+### 07-26 — the sim comes to the page (gear-agnostic, same chain, one button)
+
+The user's ask: *"a button in the HTML that does exactly what we do — wired up so it's clickable"*,
+gear-agnostic (only SP / crit / haste, which the planner already collects), under the model's own
+assumptions (infinite mana, cold open), reusing the established verification rather than a new one.
+
+**Scouted first, built second.** The rig rebuilt from `tools/wowsims-patches/` exactly as TOOLING
+documents (clone `wowsims/tbc-new@ade9f39cc`, both patches apply, `innerSpell`=3 / `CD.Use`=0, protoc
+v1.36.10, 18 MB runner). Then the decisive experiment: **`GOOS=js GOARCH=wasm`** builds the same
+engine to **22.8 MB (4.1 MB gzipped)** — and upstream already ships `sim/wasm/main.go` exposing
+`raidSimJson(request)`, so no new Go had to be written. Measured **wasm == native runner to the
+printed decimal** (1351.5/1351.5 and 1345.6/1345.6 DPS at 10k iterations) despite the wasm running
+`RunRaidSim` and the runner `RunRaidSimConcurrent`. That equality is the whole licence for the
+feature, and `tests/sim-duel.mjs` now asserts it.
+
+Deliberate choices, each with a reason:
+- **No server.** Netlify Functions would have meant a Go binary in a lambda, a 10s timeout, and an
+  abuse surface on a free site. WASM in the page costs nothing per click and can't be rate-limited
+  into uselessness.
+- **The artifact is committed, not built at deploy time** — the bytes users run are the audited
+  bytes, and a deploy cannot break because upstream moved.
+- **The request is not hand-assembled.** The first attempt built the `RaidSimRequest` by hand and got
+  the raid proto wrong (`debuffs` lives inside `raid`; a party carries `buffs`, not `bonuses`). It now
+  patches `sim/model-ref-request.json`, which *is* the runner's own `--dumpreq` output.
+- **`genapl.mjs` was split into a pure `genapl-core.mjs` + CLI** (proven output-identical), so the
+  page and the terminal share one APL builder. Same for the transcription convention
+  (`sim/planspec.mjs`) — fire times, floored, Cold-Snap split, the rule whose earlier violation cost
+  −1.5% on a KT plan.
+- **Gear-agnostic** by construction: fixed synthetic mage, no gear/buffs/consumes, hit pinned at the
+  16% cap (202 rating; a 1% miss floor is irreducible and cancels), infinite mana, cold open,
+  `var 0.5`. **Absolute DPS is meaningless and the UI says so** — only the paired, same-seed
+  difference is reported.
+- **It declines what it cannot do**: Burn phases have no encounter knob (refused outright), and
+  Drums / PI / Ashtongue have no genapl press (both arms run without them; the UI names the omission).
+- **A "too close to call" band** (|Δ| < 0.05%) so the button reports noise as noise, and a warning
+  when the sim and the model disagree on *sign* — the shape a scorer gap actually takes.
+
+Wall clock in a browser: ~10s for both arms at 10 000 iterations each, run concurrently in two
+workers. Cold-start adds the one-time ~4 MB download.
+
+---
+
 ## The corrections ledger — what we believed, and what disproved it
 
 The most valuable part of this diary. Each entry: the belief, why we held it, what overturned it, and

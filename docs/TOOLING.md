@@ -15,6 +15,39 @@ physically-impossible result that silently corrupts any haste comparison (docs/a
 fixed rotation ever sims non-monotone in haste, **check for a prepull first.** The only legitimate
 `_prestack>0` use is a deliberate ramp-isolation experiment that is NOT compared to the model.
 
+## ★ THE VERIFICATION NOW SHIPS IN THE PAGE (07-26) — same chain, one button
+
+`index.html` has a **"Verify in the sim"** button that runs the real wowsims engine *in the browser*
+(WebAssembly) and duels two layouts head-to-head. It is **not** a second implementation — every link
+of the chain is the harness's own code:
+
+```
+plan → sim/planspec.mjs → tools/genapl-core.mjs → sim/simreq.mjs → sim/sim.wasm
+```
+
+- `genapl-core.mjs` is `genapl.mjs`'s pure core, split out so the CLI and the page import the SAME
+  builder (the split is proven output-identical).
+- `planspec.mjs` is the **transcription convention** — FIRE times, floored, Cold-Snap split,
+  `_intermissions`/`_aoe`, `_prestack: 0` — i.e. `xval.mjs`'s `toSpec`, in a file both can use.
+- `simreq.mjs` patches `sim/model-ref-request.json`, which **is the runner's own `--dumpreq` output**,
+  so the page's request is the runner's request minus the fields a duel varies.
+- `sim.wasm` is the patched build at `ade9f39` (both patches; `bash sim/build-wasm.sh` rebuilds it).
+
+**The equality that licenses all of it:** `tests/sim-duel.mjs` runs the shipped wasm and the native
+`runner` on identical inputs and asserts agreement — measured **1351.5 vs 1351.5** and **1345.6 vs
+1345.6** DPS at 10k iterations, despite the wasm using `RunRaidSim` and the runner
+`RunRaidSimConcurrent`. Re-run it after any rebuild; a drift there invalidates the button.
+
+**Gear-agnostic reference character** (`sim/model-ref.json`): no gear, no consumes, no raid buffs,
+standard Arcane talents, spell hit pinned at the 16% cap, infinite mana, cold open, `var 0.5`. The
+user's SP / crit / haste rating are injected as flat bonuses — the four inputs the planner already
+collects. **Absolute DPS is therefore meaningless and the UI says so; only the paired difference (same
+seed, common random numbers) is reported.** Full rationale and the known gaps: `sim/README.md`.
+
+**What it cannot do, and refuses rather than fakes:** Drums / Power Infusion / Ashtongue have no
+genapl press (both arms run without them, and the UI names what it dropped); Burn phases have no
+encounter knob at all, so the button declines.
+
 ## Methodology — the model is the objective, the sim calibrates it
 
 The planner already knows, deterministically, every cast, every buff window, and every timing in a

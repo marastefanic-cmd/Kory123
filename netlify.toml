@@ -1,14 +1,29 @@
 # Netlify deploy config for the Arcane Burn Planner.
 #
-# The app is ONE self-contained static file (index.html at the repo root) — no
-# framework, no dependencies, no real build. This config copies just that file
-# into ./dist and publishes ./dist, so the live site serves ONLY the app. The
-# repo's docs/, tools/, tests/, README.md and CLAUDE.md are deliberately NOT
-# published (they're internal dev notes, not for public browsing).
+# The app is index.html at the repo root — no framework, no dependencies, no real
+# build — PLUS the optional in-page sim verifier, which needs a few more files:
+#
+#   sim/sim.wasm               the patched wowsims engine (~22 MB, ~4 MB gzipped by Netlify)
+#   sim/wasm_exec.js           Go's wasm shim, must match the Go version that built sim.wasm
+#   sim/duel-worker.js         the worker that runs one arm of a duel
+#   sim/simreq.mjs             builds the RaidSimRequest (patches the runner's own dumpreq)
+#   sim/planspec.mjs           plan → genapl spec (the transcription convention)
+#   sim/model-ref-request.json the gear-agnostic reference character, as a sim request
+#   tools/genapl-core.mjs      the APL builder — the SAME module the terminal harness drives
+#
+# tools/genapl-core.mjs keeps its repo-relative path on purpose: the page imports
+# "./tools/genapl-core.mjs", which then resolves identically whether you open the
+# repo locally or hit the deployed site. Everything else in docs/, tools/, tests/,
+# README.md and CLAUDE.md stays unpublished — internal dev notes, not for browsing.
+#
+# The sim files are loaded LAZILY, only when a user presses "Verify in the sim".
+# A visitor who never presses it downloads exactly what they did before.
 
 [build]
   publish = "dist"
-  command = "mkdir -p dist && cp index.html dist/index.html"
+  command = """
+    mkdir -p dist/sim dist/tools &&     cp index.html dist/index.html &&     cp sim/sim.wasm sim/wasm_exec.js sim/duel-worker.js sim/simreq.mjs sim/planspec.mjs sim/model-ref-request.json dist/sim/ &&     cp tools/genapl-core.mjs dist/tools/
+  """
 
 # Defense-in-depth response headers. The page loads zero external resources and
 # stores no data, so these are hygiene rather than necessity.
@@ -25,3 +40,22 @@
     X-Frame-Options = "DENY"
     Referrer-Policy = "no-referrer"
     Permissions-Policy = "geolocation=(), camera=(), microphone=(), payment=(), usb=()"
+
+# The sim assets are immutable per deploy and large; let the browser keep them.
+# Correct MIME types matter: WebAssembly.instantiateStreaming REQUIRES
+# application/wasm, and a module import of a .mjs served as text/plain is refused.
+[[headers]]
+  for = "/sim/sim.wasm"
+  [headers.values]
+    Content-Type = "application/wasm"
+    Cache-Control = "public, max-age=31536000, immutable"
+
+[[headers]]
+  for = "/sim/*.mjs"
+  [headers.values]
+    Content-Type = "text/javascript; charset=utf-8"
+
+[[headers]]
+  for = "/tools/*.mjs"
+  [headers.values]
+    Content-Type = "text/javascript; charset=utf-8"
