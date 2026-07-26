@@ -84,10 +84,17 @@ which is what makes a 0.1% difference readable at 10 000 iterations.
 
 ## Known gaps (stated in the UI, not hidden)
 
-- **Drums of Battle, Power Infusion and Ashtongue Talisman are not transcribable.** genapl has no
-  press for them (the first two are raid externals, the third is a passive proc). Both arms are
-  simulated without them — symmetric, but it means a plan whose *point* is where the Drums go cannot
-  be verified. The UI names whatever it dropped.
+- **Drums of Battle and Power Infusion cannot be pressed from an APL — an UPSTREAM fact, not a genapl
+  gap.** wowsims only exposes a spell to an APL if it is registered with `SpellFlagAPL`.
+  `registerBloodlustCD` has it (which is why Bloodlust works); `drumsSpellConfig` (35476) and
+  `registerExternalConsecutiveCDApproximation` (PI, 10060) do not — they are auto-fired
+  `MajorCooldown`s, so the *sim* would choose the timing, which is exactly what a press-timing duel
+  must not delegate. ⚠ **The attempt fails silently**: measured 2128.9 DPS with and without the
+  scheduled press, bit-identical, zero aura uptime. Both arms therefore run without them and the UI
+  names what it dropped. **Patchable** — a third `tools/wowsims-patches/` entry adding the flag — at
+  the cost of re-certifying the trust anchor (BENCH §3d).
+- **Ashtongue Talisman** is not patchable and never will be: it is a passive proc, so there is no
+  press to schedule (RULES §14).
 - **Burn phases cannot be simulated at all** — "Arcane Blast damage ×N" is a model construct with no
   encounter knob behind it. The button refuses rather than compare something else.
 - Intermissions and AoE phases **do** verify (`_intermissions`, `_aoe` + duplicated targets).

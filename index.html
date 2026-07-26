@@ -748,9 +748,13 @@
 
     <h4>What it can't see</h4>
     <ul>
-      <li><b>Drums of Battle, Power Infusion and the Ashtongue Talisman</b> — the sim harness has no press
-      for a raid external or a passive proc, so both sides run without them. The result panel names
-      anything it had to drop.</li>
+      <li><b>Drums of Battle and Power Infusion.</b> The simulator will not let a rotation script press
+      these two: it builds them as buffs <i>it</i> fires on its own schedule, not as spells a plan can
+      trigger — and a scheduled press is ignored without complaint (we checked: identical damage, no
+      buff applied). Bloodlust <i>is</i> pressable, which is why it works. So both sides run without
+      Drums and PI, and the result panel names whatever it had to drop.</li>
+      <li><b>The Ashtongue Talisman</b>, for a different reason: it is a random proc, so there is no
+      press to schedule in the first place.</li>
       <li><b>Burn phases</b> — "the boss takes ×N damage" is a planner concept with no button in the
       simulator, so it refuses to guess rather than compare something else.</li>
       <li><b>Mana, movement, mistakes, and your actual gear.</b></li>
@@ -4617,7 +4621,8 @@ async function runSimDuel() {
         character through identical fights, which is what makes a fraction of a percent between them
         readable at all.
         ${skipped.length ? `<br><b style="color:var(--warn)">Not included in the sim:</b> ${esc(skipped.join(", "))} —
-          the schedule harness has no press for ${skipped.length > 1 ? "these" : "this"}, so both sides were simulated without ${skipped.length > 1 ? "them" : "it"}.` : ""}
+          the simulator does not accept ${skipped.length > 1 ? "these" : "this"} as a scheduled press, so both sides ran without
+          ${skipped.length > 1 ? "them" : "it"}. The comparison is still fair, but it cannot judge where ${skipped.length > 1 ? "they go" : "it goes"}.` : ""}
       </div>`);
   } catch (err) {
     const offline = location.protocol === "file:";

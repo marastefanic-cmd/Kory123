@@ -91,7 +91,7 @@ const diff = (a, b, p = '', out = []) => {
 {
   const bad = [];
   if (BENCH.variation === 0) bad.push('variation must NOT be 0 — `--var 0` makes every iteration the same fight, turning DPS into a staircase of whole casts. It has faked a result twice (TOOLING ★★).');
-  if (BENCH.variation !== 0.5) bad.push(`variation is ${BENCH.variation}, expected 0.5 — the model's kill-window WIDTH (RULES §8). Changing it re-prices every duel; do it deliberately and update TOOLING.`);
+  if (BENCH.variation !== 0.5) bad.push(`variation is ${BENCH.variation}, expected 0.5 — the model's kill-window WIDTH (RULES §8), and the value tools/var-decision.mjs measured as correct (var 0 swings a real effect by a whole cast for a 0.1s change in the kill second, and is not even quieter). Changing it re-prices every duel; do it deliberately, re-run that experiment, and update BENCH §3 + TOOLING.`);
   if (BENCH.prestack !== 0) bad.push('prestack must be 0 — the model opens COLD, and a prepull sits at a fixed −2.3s that does not scale with haste, making any haste comparison non-monotone (TOOLING ★★★).');
   if (!(BENCH.manaInject >= 1e7)) bad.push('manaInject is too small to be "infinite" — the duel must isolate the LAYOUT, not mana.');
   if (BENCH.iterations < 10000) bad.push(`iterations is ${BENCH.iterations} — the mean settles to ~0.02% at 10k; below that a duel cannot resolve the differences this project argues about (TOOLING).`);

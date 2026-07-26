@@ -19,10 +19,24 @@
 // A press that the model's repair() legalized away has no `actEff` entry and is NOT emitted — handing
 // it to the sim would grant a buff window the model never scored.
 
-// tool key → genapl spec key. Ashtongue, Drums and Power Infusion have no genapl key: the first is a
-// passive proc (never a scheduled press) and the other two are raid externals genapl does not emit,
-// so a plan using them cannot be transcribed faithfully — `planToSpec` reports them instead of
-// silently dropping them (this harness's dominant failure mode is a silent omission that still sims).
+// tool key → genapl spec key.
+//
+// ★ WHY DRUMS AND POWER INFUSION ARE ABSENT — it is an ENGINE limit, not a genapl gap, and it fails
+// SILENTLY (measured 07-26, user-challenged: "how come it can do Bloodlust?"). In wowsims, a spell is
+// only addressable from an APL if it is registered with `SpellFlagAPL`:
+//   • Bloodlust     `registerBloodlustCD` → Flags: SpellFlagAPL | …            ⇒ schedulable ✓
+//   • Drums 35476   `drumsSpellConfig`    → Flags: SpellFlagNoOnCastComplete   ⇒ NOT schedulable
+//   • Power Inf.    `registerExternalConsecutiveCDApproximation` → same, no APL flag ⇒ NOT schedulable
+// Both are registered as auto-fired `MajorCooldown`s instead — the sim's own scheduler decides when,
+// which is precisely the thing a press-timing duel must not let it decide. Scheduling them anyway
+// produces **no error and no effect**: measured 2128.9 DPS with and without the press, bit-identical,
+// zero aura uptime. That silent no-op is this harness's dominant failure mode wearing the engine's
+// clothes, which is why `planToSpec` REPORTS what it dropped instead of quietly omitting it.
+// Fixable upstream — a third entry in `tools/wowsims-patches/` adding `SpellFlagAPL` to those two —
+// at the cost of re-certifying the trust anchor (BENCH §3d). Not done unprompted.
+//
+// Ashtongue is a different case entirely and is NOT patchable: it is a passive proc, so there is no
+// press to schedule at all (RULES §14 — it is counted, never planned).
 export const SPEC_KEY = {
   icyVeins: "IV", arcanePower: "AP", berserking: "Zerk", bloodlust: "BL",
   isc: "Icon", scb: "Gem", skull: "Skull", mqg: "MQG",

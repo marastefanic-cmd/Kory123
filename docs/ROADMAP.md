@@ -29,8 +29,15 @@
   check, and **forces the model cfg to the simmed character** (spreads `REF` — the first version
   reproduced PHASE8 §6/§7's two-different-mages defect and mispriced a duel 1.434% → 1.314%).
   Same backbone as the website button; `tests/sim-request.mjs` now gates BOTH committed characters.
-  ⚠ Left open on purpose: BENCH §3 says `--var 0`, TOOLING ★★ says never — the tool defaults to 0.5
-  and the conflict is recorded in BENCH §3 as a user call.
+  ✅ **The `--var` conflict is SETTLED (07-26, measured):** `tools/var-decision.mjs` decides for
+  **0.5**. At var 0 the effect size of a real difference swings a whole cast (−32.8 → −0.9 → −31.8 DPS)
+  for a 0.1s change in the kill second whenever the arms differ in terminal cast rate, and var 0 is
+  **not** quieter (seed band 0.06/0.40 vs 0.04/0.25) — a fixed duration sits *on* the discontinuity.
+  It cancels only when both arms truncate identically, which is why the convention survived. BENCH §3
+  and TOOLING ★★ now carry the numbers.
+  ✅ **Drums/PI exclusion re-diagnosed:** not a genapl gap — upstream never flags those spells
+  `SpellFlagAPL`, so no APL can press them, and the attempt is a **silent** no-op (bit-identical DPS).
+  Patchable via a third wowsims patch if the default kit ever needs to verify whole.
 - 🔬 **THE SIM SHIPS IN THE PAGE (07-26, user-directed; engine untouched, exact-match 25/25).**
   A **"Check in the benchmark sim"** button runs the real wowsims engine as WASM in the browser and duels the
   model plan against your hand-edited timeline (or against "mash on cooldown" when there isn't one).

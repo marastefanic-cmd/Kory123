@@ -31,10 +31,11 @@
 export const BENCH = Object.freeze({
   // ── the fight ───────────────────────────────────────────────────────────────────────────────────
   // Duration variation = the model's kill-window WIDTH (RULES §8: the half-cast smoothing at the
-  // buzzer). ★★ NEVER 0 — `--var 0` makes every iteration the same fight, so reported DPS becomes
-  // (integer cast count × avg damage)/T, a staircase rather than a function. It has faked a result
-  // twice (TOOLING ★★: PHASE8 §13's "haste buffs are exempt from the floor law", and half of §14's
-  // round-4 table).
+  // buzzer). ★★ NEVER 0 — SETTLED BY MEASUREMENT 07-26 (`tools/var-decision.mjs`, BENCH §3): at
+  // var 0 mean casts is flat for 1.5s then jumps +0.97 casts in one 0.1s step, and when two arms
+  // differ in TERMINAL cast rate the measured effect swings −32.8 → −0.9 → −31.8 DPS across 0.1s of
+  // fight length (worst step 31.4 DPS vs 3.3 here). It is also not quieter — seed band 0.06/0.40 vs
+  // 0.04/0.25 — because a fixed duration parks the fight end exactly on the discontinuity.
   variation: 0.5,
 
   // Mana is not in the model at all, so it must not be in the arbiter either: the duel isolates the

@@ -378,12 +378,53 @@ BENCH.md §3 as a **user call**, to be resolved there and in `sim/benchmark.mjs`
 
 ---
 
+### 07-26 — two claims put to the instrument instead of to memory
+
+**`--var 0` vs `--var 0.5`: SETTLED, and neither doc had it quite right.** The user asked for it to be
+decided once and for all, noting their intuition said 0 while they remembered earlier sessions landing
+on 0.5. `tools/var-decision.mjs` is the pre-registered experiment (decision rule written before the
+first run). Result: **0.5**, on evidence that surprised in three places —
+
+- The **staircase is real and huge**: mean casts flat for 1.5 s, then **+0.97 casts in one 0.1 s step**
+  (concentration 19× vs 1.5×).
+- **But it cancels in a paired comparison** whenever both arms truncate identically — the
+  pre-registered "decisive" test came back a **tie**, twice. That is *why* `--var 0` survived: it is
+  not wrong in the comparisons people happened to run.
+- **It bites where the arms differ in terminal cast RATE** — the planner's most routine call. Measured:
+  the size of a real effect swings **−32.8 → −0.9 → −31.8 DPS** across 0.1 s of fight length (worst
+  step 31.4 vs 3.3 DPS). Nobody controls the kill second to a tenth.
+- **And `--var 0` is not quieter, which was its entire justification**: seed band 0.06/0.40 vs
+  0.04/0.25 DPS. Removing a random source made the estimator *worse*, because a fixed duration parks
+  the fight end exactly **on** the discontinuity and any residual jitter is amplified into whole-cast
+  jumps. The variation was doing the smoothing.
+
+★ **The methodological lesson is the tie, not the win.** The pre-registered decisive test failed to
+decide, and the honest response was to ask *why* — which produced the actual mechanism (cancellation
+under a shared terminal lattice) and a sharper experiment. A tie on a pre-registered test is
+information about the test.
+
+**"The sim can't press Drums or PI" — right conclusion, wrong reason, found by the user asking "how
+come it can do Bloodlust?"** The shipped copy said the *harness* had no press for a raid external.
+The truth is one layer down and is an upstream fact: a spell is APL-addressable only if registered
+with **`SpellFlagAPL`**. `registerBloodlustCD` has it; `drumsSpellConfig` (35476) and
+`registerExternalConsecutiveCDApproximation` (PI, 10060) do not — they are auto-fired `MajorCooldown`s,
+i.e. the sim's scheduler picks the timing, which is precisely what a press-timing duel must not
+delegate. **Measured, and this is the bad part: scheduling them produces no error and no effect —
+2128.9 DPS with and without, bit-identical, zero aura uptime.** A silent no-op, the harness's signature
+failure mode wearing the engine's clothes. It is **patchable** (a third entry in
+`tools/wowsims-patches/` adding the flag, at the cost of re-certifying the trust anchor) and that is
+now recorded rather than assumed impossible. Ashtongue stays genuinely unpressable: it is a proc.
+
+---
+
 ## The corrections ledger — what we believed, and what disproved it
 
 The most valuable part of this diary. Each entry: the belief, why we held it, what overturned it, and
 where the corrected truth now lives. **Do not silently re-open these** — if you think one is wrong again,
 add a *new* entry rather than deleting the old.
 
+| 07-26 | **`--var 0` is "already standard for gates"** (BENCH.md §3's RNG table, written the same day) — fewer random sources ought to mean a cleaner A/B. | **Measured against `--var 0.5` side by side** (`tools/var-decision.mjs`, pre-registered). `--var 0` quantizes mean casts into a staircase (+0.97 casts in one 0.1 s step after 1.5 s flat), and where two arms differ in **terminal cast rate** it swings the measured size of a real effect **−32.8 → −0.9 → −31.8 DPS** for a 0.1 s change in the kill second. It is also **not quieter** — seed band 0.06/0.40 vs 0.04/0.25 DPS — because a fixed duration parks the fight end *on* the discontinuity, so residual jitter becomes whole-cast jumps. ★ The subtle part: the quantization **cancels** whenever both arms truncate identically, which is why two pre-registered "decisive" pairs tied and why the convention survived unchallenged. A var-0 result is therefore not reliably wrong — it is *unfalsifiable without checking whether the arms share a terminal lattice*, which is worse. | BENCH §3 (settled); TOOLING ★★; `sim/benchmark.mjs`. |
+| 07-26 | **"The sim harness has no press for Drums / Power Infusion"** — stated in the shipped UI as though it were a genapl limitation. | **User challenge: "How come it can do Bloodlust? That feels like a hasty assumption."** It was. The real reason is upstream: only spells registered with **`SpellFlagAPL`** are APL-addressable. Bloodlust has it; Drums (35476) and PI (10060) do not — they are auto-fired `MajorCooldown`s. Verified empirically, and the failure is **silent**: scheduling them gives *no error and no effect* (2128.9 DPS either way, zero aura uptime). Conclusion unchanged, reason corrected, and it is now known to be **patchable** rather than impossible. | `sim/planspec.mjs` header; the in-page dialog; `sim/README.md`. |
 | 07-26 | **"Icy Veins leaves Lust at ~100 haste rating"** — stated three times in `README.md`, with "~150–200 rating" in a fourth spot, as a sim-verified headline result. | **Re-measured on the current engine** during the copy audit (`tools/engine-node.mjs`, 2:40 fight, Lust@0:05, sweeping h0–h300): the crossover is **kit-dependent and far lower**. IV+Icon leaves Lust by **~15 rating**; with Arcane Power in the cluster it is ~80 (the SP payout pays for a little overcapping); and with a full opener kit (Drums + Skull) the window is floored from h0, so IV is **never** in Lust at any gear level. This matches RULES §5, which had recorded ~15/~80 all along — the README simply never got the update, and its two numbers disagreed with each other in the same document. ★ **A number repeated in four places is not four confirmations.** Self-consistency inside one doc was never checked, and the contradiction sat in public copy. When auditing user-facing text, re-derive the numbers from the engine rather than from the neighbouring paragraph. | README "The optimizer" / "Bloodlust overlay rules"; RULES §5. |
 | 07-26 | **The shipped "Model assumptions" told users the AB stack ramp was NOT modeled** — "Arcane Blast is modeled at a steady 3 stacks… every candidate plan pays [the ramp] equally, so it never changes which overlay wins." True when written; **false since Phase 4 landed the exact ramp.** | Re-read the engine while rewriting the assumptions for the UI rework: `simulate` opens at **0 stacks**, runs the ramp casts at their true 2.5/2.17/1.83s lengths, re-ramps after every ≥8s AB gap, and scores them **discretely** — and RULES §3 records the consequence the old text denied (damage windows step off the ramp, sim-confirmed +0.10–0.44%). The user-facing doc had simply not been pruned when the model changed. ★ **Living docs include the ones inside the product.** `index.html`'s assumption list is a living doc with a *bigger* audience than `docs/` — prune it in the same commit as the model change. Also fixed in the same pass: the trinket-lockout bullet named only Skull + MQG when `OFF_TRINKETS` has always included the Icon. | `index.html` `renderAssumptions()`; RULES §3, §17. |
 | 07-26 | **The sim rig's source was "not publicly recoverable."** Asserted after the container was recycled, on three seemingly independent proofs: a full clone of `wowsims/tbc` had no `ade9f39` and had never contained either patch target; `proxy.golang.org` returned `unknown revision ade9f39`; and GitHub refuses bare SHAs. A substitute rig was then built on the archived legacy repo. | **ALL THREE PROOFS SEARCHED THE WRONG REPOSITORY.** The repo is **`wowsims/tbc-new`** — which declares Go module `github.com/wowsims/tbc`. I *derived* the clone URL from `runner-main.go`'s imports instead of reading it, and it is written plainly in **four** places (`TOOLING`, `SOURCES.md`, `README.md`, `archive/07 §6`). `ade9f39` is right there (`ade9f39cc`, *"Merge PR #421 fix/armor-reduction"*), both patches apply, `assets/database/*.bin` are committed, the `archive/07` provenance checks pass (`innerSpell`=3, `CD.Use`=0), and `runner-ap180` builds. **Nothing was lost.** ★★ **THE LESSON — independent methods sharing one derived premise are not independent.** Three techniques agreeing felt like overwhelming evidence and was worth exactly as much as the premise underneath them, which was never checked against a doc that stated it outright. **When a search comes back empty, re-verify the search TARGET before believing the absence.** Sibling of this session's other three (round-4 collector, vacuous F3, `cfgSigOf` memo): each was a confident null produced by an instrument pointed slightly wrong. Two real gaps in the recipe were found and are now written down (`sim/core/proto` must be `protoc`-generated with a plugin matching the repo's protobuf v1.36.10; `cmd/runner/` must be created from `runner-main.go`). The gear export is absent **by design** — user data, never committed (`archive/07 §6.3`). | TOOLING "Building the runner"; ROADMAP §0. |

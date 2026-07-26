@@ -77,7 +77,7 @@ When a single *absolute* comparable number is wanted across trinket sets, equip 
 
 | source | action | note |
 |---|---|---|
-| fight-length variation | ⚠ **contested — see below** | this table said `--var 0`; `tools/bench.mjs` defaults to **0.5** |
+| fight-length variation | ✅ **`--var 0.5`** — SETTLED 07-26, measured | this row used to say `--var 0`. It was wrong; see below for the experiment that decided it |
 | Tirisfal 4pc `+70 SP on crit` (37444) | **replace with flat SP** — drop the 4pc, inject `+70 × uptime ≈ +63` via `bonusStats` | PHASE8 §7 already treats it as *effective SP ≈1450* on the model side; this makes the sim agree deterministically instead of in expectation |
 | Ashtongue (ATI) | **keep excluded**, and when it is finally modelled, flatten it the same way | already out of the xval kits (a random proc needing separate treatment) |
 | base-damage roll, partial resist, hit roll | **leave** | zero-mean and CRN-paired; they cancel in an A/B |
@@ -86,22 +86,54 @@ When a single *absolute* comparable number is wanted across trinket sets, equip 
 **The rule:** flatten a random source when it is a *stat* the presses do not interact with; keep it
 when it is *coupled to the mechanic under test*. Crit is coupled (via AoE); the 4pc SP proc is not.
 
-### ⚠ OPEN CONFLICT — `--var 0` here vs TOOLING ★★ (raised 07-26, a USER CALL, not resolved)
+### ✅ SETTLED 07-26 — `--var 0.5`, measured, not argued (`tools/var-decision.mjs`)
 
-This table lists `--var 0` as "standard for gates". `docs/TOOLING.md` ★★ says the opposite in strong
-terms: with zero jitter every iteration is the *same fight*, so reported DPS is
-`(integer cast count × avg damage)/T` — a **staircase, not a function** — and it has **faked a result
-twice** (PHASE8 §13's "haste buffs are exempt from the floor law", and half of §14's round-4 table).
+This table used to say `--var 0` ("fewer random sources ⇒ cleaner A/B"); TOOLING ★★ said `--var 0` is
+"a resolution failure" that faked a result twice. Both were assertions. A pre-registered experiment
+(`tools/var-decision.mjs`, reproducible in ~6 min from the repo alone) settled it. **`--var 0.5` wins,
+and `--var 0`'s claimed advantage does not exist.**
 
-**§2.1's control does not rescue it.** The difference of two staircases is still a staircase: if the
-control and the arm land on the same cast count, a real sub-cast marginal reads as exactly 0; if they
-straddle a step, it reads as a whole cast. Quantization is not zero-mean, so pairing cannot cancel it.
+**1. The staircase is real and large.** Mean Arcane Blast casts, swept across 2 s of fight length in
+0.1 s steps (bench gear-B, 100–102 s):
 
-**`tools/bench.mjs` therefore defaults to `--var 0.5`** (TOOLING's rule, and the value the website's
-button uses, so both fronts agree), and takes `--var 0` explicitly for a deliberate count-preserving
-read. This is deliberately left as a **conflict on the record rather than a silent overrule** — if the
-`--var 0` line here reflects a decision made with evidence this file does not cite, resolve it here and
-in `sim/benchmark.mjs` in the same edit.
+```
+var 0    65.97 65.97 65.97 65.98 … 66.00 66.00 | 66.97 66.97 66.97 …   ← flat 1.5 s, then +0.97 in ONE step
+var 0.5  65.57 65.67 65.77 65.87 … 66.09 66.18 66.28 66.38 …           ← rises ~0.10 per step
+```
+Step concentration (worst step ÷ mean step): **19× at var 0, 1.5× at var 0.5.**
+
+**2. ★ But it CANCELS in a paired comparison — whenever both arms share a terminal cast lattice.**
+This is the part nobody had isolated, and it explains how `--var 0` survived as a convention. Two
+pairs where the arms truncate identically (a lone haste buff at 0:20 vs 1:00; Icon inside Lust vs
+after) came back **tied**: zero sign flips, |Δ| spread ≤ 0.3 DPS, both settings agreeing to the
+decimal. Both staircases step at the same fight length, so the step subtracts out.
+
+**3. ★★ It bites the moment the arms differ in terminal cast RATE — which is this planner's most
+routine call** (RULES §8, "the terminal Icy Veins aligned to end at the kill"). Icy Veins straddling
+the buzzer vs the same use interior, same sweep:
+
+```
+var 0    −32.8 −32.4 −32.1 −32.1 −32.4 −32.0 −32.0 −32.2 −32.2 −32.2 −0.9 −0.9 −0.9 −0.9 −0.5 −31.8 …
+var 0.5  −24.2 −24.3 −24.0 −25.5 −28.6 −31.7 −28.2 −25.2 −21.9 −18.9 −15.9 −16.0 −16.1 −16.2 −16.2 −15.9 …
+```
+At `var 0` the measured size of a real effect swings **−32.8 → −0.9 → −31.8 DPS** — one whole cast —
+for a **0.1 s** change in the kill second. Worst step: **31.4 DPS at var 0 vs 3.3 at var 0.5 (9.5×).**
+Nobody controls the kill second to a tenth, so that is not precision, it is a coin flip with decimals.
+
+**4. And `--var 0` does not even deliver lower noise — its entire justification.** Seed-to-seed band
+over 5 seeds: **var 0 sd 0.06 / 0.40 DPS · var 0.5 sd 0.04 / 0.25 DPS** (real pair / zero pair).
+`var 0.5` is *tighter on both*. The mechanism is the same one as (3): fixing the duration parks the
+fight end exactly **on** a discontinuity, so any residual jitter is amplified into whole-cast jumps;
+smearing it over 1.0 s averages the discontinuity out. Removing a random source made the estimator
+worse, because the source it removed was the one doing the smoothing.
+
+**5. Both see a true effect equally** (Icon-in-Lust: correct sign at 100 % of fight lengths, mean
++8.3 DPS, identical to the decimal) — so this is not a sensitivity trade-off.
+
+⇒ **`sim/benchmark.mjs` sets `variation: 0.5` and every consumer reads it from there** (the page, the
+bench, plan-duel, the tests). `tests/sim-request.mjs` asserts it is neither 0 nor silently changed.
+`--var 0` remains available for a deliberate count-preserving read; anything it says must be confirmed
+at 0.5.
 
 ## 3b. ★ What the export actually contributes — fixed vs varied vs ignored
 

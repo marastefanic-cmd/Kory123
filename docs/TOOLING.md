@@ -755,7 +755,20 @@ A press *also* cannot fire while its own cooldown is still running — a press s
 cooldown fires when the cd clears (which may be a later boundary). These two facts drive the
 intermission-resume behavior below.
 
-## ★★ `--var 0` QUANTIZES TO INTEGER CASTS — never measure a marginal with it
+## ★★ `--var 0` QUANTIZES TO INTEGER CASTS — never measure a marginal with it *(now MEASURED, 07-26)*
+
+**Settled with a pre-registered experiment** (`tools/var-decision.mjs`, BENCH §3): mean casts is flat
+across **1.5 s** of fight length then jumps **+0.97 casts in a single 0.1 s step** (step concentration
+19× vs 1.5× at var 0.5). The decisive consequence: when two arms differ in **terminal cast rate** — a
+haste window over the kill vs interior, i.e. RULES §8's most routine call — the measured effect swings
+**−32.8 → −0.9 → −31.8 DPS** across 0.1 s of fight length (worst step **31.4 DPS vs 3.3** at var 0.5).
+And `--var 0` is **not** quieter: seed band **0.06/0.40** vs **0.04/0.25** DPS — it is *worse on its own
+claim*, because a fixed duration parks the fight end exactly on the discontinuity.
+
+★ **The nuance that let `--var 0` survive:** the quantization **cancels** in a paired difference
+whenever both arms truncate identically (measured: two such pairs tied to the decimal). So a var-0
+result is not automatically wrong — it is unfalsifiable without checking whether the arms share a
+terminal lattice, which is a worse property than being simply wrong.
 
 **Use `--var 3.0` for any buff-marginal or A/B measurement. `--var 0` is not "the clean deterministic
 answer", it is a resolution failure**, and it has now faked a result twice (PHASE8 §13's "haste buffs are
