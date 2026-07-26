@@ -171,6 +171,39 @@ plan-neutral, −10.1% CPU) and **`groupSeeds`** (§5.14) — the seed class tha
 `5:40 lust 0:05` SEARCH-MISS, root-caused in §5.13 by asking the cheap decisive question (*can the
 operators reach it from here, given EVERY anchor?* — 89 s, answer +0.000) after eight guesses had not.
 
+### Phase 8 — the B2 ranking error: charter DISCHARGED, the error itself UNSOLVED (closed 07-26)
+
+Opened to explain **B2**, the one place the model *ranks* two plans against the sim rather than merely
+mis-sizing them: at T=229 the sim prefers the haste-front-loaded h40 plan by +0.360 % while the model
+prefers h70. Ten rounds narrowed the field by elimination — the floor law established and generalised
+(§5/§11/§13), two harness input errors found and fixed (`t5two`, effective SP ≈1450, §6/§7), the
+SP-under-haste candidate falsified on sign (§8), the "emergent joint interaction" framing **withdrawn**
+after it turned out to rest on a press the sim had silently retimed. Round 10 (§21.5) decomposed the
+P3 context asymmetry and found **C-BE dominant** — the model's continuous credit, 56 % of the asymmetry
+and 64–71 % of both levels — which by §21.4's pre-registration meant the phase "collapses to
+implementing one term."
+
+**It did — and the term lost.** The charge was designed against §21.5's constraint (price each window's
+*anchored* lattice from the board, because a flat `frac(D/Δ)` is the wrong shape), implemented in
+`simulate()`, audited (two real defects: an AP premium that ignored additive Tirisfal pooling, and a
+memo-signature collision that made the first gate read as a clean null), and gated on the B2 pair
+itself. **The sign gate fails, 6/7 fight lengths worse**, robust to the 15 % premium correction. Four
+independent measurements agree (§22 anchored proxy, §23 across length, §25 the real scorer, §25.4 after
+the fixes). §13.8's retirement of the whole lattice-quantization family therefore **survives** §21.5's
+invalidation of its ruler — the better ruler is 4.3× *more* anti-B2.
+
+What the phase leaves behind: `cfg.boundaryCharge`, shipping **OFF and unreferenced** (the OFF path is
+provably plan-identical, so the phase changes no plan the tool has ever produced); a **U-shaped length
+profile** for the bias (§23) that constrains every future candidate; F3's residual retired as an
+artifact of an ill-posed additive test (§24); and three "the failure mode looks like a clean result"
+instrument traps in the ledger. **B2 stands at ≈0.445 pp, unexplained**, with 0.16–0.91 pp of
+quantization headwind against any successor mechanism — and that hunt is **new, sim-gated work**, not
+Phase 8's remainder. Full closing statement and the eight settled findings: `docs/PHASE8.md` §26.
+
+★ The phase's transferable lesson: **a term dominating an ASYMMETRY implies nothing about its sign in
+the LEVELS.** §21.4 wrote that implication into a pre-registration, and pre-registration protects
+against post-hoc rationalisation — not against a bad inference embedded in the plan itself.
+
 ---
 
 ## The corrections ledger — what we believed, and what disproved it
