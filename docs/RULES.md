@@ -176,6 +176,13 @@ boundary, and the model must price that wherever it is not phase-averageable.**
    in progress" *is* the next cast's start. They **disagree at the BACK edge**: on the completion rule the
    cast in flight when the aura fades is unbuffed, so a start-snapshot model over-credits a window's last
    partial cast by `frac(D/Δ) × premium`. See §3b-note and PHASE8 §5/§5b.
+   **✗ DELIBERATELY NOT IMPLEMENTED — and as of 07-26 that is a VERDICT, not a backlog item
+   (PHASE8 §22).** The charge was re-priced against the *anchored* lattice (the shape §21.5 showed
+   the flat `frac(D/Δ)` gets wrong) and it is **still anti-B2, 4.3× more so**: `ΔL` goes
+   `+0.036 pp` (flat, §13.8) → **`+0.156 pp`** (anchored), where B2 needs a *negative* charge to
+   close its `−0.380 pp`. The physics below is source-verified and unchanged; what is falsified is
+   that charging it improves the model's RANKING. Do not implement it as a B2 fix. Instrument:
+   `tools/p8-boundary-charge.mjs`.
 
 **§3b-note — the phase-average argument (1) is CONDITIONAL on a uniform press phase.** "Interior windows
 are slip-invariant" holds because over a uniform press phase `E[casts in window] = D/Δ`. That is **true for

@@ -2969,3 +2969,35 @@ tail → sub-solve chains) at vanishing stakes; the chase stops here. The cell i
 `--observe` trade for the round-7 diff** (≥ round 5, sub-band vs round 6, spec re-simmed honestly in
 the round-7 ledger), and any future work on it starts from the chain-offer union idea (offer the
 chain family from BOTH the champ's own IV row and `bestN`'s), not from another selection rule.
+
+### §5.18 Notes gathered while running the §22 boundary-charge instrument (07-26, measure-only)
+
+Not landed — recorded per the phase's measure-first rule. Three came out of PHASE8 §22's tooling and
+one out of the §21.5 erratum; all are CPU/redundancy items, none changes a plan.
+
+1. **`boardDmg` materializes a 180-element array to compute one scalar.** Both §21.5's and §22's
+   instruments do `simulate(s, cfg, true).casts.reduce((a,c) => a + c.dmg, 0)` — the `collect` path
+   allocates a per-cast record (14 fields) purely so the caller can sum one of them. The board loop
+   already has `dmg` in hand at `index.html:899`. A `cfg.wantBoardSum` accumulator (sum inline, skip
+   the array) removes an allocation proportional to cast count from every scoring call that wants
+   the discrete total. **Only worth it if a board sum ever enters the engine** — today it is
+   tools-only, so this is a note, not a task.
+2. **★ If a per-window charge is ever implemented, it needs NO extra pass.** The board loop already
+   walks every cast in start order and every window's `scoreStart`/`dur` is known before it runs, so
+   the charge can be accumulated inline — the naive shape (a second walk per window, i.e.
+   `O(casts × windows)`) is avoidable by construction. Worth writing down now because §22 leaves the
+   charge un-implemented: whoever revisits it should not pay a second walk for it. (§22 itself
+   measures the charge by *toggling* — `2 × windows` full `simulate()` calls — which is fine for an
+   instrument and would be absurd in the scorer.)
+3. **The kill taper is computed even when it provably cannot bite.** `robust` differs from `total`
+   only via the `[T−KW, T+KW]` reweight, `KW = 0.5` (`index.html:764`); at the §21.5/§22 config the
+   two come back **bit-identical** (the erratum's finding). The integral still evaluates
+   `Math.min(1, Math.max(0, (cfg.T + KW − mid) / (2*KW)))` per breakpoint span regardless. A
+   precomputed "does any breakpoint fall in the taper band" flag would skip the clamp arithmetic on
+   the majority of spans. Micro — measure before touching; listed for the §4 catalogue.
+4. **Cleanliness is a cheap invariant worth keeping.** §22's instrument asserts that a window's
+   class (value vs haste) matches whether toggling it leaves the cast lattice bit-identical, and
+   exits non-zero otherwise. That assertion is ~3 lines and would catch a whole class of future
+   engine change (an SP buff that starts moving cast times) that no golden would flag, because the
+   goldens only see the final plan. Pattern to copy into other instruments: **assert the property
+   your measurement DEPENDS on, not just the measurement.**

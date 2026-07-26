@@ -2756,6 +2756,113 @@ Consequences, scoped narrowly:
   separate; `p8-round10.mjs` now prints `[total===robust? …]` per arm and refuses to imply a result
   when they don't. Left as an open thread for the Phase 8 finale, not re-run here.
 
+## §22 — ✗ THE FINALE IS FALSIFIED ON SIGN: the anchored charge is **4.3× MORE anti-B2** than the flat one. Do not implement it. (07-26)
+
+Instrument: `tools/p8-boundary-charge.mjs` (bare node, zero sims). **Charter answered in the
+negative** — this is the round that stops the charge from landing, not the one that lands it.
+
+### 22.1 The question §21.5 left open
+
+§13.8 priced the quantization charge from the closed form `frac(D/Δ) × premium` and retired the
+whole family as **anti-B2** (`L(h40) 0.140 %`, `L(h70) 0.104 %` ⇒ `ΔL = +0.036 pp`; correcting it
+*widens* B2 to 0.445 pp). §21.5 then showed that closed form is **the wrong shape** — the same press
+priced against its own anchored lattice moves 0.11 pp on flush-vs-offset alone. So §13.8's verdict
+was reached with a ruler §21.5 invalidated, and the finale's whole premise was that re-shaping the
+ruler might flip the sign. **It does not. It makes it worse.**
+
+### 22.2 The identity that makes this sim-free
+
+`simulate()`'s `casts` board **is already the anchored lattice** — the same board loop that sets the
+press-snap boundaries. So for one window `w`, with no closed form and no reconstruction of
+`scoreStart`:
+
+```
+dModel(w) = robust(with w) − robust(without w)       ← the continuous rate integral's credit
+dQuant(w) = boardDmg(with w) − boardDmg(without w)   ← the discrete ANCHORED board's credit
+charge(w) = dModel(w) − dQuant(w)
+```
+
+The anchoring is *inherited*, not modelled. Reproduction test (in the tool, exit 3 on drift): this
+returns §21.5's C-BE for `MQG@202` to four decimals in both contexts — **A +0.1505 / B +0.2610 ✓** —
+so §22 and §21.5 are on one ruler.
+
+### 22.3 ★ The cleanliness split — which half of the table can carry a verdict
+
+Not every window can be priced this way, and the reason is structural:
+
+| toggle | kind | cast lattice with vs without | usable? |
+|---|---|---|---|
+| `isc` | `sp` | **bit-identical** (180→180 casts) | ✅ clean |
+| `arcanePower` | `dmg` | **bit-identical** (180→180) | ✅ clean |
+| `mqg` | `rating` | 180→**177** | ✗ confounded |
+| `berserking` | `mult` | 180→**179** | ✗ confounded |
+| `icyVeins` | `mult` | 180→**171** | ✗ confounded |
+
+A **value** buff rescales damage without moving a single cast time, so `dModel − dQuant` isolates
+that window's own boundary exactly. A **haste** buff **re-lattices the whole fight**, so its
+`dQuant` also absorbs the **fight-end quantization at T** — a boundary with nothing to do with the
+window. The haste rows are printed but are **NOT load-bearing**; the verdict reads the value half
+only. (The tool asserts class↔cleanliness and exits 4 if they ever diverge, so an engine change that
+made an SP buff move the lattice cannot slip through silently.)
+
+### 22.4 The result
+
+| ruler | L(h40) | L(h70) | ΔL | verdict |
+|---|---|---|---|---|
+| flat `frac(D/Δ)` (§13.8) | +0.1400 | +0.1040 | **+0.036 pp** | anti-B2 |
+| **anchored (§22)** | **+0.0214** | **−0.1346** | **+0.156 pp** | **anti-B2, 4.3×** |
+
+B2's observed gap is `model − sim = −0.380 pp` at T=229, so a charge must be **negative** to close
+it. It is positive on both rulers. **§13.8's retirement of the lattice-quantization family SURVIVES
+§21.5's invalidation of its closed form** — and B2's residual target stays ≈0.445 pp.
+
+Note *where* the anchoring bites: it barely moves h40 (`+0.140 → +0.021`) but drives h70 **negative**
+(`+0.104 → −0.135`). The flush `IV@202`/`MQG@202`/`Icon@182` stack in h70 is exactly the
+configuration §21.5 flagged, and on its own lattice the model turns out to **under**-credit its value
+windows. That is the opposite of the over-credit the whole `frac` story predicts, and it is why the
+differential widens rather than closes.
+
+### 22.5 Consequences — the charter changes
+
+- **DO NOT implement the boundary charge as a B2 fix.** Both rulers agree it is anti-B2 and the
+  better ruler is 4.3× worse. §21.4's "if C-BE dominant ⇒ Phase 8 collapses to implementing one
+  term" is **void**: C-BE *is* dominant (§21.5) *and* implementing it hurts. Dominance of a term in
+  the ASYMMETRY says nothing about its sign in the LEVELS — that inference is the trap, now sprung.
+- **§20's tension is resolved in the opposite direction to the one it hoped for.** "The term is
+  real, its sign against B2 is wrong, so something else in the B2 pair is absorbing it" — after §22
+  the honest reading is that the term is real, its sign is wrong on *both* rulers, and **the search
+  for "something else" is the whole remaining job.** The charge is not a down-payment on it.
+- **A charge could still be right physics and wrong medicine.** RULES §3b-note's completion-rule
+  asymmetry is source-verified and not in doubt. What §22 kills is the claim that charging it
+  improves the model's *ranking*. If it is ever implemented for fidelity, it must be gated on
+  something other than B2, and B2's target must be restated to 0.445 pp first.
+- **What Phase 8 still owes:** a mechanism worth ~0.445 pp on its own, with two ~0.03 pp headwinds
+  against it (§13.8), now measured at ~0.156 pp of headwind on the better ruler.
+
+### 22.6 ⚠ Not verified by sim — and why not
+
+**The wowsims rig is GONE and could not be rebuilt this session.** `tools/xval-env.sh` discovers it
+by content; only this session's scratchpad exists on the box and it has no `wowsims/runner-ap180`.
+Reconstruction was attempted and abandoned, with findings worth recording:
+
+- The pinned `ade9f39` is **not in `wowsims/tbc`** — that repo is the legacy pre-APL sim (3555
+  commits, no `sim/core/apl_actions_timing.go`, no `sim/mage/`), so the clone in TOOLING "Building
+  the runner" cannot be the one the rig used.
+- **GitHub will not serve a bare SHA** (`git fetch <url> <sha>` ⇒ `couldn't find remote ref`), so
+  `ade9f39` cannot be fetched without knowing the right repo first.
+- `wowsims/{classic,cata,wotlk}` all DO carry `sim/core/apl_actions_timing.go` and `cmd/wowsimcli`,
+  and — contrary to TOOLING's note, which was true only at `ade9f39` — all three **commit
+  `assets/database/db.bin`**, so the DB-regeneration blocker has expired. None carries
+  `sim/mage/arcane_power.go` at HEAD, so `ap-cd-at-cast.patch` needs a re-target regardless.
+- `cmd/runner` is **ours** (`tools/wowsims-patches/runner-main.go`), not upstream — expected missing.
+
+⇒ **The §22 verdict is sim-free by construction and does not need the rig**: it compares two of the
+model's OWN quantities against an already-recorded sim observation (§2's `−0.380 pp` at T=229). But
+the acceptance re-gather and any golden-churn certification remain blocked until a runner exists.
+**Next session's first task should be re-establishing the rig and re-certifying the trust anchor**,
+because everything Phase 8 still owes is a sim question. TOOLING's "Building the runner" section is
+now known-stale and is flagged there.
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance

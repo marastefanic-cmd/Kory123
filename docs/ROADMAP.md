@@ -2,7 +2,35 @@
 
 ## Resuming after a context clear (start here)
 
-### ⏳ 0. FRESHEST STATE (07-25/26) — ROUND 6 IS COMPLETE AND GRADED; the groupSeeds fix is staged
+### ⏳ 0. FRESHEST STATE (07-26) — PHASE 8's FINALE IS FALSIFIED; the sim rig is GONE and is the next task
+
+**Read this first — it supersedes the round-6/7 block below on what to do next.**
+
+- ✗ **THE BOUNDARY CHARGE MUST NOT BE IMPLEMENTED (PHASE8 §22; 07-26).** The Phase-8 finale was
+  "implement the per-window continuous-vs-discrete charge". It is **falsified on sign**: re-priced
+  against the *anchored* lattice (the shape §21.5 proved the flat `frac(D/Δ)` gets wrong), the value
+  charge is **still anti-B2 and 4.3× worse** — `ΔL` `+0.036 pp` (flat, §13.8) → **`+0.156 pp`**
+  (anchored), where B2 needs a **negative** charge to close its `−0.380 pp`. §13.8's retirement of
+  the lattice-quantization family therefore **survives** §21.5's invalidation of its ruler, and B2's
+  residual target stays **≈0.445 pp**. The trap, stated plainly: **C-BE dominating the ASYMMETRY
+  (§21.5) says nothing about its sign in the LEVELS** — §21.4's "collapses to implementing one term"
+  was an invalid inference. Instrument: `tools/p8-boundary-charge.mjs` (sim-free; reproduces §21.5's
+  C-BE to 4 dp as a built-in gate, and asserts the value/haste cleanliness split it depends on).
+  `index.html` is **untouched** — no golden risk, exact-match still 25/25.
+- ★★★ **THE WOWSIMS RIG IS GONE, AND RESTORING IT IS THE NEXT TASK (PHASE8 §22.6).** Only this
+  session's scratchpad exists and it has no `runner-ap180`. A rebuild was attempted and failed at
+  step one: **`ade9f39` is not in `wowsims/tbc`** (that repo is the legacy pre-APL sim), and GitHub
+  **will not serve a bare SHA**, so the commit can't be fetched without identifying the right repo.
+  Good news: `wowsims/{classic,cata,wotlk}` all carry the APL core AND now **commit
+  `assets/database/db.bin`**, so TOOLING's "DB assets are generated, not committed" blocker has
+  expired. `TOOLING.md`'s build recipe is flagged known-stale. **Everything Phase 8 still owes is a
+  sim question**, so nothing further lands until a runner exists and the trust anchor is re-certified.
+- **Consequently the goal's items 2–3 are BLOCKED, not skipped.** The two persistence columns
+  (`isc-mqg h40` 5/5, `isc-skull h20` 4/5) and KT `mqg+skull` 0.31 % were to be re-diagnosed *after*
+  the charge landed. The charge is not landing, so they revert to their prior status — same physics
+  family, still open, now with the charge explicitly ruled out as their explanation too.
+
+### ⏳ 0b. Round 6/7 state (07-25/26) — ROUND 6 COMPLETE AND GRADED; the groupSeeds fix is staged
 
 **Read this before anything below it; items 1–2 describe round 5, which round 6 supersedes.**
 

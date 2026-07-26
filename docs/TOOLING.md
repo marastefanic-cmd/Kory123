@@ -469,8 +469,21 @@ Lesson 7 above is the instrument for the second axis; lessons 1–4 are the firs
 
 ## Building the runner (do this once per fresh session)
 
+> ⚠⚠ **THIS RECIPE IS KNOWN-STALE AS OF 07-26 AND HAS NOT BEEN RE-VALIDATED — see PHASE8 §22.6.**
+> A rebuild attempt from scratch failed at step one: **`ade9f39` is not in `wowsims/tbc`**, which is
+> the legacy pre-APL sim (3555 commits, no `sim/core/apl_actions_timing.go`, no `sim/mage/`) — so
+> the "wowsims-tbc-clone" below cannot be the repo the rig was actually built from. **GitHub will
+> not serve a bare SHA** (`git fetch <url> <sha>` ⇒ `couldn't find remote ref`), so the commit
+> cannot be recovered without first identifying the right repo. `wowsims/{classic,cata,wotlk}` all
+> carry `sim/core/apl_actions_timing.go` + `cmd/wowsimcli`, and all three now **commit
+> `assets/database/db.bin`** (so the DB-regeneration blocker noted below has expired), but none has
+> `sim/mage/arcane_power.go` at HEAD — `ap-cd-at-cast.patch` needs re-targeting either way.
+> **Whoever restores the rig: record the ACTUAL repo + commit here, and re-certify the trust anchor
+> (~0.4 % vs `wowsimcli`) before gating anything.** The one true binary's provenance is the only
+> thing standing between this project and the stale-runner failure logged below.
+
 ```
-cd <wowsims-tbc-clone>            # git checkout ade9f39
+cd <wowsims-tbc-clone>            # git checkout ade9f39   ← repo unidentified; see warning above
 go build -tags with_db -o runner ./cmd/runner
 ```
 
