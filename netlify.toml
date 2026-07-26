@@ -1,0 +1,27 @@
+# Netlify deploy config for the Arcane Burn Planner.
+#
+# The app is ONE self-contained static file (index.html at the repo root) — no
+# framework, no dependencies, no real build. This config copies just that file
+# into ./dist and publishes ./dist, so the live site serves ONLY the app. The
+# repo's docs/, tools/, tests/, README.md and CLAUDE.md are deliberately NOT
+# published (they're internal dev notes, not for public browsing).
+
+[build]
+  publish = "dist"
+  command = "mkdir -p dist && cp index.html dist/index.html"
+
+# Defense-in-depth response headers. The page loads zero external resources and
+# stores no data, so these are hygiene rather than necessity.
+#
+# No Content-Security-Policy is set on purpose: the optimizer runs in a Web
+# Worker the app builds from an inline Blob URL, which a strict CSP would block
+# and break the tool. With no external network surface to protect, a fragile CSP
+# would be all cost and no benefit. (Can be added later if tested against the
+# worker path.)
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Content-Type-Options = "nosniff"
+    X-Frame-Options = "DENY"
+    Referrer-Policy = "no-referrer"
+    Permissions-Policy = "geolocation=(), camera=(), microphone=(), payment=(), usb=()"

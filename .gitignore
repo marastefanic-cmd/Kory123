@@ -1,0 +1,6 @@
+# Netlify build output (index.html is copied here at deploy time; never committed)
+dist/
+
+# Test deps / local artifacts
+tests/node_modules/
+node_modules/
