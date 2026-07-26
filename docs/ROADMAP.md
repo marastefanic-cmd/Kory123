@@ -54,9 +54,14 @@
   `runnerFlags()` generating the native command line — backed by `tests/sim-request.mjs`, which asserts
   the page's request equals the runner's field-for-field, plus protocol invariants (because sharing a
   constant proves agreement, never correctness). Record: `sim/README.md`, TOOLING ★ section, DIARY 07-26.
-  **Next steps if it earns its keep:** teach genapl a Drums press so the default kit verifies whole;
-  a multi-seed error bar instead of a fixed tie band; and the search-miss alarm (a legal hand-edit
-  that out-scores the model under its OWN scorer is a confession, gradeable with no sim at all).
+  ✅ **The search-miss alarm LANDED (07-26).** Lock a hand-edited timeline that is **legal** and scores
+  higher than the optimizer's own output **under `robust`** (not `total` — the tiles' headline is
+  at-kill damage, and beating that while losing `robust` is the objective working), and the page says
+  so loudly, in effective casts, and asks for the Debug export — which now carries the sim
+  transcription and a ready-to-run `tools/bench.mjs` command. This is `plan-duel.mjs`'s confession
+  rule in the UI: no repricing can manufacture that direction, so it is gradeable with no sim at all.
+  **Still open:** a Drums press needs an upstream `SpellFlagAPL` patch (see below); a multi-seed error
+  bar in the page would double the ~10s wall clock, so the fixed tie band stays for now.
 - 📝 **COPY AUDIT of everything the user reads (07-26, user-directed; engine untouched, exact-match
   25/25).** `index.html` + `README.md` verified claim-by-claim against the engine. **README carried the
   same disproven ramp claim in three places**, two deleted features (press price tags, clipped-press

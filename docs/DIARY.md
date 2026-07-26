@@ -417,6 +417,39 @@ now recorded rather than assumed impossible. Ashtongue stays genuinely unpressab
 
 ---
 
+### 07-26 — closing the session: the alarm that was recommended twice and built once
+
+Session-end sweep for anything discussed but never built. One thing survived the audit: the
+**search-miss alarm**, which I had recommended in two separate turns and filed in ROADMAP as a
+"next step" without ever writing it. Built now.
+
+**What it is:** lock a hand-edited timeline that is **legal** and outscores the optimizer's own output
+**under `robust`**, and the page says so loudly — in effective casts — and asks for the Debug export.
+This is `tools/plan-duel.mjs`'s **confession rule** moved into the UI: `newEngine(hand-edit) >
+newEngine(model plan)` cannot be manufactured by repricing, because the search was free to keep the
+better layout and score better by its own measure and didn't. It is therefore gradeable **with no
+simulator at all**, and it can only ever turn "no finding" into "bug", never into a false green.
+
+Three things had to be right, and two are easy to get wrong:
+1. **Compare `robust`, not `total`.** The comparison tiles' headline is at-kill damage; the optimizer
+   maximizes the kill-window-smoothed `robust` (RULES §8). Beating `total` while losing `robust` is
+   the objective working, not a miss — wiring the alarm to the visible number would have made it cry
+   wolf on every terminal-window edit.
+2. **The plan must be legal** — `repair()` fixpoint. Out-scoring from outside the feasible set proves
+   nothing, because the search was never allowed there.
+3. **Threshold in meaningful units** — effective casts, not damage, and > 0.01 so float ties and
+   sub-cast tie-breaks stay quiet.
+
+Verified both directions: a legal-but-worse edit gets the ordinary "Validated" message; a plan that
+genuinely beats `robust` trips the banner with the gain printed.
+
+**And the Debug export now carries the sim transcription plus a ready-to-run
+`node tools/bench.mjs …` line**, so a user's bug report arrives reproducible: paste the command, get a
+sim number in ~3 seconds. Tested end-to-end against the actual `dist/` deploy artifact, including the
+netlify build command run verbatim.
+
+---
+
 ## The corrections ledger — what we believed, and what disproved it
 
 The most valuable part of this diary. Each entry: the belief, why we held it, what overturned it, and

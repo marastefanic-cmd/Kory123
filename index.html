@@ -9,6 +9,9 @@
 <meta property="og:title" content="WoW Anniversary Cooldown Optimizer for Arcane Mages — TBC 2.4.3">
 <meta property="og:description" content="Enter a fight and get the optimal cooldown-press schedule for an Anniversary-realm Arcane mage — burn timeline, press-by-press activation schedule, and a copy-as-text plan. Free, no login, runs entirely in your browser.">
 <meta name="twitter:card" content="summary">
+<!-- Inline SVG favicon: keeps the page dependency-free and stops every visitor's browser from
+     logging a 404 for /favicon.ico. An arcane rune in the tool's own gold. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c0c14'/%3E%3Cpath d='M16 4 L19 13 L28 16 L19 19 L16 28 L13 19 L4 16 L13 13 Z' fill='%23d9b96a'/%3E%3C/svg%3E">
 <style>
   /* ————— tokens: committed dark "arcane instrument" theme ————— */
   :root {
@@ -525,6 +528,11 @@
     font-size: 12.5px; color: var(--muted);
   }
   .simhelp form { margin-top: 14px; text-align: right; }
+  #edit-msg.miss {
+    background: color-mix(in srgb, var(--good) 10%, var(--surface));
+    border-color: color-mix(in srgb, var(--good) 45%, var(--surface));
+  }
+  #edit-msg.miss div::before { content: "★ "; color: var(--good); }
   .simbox .whatis {
     background: none; border: none; padding: 0; margin-left: 6px;
     color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline;
@@ -766,7 +774,7 @@
     finding, and the panel says so.</p>
     <form method="dialog"><button class="copy">Close</button></form>
   </dialog>
-  <div class="stamp" title="Update this stamp whenever index.html changes — it identifies stale copies.">build 2026-07-26a</div>
+  <div class="stamp" title="Update this stamp whenever index.html changes — it identifies stale copies.">build 2026-07-26b</div>
 </div>
 
 <script id="engine-src">
@@ -4295,6 +4303,7 @@ function showEditMsg(html, kind) {
   const m = el("edit-msg");
   m.hidden = !html;
   m.classList.toggle("ok", kind === "ok");
+  m.classList.toggle("miss", kind === "miss");
   m.innerHTML = html || "";
 }
 function renderEditMsg() {
@@ -4344,8 +4353,44 @@ function tryLock() {
   el("btn-edit").textContent = "Unlock timeline for customization";
   el("btn-edit").classList.remove("armed");
   el("sched").classList.remove("stale");
-  showEditMsg(`<div>Validated — all cooldown requirements met. Activation schedule regenerated from your timeline.</div>`, "ok");
+  showEditMsg(searchMissText(optR) ||
+    `<div>Validated — all cooldown requirements met. Activation schedule regenerated from your timeline.</div>`,
+    searchMissText(optR) ? "miss" : "ok");
   window.__customRun = CUSTOM.run; // debug/test hook
+}
+/* ═══════════════ the search-miss alarm ═══════════════
+   THE CONFESSION RULE, in the UI. This tool is a maximizer, so a LEGAL hand-edit that scores HIGHER
+   than the planner's own output — under the planner's OWN objective — is not a clever play the user
+   found. It is the search failing to find something it was free to choose, and it is gradeable with
+   no simulator at all (`tools/plan-duel.mjs` calls this a confession: no repricing can manufacture
+   that direction, because the optimizer could have kept the better layout and scored better by its
+   own measure, and didn't).
+
+   Three things have to be right or this cries wolf, and two of them are easy to get wrong:
+
+   1. ★ COMPARE `robust`, NOT `total`. The tiles' headline Δ is at-kill damage; the optimizer
+      maximizes `robust` — the half-cast kill-window smoothing of RULES §8. A plan can beat the model
+      on `total` and lose on `robust`, and that is the objective working as designed, not a miss.
+   2. ★ THE PLAN MUST BE LEGAL. `repair()` is the feasibility projector the optimizer trusts; a
+      schedule it would move or drop was never in the search space, so out-scoring from outside the
+      feasible set proves nothing. `tryLock` only reaches here when `validateCustom` found a fixpoint.
+   3. A THRESHOLD IN MEANINGFUL UNITS. Floating-point ties and sub-cast tie-breaks are not misses, so
+      the gain is expressed in EFFECTIVE CASTS (robust ÷ one plain unbuffed AB) and must clear a
+      hundredth of a cast. */
+const SEARCH_MISS_CASTS = 0.01;
+function searchMissText(customR) {
+  const run = lastRun;
+  if (!run || !CUSTOM.legal || !customR) return "";
+  const cfg = run.cfg;
+  const crit = Math.min(1, Math.max(0, cfg.critPct / 100));
+  const plainCast = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + crit * (GAME.CRIT_MULT - 1)) * (cfg.t5two ? 1.2 : 1);
+  const gain = (customR.robust - run.optR.robust) / plainCast;   // in effective casts
+  if (!(gain > SEARCH_MISS_CASTS)) return "";
+  return `<div><b>Your timeline beats the planner — that is a bug, not a win.</b>
+    It scores <b>+${gain.toFixed(2)} effective casts</b> higher than the plan the optimizer produced,
+    measured with the optimizer's own objective, and it is fully legal — so the search could have
+    chosen this and didn't. Please send <b>Debug export</b> (it now contains everything needed to
+    reproduce this); a hand-edit that wins is the most useful bug report this tool can receive.</div>`;
 }
 function revertCustom() {
   if (!lastRun) return;
@@ -4424,6 +4469,37 @@ el("btn-revert").addEventListener("click", revertCustom);
 function statLine(label, S, r) {
   return `${label}: total=${r.total.toFixed(1)} robust=${r.robust.toFixed(1)} · effective casts ${S.effCasts.toFixed(2)} (${r.castCount} real) · gain vs no-cooldowns +${S.gain.toFixed(2)}% · vs mashing +${S.vsNaive.toFixed(2)}% · GCD-floor ${S.capPct.toFixed(1)}% of fight`;
 }
+// The sim modules load lazily (only when the sim button is pressed), but Debug export must work
+// without them — so the transcription used by the export mirrors sim/planspec.mjs's contract on the
+// data already in the page. `tests/sim-request.mjs` + `tools/bench.mjs` remain the authority; if this
+// ever disagrees with them, THIS is the copy to delete.
+function planToSpecInline(r) {
+  const { cfg, best, optR } = r;
+  const eff = (optR && optR.actEff) || {};
+  const at = k => (eff[k] || []).slice().sort((a, b) => a - b).map(Math.floor);
+  const KEY = { icyVeins: "IV", arcanePower: "AP", berserking: "Zerk", bloodlust: "BL", isc: "Icon", scb: "Gem", skull: "Skull", mqg: "MQG" };
+  const NOPRESS = { ati: "Ashtongue Talisman", drums: "Drums of Battle", powerInfusion: "Power Infusion" };
+  const spec = { _prestack: 0 }, skipped = [];
+  for (const k of Object.keys(best.s || {})) {
+    if (NOPRESS[k]) { if ((eff[k] || []).length) skipped.push(NOPRESS[k]); continue; }
+    if (k === "icyVeins" || !KEY[k]) { if (!KEY[k]) skipped.push(k); continue; }
+    const t = at(k); if (t.length) spec[KEY[k]] = t;
+  }
+  const ivs = at("icyVeins");
+  if (ivs.length) {
+    const ivOut = [], csOut = []; let cd = -1e9;
+    for (const t of ivs) { if (t < cd - 1e-6) csOut.push(t); ivOut.push(t); cd = t + BUFFS.icyVeins.cd; }
+    spec.IV = ivOut; if (csOut.length) spec.CS = csOut;
+  }
+  const down = [], aoe = [];
+  for (const s of cfg.segments || []) {
+    if (s.type === "intermission") down.push([Math.round(s.start), Math.round(s.end)]);
+    else if (s.type === "aoe") aoe.push([Math.round(s.start), Math.round(s.end)]);
+  }
+  if (down.length) spec._intermissions = down;
+  if (aoe.length) spec._aoe = aoe;
+  return { spec, skipped, burn: (cfg.segments || []).some(s => s.type === "burn") };
+}
 function debugExportText() {
   const run = lastRun, cfg = run.cfg;
   const M = tileStats(run, run.optR);
@@ -4477,6 +4553,22 @@ function debugExportText() {
     },
   };
   L.push(JSON.stringify(j));
+  // ★ The sim transcription + a ready-to-run command. A debug export exists to be pasted into a
+  // debugging session, and the first thing that session will want is to put both layouts through the
+  // bench. Emitting the spec here means nobody has to re-derive the transcription by hand — and
+  // `planToSpec`'s convention (FIRE times floored, Cold-Snap split) is the one place that has already
+  // cost this project −1.5% on a KT plan when it was got wrong.
+  L.push("", "--- SIM TRANSCRIPTION (tools/bench.mjs / sim/planspec.mjs) ---");
+  try {
+    const A = planToSpecInline(run);
+    L.push(`model plan spec:  ${JSON.stringify(A.spec)}`);
+    if (customR) L.push(`custom spec:      ${JSON.stringify(planToSpecInline(CUSTOM.run || { cfg, best: { s: CUSTOM.s }, optR: customR }).spec)}`);
+    if (A.skipped.length) L.push(`⚠ not transcribable (absent from BOTH arms): ${A.skipped.join(", ")}`);
+    if (A.burn) L.push(`⚠ this fight has a Burn phase — wowsims has no "AB damage xN" knob, so it cannot be simmed at all.`);
+    else L.push(`reproduce:        node tools/bench.mjs --char model-ref --spec-a '${JSON.stringify(A.spec)}' --T ${cfg.T} --haste ${cfg.hasteRating} --sp ${cfg.sp} --crit ${cfg.critPct}`);
+  } catch (e) {
+    L.push(`(transcription unavailable: ${String(e && e.message || e)})`);
+  }
   L.push("", "Notes for whoever debugs this: times are SECONDS from pull. `intents` are press intents (the schedule the engine takes); `fireTimes` are when each press actually fires (displayed plan times = floor(fireTime)). The `evalsched` object is ready to run as  node tests/evalsched.mjs '<that json>'  to score both layouts under the model scorer; to sim-verify a layout, build an APL per docs/TOOLING.md (genapl — keep _prestack:0)." + (cfg.t5two ? " ⚠ Tirisfal-2pc is ON here but evalsched.mjs's harness cfg has no t5 field — compare via the stats above, or add t5two to its cfg." : ""));
   return L.join("\n");
 }
