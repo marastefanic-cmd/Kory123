@@ -3062,7 +3062,13 @@ half by analogy to the value half.** `cfg.boundaryCharge` is therefore value-onl
   sign: §22 (anchored proxy at T=229), §23 (anchored proxy across length), §25 (the real scorer).
 - **Gates run, all green for the OFF path** — which is what makes shipping it safe:
   `plan-sweep` × 2 + `plan-diff` ⇒ `SCORE-AUDIT scorerMoved=0`, `PLAN-DIFF IDENTICAL` (re-run after
-  the `cfgSigOf` fix, since that changed the memo key); exact-match **25/25**.
+  the `cfgSigOf` fix, since that changed the memo key); exact-match **25/25**; and
+  `tests/monotonicity.mjs` ⇒ **0 violations across 2 fights, haste 0–150 step 5** — the sim-free
+  half of the acceptance test (`monoDip`), confirming the search-quality invariant still holds.
+  (Strictly confirmatory: `PLAN-DIFF IDENTICAL` + 25/25 already prove the optimizer's outputs are
+  byte-identical to master, and `monoDip` is a function of those outputs — so it could not have
+  moved. Run anyway, because "it cannot have moved" is exactly the reasoning the round-4 collector
+  and §25.2's memo trap both punished.)
 - **No golden churn, so the "sim-verified better" gate is not engaged** — nothing to certify.
 - **What this buys even though it failed:** the implementation is written, reviewed and gated, so
   when the rig returns the question is one command, not a rebuild. And §25.2's memo trap is now
