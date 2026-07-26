@@ -310,3 +310,40 @@ mid-round would make the plan cache assemble a matrix from two engines):
 3. `sim/model-ref.json` and `sim/model-ref-request.json` must be edited **together** so a future
    `--dumpreq` still reproduces the template, and `tests/sim-request.mjs` re-run **with a native
    `RUNNER`** before the change is trusted — that is the gate this session cannot execute (§8.2).
+
+## 8.8 ✅ THE INSTRUMENT IS FULLY CERTIFIED — including the gate §8.2 said it could not run
+
+§8.2 recorded `tests/sim-request.mjs` as unrunnable here (no `protoc`). **That was true of the
+container, not of the recipe** — `apt-get install protobuf-compiler` supplies `protoc 3.21.12`, the
+`wowsims/tbc-new` clone and `proxy.golang.org` are both reachable, and BENCH §3d's build recipe runs
+end to end in about **four minutes**. So the native rig was rebuilt and every gate was executed:
+
+| gate | result |
+|---|---|
+| `tests/sim-duel.mjs` **with `RUNNER`** | **PASS — shipped wasm == native runner** (`1351.5` vs `1351.5`, `1345.6` vs `1345.6`) |
+| `tests/sim-request.mjs` (the anti-drift gate) | **PASS, 9/9** — protocol invariants (var≠0, cold open, infinite mana, seed spacing, hit cap); **both** committed templates are fresh `--dumpreq`s of their exports; and the page's request equals the runner's field-for-field on plain / geared / cold-snap / intermission / **AoE 4-target** / odd-stats |
+| trust anchor, gear B (`runner --dumpreq` → `wowsimcli sim --infile`) | **runner `1146.9 / 86.1 / 1586.3` ≡ wowsimcli `1146.9094876137967 / 86.13208492668227 / 1586.2720464676802`** — identical to every printed digit |
+| `tests/exact-match.mjs` (the model side) | **25 passed, 0 failed** |
+
+Three things follow, and the third is the one to carry forward.
+
+1. **The round is being gathered on a certified engine.** The wasm equals the native runner, the
+   native runner equals upstream `wowsimcli` on a byte-identical request, and the model side is
+   green — so a disagreement found in this round is attributable to the model or the harness inputs,
+   never to the binary.
+2. **★ The recipe is reproducible from the repo, in a container that never saw the original.** The
+   anchor did not merely pass a self-consistency check — it reproduced **BENCH §3d's recorded gear-B
+   numbers exactly**, having been rebuilt from scratch elsewhere. That is a stronger statement than
+   §3d could make about itself, and it retires any lingering doubt from the 07-26 "the rig's source is
+   not publicly recoverable" episode (DIARY).
+3. **⚠ So §1.3 slightly overstates its case, and the correction matters.** "All of that is gone" is
+   true as *convenience* — a duel is ~10 s cold vs ~4 min of setup — but **not** as availability. The
+   native rig is still the only thing that can run the anti-drift gate, re-certify the anchor, or
+   regenerate a `--dumpreq` template, and it is ~4 minutes away. Read §1.3 as *"you no longer need the
+   rig to get a number"*, never as *"the rig is unavailable"* — the second reading is what would let a
+   template drift uncaught.
+
+★ **And this is what makes the §8.7 fix gateable.** `model-ref-request.json` currently passes the
+freshness check, so the fix (equip the kit's trinkets, enable Bloodlust) can edit the export and
+regenerate the template properly, then re-run `tests/sim-request.mjs` to prove the pair still agrees —
+which §8.7 listed as owed and unexecutable.
