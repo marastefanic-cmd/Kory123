@@ -3031,3 +3031,18 @@ zero data and §21.5's vacuous F3: **an instrument whose failure mode looks like
   identity fast path (`simMemoCfg === cfg`) means the signature is rebuilt only when the cfg object
   changes, which in a normal run is once. The cost of the extra field is one array slot. There is no
   CPU argument for keeping the signature narrow — only the correctness argument for keeping it wide.
+
+### §5.20 The §25 charge path double-scans (recorded at write time, costs nothing today)
+
+`simulateRaw`'s integral loop calls `rateAt(mid, segB)`, which calls `scanAt(mid, segB)` internally;
+the PHASE8 §25 charge block then calls `scanAt(mid, segB)` **again** for the same `mid` to read
+`sp2`/`dmgMult2`/`multDn2`. Two identical state scans per breakpoint span.
+
+- **Zero cost in production**: the block is inside `if (bcOn)` and `boundaryCharge` ships OFF and
+  unreferenced (PHASE8 §26.3), so the second scan never runs.
+- **But it is the exact shape §4 exists to remove** — the same walk done twice because two callers
+  each wanted a different field of one result. The fix is `rateAt` returning (or accepting) the
+  scan it already computed, so the span is scanned once and both consumers read the same object.
+- Filed rather than fixed because fixing it now would touch the hot loop to speed up a path that is
+  disabled — the wrong trade under this phase's own measure-first rule. **Do it as part of enabling
+  the charge, if that ever happens; do not do it before.**
