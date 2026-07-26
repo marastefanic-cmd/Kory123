@@ -191,7 +191,7 @@ Treat maintaining them as part of the work, not an afterthought:
   `simreq` → `sim.wasm`), the gear-agnostic reference character, the wasm-equals-native proof, and the
   rebuild recipe. The terminal harness and the button are ONE code path by construction.
 - `docs/ROADMAP.md` — status, current work, and open questions.
-- `docs/ACCEPTANCE.md` — **the standing completion test.** The holdout haste-adaptation cross-val the
+- `docs/ACCEPTANCE.md` — **the standing completion test** (⚠ its status block is **gear A**; no gear-B reading exists yet — PHASE10). The holdout haste-adaptation cross-val the
   model must pass FULLY before it's called complete (monoDip=0 everywhere + no length-persistent
   diagonal deficit). Re-run after every fix/upgrade phase. Currently NOT passing (a low-haste slack).
 - `docs/DIARY.md` — **append-only history** of how the tool evolved: the phase arc + the
@@ -200,14 +200,20 @@ Treat maintaining them as part of the work, not an afterthought:
   plans recovered from the deleted `PLAN.md`; `07-phase6-xval-run.md` = the Phase-6 cross-val run doc,
   cited throughout as *PHASE6 §x*). Historical snapshots; **archive a phase doc the moment its phase
   closes** so the living `docs/` folder only ever shows work that is actually in flight.
-- `docs/PHASE7.md` — **the current in-flight plan: FIX the cross-val deficits so the acceptance test
+- `docs/PHASE7.md` — ⚠ **gear-A denominated (see its banner)** — **the plan to FIX the cross-val deficits so the acceptance test
   passes.** Diagnose each length-robust deficit as SEARCH-MISS vs SCORER-GAP, then fix at the root.
   (§5.11 legibility canonicalization is DONE; §5.12 round-3 gathered; the residual B2 family → PHASE8.)
-- `docs/PHASE8.md` — the B2 model-vs-sim ranking error (the old "emergent joint interaction" framing is
+- `docs/PHASE8.md` — ⚠ **gear-A denominated (see its banner)** — the B2 model-vs-sim ranking error (the old "emergent joint interaction" framing is
   **withdrawn** — it rested on a press the sim silently retimed). Round 2 established **THE FLOOR LAW**
   (a value window covers exactly `floor(D/Δ)` casts in the sim; haste buffs exempt) and two harness input
   errors (`t5two`, effective SP ≈1450), which together zero the mean bias — and **falsified** the
   SP-under-haste candidate on sign. Reserved as the highest-effort model work.
+- `docs/PHASE10.md` — **THE NEXT PHASE (planned, not started): re-establish the acceptance baseline on
+  GEAR B with `tools/bench.mjs`.** Every model-vs-sim number the project owns is gear A and archived
+  (`tools/xval-results-archive/gearA-pre-20260726/`), so ACCEPTANCE currently has **no reading at
+  all** — and B2's target already moved ~0.39pp and changed sign across the baselines. ⚠ Its §3 traps
+  matter more than usual: the new instrument is lightly exercised, so the phase opens with a shakedown
+  on known-shape cells before anything is graded.
 - `docs/PHASE9.md` — **performance / refactor notes** (CPU + latency, under a byte-identical-plans
   constraint). Measure-first: baseline profile, call census, hypothesis table with verdicts, and the
   refactor catalogue (redundant walks, fusable steps) with a cheapest-and-safest-first landing order.

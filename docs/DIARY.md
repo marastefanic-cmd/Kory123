@@ -450,6 +450,34 @@ netlify build command run verbatim.
 
 ---
 
+### 07-26 — closing the session: the baseline is marked, and Phase 10 is written
+
+Two housekeeping acts that are really one act — making sure the next session cannot mistake an old
+number for a current one.
+
+**Every gear-A artefact is now marked at its point of use.** `PHASE7`, `PHASE8`, `ACCEPTANCE` and the
+archived `PHASE6` each open with a banner saying the same thing: the numbers below are gear A under
+the pre-07-26 protocol; the *reasoning* survives permanently, the *verdicts* do not survive until
+re-measured. `tools/xval-results-archive/gearA-pre-20260726/` gained a README naming exactly what
+rests on it (ACCEPTANCE's "NOT PASSING", B2's 0.445 pp, PHASE7's basin debt) and what does not depend
+on the baseline at all (every trap and correction). `tools/xval-results/` — which had still been
+advertising "round 6 is being gathered" — now says plainly that it is empty on purpose.
+
+★ **The distinction worth keeping: un-denominated is not withdrawn.** Nothing in the gear-A corpus was
+wrong. It is true of a character that is no longer the reference, measured with an instrument that has
+since changed in three ways. Marking it that way costs a banner; *not* marking it costs a future
+session re-litigating a deficit that may not exist any more.
+
+**`docs/PHASE10.md` is the plan** the session's own recommendation implies: re-measure ACCEPTANCE from
+scratch on gear B with `tools/bench.mjs`, restate every debt as a first measurement rather than a
+delta, and close whatever does not reproduce. It carries pre-registered gradings (a deficit is real
+only at ≥3 seeds with |Δ| > 1σ of the paired band; B2 is closed only by absence, never by a sign
+change) and one trap aimed squarely at this session's own output: **the new instrument has run gates
+and a handful of duels, not a corpus** — so the phase opens with a shakedown on known-shape cells, and
+if that fails it becomes a tool-debugging phase instead of a 36-table campaign.
+
+---
+
 ## The corrections ledger — what we believed, and what disproved it
 
 The most valuable part of this diary. Each entry: the belief, why we held it, what overturned it, and

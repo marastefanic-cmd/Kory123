@@ -494,6 +494,8 @@
     background: var(--surface); border: 1px solid var(--hairline); border-radius: 8px; padding: 9px 12px;
   }
   .simarm .k { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+  .simarm .k small { text-transform: none; letter-spacing: 0; opacity: .75; }
+  .simarm:first-child { border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
   .simarm .v { font: 600 20px var(--font-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
   .simarm .v small { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
   .simarm.win { border-color: color-mix(in srgb, var(--good) 45%, transparent); }
@@ -4679,33 +4681,46 @@ async function runSimDuel() {
     if (!dA || !dB) throw new Error("the sim returned no DPS — see the browser console");
     const wall = ((performance.now() - t0) / 1000).toFixed(1);
 
-    const delta = 100 * (dA.avg / dB.avg - 1);
+    // ★ WHOSE TEST IS THIS? The panel is written around the SUBJECT — the layout being judged — and
+    // the subject is whatever the user authored. Hand-edit a timeline and YOUR timeline is on trial,
+    // with the model as the reference it has to beat; with no hand-edit there is nothing of yours to
+    // judge, so the model's plan is the subject and "mash on cooldown" is the reference. Reporting a
+    // custom-vs-model duel model-first ("the model plan wins by…") answers a question nobody asked:
+    // the user did not press this to find out how the model is doing.
+    const subject   = custom ? { label: armB.label, dps: dB, run: armB.run } : { label: armA.label, dps: dA, run: armA.run };
+    const reference = custom ? { label: armA.label, dps: dA, run: armA.run } : { label: armB.label, dps: dB, run: armB.run };
+    const delta = 100 * (subject.dps.avg / reference.dps.avg - 1);   // + = the subject is ahead
     const tie = Math.abs(delta) < BENCH.tieBandPct;
-    // The model's own verdict on the same pair, for comparison — a disagreement in SIGN is the
-    // finding worth chasing (it is how a scorer gap shows itself).
-    const mDelta = 100 * (armA.run.optR.total / armB.run.optR.total - 1);
+    // The model's own verdict on the same pair. Two independent judges on one question is the whole
+    // point of the button, so it is always shown — a disagreement in SIGN is the finding worth
+    // chasing (it is how a scorer gap shows itself), and agreement is the reassurance being sought.
+    const mDelta = 100 * (subject.run.optR.total / reference.run.optR.total - 1);
     const agree = tie || Math.sign(delta) === Math.sign(mDelta) || Math.abs(mDelta) < 1e-9;
 
     const verdict = tie
-      ? `<div class="simverdict tie">Too close to call — ${simPct(delta)} is inside the noise floor at this iteration count.</div>`
+      ? `<div class="simverdict tie">Too close to call — ${esc(subject.label)} and ${esc(reference.label.toLowerCase())} are within ${simPct(delta)}, inside the noise floor at this iteration count.</div>`
       : delta > 0
-        ? `<div class="simverdict good">The model plan wins by ${simPct(delta)} in the sim.</div>`
-        : `<div class="simverdict bad">${esc(armB.label)} beats the model plan by ${simPct(-delta)} in the sim.</div>`;
+        ? `<div class="simverdict good">${custom ? "★ " : ""}${esc(subject.label)} ${custom ? "beats the model plan" : "wins"} by ${simPct(delta)} in the sim.</div>`
+        : `<div class="simverdict bad">${esc(subject.label)} is ${simPct(-delta)} behind ${esc(reference.label.toLowerCase())} in the sim.</div>`;
 
     simBox(`
       <div class="simhead"><b>Benchmark sim</b>
         <span class="simsub">${BENCH.iterations.toLocaleString()} iterations per side · same seed · ${wall}s
         <button type="button" class="whatis">what is this?</button></span></div>
       <div class="simarms">
-        <div class="simarm${delta > 0 && !tie ? " win" : ""}"><div class="k">${esc(armA.label)}</div>
-          <div class="v">${dA.avg.toFixed(1)}<small>DPS</small></div></div>
-        <div class="simarm${delta < 0 && !tie ? " win" : ""}"><div class="k">${esc(armB.label)}</div>
-          <div class="v">${dB.avg.toFixed(1)}<small>DPS</small></div></div>
+        <div class="simarm${delta > 0 && !tie ? " win" : ""}"><div class="k">${esc(subject.label)}</div>
+          <div class="v">${subject.dps.avg.toFixed(1)}<small>DPS</small></div></div>
+        <div class="simarm${delta < 0 && !tie ? " win" : ""}"><div class="k">${esc(reference.label)}<small> — reference</small></div>
+          <div class="v">${reference.dps.avg.toFixed(1)}<small>DPS</small></div></div>
       </div>
       ${verdict}
       <div class="simnote">
-        ${agree ? "" : `<b style="color:var(--warn)">The sim and the model disagree on which side is better</b>
-          (the model has it at ${simPct(mDelta)}). That is worth investigating, not ignoring — use Debug export and check the plan by hand.<br>`}
+        <b>The planner's own model scores it ${simPct(mDelta)}</b> — ${tie
+          ? `the sim cannot separate the two at this iteration count, so it neither confirms nor contradicts that.`
+          : agree
+            ? `the sim agrees on which side is ahead.`
+            : `<b style="color:var(--warn)">so the two DISAGREE on which side is better.</b> That is worth chasing, not averaging away: use Debug export (it carries the sim transcription and a ready-to-run command).`}<br>
+        ${custom && delta > 0 && !tie ? `<b style="color:var(--good)">A legal hand-edit that the sim prefers is a genuine finding</b> — send the Debug export.<br>` : ""}
         <b>Read the gap, not the DPS.</b> This is the project's benchmark mage — no gear, no buffs, no
         consumables, no conserve rotation — with only your ${cfg.sp} spell damage, ${cfg.critPct}% crit and
         ${cfg.hasteRating} haste rating injected, hit-capped, infinite mana, no prepull. So these figures

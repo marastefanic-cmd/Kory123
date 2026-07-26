@@ -2,6 +2,20 @@
 
 ## Resuming after a context clear (start here)
 
+### ▶ NEXT: PHASE 10 — re-baseline acceptance on GEAR B (`docs/PHASE10.md`, planned 07-26)
+
+**Read this before resuming any model work.** The reference character was re-exported on 07-26 and the
+entire gear-A corpus archived, so **ACCEPTANCE has no current reading**, and every open debt below —
+B2 ≈0.445pp, the low-haste basin, the KT/AoE cells — is denominated in a currency that no longer
+exists. B2's sim preference has already moved ~0.39pp *and changed sign* across the baselines
+(BENCH §3e), so Phase-8 work started today would aim at a number that is not there.
+
+Phase 10 re-measures the whole thing with `tools/bench.mjs` (~10s per duel, no rig), one settled
+protocol (`--var 0.5`, diff-in-diff, model cfg forced to the simmed character), and restates the
+ledger **as first measurements, not deltas** — BENCH §1 forbids diffing against round 7. ⚠ It opens
+with a **shakedown on known-shape cells**, because the new instrument has run gates and a handful of
+duels, not a corpus.
+
 ### ⏳ 0. FRESHEST STATE (07-26) — PHASE 8's FINALE IS FALSIFIED; the sim rig is GONE and is the next task
 
 **Read this first — it supersedes the round-6/7 block below on what to do next.**
