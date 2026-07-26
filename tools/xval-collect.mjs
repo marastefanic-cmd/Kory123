@@ -32,7 +32,12 @@ if (files.length === 0) {
 
 const tables = [];
 for (const f of files) {
-  const txt = fs.readFileSync(path.join(dir, f), 'utf8');
+  const raw = fs.readFileSync(path.join(dir, f));
+  // NUL bytes mean two processes wrote this file (`>` truncates a file another has open, and the gap
+  // fills with NULs). It still parses — header, plan lines, matrix and XVAL-DONE all survived in the
+  // real case — so it must be caught by content, not by structure. See tools/xval-verify.mjs.
+  if (raw.includes(0)) { tables.push({ file: f, err: `CORRUPT: ${[...raw].filter(c => c === 0).length} NUL bytes (concurrent writer) — re-gather this cell` }); continue; }
+  const txt = raw.toString('utf8');
   const done = txt.match(/^XVAL-DONE .*/m);
   if (!done) { tables.push({ file: f, err: 'no XVAL-DONE (crashed?)' }); continue; }
   const kv = Object.fromEntries([...done[0].matchAll(/(\w+)=(\S+)/g)].map(x => [x[1], x[2]]));

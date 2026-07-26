@@ -17,8 +17,16 @@ if (files.length === 0) {
   console.error(`ERROR: no *.txt cross-val matrices in ${dir} — nothing to verify.`);
   process.exit(2);
 }
+const corrupt = [];
 for (const f of files) {
-  const txt = fs.readFileSync(path.join(dir, f), 'utf8');
+  const raw = fs.readFileSync(path.join(dir, f));
+  // ★★ NUL BYTES = TWO WRITERS (added 07-26, after it happened). `>` truncates, so a second campaign
+  // pointed at the same results directory truncates a file the first still has open at a high offset,
+  // and the kernel fills the gap with NULs. The damage is invisible to every check below: the real
+  // case kept its header, all ten plan lines, a full 10-row matrix and a valid XVAL-DONE, and would
+  // have been graded as an ordinary table. A text file in this corpus has no legitimate NUL.
+  if (raw.includes(0)) { corrupt.push(`${f} (${[...raw].filter(c => c === 0).length} NUL bytes — truncated by a concurrent writer; re-gather this cell)`); continue; }
+  const txt = raw.toString('utf8');
   const lines = txt.split('\n');
   const hdr = lines.findIndex(l => l.startsWith('plan\\sim'));
   // A file with no matrix is a CRASHED table, i.e. an ungraded cell of the acceptance grid — not a
@@ -69,6 +77,11 @@ for (const l of longRobust.sort()) if (!/Kael/.test(l)) console.log('  '+l);
 
 // The verdict, with an exit code — so "run it before believing any ledger" is mechanical rather than
 // a reading exercise. 2 = the instrument could not grade (missing/crashed data); 1 = graded, FAILED.
+if (corrupt.length) {
+  console.error(`\nERROR: ${corrupt.length} file(s) contain NUL bytes — CORRUPT, and corruption of this kind ` +
+                `still parses, so it cannot be left to the checks above:\n  ${corrupt.join('\n  ')}`);
+  process.exit(2);
+}
 if (unparsed.length) {
   console.error(`\nERROR: ${unparsed.length} file(s) carry no matrix (crashed run?) — the grid is INCOMPLETE ` +
                 `and the verdict below would cover fewer cells than it claims:\n  ${unparsed.join('\n  ')}`);

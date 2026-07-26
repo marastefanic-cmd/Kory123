@@ -142,6 +142,22 @@ run_cell() {
   if [ -n "${SKIP_EXISTING:-}" ] && grep -q "^XVAL-DONE" "$out" 2>/dev/null; then
     echo "SKIP $name (already complete)"; return 0
   fi
+  # ★★ THE WRITER LOCK — added 07-26 after this exact accident.
+  # `> "$out"` TRUNCATES. A second campaign pointed at the same XVDIR (a resume, a subset re-run, or —
+  # as happened here — a hasty SKIP_EXISTING test) therefore truncates a file the first campaign still
+  # has open at a high offset, and the kernel fills the gap with NUL bytes. The result is the nastiest
+  # possible shape: a table that still parses. The corrupted file kept its header, all ten plan lines,
+  # a full 10-row matrix and a valid XVAL-DONE, and only a byte-level check found the 3019 NULs and the
+  # two interleaved stderr streams. Every downstream instrument would have read it as a clean result.
+  # `noclobber` makes the second writer fail LOUDLY instead.
+  if ! ( set -o noclobber; : > "$out.lock" ) 2>/dev/null; then
+    echo "XVAL-FAIL $name — $out.lock exists: another campaign is writing this cell."
+    echo "  Refusing to truncate a file another process has open (that produces a NUL-spliced table that still parses)." >&2
+    echo "  If no campaign is running, the lock is stale: rm $out.lock" >&2
+    return 1
+  fi
+  # shellcheck disable=SC2064
+  trap "rm -f '$out.lock'" RETURN
   KIT="$kit" HASTES="$hs" TCLASS="$cls" BOSS="$boss" \
     node "$REPO/tools/xval-bench.mjs" "$seed" > "$out" 2>"$out.err"
   local rc=$? line
