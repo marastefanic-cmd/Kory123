@@ -499,6 +499,25 @@ Lesson 7 above is the instrument for the second axis; lessons 1–4 are the firs
 > **The only thing genuinely NOT in the repo is the gear export**, and that is deliberate — it is
 > user data (`docs/archive/07` §6.3: *"The gear export is user data (NOT in repo) … never commit an
 > export"*). Ask the owner for it; everything else rebuilds from the recipe.
+>
+> #### The export search, done exhaustively 07-26 — do not repeat it
+> It is **not stored anywhere**, and it was never lost: it was never committed, by policy.
+> - **Working tree** — only model-side parameters (`GOLDEN_DEFAULTS.gear`, `tests/phase-portfolio.json`,
+>   `tools/reference-gear.mjs`): `sp`/`crit`/`haste`/`coldSnap`. No item list.
+> - **Git history** — no `export`/`dumpreq`/gear JSON at any commit on any branch.
+> - **`tools/xval-results/`** — records plans + sim output, not the character.
+> - **`tools/xval.mjs:45`** — takes `EXPORT_BASE` as an env path to an external file, by design.
+>
+> **What IS preserved about that character** (enough to rebuild an *equivalent*, not the original):
+> Tirisfal T5 2pc set 649 items **30206/30196/30207** (+20 % AB damage), 4pc `SpellID 37444` (+70 SP
+> on crit, 88–94 % uptime ⇒ effective **SP ≈ 1450**), Icon of the Silver Crescent **29370**,
+> `critPct 38`, measured casting regen ≈ **104 mana/s**, Vampiric Touch **+250 mp5** — see
+> `SOURCES.md` and PHASE8 §6/§7.
+>
+> ⚠ **A rebuilt export is a NEW baseline.** The trust anchor's ~0.4 % agreement is tied to the
+> original character, so re-certifying against a reconstruction makes the existing corpus rounds
+> **no longer directly comparable**. Prefer the owner's file; reconstruct only as a last resort, and
+> if you do, say so loudly in the round that first uses it.
 
 ```
 git clone https://github.com/wowsims/tbc-new.git && cd tbc-new && git checkout ade9f39
