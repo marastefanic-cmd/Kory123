@@ -94,7 +94,8 @@ well-defined (user-directed, 07-26):
 | **equipment** (items/gems/enchants) | **FIXED** — one committed file | the thing §2 normalises across arms |
 | **talents** `2500052300030150330125--053500031003001` | ★ **HARDLOCKED** — always correct, never varied | mirrored to `tools/bench/talents.txt` so a drifted export cannot silently change them; the model's coefficients (Arcane Potency, Arcane Meditation 3/3, the AB stack reduction) are derived assuming exactly this build |
 | **rotation / priorityList / valueVariables** | ★ **IGNORED — deliberately stripped** | *this is the thing the tool computes.* `runner-main.go` replaces it wholesale via `--apl`, so whatever the export carries is dead weight at best and a silent confound at worst. The committed bench export keeps a **one-line AB-spam placeholder** so the file is still a valid standalone request. **Never gate on the export's own rotation.** |
-| **consumables, raidBuffs, debuffs, partyBuffs, `buffs`** | **FIXED, not ignored** | see below |
+| **damage/stat raid settings** — Kings, Wrath of Air, elixirs, food, Misery, Curse of Elements, `isbUptime` | **FROZEN** (not ignored) | they set the **operating point** — the SP/crit/haste at which a plan is optimal. They cancel as a *difference* under §2.1, but they decide *which* layout wins, so they are part of the configuration, not noise |
+| **mana raid settings** — Shadow-Priest DPS, Innervate, Mana Tide, Mana Spring, Blessing of Wisdom, JoW, potions, gems | ✅ **GENUINELY IGNORABLE** — measured inert (§3c) | the model is **infinite-mana** and the bench injects `--mana`, so nothing mana-side can bind |
 | **encounter duration / variation** | **OVERRIDDEN** per run (`--dur`, `--var 0`) | fight shape is an input to the planner, not a property of the character |
 
 ★ **The raid-settings question answers itself under §2.1.** It does not matter whether raid buffs are
@@ -118,6 +119,33 @@ APL Lust press in either arm, `--var 0 --iter 3000 --seed 1`:
 exactly why the emitted APL press is what places it. So Lust timing is fully under harness control
 and needs no special handling — but **re-run this two-line check if the export is ever re-taken**,
 since it is a property of the export's settings, not a law.
+
+### 3c ✅ The mana raid-settings are inert under the infinite-mana bench — MEASURED (07-26)
+
+User question: how are Shadow-Priest DPS, Innervate, shaman totems, paladin buffs, raid consumables
+and potions handled? **Answer: the mana half needs no handling at all, and that is measured, not
+assumed.** Stripping *every* mana-side setting (Shadow-Priest 1000 DPS ⇒ +250 mp5, Innervate, Mana
+Tide, Mana Spring, Blessing of Wisdom, Judgement of Wisdom) under `--mana 1000000`:
+
+| arm | DPS | σ |
+|---|---|---|
+| mana settings ON | 2144.2 | 80.2 |
+| mana settings OFF | 2146.4 | 78.9 |
+
+Δ = **2.2 DPS = 0.10 %**, against a standard error of ≈ `80/√3000 ≈ 1.5` ⇒ **≈1.5 SE, inside noise.**
+(It is not *bit*-identical only because removing buffs shifts RNG consumption and desyncs the shared
+stream — the documented CRN behaviour, DIARY 07-24 — not because anything real changed.)
+
+⚠ **This holds ONLY because mana is made non-binding.** The same export at default mana runs
+**1146.1 DPS**; with `--mana 1e6` it runs **2144.2** — **+87 %**. Mana is the single largest
+constraint in the untreated sim, so **`--mana` is not an optimisation, it is what makes the sim
+answer the model's question.** A bench run that forgets it is not measuring the infinite-mana
+planner at all.
+
+⇒ **Do not spend effort tuning mana raid-settings.** Freeze the damage/stat ones; the mana ones are
+inert. If a finite-mana study is ever wanted (`docs/EP.md` option B), that is a *different* bench and
+must re-enable them deliberately — including `autocastOtherCooldowns`, without which Innervate and
+Mana Tide are silently suppressed (−6 % DPS, TOOLING ★).
 
 ## 4. What this does NOT fix
 
