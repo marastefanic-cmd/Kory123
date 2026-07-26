@@ -724,3 +724,50 @@ a flat `some(x => !isFinite(x))` reported **every boss plan row** as non-finite:
 of them fictional, and the seven real ones (the absent gear-B stamps) were buried under them. Fixed by
 flattening — and because that *loosens* a check, two further controls were added to prove it still
 fires at both nesting depths. **A relaxed guard has to re-earn its negative control.**
+
+## 8.20 ✅ THE CHAIN IS ONE COMMAND NOW — `tools/xval-grade.sh`, and its order is load-bearing
+
+§3 of the handoff lists the grading chain as six commands with a ⚠ attached to the first. Running them
+by hand at 24/36 showed the ⚠ is not a reminder, it is a **gate**, and that nothing enforced it:
+
+| tool, same partial directory | exit | what it said |
+|---|---|---|
+| `xval-stamp-audit` | **2** | `CANNOT GRADE` — named all 12 absent cells |
+| `xval-verify` | **1** | `VERDICT over 24 tables: A holds · B FAILS -> ACCEPTANCE NOT PASSING` |
+
+That second line is a confident, quotable, **wrong** verdict off two thirds of a round — `xval-verify`
+recomputes invariants from whatever matrices it is handed and never asks whether they are one round's
+36 cells (§8.19). `tools/xval-grade.sh` runs the chain in order and **refuses to run anything
+downstream of a nonzero stamp audit**, so "36 tables or no verdict" is mechanical rather than a rule
+someone has to remember. It grades on each stage's `rc`, worst-wins (`2` dominates `1`), and prints
+§8.18's pre-registered band scope as the next step instead of leaving it to recall.
+
+⚠ **Every stage captures `rc` WITHOUT a pipeline** (`cmd > file; rc=$?`). This is not a stylistic
+choice: the by-hand run that motivated the script reported `EXIT=0` for a tool that had just exited
+**2**, because `$?` after `node … | tail` is *tail's* status. A pipeline there would have reported
+success for every possible failure — the house false-pass shape, one level up again.
+
+**Controlled in both directions before being believed:**
+
+| control | expected | got |
+|---|---|---|
+| the real partial round (24/36), full scope | 2, nothing downstream run | **2**, `stamp-audit.txt` the only file produced |
+| an exactly-complete 15-cell dir (3 finished kits × 5 classes, `--bosses ""`) | 0 from the gate, whole chain runs | **stamp-audit 0**, all six stages ran, seven output files |
+
+★ **And the positive control failed twice first, for two different instrument reasons — both recorded
+because both are traps for the next caller.** (1) The scope was first passed as a single `STAMP_ARGS`
+string expanded **unquoted**; bash split it on spaces, `--kits` received only its first kit, and the
+audit ran with **defaults** while *appearing* scoped — it reported the full 36-cell expectation and
+exited 2, which reads as *"the control failed"* rather than *"the control was never applied."* Scope
+now travels as separate variables passed as individually quoted argv words. Note also that
+`xval-stamp-audit`'s parser is the **space form** (`--kits value`) — `--kits=value` is silently
+ignored. (2) With the scope correctly applied it still exited 2, this time **correctly**: the expected
+cell set is a **set equality**, not a subset, so the other 10 tables in the directory are *"more than
+the round."* The control needs its own directory holding exactly the scoped cells.
+
+⚠ **The scoped run is a CONTROL, not a result.** It grades 15 of 36 cells and its B-side numbers are
+recorded nowhere — the first gear-B reading is the one taken at 36/36 under the full expected set.
+`STAMP_KITS`/`STAMP_BOSSES`/`STAMP_BKITS` exist for that control and for auditing a deliberately
+partial campaign; narrowing the expected set to whatever happens to be on disk turns the provenance
+gate into a rubber stamp, which is why `STAMP_EXPECT` must be set to match and the audit hard-fails on
+the size cross-check if it is not.
