@@ -3110,10 +3110,35 @@ actual following lines, never by the line numbers in a doc — they drift.
   *"Feasibility is monotone in d …"* comment kept verbatim at its original position — it justifies
   `break` over `continue` and would be nonsense anywhere else. **7 of 10 sites now use the helper.**
 
-**Remaining on this rung:** §4.21 Class C — 1 site, and deliberately NOT folded in: converting it
+**✅ Class C RUN AND REVERTED — a pre-registered null (07-26).** §4.21 said to land it as its own
+step with its own wall-time delta and *"revert it on a null result rather than keeping it for
+tidiness"*. Done, and it is a null:
+
+| build | CPU (2 samples) | mean |
+|---|---|---|
+| Class C longhand | 62 s, 62 s | **62 s** |
+| Class C converted | 64 s, 62 s | **63 s** |
+
+Plans were `PLAN-DIFF IDENTICAL`, so the conversion is *correct* — it is simply not a **speedup**,
+which is the only thing that could have justified it. The two effects §4.21 predicted evidently
+cancel: hoisting `clipOf` ahead of `simulate` saves a `simulate` on clip-failing candidates but pays
+a `clipOf` on every candidate the `||` currently short-circuits away. **Reverted**, so that site
+keeps its longhand and its guard order stays consistent with the seven converted ones.
+
+★ **This is the rung's most useful result even though nothing landed:** the revert rule was written
+*before* the number, and the number came back inside the noise. Without the pre-registration, a
+correct-but-pointless refactor would have shipped on "it's tidier" — and left one site's guard order
+disagreeing with the rest for no gain.
+
+**Also corrected while measuring:** §4.21 says two sites "omit the clip guard deliberately"; reading
+today's file, the two are `:2591` (`sameCounts` → `some(…)` → `simulate`, **no clip guard at all**)
+and `:2906` (`sameCounts` → `simulate(rep,cfg).robust >= r0 - 0.5`). Class C proper is exactly
+**one** site (`:2551`), matching §4.21's original count. My earlier §5.22 table mis-filed `:2591`
+under Class C; it is Class D.
+
+**Remaining on this rung:** ~~§4.21 Class C — 1 site, and deliberately NOT folded in: converting it
 hoists `clipOf` ahead of `simulate`, which *saves* a `simulate` on every clip-failing candidate but
 *costs* a `clipOf` on every candidate the current `||` short-circuits away. Which dominates is a
-rejection-rate question, so it lands as its own step with its own wall-time delta, and is **reverted
-on a null result** rather than kept for tidiness — keeping it would make that site's guard order
-disagree with the other seven for no measured gain. Then (0b) the `counts`/`clipOf` hoists, then the
+rejection-rate question.~~ **RESOLVED ABOVE — measured null, reverted.** Next: (0b) the
+`counts`/`clipOf` hoists, then the
 §4.1 five-walk fusion — for which item 0a has collapsed "every call site must be converted" to **one**.
