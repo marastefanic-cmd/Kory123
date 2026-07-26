@@ -5,7 +5,9 @@ Read this first. It orients you on the project; the `docs/` files hold the detai
 ## What this repo is
 
 A **TBC 2.4.3 Arcane-mage cooldown-overlay planner**: `index.html` (open it in a browser — no build,
-no deps). The app itself is still ONE self-contained file; alongside it sits an **optional** in-page
+no deps). The app is still ONE self-contained file **today, but that convention is RETIRED by
+decision** — `docs/PHASE11.md` §2 splits it, gated on plans staying byte-identical. Treat
+"single-file" as a fact about HEAD, not a constraint to defend. Alongside it sits an **optional** in-page
 sim verifier (`sim/`) that lazily loads the real wowsims engine as WebAssembly when the user presses
 "Check in the benchmark sim" — a visitor who never presses it downloads exactly `index.html` and
 nothing else. **`sim/benchmark.mjs` is the single definition of the duel protocol**, imported by the
@@ -35,8 +37,14 @@ levels, not tuned to today's cases.
 
 Additional payoffs the same engine unlocks (nice-to-haves, not the point):
 - A **haste-agnostic ideal APL** (cooldown usage that adapts to gear).
-- **Setup comparison** — with each setup planned by its *own* ideal cooldown usage, compare their
-  effective-AB output to decide *which trinkets/gear to bring* to a fight.
+- **Setup comparison** — with each setup planned by its *own* ideal cooldown usage, compare them on
+  **absolute at-kill damage** (or each setup's optimal-APL sim DPS) to decide *which trinkets/gear to
+  bring* to a fight. ⚠ **NOT on the effective-AB count** — this line used to say exactly that, and it
+  contradicted the user-directed ruling in ROADMAP payoff 2 / EP.md. Effective-casts is normalized to
+  *each setup's own* plain AB: it divides out flat SP and crit precisely so it can isolate scheduling,
+  which makes it the right objective **within** a setup and a blind one **across** setups, where raw
+  SP/crit throughput is most of what you are trying to measure. The distinction is the whole reason
+  the two currencies exist; do not collapse them (PHASE11 §1.4 item 3).
 - An **EP / stat-weight calculator** that re-optimizes the plan at each `stat±Δ` (correcting wowsims'
   frozen-rotation EP bias, which undervalues haste once a fixed rotation stops using it well).
 
@@ -68,7 +76,9 @@ request the **website** builds equals the one the **runner** builds, field for f
 loudly** without `RUNNER` rather than passing quietly. Run it after touching anything under `sim/`,
 `tools/genapl-core.mjs`, or a character export.
 
-**That gate takes 9m07s, so it is not the every-edit loop.** For that, sweep the same corpus in **bare
+**⚠ The 9m07s figure below is `exact-match`'s, not `sim-request`'s** (PHASE9 §5.1) — it sits here
+because the *plan* gate is the one you would otherwise reach for on every edit. **That gate takes
+9m07s, so it is not the every-edit loop.** For that, sweep the same corpus in **bare
 node** (the engine is DOM-free — it already runs in a Web Worker) and diff the two runs at full float
 precision — **~33s for 16 of 25 cases, ~16× faster**:
 ```
@@ -147,7 +157,9 @@ changing the model or the passes**, and keep it updated as the living theorycraf
   commit author/trailers; don't open a PR unless asked.
 - **`master` is the live site.** The tool is deployed as a free static site on Netlify that
   **auto-redeploys on every push/merge to `master`**. So never develop on `master` — branch off it,
-  develop, and merge back via PR (merging *is* shipping). Only `index.html` is published; `docs/`,
+  develop, and merge back via PR (merging *is* shipping). **`index.html` plus the eight lazily-loaded
+  sim files** are published (`netlify.toml`'s build command — the old "only `index.html`" was already
+  false in fact); `docs/`,
   `tools/`, `tests/`, and the `.md` files are not. Full workflow, headers, and anonymity rules:
   `docs/DEPLOYMENT.md`.
 
@@ -232,7 +244,8 @@ Treat maintaining them as part of the work, not an afterthought:
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
   into ROADMAP). **No plan in flight. Phase 5 (AoE phases) is COMPLETE** — verdict: an AoE phase is a
   burn ×M(N) modifier + exit-re-ramp + SP-dilution, thresholds and sim gates in RULES §9, record in
-  ROADMAP (incl. the Tirisfal-2pc/AP-additivity discovery and its two open user calls). Phase 4 is
+  ROADMAP (incl. the Tirisfal-2pc/AP-additivity discovery, whose two user calls are **both RESOLVED** —
+  Tirisfal is the `ck-t5` checkbox, AP is additive per "trust wowsims"). Phase 4 is
   COMPLETE (exact discrete ramp + press-snap, basin-stable search, monotonicity certified 0 violations;
   record in ROADMAP). **Permanently REJECTED (user decisions — do not revisit):** the leeway "press anywhere"
   bands and reasoning-tag UI (a plateau tie is conditional on everything else staying put, so the bands

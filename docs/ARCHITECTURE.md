@@ -1,6 +1,7 @@
 # ARCHITECTURE.md — `index.html` internals
 
-One self-contained file (~3600 lines), now in **two script blocks**:
+One self-contained file (**5,316 lines** — re-grepped 07-26; the long-standing "~3600" was 32 % low,
+and PHASE11 §1.2 F14 records line-number rot as a project-wide class), in **two script blocks**:
 `<script id="engine-src">` — the pure, DOM-free **engine + optimizer** (constants →
 `optimizeAsync`) — and a second `<script>` with the **DOM/UI**. The engine runs **twice**: on the
 page (cheap one-off `simulate()`/`scheduleRows()` for rendering, and the headless test suites

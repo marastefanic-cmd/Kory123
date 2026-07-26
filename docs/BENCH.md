@@ -340,7 +340,12 @@ Both binaries are built from the same `wowsims/tbc-new` @ `ade9f39` tree (+ our 
 runner). ⚠ Re-run this whenever the tree, the patches, or the export change — it is the check that
 would catch a stale binary, the failure that once cost this project a day of gates.
 
-## 4c. Gear-B model parameters — SP is UNCHANGED; crit/haste still owed (07-26)
+## 4c. Gear-B model parameters — SP UNCHANGED, crit CONFIRMED; haste still owed (07-26)
+
+> ⚠ This header used to say crit was "still owed" while the body below already recorded it, and
+> PHASE10 §8.14 has since **discharged** it outright: `critPct: 38` confirmed on a 6× tighter band
+> (observed AB crit 41.88 % ± 0.85 %, which is the Potency-*inclusive* rate against a Potency-*exclusive*
+> parameter — predicted 41.0 %, measured 1.0 SE away). Only haste remains owed.
 
 `reference-gear.mjs` holds gear A's `{sp: 1450, critPct: 38, t5two: true}`. Re-derived on gear B by
 the PHASE8 §7 method (`SIMLOG=1` combat log, read the `SP:` field per AB cast):

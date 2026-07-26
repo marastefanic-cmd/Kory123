@@ -515,7 +515,34 @@ The worker is a classic script driven by the page, and the repo has no headless 
 §1.2 F5's blind seam. The `index.html` half of B2 (evicting the dead worker, symmetric listener
 cleanup) is still owed and is where a real end-to-end test would have to attach.
 
-### 10.5 What is still blocked, and on what
+### 10.5 ✅ §1.4's stale-doc ledger swept (all six items)
+
+§1.4 schedules this for "the same commit as this doc's landing or right after". Done, and each item
+was re-checked against HEAD rather than taken from the ledger — one of them had moved.
+
+| # | was | now |
+|---|---|---|
+| 1 | CLAUDE.md "still ONE self-contained file"; "Only `index.html` is published" | single-file scoped as *a fact about HEAD, retired by decision* (§2); publishing corrected to **index.html + 8 lazily-loaded sim files**, which `netlify.toml`'s own build command already did |
+| 1 | ARCHITECTURE "~3600 lines" | **5,316** — re-grepped, 32 % low |
+| 2 | CLAUDE.md: Phase 5's "two open user calls" | both marked RESOLVED (`ck-t5`; AP additive) |
+| 3 | CLAUDE.md: compare setups on effective-ABs | corrected to **absolute at-kill damage**, matching the user-directed ruling in ROADMAP payoff 2 / EP.md, with the reason inline — eff-casts divides out flat SP/crit *by design*, so it is right within a setup and blind across setups |
+| 4 | CLAUDE.md's 9m07s reads as `sim-request`'s | attributed to `exact-match` (PHASE9 §5.1) |
+| 4 | `plan-sweep.mjs`: "sequentially in one chromium page" | corrected — it runs **parallelized, 270–337 s**; the browser tax is the point, not the sequencing |
+| 5 | `sim/README.md`: planspec "mirrors `tools/xval.mjs`'s toSpec" | now names its three **importers** and the one remaining private twin |
+| 6 | BENCH §4c header: crit "still owed" | crit **CONFIRMED** (§8.14); only haste remains owed |
+
+★ **Item 5 moved under us, which is why it was re-checked.** The ledger says "xval and plan-duel carry
+private copies, one divergent" — but §10.1's B4 fix deleted plan-duel's. Verified rather than assumed:
+`plan-duel.mjs`'s `toSpec` is now a three-line wrapper over `planToSpec`, and `tools/xval.mjs` does
+still carry a real private twin — a *correct* fire-time one, kept because it also supports
+`EMIT=intent` to reproduce archived gear-A rounds. So the residual is one copy with a stated reason,
+not two with a divergence.
+
+⚠ **Two item-1 sites could not be swept:** `index.html:3775`'s "single-file constraint preserved"
+comment is in the frozen set, and `docs/archive/00`'s "still hold today" is append-only history that
+§1.4 itself says to **annotate, not prune**. Both carry over to §7.0 proper.
+
+### 10.6 What is still blocked, and on what
 
 - **B1's page half** — `planToSpecInline` must emit `targets` and the reproduce command must carry
   `--targets`; both in `index.html`. The tool no longer prints a wrong number in the meantime.

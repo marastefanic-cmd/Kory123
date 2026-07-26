@@ -19,7 +19,7 @@ Every link is shared with the harness:
 | file | what it is | also used by |
 |---|---|---|
 | `benchmark.mjs` | **THE duel protocol** — variation, mana, iterations, seed, tie band, rating conversions | `tools/plan-duel.mjs`, both tests |
-| `planspec.mjs` | plan → genapl spec: **fire times, floored**, Cold-Snap split, phases | mirrors `tools/xval.mjs`'s `toSpec` |
+| `planspec.mjs` | plan → genapl spec: **fire times, floored**, Cold-Snap split, phases | **imported by** `tools/xval-bench.mjs`, `tools/plan-duel.mjs`, `tools/bench.mjs`; `tools/xval.mjs` still carries a private twin |
 | `../tools/genapl-core.mjs` | the APL builder | `tools/genapl.mjs` CLI → every sim run this project has ever done |
 | `simreq.mjs` | patches `model-ref-request.json` into a `RaidSimRequest` | `tests/sim-duel.mjs` |
 | `model-ref.json` | the gear-agnostic reference character (runner `--export`) | the native runner |
