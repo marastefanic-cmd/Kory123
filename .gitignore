@@ -7,3 +7,6 @@ node_modules/
 
 # Content-addressed sim/plan cache (tools/xval-bench.mjs) — derivable, never a record
 .xval-cache/
+
+# Transient per-cell stderr from the cross-val campaign (removed on success)
+tools/xval-results/*.err
