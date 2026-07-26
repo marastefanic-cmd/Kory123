@@ -1,12 +1,35 @@
 # Cross-validation raw matrices — the CURRENT acceptance round
 
-> ## ⏳ EMPTY ON PURPOSE — awaiting the first **gear-B** round (`docs/PHASE10.md`)
+> ## 🔄 GEAR-B ROUND 1 IS GATHERING HERE (`docs/PHASE10.md` §8)
 >
 > On 2026-07-26 the reference character was re-exported and this directory was cleared
-> (`docs/BENCH.md` §1). **The project currently has no acceptance measurement on the live baseline.**
-> Everything up to and including round 7 — the entire gear-A corpus — is at
+> (`docs/BENCH.md` §1), leaving the project with no acceptance measurement at all. The first gear-B
+> round is now landing here. Everything up to and including round 7 — the entire gear-A corpus — is at
 > [`../xval-results-archive/gearA-pre-20260726/`](../xval-results-archive/gearA-pre-20260726/); read
 > that directory's README before quoting any figure from it.
+>
+> **The driver changed** — `tools/xval-bench.mjs` + `tools/xval-bench-campaign.sh`, running the
+> committed `sim/sim.wasm`, with no `RUNNER`/`EXPORT_BASE` to resolve. `tools/xval.mjs` and its three
+> shell wrappers are KEPT, not deleted: they are the only way to reproduce an archived gear-A round.
+> The two drivers were run head to head on one cell and produce **byte-identical plans and a matrix
+> agreeing in every cell to the printed decimal** (PHASE10 §8.9), across two JS hosts (chromium vs bare
+> node) and two sim entry points (`RunRaidSimConcurrent` vs single-threaded `RunRaidSim`). So these
+> tables are continuous in **method** with the archive and incomparable in **number**.
+>
+> ★ **Every table stamps its whole protocol** — `iter`, `simseed`, `mana`, `targets`, `char`, `wasm`
+> and `tool` are on the `XVAL-DONE` line in addition to the fields gear-A carried. A gear-B table is
+> identifiable by `char=bench-gearB`; **that stamp, not the directory name, is what tells the two
+> baselines apart.**
+>
+> ⚠ **NUL bytes mean the table is CORRUPT — two processes wrote it.** `run_cell` opens with `>`, which
+> truncates, so a second campaign pointed at this directory cuts a file the first has open and the gap
+> fills with NULs. It happened once (07-26) and the corrupted table **still parsed** — header, ten plan
+> lines, full matrix, valid `XVAL-DONE`. There is now a writer lock, and `xval-verify.mjs` /
+> `xval-collect.mjs` refuse any file containing a NUL. Never grade around that error; re-gather the cell.
+>
+> ★ **Resuming is supported and safe:** `SKIP_EXISTING=1 bash tools/xval-bench-campaign.sh` skips cells
+> that already carry `XVAL-DONE`, and `tools/xval-checkpoint.sh` commits and pushes completed tables
+> while the campaign runs, so hours of compute survive a container reclaim.
 >
 > ★ **Do not read a verdict off a partial directory.** A round is 36 tables; fewer is not "most of the
 > answer", it is no answer. `xval-collect.mjs` and `xval-verify.mjs` both exit 2 on missing or
@@ -110,12 +133,20 @@ A complete round is **36 tables**: 6 kits × 5 fight-length classes, plus 6 boss
 
 ## Regenerate / roll up
 ```
-bash tools/xval-campaign.sh                      # 6 kits × 5 classes  (writes to the scratchpad xvcamp dir)
-bash tools/xval-boss.sh                          # Vashj / Al'ar / KT × representative kits
+bash tools/xval-bench-campaign.sh                # ★ THE CURRENT DRIVER — 36 cells, no rig, into this dir
+SKIP_EXISTING=1 bash tools/xval-bench-campaign.sh   #   resume after an interruption
+node tools/xval-verify.mjs  tools/xval-results   # → the independent recompute + verdict (exit 0/1/2) — RUN FIRST
 node tools/xval-collect.mjs tools/xval-results   # → the CLEAN/DEFICIT ledger markdown
-node tools/xval-verify.mjs tools/xval-results    # → the independent recompute + verdict (exit 0/1/2)
+node tools/xval-persist.mjs tools/xval-results   # → the length-persistence work list (the prioritizer)
+node tools/xval-collect.mjs tools/xval-results --json /tmp/targets.json
+node tools/xval-band.mjs /tmp/targets.json       # → PHASE10 §5's grading rule: is a deficit real at ≥3 seeds?
 node tools/xval-round-diff.mjs <prev-round-dir> tools/xval-results   # → what changed vs the last round
 ```
+⚠ **`xval-round-diff` against a gear-A round is VOID** (BENCH §1) — the two baselines are different
+characters. It is for comparing gear-B rounds to each other.
+
+*Superseded, kept for reproducing the archive:* `bash tools/xval-campaign.sh` / `tools/xval-boss.sh` /
+`tools/xval-kit.sh`, which drive `tools/xval.mjs` and need `RUNNER` + `EXPORT_BASE`.
 Run the verifier before believing the ledger — it is a second, independent implementation of both
 invariants, and it exits **2 when it could not grade** (empty directory, or a crashed table with no
 matrix) precisely so a missing round can never read as a pass. Both instruments carried that false-pass
