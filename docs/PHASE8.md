@@ -2855,6 +2855,17 @@ Reconstruction was attempted and abandoned, with findings worth recording:
   `assets/database/db.bin`**, so the DB-regeneration blocker has expired. None carries
   `sim/mage/arcane_power.go` at HEAD, so `ap-cd-at-cast.patch` needs a re-target regardless.
 - `cmd/runner` is **ours** (`tools/wowsims-patches/runner-main.go`), not upstream — expected missing.
+- ★ **`sim/mage/arcane_power.go` exists in NONE of the four repos at HEAD** (`classic`, `cata`,
+  `wotlk`, legacy `tbc` — all read 0). And `ap-cd-at-cast.patch` is a **hand-made diff**
+  (`--- /tmp/ap.orig`, not `diff --git`), so its path was typed by a human and may never have been
+  an upstream path at all. ⇒ **The rig's provenance cannot be re-derived from the repo contents.**
+  It needs the one fact only the person who built it has: the actual clone URL + commit.
+
+**★ WHAT THE NEXT SESSION MUST ASK FOR (do not guess).** Restoring the rig needs the real
+repo+commit. Guessing is the *specific* failure this project has already paid for once — TOOLING's
+"a stale pre-patch binary once sat at the scratchpad root and **poisoned a whole day of gates**".
+A wrong-commit runner would reproduce that failure with no signal that anything was wrong. So: ask,
+then re-certify the trust anchor (~0.4 % vs `wowsimcli`) **before** any gate reads its output.
 
 ⇒ **The §22 verdict is sim-free by construction and does not need the rig**: it compares two of the
 model's OWN quantities against an already-recorded sim observation (§2's `−0.380 pp` at T=229). But
