@@ -4,6 +4,12 @@
 
 ### ▶ IN EXECUTION: PHASE 10 — re-baseline acceptance on GEAR B (`docs/PHASE10.md`; started 07-26)
 
+> ## ☞ RESUMING? READ `docs/PHASE10-RESUME.md` FIRST — the 60-second state + the exact next actions.
+> Round 1 is **gathering unattended** (`tools/xval-round-pipeline.sh`, ~12 h left, checkpointing to
+> git). ⚠ **Do not touch `index.html` until it finishes** — the plan cache keys on its bytes, so an
+> edit mid-round makes the campaign assemble a matrix from two engines. `bash tools/xval-status.sh`
+> shows where it is.
+
 **Read this before resuming any model work.** The reference character was re-exported on 07-26 and the
 entire gear-A corpus archived, so **ACCEPTANCE has no current reading**, and every open debt below —
 B2 ≈0.445pp, the low-haste basin, the KT/AoE cells — is denominated in a currency that no longer
