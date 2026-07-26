@@ -25,6 +25,17 @@
   `assets/database/db.bin`**, so TOOLING's "DB assets are generated, not committed" blocker has
   expired. `TOOLING.md`'s build recipe is flagged known-stale. **Everything Phase 8 still owes is a
   sim question**, so nothing further lands until a runner exists and the trust anchor is re-certified.
+- ★ **B2's bias is U-SHAPED IN FIGHT LENGTH, and §22 holds at every length (PHASE8 §23; sim-free).**
+  `model − sim` = **−0.197** pp at T=40, mean **−0.116** across T=70..205, **−0.397** at T=229 — both
+  ENDS ≈2–3× the middle, and 7/7 negative on the *corrected* harness (so §2's sign test is not a
+  harness artifact). Constraint on any candidate: a terminal-only mechanism cannot explain T=40
+  (where none of h70's late presses exist yet) and an opener-only one cannot explain T=229 — it
+  needs **two terms, or one that scales with how much of the fight is ramp-or-kill vs steady**.
+  The obvious ramp story (start-vs-completion divergence ∝ cast length, maximal in the 2.5–4.7 s
+  ramp where h70 spends `AP@4`+`isc@4`) was **tested and falsified on sign**: `ΔL` is `+0.912` pp at
+  T=40 against a `−0.197` pp bias. ⇒ **§22's verdict is not a T=229 artifact** — the quantization
+  family points wrong at every length and is *strongest* in the pure-opener cell. Instrument:
+  `tools/p8-b2-length.mjs` (anchored to §13.8's recorded −0.037, exit 3 on drift).
 - **Consequently the goal's items 2–3 are BLOCKED, not skipped.** The two persistence columns
   (`isc-mqg h40` 5/5, `isc-skull h20` 4/5) and KT `mqg+skull` 0.31 % were to be re-diagnosed *after*
   the charge landed. The charge is not landing, so they revert to their prior status — same physics

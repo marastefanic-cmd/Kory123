@@ -2874,6 +2874,62 @@ the acceptance re-gather and any golden-churn certification remain blocked until
 because everything Phase 8 still owes is a sim question. TOOLING's "Building the runner" section is
 now known-stale and is flagged there.
 
+## §23 — WHERE the B2 bias lives: a **U-shaped** length profile, and §22's verdict holds at every length (07-26)
+
+Instrument: `tools/p8-b2-length.mjs` (bare node, zero sims — §2's sim column is already recorded, so
+only the model side needed computing). Anchor: reproduces §13.8's recorded model reading of
+**−0.037 %** at T=229 for the corrected harness (exit 3 on drift).
+
+### 23.1 The profile
+
+| T | 40 | 70 | 100 | 140 | 180 | 205 | 229 |
+|---|---|---|---|---|---|---|---|
+| sim %(h40−h70) *(recorded, §2)* | +7.850 | +5.666 | +4.217 | +3.116 | +2.435 | +2.387 | +0.360 |
+| **model %(h40−h70)** *(computed)* | +7.653 | +5.605 | +4.129 | +3.057 | +2.222 | +2.228 | **−0.037** |
+| **model − sim (pp)** | **−0.197** | −0.061 | −0.088 | −0.059 | −0.213 | −0.159 | **−0.397** |
+
+- **Sign test reproduces on the corrected harness: 7/7 negative.** §2 established this on the
+  *shipped* cfg; it survives `t5two` + effSP 1450, so it is not a harness artifact.
+- ★ **The bias is U-SHAPED**: `−0.197` at T=40, mean **−0.116** across T=70..205, `−0.397` at T=229.
+  Both ENDS carry roughly 2–3× the middle. §2's own numbers show the same shape (its two worst cells
+  are also T=40 and T=229), so the U is ruler-independent.
+- **This is a hard constraint on any candidate mechanism.** A purely terminal mechanism cannot
+  produce a −0.197 pp bias at T=40, where none of h70's late presses (`isc@182`, `AP@192`,
+  `IV@202`, `MQG@202`) exist yet. A purely opener mechanism cannot produce the −0.397 at T=229.
+  Either **two terms**, or one term scaling with how much of the fight is ramp-or-kill rather than
+  steady.
+
+### 23.2 T=40 is a PURE OPENER cell — and it kills the ramp story
+
+At T=40 the plans differ only in the opener: h40 buys early **haste** (`zerk@0`, `mqg@9`), h70 buys
+early **value** (`AP@4`, `isc@4`) — and both of h70's value presses land inside the ramp, where
+casts run 2.5–4.7 s against ~1.4 s steady. That invites an obvious story: start-vs-completion
+sampling (RULES §3b.3 vs §5) diverges in proportion to **cast length**, so the ramp maximises it,
+and h70 is the plan exposed. It had a standing objection before it was run — §3b.3 says the front
+edge is clean under boundary-snap, and `AP@4`'s back edge (≈19.7 s) lands in steady state, not in
+the ramp (0→3 stacks ends ≈6.5 s).
+
+**Tested, and falsified on sign:**
+
+| | L(h40) | L(h70) | ΔL | observed bias |
+|---|---|---|---|---|
+| T=40 | +0.3279 | −0.5845 | **+0.9123 pp** | −0.197 pp |
+| T=229 | +0.0214 | −0.1346 | **+0.1560 pp** | −0.397 pp |
+
+`ΔL` is **positive at both lengths while the bias is negative at both**, and at T=40 the charge is
+~5.8× its T=229 value and ~4.6× the bias it would have to explain. (Magnitudes are pp of each
+fight's own base, so T=40 is inflated by normalization — the discriminating fact is the **sign**,
+which is unambiguous.)
+
+### 23.3 ★ The load-bearing corollary
+
+**§22's anti-B2 verdict is not a T=229 artifact.** The quantization family points the wrong way at
+*every* fight length tested, and is **strongest exactly where the fight is shortest** — the
+pure-opener cell. Two candidate framings die together here: implementing the boundary charge (§22),
+and the ramp-length refinement of it (§23.2). Phase 8's remaining charter is unchanged and now
+better constrained: **a mechanism worth ~0.445 pp, with a U-shaped length profile, and with ~0.16
+to ~0.91 pp of quantization headwind against it depending on length.**
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance
