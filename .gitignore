@@ -4,3 +4,6 @@ dist/
 # Test deps / local artifacts
 tests/node_modules/
 node_modules/
+
+# Content-addressed sim/plan cache (tools/xval-bench.mjs) — derivable, never a record
+.xval-cache/

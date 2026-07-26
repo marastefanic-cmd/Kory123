@@ -37,6 +37,7 @@
 //   --char model-ref  `sim/model-ref.json`       — the synthetic, gear-less mage the website's button
 //                     uses, with SP/crit/haste injected. Use it to reproduce exactly what a user sees.
 // They answer different questions and must stay free to differ; what they share is the protocol.
+import crypto from 'node:crypto';
 import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -119,7 +120,7 @@ if (has('list')) {
 
 // Build the arms. Either a preset (the model solves it) or explicit specs.
 const specA = arg('spec-a'), specB = arg('spec-b');
-let arms, cfg, targets = 0;
+let arms, cfg, targets = 0, presetName = null;
 
 if (specA) {
   const T = +arg('T', 0);
@@ -133,6 +134,7 @@ if (specA) {
   if (!name) die('need --preset <name> (see --list) or --spec-a <json> --T <seconds>');
   const c = PRESETS.find(p => p.name === name) || PRESETS.find(p => p.name.includes(name));
   if (!c) die(`no preset matching ${JSON.stringify(name)} — see --list`);
+  presetName = c.name;
   cfg = { ...cfgFor(api, c), ...CHARS[CHAR].model };   // ★ the model must describe the SIMMED character
   process.stderr.write(`solving "${c.name}" on the ${CHAR} character (sp ${cfg.sp}, crit ${cfg.critPct}%, T5-2pc ${cfg.t5two ? 'on' : 'off'}) …\n`);
   const best = await api.optimizeAsync(cfg, 14, () => {});
@@ -175,6 +177,7 @@ const req = (spec, seed) => buildRequest(TEMPLATE, {
 const t0 = Date.now();
 const rows = [];
 for (const a of arms) {
+  a.specEmitted = a.spec;   // kept for --json: a duel's PLAN is half its provenance
   const per = [];
   for (const seed of SEEDS) {
     const withPresses = sim(req(a.spec, seed));
@@ -183,15 +186,28 @@ for (const a of arms) {
   }
   const mean = xs => xs.reduce((s, x) => s + x, 0) / xs.length;
   const sd = xs => xs.length < 2 ? 0 : Math.sqrt(xs.reduce((s, x) => s + (x - mean(xs)) ** 2, 0) / (xs.length - 1));
-  rows.push({ label: a.label, per, dps: mean(per.map(p => p.dps)), control: mean(per.map(p => p.control)),
+  rows.push({ label: a.label, spec: a.specEmitted, per, dps: mean(per.map(p => p.dps)), control: mean(per.map(p => p.control)),
               value: mean(per.map(p => p.value)), sd: sd(per.map(p => p.value)), skipped: a.skipped || [],
               modelTotal: a.model ? a.model.total : null });
 }
 const wall = ((Date.now() - t0) / 1000).toFixed(1);
 
 if (JSONOUT) {
-  console.log(JSON.stringify({ char: CHAR, cfg: { T: cfg.T, hasteRating: cfg.hasteRating, sp: cfg.sp, critPct: cfg.critPct },
-    protocol: { iterations: ITER, variation: VAR, seeds: SEEDS, control: CONTROL }, arms: rows, wallSeconds: +wall }, null, 2));
+  // ★ STAMP EVERYTHING. A number without its protocol cannot be compared to anything gathered later —
+  // PHASE10 §3, and the round-5/round-6 `emit=` confusion is this project's recorded case of what an
+  // unstamped table costs. Until 07-26 this object carried the protocol but not WHAT WAS RUN: no
+  // preset name, no press times, no target count, and no identity for the two artefacts that decide
+  // the answer (the engine block and the wasm). A collected corpus of these was therefore not
+  // self-describing, which is exactly the property the campaign needs from it.
+  const sha1 = p => crypto.createHash('sha1').update(fs.readFileSync(path.join(REPO, p))).digest('hex').slice(0, 12);
+  console.log(JSON.stringify({
+    tool: 'bench.mjs', preset: presetName, char: CHAR,
+    cfg: { T: cfg.T, hasteRating: cfg.hasteRating, sp: cfg.sp, critPct: cfg.critPct, t5two: !!cfg.t5two },
+    protocol: { iterations: ITER, variation: VAR, seeds: SEEDS, control: CONTROL, targets,
+                emit: 'fire', prestack: BENCH.prestack, mana: BENCH.manaInject },
+    provenance: { engine: sha1('index.html'), wasm: sha1('sim/sim.wasm'), request: CHARS[CHAR].request },
+    arms: rows, wallSeconds: +wall,
+  }, null, 2));
   process.exit(0);
 }
 
