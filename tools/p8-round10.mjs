@@ -1,9 +1,12 @@
 // PHASE8 §21 — ROUND 10: decompose P3's context asymmetry into C-BE vs C-CASCADE. No sims.
 // Everything reads the LANDED engine via engine-node; the executed IV#3 fire times come from
 // §17.5's logged table (AS*/BS* logs, transcribed there and quoted in PHASE8.md).
-import { loadEngine } from '/home/user/Kory123/tools/engine-node.mjs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { loadEngine } from './engine-node.mjs';
 
-const api = loadEngine('/home/user/Kory123/index.html');
+const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+const api = loadEngine(path.join(REPO, 'index.html'));
 const { simulate, BUFFS } = api;
 
 const kit = ['icyVeins', 'isc', 'mqg', 'arcanePower', 'berserking', 'bloodlust'];
@@ -37,14 +40,7 @@ for (const ctx of ['A', 'B']) {
   const withM = mk(ctx, S3), noM = { ...mk(ctx, S3), mqg: [] };
   const dModel = rob(withM) - rob(noM);
   const dCasts = cc(withM) - cc(noM);
-  // per-cast damage local to the window: price the realized casts by re-simulating with the cast
-  // count difference valued at the model's own board — cleanest: quantized credit = dCasts × the
-  // damage of the marginal (last) cast in the with-MQG stream before T.
-  const casts = simulate(withM, cfg, true).casts;
-  const last = casts[casts.length - 1];
-  const perCast = last.dmg !== undefined ? last.dmg : null;
-  console.log(`ctx ${ctx}: dModel=${dModel.toFixed(2)} (${pp(ctx, dModel).toFixed(4)} pp) ` +
-              `dCasts=${dCasts} lastCastKeys=${JSON.stringify(Object.keys(last))}`);
+  console.log(`ctx ${ctx}: dModel=${dModel.toFixed(2)} (${pp(ctx, dModel).toFixed(4)} pp) dCasts=${dCasts}`);
 }
 
 console.log('\n=== C-CASCADE: model-priced effect of the UNREQUESTED IV#3 slide (executed times, §17.5)');
@@ -81,10 +77,24 @@ console.log(`F2 sign: C-BE(A)=${res.A.cbe.toFixed(4)} C-BE(B)=${res.B.cbe.toFixe
 console.log(`F4 levels: sim-vs-model gap A=0.2105 B=0.4068 — compare C-BE per context`);
 
 console.log('\n=== F3 sensitivity: C-BE in the UNTAPERED currency (total, not robust) — is the residual the kill taper?');
+// ⚠ DEGENERACY GUARD (added when this commit was merged to master): the kill taper only reweights
+// damage inside [T-KW, T+KW], KW=0.5. Whenever no scoring breakpoint separates the two currencies
+// at this T, simulate().total and .robust come back BIT-IDENTICAL — and then this block compares a
+// quantity against itself, so it can never discriminate. Report that instead of implying a result.
 const tot = s => simulate(s, cfg).total;
+let degenerate = true;
 for (const ctx of ['A', 'B']) {
   const withM = mk(ctx, S3), noM = { ...mk(ctx, S3), mqg: [] };
+  const rW = simulate(withM, cfg), rN = simulate(noM, cfg);
+  if (rW.total !== rW.robust || rN.total !== rN.robust) degenerate = false;
   const dTot = tot(withM) - tot(noM);
   const dQuant = boardDmg(withM) - boardDmg(noM);
-  console.log(`ctx ${ctx}: dTotal=${pp(ctx, dTot).toFixed(4)} pp  dQuant=${pp(ctx, dQuant).toFixed(4)} pp  C-BE(total)=${pp(ctx, dTot - (dQuant)).toFixed(4)} pp`);
+  console.log(`ctx ${ctx}: dTotal=${pp(ctx, dTot).toFixed(4)} pp  dQuant=${pp(ctx, dQuant).toFixed(4)} pp  ` +
+              `C-BE(total)=${pp(ctx, dTot - dQuant).toFixed(4)} pp  ` +
+              `[total===robust? ${rW.total === rW.robust ? 'YES' : 'no'}]`);
 }
+console.log(degenerate
+  ? '⚠ F3 VACUOUS at this config: total ≡ robust bitwise on both arms, so "identical in the\n' +
+    '  untapered currency" is a tautology, NOT evidence that the kill taper is excluded.\n' +
+    '  The 0.0724 pp residual remains wholly unexplained. See PHASE8 §21.5 erratum.'
+  : '✓ F3 meaningful here: the currencies differ, so the comparison discriminates.');

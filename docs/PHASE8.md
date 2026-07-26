@@ -2731,6 +2731,31 @@ per-window and boundary-configuration-dependent (flush vs offset changes it by 0
 from the board it already computes. Design + sign guard + sim gate = the Phase 8 finale, gated per
 Guardrails below.
 
+### ⚠ ERRATUM (07-26, filed when 46003cb was merged to master) — the F3 sensitivity check is VACUOUS
+
+§21.5 above reports: *"Sensitivity: identical in the untapered currency (`total`), so the kill taper
+is excluded."* **That inference does not hold.** Re-running `tools/p8-round10.mjs` shows
+`simulate().total` and `.robust` are **bit-identical on both arms** at this config
+(T=229 — verified `r.total === r.robust` exactly, not merely to printed precision). The kill taper
+only reweights damage inside `[T−KW, T+KW]` with `KW = KILL_WINDOW = 0.5` (`index.html:764`), so
+when no scoring breakpoint separates the currencies at this `T` the two are the same number. The
+check therefore compared a quantity **against itself** — it agrees by construction and could not
+have come out any other way.
+
+Consequences, scoped narrowly:
+- **The kill taper is neither excluded nor implicated.** The 0.0724 pp F3 residual is **wholly
+  unexplained**, one candidate short of where §21.5 left it. It stays reported-not-absorbed, so no
+  downstream number moves.
+- **F1/F2/F4 are untouched** — they read `robust` deltas and board damage only, never the
+  `total`-vs-`robust` contrast. C-BE dominance (56 % of the asymmetry; 71 %/64 % of both levels) and
+  the C-CASCADE-is-minor verdict both stand, and every figure above re-derives exactly.
+- The bonus finding (`dQuant` context-independent at 3 casts; the asymmetry living in the
+  continuous integral's boundary treatment) is likewise unaffected — it is a `robust`-vs-board
+  contrast.
+- To actually test the taper, the arms must be re-priced at a `T` where the currencies **do**
+  separate; `p8-round10.mjs` now prints `[total===robust? …]` per arm and refuses to imply a result
+  when they don't. Left as an open thread for the Phase 8 finale, not re-run here.
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance
