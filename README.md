@@ -3,13 +3,19 @@
 *(the page itself is titled "WoW Anniversary cooldown optimizer for Arcane mages"; "Arcane Burn Planner"
 remains the project/repo name)*
 
-A single-file web app for **TBC Anniversary-realm Arcane mages** that finds the optimal way to
-overlay your on-use / proc haste and spell-power cooldowns over a fight, and gives you a
-second-screen schedule to follow during the pull.
+A single-file web app for **TBC Anniversary-realm Arcane mages** that works out how to overlay your
+on-use / proc haste and spell-power cooldowns over a fight, and gives you a second-screen schedule to
+follow during the pull.
+
+It maximizes one number — **effective Arcane Blasts cast** (`docs/MECHANICS.md` §4) — with a multi-start
+local search plus finishing passes. That is a very good plan rather than a proven-optimal one: the
+schedule space is far too large to enumerate, so "optimal" here means *the best layout this search
+finds*, locked against a 25-fight exact-match corpus and calibrated against wowsims. The known residual
+is recorded in `docs/ACCEPTANCE.md`.
 
 **Use it:** open `index.html` in any browser (no install, no network needed).
 
-- Enter your **gear haste rating** and **fight length**
+- Enter your **gear haste rating**, **spell damage**, **crit** and the **fight length**
 - Check the cooldowns you actually have; enter the raid-called times for **Bloodlust / Drums / Power Infusion** (or leave blank to let the planner place them)
 - Hit **Find optimal overlay** — you get the burn timeline, a live **cap sheet**, and the
   **activation schedule**: one line per press second (time + spell icons + what each buff does),
@@ -35,10 +41,12 @@ shorter fight than last week's log so the final burn window isn't planned past t
   passes 50%, 3-stack AB is GCD-locked at 1.0s and *extra haste adds no casts*.
   Going over the floor is still often correct: the planner simulates real casts, so it will overcap a
   window (especially under Arcane Power) when that beats staying under the line.
-  The planner models AB at a steady 3 stacks: the opening/post-gap ramp is measured to be worth zero
-  extra casts below ~400 haste rating (and one quantized cast only far past the floor), and every plan
-  pays it equally — so modeling it would only add phantom "triple-stack the pull" behavior without
-  changing which overlay wins.
+  The planner models the stack **ramp exactly**: the mage opens **cold** (0 stacks — no prepull) and
+  re-ramps after any Arcane-Blast gap ≥ 8s (intermission, or an AoE phase, since Arcane Explosion
+  neither builds nor refreshes the debuff). Ramp casts run at their true 2.5 / 2.17 / 1.83s lengths and
+  are scored **discretely** at their completions; the cast-rate integral covers everything else. Haste
+  stays exactly position-independent under this (verified 0.0000% pre- vs post-Lust), so the ramp only
+  bites the **damage** side — which is why damage windows step off the ramp on their own.
 - **Wording matters**: "increases casting speed by X%" divides cast time by (1+X) — that's Icy Veins,
   Bloodlust, Berserking, Power Infusion. Haste-*rating* effects (Drums, Skull, MQG, Ashtongue) go into
   the additive rating pool instead. Flat reductions (AB's own debuff) come off the base cast before haste.
@@ -76,7 +84,7 @@ level with no per-haste tuning:
   an in-Lust Icy Veins wins less and less, and the optimum slides Icy Veins *out* of Lust on its own —
   the same reasoning that later moves Berserking, then eventually everything, without a single hard-coded
   haste breakpoint. (Verified against the sim: on a 2:40 fight the first Icy Veins is inside Lust at 0
-  gear haste and jumps to *after* Lust by ~100 rating.) A haste buff dropped onto casts that are already
+  gear haste and leaves Lust as soon as gear haste starts flooring it — see the crossover note below.) A haste buff dropped onto casts that are already
   at the floor (Berserking inside a Lust+Icy Veins opener) is genuinely worthless — the sim confirms its
   marginal is zero, not merely small — which is why the planner is free to relocate it (below). Note the
   position of a *working* haste buff is otherwise irrelevant in isolation: Berserking alone sims
@@ -90,9 +98,11 @@ level with no per-haste tuning:
 
 This replaced a per-cast *sum*, which quantised each buff window to a whole number of casts and so
 couldn't see sub-cast alignment — the source of phantom "press 2s early" gains and lust-position-
-dependent placement. Buff windows start at the **press moment** (a self-buff macro applies to the same
-press's Arcane Blast); which cast boundary you actually land on is a sub-GCD fraction set by opener
-timing and latency, so the phase-averaged start the integral wants is the press itself.
+dependent placement. A buff takes effect from the **cast boundary its press lands on**. At steady state
+those boundaries are dense and phase-uniform, so the phase-averaged start the integral wants *is* the
+press moment; during a ramp they are sparse and locked to the ramp, so a press mid-ramp-cast fires at
+that cast's **end** (sim-log-verified: intent 0:05 in a cold opener fires at 6.5). The plan therefore
+displays **fire times**, and pressing at the printed second is exact.
 
 On top of the score: multi-start local search over activation times — single shifts, block shifts, and
 re-adding dropped uses, with a deterministic repair pass that enforces cooldowns, Cold Snap resets,
@@ -104,9 +114,8 @@ actually does work; the test removes the use and re-scores, so it never touches 
 earlier whenever that covers the same casts and completes before the kill — but a cooldown that comes
 back before the boss dies is **always pressed**: a final window clipped by the kill is free damage (a
 second Icon at 2:00 on a 2:10 kill runs 10 of its 20 seconds and still beats holding it, and the score
-weighs "suboptimally twice vs optimally once" the other way when the numbers say so). The schedule tags
-every clipped press with its real uptime and value. Baselines shown: no cooldowns, and "mash everything
-on cooldown".
+weighs "suboptimally twice vs optimally once" the other way when the numbers say so). Baselines shown:
+no cooldowns, and "mash everything on cooldown".
 
 Ties break toward the natural, overlaid line. When placements sit within one expected cast of each
 other, the planner prefers: a window that completes before the kill, then a press anchored to
@@ -148,16 +157,15 @@ common-random-numbers clean across seeds — but it's free, so the planner takes
 already-early buff has nothing better behind it, and a backward wiggle would just drift one onto the
 opener ramp for a phantom gain.)
 
-Three trust rules keep the plan readable: **Cold Snap materiality** — burning Cold Snap mid-fight must
-beat the best natural-cooldown plan by at least one effective cast, or the planner holds it and says
-so — with one exception: a reset whose extra Icy Veins is a **final clipped window** is spent for any
-real gain (a ready cooldown near the kill is free damage); and **press price tags** — any activation
-deliberately offset from a neighboring press is tagged with what a single merged press would cost
-(e.g. "+133 dmg vs one press at 0:05"), so a scattered-looking second is always either justified with
-a number or merged away.
+**Cold Snap materiality** keeps the plan readable: burning Cold Snap mid-fight must beat the best
+natural-cooldown plan by at least one effective cast, or the planner holds it — with one exception, a
+reset whose extra Icy Veins is a **final clipped window** is spent for any real gain (a ready cooldown
+near the kill is free damage). (Per-press "why here" reasoning tags and leeway bands were tried and
+**permanently rejected**: a plateau tie for one press is conditional on every *other* press staying
+put, so advertising it over-promises.)
 
 Reproduces the community-consensus behaviors on its own: Icy Veins inside Bloodlust at 0 gear haste
-and shifted out past ~150–200 rating; no mid-fight BL+IV+Berserking triple-stack; the Serpent-Coil
+and shifted out once gear haste floors the Lust window; no mid-fight BL+IV+Berserking triple-stack; the Serpent-Coil
 gem window paired with Arcane Power, twice on fights long enough to fit both windows fully.
 
 ## Bloodlust overlay rules (how to layer cooldowns in the raid)
@@ -181,11 +189,12 @@ the schedule can't fully show — where Bloodlust actually goes on the bosses th
      nothing) and never where its shifted cast train knocks casts out of a later damage window.
    - **But let the stacks build first.** Arcane Blast ramps 0→3 stacks over your first ~3 casts, and
      those low-stack casts are *slow*. A damage cooldown fired during that ramp catches fewer casts than
-     one fired a few seconds later on full-speed casts. So the opener burst waits ~5s for stacks (and for
-     Lust) rather than firing at the pull — measured on a late-Lust pull, holding the pull burst's damage
-     cooldowns to ~0:05 is worth **+4 DPS** over firing them at 0:00. (The ramp is *irrelevant* to a haste
-     buff — fast-then-short and slow-then-long are the same total casting — which is why only the damage
-     side of the burst cares about it.)
+     one fired a few seconds later on full-speed casts, so the opener burst waits for stacks rather than
+     firing at the pull. This is **no longer a rule the planner is told** — the ramp is modelled exactly,
+     so the score produces it: +0.10–0.17% at a bare pull, +0.39% at an intermission exit, +0.44% for the
+     split opener (a 20s Icon covering the ramp while the 15s gem/AP step past it). (The ramp is
+     *irrelevant* to a haste buff — fast-then-short and slow-then-long are the same total casting, verified
+     to 0.0000% — which is why only the damage side of the burst cares about it.)
 3. **But never drop or clip a use just to force the overlap.** On long fights you can't align every
    cooldown with a single Lust window without wasting uses. Roll them on cooldown instead; the ones
    that come off cooldown near the Lust call land in it on their own. Sacrificing a whole use to align
@@ -196,12 +205,18 @@ the schedule can't fully show — where Bloodlust actually goes on the bosses th
    - **At ~0 haste:** the whole burst opens *inside* Lust (a few seconds in, once stacks are up). Your
      unbuffed cast is slow, so Lust+Icy Veins together barely reach the floor — Icy Veins is mostly
      *efficient* there — and stacking it on Lust buys more of the Arcane-Power/Icon/gem-buffed casts.
-   - **As gear haste rises (~100+ rating in the sim):** Lust alone starts driving the cast into the GCD
+   - **As gear haste rises:** Lust alone starts driving the cast into the GCD
      floor, so Icy Veins on top of Lust is increasingly *overcapped* and wasted. Past the crossover the
      planner slides **Icy Veins out of the Lust window on its own** (the damage cooldowns stay in Lust —
      they still want the fast casts — while Icy Veins moves to where its haste isn't thrown away). No
      breakpoint is coded; the integral just stops counting the overcapped part. Verified: on a 2:40 fight
-     the first Icy Veins is inside Lust at 0 haste and out past Lust by ~100 rating.
+     the first Icy Veins is inside Lust at 0 haste and out of it as soon as the floor starts binding.
+     **The crossover is kit-dependent and lower than folklore suggests** (`tools/explore.mjs`, re-measured
+     on the current engine, 2:40 / Lust 0:05): about **15 rating** with just Icy Veins + Icon; roughly
+     **80** once Arcane Power joins the Lust cluster, because the spellpower payout makes a little
+     overcapping worth it; and with a fuller kit (Drums + Skull in the opener) the window is floored from
+     the start, so Icy Veins sits outside Lust at every gear level. No breakpoint is coded — it falls out
+     of the floor math, which is why it moves with the kit.
    - The other wrinkle is a **breakpoint kill** where a pull-time press unlocks a full second use a
      Lust opener would clip (e.g. Icon at 0:00 on a ~2:20 kill fits two full windows). Whether that
      wins is a per-fight coin-flip the planner weighs.
@@ -270,14 +285,15 @@ the sim disagreed with the old per-cast sum on buff *alignment*: the sum quantis
 whole number of casts, so aligning Icy Veins/Berserking with the damage cooldowns (worth ~0.3% in the
 sim) came out as a numerical tie and the planner sometimes pressed the opener 2s early or parked
 Berserking in a floored Lust window. The integral scores alignment directly and reproduces every case
-the sim was used to check — opener inside Lust at 0 haste and out past Lust by ~100 rating, the second
+the sim was used to check — opener inside Lust at 0 haste and out of Lust once the floor binds, the second
 Icy Veins landing with the post-intermission window, Berserking held out of the floored opener onto a
-working spot — with the correct *direction* everywhere and the correct magnitude except where the
-opening ramp matters. **The ramp is deliberately still left out**, and the sim says that's right for the
-part that used to destabilise the search: a haste buff's value is position-independent (Berserking alone
-sims identically at 0:00 / 0:50 / 1:40 — fast-then-short ramp equals slow-then-long), so nothing is lost
-by ignoring the ramp for haste. The one place the ramp does bite is a *damage* cooldown fired during the
-opener's low-stack casts; the sim measures that at ~+4 DPS for holding a late-Lust pull burst to ~0:05
-instead of 0:00, and it is captured as a Bloodlust-overlay rule (let the stacks build) rather than
-sim-fitted into the score — a full ramp model over-credits pull-time bursts and destabilises the
-long-fight search, which is why it stays out.
+working spot — with the correct *direction* everywhere.
+
+**The ramp was later modelled exactly** (an earlier per-cast ramp attempt had been dropped for
+over-crediting pull-time bursts; this one never touches the interval/count valuation). Haste stays
+position-independent under it — verified **0.0000%** pre- vs post-Lust across h0–200 — so nothing about
+the haste side changed; what the ramp buys is the *damage* side, which now **emerges from the score**
+instead of living as a hand-written "let the stacks build" rule: at an intermission exit, haste at the
+exit with damage delayed past the re-ramp is **+0.39%**; at a bare pull the delayed cluster is
+**+0.10–0.17%**; and a split (a 20s Icon covering the ramp from 0:00 while the 15s gem/AP step to the
+ramp's last boundary) is **+0.44%** on the Vashj-class opener.

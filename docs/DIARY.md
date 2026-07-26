@@ -233,6 +233,28 @@ Also: the masthead is a short title + eyebrow + three-step strip instead of a fo
 no longer overlays its own label while its trailing number field carries its unit inline (`× damage`,
 `targets`) instead of relying on the user's intuition.
 
+**Then a full copy audit of everything the user reads** (`index.html` + `README.md`), at the user's
+direction — verify, rewrite in plain language, and hide what is technically true but irrelevant:
+
+- **`README.md` carried the SAME disproven ramp claim in three places**, plus two features that no
+  longer exist (per-press "price tags", clipped-press value tags — both permanently rejected), plus a
+  description of press timing ("the phase-averaged start the integral wants is the press itself") that
+  Phase 7's press-execution physics had superseded. All corrected against RULES §3/§3b.
+- **The IV-out-of-Lust crossover numbers in the README were stale AND self-inconsistent** ("~100
+  rating" in three places, "~150–200" in a fourth) — see the ledger row below.
+- **Plain-language pass on the page:** the four result tiles now carry tooltips explaining what they
+  mean (a first-time reader could not have known what "effective casts" was); the timeline legend
+  states each reference line in words with the mechanism on hover; the fight-column and phase-editor
+  hints stop reciting model internals; "Debugging presets" — a name that means nothing to a mage — is
+  now "Reference fights — test cases, not bosses", collapsed behind a `<details>`.
+- **The assumptions block got a "Show the numbers behind each claim" toggle** (`.deep` spans, hidden by
+  default): the player-relevant claim stays visible, the mechanism (per-cast proc bookkeeping, the SP
+  coefficient formula, the exclusive-category source read, the full tie-break order) is one click away.
+- **Two things were MISSING and are now stated**: that the search is multi-start local + polish, i.e.
+  **a very good plan, not a proven-optimal one** (with ACCEPTANCE's open residual — median 0.035%,
+  worst 0.38% — behind the fold), and that the output is **deterministic and reproducible** from the
+  copy-text. A tool whose button says "Find optimal overlay" owes the reader the first one.
+
 ---
 
 ## The corrections ledger — what we believed, and what disproved it
@@ -241,6 +263,7 @@ The most valuable part of this diary. Each entry: the belief, why we held it, wh
 where the corrected truth now lives. **Do not silently re-open these** — if you think one is wrong again,
 add a *new* entry rather than deleting the old.
 
+| 07-26 | **"Icy Veins leaves Lust at ~100 haste rating"** — stated three times in `README.md`, with "~150–200 rating" in a fourth spot, as a sim-verified headline result. | **Re-measured on the current engine** during the copy audit (`tools/engine-node.mjs`, 2:40 fight, Lust@0:05, sweeping h0–h300): the crossover is **kit-dependent and far lower**. IV+Icon leaves Lust by **~15 rating**; with Arcane Power in the cluster it is ~80 (the SP payout pays for a little overcapping); and with a full opener kit (Drums + Skull) the window is floored from h0, so IV is **never** in Lust at any gear level. This matches RULES §5, which had recorded ~15/~80 all along — the README simply never got the update, and its two numbers disagreed with each other in the same document. ★ **A number repeated in four places is not four confirmations.** Self-consistency inside one doc was never checked, and the contradiction sat in public copy. When auditing user-facing text, re-derive the numbers from the engine rather than from the neighbouring paragraph. | README "The optimizer" / "Bloodlust overlay rules"; RULES §5. |
 | 07-26 | **The shipped "Model assumptions" told users the AB stack ramp was NOT modeled** — "Arcane Blast is modeled at a steady 3 stacks… every candidate plan pays [the ramp] equally, so it never changes which overlay wins." True when written; **false since Phase 4 landed the exact ramp.** | Re-read the engine while rewriting the assumptions for the UI rework: `simulate` opens at **0 stacks**, runs the ramp casts at their true 2.5/2.17/1.83s lengths, re-ramps after every ≥8s AB gap, and scores them **discretely** — and RULES §3 records the consequence the old text denied (damage windows step off the ramp, sim-confirmed +0.10–0.44%). The user-facing doc had simply not been pruned when the model changed. ★ **Living docs include the ones inside the product.** `index.html`'s assumption list is a living doc with a *bigger* audience than `docs/` — prune it in the same commit as the model change. Also fixed in the same pass: the trinket-lockout bullet named only Skull + MQG when `OFF_TRINKETS` has always included the Icon. | `index.html` `renderAssumptions()`; RULES §3, §17. |
 | 07-26 | **The sim rig's source was "not publicly recoverable."** Asserted after the container was recycled, on three seemingly independent proofs: a full clone of `wowsims/tbc` had no `ade9f39` and had never contained either patch target; `proxy.golang.org` returned `unknown revision ade9f39`; and GitHub refuses bare SHAs. A substitute rig was then built on the archived legacy repo. | **ALL THREE PROOFS SEARCHED THE WRONG REPOSITORY.** The repo is **`wowsims/tbc-new`** — which declares Go module `github.com/wowsims/tbc`. I *derived* the clone URL from `runner-main.go`'s imports instead of reading it, and it is written plainly in **four** places (`TOOLING`, `SOURCES.md`, `README.md`, `archive/07 §6`). `ade9f39` is right there (`ade9f39cc`, *"Merge PR #421 fix/armor-reduction"*), both patches apply, `assets/database/*.bin` are committed, the `archive/07` provenance checks pass (`innerSpell`=3, `CD.Use`=0), and `runner-ap180` builds. **Nothing was lost.** ★★ **THE LESSON — independent methods sharing one derived premise are not independent.** Three techniques agreeing felt like overwhelming evidence and was worth exactly as much as the premise underneath them, which was never checked against a doc that stated it outright. **When a search comes back empty, re-verify the search TARGET before believing the absence.** Sibling of this session's other three (round-4 collector, vacuous F3, `cfgSigOf` memo): each was a confident null produced by an instrument pointed slightly wrong. Two real gaps in the recipe were found and are now written down (`sim/core/proto` must be `protoc`-generated with a plugin matching the repo's protobuf v1.36.10; `cmd/runner/` must be created from `runner-main.go`). The gear export is absent **by design** — user data, never committed (`archive/07 §6.3`). | TOOLING "Building the runner"; ROADMAP §0. |
 

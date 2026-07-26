@@ -195,7 +195,8 @@
   .buff .txt { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
   .buff .name { font-size: 13.5px; display: flex; align-items: center; min-width: 0; }
   .buff .name .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-  .buff .name .beta { flex: none; }
+  .buff .stat { display: flex; align-items: center; }
+  .buff .stat .beta { flex: none; }
   .buff .stat { font: 10.5px var(--font-mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .buff .pinbtn {
     display: none;
@@ -284,7 +285,14 @@
   .pchips .pnone { color: var(--muted); font-size: 12.5px; }
   .golden-strip, .boss-strip { padding-bottom: 12px; margin-bottom: 12px; }
   .boss-strip .pslab { color: var(--accent); }
-  .golden-strip .pslab { color: var(--muted); }
+  .golden-strip { display: block; }
+  .golden-strip > summary {
+    cursor: pointer; list-style: revert;
+    font-family: var(--font-display); font-size: 13px; font-weight: 600;
+    color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .golden-strip > summary .sublab { font-family: var(--font-ui); letter-spacing: 0; text-transform: none; font-weight: 400; font-size: 12px; }
+  .golden-strip[open] > summary { margin-bottom: 10px; }
   .gchip { padding: 4px 13px; font-size: 12.5px; color: var(--ink-2); }
   .gchip.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); color: var(--ink); }
   .psave { display: flex; gap: 6px; margin-left: auto; }
@@ -316,6 +324,9 @@
     margin: 0 0 4px;
   }
   .viz .note, .sched .note { font-size: 12.5px; color: var(--muted); margin: 0 0 10px; }
+  /* anything with an explanation attached reads as hoverable, not as plain prose */
+  .note span[title], .tile[title] { cursor: help; }
+  .note span[title] { border-bottom: 1px dotted color-mix(in srgb, var(--muted) 60%, transparent); }
   .chartbox { position: relative; }
   .chartbox svg { display: block; width: 100%; height: auto; }
   .tip {
@@ -404,6 +415,15 @@
   .assump .verdict.sim { color: var(--good); border: 1px solid color-mix(in srgb, var(--good) 45%, transparent); }
   .assump .verdict.beta { color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); }
   .assump .verdict.out { color: var(--muted); border: 1px solid var(--hairline); }
+  /* "technically true but not what a player needs" lives behind this toggle, off by default */
+  .assump .deep { display: none; }
+  .assump.tech .deep { display: inline; color: var(--muted); }
+  .techtoggle {
+    display: inline-flex; align-items: center; gap: 7px; margin-left: 4px;
+    font-size: 12.5px; color: var(--ink-2); cursor: pointer; white-space: nowrap;
+  }
+  .techtoggle input { accent-color: var(--accent); width: 14px; height: 14px; }
+  .assump .lede .beta, .assump .lede .verdict { cursor: help; }
 
   .warnbar {
     background: color-mix(in srgb, var(--warn) 8%, var(--surface));
@@ -528,13 +548,13 @@
 
   <section class="setup" id="setup">
     <div class="preset-strip boss-strip" id="boss-strip">
-      <span class="pslab" title="The real current-phase raid bosses — fight length, Lust timing and phases from the actual pulls. Click one to load its input setup; press Find optimal overlay to compute the plan.">Boss presets</span>
+      <span class="pslab" title="Typical fight length, Bloodlust timing and phases for each current-tier boss. Click one to fill in the setup, then press Find optimal overlay.">Boss presets</span>
       <span class="pchips" id="boss-chips"></span>
     </div>
-    <div class="preset-strip golden-strip" id="golden-strip">
-      <span class="pslab" title="Sim-verified reference fights — this list is the exact-match regression suite. Click one to load its input setup; press Find optimal overlay to compute the plan.">Debugging presets</span>
+    <details class="preset-strip golden-strip" id="golden-strip">
+      <summary title="Plain reference fights used to test the planner — a fight length plus a Bloodlust time, nothing else. Handy for sanity-checking a rule, not for planning a raid night.">Reference fights <span class="sublab">— test cases, not bosses</span></summary>
       <span class="pchips" id="golden-chips"></span>
-    </div>
+    </details>
     <div class="preset-strip" id="preset-strip">
       <span class="pslab">Custom presets</span>
       <span class="pchips" id="preset-chips"></span>
@@ -568,8 +588,9 @@
             <input id="in-crit" type="number" value="25" min="0" max="100" step="0.5">
           </div>
         </div>
-        <label class="check use" style="margin-top:6px"><input id="ck-t5" type="checkbox"> Tirisfal 2-piece (Arcane Blast +20% damage &amp; mana)</label>
-        <span class="hint">Damage model weighs haste vs. Arcane Power; crit drives Ashtongue uptime. T5-2pc boosts only Arcane Blast (additive with Arcane Power), so its main effect is re-pricing AoE phases vs. blasting.</span>
+        <label class="check use" style="margin-top:6px" title="Tirisfal Regalia (Tier 5) 2-piece: Arcane Blast deals 20% more damage and costs 20% more mana. It adds to Arcane Power rather than multiplying with it, so with the set on, an Arcane Power window is worth slightly less relative to your other casts — which mostly matters when a fight has AoE phases."><input id="ck-t5" type="checkbox"> Tirisfal (T5) 2-piece — Arcane Blast +20% damage</label>
+        <span class="hint">Use the numbers you actually have in the raid, fully buffed. Crit is here for two things only:
+        Ashtongue proc uptime and AoE phases — everywhere else it scales every possible plan equally, so it can't change which one wins.</span>
       </div>
 
       <div class="scol">
@@ -584,9 +605,10 @@
         <div id="phase-editor">
           <div id="phase-rows"></div>
           <button id="phase-add" type="button">+ Add phase</button>
-          <span class="hint">Untick to disregard. Phases paint over the base fight (later rows win on overlap).
-          Intermission = boss untargetable, damage ×0, cooldowns keep ticking. Burn = AB damage ×N.
-          AoE = Arcane Explosion spam on N targets.</span>
+          <span class="hint">Only for fights that aren't just "stand and blast". Add the phases you know about;
+          if two overlap, the lower row wins. <b>Intermission</b> — boss untargetable, you deal no damage but
+          cooldowns keep ticking. <b>Burn</b> — a window where the boss takes extra damage. <b>AoE</b> — you swap
+          to Arcane Explosion on several targets. Untick the box to ignore all of it.</span>
         </div>
       </div>
     </div>
@@ -3325,7 +3347,7 @@ function buildBuffList() {
         <button type="button" class="tog" role="switch" aria-checked="${state.enabled[key]}" aria-label="${def.name}" title="${def.name} — ${def.stat}${def.src ? " · " + def.src : ""}">
           <span class="tick" aria-hidden="true"></span>
           ${iconOf(key, 26)}
-          <span class="txt"><span class="name"><span class="nm">${def.name}</span>${BETA_KEYS[key] ? `<span class="beta" title="${esc(BETA_TIP)}">Beta</span>` : ""}</span><span class="stat">${def.stat}</span></span>
+          <span class="txt"><span class="name"><span class="nm">${def.name}</span></span><span class="stat">${def.stat}${BETA_KEYS[key] ? `<span class="beta" title="${esc(BETA_TIP)}">Beta</span>` : ""}</span></span>
         </button>
         ${pinnable ? `<button type="button" class="pinbtn" title="Pin exact use times — blank = planner picks" aria-label="Pin ${def.name} times"><span aria-hidden="true">⏱</span><b></b></button>` : ""}`;
       wrap.appendChild(row);
@@ -3700,11 +3722,19 @@ function renderTiles({ cfg, baseline, naiveR, optR }) {
   const crit = Math.min(1, Math.max(0, cfg.critPct / 100));
   const plainCast = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + crit * (GAME.CRIT_MULT - 1)) * (cfg.t5two ? 1.2 : 1);
   const effCasts = optR.total / plainCast;
+  // The tile labels are unavoidably compact, so each carries the plain-language explanation of what
+  // the number means as a tooltip — a first-time reader shouldn't have to infer "effective casts".
+  const TIP = {
+    gain: "How much more damage this plan does than casting Arcane Blast with no cooldowns at all. Your realistic upside from pressing things well.",
+    naive: "How much more damage this plan does than firing every cooldown the moment it comes off cooldown. This is the number that says whether planning was worth it.",
+    eff: "Your whole fight measured in plain, unbuffed Arcane Blasts. A cast under Arcane Power counts 1.3, a cast under a spellpower trinket a bit more, and so on — so the count goes up both when you cast more and when your casts are worth more. This is the single number the planner maximizes.",
+    floor: "How much of the fight your casts were stuck at the 1.0s global-cooldown floor. Haste added there buys nothing — but a little is normal and often correct, since it usually means you were stacking haste on top of your damage window on purpose.",
+  };
   tiles.innerHTML = `
-    <div class="tile gain"><div class="k">Damage gain vs no cooldowns</div><div class="v">+${gain.toFixed(1)}<small>%</small></div></div>
-    <div class="tile gain"><div class="k">vs mashing on cooldown</div><div class="v">+${vsNaive.toFixed(1)}<small>%</small></div></div>
-    <div class="tile"><div class="k">Effective casts</div><div class="v">${effCasts.toFixed(1)}<small> (${optR.castCount} real)</small></div></div>
-    <div class="tile"><div class="k">Time at GCD floor</div><div class="v">${capPct.toFixed(0)}<small>% of fight</small></div></div>`;
+    <div class="tile gain" title="${esc(TIP.gain)}"><div class="k">Damage gain vs no cooldowns</div><div class="v">+${gain.toFixed(1)}<small>%</small></div></div>
+    <div class="tile gain" title="${esc(TIP.naive)}"><div class="k">vs mashing on cooldown</div><div class="v">+${vsNaive.toFixed(1)}<small>%</small></div></div>
+    <div class="tile" title="${esc(TIP.eff)}"><div class="k">Effective casts</div><div class="v">${effCasts.toFixed(1)}<small> (${optR.castCount} real)</small></div></div>
+    <div class="tile" title="${esc(TIP.floor)}"><div class="k">Time at GCD floor</div><div class="v">${capPct.toFixed(0)}<small>% of fight</small></div></div>`;
 }
 
 /* timeline: haste curve + buff lanes.
@@ -3864,10 +3894,11 @@ function renderTimeline(run, opts) {
   lastGeo = { x, PADL, PADR, VW, plotW, H, T: cfg.T };
   box.classList.toggle("editing", !!opts.editing);
   el("viz-note").innerHTML =
-    `<b style="color:${ink}">White line</b> deterministic spell haste per cast (gear ${(cfg.hasteRating / GAME.HASTE_RATING_PER_PCT).toFixed(1)}%` +
-    ` + on-use buffs — Ashtongue's random proc is NOT averaged in) · <b style="color:${warn}">dashed</b> GCD cap (+50%) · ` +
-    (cfg.enabled.ati ? `<b style="color:${colorOf("ati")}">╌╌</b> GCD cap if an Ashtongue proc aligns · ` : ``) +
-    `<b style="color:#5cc6e6">·····</b> +25% = 4-Frostbolt filler cap (~394 rating) · ` +
+    `<b style="color:${ink}">White line</b> <span title="Your spell haste at each moment: gear plus whatever cooldowns are up. Ashtongue's proc is random, so it is deliberately NOT averaged into this line — you can see its effect in its own lane instead.">your cast speed through the fight</span> ` +
+    `(gear ${(cfg.hasteRating / GAME.HASTE_RATING_PER_PCT).toFixed(1)}% + cooldowns) · ` +
+    `<b style="color:${warn}">dashed</b> <span title="A 3-stack Arcane Blast is a 1.5s cast, and the global cooldown floors at 1.0s — so at +50% haste you are capped. Haste above this line buys no extra casts in that window.">+50% cap — haste above this buys nothing</span> · ` +
+    (cfg.enabled.ati ? `<b style="color:${colorOf("ati")}">╌╌</b> <span title="Where the cap sits while an Ashtongue proc is live (its 145 rating is worth about +9%). Between this line and the +50% line you are capped only during a proc.">cap while an Ashtongue proc is up</span> · ` : ``) +
+    `<b style="color:#5cc6e6">·····</b> <span title="A gearing reference, not part of the plan: at +25% passive gear haste (about 394 rating) a Frostbolt casts in 2.0s, so four of them exactly fill the 8s Arcane Blast debuff — your conserve filler goes from 3 Frostbolts to 4. Read your no-cooldown haste against it. The planner itself never casts Frostbolt.">+25% — Frostbolt filler breakpoint (gearing only)</span> · ` +
     `bars are buff uptime, ticks are presses · <span style="color:${PH.intermission}">▨ intermission</span> · ` +
     `<span style="color:${PH.aoe}">■ AoE</span> · <span style="color:${PH.burn}">■ burn</span>` +
     (opts.ghost ? ` · <span style="color:${ink2}">▢ dashed outline = model plan</span>` : ``) +
@@ -4444,139 +4475,169 @@ const V = { sim: `<span class="verdict sim" title="Verified against the wowsims 
 function renderAssumptions() {
   const a = el("assump"); a.hidden = false;
   a.innerHTML = `<h3 id="assumptions">Model assumptions</h3>
-  <p class="lede">The planner is a maximizer, and it can only be as good as what it models. Here is
-  exactly what it assumes, what it deliberately leaves out, and which parts are certified against the
+  <p class="lede">What the planner assumes, what it leaves out on purpose, and how far to trust it.
+  Everything here is checked against the engine that actually computes your plan; the
+  <span class="verdict sim">sim-verified</span> tag means it was also confirmed against the
   <a href="https://wowsims.github.io/tbc/" target="_blank" rel="noopener">wowsims</a> simulator.
-  Nothing below is tuned per fight — the same rules run on every setup.</p>
+  Nothing is tuned per fight — the same rules run on every setup.
+  <label class="techtoggle"><input type="checkbox" id="ck-tech"> Show the numbers behind each claim</label></p>
   <div class="agrid">
+
+  <section>
+    <h4>How good is the plan, really?</h4>
+    <ul>
+      <li><b>It is a very good plan, not a proven-optimal one.</b> The planner searches from many starting
+      layouts and then polishes, which is not the same as checking every possible schedule — that space is
+      far too large. In practice it beats firing everything on cooldown by a few percent, and 25 reference
+      fights are locked so a change can never silently move a plan.<span class="deep"> In a holdout test
+      against the sim, a plan built for a <i>neighbouring</i> gear level occasionally sims a hair better
+      than the one built for your exact gear — median 0.035%, worst case 0.38%. We treat that as an open
+      bug rather than rounding.</span></li>
+      <li><b>Same inputs, same plan, every time.</b> There is no randomness in the search, and the
+      copy-as-text plan carries the setup that produced it — so a plan you paste in Discord can be
+      reproduced exactly.</li>
+      <li><b>Three cooldowns are less tested than the rest</b> — Ashtongue Talisman, Drums and Power
+      Infusion, marked <span class="beta">Beta</span> in the setup. Their game mechanics are verified;
+      where the planner chooses to <i>place</i> them has not been checked end-to-end against the sim.</li>
+    </ul>
+  </section>
 
   <section>
     <h4>The rotation it assumes you cast</h4>
     <ul>
-      <li><b>Continuous Arcane Blast spam.</b> Cast time = (2.5 − 1/3 × stacks) ÷ total haste; the next cast
-      starts at max(cast time, hasted GCD), and the <b>GCD never goes below 1.0s</b>. That floor is the single
-      most load-bearing rule in the tool. ${V.sim}</li>
-      <li><b>The AB stack ramp is simulated exactly, not assumed away.</b> You open <b>cold</b> — the first
-      Arcane Blast is at 0 stacks (2.5s base, before haste), then 2.17s, 1.83s, and 1.5s from the 3rd on — and you re-ramp after
-      any gap in Arcane Blasts of 8s or more (an intermission, or an AoE phase, since Arcane Explosion neither
-      builds nor refreshes the debuff). Ramp casts are scored one by one at their real lengths. This matters:
-      a damage cooldown parked over slow ramp casts hits fewer of them, so the planner steps damage windows
-      off the ramp on its own. ${V.sim}</li>
-      <li><b>No prepull.</b> The model never assumes stacks or a cast started before the pull, because a
-      prepull's fixed head start is haste-blind and would corrupt every gear comparison.</li>
-      <li><b>Real play conserves mana</b> (AB ×3 + Frostbolt filler between windows). That changes your
-      absolute DPS, not <i>which</i> overlay wins — the cooldown schedule stands either way. ${V.sim}</li>
+      <li><b>Arcane Blast, back to back, all fight.</b> The one rule everything else hangs off: the global
+      cooldown never drops below <b>1.0s</b>, so a 3-stack Arcane Blast stops getting faster at +50% haste.
+      <span class="deep">Cast time = (2.5 − ⅓ × stacks) ÷ total haste, and the next cast starts at
+      max(cast time, hasted GCD).</span> ${V.sim}</li>
+      <li><b>You open cold, and the stack ramp is simulated properly.</b> Your first Arcane Blast is a slow
+      0-stack cast and you build to 3, and you ramp again after any gap of 8s or more (an intermission, or
+      an AoE phase — Arcane Explosion doesn't build the debuff). That is why the planner tends to hold the
+      damage cooldowns a few seconds off the pull: a damage window laid over slow ramp casts catches fewer
+      of them.<span class="deep"> Base cast times through the ramp are 2.5 / 2.17 / 1.83 / 1.5s, each scored
+      at its real length rather than averaged.</span> ${V.sim}</li>
+      <li><b>Nothing is cast before the pull.</b> Prepulling would give a fixed head start that doesn't
+      scale with haste, which would quietly corrupt every gear comparison.</li>
+      <li><b>You conserve between windows in real play</b> (Arcane Blast ×3 + Frostbolt filler). That
+      changes your absolute DPS but not <i>which</i> cooldown layout wins, so the schedule stands either
+      way. ${V.sim}</li>
     </ul>
   </section>
 
   <section>
     <h4>The one number it maximizes</h4>
     <ul>
-      <li><b>Effective Arcane Blasts cast.</b> Each cast is scored by what it is worth relative to a plain,
-      unbuffed AB: 1.0 normally, <b>×1.3 under Arcane Power</b>, ×(720 + 0.714·(SP+bonus)) / (720 + 0.714·SP)
-      under a spellpower use, and ×N inside a Burn phase. Summed over the fight, that is the whole objective —
-      every rule the planner follows (Lust alignment, haste sequencing, spellpower on fast casts) is a
-      <i>consequence</i> of maximizing it, not a hand-written rule. ${V.sim}</li>
-      <li><b>A spellpower use is worth less than its tooltip suggests.</b> The bonus flows through Arcane
-      Blast's 0.714 spell coefficient, so +225 spell damage is about <b>×1.10</b> per cast at 1150 SP — not ×1.20.</li>
-      <li><b>Crit cancels out.</b> It multiplies every cast equally, so it changes your DPS but never which
-      schedule wins. Crits are counted at 182% (2/2 Spell Power + a Chaotic Skyfire Diamond) — a constant, which
-      is why there is no meta-gem toggle. <b>One exception:</b> in AoE, Clearcasting → Arcane Potency procs more
-      often the more targets you hit (Arcane Concentration rolls per hit), so crit gives a real target-scaled
-      bonus there, credited from your crit input. ${V.sim}</li>
-      <li><b>Haste past the floor is worth zero</b>, and the planner knows it — but overcapping is not treated
-      as a mistake. It simulates actual casts, so it will happily overcap a window (usually under Arcane Power,
-      where the damage is) when that beats staying under the line. The dashed cap line marks where extra haste
-      stops buying casts, nothing more.</li>
+      <li><b>Effective Arcane Blasts cast</b> — your fight measured in plain, unbuffed Arcane Blasts. A cast
+      under Arcane Power counts 1.3, a cast under a spellpower trinket somewhat more, a cast in a Burn phase
+      ×N. Haste raises how <i>many</i> casts you get; damage and spellpower raise what each one is
+      <i>worth</i>. Every behaviour you see — packing the burst into Lust, spacing haste buffs, putting
+      spellpower on the fastest casts — falls out of maximizing that one number. ${V.sim}</li>
+      <li><b>A spellpower trinket is worth less than its tooltip suggests.</b> The bonus is scaled by Arcane
+      Blast's spell coefficient, so +225 spell damage is about <b>+10%</b> per cast at 1150 SP — not +20%.
+      <span class="deep"> Exactly: (720 + 0.714 × (SP + bonus)) ÷ (720 + 0.714 × SP).</span></li>
+      <li><b>Crit doesn't decide anything — with two exceptions.</b> It multiplies every cast equally, so it
+      raises your damage without changing which schedule wins. It matters only through Ashtongue proc uptime
+      and in AoE, where Clearcasting → Arcane Potency fires more often the more targets you hit.
+      <span class="deep"> Crits are counted at 182% (2/2 Spell Power plus a Chaotic Skyfire Diamond); since
+      that is a constant, there is deliberately no meta-gem toggle.</span> ${V.sim}</li>
+      <li><b>Going over the haste cap is allowed, not punished.</b> The planner counts real casts, so it will
+      overcap a window — usually under Arcane Power, where your casts are worth the most — whenever that
+      beats staying under the line. The cap line on the chart marks where haste stops buying casts; it is
+      not a rule to obey.</li>
     </ul>
   </section>
 
   <section>
-    <h4>How haste is added up</h4>
+    <h4>How haste adds up</h4>
     <ul>
-      <li><b>Rating first, then multipliers.</b> All haste <i>rating</i> — gear, Drums, Skull, Mind Quickening
-      Gem — adds into one pool (${GAME.HASTE_RATING_PER_PCT} rating = 1% at level 70). Percentage buffs then
-      <b>multiply</b> on top: (1 + rating%) × 1.30<small>Lust</small> × 1.20<small>IV</small> ×
-      1.10<small>Zerk</small>. They do not add. ${V.sim}</li>
-      <li><b>Bloodlust suppresses Power Infusion</b> (both are the same exclusive category, and Lust's 1.30
-      wins) — PI inside Lust is worth <i>nothing</i>, so the planner always dodges it out. <b>Icy Veins is
-      different</b>: it is a direct multiplier and does stack with Lust. Verified in the wowsims source. ${V.sim}</li>
-      <li><b>Berserking is modeled at its base +10%.</b> Its real value scales up as your health drops; the
-      model never assumes you are taking damage.</li>
+      <li><b>Rating first, percentages after.</b> All haste <i>rating</i> — gear, Drums, Skull, Mind
+      Quickening Gem — goes into one pool, and percentage buffs then multiply on top of it:
+      (1 + rating%) × 1.30<small>Lust</small> × 1.20<small>IV</small> × 1.10<small>Zerk</small>. They
+      multiply, they don't add.<span class="deep"> ${GAME.HASTE_RATING_PER_PCT} rating = 1% at level 70.</span> ${V.sim}</li>
+      <li><b>Power Infusion does nothing during Bloodlust.</b> Lust wins while both are up, so the planner
+      always moves PI out of it. Icy Veins is different and does stack with Lust.<span class="deep"> Both
+      Lust and PI register in the same exclusive category in the wowsims source, where only the strongest
+      effect applies; Icy Veins uses a direct multiplier instead.</span> ${V.sim}</li>
+      <li><b>Berserking counts as +10%.</b> It scales higher as your health drops, and the model never
+      assumes you are taking damage.</li>
     </ul>
   </section>
 
   <section>
     <h4>Cooldown-specific rules</h4>
     <ul>
-      <li><b>Ashtongue Talisman is passive — counted, never scheduled.</b> You cannot pool a proc, so it gets no
-      press: 145 haste for 5s at ~50% per spell crit, tracked <i>per cast</i> from your actual casts in the last
-      5s (procs cluster inside fast windows), with the GCD floor applied separately to the proc-up and proc-down
-      cases before averaging. It shows as its own uptime lane plus the "cap if Ashtongue" reference line — the
-      haste curve itself stays deterministic, since a random proc is not something you can plan around. ${V.beta}</li>
-      <li><b>Skull of Gul'dan, Mind Quickening Gem and Icon of the Silver Crescent share the on-use trinket
-      lockout:</b> using one locks the others for that buff's duration, which forces a sequence on any burst.
-      The planner honours it everywhere, including when you pin or hand-edit. ${V.sim}</li>
-      <li><b>Serpent-Coil Braid</b> assumes a Mana Emerald conjured pre-combat: at most <b>3 gem windows</b> per
-      fight, 2 minutes apart. Re-conjuring mid-fight is not modeled (it costs more mana than it returns).</li>
-      <li><b>Anniversary raid rules apply:</b> Drums obey Tinnitus (one drum buff per 2 min) and Bloodlust obeys
-      Sated (raid-wide, one per 10 min of a pull, reset on kill). Drums are +80 haste <i>rating</i>, so they add
-      into the rating pool and stack with everything. ${V.beta}</li>
-      <li><b>Cold Snap</b> (8 min cooldown) is spent on Icy Veins whenever it buys real value — including a
-      <i>clipped</i> final Icy Veins before the kill, or a pure re-sequencing that lets the opener lay its haste
-      buffs out sequentially instead of stacking them over the floor. A reset that only <i>adds</i> a mid-fight
-      window must clear a full cast to be worth it. ${V.sim}</li>
+      <li><b>Ashtongue Talisman is never given a press</b> — you can't pool a proc. Its haste is counted into
+      every window instead, and the chart shows it as its own lane plus a second cap line rather than
+      averaging a random proc into your haste curve.<span class="deep"> 145 haste for 5s, ~50% per spell
+      crit, tracked per cast from your real casts over the previous 5s so procs cluster where you cast
+      fastest; the GCD floor is applied separately to the proc-up and proc-down cases before averaging.</span> ${V.beta}</li>
+      <li><b>Skull of Gul'dan, Mind Quickening Gem and Icon of the Silver Crescent lock each other out.</b>
+      Using one blocks the others for that buff's duration, so a burst has to sequence them — and the
+      order the lockout forces turns out to be the one you want anyway: <b>spellpower first, haste
+      second</b>.<span class="deep"> The spellpower trinket takes the first half of the burst, which is
+      usually already at the haste floor (where more haste would be wasted but spellpower still scales
+      with your cast rate), and the haste trinket takes the second half, where its rating still buys
+      casts. As gear haste grows the haste trinket slides out of Lust entirely, exactly as Icy Veins
+      does.</span> The planner respects the lockout everywhere, including when you pin or hand-edit. ${V.sim}</li>
+      <li><b>Serpent-Coil Braid assumes a Mana Emerald conjured before the pull</b> — at most 3 gem windows
+      per fight, 2 minutes apart. Re-conjuring mid-fight isn't modelled.</li>
+      <li><b>Anniversary raid rules apply:</b> one Drums buff per 2 minutes (Tinnitus) and one Bloodlust per
+      10 minutes of a pull (Sated, raid-wide, resets on a kill). Drums are haste <i>rating</i>, so they stack
+      with everything. ${V.beta}</li>
+      <li><b>Cold Snap is spent whenever it buys anything real</b> — including an Icy Veins that only gets
+      half its duration before the boss dies, since a ready cooldown near the kill is free damage. It is held
+      only when the extra window wouldn't clear a full cast. ${V.sim}</li>
     </ul>
   </section>
 
   <section>
     <h4>When a press actually happens</h4>
     <ul>
-      <li><b>On-use cooldowns are off the GCD and cost you no cast.</b> They are macro'd into the spam
-      ("/cast Berserking /cast Arcane Blast"), so they fire <i>between</i> casts and the next Arcane Blast starts
-      already buffed. A press can still be net-negative — but only through bad alignment or a cooldown that then
-      lands badly later, never through a lost cast.</li>
-      <li><b>Buffs snapshot at cast start, and a press only lands on a cast boundary.</b> A planned time in the
-      middle of a cast fires when that cast ends, and its cooldown then runs from that real moment. The plan
-      therefore prints <b>fire times</b> — the second the buff is actually up — so pressing at the printed second
-      is correct. ${V.sim}</li>
-      <li><b>Pinned times are hard anchors.</b> A buff with times entered fires exactly there (validated against
-      its own cooldown, Sated/Tinnitus, Cold Snap and the trinket lockout) and everything unpinned is scheduled
-      around it. Blank means the planner owns that cooldown.</li>
-      <li><b>The kill time is planned as known</b>, smoothed by half a cast at the buzzer, and a cooldown that
-      comes back up before the boss dies is always pressed — a clipped final window is free damage. If the boss
-      dies early, that is your live call: press the rest sooner.</li>
-      <li><b>Ties break toward the line you can actually execute:</b> a window that finishes before the kill,
-      then a press anchored to something visible (the pull, a raid call, another press, a buff ending), then one
-      that avoids floor-dead seconds, then one that joins an existing press row, then the one that overlaps the
-      most other buffs — stacked windows survive a fight drifting a few seconds off plan; perfectly tiled ones
-      do not.</li>
+      <li><b>Pressing a cooldown never costs you a cast.</b> They are all off the global cooldown, macro'd
+      into your spam ("/cast Berserking /cast Arcane Blast"), so they fire between casts. A press can still
+      be a mistake — but only by landing in the wrong place, or by putting the <i>next</i> use somewhere
+      worse, never by losing a cast.</li>
+      <li><b>The times in the plan are when the buff is actually up.</b> A press lands on a cast boundary, so
+      if you hit the macro mid-cast it takes effect as that cast ends — the plan already accounts for this
+      and prints the real moment. Press at the second shown. ${V.sim}</li>
+      <li><b>Anything you pin is fixed.</b> Times you enter for Bloodlust, Drums or Power Infusion are used
+      exactly as given, and everything else is planned around them. Leave a field blank and the planner owns
+      that cooldown.</li>
+      <li><b>It plans for the kill time you entered</b>, and always presses a cooldown that comes back up
+      before then — a half-length final window is still free damage. If the boss dies early, that's your
+      live call: press the rest sooner.</li>
+      <li><b>Close calls break toward the plan you can actually execute</b> — a press you can anchor to
+      something visible (the pull, a raid call, another press) and a burst kept stacked together, because
+      stacked windows survive a fight drifting off last week's timing.<span class="deep"> Full order: finish
+      before the kill, then anchor to a visible event, then avoid seconds where haste is wasted at the floor,
+      then join an existing press row, then overlap the most other buffs.</span></li>
     </ul>
   </section>
 
   <section>
-    <h4>Complicated fights</h4>
+    <h4>Fights with phases</h4>
     <ul>
-      <li><b>Intermission</b> = boss untargetable: zero damage, but cooldowns and buff durations keep ticking, so
-      the planner holds cooldowns to recover through the downtime. <b>Burn</b> multiplies Arcane Blast damage.
-      <b>AoE</b> switches you to Arcane Explosion spam — instant, GCD-bound (so haste only pays down to the 1.0s
-      floor) and scaling with target count. Phases apply per cast start, and later rows win on overlap. ${V.sim}</li>
+      <li><b>Intermission</b> — you deal no damage, but cooldowns and buff durations keep running, so the
+      planner will hold a cooldown to bring it back after the downtime. <b>Burn</b> — the boss takes extra
+      damage, so casts there are worth more. <b>AoE</b> — you switch to Arcane Explosion: instant, capped by
+      the 1.0s global cooldown, and scaling with target count. Phases apply per cast, and a later row wins
+      where two overlap. ${V.sim}</li>
     </ul>
   </section>
 
   <section>
-    <h4>What it deliberately does not model</h4>
+    <h4>What it deliberately doesn't model</h4>
     <ul>
-      <li><b>Mana.</b> The planner assumes you can afford to chain-cast the windows it picks; gems, potions and
-      Evocation are yours to manage. Each window prints the mana it takes to spam so you can check. Treat a late
-      Arcane Power (+30% cost) or a gem placement with care on a mana-tight fight. ${V.out}</li>
-      <li><b>Gear procs other than Ashtongue</b> — on-crit spellpower procs such as Tirisfal 4pc are left out
-      rather than guessed at. ${V.out}</li>
-      <li><b>Damage you take, movement, and mistakes.</b> The plan is the ceiling a clean execution reaches. ${V.out}</li>
+      <li><b>Mana.</b> It assumes you can afford to chain-cast the windows it picks — gems, potions and
+      Evocation are yours to manage. Each window prints the mana it takes to spam, so you can check the
+      expensive ones. Be careful with a late Arcane Power (+30% cost) on a tight fight. ${V.out}</li>
+      <li><b>Gear procs other than Ashtongue</b>, such as on-crit spellpower set bonuses — left out rather
+      than guessed at. ${V.out}</li>
+      <li><b>Damage taken, movement and mistakes.</b> The plan is the ceiling that clean execution reaches. ${V.out}</li>
     </ul>
   </section>
 
   </div>`;
+  el("ck-tech").addEventListener("change", e => a.classList.toggle("tech", e.target.checked));
 }
 
 /* ═══════════════ press icons + press rows ═══════════════ */

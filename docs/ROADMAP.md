@@ -20,6 +20,18 @@
   optimizer for Arcane mages"; phase-editor dropdown no longer overlays its label and its trailing
   number field states its unit (`× damage`, `targets`). Record: DIARY 07-26 + its ledger row;
   ARCHITECTURE `renderSchedule`/`renderAssumptions`.
+- 📝 **COPY AUDIT of everything the user reads (07-26, user-directed; engine untouched, exact-match
+  25/25).** `index.html` + `README.md` verified claim-by-claim against the engine. **README carried the
+  same disproven ramp claim in three places**, two deleted features (press price tags, clipped-press
+  value tags), a superseded press-timing description, and **IV-crossover numbers that do not reproduce**
+  ("~100 rating" ×3 and "~150–200" ×1; re-measured: **~15** for IV+Icon, ~80 with AP in the cluster,
+  never-in-Lust with a full opener kit — RULES §5 had this right all along). Page side: plain-language
+  rewrite with tooltips on the result tiles and the timeline legend, "Debugging presets" → "Reference
+  fights" collapsed behind a `<details>`, and a **"Show the numbers behind each claim"** toggle that
+  hides the technically-true-but-irrelevant mechanism by default. **Two missing statements added**: the
+  search is multi-start local + polish (**a very good plan, not a proven-optimal one**, with
+  ACCEPTANCE's residual behind the fold) and the output is deterministic/reproducible. DIARY 07-26 +
+  its second ledger row.
 
 - ✗ **THE BOUNDARY CHARGE MUST NOT BE IMPLEMENTED (PHASE8 §22; 07-26).** The Phase-8 finale was
   "implement the per-window continuous-vs-discrete charge". It is **falsified on sign**: re-priced
