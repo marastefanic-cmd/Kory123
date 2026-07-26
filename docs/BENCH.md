@@ -175,6 +175,35 @@ Both binaries are built from the same `wowsims/tbc-new` @ `ade9f39` tree (+ our 
 runner). ⚠ Re-run this whenever the tree, the patches, or the export change — it is the check that
 would catch a stale binary, the failure that once cost this project a day of gates.
 
+## 4c. Gear-B model parameters — SP is UNCHANGED; crit/haste still owed (07-26)
+
+`reference-gear.mjs` holds gear A's `{sp: 1450, critPct: 38, t5two: true}`. Re-derived on gear B by
+the PHASE8 §7 method (`SIMLOG=1` combat log, read the `SP:` field per AB cast):
+
+| | gear A (recorded) | **gear B (measured)** |
+|---|---|---|
+| base SP (4pc down) | 1386.2 | **1386.2 — identical** |
+| 4pc up | 1456.2 (+70) | 1456.2 (+70) |
+| 4pc uptime | 88–94 % | **82.1 %** (n = 95, **±3.9 % 1 SE**) |
+| effective SP | ≈1450 | **≈1444 ± 3** |
+
+★ **The gem/wand change was SP-NEUTRAL** — base SP is bit-identical across the two exports, so it
+moved crit/haste/hit instead. Effective SP differs by ≈0.4 %, which is **inside the uptime
+uncertainty**, so `sp: 1450` is not yet demonstrably wrong; do not change it on this evidence alone.
+
+⚠ **Two caveats on the uptime number, both structural:**
+1. **wowsims logs only the FIRST iteration** — `--iter 30` still yields one fight's worth (95 casts).
+   The `±3.9 %` cannot be reduced by asking for more iterations; it needs repeated single-iteration
+   runs at different seeds, aggregated.
+2. Measured under `--mana 1e6`. Mana does not touch the proc, but the *cast count* differs from a
+   mana-bound fight, and uptime is per-cast — so quote it only for the infinite-mana bench.
+
+**Still owed before the first gear-B round:** `critPct` and the haste rating. Neither appears in the
+combat log the way SP does, so they need either a finite-difference probe (`--crit`/`--haste` inject
+known deltas; solve for the base) or an item-DB sum. **Until then `reference-gear.mjs` is gear-A
+data and every gear-B model-vs-sim number inherits that error** — which is exactly the class of
+harness-input defect PHASE8 §6/§7 spent a round finding. Fix it *before* gathering, never mid-round.
+
 ## 5. Standing requirement
 
 **A fresh container must be able to produce a number from the repo alone.** That now holds:
