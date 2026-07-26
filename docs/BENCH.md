@@ -227,6 +227,40 @@ go build -tags with_db -o wowsimcli    ./cmd/wowsimcli
 ⚠ Re-run this anchor **before any gating session**, and **again whenever the export is re-taken** —
 it is the cheapest possible check that the rig is the one the numbers were gathered on.
 
+## 3e. ⚠ FIRST GEAR-B OBSERVATION — the B2 sim preference has moved ~0.39 pp. Do NOT carry gear-A targets over.
+
+The two B2 layouts (PHASE8 §2/§13.8) re-simmed **unchanged** on gear B, bench conditions
+(`--dur 229 --var 0 --iter 20000 --mana 500000`, seeds separated per §3c.3):
+
+| seed | h40 | h70 | sim %(h40−h70) |
+|---|---|---|---|
+| 1 | 2499.5 | 2500.3 | **−0.032 %** |
+| 500 000 | 2499.0 | 2499.9 | **−0.036 %** |
+| 1 000 000 | 2499.8 | 2500.2 | **−0.016 %** |
+
+**Gear A read `+0.360 %` at this cell** (§2's headline). Gear B reads **≈ −0.028 %** — the sim's
+preference between the *same two layouts* has swung by **~0.39 pp and changed sign.**
+
+⚠ **This is an OBSERVATION, not a resolution of B2, and it must not be read as one.** Three
+candidate causes are confounded here and this run separates none of them:
+1. **Gear** — different SP/haste moves the optimum; these two layouts were optimal *for gear A*, so
+   on gear B neither need be optimal and their gap is not the same quantity.
+2. **Bench conditions** — this run is `--mana 500000`, `--var 0`; the gear-A `+0.360 %` was gathered
+   under the campaign's own settings. Some of the swing may be conditions, not gear.
+3. **Which cell "B2" even names** — B2 was defined as a *model-vs-sim* discrepancy; only the **sim**
+   half is measured here. The model half on gear B is **not yet computed** (it needs gear B's
+   effective SP/crit/haste, which have not been derived).
+
+**What it does establish, and it is enough to act on:** the gear-A B2 target of **≈0.445 pp
+(§13.8) cannot be carried to gear B**, and neither can the U-shaped length profile (§23) or the
+persistence columns. All of them are gear-A facts. **PHASE8 §26.2's successor question must be
+re-posed on gear B before it is worked**, not inherited.
+
+**Named next steps, in order:** (a) derive gear B's effective SP/crit/haste and compute the model's
+`%(h40−h70)` so the model-vs-sim gap is a like-for-like number again; (b) decide whether the
+campaign runs at `--mana 500000/--var 0` (bench) or the old settings, and state it once; (c) only
+then re-pose the successor question.
+
 ## 4. What this does NOT fix
 
 - Hit rating / miss floor: there is a hard **1 % miss floor** no hit rating clears (DIARY 07-24), so
