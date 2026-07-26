@@ -526,3 +526,34 @@ by that signature and then manufactured a third from a bad control — which is 
 dropped — it fires when the cooldown elapses (the `IV@0,30` gain at `T=300`). Harmless for the
 corpus, because `planToSpec` pairs every too-early Icy Veins with its Cold Snap press by
 construction, so the sim never has to decide. Worth knowing before anyone hand-writes a spec.
+
+## 8.14 ✅ BENCH §4c's owed crit measurement, discharged — `critPct: 38` CONFIRMED on a 6× tighter band
+
+§4c derived gear B's model parameters and left one explicitly owed: *"Tighten the crit band before
+relying on that, and treat it as an assumption until then."* Its estimate was **38.1 % ± 5.3 %** from
+a single logged iteration (n = 84), and it named the method the limit requires — wowsims logs only
+the **first** iteration, so more iterations buy nothing; it needs repeated **single-iteration** runs
+at widely separated seeds.
+
+Done with the rig from §8.8: 20 runs, seeds spaced 5×10⁵ (BENCH §3c.3), counting only Arcane Blast
+damage lines. **Observed AB crit = 41.88 % ± 0.85 %** (n = 3362, 95 % CI 40.21–43.55).
+
+★ **That confirms 38 rather than contradicting it**, because the two are different quantities:
+`cfg.critPct` is **base** spell crit (`aoeCritAmp` adds Potency on top as `crit + qCC(n)·potencyCrit`),
+while the log measures the **Potency-inclusive** rate. Predicted observed = `38 + 0.10 × 30 = 41.0 %`
+against a measured `41.88 ± 0.85` — **1.0 SE**. The `+30 %` is confirmed twice over: the debug log
+shows `SpellCritPercent: 30.000` on `{SpellID: 12536}`, and wowsims' `sim/mage/talents.go:120` reads
+`float64(mage.Talents.ArcanePotency) * 10`, matching `index.html`'s `TALENTS.arcanePotency: 3`.
+
+⚠ **I got this wrong first and it is worth recording**, because it is §4c's own withdrawn 56.4 % in
+mirror image. My first pass compared 41.88 % straight against `critPct: 38` and printed
+*"INCONSISTENT at 95 %"* — an alarm produced by comparing a Potency-**inclusive** measurement to a
+Potency-**exclusive** parameter, where §4c's original error was sweeping lines that were not Arcane
+Blast at all. **Before calling a measurement inconsistent with a constant, check that the constant
+means what the measurement measured.** Third instance this session of an instrument aimed slightly
+wrong producing a confident verdict (§8.10's `grep -c $'\0'`, §8.13's Cold Snap control, this).
+
+**Consequence for the round in flight: none, and that is now checked rather than assumed.** Had the
+crit really moved, only the AoE tables would have been at risk — on single target `critPct` is a
+uniform factor that appears in both `robust` and `plain`, so `eff` and every ranking are invariant to
+it. `reference-gear.mjs` is unchanged, which also means the plan cache stays valid.

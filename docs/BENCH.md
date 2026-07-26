@@ -389,6 +389,47 @@ spells, threat text — not Arcane Blast outcomes. Filtering to actual AB damage
 band is wide (±5.3 % at 1 SE cannot separate 38 from 34 or 42), so this is *"no evidence of change"*,
 **not** *"proven identical"* — the same one-iteration logging limit as the SP uptime above.
 
+#### ✅ THE BAND IS NOW TIGHTENED ~6× — and it CONFIRMS `critPct: 38` (07-26, PHASE10 §8.14)
+
+The caveat above asked for exactly this and named the method: wowsims logs only the **first**
+iteration, so more iterations cannot help — it needs **repeated single-iteration runs at widely
+separated seeds**, aggregated. Done, 20 runs at seeds spaced 5×10⁵ apart (BENCH §3c.3), counting only
+Arcane Blast damage lines (`{SpellID: 30451} … Hit for` / `Crit for`):
+
+| | n | observed AB crit |
+|---|---|---|
+| §4c above (one iteration) | 84 | 38.1 % ± 5.3 % |
+| **this measurement** | **3362** | **41.88 % ± 0.85 %** (95 % CI 40.21–43.55) |
+
+★ **And that CONFIRMS 38, it does not contradict it — because the two numbers are different
+quantities.** `cfg.critPct` is the character's **base** spell crit: `aoeCritAmp` is written as
+`effCrit(n) = crit + qCC(n)·potencyCrit`, i.e. it *adds* Arcane Potency on top of `crit`. The log
+measures the **observed** AB crit, which already includes Potency. With the model's own constants —
+`arcaneConcentration 5/5` ⇒ `qCC(1) = 0.10`, `arcanePotency 3/3` ⇒ `+30 %` (confirmed against the log,
+which shows `SpellCritPercent: 30.000` gained on `{SpellID: 12536}`, and against
+`sim/mage/talents.go:120` `float64(mage.Talents.ArcanePotency) * 10`) — the prediction is
+
+```
+observed = base + qCC(1)·potencyCrit = 38 + 0.10 × 30 = 41.0 %      vs measured 41.88 ± 0.85  (1.0 SE)
+```
+
+⇒ `reference-gear.mjs`'s `critPct: 38` **stands, now on a band 6× tighter**, and §4c's "treat it as an
+assumption until then" is discharged.
+
+⚠ **The trap this walked into first, recorded because §4c walked into its mirror image.** My first
+read compared the measured **41.88 %** against `critPct: 38` and printed *"INCONSISTENT at 95 %"* —
+which is the same apples-to-oranges error as §4c's withdrawn 56.4 %, in the opposite direction: that
+one swept lines that were not Arcane Blast, this one compared a Potency-inclusive rate to a
+Potency-exclusive parameter. **Before calling a measurement inconsistent with a constant, check that
+the constant means what the measurement measured.**
+
+☞ **One observation banked, and it is NOT a defect.** `simulateRaw`'s single-target
+`critFactor = 1 + crit·(CRIT_MULT−1)` uses the **base** crit, so a single-target Arcane Blast is
+scored ~3 pp of crit light. It cancels exactly: `plain` (the normalizer) is built from the same
+`critPct`, so `eff` is invariant, and a uniform factor on every cast cannot change which plan wins.
+AoE is where it would matter, and there `aoeCritAmp` handles Potency explicitly as a ratio against
+the single-target Potency baseline. Nothing to fix; worth knowing before anyone "corrects" the 38.
+
 ★ **Provisional conclusion: gear B is model-equivalent to gear A.** All three parameters —
 base SP **1386.2 identical**, haste **0 exactly**, crit **38.1 % ± 5.3 %** — are unchanged within
 measurement. The gem/wand swap appears to have moved **hit**, or stats the model does not read.
