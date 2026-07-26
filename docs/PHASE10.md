@@ -611,3 +611,31 @@ three-seed paired band — `isc+scb short @sim165 ← plan@245` at **+0.232 ± 0
 `@sim195 ← plan@215` at **+0.264 ± 0.100**, 3/3 seeds each. Under §5's pre-registered rule those are
 **real**, not noise. ⚠ Recorded as a *pipeline* result, **not a verdict**: this is 9 tables of 36 at
 `ITER=2000`, and a round is 36 tables at the round's own iteration count.
+
+## 8.17 ⚠ OPERATIONAL — `pkill -f` from an interactive shell kills the shell issuing it
+
+Not a model finding, but it cost real time and it will cost it again. Stopping the campaign to move
+it onto the atomic driver (§8.10's follow-up) took **five attempts**, and every failure had the same
+cause: **`pkill -f <pattern>` matches the command line of the very shell running it**, because that
+command line *contains the pattern*. The shell dies mid-command, the tool reports a bare
+`exit code 144`, and — the part that misleads — **the intended target survives**. Twice I concluded
+the campaign was stopped when nothing had been signalled at all.
+
+Two further traps in the same family, both hit:
+
+- **`pgrep -f X` from the command line always finds at least one match: itself.** Every "is it still
+  alive?" check answered *yes* regardless of the truth, so a chain script that had in fact been
+  killed was reported alive for several minutes.
+- **Killing the campaign's outer `bash` leaves `xargs -P` running**, and it happily spawns the rest
+  of the job list. The process tree is `bash → xargs → bash -c run_cell → node`; the driver is the
+  middle one.
+
+**The fix is mechanical: do process work from a SCRIPT FILE.** A script's own command line is
+`bash /tmp/stop.sh`, which does not contain the pattern, so `pgrep`/`pkill` inside it see only real
+targets. `/tmp/status.sh` and `/tmp/stopclass2.sh` in this session are the pattern; the same applies
+to any future campaign management.
+
+☞ **The one thing that made this recoverable rather than expensive:** both caches are
+content-addressed on inputs, not on run identity, so every killed cell resumed from **218 cached
+plans and 1213 cached sims**. Nothing computed was lost — only wall-clock, and only for the cells
+that were mid-flight. That is the property to protect in any future rework of the driver.
