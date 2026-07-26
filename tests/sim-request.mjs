@@ -36,15 +36,6 @@ const CHARACTERS = [
     template: path.join(REPO, 'tools/bench/export-request.json') },
 ];
 const RUNNER = process.env.RUNNER;
-
-if (!RUNNER || !fs.existsSync(RUNNER)) {
-  console.log('SKIPPED — set RUNNER=/path/to/runner to check the page request against the native rig.');
-  console.log('          (build one with: bash sim/build-wasm.sh is wasm-only; see docs/TOOLING.md "Building the runner")');
-  process.exit(0);
-}
-
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'simreq-'));
-const template = JSON.parse(fs.readFileSync(TEMPLATE_PATH, 'utf8'));
 let failures = 0;
 
 // Fields a duel legitimately varies per run, plus request-identity noise the runner stamps.
@@ -107,6 +98,26 @@ const diff = (a, b, p = '', out = []) => {
     console.log('PASS  benchmark protocol invariants (var≠0, cold open, infinite mana, seed spacing, hit cap)');
   }
 }
+
+// ── the RUNNER gate — AFTER §0, deliberately (PHASE11 §1.1 B8) ────────────────────────────────────
+// This used to sit at the top of the file, above §0. But §0 imports only `BENCH` and needs no rig at
+// all, so gating it on RUNNER meant that in every runner-less environment — which is most of them,
+// and all of CI — even the always-runnable assertions never ran, and the file exited 0 having
+// checked nothing. "Skips loudly rather than passing quietly" was true of the message and false of
+// the coverage. §0 now always runs; only §1/§2, which genuinely shell out to the rig, are gated.
+if (!RUNNER || !fs.existsSync(RUNNER)) {
+  if (failures) {
+    console.error(`\n${failures} protocol invariant check(s) FAILED (these need no runner).`);
+    process.exit(1);
+  }
+  console.log('\nSKIPPED §1+§2 — set RUNNER=/path/to/runner to check the page request against the native rig.');
+  console.log('          (sim/build-wasm.sh is wasm-only; see docs/TOOLING.md "Building the runner")');
+  console.log('          §0 above DID run — it needs no rig.');
+  process.exit(0);
+}
+
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'simreq-'));
+const template = JSON.parse(fs.readFileSync(TEMPLATE_PATH, 'utf8'));
 
 // ── 1. template freshness, for every committed character ─────────────────────────────────────────
 for (const ch of CHARACTERS) {

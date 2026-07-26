@@ -16,7 +16,7 @@
 //   file asserts it whenever RUNNER is set.
 import fs from 'fs';
 import path from 'path';
-import { fileURLToPath } from 'url';
+import { fileURLToPath, pathToFileURL } from 'url';
 import { execFileSync } from 'child_process';
 import { build } from '../tools/genapl-core.mjs';
 import { buildRequest, dpsOf } from '../sim/simreq.mjs';
@@ -45,7 +45,12 @@ export function requestFor(spec, opts) {
 }
 
 // ── self-check ────────────────────────────────────────────────────────────────────────────────────
-if (import.meta.url === `file://${process.argv[1]}`) {
+// ⚠ `import.meta.url === \`file://${process.argv[1]}\`` is WRONG and was here (PHASE11 §1.1 B7).
+// `import.meta.url` is percent-encoded, `process.argv[1]` is a raw path — so any repo path containing
+// a space, `#`, or a non-ASCII character makes the comparison silently false, the whole self-check
+// never runs, and the file exits 0 having asserted nothing. A gate whose failure mode is a PASS.
+// `pathToFileURL` does the same encoding to both sides. (tools/genapl.mjs:12 already did this right.)
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const GEAR = { sp: 1150, critPct: 25, hasteRating: 0, T: 300 };
   const ARMS = {
     'IV at the pull': { _prestack: 0, IV: [0], Skull: [0], Gem: [4], AP: [4], BL: [120], Icon: [0] },
