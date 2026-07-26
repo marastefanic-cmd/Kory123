@@ -435,3 +435,34 @@ and the assembled table **diffs byte-identical** against the same cell run direc
 cache directory. So sharding is a pure scheduling change: it buys wall-clock and changes no number.
 The run also confirms the boss path engages what it should — `wj=2` (five wall-jitter variants) and
 `targets=0` for a Vashj table, which carries intermissions but no AoE phase.
+
+## 8.12 ✅ §8.7 HALF-FIXED — the benchmark mage now wears its trinkets and can be Lusted
+
+The half that does **not** need `index.html` landed immediately: `sim/model-ref.json` equips the two
+on-use trinkets (Icon 29370, Serpent-Coil 30720) and sets `raidBuffs.bloodlust`, and
+`model-ref-request.json` was regenerated with the native runner's `--dumpreq` so the pair stays
+matched. Measured on the committed character, one press vs never-press:
+
+| | before | after |
+|---|---|---|
+| **Bloodlust** | **+0.000** | **+165.482** |
+| Icon of the Silver Crescent | +0.000 | +15.033 |
+| Serpent-Coil "Gem" | **−2.982** | +12.543 |
+| Icy Veins / Arcane Power / Berserking | +49.269 / +39.715 / +16.100 | unchanged — they always fired |
+
+And the decisive pairs, which read **exactly 0.000** before: `Icon@6` vs `Icon@80` → **+0.756 %**,
+`Lust@5` vs `Lust@60` → **+1.290 %**.
+
+**Gated, not hoped:** `tests/sim-request.mjs` passes 9/9 with the native runner **including both
+template-freshness checks** — the export and its `--dumpreq` template are still a matched pair, which
+is exactly the check that makes hand-editing a generated artifact safe, and exactly the check §8.7
+had to list as unexecutable before §8.8 rebuilt the rig. `bench.mjs --preset X --char model-ref` — the
+documented invocation the new guard had been correctly refusing — works again and reproduces the
+patched-character numbers to the decimal.
+
+⚠ **What is still owed, and why it waits.** A kit naming **Skull or MQG** is still unverifiable: two
+trinket slots, four on-use trinkets. The page must equip the user's *actual* kit and **report what it
+could not equip**, alongside the Drums/PI/Ashtongue line it already prints. And `index.html`'s "?"
+dialog still says *"no gear, no buffs"*, which this change makes **stale** — a living doc inside the
+product, which DIARY 07-26 already names as the kind that goes stale unnoticed. Both need
+`index.html`, and §8.5 forbids touching it until the round stops gathering.
