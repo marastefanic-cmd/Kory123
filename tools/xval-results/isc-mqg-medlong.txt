@@ -1,1 +1,0 @@
-seed=5523  class=medlong  fight=3:49 (229s)  Lust@2:42  trinkets=isc+mqg  haste=[0,20,40,70,110,140,230,260,305,400]  emit=fire
