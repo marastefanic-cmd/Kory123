@@ -53,3 +53,55 @@ SCHEDULING HONORED — press times change the result (spread 17.73 dps)
   the repo's own `mage.P1FireGear` preset, which is **not** the reference gear. Until the export is
   supplied, any re-certified trust anchor is a NEW baseline and historical corpus numbers are not
   directly comparable to it. **This is data, not code — ask the owner.**
+
+## ✅ THE RUNNER IS PORTED AND WORKING (07-26)
+
+`runner-main.go` in this directory is the rebuilt runner, written against archived tbc. Drop it at
+`cmd/runner/main.go` in the clone and `go build -o runner ./cmd/runner`.
+
+```sh
+echo '{"12042":[0,180],"12472":[0,180]}' > cds.json   # AP + Icy Veins press times
+./runner -cds cds.json -tag base -iter 2000 -dur 229 -seed 1 -mana 500000
+```
+
+**Verified behaviour** (2000 iter, dur 229, seed 1, `P1FireGear` + arcane talents):
+
+| probe | dps | reads |
+|---|---|---|
+| `AP+IV@0,180` | 528.67 | — |
+| `AP+IV@90` | 498.95 | **schedule honored** (−29.7) |
+| +200 SP (finite mana) | 576.79 | +48.1 |
+| infinite mana, base | 1388.64 | — |
+| infinite mana, +200 haste | **1561.98** | **+173.3 (+12.5 %)** |
+| infinite mana, +200 SP | 1514.18 | +125.5 (+9.0 %) |
+
+Note haste is nearly flat (+2.3) at finite mana and strong (+173) at infinite mana — the expected
+mana-limited behaviour, and a useful confirmation that the stat index is genuinely SpellHaste.
+
+### ⚠⚠ THE BUG THIS PORT CAUGHT — the old runner's stat indices were MODERN, not TBC
+
+`wowsims-patches/runner-main.go` hardcodes numeric bonus-stat indices from the *modern* wowsims
+proto. Archived tbc numbers them differently:
+
+| stat | old runner (modern) | **archived tbc** |
+|---|---|---|
+| SpellHaste | 14 | **16** |
+| SpellCrit | 13 | **15** |
+| Mana | 34 | **24** |
+| MP5 | 35 | **13** |
+| Spirit | 16 | **4** |
+| Intellect | 3 | 3 |
+| SpellPower | 5 | 5 |
+
+Only Intellect and SpellPower coincide. Every other flag would have injected **the wrong stat, with
+no error** — `-haste 200` would have written SpellCrit-adjacent index 14, `-mana` would have hit
+MP5's neighbourhood. The rebuilt runner uses `proto.Stat_*` **typed constants**, so this class of bug
+cannot recur. *(This says nothing about whether the ORIGINAL fork was wrong — its proto was the
+modern one, so its numbers were right for it. The hazard is reusing those literals here.)*
+
+### Still owed
+- **Re-target `ap-cd-at-cast.patch`** → `sim/mage/talents.go:211` `registerArcanePowerCD()`
+  (`SpellID: 12042`). Until then the sim runs stock AP-cooldown behaviour (the 195 s quirk), which is
+  exactly what that patch exists to correct.
+- **The reference gear export** — still lost, still the blocking unknown for trust-anchor parity.
+  This runner uses `mage.P1FireGear`, which is NOT the reference gear.
