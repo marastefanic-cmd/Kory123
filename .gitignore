@@ -10,3 +10,5 @@ node_modules/
 
 # Transient per-cell stderr from the cross-val campaign (removed on success)
 tools/xval-results/*.err
+tools/xval-results/*.part
+tools/xval-results/*.lock

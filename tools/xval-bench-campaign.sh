@@ -157,16 +157,22 @@ run_cell() {
     return 1
   fi
   # shellcheck disable=SC2064
-  trap "rm -f '$out.lock'" RETURN
+  trap "rm -f '$out.lock' '$out.part'" RETURN
+  # ★ ATOMIC PUBLICATION. Write to `.part` and rename only once the table is COMPLETE, so
+  # `tools/xval-results/*.txt` never contains a half-written file. Two things follow, and both were
+  # learned the hard way: a reader (or a `git add`, or a checkpoint commit) can never catch a table
+  # mid-write, and the truncation window that produced the NUL-spliced table of PHASE10 §8.10 does
+  # not exist at all — `rename` replaces, it does not truncate-in-place.
   KIT="$kit" HASTES="$hs" TCLASS="$cls" BOSS="$boss" \
-    node "$REPO/tools/xval-bench.mjs" "$seed" > "$out" 2>"$out.err"
+    node "$REPO/tools/xval-bench.mjs" "$seed" > "$out.part" 2>"$out.err"
   local rc=$? line
-  line=$(grep -E "^XVAL-DONE" "$out" | tail -1)
+  line=$(grep -E "^XVAL-DONE" "$out.part" | tail -1)
   if [ "$rc" -ne 0 ] || [ -z "$line" ]; then
-    echo "XVAL-FAIL $name rc=$rc (see $out, $out.err)"
+    echo "XVAL-FAIL $name rc=$rc (see $out.part, $out.err)"
     tail -3 "$out.err" >&2
     return 1
   fi
+  mv -f "$out.part" "$out"
   rm -f "$out.err"
   echo "$line"
   return 0

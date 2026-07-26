@@ -1,0 +1,1 @@
+seed=5524  class=long  fight=4:41 (281s)  Lust@2:11  trinkets=isc+mqg  haste=[0,20,40,70,110,140,230,260,305,400]  emit=fire
