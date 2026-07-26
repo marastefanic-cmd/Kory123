@@ -17,7 +17,18 @@
   was an invalid inference. Instrument: `tools/p8-boundary-charge.mjs` (sim-free; reproduces §21.5's
   C-BE to 4 dp as a built-in gate, and asserts the value/haste cleanliness split it depends on).
   `index.html` is **untouched** — no golden risk, exact-match still 25/25.
-- ★★★ **THE WOWSIMS RIG IS GONE, AND RESTORING IT IS THE NEXT TASK (PHASE8 §22.6).** Only this
+- ★★★ **THE RIG'S BASE SOURCE IS NOT PUBLICLY RECOVERABLE — PROVEN (TOOLING, 07-26).** The sim is not
+  broken, it is **absent**: it lived in a sibling scratchpad and that container was recycled. `ade9f39`
+  exists in **no** public wowsims repo — full clone of `wowsims/tbc` (no such commit; the two patch
+  targets never existed in ANY commit; HEAD is the legacy pre-APL sim), Go module proxy (`unknown
+  revision` for both tbc and classic), and GitHub's refusal to serve bare SHAs all agree. But
+  `runner-main.go` imports `github.com/wowsims/tbc/...`, so the base declared that module path **while
+  having APL** — which public tbc never did ⇒ **it was a FORK or a local clone, and its origin was
+  never recorded.** Restore via (a) the fork URL+commit — ask the owner; (b) a surviving local copy;
+  or (c) re-base onto `wowsims/classic` (has APL + commits `db.bin`) — real porting work, then
+  re-certify the trust anchor. ★ **Lesson: the project's only independent check on the model was never
+  reproducible from the repo.** Commit the provenance when it is restored.
+- ★★★ **(superseded detail) THE WOWSIMS RIG IS GONE (PHASE8 §22.6).** Only this
   session's scratchpad exists and it has no `runner-ap180`. A rebuild was attempted and failed at
   step one: **`ade9f39` is not in `wowsims/tbc`** (that repo is the legacy pre-APL sim), and GitHub
   **will not serve a bare SHA**, so the commit can't be fetched without identifying the right repo.

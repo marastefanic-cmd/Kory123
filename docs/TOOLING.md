@@ -469,6 +469,41 @@ Lesson 7 above is the instrument for the second axis; lessons 1–4 are the firs
 
 ## Building the runner (do this once per fresh session)
 
+> ⚠⚠⚠ **THE BASE SOURCE IS NOT PUBLICLY RECOVERABLE. PROVEN 07-26 — read this before trying.**
+> The rig is not *broken*, it is **absent**: it lived in a sibling session's scratchpad (see
+> "Where the drivers FIND the runner" below), and that container was recycled. What makes that fatal
+> rather than annoying is that **`ade9f39` does not exist in any public wowsims repo**, established
+> three independent ways:
+>   1. **Full clone of `wowsims/tbc`** (3555 commits, all refs): no `ade9f39`, and
+>      `sim/core/apl_actions_timing.go` + `sim/mage/arcane_power.go` — the two patch targets — have
+>      **never existed in any commit**. Its HEAD (`7a2613fd`, 2026-07-24, *"Remove auto-redirect"*)
+>      is the legacy **pre-APL** sim: hardcoded `sim/mage/rotations.go`, no APL anywhere.
+>   2. **Go module proxy** (`proxy.golang.org`, reachable directly — it is in the agent proxy's
+>      noProxy list): `github.com/wowsims/tbc@ade9f39` and `github.com/wowsims/classic@ade9f39` both
+>      return **`invalid version: unknown revision ade9f39`**.
+>   3. **`git fetch <url> <sha>`** — GitHub refuses bare SHAs (`couldn't find remote ref`).
+>
+> Yet `tools/wowsims-patches/runner-main.go` imports `github.com/wowsims/tbc/sim/core/proto`, so the
+> base module *declared itself* `github.com/wowsims/tbc` **while containing APL** — which public
+> `wowsims/tbc` never did. ⇒ **The rig was built from a FORK or a local clone carrying local
+> commits, and nothing in this repo records where it came from.**
+>
+> **To restore it, one of:** (a) the fork's clone URL + commit — the cheap path, ask the owner;
+> (b) a surviving local copy of the old `wowsims` tree; (c) **re-base onto a modern repo**
+> (`wowsims/classic` has the APL core, `cmd/wowsimcli`, and — unlike `ade9f39` — now *commits*
+> `assets/database/db.bin`, so the DB-generation blocker below has expired). (c) is real work, not a
+> checkout: the module path changes, `runner-main.go`'s imports change with it, both patches need
+> re-targeting (`sim/mage/arcane_power.go` is absent at every candidate's HEAD), and the trust
+> anchor must be re-certified (~0.4 % vs `wowsimcli`) before any gate reads its output.
+>
+> ★★ **THE LESSON — the most important instrument in the project was never reproducible from the
+> repo.** We committed the *patches* and our *custom runner* but never the base source, its origin,
+> or even its URL, and the built binary lived in ephemeral scratch outside version control. A single
+> container recycle therefore cost the project its only independent check on the model. **Whoever
+> restores it: commit the provenance (URL + commit + `go.mod` module path) into this file in the
+> same change, and treat "can a fresh container rebuild the runner from the repo alone?" as a
+> standing requirement, not a nicety.**
+
 > ⚠⚠ **THIS RECIPE IS KNOWN-STALE AS OF 07-26 AND HAS NOT BEEN RE-VALIDATED — see PHASE8 §22.6.**
 > A rebuild attempt from scratch failed at step one: **`ade9f39` is not in `wowsims/tbc`**, which is
 > the legacy pre-APL sim (3555 commits, no `sim/core/apl_actions_timing.go`, no `sim/mage/`) — so
