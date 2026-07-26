@@ -347,3 +347,73 @@ Three things follow, and the third is the one to carry forward.
 freshness check, so the fix (equip the kit's trinkets, enable Bloodlust) can edit the export and
 regenerate the template properly, then re-run `tests/sim-request.mjs` to prove the pair still agrees —
 which §8.7 listed as owed and unexecutable.
+
+## 8.9 ★★ THE NEW DRIVER IS PROVEN EQUIVALENT TO THE OLD ONE — plans byte-identical, matrix cell-for-cell
+
+§8.3 built `xval-bench.mjs` and argued it was `xval.mjs`'s protocol on `bench.mjs`'s engine. Once the
+native rig existed (§8.8) that stopped being an argument and became a measurement: **run the legacy
+`tools/xval.mjs` on the same cell and compare.** Same seed, same kit, same haste set, same ITER:
+
+```
+KIT=isc,scb TCLASS=short HASTES=0,65,195 ITER=500 node tools/xval.mjs      5521   # chromium + native runner
+KIT=isc,scb TCLASS=short HASTES=0,65,195 ITER=500 node tools/xval-bench.mjs 5521   # bare node + committed wasm
+```
+
+**The plans are byte-identical** — same fight draw (`T=108 Lust@42`), same `eff` to three decimals,
+same specs including key order:
+
+```
+plan@h0:   eff=91.831   {"_prestack":0,"BL":[42],"AP":[54],"Zerk":[43],"Icon":[54],"Gem":[54],"IV":[0,54],"CS":[54]}
+plan@h65:  eff=95.087   {"_prestack":0,"BL":[42],"AP":[42],"Zerk":[43],"Icon":[42],"Gem":[42],"IV":[0,20],"CS":[20]}
+plan@h195: eff=102.187  {"_prestack":0,"BL":[42],"AP":[42],"Zerk":[1], "Icon":[42],"Gem":[42],"IV":[0,20],"CS":[20]}
+```
+
+**And the DPS matrix agrees in every cell, to the printed decimal:**
+
+```
+plan\sim        0      65     195          plan\sim        0      65     195
+0          2781.4  2857.2  3008.4          0          2781.4  2857.2  3008.4
+65         2758.9  2881.0  3072.0    ==    65         2758.9  2881.0  3072.0
+195        2745.0  2867.7  3089.8          195        2745.0  2867.7  3089.8
+   xval.mjs (native runner)                   xval-bench.mjs (committed wasm)
+```
+
+Both `monoDip=0.00% diag=CLEAN`. This certifies more than the port: the model runs in **chromium** on
+one side and **bare node** on the other, so the two JS hosts agree on the optimizer to three decimals
+of `eff`; and the sim is `RunRaidSimConcurrent` (4 goroutines) on one side and single-threaded
+`RunRaidSim` on the other. ⇒ **A gear-B table can be read as continuous in METHOD with the archived
+gear-A corpus** — same protocol, same transcription, same search — while remaining, per BENCH §1,
+strictly incomparable in NUMBER.
+
+## 8.10 ⚠ AN INCIDENT, AND THE GUARD IT BOUGHT — a corrupted table that still parsed
+
+**My error.** While testing `SKIP_EXISTING` I pointed `XVDIR` at the **live** results directory.
+`run_cell` opens its output with `>`, which **truncates** — so a file the running campaign still had
+open at a high offset was cut out from under it and the kernel filled the gap with NUL bytes.
+
+**The damage took the worst possible shape: the corrupted table STILL PARSED.**
+`mqg-skull-medlong.txt` kept its header, all ten `plan@h` lines, a full 10-row matrix and a valid
+`XVAL-DONE`. Every structural check passed. Only a byte-level look found **3019 NUL bytes** and two
+interleaved stderr streams — timestamps running `16:45:48 → 16:45:33`, which is two writers.
+
+**Blast radius measured, not assumed:** a per-file NUL count across the directory reads **3019 for
+medlong and 0 for every other table**. The cell was re-run cleanly and diffed: every data line
+matches, so the *numbers* were never wrong — only the file was dirty. The clean re-run replaces it.
+⚠ *My first corruption scan was itself broken*, in the same family as everything else here: bash
+`$'\0'` is an **empty string**, so `grep -c $'\0'` counted every line and made five healthy tables
+look corrupt. Re-measured in node.
+
+**Three fixes, each controlled in both directions:**
+1. **A writer lock** in `run_cell` (`set -o noclobber` on a `.lock`). Verified: with a lock held the
+   cell is refused **and no `.txt` is created**, so nothing is truncated.
+2. **`xval-verify.mjs` and `xval-collect.mjs` now REJECT any table containing a NUL byte.** This is
+   the load-bearing half — the lock removes the *cause*, but the lesson is that the *effect* passes
+   every existing check, so the readers must catch it by content. Verified: two clean tables still
+   grade; the same pair with 400 NULs spliced in (still containing `XVAL-DONE`) exits **2** from the
+   verifier and lands in the collector's Errors section.
+3. `SKIP_EXISTING` is documented as the resume path, and the lock is what makes it safe to use while
+   anything else is running.
+
+★ **The general lesson, which is this repo's oldest one in a new costume:** every guard in the
+campaign checked *structure* — is there a header, ten plan rows, a matrix, an `XVAL-DONE`? Structure
+survived the corruption intact. **A file can be well-formed and still not be a record of anything.**
