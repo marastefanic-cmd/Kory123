@@ -1,18 +1,30 @@
-# PHASE 10 — RESUME HERE (handoff, 2026-07-26 17:51)
+# PHASE 10 — RESUME HERE (handoff, updated 2026-07-26 20:06)
 
 **Read `docs/PHASE10.md` §8 for the full execution log. This file is the 60-second version and the
 exact next actions.** Delete it when the phase closes.
 
 ## 1. State right now
 
-- **Round 1 is GATHERING.** 10 of 36 tables complete in `tools/xval-results/`, `monoDip = 0.00%` on
-  every one. Tables are committed and pushed as they land by `tools/xval-checkpoint.sh`.
-- **It runs unattended.** `tools/xval-round-pipeline.sh` drives class → (wait for boss pre-solves) →
-  boss. Roughly **12 hours** of compute remain, dominated by the two Kael'thas tables (~29 of the
-  ~38 boss CPU-hours, because a 420 s fight with 6 targets sims ~9× slower).
+- **Round 1 is GATHERING — 27 of 36 tables** complete in `tools/xval-results/`, 0 partial,
+  `monoDip = 0.00%` on every one. Tables are committed and pushed as they land by
+  `tools/xval-checkpoint.sh` (900 s cycle; a table that lands between cycles shows as untracked —
+  commit it by hand after checking it carries an `XVAL-DONE` line).
+- **What remains: 3 class cells + all 6 boss cells.** Class: `isc-mqg-xl`, `scb-skull-xl`,
+  `scb-mqg-long`, `scb-mqg-xl` — minus whichever have landed since this line was written; derive the
+  list, don't trust it (`tools/xval-status.sh`, or the §3 loop). The boss half is the long pole and is
+  dominated by the Kael'thas pair (~29 of the ~38 boss CPU-hours: a 420 s fight with 6 targets sims
+  ~9× slower).
+- ✅ **The boss PRE-SOLVES are already banked** (finished 18:59). That was the expensive non-sim half —
+  a KT solve is ~280 s × 11 hastes × 2 tables — so the boss phase is now **sim-bound only**.
+- **It runs unattended.** `/tmp/run-round.sh` (a copy of `tools/xval-round-pipeline.sh`, pid 26698)
+  drives class → wait-for-pre-solves → boss. Alongside it: `/tmp/chain-bossshards.sh` (pid 4139)
+  warming boss sim caches cheapest-first on a nice'd core, and `tools/xval-checkpoint.sh` (pid 1587).
+  ⚠ **All three live in `/tmp` and are NOT in git** — if the container is reclaimed they are gone and
+  the round is resumed with the command below, not by restarting them.
 - **It is resumable.** `SKIP_EXISTING=1 bash tools/xval-bench-campaign.sh` re-runs only what is
   missing. ⚠ The caches (`.xval-cache/`) are gitignored and **not** durable — a reclaimed container
-  re-solves and re-sims whatever was not finished, but every completed *table* survives in git.
+  re-solves and re-sims whatever was not finished (**including those banked boss pre-solves**), but
+  every completed *table* survives in git.
 
 ```
 bash tools/xval-status.sh          # processes · tables complete · cache size
@@ -28,17 +40,19 @@ bash tools/xval-status.sh          # processes · tables complete · cache size
 
 ## 3. The next actions, in order
 
-1. **Wait for 36 tables**, then grade — the chain is validated end to end on real data:
+1. **Wait for 36 tables**, then grade. **The chain is now ONE command** (`tools/xval-grade.sh`, added
+   07-26 — PHASE10 §8.20), which runs the six tools in order and **refuses to run anything downstream
+   of a nonzero stamp audit**:
    ```
-   node tools/xval-stamp-audit.mjs tools/xval-results # RUN FIRST — is this ONE round, ONE protocol?
-   node tools/xval-verify.mjs  tools/xval-results     # independent invariant recompute, exit 0/1/2
-   node tools/xval-collect.mjs tools/xval-results     # ledger + width distribution + plateau breadth
-   node tools/xval-persist.mjs tools/xval-results     # length-persistence prioritizer
-   node tools/xval-collect.mjs tools/xval-results --json /tmp/targets.json
-   node tools/ripple-audit.mjs /tmp/targets.json      # price each deficit against the ruler's own floor
-   node tools/xval-band.mjs    /tmp/targets.json      # §5's grading rule: real at ≥3 seeds?
+   OUT=/tmp/grade bash tools/xval-grade.sh     # exit 0 clean · 1 graded-and-failing · 2 could-not-grade
+   node tools/xval-band.mjs /tmp/grade/targets.json   # §5's rule: real at ≥3 seeds? — SCOPE per §8.18
    ```
-   ⚠ **36 tables or no verdict** — a partial directory is not a result.
+   ⚠ **36 tables or no verdict** — a partial directory is not a result, and this is *enforced* now
+   rather than remembered. It has to be: on the same partial directory `xval-stamp-audit` exits 2
+   naming the absent cells while **`xval-verify` exits 1 with a fully-formed
+   `A holds · B FAILS → ACCEPTANCE NOT PASSING` verdict** computed over whatever subset is present.
+   Never quote a B-side number that did not come through the gate.
+   (The individual tools still exist and take the same args; §8.20 records why the order matters.)
    ⚠ **The band's SCOPE is pre-registered in §8.18** (persistence hits ∪ over-floor/INDETERMINATE
    cells; everything else counted-but-not-banded). Banding the whole ledger is 6–10 CPU-hours, so the
    selection had to be fixed *before* the widths were visible — do not re-choose it after reading them.
@@ -147,6 +161,15 @@ order deliberately there rather than inheriting it from a presentational regroup
   went from **exactly 0.000 to +165.5 DPS**.
 - The native rig **is** buildable here in ~4 minutes (`apt-get install protobuf-compiler`, then
   BENCH §3d's recipe). §1.3's "the ceremony is gone" is true as convenience, **not** as availability.
+
+## 5b. Added since the first handoff (07-26 evening) — do not re-derive
+
+- **`tools/xval-grade.sh`** — §3.1's chain as one command, gate-first, `rc`-graded, controlled both
+  ways (PHASE10 §8.20). Use it instead of typing the six tools.
+- **The TRINKETS-reorder question in §3b is CLOSED by reading** — the search never touches `TRINKETS`,
+  and, more importantly, **`exact-match` is blind to the change by construction**, so 25/25 was never
+  the gate it was assigned as. The real blast radius is `applyState`'s two-slot clamp. Full table and
+  reasoning in §3b above; read it before merging.
 
 ## 6. Certification already banked (do not re-run unless something changes)
 
