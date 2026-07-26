@@ -3101,7 +3101,19 @@ and every recount has moved the number *down*. A "pure text motion" patch sized 
 have shipped a behaviour change at three sites under a no-op label. Classify by reading each site's
 actual following lines, never by the line numbers in a doc — they drift.
 
-**Remaining on this rung:** §4.21 Class B (2 sites, a reorder the doc argues is unobservable) and
-Class C (1 site, its own measurement, revert on a null result). Then (0b) the `counts`/`clipOf`
-hoists, then the §4.1 five-walk fusion — for which item 0a has now collapsed "every call site must
-be converted" to **one**.
+**✅ Class B LANDED too (same day).** Both sites converted, `PLAN-DIFF IDENTICAL`, exact-match
+**25/25** — so §4.21's "unobservable reorder" argument holds empirically, not just on paper:
+- the `JSON.stringify`-guard site → `if (!rep || JSON.stringify(rep) === JSON.stringify(sx)) continue;`
+  (the stringify check moves *after* counts/clip; all three are pure predicates whose only effect is
+  `continue`, nothing between them mutates, and `repair` is still the first call in both spellings);
+- the `break` site → `const rep = admit(shift(d), sx);` … `if (!rep) break;`, with the
+  *"Feasibility is monotone in d …"* comment kept verbatim at its original position — it justifies
+  `break` over `continue` and would be nonsense anywhere else. **7 of 10 sites now use the helper.**
+
+**Remaining on this rung:** §4.21 Class C — 1 site, and deliberately NOT folded in: converting it
+hoists `clipOf` ahead of `simulate`, which *saves* a `simulate` on every clip-failing candidate but
+*costs* a `clipOf` on every candidate the current `||` short-circuits away. Which dominates is a
+rejection-rate question, so it lands as its own step with its own wall-time delta, and is **reverted
+on a null result** rather than kept for tidiness — keeping it would make that site's guard order
+disagree with the other seven for no measured gain. Then (0b) the `counts`/`clipOf` hoists, then the
+§4.1 five-walk fusion — for which item 0a has collapsed "every call site must be converted" to **one**.

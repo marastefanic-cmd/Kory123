@@ -2939,9 +2939,9 @@ function optimizeCore(cfg, starts, onProgress) {
               const shift = d => { const c = cloneS(sx); for (const k of keysHere) c[k] = sx[k].map(t => Math.round(t) === sec ? t - d : t).sort((a, b) => a - b); return c; };
               let bestDelta = 0;
               for (let d = 1; d <= sec; d++) {
-                const rep = repair(shift(d), cfg);
+                const rep = admit(shift(d), sx);
                 // Feasibility is monotone in d (pulling earlier only adds constraints), so break on it:
-                if (!sameCounts(counts(sx), counts(rep)) || clipOf(rep) > clipOf(sx) + 1e-9) break;
+                if (!rep) break;
                 // the WHOLE co-pressed row must actually move to sec−d — if a cd-bound member (e.g. a
                 // Cold-Snap Icy Veins) can't follow, repair would clamp it and SPLIT the burst; don't. This
                 // keeps damage/SP presses on their haste window (containment, §11) instead of exploiting a
@@ -3003,10 +3003,8 @@ function optimizeCore(cfg, starts, onProgress) {
                 cursor += Math.max(...fb.m.map(x => BUFFS[x.key].dur));
               }
               for (const key in cand) cand[key].sort((a, b) => a - b);
-              const rep = repair(cand, cfg);
-              if (JSON.stringify(rep) === JSON.stringify(sx)) continue;
-              if (!sameCounts(counts(sx), counts(rep))) continue;
-              if (clipOf(rep) > clipOf(sx) + 1e-9) continue;
+              const rep = admit(cand, sx);
+              if (!rep || JSON.stringify(rep) === JSON.stringify(sx)) continue;
               const r0 = simulate(sx, cfg).robust;
               if (simulate(rep, cfg).robust >= r0 - castVal / 1000) sx = rep; // exact tie → canonical form
             }
