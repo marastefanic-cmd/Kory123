@@ -1,27 +1,33 @@
 # Cross-validation raw matrices — the CURRENT acceptance round
 
-> **⏳ ROUND 6 IS BEING GATHERED (07-25) — this directory is INCOMPLETE until it holds 36 tables.**
-> Until then, do **not** read a verdict off it: a partial directory is exactly the shape the collector
-> and the verifier were hardened against (both exit 2 on no/unparseable data, but neither can know that
-> 20 tables is "all of them"). Round 5 — the last round gathered under **`emit=intent`**, before the
-> P7.14 AoE press-snap fix and before PHASE9's `groupSeeds` — is archived at
-> `tools/xval-results-archive/phase7-round5/`.
+> ## ⏳ EMPTY ON PURPOSE — awaiting the first **gear-B** round (`docs/PHASE10.md`)
 >
-> **Why round 6 exists — three changes at once, all of them landed after round 5 was gathered:**
-> 1. **`EMIT=fire` (P7.15, PHASE7 §5.22)** — the sim is now fed the **fire times the tool prints**, not
->    the optimizer's raw press *intents*. Round 5's tables carry **no `emit=` stamp**, which is the rule
->    for classifying a stale table.
-> 2. **The P7.14 AoE press-snap fix (PHASE7 §5.19)** — changes KT's plans (KT is the corpus's only `aoe`
->    preset), so the 3 surviving over-floor boss cells are expected to move.
-> 3. **PHASE9's `groupSeeds` (§5.14)** — a new seed class. Bit-identical on the golden corpus, but the
->    corpus holds the PRNG seed fixed and is structurally blind to a robustness fix, so plans on *these*
->    fights may move.
+> On 2026-07-26 the reference character was re-exported and this directory was cleared
+> (`docs/BENCH.md` §1). **The project currently has no acceptance measurement on the live baseline.**
+> Everything up to and including round 7 — the entire gear-A corpus — is at
+> [`../xval-results-archive/gearA-pre-20260726/`](../xval-results-archive/gearA-pre-20260726/); read
+> that directory's README before quoting any figure from it.
 >
-> **⚠ Watch for the INVERTED artifact sign on the `emit` half** (ACCEPTANCE, P7.15): `intent` *inflated*
-> two of the banked 60 plans by ~0.26% (an MQG press deferred past a wall gains time at the front, but
-> its 300 s cooldown then pushes the second press past the fight end). An inflated plan sitting in a
-> **borrowed** column manufactures a **phantom deficit** — so some round-5 deficits may **vanish** here
-> rather than merely shift. Every `XVAL-DONE` must read `emit=fire` and **`artifact=0`**.
+> ★ **Do not read a verdict off a partial directory.** A round is 36 tables; fewer is not "most of the
+> answer", it is no answer. `xval-collect.mjs` and `xval-verify.mjs` both exit 2 on missing or
+> unparseable data, but neither can know that 20 tables is not all of them — that judgement is yours,
+> and it is the failure this warning exists to prevent.
+>
+> ★ **Do not compare anything landing here to a gear-A number.** BENCH §1: any table mixing the two is
+> void. B2's sim preference already moved ~0.39 pp *and changed sign* across the baselines (BENCH §3e),
+> which is larger than most effects the corpus exists to resolve.
+>
+> **How the next round differs from every previous one** (`docs/PHASE10.md`):
+> `tools/bench.mjs` + the committed `sim/sim.wasm` (no clone, no protoc, no `go build`, no
+> `RUNNER`/`EXPORT_BASE` — a duel is ~10 s cold) · **`--var 0.5` settled by measurement**
+> (`tools/var-decision.mjs`) rather than by convention · **difference-in-differences** against a
+> never-press control (BENCH §2.1) · **the model cfg forced to the simmed character** (`…REF` spread
+> from `tools/reference-gear.mjs`, making the PHASE8 §6/§7 defect structurally impossible) · and the
+> same backbone the website's verification button runs, asserted identical by `tests/sim-request.mjs`.
+>
+> **Stamp every table** with `emit=`, `var=`, `iter=`, its seed list and the tool that produced it. A
+> number without its protocol cannot be compared to anything later — the round-5/round-6 `emit=`
+> confusion is the recorded case.
 
 Committed output of the holdout haste-adaptation cross-val (`tools/xval.mjs`, driven by
 `tools/xval-campaign.sh` + `tools/xval-boss.sh`). The scratchpad they are produced in is ephemeral;

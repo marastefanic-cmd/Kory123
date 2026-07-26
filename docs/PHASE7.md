@@ -1,5 +1,27 @@
 # PHASE 7 — Fix the cross-val deficits (make the acceptance test PASS)
 
+> ## ⚠ READ FIRST — THIS DOCUMENT IS ON THE **GEAR-A** BASELINE AND THE **PRE-07-26 INSTRUMENT**
+>
+> Every sim number below was gathered on **gear A** (now archived at
+> `tools/xval-results-archive/gearA-pre-20260726/`) with the old harness. Two things changed on
+> 2026-07-26, and **each on its own breaks cross-baseline comparison**:
+>
+> 1. **The character changed, gear A → gear B** (`docs/BENCH.md` §1). BENCH's own rule: *do not compare
+>    a gear-B number to a gear-A number; any table mixing them is void.* This is not hypothetical —
+>    B2's sim preference already moved **~0.39 pp and changed sign** on gear B (BENCH §3e).
+> 2. **The instrument changed.** `--var` is settled at **0.5 by measurement** (BENCH §3,
+>    `tools/var-decision.mjs` — `--var 0` swings a real effect by a whole cast for a 0.1 s change in the
+>    kill second), and the campaign now runs on **`tools/bench.mjs` + the committed `sim/sim.wasm`**,
+>    with no rig to build and a never-press control (BENCH §2.1).
+>
+> **What survives:** every mechanism, trap, correction and piece of reasoning here is permanently
+> valid — and still exactly true *about gear A under the old protocol*. **What does not survive:** any
+> verdict, target figure, deficit size or open-debt number, until it is re-measured.
+>
+> **That re-measurement is `docs/PHASE10.md`.** Do not resume work against a number in this file
+> without checking whether Phase 10 has restated it.
+
+
 **Status:** IN FLIGHT — diagnostic COMPLETE (§5 run ledger below), fixes landing. **Round 5 is gathered
 and read (§5.15): the target list is TWO kit-columns** (`isc-mqg h40`, `isc-skull h20`), not the 34
 failing tables the banner names — and the corrected reference gear moved 35.9% of the plans while moving

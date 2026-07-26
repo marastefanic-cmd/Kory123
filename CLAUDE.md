@@ -4,8 +4,14 @@ Read this first. It orients you on the project; the `docs/` files hold the detai
 
 ## What this repo is
 
-A single-file, self-contained **TBC 2.4.3 Arcane-mage cooldown-overlay planner**:
-`index.html` (open it in a browser — no build, no deps). You enter a fight (length, Bloodlust
+A **TBC 2.4.3 Arcane-mage cooldown-overlay planner**: `index.html` (open it in a browser — no build,
+no deps). The app itself is still ONE self-contained file; alongside it sits an **optional** in-page
+sim verifier (`sim/`) that lazily loads the real wowsims engine as WebAssembly when the user presses
+"Check in the benchmark sim" — a visitor who never presses it downloads exactly `index.html` and
+nothing else. **`sim/benchmark.mjs` is the single definition of the duel protocol**, imported by the
+page AND by `tools/plan-duel.mjs`/the tests; never retype a protocol constant into a new instrument.
+
+You enter a fight (length, Bloodlust
 timing, intermission/AoE phases) and it computes the **optimal moment to press each on-use
 cooldown** (Icy Veins, Arcane Power, Icon of the Silver Crescent, Serpent-Coil gem, Berserking),
 plus a burn timeline, a per-window activation schedule, and a copy-as-text plan. Alongside it:
@@ -45,8 +51,22 @@ one through the actual optimizer, compares the copy-as-text plan to `golden.json
 regenerates goldens (do this ONLY after an intentional change, and only when each changed plan improves
 the effective-ABs count — sim-verified when a blind spot is in play, per the methodology in
 `docs/TOOLING.md`). The two preset arrays are defined once in `index.html` (`BOSS_PRESETS` +
-`GOLDEN_PRESETS`) and drive both the UI (the "Boss presets" / "Debugging presets" strips) and the suite,
+`GOLDEN_PRESETS`) and drive both the UI (the "Boss presets" / "Reference fights" strips) and the suite,
 so a preset you confirm in the tool **is** the locked test.
+
+### The sim gates (added 07-26 — they need no rig)
+
+```
+node tests/sim-duel.mjs                      # the shipped wasm runs; prints a duel
+RUNNER=/path/to/runner node tests/sim-duel.mjs      # + asserts wasm == native runner
+RUNNER=/path/to/runner node tests/sim-request.mjs   # protocol invariants + page == terminal request
+```
+`sim-duel` works from the repo alone (it loads the committed `sim/sim.wasm`). `sim-request` is the
+**anti-drift gate** and needs a native runner — it asserts the protocol *values* (var ≠ 0, cold open,
+seed spacing…), that both committed characters' request templates are fresh `--dumpreq`s, and that the
+request the **website** builds equals the one the **runner** builds, field for field. It **skips
+loudly** without `RUNNER` rather than passing quietly. Run it after touching anything under `sim/`,
+`tools/genapl-core.mjs`, or a character export.
 
 **That gate takes 9m07s, so it is not the every-edit loop.** For that, sweep the same corpus in **bare
 node** (the engine is DOM-free — it already runs in a Web Worker) and diff the two runs at full float
@@ -59,6 +79,14 @@ node tools/plan-diff.mjs A.json B.json
 It needs no golden to maintain and prints the **changed-cell work list**. Then run exact-match before
 committing an engine change (it also covers the render path, which the sweep never touches). Full
 rationale, measurements, and both instrument controls: `docs/PHASE9.md §5`.
+
+**And when a changed cell needs the SIM, that is one command and no setup:**
+```
+node tools/bench.mjs --preset "2:00 lust 0:05" --vs naive     # ~10s, cold, from the repo alone
+```
+It solves with the real engine, transcribes the plan, sims it against a never-press control, and
+prints the sim Δ (with a seed band) **beside the model's Δ**, flagging a sign disagreement. Same
+backbone as the website's button — `docs/BENCH.md §6`.
 
 ⚠ **Scope the verification to what CHANGED — and DUEL what did.** If a plan is bit-identical and the sim
 is unchanged, don't re-test it. But if a plan **did** change, sim it head-to-head against its *previous*
@@ -90,6 +118,12 @@ changing the model or the passes**, and keep it updated as the living theorycraf
 - **Never leak identity or model identifiers** into `index.html` or anything the user shares
   publicly (it's a shareable artifact): no real names, emails, usernames, repo names, session ids,
   or model ids. The user's Discord handle is the only acceptable attribution.
+- **★ There are TWO wowsims and we use the NEW one.** `wowsims/tbc-new` → deployed at
+  **https://www.wowsims.com/tbc/** — this is what we build, pin (`ade9f39cc`), patch and **link**.
+  `wowsims/tbc` → `wowsims.github.io/tbc` is **ARCHIVED** (2021, pre-APL) and its own page says so.
+  The trap: `tbc-new` declares Go module `github.com/wowsims/tbc`, so deriving the URL from an import
+  lands on the dead repo — and on 07-26 the shipped page *linked* to the dead one for the same reason.
+  Read the URL, never derive it; check drift with `bash tools/upstream-drift.sh`. Details: TOOLING.
 - **Determinism is a feature.** Any change must keep one-setup-⇒-one-schedule, or the exact-match
   tests become meaningless. Don't add `Date.now()`/`Math.random()` outside the seeded PRNG.
 - **The model is the objective; the sim calibrates it.** The one number to maximize is **effective
@@ -111,6 +145,11 @@ changing the model or the passes**, and keep it updated as the living theorycraf
   lives in TOOLING (★★★), RULES §3, and PHASE6 §4.7.
 - Commit to the designated feature branch provided at session start; follow the session's configured
   commit author/trailers; don't open a PR unless asked.
+- **`master` is the live site.** The tool is deployed as a free static site on Netlify that
+  **auto-redeploys on every push/merge to `master`**. So never develop on `master` — branch off it,
+  develop, and merge back via PR (merging *is* shipping). Only `index.html` is published; `docs/`,
+  `tools/`, `tests/`, and the `.md` files are not. Full workflow, headers, and anonymity rules:
+  `docs/DEPLOYMENT.md`.
 
 ## Keep this documentation alive (do this, every session)
 
@@ -136,13 +175,23 @@ Treat maintaining them as part of the work, not an afterthought:
 - Before a big change, re-read the relevant doc; after it, leave the docs describing reality.
 
 ## Pointers
+- `docs/DEPLOYMENT.md` — how the tool ships: free Netlify static site, **auto-deploys from `master`**,
+  branch-off-and-merge workflow, what's published (only `index.html`), headers, and anonymity rules.
 - `docs/MECHANICS.md` — **read first.** The verified game formulas (haste, cast time, damage per cast,
   the cast-rate DPS equation) that everything else is derived from.
 - `docs/RULES.md` — the theorycraft rules, each with its sim evidence (derived from MECHANICS.md).
 - `docs/ARCHITECTURE.md` — `index.html` internals and the optimizer pass order.
 - `docs/TOOLING.md` — the wowsims sim harness (how to verify a plan) and its gotchas.
+- `docs/BENCH.md` — **the standing sim practice**, and `tools/bench.mjs`, the tool that implements it.
+  **Reach for `node tools/bench.mjs --preset X --vs naive` before building any rig**: it runs the
+  committed `sim/sim.wasm` (no clone, no protoc, no `go build`, no `RUNNER`/`EXPORT_BASE`), prints the
+  sim Δ with a seed band next to the model's Δ, and shares its whole backbone with the website's
+  verification button — so one change moves both fronts.
+- `sim/README.md` — the **in-page** sim verifier: the shared chain (`planspec` → `genapl-core` →
+  `simreq` → `sim.wasm`), the gear-agnostic reference character, the wasm-equals-native proof, and the
+  rebuild recipe. The terminal harness and the button are ONE code path by construction.
 - `docs/ROADMAP.md` — status, current work, and open questions.
-- `docs/ACCEPTANCE.md` — **the standing completion test.** The holdout haste-adaptation cross-val the
+- `docs/ACCEPTANCE.md` — **the standing completion test** (⚠ its status block is **gear A**; no gear-B reading exists yet — PHASE10). The holdout haste-adaptation cross-val the
   model must pass FULLY before it's called complete (monoDip=0 everywhere + no length-persistent
   diagonal deficit). Re-run after every fix/upgrade phase. Currently NOT passing (a low-haste slack).
 - `docs/DIARY.md` — **append-only history** of how the tool evolved: the phase arc + the
@@ -151,14 +200,20 @@ Treat maintaining them as part of the work, not an afterthought:
   plans recovered from the deleted `PLAN.md`; `07-phase6-xval-run.md` = the Phase-6 cross-val run doc,
   cited throughout as *PHASE6 §x*). Historical snapshots; **archive a phase doc the moment its phase
   closes** so the living `docs/` folder only ever shows work that is actually in flight.
-- `docs/PHASE7.md` — **the current in-flight plan: FIX the cross-val deficits so the acceptance test
+- `docs/PHASE7.md` — ⚠ **gear-A denominated (see its banner)** — **the plan to FIX the cross-val deficits so the acceptance test
   passes.** Diagnose each length-robust deficit as SEARCH-MISS vs SCORER-GAP, then fix at the root.
   (§5.11 legibility canonicalization is DONE; §5.12 round-3 gathered; the residual B2 family → PHASE8.)
-- `docs/PHASE8.md` — the B2 model-vs-sim ranking error (the old "emergent joint interaction" framing is
+- `docs/PHASE8.md` — ⚠ **gear-A denominated (see its banner)** — the B2 model-vs-sim ranking error (the old "emergent joint interaction" framing is
   **withdrawn** — it rested on a press the sim silently retimed). Round 2 established **THE FLOOR LAW**
   (a value window covers exactly `floor(D/Δ)` casts in the sim; haste buffs exempt) and two harness input
   errors (`t5two`, effective SP ≈1450), which together zero the mean bias — and **falsified** the
   SP-under-haste candidate on sign. Reserved as the highest-effort model work.
+- `docs/PHASE10.md` — **THE NEXT PHASE (planned, not started): re-establish the acceptance baseline on
+  GEAR B with `tools/bench.mjs`.** Every model-vs-sim number the project owns is gear A and archived
+  (`tools/xval-results-archive/gearA-pre-20260726/`), so ACCEPTANCE currently has **no reading at
+  all** — and B2's target already moved ~0.39pp and changed sign across the baselines. ⚠ Its §3 traps
+  matter more than usual: the new instrument is lightly exercised, so the phase opens with a shakedown
+  on known-shape cells before anything is graded.
 - `docs/PHASE9.md` — **performance / refactor notes** (CPU + latency, under a byte-identical-plans
   constraint). Measure-first: baseline profile, call census, hypothesis table with verdicts, and the
   refactor catalogue (redundant walks, fusable steps) with a cheapest-and-safest-first landing order.

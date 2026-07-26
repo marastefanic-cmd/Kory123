@@ -3,7 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Arcane Burn Planner — TBC Cooldown Overlay Optimizer</title>
+<title>WoW Anniversary Cooldown Optimizer for Arcane Mages — TBC 2.4.3</title>
+<meta name="description" content="A free, self-contained cooldown optimizer for WoW Anniversary (TBC 2.4.3) Arcane mages: enter your gear and the fight and it computes the optimal second to press every on-use cooldown, with a burn timeline and a copy-as-text plan.">
+<meta property="og:type" content="website">
+<meta property="og:title" content="WoW Anniversary Cooldown Optimizer for Arcane Mages — TBC 2.4.3">
+<meta property="og:description" content="Enter a fight and get the optimal cooldown-press schedule for an Anniversary-realm Arcane mage — burn timeline, press-by-press activation schedule, and a copy-as-text plan. Free, no login, runs entirely in your browser.">
+<meta name="twitter:card" content="summary">
+<!-- Inline SVG favicon: keeps the page dependency-free and stops every visitor's browser from
+     logging a 404 for /favicon.ico. An arcane rune in the tool's own gold. -->
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230c0c14'/%3E%3Cpath d='M16 4 L19 13 L28 16 L19 19 L16 28 L13 19 L4 16 L13 13 Z' fill='%23d9b96a'/%3E%3C/svg%3E">
 <style>
   /* ————— tokens: committed dark "arcane instrument" theme ————— */
   :root {
@@ -50,17 +58,54 @@
   .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 64px; }
 
   header.masthead { margin-bottom: 22px; }
+  .masthead .mh-row { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
+  .masthead .mh-row > div { min-width: 0; }
+  .eyebrow {
+    margin: 0 0 6px; font: 600 11.5px var(--font-ui); letter-spacing: 0.14em;
+    text-transform: uppercase; color: var(--gold-dim);
+  }
   .masthead h1 {
     font-family: var(--font-display);
-    font-size: clamp(26px, 4vw, 36px);
+    font-size: clamp(24px, 3.4vw, 33px);
     font-weight: 600;
+    line-height: 1.12;
     letter-spacing: 0.01em;
     color: var(--gold);
-    margin: 0 0 4px;
+    margin: 0 0 6px;
     text-wrap: balance;
   }
-  .masthead .sub { color: var(--ink-2); margin: 0; }
+  .masthead h1 span { color: var(--ink); }
+  .masthead .sub { color: var(--ink-2); margin: 0; max-width: 62ch; font-size: 14px; }
   .masthead .sub em { color: var(--gold-dim); font-style: normal; }
+  .linkbtn {
+    background: var(--panel); border: 1px solid var(--grid); color: var(--ink-2);
+    border-radius: 999px; font: 600 13px var(--font-ui); padding: 9px 16px; cursor: pointer;
+    white-space: nowrap; margin-left: auto;
+  }
+  .linkbtn:hover { color: var(--ink); border-color: var(--accent); background: var(--panel-2); }
+  .steps {
+    display: flex; gap: 10px; flex-wrap: wrap;
+    list-style: none; margin: 16px 0 0; padding: 0;
+  }
+  .steps li {
+    flex: 1 1 220px; min-width: 0;
+    display: flex; gap: 10px; align-items: baseline;
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px;
+    padding: 10px 14px; font-size: 13px; color: var(--ink-2);
+  }
+  .steps b {
+    flex: none; font: 600 12px var(--font-display); color: var(--gold);
+    border: 1px solid var(--gold-dim); border-radius: 999px;
+    width: 20px; height: 20px; display: grid; place-items: center; align-self: center;
+  }
+  .steps li em { color: var(--ink); font-style: normal; font-weight: 600; }
+  .beta {
+    display: inline-block; margin-left: 5px; padding: 0 4px; vertical-align: 1px;
+    font: 700 9px var(--font-ui); letter-spacing: 0.06em; text-transform: uppercase;
+    color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent);
+    background: color-mix(in srgb, var(--warn) 12%, transparent);
+    border-radius: 4px; cursor: help;
+  }
 
   /* ————— setup console ————— */
   .setup {
@@ -151,7 +196,10 @@
   .buff .tog .wicon { flex: none; border-radius: 6px; opacity: 0.55; filter: saturate(0.6); }
   .buff.on .tog .wicon { opacity: 1; filter: none; }
   .buff .txt { display: flex; flex-direction: column; min-width: 0; gap: 1px; }
-  .buff .name { font-size: 13.5px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .buff .name { font-size: 13.5px; display: flex; align-items: center; min-width: 0; }
+  .buff .name .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .buff .stat { display: flex; align-items: center; }
+  .buff .stat .beta { flex: none; }
   .buff .stat { font: 10.5px var(--font-mono); color: var(--muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
   .buff .pinbtn {
     display: none;
@@ -167,6 +215,15 @@
   .buff .pinbtn b { font: 700 11px var(--font-mono); }
   .buff.locked { opacity: 0.4; }
   .buff.locked .tog { cursor: not-allowed; }
+  /* trinket tier rule: "which raid tier is this from", so the list reads as a progression ladder */
+  .tsec { display: flex; align-items: baseline; gap: 8px; margin: 6px 0 -1px; }
+  .tsec:first-child { margin-top: 0; }
+  .tsec b {
+    flex: none; font: 600 10px var(--font-display); letter-spacing: 0.1em;
+    text-transform: uppercase; color: var(--gold-dim);
+  }
+  .tsec em { flex: none; font-style: normal; font-size: 11px; color: var(--muted); }
+  .tsec::after { content: ""; flex: 1; height: 1px; background: var(--hairline); }
 
   /* pin chips */
   .pinrow {
@@ -240,7 +297,14 @@
   .pchips .pnone { color: var(--muted); font-size: 12.5px; }
   .golden-strip, .boss-strip { padding-bottom: 12px; margin-bottom: 12px; }
   .boss-strip .pslab { color: var(--accent); }
-  .golden-strip .pslab { color: var(--muted); }
+  .golden-strip { display: block; }
+  .golden-strip > summary {
+    cursor: pointer; list-style: revert;
+    font-family: var(--font-display); font-size: 13px; font-weight: 600;
+    color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .golden-strip > summary .sublab { font-family: var(--font-ui); letter-spacing: 0; text-transform: none; font-weight: 400; font-size: 12px; }
+  .golden-strip[open] > summary { margin-bottom: 10px; }
   .gchip { padding: 4px 13px; font-size: 12.5px; color: var(--ink-2); }
   .gchip.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); color: var(--ink); }
   .psave { display: flex; gap: 6px; margin-left: auto; }
@@ -271,7 +335,10 @@
     letter-spacing: 0.06em; text-transform: uppercase;
     margin: 0 0 4px;
   }
-  .viz .note { font-size: 12.5px; color: var(--muted); margin: 0 0 10px; }
+  .viz .note, .sched .note { font-size: 12.5px; color: var(--muted); margin: 0 0 10px; }
+  /* anything with an explanation attached reads as hoverable, not as plain prose */
+  .note span[title], .tile[title] { cursor: help; }
+  .note span[title] { border-bottom: 1px dotted color-mix(in srgb, var(--muted) 60%, transparent); }
   .chartbox { position: relative; }
   .chartbox svg { display: block; width: 100%; height: auto; }
   .tip {
@@ -283,14 +350,52 @@
   .tip b { color: var(--ink); font-family: var(--font-mono); font-weight: 600; }
 
   .sched { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 16px; }
-  .sched .toolbar, .viz .toolbar { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
-  .toolbar .vbtns { display: flex; gap: 8px; align-items: baseline; }
-  .sched button.copy, .viz button.copy {
+  .sched .toolbar, .viz .toolbar { display: flex; justify-content: space-between; align-items: center; gap: 10px 14px; flex-wrap: wrap; }
+  .viz .toolbar { margin-bottom: 12px; }
+
+  /* ————— toolbar action buttons —————
+     One vocabulary for every action button on the page. Weight encodes rank, not decoration:
+     .primary = the thing to do next · default = an ordinary action · .quiet = a utility that
+     should be findable without competing. Groups are separated by a rule so the row reads as a
+     sequence (adjust → verify → export) rather than five equal choices. */
+  .toolbar .vbtns { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  .toolbar .bset { display: flex; align-items: center; gap: 6px; }
+  .toolbar .vdiv { width: 1px; align-self: stretch; min-height: 20px; background: var(--hairline); }
+  .tbtn {
+    display: inline-flex; align-items: center; gap: 7px;
     background: var(--panel); border: 1px solid var(--grid); color: var(--ink-2);
-    border-radius: 6px; font-size: 12.5px; padding: 5px 10px; cursor: pointer;
+    border-radius: 8px; font: 500 12.5px var(--font-ui); padding: 6px 11px;
+    cursor: pointer; white-space: nowrap;
+    transition: color .12s ease, border-color .12s ease, background .12s ease;
   }
-  .sched button.copy:hover, .viz button.copy:hover { color: var(--ink); border-color: var(--accent); }
-  .viz button.copy.armed { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 55%, var(--grid)); }
+  .tbtn .ic { flex: none; width: 14px; height: 14px; opacity: 0.75; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+  .tbtn:hover { color: var(--ink); border-color: var(--accent); background: var(--panel-2); }
+  .tbtn:hover .ic { opacity: 1; }
+  .tbtn:disabled { opacity: 0.55; cursor: wait; }
+  .tbtn:disabled:hover { color: var(--ink-2); border-color: var(--grid); background: var(--panel); }
+  /* segmented pair — the control and the thing that explains it read as one unit */
+  .seg { display: inline-flex; align-items: stretch; }
+  .seg .tbtn { border-radius: 0; margin-left: -1px; }
+  .seg .tbtn:first-child { border-radius: 8px 0 0 8px; margin-left: 0; }
+  .seg .tbtn:last-child { border-radius: 0 8px 8px 0; }
+  .seg .tbtn:hover, .seg .tbtn:focus-visible { position: relative; z-index: 1; }
+  .tbtn.primary {
+    color: var(--ink);
+    background: color-mix(in srgb, var(--accent) 24%, var(--panel));
+    border-color: color-mix(in srgb, var(--accent) 62%, var(--grid));
+  }
+  .tbtn.primary .ic { opacity: 1; }
+  .tbtn.primary:hover { background: color-mix(in srgb, var(--accent) 36%, var(--panel)); border-color: var(--accent); }
+  .tbtn.ico { padding: 6px 10px; font-weight: 700; }
+  .tbtn.quiet { background: none; border-color: transparent; color: var(--muted); }
+  .tbtn.quiet:hover { color: var(--ink); border-color: var(--grid); background: var(--panel); }
+  /* "you are mid-edit" — the customize button holds the mode, so it has to look held */
+  .tbtn.armed {
+    color: var(--gold); background: color-mix(in srgb, var(--gold) 12%, var(--panel));
+    border-color: color-mix(in srgb, var(--gold) 55%, var(--grid));
+  }
+  .tbtn.armed:hover { color: var(--gold); border-color: var(--gold); background: color-mix(in srgb, var(--gold) 18%, var(--panel)); }
+  @media (max-width: 560px) { .toolbar .vdiv { display: none; } }
 
   /* ————— timeline customization (unlock → drag → lock) ————— */
   .chartbox.editing svg { touch-action: none; }
@@ -327,23 +432,48 @@
   }
   td { border-bottom: 1px solid var(--hairline); padding: 7px 10px; vertical-align: top; }
   td.t { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); white-space: nowrap; }
-  td .chip { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 7px; vertical-align: baseline; }
   td.num { font-family: var(--font-mono); font-variant-numeric: tabular-nums; white-space: nowrap; }
-  td .warntag { color: var(--warn); font-size: 12px; }
-  td .manatag { color: #6ea8ff; font-size: 12px; cursor: help; border-bottom: 1px dotted #6ea8ff66; }
-  tr.window-head td { background: var(--panel); color: var(--gold-dim); font-size: 12.5px; }
+  .warntag { color: var(--warn); font-size: 12px; }
+  .manatag { color: #6ea8ff; font-size: 12px; cursor: help; border-bottom: 1px dotted #6ea8ff66; }
 
   .assump {
     color: var(--muted); font-size: 12.5px;
-    margin-top: 28px; padding: 18px 0 4px;
+    margin-top: 28px; padding: 22px 0 4px;
     border-top: 1px solid var(--hairline);
+    scroll-margin-top: 16px;
   }
-  .assump ul { columns: 2; column-gap: 40px; }
-  @media (max-width: 900px) { .assump ul { columns: 1; } }
-  .assump li { break-inside: avoid; }
-  .assump h4 { color: var(--ink-2); font-size: 13px; margin: 0 0 6px; }
-  .assump ul { margin: 0; padding-left: 18px; }
-  .assump li { margin-bottom: 3px; }
+  .assump > h3 {
+    font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--gold);
+    letter-spacing: 0.06em; text-transform: uppercase; margin: 0 0 6px;
+  }
+  .assump .lede { color: var(--ink-2); font-size: 13px; margin: 0 0 18px; max-width: 80ch; }
+  .assump .agrid { columns: 2; column-gap: 34px; }
+  @media (max-width: 900px) { .assump .agrid { columns: 1; } }
+  .assump section { break-inside: avoid; margin: 0 0 16px; }
+  .assump h4 {
+    color: var(--ink); font-size: 12.5px; margin: 0 0 6px;
+    letter-spacing: 0.04em; text-transform: uppercase;
+  }
+  .assump ul { margin: 0; padding-left: 16px; }
+  .assump li { margin-bottom: 5px; break-inside: avoid; }
+  .assump li b { color: var(--ink-2); font-weight: 600; }
+  .assump .verdict {
+    display: inline-block; margin-right: 6px; padding: 0 5px;
+    font: 700 9.5px var(--font-ui); letter-spacing: 0.08em; text-transform: uppercase;
+    border-radius: 3px; vertical-align: 1px;
+  }
+  .assump .verdict.sim { color: var(--good); border: 1px solid color-mix(in srgb, var(--good) 45%, transparent); }
+  .assump .verdict.beta { color: var(--warn); border: 1px solid color-mix(in srgb, var(--warn) 45%, transparent); }
+  .assump .verdict.out { color: var(--muted); border: 1px solid var(--hairline); }
+  /* "technically true but not what a player needs" lives behind this toggle, off by default */
+  .assump .deep { display: none; }
+  .assump.tech .deep { display: inline; color: var(--muted); }
+  .techtoggle {
+    display: inline-flex; align-items: center; gap: 7px; margin-left: 4px;
+    font-size: 12.5px; color: var(--ink-2); cursor: pointer; white-space: nowrap;
+  }
+  .techtoggle input { accent-color: var(--accent); width: 14px; height: 14px; }
+  .assump .lede .beta, .assump .lede .verdict { cursor: help; }
 
   .warnbar {
     background: color-mix(in srgb, var(--warn) 8%, var(--surface));
@@ -362,30 +492,27 @@
   .sense .up::before { content: "▲ "; color: var(--good); }
   .sense .down::before { content: "▼ "; color: var(--warn); }
   .sense .cs::before { content: "❄ "; color: var(--accent); }
-  .whytag {
-    display: inline-block; margin-left: 8px; padding: 1px 7px;
-    font-size: 11px; color: var(--muted);
-    border: 1px solid var(--hairline); border-radius: 4px;
-    white-space: nowrap;
-  }
-  .pnames .ptag { color: color-mix(in srgb, var(--gold) 55%, var(--muted)); }
   .sense b { color: var(--ink); font-family: var(--font-mono); font-weight: 600; }
 
-  /* follow mode */
-  .follow { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 16px; }
-  .follow-head { display: flex; align-items: baseline; gap: 14px; flex-wrap: wrap; }
-  .follow-head h3 { font-family: var(--font-display); font-size: 15px; font-weight: 600; color: var(--gold); letter-spacing: 0.06em; text-transform: uppercase; margin: 0; }
-  .follow-head .hint { font-size: 12.5px; color: var(--muted); }
-  .follow .clock { font-family: var(--font-display); font-size: 26px; color: var(--ink); font-variant-numeric: tabular-nums; margin-right: 6px; align-self: center; }
-  .follow.live .clock { color: var(--gold); }
-  .pressboard { margin-top: 12px; max-height: 480px; overflow-y: auto; scrollbar-width: thin; }
-  .prow {
-    display: grid; grid-template-columns: 84px 1fr; gap: 16px; align-items: center;
-    padding: 10px 10px; border-bottom: 1px solid var(--hairline);
-    border-left: 3px solid transparent;
+  /* activation schedule — one line per press, presses clustered by the second you press them */
+  .board { margin-top: 10px; display: flex; flex-direction: column; gap: 14px; }
+  .wgroup { border: 1px solid var(--hairline); border-radius: 10px; overflow: hidden; }
+  .whead {
+    display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap;
+    background: var(--panel); padding: 8px 14px;
+    border-bottom: 1px solid var(--hairline);
+    font-size: 12.5px; color: var(--muted);
   }
-  .prow:last-child { border-bottom: none; }
-  .prow .pt { font: 600 24px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
+  .whead .wname { font: 600 12px var(--font-display); letter-spacing: 0.06em; text-transform: uppercase; color: var(--gold-dim); }
+  .whead .wt { font-family: var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink-2); }
+  .whead .wstat { font-family: var(--font-mono); font-size: 12px; }
+  .whead .manatag { margin-left: auto; }
+  .prow {
+    display: grid; grid-template-columns: 74px 1fr; gap: 6px 16px; align-items: center;
+    padding: 10px 14px; border-top: 1px solid var(--hairline);
+  }
+  .prow:first-of-type { border-top: none; }
+  .prow .pt { font: 600 21px var(--font-mono); font-variant-numeric: tabular-nums; color: var(--ink); }
   .prow .ptiles { display: flex; flex-wrap: wrap; gap: 7px; align-items: center; }
   .ptile {
     display: inline-flex; align-items: center; gap: 8px;
@@ -397,47 +524,90 @@
   }
   .wicon { display: block; border-radius: 6px; flex: none; }
   .ptile .wicon + .wicon { margin-left: -4px; }
-  .prow .pnames { grid-column: 2; font-size: 11.5px; color: var(--muted); margin-top: -4px; }
-  .prow.done { opacity: 0.3; }
-  .prow.next { background: color-mix(in srgb, var(--gold) 8%, transparent); border-left-color: var(--gold); }
-  .nextup {
-    display: flex; align-items: center; gap: 14px;
-    margin-top: 12px; padding: 12px 16px; border-radius: 10px;
-    background: color-mix(in srgb, var(--gold) 7%, var(--panel));
-    border: 1px solid color-mix(in srgb, var(--gold) 30%, transparent);
+  .prow .pnames { grid-column: 2; font-size: 12px; color: var(--ink-2); }
+  .prow .pnames .pn + .pn::before { content: " · "; color: var(--muted); }
+  .prow .pnames .peff { color: var(--muted); }
+
+  /* sim verification panel */
+  .simbox {
+    margin-top: 10px; padding: 12px 14px; border-radius: 10px;
+    background: var(--panel); border: 1px solid var(--hairline); font-size: 13px; color: var(--ink-2);
   }
-  .nextup .nu-icons { display: flex; gap: 8px; flex: none; }
-  .nextup .nu-icons .wicon { border-radius: 9px; box-shadow: 0 0 0 1px rgba(255,255,255,.1); }
-  .nextup .nu-what { font-size: 12.5px; color: var(--muted); min-width: 0; }
-  .nextup .nu-what b { display: block; font: 800 16px var(--font-mono); color: var(--ink); letter-spacing: 0.04em; margin-bottom: 2px; }
-  .nextup .nu-count {
-    margin-left: auto; font-family: var(--font-display); font-weight: 700; font-size: 30px;
-    color: var(--gold); font-variant-numeric: tabular-nums; white-space: nowrap;
+  .simbox .simhead { display: flex; align-items: baseline; gap: 10px; flex-wrap: wrap; margin-bottom: 8px; }
+  .simbox .simhead b { color: var(--ink); font-family: var(--font-display); letter-spacing: 0.04em; }
+  .simbox .simhead .simsub { color: var(--muted); font-size: 12px; }
+  .simarms { display: grid; grid-template-columns: repeat(auto-fit, minmax(190px, 1fr)); gap: 10px; margin-bottom: 8px; }
+  .simarm {
+    background: var(--surface); border: 1px solid var(--hairline); border-radius: 8px; padding: 9px 12px;
   }
-  .nextup.now .nu-count { color: var(--good); }
-  .nextup.spent .nu-count { font-size: 16px; color: var(--muted); }
-  .sched td .wicon { display: inline-block; vertical-align: -6px; margin-right: 8px; border-radius: 4px; }
-  .fbtns { display: flex; gap: 8px; margin-left: auto; }
-  .fbtns button {
-    background: var(--panel); border: 1px solid var(--grid); color: var(--ink);
-    border-radius: 7px; font: 600 14px var(--font-ui); padding: 9px 16px; cursor: pointer;
+  .simarm .k { font-size: 11px; letter-spacing: 0.06em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+  .simarm .k small { text-transform: none; letter-spacing: 0; opacity: .75; }
+  .simarm:first-child { border-color: color-mix(in srgb, var(--accent) 40%, transparent); }
+  .simarm .v { font: 600 20px var(--font-mono); color: var(--ink); font-variant-numeric: tabular-nums; }
+  .simarm .v small { font-size: 11px; color: var(--muted); font-weight: 400; margin-left: 4px; }
+  .simarm.win { border-color: color-mix(in srgb, var(--good) 45%, transparent); }
+  .simverdict { font-size: 13.5px; color: var(--ink); margin-bottom: 6px; }
+  .simverdict.good { color: var(--good); }
+  .simverdict.bad { color: var(--warn); }
+  .simverdict.tie { color: var(--ink-2); }
+  .simbox .simnote { font-size: 12px; color: var(--muted); }
+  .simbox .simnote code { font-family: var(--font-mono); font-size: 11.5px; }
+  .simbar { height: 4px; background: var(--grid); border-radius: 2px; overflow: hidden; margin: 8px 0; }
+  .simbar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+  .simhelp {
+    max-width: 640px; width: calc(100% - 32px); padding: 22px 26px;
+    background: var(--surface); color: var(--ink-2);
+    border: 1px solid var(--grid); border-radius: 12px;
+    font-size: 13.5px; line-height: 1.5;
   }
-  .fbtns button#btn-follow { border-color: var(--accent); }
-  .fbtns button:hover { background: var(--panel-2); }
-  .playhead {
-    position: absolute; top: 0; bottom: 0; width: 2px; background: var(--gold);
-    pointer-events: none; display: none; z-index: 2;
+  .simhelp::backdrop { background: rgba(6,6,12,.72); }
+  .simhelp h3 {
+    font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--gold);
+    letter-spacing: 0.04em; margin: 0 0 10px;
+  }
+  .simhelp h4 { color: var(--ink); font-size: 12.5px; letter-spacing: 0.04em; text-transform: uppercase; margin: 16px 0 5px; }
+  .simhelp p { margin: 0 0 8px; }
+  .simhelp .lede { color: var(--ink-2); }
+  .simhelp .lede b, .simhelp p b, .simhelp li b { color: var(--ink); }
+  .simhelp ul { margin: 0; padding-left: 18px; }
+  .simhelp li { margin-bottom: 5px; }
+  .simhelp .simhelp-foot {
+    margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--hairline);
+    font-size: 12.5px; color: var(--muted);
+  }
+  .simhelp form { margin-top: 14px; text-align: right; }
+  #edit-msg.miss {
+    background: color-mix(in srgb, var(--good) 10%, var(--surface));
+    border-color: color-mix(in srgb, var(--good) 45%, var(--surface));
+  }
+  #edit-msg.miss div::before { content: "★ "; color: var(--good); }
+  .simbox .whatis {
+    background: none; border: none; padding: 0; margin-left: 6px;
+    color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline;
   }
   label.check.complicated { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
   label.check.complicated input { accent-color: var(--accent); width: 15px; height: 15px; }
   #phase-editor { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-  .phase-row { display: flex; gap: 6px; align-items: center; }
+  .phase-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .phase-row select {
     background: var(--panel); border: 1px solid var(--grid); border-radius: 6px;
-    color: var(--ink); font-size: 13px; padding: 6px; flex: 1; min-width: 0;
+    color: var(--ink); font-size: 13px; padding: 6px 26px 6px 8px;
+    flex: 1 1 118px; min-width: 118px;
+    /* native arrow was overlapping the label in a narrow column — draw our own with room reserved */
+    appearance: none; -webkit-appearance: none;
+    background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
+    background-position: right 13px center, right 8px center;
+    background-size: 5px 5px, 5px 5px;
+    background-repeat: no-repeat;
   }
   .phase-row input[type="text"] { width: 58px; padding: 5px 7px; font-size: 13px; }
-  .phase-row input[type="number"] { width: 52px; padding: 5px 7px; font-size: 13px; }
+  .phase-row input[type="number"] { width: 46px; padding: 5px 7px; font-size: 13px; }
+  /* the mult / targets field carries its unit inline so the bare number isn't a guess */
+  .ph-unit {
+    display: inline-flex; align-items: center; gap: 5px;
+    font-size: 12px; color: var(--ink-2); white-space: nowrap;
+  }
+  .ph-unit .u { color: var(--muted); }
   .phase-row .ph-del {
     background: var(--panel); border: 1px solid var(--grid); color: var(--ink-2);
     border-radius: 6px; padding: 5px 8px; cursor: pointer; font-size: 13px;
@@ -468,26 +638,31 @@
 <body>
 <div class="wrap">
   <header class="masthead">
-    <h1>Arcane Burn Planner</h1>
-    <p class="sub">Optimal cooldown overlays for TBC Arcane mages — <em>Anniversary realms, patch 2.4.3</em>.</p>
-    <p class="sub">Enter your <b>gear</b> (spell damage, crit, haste rating) and the <b>fight length</b>, tick the
-    <b>cooldowns</b> you bring, and <b>pin</b> anything the raid controls — Bloodlust, Drums, Power Infusion — to the
-    second it's called. Turn on <b>Complicated fight</b> to lay out intermissions, burn, or AoE phases. Then
-    <b>Find optimal overlay</b>: the planner schedules every <em>unpinned</em> cooldown for maximum damage and prints
-    the press-by-press plan, a burn timeline, and a copy-as-text line to follow in the raid. The <b>Boss presets</b>
-    up top load the real current-phase encounters; <b>Debugging presets</b> are sim-verified reference fights, and you
-    can save your own as <b>Custom presets</b>.</p>
+    <div class="mh-row">
+      <div>
+        <p class="eyebrow">Anniversary realms · patch 2.4.3</p>
+        <h1>WoW Anniversary cooldown optimizer <span>for Arcane mages</span></h1>
+        <p class="sub">Tell it about your gear and the fight — it works out the exact second to press
+        every on-use cooldown for maximum damage.</p>
+      </div>
+      <button class="linkbtn" id="btn-assump" type="button">Model assumptions ↓</button>
+    </div>
+    <ol class="steps">
+      <li><b>1</b><span>Pick a <em>boss preset</em>, or type your own fight length, gear and phases.</span></li>
+      <li><b>2</b><span>Tick the <em>cooldowns you bring</em>; pin raid calls (Lust, Drums, PI) to their second.</span></li>
+      <li><b>3</b><span>Hit <em>Find optimal overlay</em> for a timeline and a press-by-press plan.</span></li>
+    </ol>
   </header>
 
   <section class="setup" id="setup">
     <div class="preset-strip boss-strip" id="boss-strip">
-      <span class="pslab" title="The real current-phase raid bosses — fight length, Lust timing and phases from the actual pulls. Click one to load its input setup; press Find optimal overlay to compute the plan.">Boss presets</span>
+      <span class="pslab" title="Typical fight length, Bloodlust timing and phases for each current-tier boss. Click one to fill in the setup, then press Find optimal overlay.">Boss presets</span>
       <span class="pchips" id="boss-chips"></span>
     </div>
-    <div class="preset-strip golden-strip" id="golden-strip">
-      <span class="pslab" title="Sim-verified reference fights — this list is the exact-match regression suite. Click one to load its input setup; press Find optimal overlay to compute the plan.">Debugging presets</span>
+    <details class="preset-strip golden-strip" id="golden-strip">
+      <summary title="Plain reference fights used to test the planner — a fight length plus a Bloodlust time, nothing else. Handy for sanity-checking a rule, not for planning a raid night.">Reference fights <span class="sublab">— test cases, not bosses</span></summary>
       <span class="pchips" id="golden-chips"></span>
-    </div>
+    </details>
     <div class="preset-strip" id="preset-strip">
       <span class="pslab">Custom presets</span>
       <span class="pchips" id="preset-chips"></span>
@@ -521,8 +696,9 @@
             <input id="in-crit" type="number" value="25" min="0" max="100" step="0.5">
           </div>
         </div>
-        <label class="check use" style="margin-top:6px"><input id="ck-t5" type="checkbox"> Tirisfal 2-piece (Arcane Blast +20% damage &amp; mana)</label>
-        <span class="hint">Damage model weighs haste vs. Arcane Power; crit drives Ashtongue uptime. T5-2pc boosts only Arcane Blast (additive with Arcane Power), so its main effect is re-pricing AoE phases vs. blasting.</span>
+        <label class="check use" style="margin-top:6px" title="Tirisfal Regalia (Tier 5) 2-piece: Arcane Blast deals 20% more damage and costs 20% more mana. It adds to Arcane Power rather than multiplying with it, so with the set on, an Arcane Power window is worth slightly less relative to your other casts — which mostly matters when a fight has AoE phases."><input id="ck-t5" type="checkbox"> Tirisfal (T5) 2-piece — Arcane Blast +20% damage</label>
+        <span class="hint">Use the numbers you actually have in the raid, fully buffed. Crit is here for two things only:
+        Ashtongue proc uptime and AoE phases — everywhere else it scales every possible plan equally, so it can't change which one wins.</span>
       </div>
 
       <div class="scol">
@@ -537,9 +713,10 @@
         <div id="phase-editor">
           <div id="phase-rows"></div>
           <button id="phase-add" type="button">+ Add phase</button>
-          <span class="hint">Untick to disregard. Phases paint over the base fight (later rows win on overlap).
-          Intermission = boss untargetable, damage ×0, cooldowns keep ticking. Burn = AB damage ×N.
-          AoE = Arcane Explosion spam on N targets.</span>
+          <span class="hint">Only for fights that aren't just "stand and blast". Add the phases you know about;
+          if two overlap, the lower row wins. <b>Intermission</b> — boss untargetable, you deal no damage but
+          cooldowns keep ticking. <b>Burn</b> — a window where the boss takes extra damage. <b>AoE</b> — you swap
+          to Arcane Explosion on several targets. Untick the box to ignore all of it.</span>
         </div>
       </div>
     </div>
@@ -558,34 +735,28 @@
         <div class="tiles" id="tiles-custom"></div>
       </div>
       <div class="sense" id="sense" hidden></div>
-      <div class="follow" id="follow" hidden>
-        <div class="follow-head">
-          <h3>Pressboard</h3>
-          <span class="hint">One row = one press. Start at pull: the banner counts down to the next press — and if the fight drifts off last week's timing, read the rows as your agenda, not a stopwatch.</span>
-          <div class="fbtns">
-            <div class="clock" id="f-clock">0:00</div>
-            <button id="btn-follow">Start at pull</button>
-            <button id="btn-freset">Reset</button>
-          </div>
-        </div>
-        <div class="nextup" id="nextup" hidden>
-          <div class="nu-icons" id="nu-icons"></div>
-          <div class="nu-what" id="nu-what"></div>
-          <div class="nu-count" id="nu-count"></div>
-        </div>
-        <div class="pressboard" id="pressboard"></div>
-      </div>
       <div class="viz" id="viz" hidden>
         <div class="toolbar">
           <h3>Burn timeline</h3>
-          <div class="vbtns">
-            <button class="copy" id="btn-edit">Unlock timeline for customization</button>
-            <button class="copy" id="btn-revert" hidden>Revert to model plan</button>
-            <button class="copy" id="btn-debug">Debug export</button>
+          <!-- Left to right IS the workflow: adjust the plan → prove it → take it away with you.
+               Exactly one button is filled, because exactly one of these is the thing to do next. -->
+          <div class="vbtns" role="group" aria-label="Timeline actions">
+            <div class="bset">
+              <button class="tbtn" id="btn-edit" type="button" title="Unlock the timeline and drag any press to a time of your own. Everything is re-scored live and checked against the real cooldown rules."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7.5 18.5 3 20l1.5-4.5z"/></svg><span class="lab">Customize</span></button>
+              <button class="tbtn quiet" id="btn-revert" type="button" hidden title="Discard your edits and go back to the planner's own schedule."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12a9 9 0 1 0 9-9 9.7 9.7 0 0 0-6.7 2.7L3 8"/><path d="M3 3v5h5"/></svg><span class="lab">Revert</span></button>
+            </div>
+            <span class="vdiv" aria-hidden="true"></span>
+            <div class="seg">
+              <button class="tbtn primary" id="btn-sim" type="button" title="Run this plan and one alternative through the real wowsims engine — the same benchmark this project uses to check the model. It is NOT a simulation of your character: press ? for what it does and doesn't include."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg><span class="lab">Check in benchmark sim</span></button>
+              <button class="tbtn ico" id="btn-simhelp" type="button" title="What the benchmark sim is — and what it is not" aria-label="About the benchmark sim">?</button>
+            </div>
+            <span class="vdiv" aria-hidden="true"></span>
+            <button class="tbtn quiet" id="btn-debug" type="button" title="Copy a full diagnostic dump — your inputs, the plan, its scores and a ready-to-run sim command — to the clipboard."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><span class="lab">Debug export</span></button>
           </div>
         </div>
-        <p class="note" id="viz-note"></p>
+        <p class="note" id="viz-note" hidden></p>
         <div class="warnbar" id="edit-msg" hidden></div>
+        <div class="simbox" id="simbox" hidden></div>
         <div class="chartbox" id="chartbox">
           <div class="tip" id="tip"></div>
         </div>
@@ -593,9 +764,11 @@
       <div class="sched" id="sched" hidden>
         <div class="toolbar">
           <h3>Activation schedule</h3>
-          <button class="copy" id="btn-copy">Copy as text</button>
+          <button class="tbtn" id="btn-copy" type="button" title="Copy the whole plan as plain text — paste it into Discord, a note, or a macro."><svg class="ic" viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg><span class="lab">Copy as text</span></button>
         </div>
-        <div class="tablebox" id="tablebox"></div>
+        <p class="note">One line per press: everything on the same line goes in the same macro, at that second.
+        Windows group presses whose buffs overlap into one burn.</p>
+        <div class="board" id="tablebox"></div>
       </div>
       <details class="capsheet" id="capsheet" hidden>
         <summary>Cap sheet — 3-stack Arcane Blast cast time per buff combo</summary>
@@ -606,7 +779,58 @@
   </section>
 
   <footer class="assump" id="assump" hidden></footer>
-  <div class="stamp" title="Update this stamp whenever index.html changes — it identifies stale copies.">build 2026-07-25b</div>
+
+  <dialog class="simhelp" id="simhelp">
+    <h3>What the benchmark sim is — and what it isn't</h3>
+    <p class="lede"><b>It is not a simulation of your character.</b> It never asks for your gear, and it
+    couldn't use it if you gave it to us. It runs the <b>benchmark</b> this project uses to check its own
+    model: a fixed reference mage that has been dialled in over hundreds of verification runs.</p>
+
+    <h4>What it actually does</h4>
+    <p>It takes two layouts — the planner's, and one alternative — and asks the real
+    <a href="https://www.wowsims.com/tbc/" target="_blank" rel="noopener">wowsims</a> engine one narrow
+    question: <b>which of these two does the simulator prefer?</b> Both sides run the identical character
+    through the identical fights (same random seed), so the difference between them is trustworthy even
+    though neither absolute number describes you.</p>
+
+    <h4>The benchmark character</h4>
+    <ul>
+      <li><b>No gear, no consumables, no raid buffs</b> — your spell damage, crit and haste rating are
+      injected as flat numbers on top of a bare level-70 Arcane mage. They are the only three things about
+      you the planner knows, so they are the only three the sim gets.</li>
+      <li><b>Spell hit pinned at the cap</b>, so misses never enter the comparison.</li>
+      <li><b>Infinite mana and no conserve rotation</b> — it casts Arcane Blast start to finish. Real play
+      weaves Frostbolt and drinks gems; that changes your DPS, not which cooldown layout wins.</li>
+      <li><b>Nothing cast before the pull</b>, and the fight ends within half a second of the length you
+      entered — the same assumptions the planner itself makes.</li>
+    </ul>
+
+    <h4>So how do I read the number?</h4>
+    <p>Read <b>the gap</b>, never the DPS. "+0.4%" means the simulator agrees the plan is better by about
+    that much, on a fight shaped like the one you described. The absolute figures are the benchmark
+    mage's, and will not match your log, your sim, or your guild's spreadsheet — by design.</p>
+
+    <h4>What it can't see</h4>
+    <ul>
+      <li><b>Drums of Battle and Power Infusion.</b> The simulator will not let a rotation script press
+      these two: it builds them as buffs <i>it</i> fires on its own schedule, not as spells a plan can
+      trigger — and a scheduled press is ignored without complaint (we checked: identical damage, no
+      buff applied). Bloodlust <i>is</i> pressable, which is why it works. So both sides run without
+      Drums and PI, and the result panel names whatever it had to drop.</li>
+      <li><b>The Ashtongue Talisman</b>, for a different reason: it is a random proc, so there is no
+      press to schedule in the first place.</li>
+      <li><b>Burn phases</b> — "the boss takes ×N damage" is a planner concept with no button in the
+      simulator, so it refuses to guess rather than compare something else.</li>
+      <li><b>Mana, movement, mistakes, and your actual gear.</b></li>
+    </ul>
+
+    <p class="simhelp-foot">Under the hood this is the same engine, the same settings and the same plan
+    transcription this project runs in the terminal to verify the model — wired to a button rather than
+    re-implemented. If it and the planner ever disagree about which layout wins, that disagreement is a
+    finding, and the panel says so.</p>
+    <form method="dialog"><button class="tbtn" type="submit">Close</button></form>
+  </dialog>
+  <div class="stamp" title="Update this stamp whenever index.html changes — it identifies stale copies.">build 2026-07-26c</div>
 </div>
 
 <script id="engine-src">
@@ -651,23 +875,31 @@ const BUFFS = {
   bloodlust:     { name: "Bloodlust",            kind: "mult",   value: 1.30, dur: 40, cd: 600, color: "var(--c-bloodlust)",   stat: "+30% haste · 40s", src: "shaman" },
   icyVeins:      { name: "Icy Veins",            kind: "mult",   value: 1.20, dur: 20, cd: 180, color: "var(--c-icyveins)",    stat: "+20% haste · 20s · 3m" },
   drums:         { name: "Drums of Battle",      kind: "rating", value: 80,   dur: 30, cd: 120, color: "var(--c-drums)",       stat: "+80 haste · 30s · 2m" },
-  ati:           { name: "Ashtongue Talisman",   kind: "proc",   value: 145,  dur: 5,  cd: 0,   color: "var(--c-ati)",         stat: "145 haste proc on crit", src: "BT rep, Phase 3" },
-  skull:         { name: "Skull of Gul’dan",     kind: "rating", value: 175,  dur: 20, cd: 120, color: "var(--c-skull)",       stat: "+175 haste · 20s · 2m", src: "Illidan, Phase 3" },
+  ati:           { name: "Ashtongue Talisman",   kind: "proc",   value: 145,  dur: 5,  cd: 0,   color: "var(--c-ati)",         stat: "145 haste proc on crit", src: "Ashtongue Deathsworn revered" },
+  skull:         { name: "Skull of Gul’dan",     kind: "rating", value: 175,  dur: 20, cd: 120, color: "var(--c-skull)",       stat: "+175 haste · 20s · 2m", src: "Illidan Stormrage" },
   arcanePower:   { name: "Arcane Power",         kind: "dmg",    value: 1.30, dur: 15, cd: 180, color: "var(--c-arcanepower)", stat: "+30% dmg · 15s · 3m" },
-  scb:           { name: "Serpent-Coil Braid",   kind: "sp",     value: 225,  dur: 15, cd: 120, color: "var(--c-scb)",         stat: "+225 dmg on gem · 3 charges", src: "Morogrim, Phase 2 · 2m gem cd" },
+  scb:           { name: "Serpent-Coil Braid",   kind: "sp",     value: 225,  dur: 15, cd: 120, color: "var(--c-scb)",         stat: "+225 dmg on gem · 3 charges", src: "Morogrim Tidewalker · 2m gem cd" },
   berserking:    { name: "Berserking",           kind: "mult",   value: 1.10, dur: 10, cd: 180, color: "var(--c-berserking)",  stat: "+10% haste · 10s · 3m", src: "Troll racial" },
-  mqg:           { name: "Mind Quickening Gem",  kind: "rating", value: 330,  dur: 20, cd: 300, color: "var(--c-mqg)",         stat: "+330 haste · 20s · 5m", src: "Classic Azuregos" },
+  mqg:           { name: "Mind Quickening Gem",  kind: "rating", value: 330,  dur: 20, cd: 300, color: "var(--c-mqg)",         stat: "+330 haste · 20s · 5m", src: "Azuregos, world boss" },
   powerInfusion: { name: "Power Infusion",       kind: "mult",   value: 1.20, dur: 15, cd: 180, color: "var(--c-pi)",          stat: "+20% haste · 15s", src: "priest" },
-  isc:           { name: "Icon of the Silver Crescent", kind: "sp", value: 155, dur: 20, cd: 120, color: "var(--c-isc)",       stat: "+155 dmg · 20s · 2m", src: "badge vendor" },
+  isc:           { name: "Icon of the Silver Crescent", kind: "sp", value: 155, dur: 20, cd: 120, color: "var(--c-isc)",       stat: "+155 dmg · 20s · 2m", src: "Badge of Justice vendor" },
 };
 // timeline lane order is the CVD-safe palette order (validated), not arbitrary
 const LANE_ORDER = ["ati", "powerInfusion", "drums", "icyVeins", "skull", "isc", "scb", "arcanePower", "berserking", "mqg", "bloodlust"];
 const OFF_TRINKETS = ["skull", "mqg", "isc"]; // shared on-use lockout: using one locks the others for the buff's duration
-// checkbox list groups the way a player thinks about them
-const TRINKETS = ["skull", "ati", "scb", "mqg", "isc"];
+// Trinkets are listed in CONTENT ORDER — the order a player actually acquires them — so the list
+// doubles as a progression ladder and you can find yours by "where I'm raiding" instead of by name.
+// Purely presentational: the tiers carry no model meaning, and TRINKETS stays the flat key list.
+const TRINKET_TIERS = [
+  { tier: "Pre-TBC",  where: "Classic world boss",      keys: ["mqg"] },
+  { tier: "Phase 1",  where: "Karazhan · badges",       keys: ["isc"] },
+  { tier: "Phase 2",  where: "Serpentshrine Cavern",    keys: ["scb"] },
+  { tier: "Phase 3",  where: "Black Temple",            keys: ["skull", "ati"] },
+];
+const TRINKETS = TRINKET_TIERS.flatMap(t => t.keys);
 const GROUPS = [
   { title: "Your spells", keys: ["icyVeins", "berserking", "arcanePower"] },
-  { title: "Trinkets", keys: TRINKETS, trinket: true },
+  { title: "Trinkets", keys: TRINKETS, tiers: TRINKET_TIERS, trinket: true },
   { title: "Raid externals", keys: ["bloodlust", "powerInfusion", "drums"] },
 ];
 // Only the RAID-controlled buffs may be pinned to an exact second — those are called
@@ -3269,12 +3501,27 @@ function refreshPinBadge(key) {
   btn.classList.toggle("haspins", n > 0);
   btn.querySelector("b").textContent = n || "";
 }
+// Cooldowns whose MODEL is not yet sim-certified end-to-end the way the core kit is: the
+// Ashtongue proc (a folded-in uptime average, never a scheduled press) and the two raid
+// externals (source-verified stacking, but no full APL sim gate). Flagged in the UI so a
+// first-time user knows which numbers to trust least. See docs/RULES.md §13–§14.
+const BETA_KEYS = { ati: 1, drums: 1, powerInfusion: 1 };
+const BETA_TIP = "Beta — this cooldown's model is the least tested part of the tool: the physics is source-verified but its placement has not been certified end-to-end against the sim. Treat its timing as a strong suggestion, not gospel.";
 function buildBuffList() {
   const hosts = { spells: el("grp-spells"), trinkets: el("grp-trinkets"), ext: el("grp-ext") };
   for (const h of Object.values(hosts)) h.innerHTML = "";
   GROUPS.forEach((group, gi) => {
     const host = gi === 0 ? hosts.spells : group.trinket ? hosts.trinkets : hosts.ext;
+    // a tiered group prints its section header just before the first row of that tier
+    const heads = {};
+    if (group.tiers) for (const t of group.tiers) heads[t.keys[0]] = t;
     for (const key of group.keys) {
+      if (heads[key]) {
+        const h = document.createElement("div");
+        h.className = "tsec";
+        h.innerHTML = `<b>${heads[key].tier}</b><em>${heads[key].where}</em>`;
+        host.appendChild(h);
+      }
       const def = BUFFS[key];
       const pinnable = RAID_PINNABLE.has(key); // only raid calls get a pin control
       const wrap = document.createElement("div");
@@ -3287,7 +3534,7 @@ function buildBuffList() {
         <button type="button" class="tog" role="switch" aria-checked="${state.enabled[key]}" aria-label="${def.name}" title="${def.name} — ${def.stat}${def.src ? " · " + def.src : ""}">
           <span class="tick" aria-hidden="true"></span>
           ${iconOf(key, 26)}
-          <span class="txt"><span class="name">${def.name}</span><span class="stat">${def.stat}</span></span>
+          <span class="txt"><span class="name"><span class="nm">${def.name}</span></span><span class="stat">${def.stat}${BETA_KEYS[key] ? `<span class="beta" title="${esc(BETA_TIP)}">Beta</span>` : ""}</span></span>
         </button>
         ${pinnable ? `<button type="button" class="pinbtn" title="Pin exact use times — blank = planner picks" aria-label="Pin ${def.name} times"><span aria-hidden="true">⏱</span><b></b></button>` : ""}`;
       wrap.appendChild(row);
@@ -3364,8 +3611,10 @@ function renderPhaseRows() {
       </select>
       <input type="text" class="ph-from" placeholder="from" value="${esc(p.from)}" aria-label="Phase start">
       <input type="text" class="ph-to" placeholder="to" value="${esc(p.to)}" aria-label="Phase end">
-      <input type="number" class="ph-mult" min="1" max="10" step="0.1" value="${p.mult}" title="Damage multiplier" style="display:${p.type === "burn" ? "" : "none"}">
-      <input type="number" class="ph-targets" min="1" max="20" value="${p.targets}" title="Targets hit" style="display:${p.type === "aoe" ? "" : "none"}">
+      <label class="ph-unit" title="Arcane Blast damage is multiplied by this for the whole phase" style="display:${p.type === "burn" ? "" : "none"}">
+        <input type="number" class="ph-mult" min="1" max="10" step="0.1" value="${p.mult}" aria-label="Damage multiplier"><span class="u">× damage</span></label>
+      <label class="ph-unit" title="How many targets your Arcane Explosions hit during the phase" style="display:${p.type === "aoe" ? "" : "none"}">
+        <input type="number" class="ph-targets" min="1" max="20" value="${p.targets}" aria-label="Targets hit"><span class="u">targets</span></label>
       <button class="ph-del" title="Remove phase">✕</button>`;
     row.querySelector(".ph-type").addEventListener("change", e => { p.type = e.target.value; renderPhaseRows(); });
     row.querySelector(".ph-from").addEventListener("input", e => p.from = e.target.value);
@@ -3634,15 +3883,11 @@ el("btn-run").addEventListener("click", async () => {
 });
 
 function render(run) {
-  followReset();
   customReset(); // a fresh optimize invalidates any hand-edited timeline
   const wb = el("warnbar");
   wb.hidden = !run.cfg.warnings.length;
   wb.innerHTML = run.cfg.warnings.map(w => `<div>${esc(w)}</div>`).join("");
-  pressPlan(run);
-  renderTiles(run); renderSensitivity(run); renderTimeline(run); renderSchedule(run); renderCapSheet(run.cfg); renderAssumptions(run);
-  el("follow").hidden = false;
-  followPrime(run);
+  renderTiles(run); renderSensitivity(run); renderTimeline(run); renderSchedule(run); renderCapSheet(run.cfg);
   window.__run = run; // debug/test hook
   el("results").scrollIntoView({
     behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
@@ -3664,11 +3909,19 @@ function renderTiles({ cfg, baseline, naiveR, optR }) {
   const crit = Math.min(1, Math.max(0, cfg.critPct / 100));
   const plainCast = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + crit * (GAME.CRIT_MULT - 1)) * (cfg.t5two ? 1.2 : 1);
   const effCasts = optR.total / plainCast;
+  // The tile labels are unavoidably compact, so each carries the plain-language explanation of what
+  // the number means as a tooltip — a first-time reader shouldn't have to infer "effective casts".
+  const TIP = {
+    gain: "How much more damage this plan does than casting Arcane Blast with no cooldowns at all. Your realistic upside from pressing things well.",
+    naive: "How much more damage this plan does than firing every cooldown the moment it comes off cooldown. This is the number that says whether planning was worth it.",
+    eff: "Your whole fight measured in plain, unbuffed Arcane Blasts. A cast under Arcane Power counts 1.3, a cast under a spellpower trinket a bit more, and so on — so the count goes up both when you cast more and when your casts are worth more. This is the single number the planner maximizes.",
+    floor: "How much of the fight your casts were stuck at the 1.0s global-cooldown floor. Haste added there buys nothing — but a little is normal and often correct, since it usually means you were stacking haste on top of your damage window on purpose.",
+  };
   tiles.innerHTML = `
-    <div class="tile gain"><div class="k">Damage gain vs no cooldowns</div><div class="v">+${gain.toFixed(1)}<small>%</small></div></div>
-    <div class="tile gain"><div class="k">vs mashing on cooldown</div><div class="v">+${vsNaive.toFixed(1)}<small>%</small></div></div>
-    <div class="tile"><div class="k">Effective casts</div><div class="v">${effCasts.toFixed(1)}<small> (${optR.castCount} real)</small></div></div>
-    <div class="tile"><div class="k">Time at GCD floor</div><div class="v">${capPct.toFixed(0)}<small>% of fight</small></div></div>`;
+    <div class="tile gain" title="${esc(TIP.gain)}"><div class="k">Damage gain vs no cooldowns</div><div class="v">+${gain.toFixed(1)}<small>%</small></div></div>
+    <div class="tile gain" title="${esc(TIP.naive)}"><div class="k">vs mashing on cooldown</div><div class="v">+${vsNaive.toFixed(1)}<small>%</small></div></div>
+    <div class="tile" title="${esc(TIP.eff)}"><div class="k">Effective casts</div><div class="v">${effCasts.toFixed(1)}<small> (${optR.castCount} real)</small></div></div>
+    <div class="tile" title="${esc(TIP.floor)}"><div class="k">Time at GCD floor</div><div class="v">${capPct.toFixed(0)}<small>% of fight</small></div></div>`;
 }
 
 /* timeline: haste curve + buff lanes.
@@ -3745,11 +3998,16 @@ function renderTimeline(run, opts) {
     sv += `<line x1="${gx.toFixed(1)}" y1="${bandTop}" x2="${gx.toFixed(1)}" y2="${bandBot}" stroke="${grid}" stroke-width="1" opacity="0.6"/>`;
     sv += `<text x="${gx.toFixed(1)}" y="${H - AXIS_H + 17}" fill="${muted}" font-size="11" text-anchor="middle">${fmtT(m * 60)}</text>`;
   }
+  // The chart names its own y-axis, so nothing below it has to. (This replaced the legend paragraph:
+  // a caption in the gutter is read once and then ignored, where a legend has to be re-read forever.)
+  sv += `<text x="${PADL - 8}" y="${PADT - 6}" fill="${muted}" font-size="10" text-anchor="end" letter-spacing="0.08em">SPELL HASTE</text>`;
+  sv += `<text x="${PADL}" y="${PADT - 6}" fill="${ink2}" font-size="11">gear ${(cfg.hasteRating / GAME.HASTE_RATING_PER_PCT).toFixed(1)}% + cooldowns<title>Your spell haste at each moment: gear plus whatever cooldowns are up. Ashtongue's proc is random, so it is deliberately NOT averaged into this line — you see its effect in its own lane instead.</title></text>`;
   // GCD-floor line at +50% + faint "wasted haste" shading above it
   if (maxPct > 50) {
+    const gcdTip = `<title>A 3-stack Arcane Blast is a 1.5s cast and the global cooldown floors at 1.0s, so +50% haste is the ceiling. Haste above this line buys no extra casts in that window — the shading is the part that is wasted.</title>`;
     sv += `<rect x="${PADL}" y="${PADT}" width="${plotW}" height="${(y(50) - PADT).toFixed(1)}" fill="${warn}" opacity="0.06"/>`;
-    sv += `<line x1="${PADL}" y1="${y(50).toFixed(1)}" x2="${VW - PADR}" y2="${y(50).toFixed(1)}" stroke="${warn}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85"/>`;
-    sv += `<text x="${PADL - 8}" y="${(y(50) + 4).toFixed(1)}" fill="${warn}" font-size="11" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">GCD cap</text>`;
+    sv += `<line x1="${PADL}" y1="${y(50).toFixed(1)}" x2="${VW - PADR}" y2="${y(50).toFixed(1)}" stroke="${warn}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85">${gcdTip}</line>`;
+    sv += `<text x="${PADL - 8}" y="${(y(50) + 4).toFixed(1)}" fill="${warn}" font-size="11" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">GCD cap${gcdTip}</text>`;
   }
   // Frostbolt filler soft cap: at +25% passive haste a 2.5s Frostbolt (Imp Frostbolt 5/5) casts in 2.0s,
   // so FOUR Frostbolts exactly fill the 8s Arcane Blast debuff — Arcane's haste soft cap (≈394 gear rating).
@@ -3757,8 +4015,9 @@ function renderTimeline(run, opts) {
   const FB_PCT = (2.5 / (GAME.AB.DEBUFF_DUR / 4) - 1) * 100;      // 2.5s FB → 2.0s at +25%
   const fbFrost = "#5cc6e6";
   if (maxPct > FB_PCT + 3) {
-    sv += `<line x1="${PADL}" y1="${y(FB_PCT).toFixed(1)}" x2="${VW - PADR}" y2="${y(FB_PCT).toFixed(1)}" stroke="${fbFrost}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85"><title>+${FB_PCT.toFixed(0)}% passive haste (~${Math.round(FB_PCT * GAME.HASTE_RATING_PER_PCT)} rating): Frostbolt hits 2.0s, so 4 fill the 8s Arcane Blast debuff — the conserve-filler soft cap.</title></line>`;
-    sv += `<text x="${PADL - 8}" y="${(y(FB_PCT) + 4).toFixed(1)}" fill="${fbFrost}" font-size="11" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">4× FB</text>`;
+    const fbTip = `<title>A gearing reference, not part of the plan: at +${FB_PCT.toFixed(0)}% passive gear haste (~${Math.round(FB_PCT * GAME.HASTE_RATING_PER_PCT)} rating) a Frostbolt casts in 2.0s, so four of them exactly fill the 8s Arcane Blast debuff — your conserve filler goes from 3 Frostbolts to 4. Read your no-cooldown haste against it; the planner itself never casts Frostbolt.</title>`;
+    sv += `<line x1="${PADL}" y1="${y(FB_PCT).toFixed(1)}" x2="${VW - PADR}" y2="${y(FB_PCT).toFixed(1)}" stroke="${fbFrost}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85">${fbTip}</line>`;
+    sv += `<text x="${PADL - 8}" y="${(y(FB_PCT) + 4).toFixed(1)}" fill="${fbFrost}" font-size="11" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">4× FB${fbTip}</text>`;
   }
   // Second GCD-floor line — "cap +ATI". A live 145-rating proc adds ≈+9.2% haste (145/15.77), so 3-stack AB
   // reaches the 1.0s floor at that much LOWER *base* (deterministic) haste. The trend is proc-free, so this
@@ -3767,8 +4026,9 @@ function renderTimeline(run, opts) {
     const atiCapPct = 50 - ATI.rating / GAME.HASTE_RATING_PER_PCT;   // ≈ 40.8%
     if (atiCapPct > 2 && maxPct > atiCapPct + 3) {
       const atiCol = colorOf("ati");
-      sv += `<line x1="${PADL}" y1="${y(atiCapPct).toFixed(1)}" x2="${VW - PADR}" y2="${y(atiCapPct).toFixed(1)}" stroke="${atiCol}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85"><title>GCD cap if an Ashtongue proc aligns: at +${atiCapPct.toFixed(0)}% base haste a live 145-rating proc reaches the 1.0s Arcane Blast floor. Above this, procs are (partly) wasted to the cap.</title></line>`;
-      sv += `<text x="${PADL - 8}" y="${(y(atiCapPct) + 4).toFixed(1)}" fill="${atiCol}" font-size="11" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">cap +ATI</text>`;
+      const atiTip = `<title>GCD cap if an Ashtongue proc aligns: at +${atiCapPct.toFixed(0)}% base haste a live 145-rating proc reaches the 1.0s Arcane Blast floor. Between this line and the +50% one you are capped only while a proc is up; above it, procs are (partly) wasted to the cap.</title>`;
+      sv += `<line x1="${PADL}" y1="${y(atiCapPct).toFixed(1)}" x2="${VW - PADR}" y2="${y(atiCapPct).toFixed(1)}" stroke="${atiCol}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85">${atiTip}</line>`;
+      sv += `<text x="${PADL - 8}" y="${(y(atiCapPct) + 4).toFixed(1)}" fill="${atiCol}" font-size="11" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">cap +ATI${atiTip}</text>`;
     }
   }
   // haste step-curve
@@ -3827,20 +4087,16 @@ function renderTimeline(run, opts) {
   box.insertAdjacentHTML("beforeend", sv);
   lastGeo = { x, PADL, PADR, VW, plotW, H, T: cfg.T };
   box.classList.toggle("editing", !!opts.editing);
-  if (!box.querySelector(".playhead")) {
-    const ph = document.createElement("div");
-    ph.className = "playhead";
-    box.appendChild(ph);
-  }
-  el("viz-note").innerHTML =
-    `<b style="color:${ink}">White line</b> deterministic spell haste per cast (gear ${(cfg.hasteRating / GAME.HASTE_RATING_PER_PCT).toFixed(1)}%` +
-    ` + on-use buffs — Ashtongue's random proc is NOT averaged in) · <b style="color:${warn}">dashed</b> GCD cap (+50%) · ` +
-    (cfg.enabled.ati ? `<b style="color:${colorOf("ati")}">╌╌</b> GCD cap if an Ashtongue proc aligns · ` : ``) +
-    `<b style="color:#5cc6e6">·····</b> +25% = 4-Frostbolt filler cap (~394 rating) · ` +
-    `bars are buff uptime, ticks are presses · <span style="color:${PH.intermission}">▨ intermission</span> · ` +
-    `<span style="color:${PH.aoe}">■ AoE</span> · <span style="color:${PH.burn}">■ burn</span>` +
-    (opts.ghost ? ` · <span style="color:${ink2}">▢ dashed outline = model plan</span>` : ``) +
-    (opts.editing ? ` · <b style="color:${cv("--gold") || "#d9b96a"}">drag a bar to move its press — release snaps to the whole second</b>` : ``);
+  // The legend paragraph is GONE. Everything it used to spell out is now on the chart itself: the
+  // curve and every reference line carry their own gutter label and a hover title, the phase bands
+  // are captioned in place, and each bar names itself on hover. What is left under the chart is not
+  // a legend but the two things a static drawing genuinely cannot say — that you are in edit mode,
+  // and that the ghost bars belong to a plan other than the one you are looking at.
+  const note = el("viz-note"), tips = [];
+  if (opts.ghost) tips.push(`<span style="color:${ink2}">Dashed outlines</span> are the planner's own timings, for comparison.`);
+  if (opts.editing) tips.push(`<b style="color:${cv("--gold") || "#d9b96a"}">Drag a bar</b> to move its press — release snaps to the whole second.`);
+  note.innerHTML = tips.join(" ");
+  note.hidden = !tips.length;
   hookTooltip(run, { PADL, PADR, VW, plotW, samples });
   if (opts.editing) attachDrag(box.querySelector("svg"), run);
 }
@@ -3929,34 +4185,56 @@ function scheduleRows(run) {
   }
   return windows;
 }
+// What one press does, in one phrase ("+30% haste for 40s") — the old table's third column.
+function buffEffect(def) {
+  const v = def.kind === "mult" ? `+${Math.round((def.value - 1) * 100)}% haste`
+    : def.kind === "rating" ? `+${def.value} haste`
+    : def.kind === "dmg" ? `+${Math.round((def.value - 1) * 100)}% damage`
+    : `+${def.value} spell dmg`;
+  return `${v} for ${def.dur}s`;
+}
+// The schedule is a to-do list, so it is laid out the way you execute it: ONE LINE PER SECOND
+// YOU PRESS SOMETHING, everything pressed together clustered on that line (the press-board
+// layout, which replaced the old one-row-per-buff table — repeated timestamps read as separate
+// actions when they are really one macro). Windows stay as the grouping frame: they carry the
+// burst-level readouts (peak haste, AB cast time, mana to spam) that belong to the cluster, not
+// to any single press.
 function renderSchedule(run) {
   el("sched").hidden = false;
   const windows = scheduleRows(run);
-  const tags = new Map((run.pressRows || []).filter(r => r.tag).map(r => [Math.round(r.t), r.tag]));
-  const tagged = new Set();
-  let html = `<table><thead><tr><th>Time</th><th>Use</th><th>Window</th></tr></thead><tbody>`;
+  let html = "";
   windows.forEach((w, wi) => {
     const regenBack = 100 * (w.spanDur || 0);            // ≈100 mana/s casting, raid-buffed (SOURCES) — a typical-case read, not a gear input
     const net = Math.max(0, (w.mana || 0) - regenBack);
     const manaTip = w.mana
       ? `${w.mana.toLocaleString()} mana to spam this window (${w.manaCasts} AB, ${w.spanDur}s). Casting regen ~${regenBack.toLocaleString()} back → pool drops ~${net.toLocaleString()}; have that banked, or a mana gem / Evocation ready.`
       : "";
-    const manaTxt = w.mana ? ` · <span class="manatag" title="${esc(manaTip)}">~${(Math.round(w.mana / 100) / 10).toFixed(1)}k mana</span>` : "";
-    const stats = (w.peakHaste != null
+    const stats = w.peakHaste != null
       ? `peak haste +${w.peakHaste.toFixed(0)}% · AB ${w.minCast.toFixed(2)}s` + (w.capped ? ` · <span class="warntag">at GCD floor</span>` : "")
-      : "") + manaTxt;
-    html += `<tr class="window-head"><td class="t">${fmtT(Math.min(...w.acts.map(x => x.sec)))}</td><td>Window ${wi + 1}</td><td class="num">${stats}</td></tr>`;
+      : "";
+    // cluster the window's activations by the second they are pressed
+    const rows = [];
     for (const a of w.acts) {
-      const def = BUFFS[a.k];
-      const sec = a.sec;
-      const tg = !tagged.has(sec) && tags.get(sec);
-      if (tg) tagged.add(sec);
-      html += `<tr><td class="t">${fmtT(a.sec)}</td>
-        <td>${iconOf(a.k, 22)}${a.coldSnap ? "Cold Snap → " : ""}${def.name}${a.k === "scb" ? " (Mana Emerald)" : ""}${tg ? `<span class="whytag">${esc(tg)}</span>` : ""}</td>
-        <td class="num">${def.kind === "mult" ? "+" + Math.round((def.value - 1) * 100) + "% haste" : def.kind === "rating" ? "+" + def.value + " haste" : def.kind === "dmg" ? "+" + Math.round((def.value - 1) * 100) + "% damage" : "+" + def.value + " spell dmg"} for ${def.dur}s</td></tr>`;
+      const r = rows[rows.length - 1];
+      if (r && r.t === a.sec) r.items.push(a);
+      else rows.push({ t: a.sec, items: [a] });
     }
+    html += `<div class="wgroup">
+      <div class="whead">
+        <span class="wname">Window ${wi + 1}</span>
+        <span class="wt">${fmtT(Math.min(...w.acts.map(x => x.sec)))}</span>
+        <span class="wstat">${stats}</span>
+        ${w.mana ? `<span class="manatag" title="${esc(manaTip)}">~${(Math.round(w.mana / 100) / 10).toFixed(1)}k mana</span>` : ""}
+      </div>
+      ${rows.map(r => `<div class="prow">
+        <div class="pt">${fmtT(r.t)}</div>
+        <div class="ptiles">${r.items.map(a =>
+          `<span class="ptile" style="--bc:${colorOf(a.k)}">${pressIcons(a, 26)}${pressCode(a)}</span>`).join("")}</div>
+        <div class="pnames">${r.items.map(a =>
+          `<span class="pn">${pressName(a)}${a.k === "scb" ? " (Mana Emerald)" : ""} <span class="peff">${buffEffect(BUFFS[a.k])}</span></span>`).join("")}</div>
+      </div>`).join("")}
+    </div>`;
   });
-  html += `</tbody></table>`;
   el("tablebox").innerHTML = html;
 }
 // Canonical copy-as-text plan for any run (model or hand-edited). The model output is
@@ -3977,24 +4255,22 @@ function planText(run) {
       out += `[${s.type === "intermission" ? "Intermission" : s.type === "burn" ? "Burn x" + s.mult : "AoE x" + s.targets} ${fmtT(s.start)}-${fmtT(s.end)}]\n`;
     }
   }
-  const ctags = new Map((run.pressRows || []).filter(r => r.tag).map(r => [Math.round(r.t), r.tag]));
-  const ctagged = new Set();
   windows.forEach((w, wi) => {
     out += `\n[Window ${wi + 1} @ ${fmtT(Math.min(...w.acts.map(x => x.sec)))}]` + (w.peakHaste != null ? ` peak +${w.peakHaste.toFixed(0)}% haste` : "") + (w.mana ? ` · ~${(Math.round(w.mana / 100) / 10).toFixed(1)}k mana to spam` : "") + "\n";
     for (const a of w.acts) {
-      const sec = a.sec;
-      const tg = !ctagged.has(sec) && ctags.get(sec);
-      if (tg) ctagged.add(sec);
-      out += `  ${fmtT(a.sec)}  ${a.coldSnap ? "Cold Snap -> " : ""}${BUFFS[a.k].name}${tg ? `  (${tg})` : ""}\n`;
+      out += `  ${fmtT(a.sec)}  ${a.coldSnap ? "Cold Snap -> " : ""}${BUFFS[a.k].name}\n`;
     }
   });
   // (Cold Snap commentary removed from the copy text too — user decision; the CS→IV rows carry it)
   return out;
 }
+// Toolbar buttons carry an icon next to their text, so a label swap has to target the text span
+// and not blow the icon away with textContent.
+function btnLabel(btn, text) { (btn.querySelector(".lab") || btn).textContent = text; }
 function copyToClipboard(text, btn, restoreLabel, failLabel) {
   const done = ok => {
-    btn.textContent = ok ? "Copied" : (failLabel || "Copy failed — select the table instead");
-    setTimeout(() => btn.textContent = restoreLabel, ok ? 1200 : 2600);
+    btnLabel(btn, ok ? "Copied" : (failLabel || "Copy failed — select the table instead"));
+    setTimeout(() => btnLabel(btn, restoreLabel), ok ? 1200 : 2600);
   };
   const fallback = () => {
     const ta = document.createElement("textarea");
@@ -4025,7 +4301,7 @@ el("btn-copy").addEventListener("click", () => {
    nearest whole second — the search's own granularity); bars always render at the engine's actual
    FIRE times, so a press that would slip (mid-ramp boundary, cooldown, trinket lockout) visibly
    lands where it would really fire. Locking runs repair() as the validator: legal → the activation
-   schedule / pressboard / copy-text regenerate from the custom plan; illegal → the violations are
+   schedule / copy-text regenerate from the custom plan; illegal → the violations are
    listed, the offending presses are flagged, and an auto-fix to repair()'s nearest-legal times is
    offered. Scoring is the same simulate() the optimizer maximizes (memoized, rAF-throttled), so the
    comparison tiles update in realtime during a drag. UI-only: nothing here feeds the optimizer, the
@@ -4035,17 +4311,32 @@ const DRAG = { active: false, raf: 0 };
 const activeRun = () => (CUSTOM.locked && CUSTOM.run) || lastRun;
 window.__custom = CUSTOM; // debug/test hook
 function sortedClone(s) { const o = {}; for (const k in s) o[k] = s[k].slice().sort((a, b) => a - b); return o; }
+/* The customize button holds a MODE, so it always names the action that LEAVES the mode it is in:
+   "Customize" to enter, "Lock & validate" to come back out. Icon and tooltip travel with the label. */
+const EDIT_ICON = {
+  off: `<path d="M12 20h9"/><path d="M16.5 3.5a2.12 2.12 0 0 1 3 3L7.5 18.5 3 20l1.5-4.5z"/>`,
+  on: `<path d="M20 6 9 17l-5-5"/>`,
+};
+const EDIT_TIP = {
+  off: "Unlock the timeline and drag any press to a time of your own. Everything is re-scored live and checked against the real cooldown rules.",
+  on: "Check your timeline against the real cooldown rules, then rebuild the activation schedule from it.",
+};
+function setEditBtn(editing) {
+  const b = el("btn-edit");
+  b.querySelector(".ic").innerHTML = editing ? EDIT_ICON.on : EDIT_ICON.off;
+  btnLabel(b, editing ? "Lock & validate" : "Customize");
+  b.classList.toggle("armed", editing);
+  b.title = editing ? EDIT_TIP.on : EDIT_TIP.off;
+}
 function customReset() {
   CUSTOM.editing = CUSTOM.locked = false;
   CUSTOM.s = CUSTOM.run = CUSTOM.rep = null;
   CUSTOM.legal = true; CUSTOM.diffs = [];
   el("customstats").hidden = true;
   el("edit-msg").hidden = true;
-  el("btn-edit").textContent = "Unlock timeline for customization";
-  el("btn-edit").classList.remove("armed");
+  setEditBtn(false);
   el("btn-revert").hidden = true;
   el("sched").classList.remove("stale");
-  el("follow").classList.remove("stale");
   el("chartbox").classList.remove("editing");
   window.__customRun = null;
 }
@@ -4111,6 +4402,7 @@ function showEditMsg(html, kind) {
   const m = el("edit-msg");
   m.hidden = !html;
   m.classList.toggle("ok", kind === "ok");
+  m.classList.toggle("miss", kind === "miss");
   m.innerHTML = html || "";
 }
 function renderEditMsg() {
@@ -4139,12 +4431,9 @@ function enterEdit() {
   CUSTOM.editing = true; CUSTOM.locked = false; CUSTOM.run = null;
   window.__customRun = null;
   if (!CUSTOM.s) CUSTOM.s = sortedClone(lastRun.best.s);
-  el("btn-edit").textContent = "Lock timeline & validate";
-  el("btn-edit").classList.add("armed");
+  setEditBtn(true);
   el("btn-revert").hidden = false;
-  el("sched").classList.add("stale");   // the table/pressboard regenerate on lock — dim them until then
-  el("follow").classList.add("stale");
-  followReset();
+  el("sched").classList.add("stale");   // the schedule regenerates on lock — dim it until then
   refreshCustomView();
 }
 function tryLock() {
@@ -4156,24 +4445,55 @@ function tryLock() {
   CUSTOM.editing = false; CUSTOM.locked = true;
   const optR = simulate(CUSTOM.s, cfg, true);
   CUSTOM.run = { cfg, baseline: run.baseline, naive: run.naive, naiveR: run.naiveR, best: { s: CUSTOM.s, val: optR.robust }, optR, isCustom: true };
-  pressPlan(CUSTOM.run);
   renderTimeline(CUSTOM.run, { ghost: run.optR.actEff });
   renderSchedule(CUSTOM.run);
-  followPrime(CUSTOM.run);
   renderCustomTiles(optR);
-  el("btn-edit").textContent = "Unlock timeline for customization";
-  el("btn-edit").classList.remove("armed");
+  setEditBtn(false);
   el("sched").classList.remove("stale");
-  el("follow").classList.remove("stale");
-  showEditMsg(`<div>Validated — all cooldown requirements met. Activation schedule and pressboard regenerated from your timeline.</div>`, "ok");
+  showEditMsg(searchMissText(optR) ||
+    `<div>Validated — all cooldown requirements met. Activation schedule regenerated from your timeline.</div>`,
+    searchMissText(optR) ? "miss" : "ok");
   window.__customRun = CUSTOM.run; // debug/test hook
+}
+/* ═══════════════ the search-miss alarm ═══════════════
+   THE CONFESSION RULE, in the UI. This tool is a maximizer, so a LEGAL hand-edit that scores HIGHER
+   than the planner's own output — under the planner's OWN objective — is not a clever play the user
+   found. It is the search failing to find something it was free to choose, and it is gradeable with
+   no simulator at all (`tools/plan-duel.mjs` calls this a confession: no repricing can manufacture
+   that direction, because the optimizer could have kept the better layout and scored better by its
+   own measure, and didn't).
+
+   Three things have to be right or this cries wolf, and two of them are easy to get wrong:
+
+   1. ★ COMPARE `robust`, NOT `total`. The tiles' headline Δ is at-kill damage; the optimizer
+      maximizes `robust` — the half-cast kill-window smoothing of RULES §8. A plan can beat the model
+      on `total` and lose on `robust`, and that is the objective working as designed, not a miss.
+   2. ★ THE PLAN MUST BE LEGAL. `repair()` is the feasibility projector the optimizer trusts; a
+      schedule it would move or drop was never in the search space, so out-scoring from outside the
+      feasible set proves nothing. `tryLock` only reaches here when `validateCustom` found a fixpoint.
+   3. A THRESHOLD IN MEANINGFUL UNITS. Floating-point ties and sub-cast tie-breaks are not misses, so
+      the gain is expressed in EFFECTIVE CASTS (robust ÷ one plain unbuffed AB) and must clear a
+      hundredth of a cast. */
+const SEARCH_MISS_CASTS = 0.01;
+function searchMissText(customR) {
+  const run = lastRun;
+  if (!run || !CUSTOM.legal || !customR) return "";
+  const cfg = run.cfg;
+  const crit = Math.min(1, Math.max(0, cfg.critPct / 100));
+  const plainCast = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + crit * (GAME.CRIT_MULT - 1)) * (cfg.t5two ? 1.2 : 1);
+  const gain = (customR.robust - run.optR.robust) / plainCast;   // in effective casts
+  if (!(gain > SEARCH_MISS_CASTS)) return "";
+  return `<div><b>Your timeline beats the planner — that is a bug, not a win.</b>
+    It scores <b>+${gain.toFixed(2)} effective casts</b> higher than the plan the optimizer produced,
+    measured with the optimizer's own objective, and it is fully legal — so the search could have
+    chosen this and didn't. Please send <b>Debug export</b> (it now contains everything needed to
+    reproduce this); a hand-edit that wins is the most useful bug report this tool can receive.</div>`;
 }
 function revertCustom() {
   if (!lastRun) return;
   customReset();
   renderTimeline(lastRun);
   renderSchedule(lastRun);
-  followPrime(lastRun);
 }
 // Pointer-drag on the lane bars (edit mode only). The bar follows the pointer continuously;
 // the bubble shows the whole second the press will snap to on release; the comparison tiles
@@ -4246,6 +4566,37 @@ el("btn-revert").addEventListener("click", revertCustom);
 function statLine(label, S, r) {
   return `${label}: total=${r.total.toFixed(1)} robust=${r.robust.toFixed(1)} · effective casts ${S.effCasts.toFixed(2)} (${r.castCount} real) · gain vs no-cooldowns +${S.gain.toFixed(2)}% · vs mashing +${S.vsNaive.toFixed(2)}% · GCD-floor ${S.capPct.toFixed(1)}% of fight`;
 }
+// The sim modules load lazily (only when the sim button is pressed), but Debug export must work
+// without them — so the transcription used by the export mirrors sim/planspec.mjs's contract on the
+// data already in the page. `tests/sim-request.mjs` + `tools/bench.mjs` remain the authority; if this
+// ever disagrees with them, THIS is the copy to delete.
+function planToSpecInline(r) {
+  const { cfg, best, optR } = r;
+  const eff = (optR && optR.actEff) || {};
+  const at = k => (eff[k] || []).slice().sort((a, b) => a - b).map(Math.floor);
+  const KEY = { icyVeins: "IV", arcanePower: "AP", berserking: "Zerk", bloodlust: "BL", isc: "Icon", scb: "Gem", skull: "Skull", mqg: "MQG" };
+  const NOPRESS = { ati: "Ashtongue Talisman", drums: "Drums of Battle", powerInfusion: "Power Infusion" };
+  const spec = { _prestack: 0 }, skipped = [];
+  for (const k of Object.keys(best.s || {})) {
+    if (NOPRESS[k]) { if ((eff[k] || []).length) skipped.push(NOPRESS[k]); continue; }
+    if (k === "icyVeins" || !KEY[k]) { if (!KEY[k]) skipped.push(k); continue; }
+    const t = at(k); if (t.length) spec[KEY[k]] = t;
+  }
+  const ivs = at("icyVeins");
+  if (ivs.length) {
+    const ivOut = [], csOut = []; let cd = -1e9;
+    for (const t of ivs) { if (t < cd - 1e-6) csOut.push(t); ivOut.push(t); cd = t + BUFFS.icyVeins.cd; }
+    spec.IV = ivOut; if (csOut.length) spec.CS = csOut;
+  }
+  const down = [], aoe = [];
+  for (const s of cfg.segments || []) {
+    if (s.type === "intermission") down.push([Math.round(s.start), Math.round(s.end)]);
+    else if (s.type === "aoe") aoe.push([Math.round(s.start), Math.round(s.end)]);
+  }
+  if (down.length) spec._intermissions = down;
+  if (aoe.length) spec._aoe = aoe;
+  return { spec, skipped, burn: (cfg.segments || []).some(s => s.type === "burn") };
+}
 function debugExportText() {
   const run = lastRun, cfg = run.cfg;
   const M = tileStats(run, run.optR);
@@ -4299,9 +4650,197 @@ function debugExportText() {
     },
   };
   L.push(JSON.stringify(j));
+  // ★ The sim transcription + a ready-to-run command. A debug export exists to be pasted into a
+  // debugging session, and the first thing that session will want is to put both layouts through the
+  // bench. Emitting the spec here means nobody has to re-derive the transcription by hand — and
+  // `planToSpec`'s convention (FIRE times floored, Cold-Snap split) is the one place that has already
+  // cost this project −1.5% on a KT plan when it was got wrong.
+  L.push("", "--- SIM TRANSCRIPTION (tools/bench.mjs / sim/planspec.mjs) ---");
+  try {
+    const A = planToSpecInline(run);
+    L.push(`model plan spec:  ${JSON.stringify(A.spec)}`);
+    if (customR) L.push(`custom spec:      ${JSON.stringify(planToSpecInline(CUSTOM.run || { cfg, best: { s: CUSTOM.s }, optR: customR }).spec)}`);
+    if (A.skipped.length) L.push(`⚠ not transcribable (absent from BOTH arms): ${A.skipped.join(", ")}`);
+    if (A.burn) L.push(`⚠ this fight has a Burn phase — wowsims has no "AB damage xN" knob, so it cannot be simmed at all.`);
+    else L.push(`reproduce:        node tools/bench.mjs --char model-ref --spec-a '${JSON.stringify(A.spec)}' --T ${cfg.T} --haste ${cfg.hasteRating} --sp ${cfg.sp} --crit ${cfg.critPct}`);
+  } catch (e) {
+    L.push(`(transcription unavailable: ${String(e && e.message || e)})`);
+  }
   L.push("", "Notes for whoever debugs this: times are SECONDS from pull. `intents` are press intents (the schedule the engine takes); `fireTimes` are when each press actually fires (displayed plan times = floor(fireTime)). The `evalsched` object is ready to run as  node tests/evalsched.mjs '<that json>'  to score both layouts under the model scorer; to sim-verify a layout, build an APL per docs/TOOLING.md (genapl — keep _prestack:0)." + (cfg.t5two ? " ⚠ Tirisfal-2pc is ON here but evalsched.mjs's harness cfg has no t5 field — compare via the stats above, or add t5two to its cfg." : ""));
   return L.join("\n");
 }
+/* ═══════════════ sim verification (the real wowsims engine, in the page) ═══════════════
+   THE SAME VERIFICATION THIS PROJECT RUNS IN THE TERMINAL, wired to a button. The chain is
+   shared code, not a re-implementation:
+
+     plan → sim/planspec.mjs → tools/genapl-core.mjs → sim/simreq.mjs → sim/sim.wasm
+
+   `genapl-core` is the very module the cross-val harness drives; `planspec` is the transcription
+   convention (FIRE times, floored, Cold-Snap split) that harness uses; `simreq` patches the runner's
+   own `--dumpreq` output; and `sim.wasm` is the patched wowsims build (ap-cd-at-cast +
+   apl-schedule-strict-ready, `ade9f39`) — measured EQUAL to the native runner to the printed decimal
+   (tests/sim-duel.mjs). So a number the button prints is a number the terminal would print.
+
+   GEAR-AGNOSTIC BY DESIGN: the sim runs a fixed synthetic mage (no gear, no buffs, hit-capped,
+   infinite mana, cold open) with your SP / crit / haste injected — the four numbers the planner
+   already asks for. Absolute DPS is therefore NOT your DPS; only the paired difference means
+   anything, and only the difference is reported. Both arms share one seed (common random numbers),
+   which is what makes a 0.1% difference readable at all.
+
+   Everything loads LAZILY on first click (the wasm is ~22 MB, ~4 MB over the wire), and the whole
+   feature is optional: if the modules or the worker can't load (opening index.html from a file://
+   path blocks both), the button says so and the rest of the tool is unaffected. */
+const SIM = { mods: null, workers: [], busy: false, base: new URL("./sim/", location.href).href };
+
+// ★ NO PROTOCOL CONSTANTS LIVE IN THIS FILE. Iterations, seed, duration variation, the tie band, the
+// rating conversions — all of them come from sim/benchmark.mjs, the SAME object `tools/plan-duel.mjs`
+// and the tests import. A number typed here would be a second copy, and a second copy is a setting
+// that eventually differs from the one the terminal uses while both keep printing plausible DPS.
+// `tests/sim-request.mjs` asserts the two paths build byte-identical requests, so this is checked,
+// not merely intended.
+async function simModules() {
+  if (SIM.mods) return SIM.mods;
+  const [planspec, simreq, bench, genapl, template] = await Promise.all([
+    import("./sim/planspec.mjs"),
+    import("./sim/simreq.mjs"),
+    import("./sim/benchmark.mjs"),
+    import("./tools/genapl-core.mjs"),
+    fetch(SIM.base + "model-ref-request.json").then(r => {
+      if (!r.ok) throw new Error(`model-ref-request.json (HTTP ${r.status})`);
+      return r.json();
+    }),
+  ]);
+  SIM.mods = { planspec, simreq, genapl, template, BENCH: bench.BENCH };
+  return SIM.mods;
+}
+// One worker per arm: the two arms then run concurrently instead of back to back.
+function simRun(request, idx) {
+  return new Promise((resolve, reject) => {
+    let w = SIM.workers[idx];
+    if (!w) { w = new Worker(SIM.base + "duel-worker.js"); SIM.workers[idx] = w; }
+    const id = Math.random().toString(36).slice(2);   // message correlation only — never model input
+    const onMsg = e => {
+      if (e.data.id !== id) return;
+      w.removeEventListener("message", onMsg);
+      e.data.ok ? resolve(e.data) : reject(new Error(e.data.error));
+    };
+    w.addEventListener("message", onMsg);
+    w.addEventListener("error", ev => reject(new Error(ev.message || "sim worker failed")), { once: true });
+    w.postMessage({ id, base: SIM.base, request });
+  });
+}
+function simBox(html) { const b = el("simbox"); b.hidden = false; b.innerHTML = html; }
+const simPct = v => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "%";
+
+async function runSimDuel() {
+  if (SIM.busy) return;
+  const run = lastRun; if (!run) return;
+  const btn = el("btn-sim");
+  SIM.busy = true; btn.disabled = true; btnLabel(btn, "Loading sim…");
+  try {
+    const { planspec, simreq, genapl, template, BENCH } = await simModules();
+
+    // Arm B is your hand-edited timeline when there is one (the interesting question), otherwise the
+    // "mash everything on cooldown" baseline the tiles already quote — which turns the button into
+    // "prove the plan in the real engine".
+    const custom = CUSTOM.locked && CUSTOM.run ? CUSTOM.run : null;
+    const armA = { label: "Model plan", run };
+    const armB = custom
+      ? { label: "Your timeline", run: custom }
+      : { label: "Mash on cooldown", run: { cfg: run.cfg, best: { s: run.naive }, optR: simulate(run.naive, run.cfg, true) } };
+
+    const A = planspec.planToSpec(armA.run, BUFFS);
+    const B = planspec.planToSpec(armB.run, BUFFS);
+    const skipped = [...new Set([...A.skipped, ...B.skipped])];
+    if (A.burn || B.burn) {
+      simBox(`<div class="simverdict bad">Can't verify a Burn phase.</div><div class="simnote">A Burn window is a
+        model construct — "Arcane Blast damage ×N" — and the simulator has no such knob to set, so there is nothing
+        honest to compare. Intermissions and AoE phases do verify.</div>`);
+      return;
+    }
+    const cfg = run.cfg;
+    const opts = { sp: cfg.sp, critPct: cfg.critPct, hasteRating: cfg.hasteRating, T: cfg.T,
+                   iterations: BENCH.iterations, seed: BENCH.seed, targets: Math.max(A.targets, B.targets) };
+
+    btnLabel(btn, "Simulating…");
+    simBox(`<div class="simhead"><b>Running ${BENCH.iterations.toLocaleString()} iterations per side…</b>
+      <span class="simsub">both sides on the same seed, in the real wowsims engine</span></div>
+      <div class="simbar"><i style="width:35%"></i></div>`);
+
+    const t0 = performance.now();
+    const [rA, rB] = await Promise.all([
+      simRun(simreq.buildRequest(template, { ...opts, apl: genapl.build(A.spec) }), 0),
+      simRun(simreq.buildRequest(template, { ...opts, apl: genapl.build(B.spec) }), 1),
+    ]);
+    const dA = simreq.dpsOf(rA.result), dB = simreq.dpsOf(rB.result);
+    if (!dA || !dB) throw new Error("the sim returned no DPS — see the browser console");
+    const wall = ((performance.now() - t0) / 1000).toFixed(1);
+
+    // ★ WHOSE TEST IS THIS? The panel is written around the SUBJECT — the layout being judged — and
+    // the subject is whatever the user authored. Hand-edit a timeline and YOUR timeline is on trial,
+    // with the model as the reference it has to beat; with no hand-edit there is nothing of yours to
+    // judge, so the model's plan is the subject and "mash on cooldown" is the reference. Reporting a
+    // custom-vs-model duel model-first ("the model plan wins by…") answers a question nobody asked:
+    // the user did not press this to find out how the model is doing.
+    const subject   = custom ? { label: armB.label, dps: dB, run: armB.run } : { label: armA.label, dps: dA, run: armA.run };
+    const reference = custom ? { label: armA.label, dps: dA, run: armA.run } : { label: armB.label, dps: dB, run: armB.run };
+    const delta = 100 * (subject.dps.avg / reference.dps.avg - 1);   // + = the subject is ahead
+    const tie = Math.abs(delta) < BENCH.tieBandPct;
+    // The model's own verdict on the same pair. Two independent judges on one question is the whole
+    // point of the button, so it is always shown — a disagreement in SIGN is the finding worth
+    // chasing (it is how a scorer gap shows itself), and agreement is the reassurance being sought.
+    const mDelta = 100 * (subject.run.optR.total / reference.run.optR.total - 1);
+    const agree = tie || Math.sign(delta) === Math.sign(mDelta) || Math.abs(mDelta) < 1e-9;
+
+    const verdict = tie
+      ? `<div class="simverdict tie">Too close to call — ${esc(subject.label)} and ${esc(reference.label.toLowerCase())} are within ${simPct(delta)}, inside the noise floor at this iteration count.</div>`
+      : delta > 0
+        ? `<div class="simverdict good">${custom ? "★ " : ""}${esc(subject.label)} ${custom ? "beats the model plan" : "wins"} by ${simPct(delta)} in the sim.</div>`
+        : `<div class="simverdict bad">${esc(subject.label)} is ${simPct(-delta)} behind ${esc(reference.label.toLowerCase())} in the sim.</div>`;
+
+    simBox(`
+      <div class="simhead"><b>Benchmark sim</b>
+        <span class="simsub">${BENCH.iterations.toLocaleString()} iterations per side · same seed · ${wall}s
+        <button type="button" class="whatis">what is this?</button></span></div>
+      <div class="simarms">
+        <div class="simarm${delta > 0 && !tie ? " win" : ""}"><div class="k">${esc(subject.label)}</div>
+          <div class="v">${subject.dps.avg.toFixed(1)}<small>DPS</small></div></div>
+        <div class="simarm${delta < 0 && !tie ? " win" : ""}"><div class="k">${esc(reference.label)}<small> — reference</small></div>
+          <div class="v">${reference.dps.avg.toFixed(1)}<small>DPS</small></div></div>
+      </div>
+      ${verdict}
+      <div class="simnote">
+        <b>The planner's own model scores it ${simPct(mDelta)}</b> — ${tie
+          ? `the sim cannot separate the two at this iteration count, so it neither confirms nor contradicts that.`
+          : agree
+            ? `the sim agrees on which side is ahead.`
+            : `<b style="color:var(--warn)">so the two DISAGREE on which side is better.</b> That is worth chasing, not averaging away: use Debug export (it carries the sim transcription and a ready-to-run command).`}<br>
+        ${custom && delta > 0 && !tie ? `<b style="color:var(--good)">A legal hand-edit that the sim prefers is a genuine finding</b> — send the Debug export.<br>` : ""}
+        <b>Read the gap, not the DPS.</b> This is the project's benchmark mage — no gear, no buffs, no
+        consumables, no conserve rotation — with only your ${cfg.sp} spell damage, ${cfg.critPct}% crit and
+        ${cfg.hasteRating} haste rating injected, hit-capped, infinite mana, no prepull. So these figures
+        will not match your log or your own sim, and are not meant to: both sides ran the identical
+        character through identical fights, which is what makes a fraction of a percent between them
+        readable at all.
+        ${skipped.length ? `<br><b style="color:var(--warn)">Not included in the sim:</b> ${esc(skipped.join(", "))} —
+          the simulator does not accept ${skipped.length > 1 ? "these" : "this"} as a scheduled press, so both sides ran without
+          ${skipped.length > 1 ? "them" : "it"}. The comparison is still fair, but it cannot judge where ${skipped.length > 1 ? "they go" : "it goes"}.` : ""}
+      </div>`);
+  } catch (err) {
+    const offline = location.protocol === "file:";
+    simBox(`<div class="simverdict bad">Couldn't run the sim.</div><div class="simnote">${
+      offline ? "This page was opened from a local file, and browsers block loading the simulator that way. Use the hosted site, or serve the folder over http (<code>npx serve</code>)."
+              : esc(String(err.message || err))}</div>`);
+  } finally {
+    SIM.busy = false; btn.disabled = false; btnLabel(btn, "Check in benchmark sim");
+  }
+}
+el("btn-sim").addEventListener("click", runSimDuel);
+const showSimHelp = () => { const d = el("simhelp"); d.showModal ? d.showModal() : d.setAttribute("open", ""); };
+el("btn-simhelp").addEventListener("click", showSimHelp);
+// the result panel's own "what is this?" — the explanation has to be reachable from where the number is
+el("simbox").addEventListener("click", e => { if (e.target.classList.contains("whatis")) showSimHelp(); });
+
 el("btn-debug").addEventListener("click", () => {
   if (!lastRun) return;
   copyToClipboard(debugExportText(), el("btn-debug"), "Debug export", "Copy failed — clipboard blocked");
@@ -4393,30 +4932,182 @@ function renderCapSheet(cfg) {
   html += `</tbody></table>`;
   el("capbox").innerHTML = html;
 }
-function renderAssumptions({ cfg }) {
+// The assumptions block is STATIC (nothing here depends on a run), so it renders at load —
+// the "Model assumptions ↓" button in the masthead scrolls a first-time user straight to it.
+// Every claim below is checked against the engine it describes; the sources are docs/MECHANICS.md
+// (physics), docs/RULES.md (strategy, with the sim evidence) and docs/SOURCES.md (constants).
+const V = { sim: `<span class="verdict sim" title="Verified against the wowsims simulator">sim-verified</span>`,
+            beta: `<span class="verdict beta" title="Physics is source-verified, but this part has not been certified end-to-end against the sim">beta</span>`,
+            out: `<span class="verdict out" title="Deliberately outside the model">not modeled</span>` };
+function renderAssumptions() {
   const a = el("assump"); a.hidden = false;
-  a.innerHTML = `<h4>Model assumptions</h4><ul>
-    <li>Rotation: continuous Arcane Blast spam; the AB debuff (−1/3s base cast, +75% mana per stack, max 3) is at 3 stacks after the opener. Cast time = (2.5 − 1/3·stacks) / total haste; next cast starts at max(cast time, hasted GCD), GCD floor 1.0s.</li>
-    <li>Haste stacking: all haste rating adds first (${GAME.HASTE_RATING_PER_PCT} rating = 1% at 70), then multiplies with each %-speed buff: (1+rating%) × 1.30<small>BL</small> × 1.20<small>IV</small> × 1.10<small>Zerk</small>.</li>
-    <li>Ashtongue Talisman is tracked per cast: the chance the 145-haste proc is up right now comes from your actual casts in the last 5s (procs cluster inside fast windows), and the GCD floor is applied separately to the proc-up and proc-down cases before averaging — not smeared into a flat average.</li>
-    <li>Serpent-Coil Braid: the Mana Emerald is conjured pre-combat with 3 charges — at most 3 gem windows per fight, 2 minutes apart (re-conjuring mid-fight isn’t modeled; not worth the mana).</li>
-    <li>The objective is equivalent to maximizing <em>effective casts</em>: each cast counts 1.0, ×1.3 under Arcane Power, ×(720+0.714·(SP+bonus))/(720+0.714·SP) under a spellpower active (the bonus flows through the spell coefficient, so +225 ≈ ×1.10 at 1150 SP, not ×1.20), and ×N in Burn phases. Crit multiplies every cast equally and cancels out — <em>except</em> in AoE, where Clearcasting → Arcane Potency procs more often (Arcane Concentration rolls per hit, so more targets ⇒ more procs ⇒ Potency's crit bonus is up more), giving a small target-scaled damage boost the planner credits from your crit input. AoE casts are otherwise counted in the same plain-AB unit; gear on-crit spellpower procs (e.g. Tirisfal 4pc) are left unmodeled.</li>
-    <li>Going past the 50% GCD floor is not treated as a mistake — the planner simulates actual casts, so it will happily overcap a window (especially under Arcane Power) when that beats staying under the line. The floor line just marks where extra haste stops adding casts.</li>
-    <li>Any pinned times are hard anchors: a buff with times entered fires at exactly those times (validated against its cooldown, Sated/Tinnitus, Cold Snap, and the trinket lockout) and the planner schedules everything unpinned around them. Blank = the planner owns that buff.</li>
-    <li>Full durations are preferred — the sim naturally slides a press earlier when that covers the same casts and finishes before the kill — but a cooldown that's back up before the boss dies is always pressed: a clipped final window is free damage, and the schedule tags its real uptime and worth. Raid-called times are used exactly as entered.</li>
-    <li>The kill time is planned as <em>known</em>, with a half-cast (0.5s) of smoothing at the buzzer: the continuous model credits the final partial cast by its fraction, so terminal bursts are placed to end right at the kill instead of gambling on squeezing one more cast under the wire. Dying early is your live call — pop the remaining cooldowns sooner. A razor-timed line that would sim higher at exactly the entered second is shown as a note, not baked into the plan; the damage tiles show the plain at-kill total.</li>
-    <li>Ties break toward the natural, overlaid line: when spots are within one expected cast, the planner prefers a window that completes before the kill, then a press anchored to something you can see (the pull, a raid call, a co-press, a buff ending, a cooldown lighting back up), then one that avoids floor-dead seconds, then one that joins an existing press row, then the one that overlays the most other buff windows — stacked windows keep their value when the fight drifts a few seconds off plan; perfectly-tiled ones don't. Anything deliberately scattered carries a price tag saying what the grouped press would cost. A Cold Snap whose reset only buys a clipped final Icy Veins is still spent: a ready cooldown near the kill is free damage. So is a free reset that only <em>re-sequences</em> the same Icy Veins uses for a real gain — letting the opener lay its haste buffs sequentially inside Bloodlust (instead of stacking them over the floor), or spreading a banked Icy Veins back onto its natural cooldown tick — since on a fight with no better use for it, any real gain beats holding it. A reset that <em>adds</em> an extra mid-fight Icy Veins window must clear a full cast to be worth the scarce cooldown.</li>
-    <li>Power Infusion does not stack with Bloodlust (Bloodlust wins while both are up). Skull of Gul’dan and Mind Quickening Gem share the offensive-trinket lockout: using one locks the other for the used buff’s duration. Drums obey Anniversary Tinnitus (one drum buff per 2 min); Bloodlust obeys Anniversary Sated (raid-wide, one per 10 min of a pull, resets on boss kill).</li>
-    <li>The Ashtongue Talisman is <em>passive</em>, not a scheduled press: it grants 145 haste for 5s on a spell crit (~50% chance), and the model already folds its steady-state uptime into every window's haste (it's <em>counted, not planned</em> — you can't pool a proc). The timeline shows it as its own uptime lane plus the "cap if Ashtongue" reference line: between that line and the +50% cap you are GCD-floored only while a proc is up.</li>
-    <li>Rotation is modeled as continuous AB spam. Real play conserves (AB×3 + Frostbolt filler) between windows — that changes absolute DPS, not which overlay wins, so the schedule stands either way.</li>
-    <li>Arcane Blast is modeled at a steady 3 stacks (1.5s base). The opening/post-gap ramp — the first few casts at 0/1/2 stacks — is measured to be worth zero extra casts below ~400 haste rating and a single quantized cast only far past the GCD floor, and every candidate plan pays it equally, so it never changes which overlay wins. Dropping it keeps the plans natural (no phantom “triple-stack the pull for the ramp” incentive) while the real lever — not parking a multiplicative haste buff on already-floored casts (e.g. Icy Veins inside Bloodlust once geared) — is fully kept.</li>
-    <li>Complicated fights: intermissions score zero damage (cooldowns and buff durations keep ticking — the planner holds cooldowns to recover through downtime); Burn phases multiply Arcane Blast damage; AoE phases switch to Arcane Explosion spam — instant, GCD-bound (haste pays to the 1.0s floor) and damage scaling with target count. Phases apply per cast start.</li>
-    <li>Mana is not simulated — the planner assumes you can afford to chain-cast through the windows it picks (gems, potions, Evocation are yours to manage). Treat late-fight Arcane Power and gem placements with care on mana-tight fights: AP's +30% cost and the gem's mana role are outside the model.</li>
-    <li>Buffs snapshot at cast start, and activations only fire at real press opportunities: with the pull, macroed into the next cast ("/cast Berserking /cast Arcane Blast" on the spam press as the previous cast ends), or freely while not casting (intermissions). A planned time that lands mid-cast fires at the next cast boundary, and cooldowns run from that real moment. Displayed times are the moments you press; when the buffs land on the next cast (or a cooldown lights up a beat into the spam), the row says so in words. Crits count as 182% — 2/2 Spell Power with a Chaotic Skyfire Diamond. (No toggle for the meta gem: a constant crit-damage factor scales every schedule equally, so it cannot change which overlay wins — only things that vary during the fight can.)</li>
-  </ul>`;
+  a.innerHTML = `<h3 id="assumptions">Model assumptions</h3>
+  <p class="lede">What the planner assumes, what it leaves out on purpose, and how far to trust it.
+  Everything here is checked against the engine that actually computes your plan; the
+  <span class="verdict sim">sim-verified</span> tag means it was also confirmed against the
+  <a href="https://www.wowsims.com/tbc/" target="_blank" rel="noopener">wowsims</a> simulator.
+  Nothing is tuned per fight — the same rules run on every setup.
+  <label class="techtoggle"><input type="checkbox" id="ck-tech"> Show the numbers behind each claim</label></p>
+  <div class="agrid">
+
+  <section>
+    <h4>How good is the plan, really?</h4>
+    <ul>
+      <li><b>It is a very good plan, not a proven-optimal one.</b> The planner searches from many starting
+      layouts and then polishes, which is not the same as checking every possible schedule — that space is
+      far too large. In practice it beats firing everything on cooldown by a few percent, and 25 reference
+      fights are locked so a change can never silently move a plan.<span class="deep"> In a holdout test
+      against the sim, a plan built for a <i>neighbouring</i> gear level occasionally sims a hair better
+      than the one built for your exact gear — median 0.035%, worst case 0.38%. We treat that as an open
+      bug rather than rounding.</span></li>
+      <li><b>Same inputs, same plan, every time.</b> There is no randomness in the search, and the
+      copy-as-text plan carries the setup that produced it — so a plan you paste in Discord can be
+      reproduced exactly.</li>
+      <li><b>Three cooldowns are less tested than the rest</b> — Ashtongue Talisman, Drums and Power
+      Infusion, marked <span class="beta">Beta</span> in the setup. Their game mechanics are verified;
+      where the planner chooses to <i>place</i> them has not been checked end-to-end against the sim.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h4>The rotation it assumes you cast</h4>
+    <ul>
+      <li><b>Arcane Blast, back to back, all fight.</b> The one rule everything else hangs off: the global
+      cooldown never drops below <b>1.0s</b>, so a 3-stack Arcane Blast stops getting faster at +50% haste.
+      <span class="deep">Cast time = (2.5 − ⅓ × stacks) ÷ total haste, and the next cast starts at
+      max(cast time, hasted GCD).</span> ${V.sim}</li>
+      <li><b>You open cold, and the stack ramp is simulated properly.</b> Your first Arcane Blast is a slow
+      0-stack cast and you build to 3, and you ramp again after any gap of 8s or more (an intermission, or
+      an AoE phase — Arcane Explosion doesn't build the debuff). That is why the planner tends to hold the
+      damage cooldowns a few seconds off the pull: a damage window laid over slow ramp casts catches fewer
+      of them.<span class="deep"> Base cast times through the ramp are 2.5 / 2.17 / 1.83 / 1.5s, each scored
+      at its real length rather than averaged.</span> ${V.sim}</li>
+      <li><b>Nothing is cast before the pull.</b> Prepulling would give a fixed head start that doesn't
+      scale with haste, which would quietly corrupt every gear comparison.</li>
+      <li><b>You conserve between windows in real play</b> (Arcane Blast ×3 + Frostbolt filler). That
+      changes your absolute DPS but not <i>which</i> cooldown layout wins, so the schedule stands either
+      way. ${V.sim}</li>
+    </ul>
+  </section>
+
+  <section>
+    <h4>The one number it maximizes</h4>
+    <ul>
+      <li><b>Effective Arcane Blasts cast</b> — your fight measured in plain, unbuffed Arcane Blasts. A cast
+      under Arcane Power counts 1.3, a cast under a spellpower trinket somewhat more, a cast in a Burn phase
+      ×N. Haste raises how <i>many</i> casts you get; damage and spellpower raise what each one is
+      <i>worth</i>. Every behaviour you see — packing the burst into Lust, spacing haste buffs, putting
+      spellpower on the fastest casts — falls out of maximizing that one number. ${V.sim}</li>
+      <li><b>A spellpower trinket is worth less than its tooltip suggests.</b> The bonus is scaled by Arcane
+      Blast's spell coefficient, so +225 spell damage is about <b>+10%</b> per cast at 1150 SP — not +20%.
+      <span class="deep"> Exactly: (720 + 0.714 × (SP + bonus)) ÷ (720 + 0.714 × SP).</span></li>
+      <li><b>Crit doesn't decide anything — with two exceptions.</b> It multiplies every cast equally, so it
+      raises your damage without changing which schedule wins. It matters only through Ashtongue proc uptime
+      and in AoE, where Clearcasting → Arcane Potency fires more often the more targets you hit.
+      <span class="deep"> Crits are counted at 182% (2/2 Spell Power plus a Chaotic Skyfire Diamond); since
+      that is a constant, there is deliberately no meta-gem toggle.</span> ${V.sim}</li>
+      <li><b>Going over the haste cap is allowed, not punished.</b> The planner counts real casts, so it will
+      overcap a window — usually under Arcane Power, where your casts are worth the most — whenever that
+      beats staying under the line. The cap line on the chart marks where haste stops buying casts; it is
+      not a rule to obey.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h4>How haste adds up</h4>
+    <ul>
+      <li><b>Rating first, percentages after.</b> All haste <i>rating</i> — gear, Drums, Skull, Mind
+      Quickening Gem — goes into one pool, and percentage buffs then multiply on top of it:
+      (1 + rating%) × 1.30<small>Lust</small> × 1.20<small>IV</small> × 1.10<small>Zerk</small>. They
+      multiply, they don't add.<span class="deep"> ${GAME.HASTE_RATING_PER_PCT} rating = 1% at level 70.</span> ${V.sim}</li>
+      <li><b>Power Infusion does nothing during Bloodlust.</b> Lust wins while both are up, so the planner
+      always moves PI out of it. Icy Veins is different and does stack with Lust.<span class="deep"> Both
+      Lust and PI register in the same exclusive category in the wowsims source, where only the strongest
+      effect applies; Icy Veins uses a direct multiplier instead.</span> ${V.sim}</li>
+      <li><b>Berserking counts as +10%.</b> It scales higher as your health drops, and the model never
+      assumes you are taking damage.</li>
+    </ul>
+  </section>
+
+  <section>
+    <h4>Cooldown-specific rules</h4>
+    <ul>
+      <li><b>Ashtongue Talisman is never given a press</b> — you can't pool a proc. Its haste is counted into
+      every window instead, and the chart shows it as its own lane plus a second cap line rather than
+      averaging a random proc into your haste curve.<span class="deep"> 145 haste for 5s, ~50% per spell
+      crit, tracked per cast from your real casts over the previous 5s so procs cluster where you cast
+      fastest; the GCD floor is applied separately to the proc-up and proc-down cases before averaging.</span> ${V.beta}</li>
+      <li><b>Skull of Gul'dan, Mind Quickening Gem and Icon of the Silver Crescent lock each other out.</b>
+      Using one blocks the others for that buff's duration, so a burst has to sequence them — and the
+      order the lockout forces turns out to be the one you want anyway: <b>spellpower first, haste
+      second</b>.<span class="deep"> The spellpower trinket takes the first half of the burst, which is
+      usually already at the haste floor (where more haste would be wasted but spellpower still scales
+      with your cast rate), and the haste trinket takes the second half, where its rating still buys
+      casts. As gear haste grows the haste trinket slides out of Lust entirely, exactly as Icy Veins
+      does.</span> The planner respects the lockout everywhere, including when you pin or hand-edit. ${V.sim}</li>
+      <li><b>Serpent-Coil Braid assumes a Mana Emerald conjured before the pull</b> — at most 3 gem windows
+      per fight, 2 minutes apart. Re-conjuring mid-fight isn't modelled.</li>
+      <li><b>Anniversary raid rules apply:</b> one Drums buff per 2 minutes (Tinnitus) and one Bloodlust per
+      10 minutes of a pull (Sated, raid-wide, resets on a kill). Drums are haste <i>rating</i>, so they stack
+      with everything. ${V.beta}</li>
+      <li><b>Cold Snap is spent whenever it buys anything real</b> — including an Icy Veins that only gets
+      half its duration before the boss dies, since a ready cooldown near the kill is free damage. It is held
+      only when the extra window wouldn't clear a full cast. ${V.sim}</li>
+    </ul>
+  </section>
+
+  <section>
+    <h4>When a press actually happens</h4>
+    <ul>
+      <li><b>Pressing a cooldown never costs you a cast.</b> They are all off the global cooldown, macro'd
+      into your spam ("/cast Berserking /cast Arcane Blast"), so they fire between casts. A press can still
+      be a mistake — but only by landing in the wrong place, or by putting the <i>next</i> use somewhere
+      worse, never by losing a cast.</li>
+      <li><b>The times in the plan are when the buff is actually up.</b> A press lands on a cast boundary, so
+      if you hit the macro mid-cast it takes effect as that cast ends — the plan already accounts for this
+      and prints the real moment. Press at the second shown. ${V.sim}</li>
+      <li><b>Anything you pin is fixed.</b> Times you enter for Bloodlust, Drums or Power Infusion are used
+      exactly as given, and everything else is planned around them. Leave a field blank and the planner owns
+      that cooldown.</li>
+      <li><b>It plans for the kill time you entered</b>, and always presses a cooldown that comes back up
+      before then — a half-length final window is still free damage. If the boss dies early, that's your
+      live call: press the rest sooner.</li>
+      <li><b>Close calls break toward the plan you can actually execute</b> — a press you can anchor to
+      something visible (the pull, a raid call, another press) and a burst kept stacked together, because
+      stacked windows survive a fight drifting off last week's timing.<span class="deep"> Full order: finish
+      before the kill, then anchor to a visible event, then avoid seconds where haste is wasted at the floor,
+      then join an existing press row, then overlap the most other buffs.</span></li>
+    </ul>
+  </section>
+
+  <section>
+    <h4>Fights with phases</h4>
+    <ul>
+      <li><b>Intermission</b> — you deal no damage, but cooldowns and buff durations keep running, so the
+      planner will hold a cooldown to bring it back after the downtime. <b>Burn</b> — the boss takes extra
+      damage, so casts there are worth more. <b>AoE</b> — you switch to Arcane Explosion: instant, capped by
+      the 1.0s global cooldown, and scaling with target count. Phases apply per cast, and a later row wins
+      where two overlap. ${V.sim}</li>
+    </ul>
+  </section>
+
+  <section>
+    <h4>What it deliberately doesn't model</h4>
+    <ul>
+      <li><b>Mana.</b> It assumes you can afford to chain-cast the windows it picks — gems, potions and
+      Evocation are yours to manage. Each window prints the mana it takes to spam, so you can check the
+      expensive ones. Be careful with a late Arcane Power (+30% cost) on a tight fight. ${V.out}</li>
+      <li><b>Gear procs other than Ashtongue</b>, such as on-crit spellpower set bonuses — left out rather
+      than guessed at. ${V.out}</li>
+      <li><b>Damage taken, movement and mistakes.</b> The plan is the ceiling that clean execution reaches. ${V.out}</li>
+    </ul>
+  </section>
+
+  </div>`;
+  el("ck-tech").addEventListener("change", e => a.classList.toggle("tech", e.target.checked));
 }
 
-/* ═══════════════ pressboard / follow ═══════════════ */
+/* ═══════════════ press icons + press rows ═══════════════ */
 const PRESS_CODE = {
   bloodlust: "LUST", icyVeins: "IV", drums: "DRUM", skull: "SKULL", arcanePower: "AP",
   scb: "GEM", berserking: "ZERK", mqg: "MQG", powerInfusion: "PI", isc: "ICON",
@@ -4496,111 +5187,6 @@ function iconOf(k, size) {
 const pressIcons = (a, size) => (a.coldSnap ? iconOf("coldSnap", size) : "") + iconOf(a.k, size);
 const pressCode = (a) => (a.coldSnap ? "CS→" : "") + (PRESS_CODE[a.k] || a.k);
 const pressName = (a) => (a.coldSnap ? "Cold Snap → " : "") + BUFFS[a.k].name;
-const follow = { running: false, t0: 0, timer: null, acts: [], rows: [] };
-// Press rows: one row per second you press something. When a row sits within a
-// few seconds of another press, price what merging them into one press would
-// cost — a stagger that survives the optimizer is deliberate, and the tag says
-// what it's worth (or that the cooldown chain locks it in place).
-function pressPlan(run) {
-  const { cfg, best } = run;
-  const acts = [];
-  for (const w of scheduleRows(run)) for (const a of w.acts) acts.push(a);
-  // the board is a to-do list: rows are ACTIVATION moments (fire time floored to the second,
-  // same as the schedule table — user-directed) — one row per macro press. During a ramp every
-  // intent in the covering cast fires at its end, so pressing at the printed second is exact.
-  acts.sort((x, y) => x.t - y.t);
-  const rows = [];
-  for (const a of acts) {
-    const r = rows[rows.length - 1];
-    if (r && a.sec === r.t) r.items.push(a);
-    else rows.push({ t: a.sec, items: [a] });
-  }
-  // Placement-reasoning tags and leeway "press anywhere" bands are PERMANENTLY REJECTED (user decision):
-  // a plateau tie for one press is conditional on everything else staying put — moving it shifts other
-  // optima — so "can be pressed anywhere here" over-promises. Rows carry no `.tag`; the schedule/board
-  // show only the presses. (Old inference logic lives in git history; do not restore.)
-  run.pressRows = rows;
-}
-function followPrime(run) {
-  follow.rows = run.pressRows || [];
-  follow.acts = follow.rows.flatMap(r => r.items);
-  const host = el("pressboard");
-  host.innerHTML = follow.rows.map((r, i) => `
-    <div class="prow" data-i="${i}">
-      <div class="pt">${fmtT(r.t)}</div>
-      <div class="ptiles">${r.items.map(a =>
-        `<span class="ptile" style="--bc:${colorOf(a.k)}">${pressIcons(a, 26)}${pressCode(a)}</span>`).join("")}</div>
-      <div class="pnames">${r.items.map(pressName).join(" · ")}${r.tag ? ` <span class="ptag">· ${esc(r.tag)}</span>` : ""}</div>
-    </div>`).join("");
-  followPaint(0);
-}
-function followReset() {
-  follow.running = false;
-  if (follow.timer) { clearInterval(follow.timer); follow.timer = null; }
-  el("follow").classList.remove("live");
-  el("btn-follow").textContent = "Start at pull";
-  const ph = document.querySelector("#chartbox .playhead");
-  if (ph) ph.style.display = "none";
-  if (lastRun) followPaint(0);
-}
-function followPaint(t) {
-  const run = lastRun; if (!run) return;
-  const T = run.cfg.T;
-  el("f-clock").textContent = fmtT(Math.min(t, T));
-  let nextIdx = follow.rows.findIndex(r => r.t >= t - 0.5);
-  if (!follow.running) nextIdx = -2; // idle: no done/next classes
-  el("pressboard").querySelectorAll(".prow").forEach((row, i) => {
-    row.classList.toggle("done", nextIdx >= 0 ? i < nextIdx : follow.running);
-    row.classList.toggle("next", i === nextIdx);
-    if (i === nextIdx) row.scrollIntoView({ block: "nearest" });
-  });
-  // next-up banner: what to press next + countdown
-  const nu = el("nextup");
-  if (!follow.running) {
-    nu.hidden = true; nu.dataset.row = "";
-  } else if (nextIdx >= 0) {
-    nu.hidden = false;
-    const r = follow.rows[nextIdx];
-    if (nu.dataset.row !== String(nextIdx)) {
-      nu.dataset.row = String(nextIdx);
-      el("nu-icons").innerHTML = r.items.map(a => pressIcons(a, 44)).join("");
-      el("nu-what").innerHTML = `<b>${r.items.map(pressCode).join(" + ")}</b>${r.items.map(pressName).join(" · ")} · at ${fmtT(r.t)}`;
-    }
-    const dt = Math.max(0, r.t - t);
-    el("nu-count").textContent = dt <= 1 ? "NOW" : "in " + fmtT(Math.ceil(dt));
-    nu.classList.toggle("now", dt <= 5);
-    nu.classList.remove("spent");
-  } else {
-    nu.hidden = false;
-    if (nu.dataset.row !== "end") {
-      nu.dataset.row = "end";
-      el("nu-icons").innerHTML = "";
-      el("nu-what").innerHTML = `<b>All presses done</b>burn it to the end`;
-    }
-    el("nu-count").textContent = fmtT(Math.max(0, T - t)) + " left";
-    nu.classList.add("spent"); nu.classList.remove("now");
-  }
-  const ph = document.querySelector("#chartbox .playhead");
-  if (ph && lastGeo && follow.running) {
-    ph.style.display = "block";
-    ph.style.left = (lastGeo.x(Math.min(t, T)) / lastGeo.VW * 100).toFixed(2) + "%"; // % of the responsive svg width
-  }
-}
-el("btn-follow").addEventListener("click", () => {
-  if (!lastRun) return;
-  if (follow.running) { followReset(); return; }
-  follow.running = true;
-  follow.t0 = performance.now();
-  el("follow").classList.add("live");
-  el("btn-follow").textContent = "Stop";
-  follow.timer = setInterval(() => {
-    const t = (performance.now() - follow.t0) / 1000;
-    followPaint(t);
-    if (t >= lastRun.cfg.T + 3) followReset();
-  }, 250);
-});
-el("btn-freset").addEventListener("click", followReset);
-
 /* ═══════════════ boss presets (localStorage) ═══════════════ */
 const PRESET_KEY = "abp-presets";
 function lsGet() { try { return JSON.parse(localStorage.getItem(PRESET_KEY) || "{}"); } catch (_) { return null; } }
@@ -4813,6 +5399,13 @@ el("in-haste").dispatchEvent(new Event("input"));
 refreshPresets("");
 renderBakedPresets(BOSS_PRESETS, "boss-chips");
 renderBakedPresets(GOLDEN_PRESETS, "golden-chips");
+renderAssumptions();   // static — available before the first run, so the masthead link always has a target
+el("btn-assump").addEventListener("click", () => {
+  el("assump").scrollIntoView({
+    behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
+    block: "start",
+  });
+});
 </script>
 </body>
 </html>
