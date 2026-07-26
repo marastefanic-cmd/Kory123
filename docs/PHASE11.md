@@ -412,3 +412,71 @@ which steps 3–5 touch except at declared boundaries (§4.9).
   deliberate re-baseline.
 - **Wall-clock numbers compare only within a same-session pair** (PHASE9 §5.14) — every perf step
   re-measures its own baseline.
+
+---
+
+# §10 — EXECUTION LOG
+
+## 10.1 ✅ Five findings-ledger bugs landed while the gear-B round gathers (07-26)
+
+PHASE10's round-1 campaign is mid-flight, and `tools/xval-bench.mjs` content-addresses its plan cache
+on the bytes of the files it imports. That defines a **frozen set** — `index.html`,
+`sim/{planspec,simreq,benchmark}.mjs`, `tools/{genapl-core,engine-node,reference-gear}.mjs`,
+`sim/sim.wasm` — where an edit mid-round makes the campaign assemble a matrix from two engines
+(PHASE10 §8.5). Everything else was fair game, which is exactly five of §1.1's eight bugs.
+
+| bug | what shipped | how it was proven |
+|---|---|---|
+| **B7** | `pathToFileURL` on both sides of `sim-duel.mjs`'s main guard | ran the guard's own logic from a path containing a space: pre-fix `SKIPS SILENTLY → exit 0`, post-fix `runs` |
+| **B8** | `sim-request.mjs`'s §0 hoisted above the `RUNNER` gate | on a scratch copy (benchmark.mjs is frozen), a prepull smuggled into `BENCH` ⇒ post-fix **exit 1** naming the ★★★ rule, pre-fix **exit 0** |
+| **B4** | `plan-duel.mjs` imports `planToSpec`; argv from `runnerFlags()` | the two conventions disagree on **4 of 5** real optimized plans — intent `5` fires at `6` on AP, Icon, Gem and IV simultaneously |
+| **B3** | `netlify.toml`: whole lazy sim bundle revalidates as a unit, by glob | audit derived from the build command reports **0 of 8** published files without a cache policy |
+| **B5** | `census-build.mjs` re-anchored on **content**, not line numbers | `plan-sweep` × 2 → **`PLAN-DIFF IDENTICAL`** (16/16 cases, scorerMoved=0); 3 resolver controls |
+| **B6** | new `tests/cfg-contract.mjs` (tactical half; the real fix is §2) | positive + negative synthetic controls; see §10.3 |
+
+### 10.2 ★ B5 was not a drifted anchor — one probe's SUBJECT no longer exists
+
+The ledger records B5 as "all 8 hardcoded line anchors drifted". Seven had. The eighth,
+`for (let groom = 0; groom < 3; groom++) {`, **matches nothing in HEAD at all**: PHASE9 §5.12's groom
+early exit rewrote it to carry its own `__groomBefore` snapshot. So re-anchoring by number — the fix
+§1.1 prescribes — would have silently produced a census of a loop shape that is gone, and the
+hand-injected `__g0` snapshot it pairs with is now a duplicate of shipped code.
+
+The probe now anchors on the early-exit test and reads the engine's own `__groomBefore`. That also
+retires the old table's one genuine argument for line-anchoring: it needed to find the loop's closing
+`}`, the least unique line in the file. Anchors are content now, with `after: '<probe id>'` for the
+one line that legitimately appears twice (`dodgeDowntime`'s accept test) — so a CSS edit above the
+engine tag can no longer kill the instrument, and an ambiguous or vanished anchor is still a hard
+refusal rather than a plausible census of the wrong site.
+
+### 10.3 ★★ B6 IS WIDER THAN THE LEDGER SAYS — the shared constructor §2 wants to converge on has the same bug
+
+§1.1 B6 names `tests/evalsched.mjs` (whose missing `t5two` `index.html` itself admits in a comment)
+and prescribes: *"Fix: one exported `cfgFor()` (§2)."* But measuring every constructor against the
+engine's own declared field set — `simMemoCfgSig`, which by construction lists exactly what a score
+depends on — shows **`tools/engine-node.mjs`'s `cfgFor` drops the same `t5two`, plus
+`boundaryCharge`**: 2 of the 10 required fields.
+
+⇒ **Converging the six copies onto `cfgFor` unchanged would turn one copy's bug into every copy's
+bug.** Stated concretely: `cfgFor` cannot express the reference gear the entire acceptance corpus is
+measured on. `tools/xval-bench.mjs` gets it right only because it spreads `...REF` into a cfg of its
+own rather than calling the shared constructor — i.e. the one caller that needs the field avoids the
+function that would have dropped it. **§2 must fix `cfgFor` in the same move as the convergence.**
+
+Both omissions are inert *today* (`GOLDEN_DEFAULTS.gear` sets neither, and `boundaryCharge` is off by
+user decision — ROADMAP), which is precisely why nothing caught them: the engine reads
+`cfg.t5two ? 1.2 : 1`, so an absent key and an explicit `false` are indistinguishable. That is the
+§20-family bug — score a no-T5 mage against a T5 sim — with no failing test available to express it.
+
+`tests/cfg-contract.mjs` now reports it, and `--strict` turns it into an exit-1 gate. Strict is
+deliberately OFF by default: it cannot pass until §2 lands, and a permanently-red gate is one nobody
+reads. **Turn `--strict` on in CI (§3.5) as the last step of §2** — it is the check that proves the
+convergence actually fixed the thing it was for.
+
+### 10.4 What is still blocked, and on what
+
+- **B1** — the `tools/bench.mjs --targets` half is landable; the `planToSpecInline` half needs
+  `index.html`. Deferred as a unit so the fix and its gate land together.
+- **B2** — `sim/duel-worker.js`'s cached rejection is landable; the worker eviction and listener
+  cleanup are in `index.html`. Same reasoning.
+- **Everything in §2, §3.1, §3.3** — the frozen set, until PHASE10's round completes.
