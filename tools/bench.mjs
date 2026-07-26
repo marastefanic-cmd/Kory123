@@ -42,7 +42,7 @@ import fs from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from './genapl-core.mjs';
-import { planToSpec } from '../sim/planspec.mjs';
+import { planToSpec, REQUIRES_EQUIPPED, unequippedPresses } from '../sim/planspec.mjs';
 import { buildRequest, dpsOf } from '../sim/simreq.mjs';
 import { BENCH } from '../sim/benchmark.mjs';
 import { loadEngine, cfgFor, ALL_BUFFS } from './engine-node.mjs';
@@ -79,6 +79,24 @@ const TEMPLATE_PATH = path.join(REPO, CHARS[CHAR].request);
 if (!fs.existsSync(TEMPLATE_PATH)) die(`${CHARS[CHAR].request} is missing — regenerate it with:\n` +
   `  runner --export ${CHARS[CHAR].export} --dur 300 --var ${BENCH.variation} --iter 1 --seed ${BENCH.seed} --dumpreq ${CHARS[CHAR].request} --quiet`);
 const TEMPLATE = JSON.parse(fs.readFileSync(TEMPLATE_PATH, 'utf8'));
+
+// ── `--kit isc,scb` — which two trinkets the character WEARS ─────────────────────────────────────
+// The presets all run `isc+scb`, which is what the committed bench export already wears, so this is
+// never needed for `--preset`. It is needed for `--spec-a/--spec-b`, i.e. for duelling a plan lifted
+// out of a cross-val table, where the kit can be any of the six pairs. Without it such a duel is not
+// merely wrong, it is SILENTLY wrong (see the guard below).
+const KIT = arg('kit');
+if (KIT !== undefined) {
+  const pair = KIT.split(',').map(x => x.trim());
+  const byTrinket = Object.fromEntries(Object.values(REQUIRES_EQUIPPED).map(v => [v.trinket, v]));
+  if (pair.length !== 2 || pair.some(k => !byTrinket[k]) || pair[0] === pair[1])
+    die(`--kit must be two DISTINCT keys from ${Object.keys(byTrinket).join(',')} (got "${KIT}")`);
+  const items = TEMPLATE.raid.parties[0].players[0].equipment.items;
+  if (items.length < 14) die(`the request template has ${items.length} equipment slots — expected ≥14 (trinkets are 12/13).`);
+  items[12] = { id: byTrinket[pair[0]].item, randomSuffix: 0, enchant: 0, gems: [] };
+  items[13] = { id: byTrinket[pair[1]].item, randomSuffix: 0, enchant: 0, gems: [] };
+}
+const EQUIPPED = TEMPLATE.raid.parties[0].players[0].equipment.items.map(i => i && i.id).filter(Boolean);
 
 const ITER = +arg('iter', BENCH.iterations);
 // ⚠ DEFAULT 0.5, NOT 0. BENCH.md §3's RNG table lists `--var 0` as "standard for gates"; TOOLING ★★
@@ -153,6 +171,20 @@ if (specA) {
   } else if (vs) {
     arms.push({ label: 'given spec', spec: JSON.parse(vs) });
   }
+}
+
+// ★★ THE EQUIPMENT GUARD — a press of an unworn trinket is a BIT-IDENTICAL NO-OP in wowsims, not an
+// error (measured 07-26: on the isc+scb bench character, `Skull:[0]` and `MQG:[0]` each returned
+// 2127.17 DPS, the never-press control's value to the decimal). So a spec lifted out of an
+// `mqg+skull` cross-val table and handed to the default character does not fail — it silently duels
+// two plans with their trinket presses deleted, prints a plausible number, and looks like a result.
+// That is `sim/planspec.mjs`'s documented Drums/PI failure mode reached by a different route, and the
+// only place it can be caught is here, where a spec and a character first meet.
+for (const a of arms) {
+  const missing = unequippedPresses(a.spec, EQUIPPED);
+  if (missing.length) die(`arm "${a.label}" presses ${missing.join(', ')}, which the ${CHAR} character is NOT wearing.\n` +
+    `  wowsims does not complain — the press would be a silent no-op and the duel would be meaningless.\n` +
+    `  Pass --kit <a>,<b> to equip the pair this plan was built for (e.g. --kit mqg,skull).`);
 }
 
 // The never-press control: the SAME fight with no cooldown presses at all. Phase gating

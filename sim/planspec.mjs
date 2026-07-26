@@ -43,6 +43,33 @@ export const SPEC_KEY = {
 };
 export const UNTRANSCRIBABLE = { ati: "Ashtongue Talisman", drums: "Drums of Battle", powerInfusion: "Power Infusion" };
 
+// ★ spec key → the item that must be EQUIPPED for that press to do anything, and the trinket key the
+// harnesses name it by. An on-use is only castable while its item is worn, and wowsims does NOT
+// complain when it is not: a scheduled press of an unequipped trinket is a **bit-identical no-op**
+// (measured 07-26 on the bench character, which wears isc+scb — `Skull:[0]` and `MQG:[0]` both
+// returned 2127.17, the never-press control's value to the decimal). That is the same silent-omission
+// failure `UNTRANSCRIBABLE` exists to prevent, reached by a different route, so any tool that lets a
+// caller supply BOTH a spec and a character must check them against each other.
+//
+// ⚠ `Gem` is the subtle one and the reason this cannot be derived from genapl's ActionIDs: the APL
+// FIRES a Mana Emerald (itemId 22044) but the +225 SP "Mana Surge" that makes it worth pressing comes
+// from wearing **Serpent-Coil Braid (30720)**. The id that must be equipped is not the id that is cast.
+export const REQUIRES_EQUIPPED = {
+  Icon:  { item: 29370, trinket: "isc",   name: "Icon of the Silver Crescent" },
+  Gem:   { item: 30720, trinket: "scb",   name: "Serpent-Coil Braid" },
+  Skull: { item: 32483, trinket: "skull", name: "Skull of Gul'dan" },
+  MQG:   { item: 19339, trinket: "mqg",   name: "Mind Quickening Gem" },
+};
+
+// Which of a spec's presses would be silent no-ops on a character wearing `equippedIds`.
+// Returns [] when everything the spec presses is worn.
+export function unequippedPresses(spec, equippedIds) {
+  const worn = new Set((equippedIds || []).map(Number));
+  return Object.entries(REQUIRES_EQUIPPED)
+    .filter(([k, v]) => (spec[k] || []).length && !worn.has(v.item))
+    .map(([k, v]) => `${k} (${v.name}, item ${v.item})`);
+}
+
 // run: { cfg, best, optR } — optR must come from simulate(best.s, cfg, true) so actEff exists.
 // Returns { spec, targets, skipped[] }.
 export function planToSpec(run, BUFFS) {
