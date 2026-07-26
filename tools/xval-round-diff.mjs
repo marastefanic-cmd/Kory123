@@ -120,8 +120,13 @@ const flips = [], changedTables = [];
 //   2. Among the cells whose plan DID move, how do they split by sign? For a change that touches only
 //      the SEARCH, the model's own objective must be non-decreasing at every cell — a strictly worse
 //      eff is a search regression BY DEFINITION, provable without a single sim.
+// ⚠ The identity proof is PER-TABLE in scope, not corpus-global (learned on round 6): P7.14
+// repriced exactly one fight family (AoE = Kael'thas), and both KT tables changed 10/10 specs —
+// so the 259 pinned cells elsewhere prove nothing about KT, and pooling KT's deltas into
+// worse/better would grade an intended repricing as a search regression. A table with ZERO
+// unchanged specs therefore has its moved cells put in an UNGRADED bucket instead.
 let effSame = 0, effScorerMoved = 0, effTie = 0;
-const effWorse = [], effBetter = [];
+const effWorse = [], effBetter = [], effUngraded = [];
 
 for (const f of both) {
   const a = parse(path.join(DA, f)), b = parse(path.join(DB, f));
@@ -156,6 +161,7 @@ for (const f of both) {
     console.log(`      h${h}  B eff=${b.specs[h].eff}  ${JSON.stringify(b.specs[h].spec)}`);
   }
 
+  const tblPinned = H.some(h => canon(a.specs[h].spec) === canon(b.specs[h].spec));
   for (const h of H) {
     const x = a.specs[h], y = b.specs[h];
     if (canon(x.spec) === canon(y.spec)) {
@@ -164,6 +170,8 @@ for (const f of both) {
         effScorerMoved++;
         console.log(`    ⚠ SCORER MOVED @h${h}: identical spec, eff ${x.eff} → ${y.eff}`);
       }
+    } else if (!tblPinned) {
+      effUngraded.push({ f, h, a: x.eff, b: y.eff, d: y.eff - x.eff });
     } else {
       const d = y.eff - x.eff;
       if (d < 0) effWorse.push({ f, h, a: x.eff, b: y.eff, d });
@@ -186,7 +194,14 @@ if (changedTables.length) console.log(`tables with ≥1 plan change: ${changedTa
 // ── the eff audit verdict ────────────────────────────────────────────────────────────────────────
 console.log(`\nEFF-AUDIT unchangedSpecs=${effSame} scorerMoved=${effScorerMoved} ` +
             `movedSpecs=${effWorse.length + effBetter.length + effTie} ` +
-            `→ worse=${effWorse.length} better=${effBetter.length} tie=${effTie}`);
+            `→ worse=${effWorse.length} better=${effBetter.length} tie=${effTie}` +
+            (effUngraded.length ? ` ungraded=${effUngraded.length}` : ''));
+if (effUngraded.length) {
+  const tbls = [...new Set(effUngraded.map(u => u.f.replace(/\.txt$/, '')))];
+  console.log(`   ⚠ ${effUngraded.length} moved cell(s) NOT graded: table(s) with zero unchanged specs — scorer`);
+  console.log(`     identity is unprovable there, so their eff deltas are unattributable (a scoped repricing`);
+  console.log(`     like P7.14 lands exactly this way): ${tbls.join(', ')}`);
+}
 if (effScorerMoved) {
   console.log(`⚠⚠ THE SCORER CHANGED between these rounds (${effScorerMoved} identical spec(s) scored differently).`);
   console.log(`   This is a REPRICING. No eff delta below is attributable to the search, and every ranking`);

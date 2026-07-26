@@ -107,8 +107,11 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   (`packedSchedule`), phase-anchored (`seg.start` / intermission `seg.end`, capped at `starts + 8`),
   **pinned-raid-call anchored** (stacks every track on each Lust/Drums/PI second, first 4), a
   **kill-anchored seed** (each track's last use as late as it fully runs, siblings packed backward by
-  cd — the terminal-burst basin forward-packing can't reach), then **`groupSeeds`** (below), then
-  random fill to `starts`.
+  cd — the terminal-burst basin forward-packing can't reach), then **random fill to `starts`**, then
+  **`groupSeeds`** (below) appended as pure EXTRAS past `starts`, tagged from `grpStart`. ⚠ The order
+  is load-bearing (PHASE9 §5.16): group seeds used to be pushed *before* the fill and counted toward
+  `starts`, silently evicting one random start per chain seed — an additive seed class must never
+  remove entrants, and three of round 6's search regressions traced to exactly that.
 - **`groupSeeds(cfg)`** (~1134, Phase 9 §5.14 — the RULES §4b **chain law** made reachable): builds
   *chain* entrants — `origin × gap-chain × which long-cd track skips group 1`. Origins are `{0} ∪
   round(fixed press seconds)` (first 3); a chain is a DFS over the **enabled cooldown periods**
@@ -125,13 +128,19 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
 - **`polish`** hill-climb (~1068): `SHIFTS` ±1..±90 incl. ±3/±6 (ramp-boundary hops) and ±30/±60,
   per-index + suffix-shift + add-a-use + a **joint window move** (all uses sharing a press second shift
   as one block — co-pressed clusters cross valleys together) + a drop-one/relocate escape.
-- **`basinHop`** (~1170, runs on the champion after the top-6 integer snaps): window-teleport
-  self-consistency guard — re-bases each press-window block on every other window's anchor, each
-  track's natural next cd-tick, every **ramp-exit boundary** (the first full-stack cast after each
-  cold start, read from the champion's own board — the h160-class descent-valley basin sits exactly
-  there, one fast cast off any 5s-grid anchor) + the kill anchor, re-polishes, keeps strict
-  improvements, to fixpoint. This is what guarantees "never worse than a plan reachable from the
-  search's own anchors" (the Phase-4 misses all fell to it).
+- **`basinHop`** (~1170, runs after the integer snaps — which snap the top-6 **non-group** results
+  exactly as pre-groupSeeds, PLUS any group entrant above that bar, tracked separately as `bestGrp`):
+  window-teleport self-consistency guard — re-bases each press-window block on every other window's
+  anchor, each track's natural next cd-tick, every **ramp-exit boundary** (the first full-stack cast
+  after each cold start, read from the champion's own board — the h160-class descent-valley basin
+  sits exactly there, one fast cast off any 5s-grid anchor) + the kill anchor, re-polishes, keeps
+  strict improvements, to fixpoint. This is what guarantees "never worse than a plan reachable from
+  the search's own anchors" (the Phase-4 misses all fell to it). ★ **Two-arm hop + two-arm TAIL when
+  a group entrant snap-leads** (PHASE9 §5.16/§5.17): both arms are hopped, and the whole finishing
+  stack below is a callable **`finishLine(entrant)`** run once per arm — the FINAL values decide
+  (hop-exit selection measurably loses tails in both directions; a +5.85 hop win's tail lost −14).
+  Primary = the old-rule carry, ties keep it; the no-Cold-Snap comparison solve inside the tail is
+  arm-independent and memoized (`bestNMemo`), so the second arm costs groom passes, not a full solve.
 - Tie-break helpers (local closures): `anchored` ~1087, `overlapOf` ~1103, `joinsRow` ~1116,
   `counts`/`sameCounts` ~1122/1123, `clipOf` ~1126. `castVal`/`QTOL` ~1077/1078 (tie tolerance = one
   cast).
@@ -309,6 +318,41 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   **permanently rejected** (user decision — a plateau tie for one press is conditional on every other
   press staying put; RULES §14); rows carry no `.tag`, and the old inference logic lives only in git
   history. Do not restore.
+
+## Timeline customization — unlock → drag → lock → validate (+ debug export)
+UI-only module (after the copy handler, ~3990); the engine block is untouched and the model's run is
+never mutated — `lastRun` stays the optimizer's output, the hand-edited intent schedule lives in
+`CUSTOM.s`, and `activeRun()` = the locked custom run if one exists, else `lastRun` (what `btn-copy`
+and the pressboard read). A fresh "Find optimal overlay" run calls `customReset()`.
+- **Unlock** (`#btn-edit` → `enterEdit`): clones `best.s`, re-renders the timeline via
+  `renderTimeline(run, opts)` — the new optional second arg: `opts.ghost` draws the MODEL plan as
+  dashed outline bars in every lane (always shown while a custom timeline exists), `opts.editing`
+  wraps each planner press in a draggable `<g class="pressg">`, `opts.illegal` flags presses. No
+  opts ⇒ byte-identical to the old render. Schedule table + pressboard dim (`.stale`) until lock.
+- **Drag** (`attachDrag`): pointer-events on the SVG; the bar follows the pointer, a bubble shows the
+  whole second the press will snap to, and **release locks the intent to the nearest full second**
+  (the search's own granularity; clamped to `[0, T−1]`). Bars always render at the engine's actual
+  FIRE times (`actEff` of `simulate(CUSTOM.s)`), so an intent that would slip (mid-ramp boundary,
+  cooldown, trinket lockout) visibly lands where it would really fire. Pinned raid calls
+  (`cfg.fixed`) get no `pressg` — not editable, exactly the keys `repair()` would reset anyway.
+- **Live comparison** (`renderCustomTiles`): a second tile row — custom-vs-model Δ% damage headline +
+  the four headline metrics (gain vs no-cooldowns / vs mashing / effective casts / GCD-floor time),
+  each with a delta chip vs the model (`tileStats` computes both in `renderTiles`' exact units).
+  Updates in realtime during a drag: rAF-throttled `simulate()` at the snapped second (memoized —
+  a revisited second is a cache hit), full refresh on release.
+- **Lock** (`tryLock`): the validator IS `repair()` — `validateCustom` diffs the schedule against
+  `repair(CUSTOM.s, cfg)`; legal ⇔ fixpoint. Legal → the activation schedule, pressboard, and
+  copy-text regenerate from the custom plan (`CUSTOM.run`, `isCustom: true`; copy-text gains a
+  "CUSTOM timeline" marker line). Illegal → lock refused: per-press violations listed in `#edit-msg`
+  (moved/dropped, with the earliest legal time), offending bars flagged, and an **auto-fix** button
+  adopts `repair()`'s nearest-legal times. Locking an unchanged schedule reverts to pristine;
+  `#btn-revert` discards the customization outright.
+- **Debug export** (`#btn-debug` → `debugExportText`): one clipboard payload for pasting into a
+  debugging session — human-readable input header + model plan text/stats + custom plan text/stats
+  + deltas + validation state, then a machine block: `{input, model, custom, evalsched}` with intent
+  schedules, fire times, totals, and baseline/naive references. The `evalsched` object is **directly
+  runnable** as `node tests/evalsched.mjs '<json>'` (round-trip verified: identical totals), and the
+  notes point at the TOOLING sim workflow (`genapl`, `_prestack:0`) for "sim my custom timeline".
 
 ## Presets & tests — two baked strips, both the fight table
 `index.html` defines **two** baked preset arrays + `GOLDEN_DEFAULTS` (near the localStorage-preset

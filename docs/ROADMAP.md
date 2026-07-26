@@ -2,9 +2,48 @@
 
 ## Resuming after a context clear (start here)
 
-### ⏳ 0. FRESHEST STATE (07-25) — ROUND 6 IS IN FLIGHT, and it already found a search regression
+### ⏳ 0. FRESHEST STATE (07-25/26) — ROUND 6 IS COMPLETE AND GRADED; the groupSeeds fix is staged
 
 **Read this before anything below it; items 1–2 describe round 5, which round 6 supersedes.**
+
+- ✅ **ROUND 6 GRADED (late 07-25 — full record: PHASE7 §5.23 + DIARY).** 36/36 tables under
+  `emit=fire`: monoDip 0.00% everywhere · **the persistence work list is UNCHANGED and now
+  harness-fix-robust: `isc-mqg h40` (5/5) + `isc-skull h20` (4/5)** · KT isc+scb's 3 over-floor
+  survivors **DISSOLVED** under P7.14+fire (0.38%→0.09%, inside the band); KT mqg+skull re-shaped
+  0.15%→**0.31%** `[@sim0: plan@30 > native@0; native presses AP@109, 4s into the AoE window]` —
+  the round-7 look, after the fix lands. Two instrument defects found and fixed by the round
+  itself: the artifact guard's stale deferral premise (wall presses fire IN PLACE, faithful —
+  `wallPress=` info now, `artifact=` reserved for intent) and the EFF-AUDIT's missing per-table
+  scoping (`ungraded=` bucket for pin-less tables; KT's P7.14 repricing no longer reads as search
+  regressions). Final audit: `worse=7 better=5 tie=44 ungraded=30` — the 7 are the attributed
+  groupSeeds cells below.
+- ★★★ **THE §5.15 REGRESSIONS ARE ATTRIBUTED AND THE FIX IS ★LANDED★ (PHASE9 §5.16; 07-26).**
+  Golden gate: 24/25 bit-identical + **Kael'thas strictly better (Δscore +17.79, terminal cluster
+  381→396)**, golden re-recorded on the arbiter rule; exact-match re-run and green post-update.
+  CPU: +16.5% vs the −8.5% landing (net ≈ +6.6% vs pre-§5.12) — reclaim candidates open in
+  PHASE9 §4. The landing also carries the footer build stamp and the preset-overwrite flash.
+  ★ **THEN THE TAIL LOTTERY CLOSED THE SAME NIGHT (PHASE9 §5.17):** the round-7 identity filter
+  found a third instance (`isc-mqg-xl @h20`: round 6 rode a 1e-10 float-dust snap lead and its tail
+  won +14), so the filed remedy landed — **`finishLine(entrant)`**, the whole finishing tail run
+  once per hop arm, FINALS decide. The §5.16 h20 hair heals; goldens byte-identical (25/25, no
+  re-record); CPU +10.4% (cumulative ≈ +18% vs pre-§5.12 — reclaim is now the live §4 work). ONE
+  residual, structurally new and stopped-by-decision: `isc-mqg-xl @h20` −0.005 vs round 6 via the
+  recursive no-CS sub-solve's chain-candidate family — the named `--observe` trade for round 7.
+  **Next: ROUND 7 — re-gather the cells the fix moved** (identity filter re-run under the FINAL
+  engine → r7-resim.sh the changed list; cheap under DPS_CACHE) so the acceptance ledger reflects
+  the landed engine, then the round-diff vs round 6 must read `worse=0` (+ the one named observe).
+  All 7 cells
+  = **groupSeeds ALONE** (groom exit exonerated by single-variable isolation). Mechanism: an
+  ADDITIVE seed class wired through three EXCLUSIVE selection points (seed-fill eviction of
+  randoms · top-6 snap displacement · winner-take-all into basinHop — h160: a +34 snap lead in a
+  dead-end basin traded away +3594 of hop). Fix = fill-first + base-top-6-preserved + hop-both
+  with strict-improvement override (ties carry the old selection — h260's hops tie EXACTLY on two
+  layouts). Validated on all 60 cells of the 6 affected tables: **≥ round 6 everywhere, ≥ round 5
+  at 59/60**; the one residual (`isc-mqg-medlong @h20`, −0.001 eff) is the finishing-tail
+  winner-take-all, documented with two filed remedies (callable `finishLine` double-run;
+  cluster-shift move class). Landing gates in flight: golden A/B sweep + SCORE-AUDIT, then
+  exact-match. Landing also carries a footer build stamp + preset-overwrite flash (user-reported
+  UX trap: a preset load silently resets typed gear).
 
 - **Round 6 = the `emit=fire` re-gather** (task #70). `tools/xval-results/` is being refilled; round 5
   is archived at `tools/xval-results-archive/phase7-round5/` (the last `emit=intent` round — a table
@@ -687,6 +726,16 @@ TOOLING). Findings, all sim-measured on the fixed rig:
 
 ## Status (as of the current work)
 
+- **Customizable timeline + debug export LANDED (07-25, user-requested — UI only, engine untouched).**
+  "Unlock timeline for customization" makes the burn-timeline presses drag-editable (release snaps the
+  intent to the nearest whole second); the model plan stays visible as dashed ghost bars; a second tile
+  row compares the custom layout to the model (Δ% damage + the four headline metrics with deltas, live
+  during the drag via memoized `simulate()`); re-locking validates with `repair()` (violations listed +
+  flagged, auto-fix offered) and regenerates the activation schedule/pressboard/copy-text from the
+  custom plan. "Debug export" copies input + model output + custom timeline + stats/deltas/validation
+  as one paste, including an `evalsched`-ready JSON block (round-trip verified against
+  `tests/evalsched.mjs` — identical totals). Full internals: ARCHITECTURE "Timeline customization".
+  Exact-match: 25/25 unchanged (the default render path and copy text are byte-identical without opts).
 - **Crash fix (user-reported "Page Unresponsive" kills): the engine now runs in a Web Worker (latest,
   user-directed).** The finishing stage of `optimizeAsync` (top-6 polish, `basinHop` fixpoint,
   tie-break/normalizer stack) ran **synchronously on the browser main thread** — ~minutes on long

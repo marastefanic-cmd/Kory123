@@ -2643,6 +2643,58 @@ That tension is the sharpest statement of what round 10 would have to resolve: *
 sign against B2 is wrong, so something else in the B2 pair is absorbing it.** Any round-10 design should
 start there rather than opening a new mechanism search.
 
+## §21 — ROUND 10, PRE-REGISTERED: the P3 context asymmetry, decomposed against the two terms we already own (07-26; designed BEFORE any number was computed)
+
+### 21.1 The question, sharpened by §20's tension
+
+The one surviving B2 suspect is the crossing-location error, and the strongest unexplained
+measurement is P3's **context asymmetry**: the same press (`MQG 100 → 202` onto `IV@202`) costs the
+model **−0.2106 pp in ctx A** (h40 rest) vs **−0.4068 pp in ctx B** (h70 rest) — a spread of
+**0.1962 pp** the clip fraction cannot explain (§19.13 unified K2/K3 on clip alone; this is the
+piece it left over). §20's tension stands behind it: the back-edge term is real (P7.19 measured it
+at +474 damage on one cast) but its naive sign moves B2 the wrong way — "something else in the B2
+pair is absorbing it."
+
+### 21.2 The design — decompose the asymmetry into TWO named, computable contributions
+
+Both instruments already exist in the playbook; **no new sims are required for the decomposition**
+(the §17 apparatus survives: `$SP/p8/r7/{AS,BS}{0..3}` plans + logs + `r7path.sh` to regenerate).
+
+- **C-BE, the back-edge term per context** (instrumented-engine decomposition, the §5.19 technique):
+  compute the model's own over-credit at the `MQG@202` window's BACK edge — the last partial cast ×
+  premium, `frac(D/Δ_local)` — from each context's OWN cast board. The contexts differ exactly where
+  it matters: ctx A rides `IV@200` (window overlap [202,220] offset 2 s) vs ctx B `IV@202` (flush),
+  and the AP/Zerk tails sit at 188 vs 192, so `Δ_local` inside [202,222] genuinely differs.
+- **C-CASCADE, the confound §17.5 measured but never priced**: ctx A's P3 arms carry a **1.00 s
+  `IV#3` slide** (200.76 → 202.00) the request never asked for; ctx B's carry 0.10 s. Price it by
+  ALIGNED rescoring (the §19.9 technique): feed the model the sim's *executed* press times for both
+  arms and read the model-side delta attributable to the slide alone.
+
+### 21.3 Pre-registered falsifiers (decided before the first number)
+
+- **F1 (completeness):** if `|C-BE(B) − C-BE(A)| + |C-CASCADE(A) − C-CASCADE(B)|` explains **< 50 %**
+  of the 0.1962 pp spread, the asymmetry is neither term — a new mechanism search opens, and this
+  round records a negative.
+- **F2 (sign):** C-BE must read as model OVER-credit (positive model-side) in BOTH contexts; a
+  negative back-edge contribution in either kills H-BE outright.
+- **F3 (additivity):** the two contributions must close the spread to within the §17 additivity bar
+  (**0.05 pp**); a residual above it is reported as unexplained, not absorbed.
+- **F4 (level check, secondary):** whatever C-BE reads must also be consistent with the P3 LEVELS
+  (−0.21/−0.41): if C-BE explains the asymmetry but is an order of magnitude below the levels, the
+  crossing-location error remains its own (larger) object and this round only trims it.
+
+### 21.4 What a pass buys
+
+If F1–F3 pass with C-BE dominant, Phase 8 collapses to **implementing one term with its own sign
+guard and sim gate** (the RULES §3b-note debt): the back-edge charge, applied at value-buff windows,
+sized by `frac(D/Δ_local) × premium`, gated exactly the way §20 demands — with the B2 pair itself as
+the regression test that the "something else absorbing it" is finally identified. If C-CASCADE
+dominates instead, the §17.5 ctx-A measurement gets corrected in place and the TRUE asymmetry
+shrinks toward whatever C-BE explains — either way the 0.1962 pp stops being unexplained.
+
+**Status: DESIGNED, not yet run — execution follows round 7 (the acceptance ledger must reflect the
+landed groupSeeds fix first).**
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance

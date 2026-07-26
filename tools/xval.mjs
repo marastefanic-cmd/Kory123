@@ -279,9 +279,19 @@ const FIGHT_T = out0.fightT;   // boss overrides T for the sim/labels below
 // This guard is that check. It reads ONLY the emitted spec — the literal JSON genapl will consume,
 // including the `_intermissions` table that came straight off the boss preset — and asks one arithmetic
 // question: does any press land inside a window where the boss is untargetable? No engine, no
-// `simulate()`, no shared state. Under EMIT=fire the answer MUST be zero, because `simulate()` walks its
-// clock to `seg.end` before firing (index.html:737). A nonzero count therefore means either
-// `simulate()` is not doing that, or the emission path dropped it — and the guard sees it either way.
+// `simulate()`, no shared state.
+//
+// ⚠ CORRECTED 07-25 (round 6, `h295 MQG@49 in [42,55)` on KT mqg+skull): the original premise —
+// "under EMIT=fire the answer MUST be zero, because simulate() walks its clock to seg.end before
+// firing" — is WRONG for buff presses. The engine's documented convention (index.html, event-firing
+// branch: "gap presses (idle — downtime, GCD-idle remainder) fire at the press moment: both slip 0")
+// is that an off-GCD buff press inside a wall fires IN PLACE, which is game-true (a trinket is usable
+// while the boss is untargetable), zero-valued during the wall by both model and sim, and can be
+// genuinely optimal (an earlier press cycles the cooldown for a later use). Verified by direct probe:
+// `simulate(s,cfg,true).actEff` returns 49.000 for an intent at 49 inside [42,55). So under EMIT=fire
+// a wall press is FAITHFUL transcription, not an artifact — it is reported as `wallPress=` info, and
+// `artifact=` counts it only under EMIT=intent (where the model may score a DIFFERENT time than the
+// sim presses — the class P7.15 actually priced).
 //
 // It REPORTS, it does not gate: under EMIT=intent a nonzero count is expected (it is the very artifact
 // P7.15 priced), so exiting here would make old rounds unreproducible. `artifact=` is stamped on
@@ -300,9 +310,9 @@ for (const h of HASTES) {
 }
 if (artifacts.length) {
   const how = EMIT === 'fire'
-    ? '⚠⚠ UNEXPECTED under EMIT=fire — simulate() should have deferred these to the phase resume. This is a\n     simulate()-INDEPENDENT alarm: either the intermission walk (index.html:737) is not firing, or the\n     emission path lost it. Investigate BEFORE trusting this round.'
+    ? 'FAITHFUL under EMIT=fire — the engine fires gap presses IN PLACE (in-game-legal: a trinket is\n     usable while the boss is untargetable; the wall seconds are zero-valued by model and sim alike),\n     so the sim is executing exactly the plan the tool prints. Reported for visibility, not an alarm.'
     : 'expected under EMIT=intent — this IS the P7.15 artifact (the sim burns buff while untargetable).';
-  console.log(`  ARTIFACT GUARD: ${artifacts.length} press(es) emitted inside an intermission — ${how}`);
+  console.log(`  ${EMIT === 'fire' ? 'WALL-PRESS NOTE' : 'ARTIFACT GUARD'}: ${artifacts.length} press(es) emitted inside an intermission — ${how}`);
   for (const a of artifacts) console.log(`     ${a}`);
 }
 if (process.env.BOSS) console.log(`  BOSS=${process.env.BOSS}  T=${FIGHT_T}  Lust@${out0.lust}${out0.aoeTargets ? `  AoE phase VALUED: AE windows ×${out0.aoeTargets} targets (--targets)` : ''}`);
@@ -427,4 +437,4 @@ console.log(`(b) DIAGONAL DOMINANCE: ${diagClean ? 'CLEAN — native dominates e
 // `cache=` is part of the PROVENANCE, not a performance stat: a reader must be able to tell whether a
 // round was freshly simmed or partly reused. hit+miss is the sim count either way, so the two numbers
 // also confirm the matrix is complete.
-console.log(`XVAL-DONE seed=${SEED} kit=${PAIR.join('+')} class=${process.env.BOSS ? 'BOSS:'+process.env.BOSS.replace(/[^A-Za-z]/g,'') : (cls||'any')} T=${FIGHT_T} lust=${out0.lust} var=${VAR} wj=${WJ} emit=${EMIT} artifact=${artifacts.length} cache=${cacheHit}/${cacheHit + cacheMiss}${CACHE_VERIFY ? '+verify' : ''} monoDip=${(monoWorst*100).toFixed(2)}% diag=${diagClean ? 'CLEAN' : 'DEFICIT'} diagWorst=${(diagWorst*100).toFixed(2)}%`);
+console.log(`XVAL-DONE seed=${SEED} kit=${PAIR.join('+')} class=${process.env.BOSS ? 'BOSS:'+process.env.BOSS.replace(/[^A-Za-z]/g,'') : (cls||'any')} T=${FIGHT_T} lust=${out0.lust} var=${VAR} wj=${WJ} emit=${EMIT} artifact=${EMIT === 'fire' ? 0 : artifacts.length}${EMIT === 'fire' && artifacts.length ? ` wallPress=${artifacts.length}` : ''} cache=${cacheHit}/${cacheHit + cacheMiss}${CACHE_VERIFY ? '+verify' : ''} monoDip=${(monoWorst*100).toFixed(2)}% diag=${diagClean ? 'CLEAN' : 'DEFICIT'} diagWorst=${(diagWorst*100).toFixed(2)}%`);
