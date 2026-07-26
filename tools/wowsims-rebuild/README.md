@@ -106,7 +106,7 @@ modern one, so its numbers were right for it. The hazard is reusing those litera
 - **The reference gear export** — still lost, still the blocking unknown for trust-anchor parity.
   This runner uses `mage.P1FireGear`, which is NOT the reference gear.
 
-## ⚠ THE AP-195 QUIRK IS PRESENT HERE TOO — and the original patch does NOT apply
+## ⚠ ~~THE AP-195 QUIRK IS PRESENT HERE TOO~~ — WITHDRAWN, see the correction below
 
 Reading `sim/mage/talents.go:210` `registerArcanePowerCD()` suggests the cadence is already correct:
 `OnExpire` **only** reverses the multipliers (there is no `arcanePowerSpell.CD.Use(sim)` line for
@@ -131,3 +131,37 @@ sim silently gives every plan one fewer AP window on a 229 s fight, which is pre
 harness-input error that cost this project two re-gathered rounds (`t5two`, effective SP). **Locate
 and fix it before any gate reads this runner's output**, and add `AP@0,180` vs `AP@0` as a permanent
 regression probe — if they are ever bit-identical again, the fix has regressed.
+
+
+## ✅ CORRECTION — there is NO AP-195 quirk in archived tbc. `ap-cd-at-cast.patch` is NOT needed.
+
+The section above concluded from two data points (`AP@0,180` null, `AP@0,195` positive) that the
+195 s quirk survived here. **A bisect refutes it.** Same config, 3000 iter, dur 229, seed 1, infinite mana:
+
+| 2nd press at | dps | fired? |
+|---|---|---|
+| 180 | 1407.0816 | ✗ (identical to `AP@0` alone) |
+| **180.1** | **1407.1857** | **✓** |
+| 181 | 1407.9996 | ✓ |
+| 182 | 1409.4988 | ✓ |
+| 190 | 1411.7432 | ✓ |
+| 195 | 1414.0496 | ✓ |
+
+The press fires from **180.1 onward**. So the cooldown really is **180 s consumed at cast** — exactly
+`sim/core/cast.go:216`, `spell.CD.Set(now + castTime + CD.Duration)` — and matches real TBC. **The
+archived sim is already correct on this point and needs no patch.** The rising DPS from 180.1→195 is
+just the second window landing later in the fight, not a cooldown effect.
+
+### What actually bit: a strict-inequality boundary
+A press scheduled at *exactly* the instant the cooldown becomes ready (180.0) is rejected; 180.1 is
+accepted. **Consequence for the harness: never schedule a press at the exact CD-ready instant.**
+`genapl`-style emitters that compute press times from cooldown durations will land precisely on that
+boundary and silently lose the press. Nudge by a small epsilon, or make the emitter compare with the
+same tolerance the sim uses.
+
+★ **Two lessons, both already in this project's ledger.** (1) *Two data points are not a bisect* — the
+180/195 pair was consistent with a quirk that does not exist, and one intermediate probe killed it.
+(2) The failure mode was again **a silent null that looked like a result** (`AP@0,180` reading
+bit-identical to `AP@0`) — the same shape as the round-4 collector, §21.5's vacuous F3, and the
+`cfgSigOf` memo collision. `AP@0,180` vs `AP@0,180.1` stays as the regression probe, but its meaning
+is inverted from what the withdrawn section said: identical is CORRECT at 180.0, and 180.1 must differ.
