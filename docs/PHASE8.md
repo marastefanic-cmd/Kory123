@@ -3098,7 +3098,8 @@ anchored — that closes B2. This is the fourth and most complete statement of t
   `tests/monotonicity.mjs` ⇒ **0 violations across 2 fights, haste 0–150 step 5** — the sim-free
   half of the acceptance test (`monoDip`), confirming the search-quality invariant still holds.
   (Strictly confirmatory: `PLAN-DIFF IDENTICAL` + 25/25 already prove the optimizer's outputs are
-  byte-identical to master, and `monoDip` is a function of those outputs — so it could not have
+  byte-identical to the **pre-charge baseline** (`cc0e5db`, master before this phase landed), and
+  `monoDip` is a function of those outputs — so it could not have
   moved. Run anyway, because "it cannot have moved" is exactly the reasoning the round-4 collector
   and §25.2's memo trap both punished.)
 - **No golden churn, so the "sim-verified better" gate is not engaged** — nothing to certify.
