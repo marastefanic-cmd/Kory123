@@ -165,3 +165,38 @@ same tolerance the sim uses.
 bit-identical to `AP@0`) — the same shape as the round-4 collector, §21.5's vacuous F3, and the
 `cfgSigOf` memo collision. `AP@0,180` vs `AP@0,180.1` stays as the regression probe, but its meaning
 is inverted from what the withdrawn section said: identical is CORRECT at 180.0, and 180.1 must differ.
+
+## ★★★ THE DROP BUG IS REAL, IT HITS HALF THE CORPUS, AND IT IS WHAT THE OLD PATCH FIXED
+
+The boundary above is not a curiosity — it is the single most important thing to fix before this
+runner gates anything. Parsing `tests/golden.json` for Arcane Power press times:
+
+```
+EXACT-180: Lady Vashj              5,185,366
+EXACT-180: Al'ar                   6,186
+EXACT-180: 3:20 lust 0:05          4,184
+EXACT-180: 3:20 lust 0:05 drums    4,184
+EXACT-180: 3:20 lust 0:05 PI       5,185
+EXACT-180: 7:20 lust 0:05          5,244,424
+plans with 2+ AP presses: 12 | with an exact 180s gap: 6
+```
+
+**Half of every multi-AP plan the tool produces schedules its next press at exactly one cooldown
+after the last** — which is the optimal thing to do, and exactly the instant this sim rejects. Those
+presses would be **silently dropped**, costing each affected plan a whole AP window with no error.
+
+★ **This is precisely what `wowsims-patches/apl-schedule-strict-ready.patch` existed for.** Its own
+comment reads *"strict cooldown-readiness gate for a scheduled castSpell (**drop-bug fix**)"*. The
+old fork hit this and patched it in the APL layer; the rebuild reintroduces it in the
+`Cooldowns.Timings` layer. **The patch was never obsolete — it was solving this.** (My earlier note
+saying it "becomes unnecessary because there is no APL" was wrong about the *reason* it existed.)
+
+### The fix, before this runner gates anything
+Either (a) make the harness emit press times nudged past the boundary (`t + ε`), or (b) fix it at the
+source in `sim/core/major_cooldown.go` so a timing whose instant is *at* CD-ready is honoured rather
+than consumed-and-dropped — the (b)-shaped fix is what the old patch did, and it is the safer one
+because it cannot be forgotten by a future emitter.
+
+**Regression probe (permanent):** a plan with presses exactly one CD apart must show a *higher* DPS
+than the same plan with the second press deleted. `AP@0,180` vs `AP@0` currently reads
+**bit-identical** — that is the bug, live.
