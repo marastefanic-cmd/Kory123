@@ -200,3 +200,28 @@ because it cannot be forgotten by a future emitter.
 **Regression probe (permanent):** a plan with presses exactly one CD apart must show a *higher* DPS
 than the same plan with the second press deleted. `AP@0,180` vs `AP@0` currently reads
 **bit-identical** — that is the bug, live.
+
+### Narrowing the drop bug (for whoever fixes it)
+
+The obvious suspect is **not** the culprit. `tryActivateHelper` already compares inclusively:
+
+```go
+if mcd.numUsages < len(mcd.timings) {
+    shouldActivate = sim.CurrentTime >= mcd.timings[mcd.numUsages]   // >= , not >
+}
+```
+
+So a timing of exactly 180 s is *not* rejected by the timing test. The drop therefore happens
+**upstream**, in one of:
+
+- `majorCooldownManager.TryUseCooldowns` (`sim/core/major_cooldown.go:368`), whose loop is gated on
+  `mcd.IsReady(sim)` and **stops at the first not-ready cooldown** — so an AP that becomes ready at
+  exactly the current instant may be skipped, and the loop does not revisit it;
+- `mcd.CanActivate(sim, character)`, or the GCD gate above it;
+- the **decision-point cadence** — `TryUseCooldowns` runs at cast/GCD boundaries, not continuously,
+  so the relationship between "CD ready at exactly T" and "next decision point ≥ T" matters.
+
+⚠ **Do not patch this blind.** The correct next step is a single instrumented run
+(`SimOptions.Log`, `AP@0,180`) reading the actual `Major cooldown used:` lines and `ReadyAt()` around
+t=180 — that distinguishes the three candidates in one shot. Guessing here risks re-creating the
+exact class of silent mis-scheduling this whole section is about.
