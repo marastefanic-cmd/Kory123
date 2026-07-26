@@ -214,6 +214,13 @@ Treat maintaining them as part of the work, not an afterthought:
   all** — and B2's target already moved ~0.39pp and changed sign across the baselines. ⚠ Its §3 traps
   matter more than usual: the new instrument is lightly exercised, so the phase opens with a shakedown
   on known-shape cells before anything is graded.
+- `docs/PHASE11.md` — **PLANNED (parallel track): the platform phase — the single-file convention is
+  RETIRED (user decision 07-26).** Its §1 is the 07-26 audit's findings ledger — **8 confirmed bugs,
+  fix first** (worst: the Debug-export "reproduce" command silently mis-reproduces AoE duels; one
+  transient failure bricks the sim button until reload; unhashed `sim/sim.wasm` served `immutable`) —
+  then CI bring-up (none exists), the module split under a plan-sweep-IDENTICAL gate, the PHASE9 §4
+  reclaim ladder, and lazily-loaded product routes (URL-shareable setups first). §8 lists the user
+  calls it needs. No scorer/search change is in scope; PHASE10 stays the next MODEL phase.
 - `docs/PHASE9.md` — **performance / refactor notes** (CPU + latency, under a byte-identical-plans
   constraint). Measure-first: baseline profile, call census, hypothesis table with verdicts, and the
   refactor catalogue (redundant walks, fusable steps) with a cheapest-and-safest-first landing order.
