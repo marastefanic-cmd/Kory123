@@ -198,10 +198,28 @@ uncertainty**, so `sp: 1450` is not yet demonstrably wrong; do not change it on 
 2. Measured under `--mana 1e6`. Mana does not touch the proc, but the *cast count* differs from a
    mana-bound fight, and uptime is per-cast — so quote it only for the infinite-mana bench.
 
-**Still owed before the first gear-B round:** `critPct` and the haste rating. Neither appears in the
-combat log the way SP does, so they need either a finite-difference probe (`--crit`/`--haste` inject
-known deltas; solve for the base) or an item-DB sum. **Until then `reference-gear.mjs` is gear-A
-data and every gear-B model-vs-sim number inherits that error** — which is exactly the class of
+### Haste — ✅ CONFIRMED 0, read straight off the log's cast times
+
+The log prints `Cast Time` per cast. The opener reads **exactly `2.5s` at 0 stacks** and **`2.166s`
+at 1 stack** — i.e. the unhasted AB base (2.5) and one stack of the 0.333 s/stack reduction
+(2.5 − 0.333 = 2.167). Any gear haste would scale both down. ⇒ **gear-B haste rating = 0**, matching
+`GOLDEN_DEFAULTS.haste: 0`. No probe needed; this one is exact.
+
+### ⚠ Crit — the naive log count is a TRAP, and it is still owed
+
+Counting `Crit` vs `Hit` in the log gives **56.4 %**, which is *not* the gear crit and must not be
+written into `reference-gear.mjs`. The observed rate is inflated by **Arcane Potency**: Clearcasting
+procs (Arcane Concentration, per hit) grant **+30 % crit on the next cast**, so a large share of
+casts roll at `base + 30`. Reading 56.4 % as the character's crit would overstate it by ~18 points
+and corrupt every damage number downstream.
+
+**The correct probe is talent-isolated**, the same technique SOURCES used to prove the AoE crit
+amplification is *entirely* Arcane Potency: zero the Clearcasting/Potency talents (or read only
+casts not preceded by a Clearcasting proc) and count again — or finite-difference with `--crit`
+(≈22.08 rating per 1 %) and solve for the base. Not done here.
+
+**Still owed before the first gear-B round:** `critPct` only. **Until then `reference-gear.mjs` is
+gear-A data and every gear-B model-vs-sim number inherits that error** — exactly the class of
 harness-input defect PHASE8 §6/§7 spent a round finding. Fix it *before* gathering, never mid-round.
 
 ## 5. Standing requirement
