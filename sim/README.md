@@ -68,8 +68,15 @@ button prints is a result the terminal would print.
 The planner asks for four numbers and knows nothing else about your character, so the sim runs a
 **fixed synthetic mage** with those numbers injected on top:
 
-- **no gear, no consumes, no raid buffs** — your spell damage / crit / haste rating already *are* the
-  raid-buffed totals, so adding buffs would double-count them
+- **no armour, no consumes, no raid buffs — with two deliberate exceptions** (07-26, PHASE10 §8.7).
+  Your spell damage / crit / haste rating already *are* the raid-buffed totals, so adding buffs would
+  double-count them. But the character now **wears the two on-use trinkets** (Icon 29370 +
+  Serpent-Coil 30720) and has **`raidBuffs.bloodlust` on**, because an on-use only fires while its
+  item is worn and `raidBuffs.bloodlust` is what makes a Lust *castable* — without them those presses
+  were bit-identical no-ops and the button could not see Bloodlust or trinket timing at all
+  (Bloodlust alone: **exactly 0.000 → +165.5 DPS**). The passives ride along in **both** arms and
+  cancel in the only number reported. ⚠ Still unverifiable: a kit naming **Skull or MQG** — wowsims
+  has two trinket slots and the planner offers four on-use trinkets.
 - **standard Arcane raid talents** (`2500052300030150330125--053500031003001`) — Arcane Concentration
   and Arcane Potency are load-bearing for AoE (RULES §9)
 - **spell hit pinned at the 16% cap** (202 rating at 12.615/1%, vs a level-73 target). A **1% miss

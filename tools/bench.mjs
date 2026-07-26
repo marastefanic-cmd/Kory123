@@ -34,8 +34,14 @@
 //   --char bench      `tools/bench/export.json`  — BENCH.md's FROZEN gear-B raid setup. Real gear,
 //                     real raid buffs: it sets the OPERATING POINT (the SP/crit/haste at which a
 //                     layout is optimal), which is what a model-vs-sim campaign must hold fixed.
-//   --char model-ref  `sim/model-ref.json`       — the synthetic, gear-less mage the website's button
-//                     uses, with SP/crit/haste injected. Use it to reproduce exactly what a user sees.
+//   --char model-ref  `sim/model-ref.json`       — the synthetic mage the website's button uses, with
+//                     SP/crit/haste injected. Use it to reproduce exactly what a user sees.
+//                     ⚠ It carries NO armour, consumables or raid buffs — but it DOES wear the two
+//                     on-use trinkets (isc + scb) and has `raidBuffs.bloodlust` on, because without
+//                     them those presses are BIT-IDENTICAL NO-OPS and the button cannot see Bloodlust
+//                     or trinket timing at all (PHASE10 §8.7 — Bloodlust alone was worth +165 DPS the
+//                     button was scoring as exactly zero). A kit naming Skull or MQG is still
+//                     unverifiable there: wowsims has two trinket slots and the planner offers four.
 // They answer different questions and must stay free to differ; what they share is the protocol.
 import crypto from 'node:crypto';
 import fs from 'node:fs';
@@ -70,8 +76,8 @@ const CHARS = {
                 note: "BENCH.md's frozen gear-B raid setup (real gear + raid buffs)",
                 inject: false, model: REF },
   'model-ref':{ export: 'sim/model-ref.json',        request: 'sim/model-ref-request.json',
-                note: 'the synthetic gear-less mage the website button uses (stats injected)',
-                inject: true,  model: { t5two: false } },   // no gear ⇒ no set bonus, ever
+                note: 'the synthetic mage the website button uses — stats injected, wearing ONLY isc+scb',
+                inject: true,  model: { t5two: false } },   // no armour set ⇒ no set bonus, ever
 };
 const CHAR = arg('char', 'bench');
 if (!CHARS[CHAR]) die(`--char must be one of: ${Object.keys(CHARS).join(', ')}`);
@@ -258,7 +264,7 @@ if (JSONOUT) {
 const f = n => (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(1);
 console.log(`\n  character  ${CHAR} — ${CHARS[CHAR].note}`);
 console.log(`  fight      ${cfg.T}s · ${cfg.hasteRating} haste rating · ${cfg.sp} SP · ${cfg.critPct}% crit · T5-2pc ${cfg.t5two ? 'on' : 'off'}` +
-            (INJECT ? '  (injected into a gear-less character)' : '  (the export\'s own gear; the MODEL was moved to it — reference-gear.mjs)'));
+            (INJECT ? '  (stats injected; the character wears only the on-use trinkets — sim/simreq.mjs)' : '  (the export\'s own gear; the MODEL was moved to it — reference-gear.mjs)'));
 console.log(`  protocol   ${ITER} iters · var ${VAR} · seed${SEEDS.length > 1 ? 's' : ''} ${SEEDS.join(',')} · ${CONTROL ? 'never-press control (BENCH §2.1)' : 'RAW DPS, no control'} · ${wall}s\n`);
 for (const r of rows) {
   console.log(`  ${r.label}`);

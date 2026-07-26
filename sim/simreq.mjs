@@ -11,8 +11,16 @@
 // ── WHY GEAR-AGNOSTIC ─────────────────────────────────────────────────────────────────────────────
 // The planner asks for four numbers (spell damage, crit, haste rating, fight length) and deliberately
 // knows nothing else about your character, so the verification runs on a FIXED synthetic mage —
-// `model-ref.json`: no gear, no consumes, no raid buffs, standard Arcane raid talents — with your
-// three stats injected as flat bonuses on top. Consequences, and they matter:
+// `model-ref.json`: no armour, no consumes, no raid buffs beyond the one noted below, standard Arcane
+// raid talents — with your three stats injected as flat bonuses on top. Consequences, and they matter:
+//
+// ⚠ TWO DELIBERATE EXCEPTIONS TO "NO GEAR, NO BUFFS", both added 07-26 (PHASE10 §8.7) because without
+// them the button was measuring nothing: the character WEARS the two on-use trinkets (Icon 29370 +
+// Serpent-Coil 30720) and has `raidBuffs.bloodlust` ON. An on-use is only castable while its item is
+// worn and wowsims does not complain when it is not — the press is a bit-identical no-op — and
+// `raidBuffs.bloodlust` does not auto-apply a Lust, it makes one castable. Gear-less, the button
+// scored Bloodlust at EXACTLY 0.000 (it is worth +165 DPS here) and two plans differing only in Icon
+// timing as an exact tie. The passives ride along in BOTH arms and cancel in the reported difference.
 //
 //   • The ABSOLUTE DPS is not your DPS and is not meant to be. Only the A-vs-B DIFFERENCE is
 //     meaningful, and that is the only thing the UI reports.

@@ -1,21 +1,124 @@
 {
-  "requestId": "",
-  "raid": {
-    "parties": [
+  "requestId":  "",
+  "raid":  {
+    "parties":  [
       {
-        "players": [
+        "players":  [
           {
-            "apiVersion": 0,
-            "name": "ModelReference",
-            "race": "RaceTroll",
-            "class": "ClassMage",
-            "equipment": {
-              "items": []
+            "apiVersion":  0,
+            "name":  "ModelReference",
+            "race":  "RaceTroll",
+            "class":  "ClassMage",
+            "equipment":  {
+              "items":  [
+                {
+                  "id":  0,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                },
+                {
+                  "id":  0,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                },
+                {
+                  "id":  0,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                },
+                {
+                  "id":  0,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                },
+                {
+                  "id":  0,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                },
+                {
+                  "id":  0,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                },
+                {
+                  "id":  0,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                },
+                {
+                  "id":  0,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                },
+                {
+                  "id":  0,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                },
+                {
+                  "id":  0,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                },
+                {
+                  "id":  0,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                },
+                {
+                  "id":  0,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                },
+                {
+                  "id":  29370,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                },
+                {
+                  "id":  30720,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                },
+                {
+                  "id":  0,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                },
+                {
+                  "id":  0,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                },
+                {
+                  "id":  0,
+                  "randomSuffix":  0,
+                  "enchant":  0,
+                  "gems":  []
+                }
+              ]
             },
-            "consumables": null,
-            "bonusStats": {
-              "apiVersion": 0,
-              "stats": [
+            "consumables":  null,
+            "bonusStats":  {
+              "apiVersion":  0,
+              "stats":  [
                 0,
                 0,
                 0,
@@ -57,150 +160,150 @@
                 0,
                 0
               ],
-              "pseudoStats": []
+              "pseudoStats":  []
             },
-            "enableItemSwap": false,
-            "itemSwap": null,
-            "buffs": null,
-            "mage": {
-              "options": {
-                "classOptions": {
-                  "defaultMageArmor": "MageArmorMageArmor"
+            "enableItemSwap":  false,
+            "itemSwap":  null,
+            "buffs":  null,
+            "mage":  {
+              "options":  {
+                "classOptions":  {
+                  "defaultMageArmor":  "MageArmorMageArmor"
                 }
               }
             },
-            "talentsString": "2500052300030150330125--053500031003001",
-            "profession1": "ProfessionUnknown",
-            "profession2": "ProfessionUnknown",
-            "cooldowns": null,
-            "rotation": {
-              "type": "TypeAPL",
-              "simple": null,
-              "prepullActions": [],
-              "priorityList": [],
-              "groups": [],
-              "valueVariables": []
+            "talentsString":  "2500052300030150330125--053500031003001",
+            "profession1":  "ProfessionUnknown",
+            "profession2":  "ProfessionUnknown",
+            "cooldowns":  null,
+            "rotation":  {
+              "type":  "TypeAPL",
+              "simple":  null,
+              "prepullActions":  [],
+              "priorityList":  [],
+              "groups":  [],
+              "valueVariables":  []
             },
-            "reactionTimeMs": 0,
-            "channelClipDelayMs": 0,
-            "inFrontOfTarget": false,
-            "distanceFromTarget": 0,
-            "darkIntentUptime": 0,
-            "challengeMode": false,
-            "healingModel": null,
-            "database": null
+            "reactionTimeMs":  0,
+            "channelClipDelayMs":  0,
+            "inFrontOfTarget":  false,
+            "distanceFromTarget":  0,
+            "darkIntentUptime":  0,
+            "challengeMode":  false,
+            "healingModel":  null,
+            "database":  null
           }
         ],
-        "buffs": {
-          "ferociousInspiration": 0,
-          "bloodPact": "TristateEffectMissing",
-          "moonkinAura": "TristateEffectMissing",
-          "leaderOfThePack": "TristateEffectMissing",
-          "sanctityAura": "TristateEffectMissing",
-          "devotionAura": "TristateEffectMissing",
-          "retributionAura": "TristateEffectMissing",
-          "concentrationAura": "TristateEffectMissing",
-          "trueshotAura": false,
-          "draeneiRacialMelee": false,
-          "draeneiRacialCaster": false,
-          "drums": "DrumsUnknown",
-          "atieshDruid": 0,
-          "atieshMage": 0,
-          "atieshPriest": 0,
-          "atieshWarlock": 0,
-          "braidedEterniumChain": false,
-          "eyeOfTheNight": false,
-          "chainOfTheTwilightOwl": false,
-          "jadePendantOfBlasting": false,
-          "manaSpringTotem": "TristateEffectMissing",
-          "manaTideTotems": 0,
-          "totemOfWrath": 0,
-          "wrathOfAirTotem": "TristateEffectMissing",
-          "snapshotImprovedWrathOfAirTotem": false,
-          "graceOfAirTotem": "TristateEffectMissing",
-          "strengthOfEarthTotem": "TristateEffectMissing",
-          "soeEnhancement2pt4": false,
-          "snapshotImprovedStrengthOfEarthTotem": false,
-          "tranquilAirTotem": false,
-          "windfuryTotem": "TristateEffectMissing",
-          "totemTwisting": false,
-          "battleShout": "TristateEffectMissing",
-          "bsSolarianSapphire": false,
-          "snapshotBsSolarianSapphire": false,
-          "snapshotBsT2": false,
-          "snapshotBsBoomingVoiceRank": 0,
-          "commandingShout": "TristateEffectMissing",
-          "frostResistanceAura": false,
-          "frostResistanceTotem": false,
-          "natureResistanceTotem": false,
-          "fireResistanceTotem": false,
-          "fireResistanceAura": false,
-          "shadowResistanceAura": false,
-          "aspectOfTheWild": false
+        "buffs":  {
+          "ferociousInspiration":  0,
+          "bloodPact":  "TristateEffectMissing",
+          "moonkinAura":  "TristateEffectMissing",
+          "leaderOfThePack":  "TristateEffectMissing",
+          "sanctityAura":  "TristateEffectMissing",
+          "devotionAura":  "TristateEffectMissing",
+          "retributionAura":  "TristateEffectMissing",
+          "concentrationAura":  "TristateEffectMissing",
+          "trueshotAura":  false,
+          "draeneiRacialMelee":  false,
+          "draeneiRacialCaster":  false,
+          "drums":  "DrumsUnknown",
+          "atieshDruid":  0,
+          "atieshMage":  0,
+          "atieshPriest":  0,
+          "atieshWarlock":  0,
+          "braidedEterniumChain":  false,
+          "eyeOfTheNight":  false,
+          "chainOfTheTwilightOwl":  false,
+          "jadePendantOfBlasting":  false,
+          "manaSpringTotem":  "TristateEffectMissing",
+          "manaTideTotems":  0,
+          "totemOfWrath":  0,
+          "wrathOfAirTotem":  "TristateEffectMissing",
+          "snapshotImprovedWrathOfAirTotem":  false,
+          "graceOfAirTotem":  "TristateEffectMissing",
+          "strengthOfEarthTotem":  "TristateEffectMissing",
+          "soeEnhancement2pt4":  false,
+          "snapshotImprovedStrengthOfEarthTotem":  false,
+          "tranquilAirTotem":  false,
+          "windfuryTotem":  "TristateEffectMissing",
+          "totemTwisting":  false,
+          "battleShout":  "TristateEffectMissing",
+          "bsSolarianSapphire":  false,
+          "snapshotBsSolarianSapphire":  false,
+          "snapshotBsT2":  false,
+          "snapshotBsBoomingVoiceRank":  0,
+          "commandingShout":  "TristateEffectMissing",
+          "frostResistanceAura":  false,
+          "frostResistanceTotem":  false,
+          "natureResistanceTotem":  false,
+          "fireResistanceTotem":  false,
+          "fireResistanceAura":  false,
+          "shadowResistanceAura":  false,
+          "aspectOfTheWild":  false
         }
       }
     ],
-    "numActiveParties": 0,
-    "buffs": {
-      "arcaneBrilliance": false,
-      "powerWordFortitude": "TristateEffectMissing",
-      "shadowProtection": false,
-      "divineSpirit": "TristateEffectMissing",
-      "giftOfTheWild": "TristateEffectMissing",
-      "thorns": "TristateEffectMissing",
-      "bloodlust": false
+    "numActiveParties":  0,
+    "buffs":  {
+      "arcaneBrilliance":  false,
+      "powerWordFortitude":  "TristateEffectMissing",
+      "shadowProtection":  false,
+      "divineSpirit":  "TristateEffectMissing",
+      "giftOfTheWild":  "TristateEffectMissing",
+      "thorns":  "TristateEffectMissing",
+      "bloodlust":  true
     },
-    "debuffs": {
-      "judgementOfWisdom": false,
-      "judgementOfLight": false,
-      "improvedSealOfTheCrusader": "TristateEffectMissing",
-      "jocRetribution2pt4": false,
-      "misery": false,
-      "curseOfElements": "TristateEffectMissing",
-      "isbUptime": 0,
-      "shadowWeaving": false,
-      "improvedScorch": false,
-      "wintersChill": false,
-      "bloodFrenzy": false,
-      "giftOfArthas": false,
-      "mangle": false,
-      "exposeArmor": "TristateEffectMissing",
-      "faerieFire": "TristateEffectMissing",
-      "sunderArmor": false,
-      "curseOfRecklessness": false,
-      "huntersMark": "TristateEffectMissing",
-      "exposeWeaknessUptime": 0,
-      "exposeWeaknessHunterAgility": 0,
-      "demoralizingRoar": "TristateEffectMissing",
-      "demoralizingShout": "TristateEffectMissing",
-      "thunderClap": "TristateEffectMissing",
-      "insectSwarm": false,
-      "scorpidSting": false,
-      "shadowEmbrace": false,
-      "screech": false,
-      "hemorrhageUptime": 0
+    "debuffs":  {
+      "judgementOfWisdom":  false,
+      "judgementOfLight":  false,
+      "improvedSealOfTheCrusader":  "TristateEffectMissing",
+      "jocRetribution2pt4":  false,
+      "misery":  false,
+      "curseOfElements":  "TristateEffectMissing",
+      "isbUptime":  0,
+      "shadowWeaving":  false,
+      "improvedScorch":  false,
+      "wintersChill":  false,
+      "bloodFrenzy":  false,
+      "giftOfArthas":  false,
+      "mangle":  false,
+      "exposeArmor":  "TristateEffectMissing",
+      "faerieFire":  "TristateEffectMissing",
+      "sunderArmor":  false,
+      "curseOfRecklessness":  false,
+      "huntersMark":  "TristateEffectMissing",
+      "exposeWeaknessUptime":  0,
+      "exposeWeaknessHunterAgility":  0,
+      "demoralizingRoar":  "TristateEffectMissing",
+      "demoralizingShout":  "TristateEffectMissing",
+      "thunderClap":  "TristateEffectMissing",
+      "insectSwarm":  false,
+      "scorpidSting":  false,
+      "shadowEmbrace":  false,
+      "screech":  false,
+      "hemorrhageUptime":  0
     },
-    "tanks": [],
-    "staggerStormstrikes": false,
-    "targetDummies": 0
+    "tanks":  [],
+    "staggerStormstrikes":  false,
+    "targetDummies":  0
   },
-  "encounter": {
-    "apiVersion": 0,
-    "duration": 300,
-    "durationVariation": 0.5,
-    "executeProportion20": 0.2,
-    "executeProportion25": 0,
-    "executeProportion35": 0.35,
-    "executeProportion45": 0,
-    "executeProportion90": 0,
-    "useHealth": false,
-    "targets": [
+  "encounter":  {
+    "apiVersion":  0,
+    "duration":  300,
+    "durationVariation":  0.5,
+    "executeProportion20":  0.2,
+    "executeProportion25":  0,
+    "executeProportion35":  0.35,
+    "executeProportion45":  0,
+    "executeProportion90":  0,
+    "useHealth":  false,
+    "targets":  [
       {
-        "id": 31146,
-        "name": "Raid Target",
-        "level": 73,
-        "mobType": "MobTypeDemon",
-        "stats": [
+        "id":  31146,
+        "name":  "Raid Target",
+        "level":  73,
+        "mobType":  "MobTypeDemon",
+        "stats":  [
           0,
           0,
           0,
@@ -242,31 +345,31 @@
           0,
           0
         ],
-        "minBaseDamage": 4000,
-        "damageSpread": 0,
-        "swingSpeed": 2,
-        "dualWield": false,
-        "dualWieldPenalty": false,
-        "parryHaste": false,
-        "suppressDodge": false,
-        "canCrush": false,
-        "spellSchool": "SpellSchoolPhysical",
-        "tankIndex": 0,
-        "secondTankIndex": 0,
-        "disabledAtStart": false,
-        "targetInputs": []
+        "minBaseDamage":  4000,
+        "damageSpread":  0,
+        "swingSpeed":  2,
+        "dualWield":  false,
+        "dualWieldPenalty":  false,
+        "parryHaste":  false,
+        "suppressDodge":  false,
+        "canCrush":  false,
+        "spellSchool":  "SpellSchoolPhysical",
+        "tankIndex":  0,
+        "secondTankIndex":  0,
+        "disabledAtStart":  false,
+        "targetInputs":  []
       }
     ]
   },
-  "simOptions": {
-    "iterations": 1,
-    "randomSeed": "11",
-    "debug": false,
-    "debugFirstIteration": false,
-    "isTest": false,
-    "saveAllValues": false,
-    "interactive": false,
-    "useLabeledRands": false
+  "simOptions":  {
+    "iterations":  1,
+    "randomSeed":  "11",
+    "debug":  false,
+    "debugFirstIteration":  false,
+    "isTest":  false,
+    "saveAllValues":  false,
+    "interactive":  false,
+    "useLabeledRands":  false
   },
-  "type": "SimTypeUnknown"
+  "type":  "SimTypeUnknown"
 }
