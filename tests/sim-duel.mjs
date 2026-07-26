@@ -20,13 +20,14 @@ import { fileURLToPath } from 'url';
 import { execFileSync } from 'child_process';
 import { build } from '../tools/genapl-core.mjs';
 import { buildRequest, dpsOf } from '../sim/simreq.mjs';
+import { BENCH, runnerFlags } from '../sim/benchmark.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const TEMPLATE = JSON.parse(fs.readFileSync(path.join(REPO, 'sim/model-ref-request.json'), 'utf8'));
 
 const argv = process.argv.slice(2);
 const arg = (k, d) => { const i = argv.indexOf(k); return i >= 0 ? argv[i + 1] : d; };
-const ITER = +arg('--iter', 10000);
+const ITER = +arg('--iter', BENCH.iterations);
 
 // ── wasm bootstrap (node) ─────────────────────────────────────────────────────────────────────────
 export async function loadSim() {
@@ -54,7 +55,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   const out = {};
   for (const [name, spec] of Object.entries(ARMS)) {
     const t0 = Date.now();
-    const res = run(requestFor(spec, { ...GEAR, iterations: ITER, seed: 11 }));
+    const res = run(requestFor(spec, { ...GEAR, iterations: ITER, seed: BENCH.seed }));
     const d = dpsOf(res);
     out[name] = d.avg;
     console.log(`  ${name.padEnd(16)} ${d.avg.toFixed(1)} DPS   (${Date.now() - t0}ms, ${ITER} iters)`);
@@ -70,10 +71,12 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     for (const [name, spec] of Object.entries(ARMS)) {
       const aplPath = path.join(tmp, 'a.apl.json');
       fs.writeFileSync(aplPath, JSON.stringify(build(spec), null, 1));
-      const tsv = execFileSync(RUNNER, ['--export', path.join(REPO, 'sim/model-ref.json'), '--apl', aplPath,
-        '--dur', String(GEAR.T), '--var', '0.5', '--iter', String(ITER), '--seed', '11',
-        '--mana', '100000000', '--sp', String(GEAR.sp), '--crit', String(GEAR.critPct * 22.08),
-        '--haste', String(GEAR.hasteRating), '--tag', 'native', '--quiet'], { encoding: 'utf8' });
+      // flags GENERATED from the shared protocol — no `--var 0.5` / `--mana 1e8` typed here
+      const tsv = execFileSync(RUNNER, runnerFlags({
+        export: path.join(REPO, 'sim/model-ref.json'), apl: aplPath, T: GEAR.T,
+        sp: GEAR.sp, critPct: GEAR.critPct, hasteRating: GEAR.hasteRating,
+        iterations: ITER, seed: BENCH.seed, tag: 'native',
+      }), { encoding: 'utf8' });
       const native = +tsv.trim().split('\n').pop().split('\t')[4];
       const delta = Math.abs(native - out[name]);
       const ok = delta < 0.05;

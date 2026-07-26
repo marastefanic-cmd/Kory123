@@ -1,8 +1,12 @@
 # `sim/` — the in-page sim verifier
 
-The **"Verify in the sim"** button on the planner runs the *actual wowsims engine* in the browser and
-duels two layouts head-to-head. It is the same verification this project runs in the terminal, wired to
-a button — not a second implementation of it.
+The **"Check in the benchmark sim"** button on the planner runs the *actual wowsims engine* in the
+browser and duels two layouts head-to-head. It is the same verification this project runs in the
+terminal, wired to a button — not a second implementation of it.
+
+It is **not** a simulation of the user's character and never asks for gear; the in-page **"?"** dialog
+says so in the user's own terms, and the result panel repeats it next to the number ("read the gap, not
+the DPS").
 
 ## The chain
 
@@ -14,6 +18,7 @@ Every link is shared with the harness:
 
 | file | what it is | also used by |
 |---|---|---|
+| `benchmark.mjs` | **THE duel protocol** — variation, mana, iterations, seed, tie band, rating conversions | `tools/plan-duel.mjs`, both tests |
 | `planspec.mjs` | plan → genapl spec: **fire times, floored**, Cold-Snap split, phases | mirrors `tools/xval.mjs`'s `toSpec` |
 | `../tools/genapl-core.mjs` | the APL builder | `tools/genapl.mjs` CLI → every sim run this project has ever done |
 | `simreq.mjs` | patches `model-ref-request.json` into a `RaidSimRequest` | `tests/sim-duel.mjs` |
@@ -21,6 +26,36 @@ Every link is shared with the harness:
 | `model-ref-request.json` | that character as a request — **the runner's own `--dumpreq` output** | the page |
 | `sim.wasm` | patched wowsims @ `ade9f39` (both patches) | equals the native runner, asserted |
 | `duel-worker.js` | runs one arm off the main thread | — |
+
+## One protocol, two consumers — and it is checked, not trusted
+
+`benchmark.mjs` holds every protocol setting (duration variation, infinite mana, iterations, seed, the
+tie band, the rating conversions, the cold open). The page imports it; so do `tools/plan-duel.mjs`,
+`tests/sim-duel.mjs` and `tests/sim-request.mjs`. `runnerFlags()` even **generates the native command
+line** from the same object, so `--var 0.5` is never typed into a tool again.
+
+What is deliberately *not* shared is the **character**: `tools/reference-gear.mjs` + a real export is
+the cross-val instrument's fully-geared raid setup (and that file says outright it is not for
+`index.html`), while `model-ref.json` is this benchmark's synthetic, gear-less mage. Different
+questions, so they must be free to differ.
+
+Sharing makes the two sides *likely* to agree. **`tests/sim-request.mjs` makes it checked:**
+
+```
+RUNNER=/path/to/runner node tests/sim-request.mjs
+```
+
+- **protocol invariants** — asserts the *values* themselves (variation ≠ 0, cold open, mana ≥ 1e7,
+  seeds spaced ≥ iterations, hit cap 16). Sharing a constant makes both sides agree; it cannot make the
+  shared value correct, so these guard the value.
+- **template freshness** — regenerating `model-ref-request.json` from `model-ref.json` reproduces the
+  committed file.
+- **request equality** — across a matrix (plain, geared, Cold Snap, intermission, AoE, odd stats) the
+  request the **page** builds equals the request the **native runner** builds, field for field.
+  Comparison is semantic: protojson's `EmitUnpopulated` defaults are equal to a missing field, but a
+  *non-default* present on one side only is a failure.
+
+Both gates were negative-controlled (break one side → they fail).
 
 **The equality that makes this honest:** `tests/sim-duel.mjs` runs the shipped `sim.wasm` and the
 native `runner` on the same inputs and asserts they agree. Measured: **1351.5 vs 1351.5** and

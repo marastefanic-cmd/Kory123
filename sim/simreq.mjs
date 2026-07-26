@@ -25,14 +25,12 @@
 //     quantizes to integer casts and has faked a result twice (TOOLING ★★).
 //   • The APL opens COLD (`_prestack: 0`, genapl's default). Never prepull in a model-compared sim.
 
+// ★ Every protocol constant comes from sim/benchmark.mjs — the ONE definition the terminal harness
+// uses too. Nothing numeric about the protocol may be typed into this file (see that file's header).
+import { BENCH } from "./benchmark.mjs";
+export { BENCH };
+
 export const STAT = { intellect: 3, spellDamage: 5, spellHit: 12, spellCrit: 13, spellHaste: 14, spirit: 16, mana: 34, mp5: 35 };
-export const CRIT_RATING_PER_PCT = 22.08;      // wowsims TBC SpellCritRatingPerCritChance
-export const HASTE_RATING_PER_PCT = 15.76923;  // wowsims SpellHasteRatingPerHastePercent (model: 15.77)
-export const HIT_RATING_PER_PCT = 12.615385;   // wowsims SpellHitRatingPerHitPercent
-export const HIT_CAP_PCT = 16;                 // vs level 73 (17% base miss, 1% irreducible floor)
-export const MANA_INJECT = 1e8;                // "infinite" — the model does not simulate mana
-export const DEFAULT_VAR = 0.5;
-export const DEFAULT_SEED = 11;
 
 const clone = o => JSON.parse(JSON.stringify(o));
 
@@ -50,8 +48,8 @@ export function buildRequest(template, opts) {
   const add = (idx, v) => { if (v) stats[idx] += v; };
   add(STAT.spellDamage, opts.sp || 0);
   add(STAT.spellHaste, opts.hasteRating || 0);
-  add(STAT.spellCrit, (opts.critPct || 0) * CRIT_RATING_PER_PCT);
-  add(STAT.mana, MANA_INJECT);
+  add(STAT.spellCrit, (opts.critPct || 0) * BENCH.critRatingPerPct);
+  add(STAT.mana, BENCH.manaInject);
 
   if (opts.apl) {
     player.rotation.type = "TypeAPL";
@@ -60,7 +58,7 @@ export function buildRequest(template, opts) {
   }
 
   req.encounter.duration = opts.T;
-  req.encounter.durationVariation = opts.variation === undefined ? DEFAULT_VAR : opts.variation;
+  req.encounter.durationVariation = opts.variation === undefined ? BENCH.variation : opts.variation;
   // AoE: duplicate target[0] to N (runner-main.go --targets). Arcane Blast is single-target, so the
   // extra dummies are inert outside the Arcane Explosion windows.
   if (opts.targets > 1) {
@@ -69,8 +67,8 @@ export function buildRequest(template, opts) {
     while (req.encounter.targets.length < opts.targets) req.encounter.targets.push(clone(base));
   }
 
-  req.simOptions.iterations = opts.iterations;
-  req.simOptions.randomSeed = String(opts.seed === undefined ? DEFAULT_SEED : opts.seed);
+  req.simOptions.iterations = opts.iterations ?? BENCH.iterations;
+  req.simOptions.randomSeed = String(opts.seed ?? BENCH.seed);
   return req;
 }
 

@@ -74,6 +74,7 @@
 // harness, not an absolute-agreement test: both sides run the same gear export at the same
 // `--haste`, so a gear mismatch against the preset cancels in the difference.
 import { execFileSync } from 'node:child_process';
+import { BENCH } from '../sim/benchmark.mjs';   // the ONE duel protocol — never retype `--var 0.5` / `--mana 1e8` here
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -176,7 +177,7 @@ if (SIM) {
   // makes `|mean| > band` TRUE for every nonzero delta, so this tool declared every delta significant —
   // a false-PASS in the one instrument whose entire job is arbitration. Defaults are now spaced by 10⁵
   // (≫ any iter we run). Do not "tidy" them back into a contiguous run.
-  SEEDS = (arg('seeds') || '11,100011,200011,300011,400011').split(',').map(x => parseInt(x, 10));
+  SEEDS = (arg('seeds') || BENCH.seeds.join(',')).split(',').map(x => parseInt(x, 10));
   if (SEEDS.some(x => !Number.isInteger(x))) die('--seeds must be a comma-separated list of integers.');
   // The band below is a spread ACROSS seeds. With fewer than 3 there is no spread to speak of and
   // the tool would print a confident delta with no way to know if it is noise.
@@ -202,8 +203,12 @@ function simDps(spec, cfg, targets, trinkets, seed) {
   fs.writeFileSync(EXPORT.path, JSON.stringify(exp));
   const apl = path.join(SCRATCH, 'duel.apl.json');
   execFileSync('node', [path.join(REPO, 'tools/genapl.mjs'), JSON.stringify(spec), apl]);
-  const args = ['--export', EXPORT.path, '--apl', apl, '--dur', String(cfg.T), '--var', '0.5', '--iter', String(ITER),
-                '--seed', String(seed), '--mana', '100000000', '--haste', String(cfg.hasteRating || 0), '--quiet', '--tag', 'm'];
+  // ★ Protocol constants come from sim/benchmark.mjs so this instrument and the in-page button ask
+  // wowsims the same question. Only ITER/seed are per-invocation here (this tool sweeps a seed band).
+  const args = ['--export', EXPORT.path, '--apl', apl, '--dur', String(cfg.T),
+                '--var', String(BENCH.variation), '--iter', String(ITER),
+                '--seed', String(seed), '--mana', String(BENCH.manaInject),
+                '--haste', String(cfg.hasteRating || 0), '--quiet', '--tag', 'm'];
   if (targets) args.push('--targets', String(targets));
   const out = execFileSync(RUNNER, args, { encoding: 'utf8' });
   const dps = parseFloat(out.trim().split(/\s+/)[4]);

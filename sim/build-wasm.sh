@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Rebuild sim/sim.wasm — the wowsims engine the in-page "Verify in the sim" button runs.
+# Rebuild sim/sim.wasm — the wowsims engine the in-page "Check in the benchmark sim" button runs.
 #
 # The artifact is COMMITTED (≈22 MB, ≈4 MB over the wire once Netlify compresses it) rather than
 # built at deploy time, deliberately: the bytes users run are then the exact bytes that were audited

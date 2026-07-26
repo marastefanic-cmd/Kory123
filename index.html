@@ -502,6 +502,33 @@
   .simbox .simnote code { font-family: var(--font-mono); font-size: 11.5px; }
   .simbar { height: 4px; background: var(--grid); border-radius: 2px; overflow: hidden; margin: 8px 0; }
   .simbar i { display: block; height: 100%; width: 0; background: var(--accent); transition: width .3s; }
+  .iconbtn { padding: 4px 10px !important; font-weight: 700; }
+  .simhelp {
+    max-width: 640px; width: calc(100% - 32px); padding: 22px 26px;
+    background: var(--surface); color: var(--ink-2);
+    border: 1px solid var(--grid); border-radius: 12px;
+    font-size: 13.5px; line-height: 1.5;
+  }
+  .simhelp::backdrop { background: rgba(6,6,12,.72); }
+  .simhelp h3 {
+    font-family: var(--font-display); font-size: 16px; font-weight: 600; color: var(--gold);
+    letter-spacing: 0.04em; margin: 0 0 10px;
+  }
+  .simhelp h4 { color: var(--ink); font-size: 12.5px; letter-spacing: 0.04em; text-transform: uppercase; margin: 16px 0 5px; }
+  .simhelp p { margin: 0 0 8px; }
+  .simhelp .lede { color: var(--ink-2); }
+  .simhelp .lede b, .simhelp p b, .simhelp li b { color: var(--ink); }
+  .simhelp ul { margin: 0; padding-left: 18px; }
+  .simhelp li { margin-bottom: 5px; }
+  .simhelp .simhelp-foot {
+    margin-top: 16px; padding-top: 12px; border-top: 1px solid var(--hairline);
+    font-size: 12.5px; color: var(--muted);
+  }
+  .simhelp form { margin-top: 14px; text-align: right; }
+  .simbox .whatis {
+    background: none; border: none; padding: 0; margin-left: 6px;
+    color: var(--accent); font: inherit; font-size: 12px; cursor: pointer; text-decoration: underline;
+  }
   label.check.complicated { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
   label.check.complicated input { accent-color: var(--accent); width: 15px; height: 15px; }
   #phase-editor { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
@@ -656,7 +683,8 @@
         <div class="toolbar">
           <h3>Burn timeline</h3>
           <div class="vbtns">
-            <button class="copy" id="btn-sim" title="Run this plan through the real wowsims engine, head-to-head against the baseline (or against your hand-edited timeline). Same simulator, same settings this project uses to verify the model.">Verify in the sim</button>
+            <button class="copy" id="btn-sim" title="Run this plan and one alternative through the real wowsims engine — the same benchmark this project uses to check the model. It is NOT a simulation of your character: press &quot;what is this?&quot; for what it does and doesn't include.">Check in the benchmark sim</button>
+            <button class="copy iconbtn" id="btn-simhelp" type="button" title="What the benchmark sim is — and what it is not" aria-label="About the benchmark sim">?</button>
             <button class="copy" id="btn-edit">Unlock timeline for customization</button>
             <button class="copy" id="btn-revert" hidden>Revert to model plan</button>
             <button class="copy" id="btn-debug">Debug export</button>
@@ -687,6 +715,53 @@
   </section>
 
   <footer class="assump" id="assump" hidden></footer>
+
+  <dialog class="simhelp" id="simhelp">
+    <h3>What the benchmark sim is — and what it isn't</h3>
+    <p class="lede"><b>It is not a simulation of your character.</b> It never asks for your gear, and it
+    couldn't use it if you gave it to us. It runs the <b>benchmark</b> this project uses to check its own
+    model: a fixed reference mage that has been dialled in over hundreds of verification runs.</p>
+
+    <h4>What it actually does</h4>
+    <p>It takes two layouts — the planner's, and one alternative — and asks the real
+    <a href="https://wowsims.github.io/tbc/" target="_blank" rel="noopener">wowsims</a> engine one narrow
+    question: <b>which of these two does the simulator prefer?</b> Both sides run the identical character
+    through the identical fights (same random seed), so the difference between them is trustworthy even
+    though neither absolute number describes you.</p>
+
+    <h4>The benchmark character</h4>
+    <ul>
+      <li><b>No gear, no consumables, no raid buffs</b> — your spell damage, crit and haste rating are
+      injected as flat numbers on top of a bare level-70 Arcane mage. They are the only three things about
+      you the planner knows, so they are the only three the sim gets.</li>
+      <li><b>Spell hit pinned at the cap</b>, so misses never enter the comparison.</li>
+      <li><b>Infinite mana and no conserve rotation</b> — it casts Arcane Blast start to finish. Real play
+      weaves Frostbolt and drinks gems; that changes your DPS, not which cooldown layout wins.</li>
+      <li><b>Nothing cast before the pull</b>, and the fight ends within half a second of the length you
+      entered — the same assumptions the planner itself makes.</li>
+    </ul>
+
+    <h4>So how do I read the number?</h4>
+    <p>Read <b>the gap</b>, never the DPS. "+0.4%" means the simulator agrees the plan is better by about
+    that much, on a fight shaped like the one you described. The absolute figures are the benchmark
+    mage's, and will not match your log, your sim, or your guild's spreadsheet — by design.</p>
+
+    <h4>What it can't see</h4>
+    <ul>
+      <li><b>Drums of Battle, Power Infusion and the Ashtongue Talisman</b> — the sim harness has no press
+      for a raid external or a passive proc, so both sides run without them. The result panel names
+      anything it had to drop.</li>
+      <li><b>Burn phases</b> — "the boss takes ×N damage" is a planner concept with no button in the
+      simulator, so it refuses to guess rather than compare something else.</li>
+      <li><b>Mana, movement, mistakes, and your actual gear.</b></li>
+    </ul>
+
+    <p class="simhelp-foot">Under the hood this is the same engine, the same settings and the same plan
+    transcription this project runs in the terminal to verify the model — wired to a button rather than
+    re-implemented. If it and the planner ever disagree about which layout wins, that disagreement is a
+    finding, and the panel says so.</p>
+    <form method="dialog"><button class="copy">Close</button></form>
+  </dialog>
   <div class="stamp" title="Update this stamp whenever index.html changes — it identifies stale copies.">build 2026-07-26a</div>
 </div>
 
@@ -4423,22 +4498,26 @@ function debugExportText() {
    feature is optional: if the modules or the worker can't load (opening index.html from a file://
    path blocks both), the button says so and the rest of the tool is unaffected. */
 const SIM = { mods: null, workers: [], busy: false, base: new URL("./sim/", location.href).href };
-const SIM_ITERS = 10000;   // paired CRN at 10k resolves the mean to ~0.02% (TOOLING)
-const SIM_SEED = 11;
-const SIM_TIE = 0.05;      // |Δ| below this is noise, not a result — say so rather than crown a winner
 
+// ★ NO PROTOCOL CONSTANTS LIVE IN THIS FILE. Iterations, seed, duration variation, the tie band, the
+// rating conversions — all of them come from sim/benchmark.mjs, the SAME object `tools/plan-duel.mjs`
+// and the tests import. A number typed here would be a second copy, and a second copy is a setting
+// that eventually differs from the one the terminal uses while both keep printing plausible DPS.
+// `tests/sim-request.mjs` asserts the two paths build byte-identical requests, so this is checked,
+// not merely intended.
 async function simModules() {
   if (SIM.mods) return SIM.mods;
-  const [planspec, simreq, genapl, template] = await Promise.all([
+  const [planspec, simreq, bench, genapl, template] = await Promise.all([
     import("./sim/planspec.mjs"),
     import("./sim/simreq.mjs"),
+    import("./sim/benchmark.mjs"),
     import("./tools/genapl-core.mjs"),
     fetch(SIM.base + "model-ref-request.json").then(r => {
       if (!r.ok) throw new Error(`model-ref-request.json (HTTP ${r.status})`);
       return r.json();
     }),
   ]);
-  SIM.mods = { planspec, simreq, genapl, template };
+  SIM.mods = { planspec, simreq, genapl, template, BENCH: bench.BENCH };
   return SIM.mods;
 }
 // One worker per arm: the two arms then run concurrently instead of back to back.
@@ -4466,7 +4545,7 @@ async function runSimDuel() {
   const btn = el("btn-sim");
   SIM.busy = true; btn.disabled = true; btn.textContent = "Loading sim…";
   try {
-    const { planspec, simreq, genapl, template } = await simModules();
+    const { planspec, simreq, genapl, template, BENCH } = await simModules();
 
     // Arm B is your hand-edited timeline when there is one (the interesting question), otherwise the
     // "mash everything on cooldown" baseline the tiles already quote — which turns the button into
@@ -4488,10 +4567,10 @@ async function runSimDuel() {
     }
     const cfg = run.cfg;
     const opts = { sp: cfg.sp, critPct: cfg.critPct, hasteRating: cfg.hasteRating, T: cfg.T,
-                   iterations: SIM_ITERS, seed: SIM_SEED, targets: Math.max(A.targets, B.targets) };
+                   iterations: BENCH.iterations, seed: BENCH.seed, targets: Math.max(A.targets, B.targets) };
 
     btn.textContent = "Simulating…";
-    simBox(`<div class="simhead"><b>Running ${SIM_ITERS.toLocaleString()} iterations per side…</b>
+    simBox(`<div class="simhead"><b>Running ${BENCH.iterations.toLocaleString()} iterations per side…</b>
       <span class="simsub">both sides on the same seed, in the real wowsims engine</span></div>
       <div class="simbar"><i style="width:35%"></i></div>`);
 
@@ -4505,7 +4584,7 @@ async function runSimDuel() {
     const wall = ((performance.now() - t0) / 1000).toFixed(1);
 
     const delta = 100 * (dA.avg / dB.avg - 1);
-    const tie = Math.abs(delta) < SIM_TIE;
+    const tie = Math.abs(delta) < BENCH.tieBandPct;
     // The model's own verdict on the same pair, for comparison — a disagreement in SIGN is the
     // finding worth chasing (it is how a scorer gap shows itself).
     const mDelta = 100 * (armA.run.optR.total / armB.run.optR.total - 1);
@@ -4518,8 +4597,9 @@ async function runSimDuel() {
         : `<div class="simverdict bad">${esc(armB.label)} beats the model plan by ${simPct(-delta)} in the sim.</div>`;
 
     simBox(`
-      <div class="simhead"><b>wowsims verification</b>
-        <span class="simsub">${SIM_ITERS.toLocaleString()} iterations per side · same seed · ${wall}s</span></div>
+      <div class="simhead"><b>Benchmark sim</b>
+        <span class="simsub">${BENCH.iterations.toLocaleString()} iterations per side · same seed · ${wall}s
+        <button type="button" class="whatis">what is this?</button></span></div>
       <div class="simarms">
         <div class="simarm${delta > 0 && !tie ? " win" : ""}"><div class="k">${esc(armA.label)}</div>
           <div class="v">${dA.avg.toFixed(1)}<small>DPS</small></div></div>
@@ -4530,11 +4610,12 @@ async function runSimDuel() {
       <div class="simnote">
         ${agree ? "" : `<b style="color:var(--warn)">The sim and the model disagree on which side is better</b>
           (the model has it at ${simPct(mDelta)}). That is worth investigating, not ignoring — use Debug export and check the plan by hand.<br>`}
-        These DPS numbers are <b>not your DPS</b>: the sim runs a fixed, gear-less mage with your
-        ${cfg.sp} spell damage, ${cfg.critPct}% crit and ${cfg.hasteRating} haste rating injected, hit-capped,
-        infinite mana, no prepull — the model's own assumptions. Only the <i>difference</i> between the two
-        sides is meaningful, and both sides ran identical fights (same seed), which is what makes a
-        fraction of a percent readable.
+        <b>Read the gap, not the DPS.</b> This is the project's benchmark mage — no gear, no buffs, no
+        consumables, no conserve rotation — with only your ${cfg.sp} spell damage, ${cfg.critPct}% crit and
+        ${cfg.hasteRating} haste rating injected, hit-capped, infinite mana, no prepull. So these figures
+        will not match your log or your own sim, and are not meant to: both sides ran the identical
+        character through identical fights, which is what makes a fraction of a percent between them
+        readable at all.
         ${skipped.length ? `<br><b style="color:var(--warn)">Not included in the sim:</b> ${esc(skipped.join(", "))} —
           the schedule harness has no press for ${skipped.length > 1 ? "these" : "this"}, so both sides were simulated without ${skipped.length > 1 ? "them" : "it"}.` : ""}
       </div>`);
@@ -4544,10 +4625,14 @@ async function runSimDuel() {
       offline ? "This page was opened from a local file, and browsers block loading the simulator that way. Use the hosted site, or serve the folder over http (<code>npx serve</code>)."
               : esc(String(err.message || err))}</div>`);
   } finally {
-    SIM.busy = false; btn.disabled = false; btn.textContent = "Verify in the sim";
+    SIM.busy = false; btn.disabled = false; btn.textContent = "Check in the benchmark sim";
   }
 }
 el("btn-sim").addEventListener("click", runSimDuel);
+const showSimHelp = () => { const d = el("simhelp"); d.showModal ? d.showModal() : d.setAttribute("open", ""); };
+el("btn-simhelp").addEventListener("click", showSimHelp);
+// the result panel's own "what is this?" — the explanation has to be reachable from where the number is
+el("simbox").addEventListener("click", e => { if (e.target.classList.contains("whatis")) showSimHelp(); });
 
 el("btn-debug").addEventListener("click", () => {
   if (!lastRun) return;

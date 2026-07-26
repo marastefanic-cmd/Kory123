@@ -17,7 +17,7 @@ fixed rotation ever sims non-monotone in haste, **check for a prepull first.** T
 
 ## ★ THE VERIFICATION NOW SHIPS IN THE PAGE (07-26) — same chain, one button
 
-`index.html` has a **"Verify in the sim"** button that runs the real wowsims engine *in the browser*
+`index.html` has a **"Check in the benchmark sim"** button that runs the real wowsims engine *in the browser*
 (WebAssembly) and duels two layouts head-to-head. It is **not** a second implementation — every link
 of the chain is the harness's own code:
 
@@ -32,6 +32,17 @@ plan → sim/planspec.mjs → tools/genapl-core.mjs → sim/simreq.mjs → sim/s
 - `simreq.mjs` patches `sim/model-ref-request.json`, which **is the runner's own `--dumpreq` output**,
   so the page's request is the runner's request minus the fields a duel varies.
 - `sim.wasm` is the patched build at `ade9f39` (both patches; `bash sim/build-wasm.sh` rebuilds it).
+- **`sim/benchmark.mjs` is THE duel protocol** — variation 0.5, infinite mana, 10k iterations, seed 11,
+  the tie band, the rating conversions, cold open. `tools/plan-duel.mjs` imports it too, and
+  `runnerFlags()` generates the native command line from it, so `--var 0.5` is never retyped.
+  ★ If you write a new sim instrument, import BENCH; do not copy its numbers.
+
+**Two gates, both negative-controlled.** `tests/sim-request.mjs` asserts (a) the protocol *invariants*
+(var ≠ 0, cold open, seed spacing — sharing a constant cannot make it correct), (b) that
+`model-ref-request.json` is a fresh `--dumpreq` of `model-ref.json`, and (c) that the request the PAGE
+builds equals the one the NATIVE runner builds across plain / geared / Cold-Snap / intermission / AoE /
+odd-stat cases. Semantic comparison: protojson's `EmitUnpopulated` defaults equal a missing field, a
+non-default present on one side only does not.
 
 **The equality that licenses all of it:** `tests/sim-duel.mjs` runs the shipped wasm and the native
 `runner` on identical inputs and asserts agreement — measured **1351.5 vs 1351.5** and **1345.6 vs

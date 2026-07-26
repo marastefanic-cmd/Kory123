@@ -7,7 +7,11 @@ Read this first. It orients you on the project; the `docs/` files hold the detai
 A **TBC 2.4.3 Arcane-mage cooldown-overlay planner**: `index.html` (open it in a browser — no build,
 no deps). The app itself is still ONE self-contained file; alongside it sits an **optional** in-page
 sim verifier (`sim/`) that lazily loads the real wowsims engine as WebAssembly when the user presses
-"Verify in the sim" — a visitor who never presses it downloads exactly `index.html` and nothing else. You enter a fight (length, Bloodlust
+"Check in the benchmark sim" — a visitor who never presses it downloads exactly `index.html` and
+nothing else. **`sim/benchmark.mjs` is the single definition of the duel protocol**, imported by the
+page AND by `tools/plan-duel.mjs`/the tests; never retype a protocol constant into a new instrument.
+
+You enter a fight (length, Bloodlust
 timing, intermission/AoE phases) and it computes the **optimal moment to press each on-use
 cooldown** (Icy Veins, Arcane Power, Icon of the Silver Crescent, Serpent-Coil gem, Berserking),
 plus a burn timeline, a per-window activation schedule, and a copy-as-text plan. Alongside it:

@@ -297,6 +297,37 @@ Deliberate choices, each with a reason:
 Wall clock in a browser: ~10s for both arms at 10 000 iterations each, run concurrently in two
 workers. Cold-start adds the one-time ~4 MB download.
 
+**Same-day follow-up, two user calls.**
+
+*(1) "Make it obvious this isn't a sim of their gear."* The button is now **"Check in the benchmark
+sim"**, with a **"?"** dialog that opens on demand — *"It is not a simulation of your character. It
+never asks for your gear, and it couldn't use it if you gave it to us. It runs the benchmark this
+project uses to check its own model."* — plus what the benchmark character is, how to read the number
+(**"read the gap, not the DPS"**), and what it can't see. The result panel repeats the short form next
+to the number and links back to the dialog, because that is where the misreading would happen.
+
+*(2) "I don't want the page to reuse it verbatim — that smells like we change one and not the other."*
+Correct, and it was already true: `--var 0.5` and `--mana 100000000` were typed into `plan-duel.mjs`,
+the seed into three files, `22.08` into two. Fixed properly rather than documented:
+
+- **`sim/benchmark.mjs` is now the one definition** of the duel protocol. The page, `plan-duel.mjs`,
+  `sim-duel.mjs` and `sim-request.mjs` all import it, and `runnerFlags()` **generates the native
+  command line** from the same object — so the shell invocation cannot drift from what the page sends.
+- **What is deliberately NOT shared: the character.** `reference-gear.mjs` (the cross-val's real geared
+  export — a file that already says "NOT for index.html") answers a different question from
+  `model-ref.json` (the synthetic benchmark mage). They must be free to differ.
+- **And it is checked, not trusted.** `tests/sim-request.mjs` asserts the page's request equals the
+  native runner's, field for field, across plain / geared / Cold-Snap / intermission / AoE / odd-stat
+  cases — with *semantic* protojson comparison (an `EmitUnpopulated` default equals a missing field; a
+  non-default present on one side only does not).
+
+★ **The lesson from the negative control.** The first attempt at one — flip `BENCH.variation` to 0.6 —
+**passed**, because both sides read the same constant and therefore still agreed. Sharing a value can
+only ever prove *agreement*, never *correctness*; a typo propagates to both consumers and the equality
+gate waves it through. So a second, complementary gate was added: **protocol invariants** that assert
+the values themselves (variation ≠ 0 with the reason, cold open, mana ≥ 1e7, seeds spaced ≥ iterations,
+hit cap 16). The real negative control — break *one* side — then failed as it should.
+
 ---
 
 ## The corrections ledger — what we believed, and what disproved it

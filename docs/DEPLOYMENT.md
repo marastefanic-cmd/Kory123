@@ -27,12 +27,12 @@ Config lives in [`netlify.toml`](../netlify.toml) at the repo root.
 
 - **Published:** `index.html` **plus the optional sim verifier's assets** — `sim/sim.wasm`,
   `sim/wasm_exec.js`, `sim/duel-worker.js`, `sim/simreq.mjs`, `sim/planspec.mjs`,
-  `sim/model-ref-request.json` and `tools/genapl-core.mjs`. The build copies exactly those into
+  `sim/benchmark.mjs`, `sim/model-ref-request.json` and `tools/genapl-core.mjs`. The build copies exactly those into
   `./dist` and Netlify serves `./dist` (see `netlify.toml` for the current command).
   - `tools/genapl-core.mjs` deliberately keeps its repo-relative path in `dist/` so the page's
     `import("./tools/genapl-core.mjs")` resolves identically locally and deployed. It is the SAME
     module the terminal sim harness drives — that is the point (`sim/README.md`).
-  - The sim assets are fetched **lazily, on first press of "Verify in the sim"**. A visitor who never
+  - The sim assets are fetched **lazily, on first press of "Check in the benchmark sim"**. A visitor who never
     presses it downloads `index.html` and nothing more, so the tool's cold-start cost is unchanged.
   - `sim/sim.wasm` is ~22 MB and needs `Content-Type: application/wasm` (set in `netlify.toml`) or
     `WebAssembly.instantiateStreaming` refuses it; Netlify compresses it to ~4 MB on the wire and it
