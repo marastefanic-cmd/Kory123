@@ -2695,6 +2695,42 @@ shrinks toward whatever C-BE explains — either way the 0.1962 pp stops being u
 **Status: DESIGNED, not yet run — execution follows round 7 (the acceptance ledger must reflect the
 landed groupSeeds fix first).**
 
+## §21.5 — ROUND 10 RESULT: C-BE DOMINANT — the asymmetry (and most of both levels) is the model's continuous credit; the discrete realization barely varies (07-26)
+
+Executed exactly as §21.2 pre-registered, all bare-node (`p10.mjs`, scratchpad; zero sims). The
+instrument first re-derived §17.5's model leg (`dModelReq` A +0.2600 / B +0.3602 vs the recorded
++0.2610 / +0.3600 — reproduction ✓), then read the two terms:
+
+| term | ctx A | ctx B | contribution to the 0.1962 pp asymmetry |
+|---|---|---|---|
+| **C-BE** (continuous credit − board-realized credit of `MQG@202`) | **+0.1505 pp** | **+0.2610 pp** | **0.1105 pp (56 %)** |
+| **C-CASCADE** (model-priced IV#3 slide, executed §17.5 times) | +0.0090 pp | −0.0043 pp | 0.0133 pp (7 %) |
+
+- **F2 (sign) PASSES** — C-BE is model OVER-credit in both contexts.
+- **F1 (completeness) PASSES** — 63.1 % ≥ 50 %.
+- **F4 (levels) PASSES** — C-BE is 71 % (A) and 64 % (B) of each context's whole model-vs-sim gap
+  (0.2105 / 0.4068), so the term that carries the asymmetry also carries the bulk of B2's levels.
+- **F3 (additivity) DOES NOT CLOSE** — residual **0.0724 pp** above the 0.05 bar, reported as
+  unexplained per the pre-registration (not absorbed). Sensitivity: identical in the untapered
+  currency (`total`), so the kill taper is excluded; the estimator's remaining approximation and/or
+  a genuine third term share it.
+- ★ **Bonus finding, the sharpest fact of the round:** `dQuant` — the press's DISCRETE realization —
+  is nearly context-INDEPENDENT (1.5832 vs 1.5894 pp; both boards gain exactly 3 whole casts), while
+  the CONTINUOUS credit varies by 0.1167 pp. **The asymmetry lives entirely in the integral's
+  boundary treatment on an anchored lattice** — the §19.13 discretization family, now measured at
+  the P3 anchor with the stacking partner (`IV@200` offset-2s vs `IV@202` flush) as the boundary
+  configuration that moves it.
+
+**What this buys (per §21.4):** C-CASCADE is minor — §17.5's ctx-A confound stands as bounded, not
+corrected. C-BE is dominant with F1/F2/F4 green ⇒ **Phase 8's remaining charter is implementing the
+continuous-vs-discrete boundary charge in the scorer** — the RULES §3b-note debt, now sized at
++0.15/+0.26 pp on this one press and carrying most of B2. §20's tension ("its naive sign moves B2
+the wrong way") is now readable: the naive global term was the wrong SHAPE — the charge is
+per-window and boundary-configuration-dependent (flush vs offset changes it by 0.11 pp), so a flat
+`frac(D/Δ)` charge cannot land; the implementable form must price each window's anchored lattice
+from the board it already computes. Design + sign guard + sim gate = the Phase 8 finale, gated per
+Guardrails below.
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance
