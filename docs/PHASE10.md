@@ -466,3 +466,41 @@ could not equip**, alongside the Drums/PI/Ashtongue line it already prints. And 
 dialog still says *"no gear, no buffs"*, which this change makes **stale** — a living doc inside the
 product, which DIARY 07-26 already names as the kind that goes stale unnoticed. Both need
 `index.html`, and §8.5 forbids touching it until the round stops gathering.
+
+## 8.13 ✅ The whole transcription surface swept — and one of my own readings corrected
+
+§8.7 found two silent no-ops. That is a *class*, not two incidents, so every key `sim/planspec.mjs`
+can emit was swept on **both** committed characters: press it in a context where it must move the DPS
+if it works at all, against an otherwise identical control. Talents are identical on both
+(`2500052300030150330125--053500031003001`, matching `tools/bench/talents.txt`).
+
+| key | model-ref (website) | bench gear-B (the corpus) |
+|---|---|---|
+| Icy Veins · Arcane Power · Berserking | +24.1 · +19.4 · +8.0 | +31.7 · +21.7 · +10.3 |
+| Bloodlust | +66.2 | +88.3 |
+| Icon · Serpent-Coil | +6.0 · +4.5 | +8.3 · +6.4 |
+| **Cold Snap** | **+52.3** | **+69.9** |
+| Skull · MQG | **0.000 · 0.000** | **0.000 · 0.000** |
+
+⇒ **Everything fires except Skull and MQG, and those are the known two-slot limit** (§8.7), not a new
+defect. No third silent no-op exists on the transcription surface.
+
+⚠ **My first Cold Snap reading said "SILENT NO-OP" and it was WRONG — the probe was.** It ran at
+`T=300` with `IV:[0,30]`, and at that length the second Icy Veins *fires on its own* once its 180 s
+cooldown elapses (~180 s), which is exactly what the un-reset arm's **+20.9 / +28.1 DPS** was. Cold
+Snap then adds almost nothing measurable, and on one character the difference rounded to `0.000` —
+the signature of a no-op, produced by a control that already contained the effect.
+
+**The decisive design is a fight SHORTER than the cooldown being reset**, so the second use cannot
+exist unless Cold Snap creates it. At `T=120`: `IV@0,60` without CS is **bit-identical** to `IV@0`
+(the second IV correctly does not fire), and adding `CS@60` is worth **+52.3 / +69.9 DPS**.
+
+★ **The lesson is the one this file keeps re-learning from a new angle: a bit-identical result is
+only evidence of a no-op if the control could have shown the effect.** I found two real silent no-ops
+by that signature and then manufactured a third from a bad control — which is the same shape as the
+`grep -c $'\0'` mistake in §8.10, in the same session.
+
+☞ **One behaviour banked while establishing this:** a scheduled press that is *not ready* is not
+dropped — it fires when the cooldown elapses (the `IV@0,30` gain at `T=300`). Harmless for the
+corpus, because `planToSpec` pairs every too-early Icy Veins with its Cold Snap press by
+construction, so the sim never has to decide. Worth knowing before anyone hand-writes a spec.
