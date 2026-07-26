@@ -15,11 +15,25 @@ Status when this file was opened: **round 1 gathering at 30/36**, `index.html` f
 > Rule for this section: state the question, the measurement that bears on it, and the cost of each
 > answer. **Do not answer them here.** (`docs/PHASE11.md` §8 is the other list; these are additive.)
 
-### 1.1 ★★★ Should the cross-val corpus move to the GEAR-AGNOSTIC character? (raised by the user, 07-26)
+### 1.1 ✅ DECIDED BY THE USER, 2026-07-26 — the corpus MOVES to the gear-agnostic character
 
-**The question.** The user's stated intent is a gear-agnostic benchmark "so we never have to deal
-with this problem again" — *this problem* being the gear A → gear B re-export, which cost the project
-its entire acceptance baseline (BENCH §1) and moved B2's target ~0.39 pp *and changed its sign*.
+> **The ruling, in the user's own framing:** *"I want to get rid of it and move towards the gear
+> agnostic approach, as that's then more generalisable and applicable for all players regardless of
+> gear. If needed we can then add things into the input."* And on sequencing: *"you can finish this
+> round as it is, and then just make super duper sure that this is the last run using that setup and
+> from then on we move towards the gear agnostic simming even internally."*
+>
+> **So:** round 1 completes on `tools/bench/export.json` and is **THE LAST geared round**. Every
+> gather after it is gear-agnostic. Gear-specific factors, if they turn out to be needed, come back
+> as **inputs to the model** rather than as a baked-in character.
+>
+> This section is kept in full below because the *evidence* is still what a future reader needs; it
+> is no longer an open question. **The remaining work is enforcement — see §1.1e.**
+
+**The question as it was posed.** The user's stated intent is a gear-agnostic benchmark "so we never
+have to deal with this problem again" — *this problem* being the gear A → gear B re-export, which
+cost the project its entire acceptance baseline (BENCH §1) and moved B2's target ~0.39 pp *and
+changed its sign*.
 
 **The finding: the corpus is NOT gear-agnostic, and nothing says so out loud.** There are two
 characters, and the split is not where a reader would guess:
@@ -44,6 +58,31 @@ the corpus re-baseline-able.
   07-26. Mitigation short of a switch: the `char=` stamp already on every `XVAL-DONE` line, plus
   freezing the export (already done — BENCH §1.1 reversed the never-commit-an-export policy).
 
+**Measured 07-26 — the speed claim, since it changes what a re-gather costs.** The user expected
+gear-agnostic simming to be "a million times quicker". It is quicker, but the honest figure is
+**~1.4×**, not orders of magnitude — one arm, 10k iters, `--no-control`, same spec/fight, two repeats
+each on a saturated box:
+
+```
+geared        (tools/bench/export.json)   11975 ms · 10595 ms
+gear-agnostic (sim/model-ref.json)         7708 ms ·  7896 ms
+```
+
+Consistent in direction across both repeats. On a 36-table round that is roughly **15 of ~50 CPU-hours**
+— worth having, and worth *not* overselling: the solve half of a cell is unchanged, so the round does
+not get 10× cheaper.
+
+⚠ **That 1.4× answers a narrower question than the one asked, and the distinction matters.** The user
+clarified they meant the *ceremony*, not the per-arm throughput: "we also made the simming much
+quicker by being able to … use an internal tool for it rather than having to always set it up."
+**On that question the honest figure really is orders of magnitude**, and PHASE10 §1.3 already
+measured it: producing a number used to mean clone wowsims → `apt-get install protobuf-compiler` →
+`go build` → hunt a private gear export out of a session scratchpad that may have been reclaimed;
+it now means `node tools/bench.mjs --preset X --vs naive`, ~10 s, from the repo alone. Minutes-to-hours
+and a working toolchain, down to one command. **Time-to-a-number collapsed; per-iteration cost did
+not.** Both are true, they are different axes, and only the first is what "a million times quicker"
+was about. Do not quote the 1.4× as a rebuttal to it.
+
 **⚠ The honest counter-argument, which the user should hear before deciding.** `model-ref` does not
 escape having an operating point — it injects SP/crit/haste, so it *has* one; what changes is that
 the operating point is **declared in code** rather than exported from a gear file, so it cannot drift
@@ -54,6 +93,34 @@ this project has never tested.** It is also cheaply testable, and that test shou
 the decision: solve one fight family on both characters and compare the argmax plan at each haste. If
 the plans agree, the switch is nearly free; if they diverge, the geared export is load-bearing and
 the answer is "keep it, and stamp harder".
+
+⚠ **The decision does not make that test unnecessary — it makes it the FIRST piece of gear-agnostic
+work.** "Do scheduling conclusions transfer across stat distributions?" is now the question that
+decides whether the new corpus is measuring the same thing the old one did. Run it early: solve one
+fight family on both characters, compare the argmax plan at each haste. Agreement means the switch
+was free; divergence means the geared operating point was load-bearing and the model needs the gear
+factors back **as inputs** (which is exactly the escape hatch the user reserved).
+
+### 1.1e ★ ENFORCEMENT — "make super duper sure this is the last geared run"
+
+The user asked for a guarantee, not an intention. A note in a doc is not one. What is needed, in order:
+
+1. **⚠⚠ `tools/xval-bench.mjs` IS AS FROZEN AS `index.html` UNTIL 36/36 — this was not obvious and is
+   worth stating loudly.** The campaign spawns a *fresh copy* of that file per cell
+   (`xval-bench-campaign.sh` → `node tools/xval-bench.mjs <seed>`), so editing it mid-round changes
+   the instrument between cells and assembles the matrix from two of them — the identical failure the
+   `index.html` freeze exists to prevent, one file over. **Do not add the guard below until the round
+   reads 36/36.** (The `index.html` freeze is documented in three places; this one was in none.)
+2. **Then make the geared path opt-in, not default.** `tools/xval-bench.mjs:251` hardcodes
+   `tools/bench/export-request.json`. Replace with a `CHAR=` selector defaulting to **`model-ref`**,
+   and have the geared path require an explicit `CHAR=bench` *plus* a printed banner naming
+   PHASE12 §1.1. A future session must have to *choose* the retired baseline, and be told it is retired.
+3. **Stamp it.** `char=` already rides every `XVAL-DONE` line — that is what lets a later reader
+   classify a table without trusting a directory name. Keep it, and make `xval-verify.mjs` refuse to
+   pool tables whose `char=` values differ. Round 1 is `char=bench`; everything after is not, and a
+   mixed directory must be a hard error rather than a silent average.
+4. **Archive round 1 under a name that says what it is** — e.g. `gearB-final-geared-<date>/` — with a
+   README saying it is the last of its kind and why. `gearA-pre-20260726/` is the precedent.
 
 ### 1.2 Inherited from PHASE11 §8 — not restated here
 
