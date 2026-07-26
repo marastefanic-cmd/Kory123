@@ -1933,3 +1933,21 @@ blocks a regression from riding a green exit). It is **not** a verdict round: th
 gathered it carries the 7 attributed search regressions, so `xval-round-diff` correctly exits 1
 against round 5 until the PHASE9 §5.16 fix lands and the affected cells are re-gathered
 (round 7 — cheap under `DPS_CACHE`: only changed specs cost sims).
+
+### §5.24 — ROUND 7 CERTIFIED: the ledger reflects the landed engine (07-26)
+
+The targeted re-gather after the PHASE9 §5.16/§5.17 landings: the identity filter re-emitted all 36
+tables model-side under the final engine (**26 byte-identical**; 10 tables / 12 cells changed — the 7
+healed regressions, 4 equal-score layout flips, and the one named residual), and only those 10 were
+re-simmed (`DPS_CACHE` served 70–90 % per table; KT's re-run stamps `artifact=0 wallPress=1`, the
+§5.23-corrected guard behaving as specified). Grades:
+
+- `xval-round-diff` round 6 → 7 (with the pre-named `--observe`): **`worse=1 better=7 tie=4`,
+  scorer pinned on 333 unchanged specs, zero verdict flips** — the `worse=1` is exactly the
+  §5.17-documented `isc-mqg-xl @h20` sub-solve residual (−0.005 eff, ≥ round 5), nothing else.
+- Invariant A holds everywhere; the B banner reads as always (existence test over near-ties).
+- ★ **The persistence work list is UNCHANGED for the third consecutive round and across two engine
+  generations**: `isc-mqg h40` (rival `plan@h70`, 5/5) and `isc-skull h20` (rival `plan@h100`, 4/5).
+  Harness-fix-robust (round 6) and search-fix-robust (round 7) — these two columns are the residual
+  Phase-7 model work, alongside KT mqg+skull's 0.31 % `@sim0` (native `AP@109` vs rival `AP@105`
+  flush with the AoE start).
