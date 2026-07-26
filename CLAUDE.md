@@ -37,7 +37,7 @@ Additional payoffs the same engine unlocks (nice-to-haves, not the point):
 ## How to run the tests
 
 ```
-cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs
+cd tests && npm install && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs
 ```
 Loads the real `index.html` headless, reads the fight tables from the page (`window.BOSS_PRESETS` — the
 real phase encounters — and `window.GOLDEN_PRESETS` — the abstract **Debugging presets**), runs every
