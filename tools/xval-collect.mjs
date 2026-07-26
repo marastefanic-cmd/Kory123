@@ -75,8 +75,16 @@ for (const f of files) {
   const rep = txt.match(/diagWorst=([\d.]+)%/);
   const worst = defCols.length ? defCols[0].pct : 0;
   const mismatch = rep && Math.abs(parseFloat(rep[1]) - +worst.toFixed(2)) > 0.02;
+  // PLATEAU BREADTH. ACCEPTANCE lists "wide plateaus make adaptation vacuously CLEAN" as a known
+  // coverage gap but nothing ever reported it, so a CLEAN table and a table that emits ONE plan
+  // across the whole haste band read identically in the ledger. They are not the same evidence: at
+  // `unique 2/10` the cross-val is comparing two layouts, not testing adaptation across ten. This is
+  // a DIFFERENT question from "is the borrower byte-identical to the native" (which round 5 answered
+  // 0/135) — that asks whether a deficit is real; this asks whether the test had anything to find.
+  const uq = txt.match(/^unique plans: (\d+)\/(\d+)/m);
   tables.push({ file: f, kit: kv.kit, class: kv.class, T: +kv.T, lust: +kv.lust, seed: +kv.seed,
     mono: +(mono * 100).toFixed(4), monoAt, defCols, worst, mismatch, specs,
+    uniq: uq ? +uq[1] : null, nHaste: uq ? +uq[2] : null,
     boss: /^BOSS:/.test(kv.class || '') });
 }
 
@@ -106,6 +114,18 @@ console.log(`## Cross-val ledger (${ok.length} tables, ${totalCols} borrowed-win
 console.log(`- **Invariant A (monoDip):** ${monoBad.length ? '⚠ ' + monoBad.length + ' tables with monoDip>0.05% — REGRESSION: ' + monoBad.map(t => t.file).join(', ') : 'all ≤0.05% ✓'}`);
 console.log(`- **Invariant B (diagonal dominance):** ${totalCols === 0 ? 'ZERO deficit columns — PASS ✓' : `**FAILS** — ${deficit.length}/${ok.length} tables carry ${totalCols} borrowed-win columns (bar = zero)`}`);
 console.log(`- **CLEAN tables:** ${clean.length}/${ok.length}` + (errs.length ? `  ·  **ERRORS:** ${errs.length}` : ''));
+{ // plateau breadth — how much of each haste grid the tool answers with ONE plan
+  const withU = ok.filter(t => t.uniq != null);
+  if (withU.length) {
+    const fr = withU.map(t => t.uniq / t.nHaste).sort((a, b) => a - b);
+    const med = fr[Math.floor(fr.length / 2)];
+    const flat = withU.filter(t => t.uniq / t.nHaste <= 0.5);
+    const cleanFlat = flat.filter(t => t.defCols.length === 0);
+    console.log(`- **Plateau breadth (adaptation actually exercised):** median ${(100 * med).toFixed(0)}% of a table's haste ` +
+      `points carry a distinct plan · ${flat.length}/${withU.length} tables are ≤50% distinct` +
+      (cleanFlat.length ? ` · ⚠ **${cleanFlat.length} of those ${cleanFlat.length === 1 ? 'is' : 'are'} CLEAN, so that CLEAN is partly vacuous** (${cleanFlat.map(t => `${t.kit} ${band(t)} ${t.uniq}/${t.nHaste}`).join('; ')})` : ''));
+  }
+}
 if (mismatches.length) console.log(`- ⚠ reported-diagWorst mismatches: ${mismatches.map(t => t.file).join(', ')}`);
 if (totalCols) { // width DISTRIBUTION (§5.9: report distributions, not zero-bar counts)
   const w = ok.flatMap(t => t.defCols.map(d => d.pct)).sort((a, b) => a - b);
@@ -126,10 +146,11 @@ if (totalCols) {
     console.log(`| ${t.kit} | ${band(t)} | ${t.T} | ${d.simH} | plan@${d.borrowedH} (${d.borrowed.toFixed(1)} > ${d.native.toFixed(1)}) | ${d.pct.toFixed(2)} | ${rob} |`);
   }
   console.log(`\n### Per-table summary\n`);
-  console.log('| kit | class | T | deficit cols | worst % | monoDip |');
-  console.log('|-----|-------|---|--------------|---------|---------|');
+  console.log('| kit | class | T | deficit cols | worst % | monoDip | unique plans |');
+  console.log('|-----|-------|---|--------------|---------|---------|--------------|');
   for (const t of ok.slice().sort((a, b) => b.worst - a.worst)) {
-    console.log(`| ${t.kit} | ${band(t)} | ${t.T} | ${t.defCols.length} | ${t.worst ? t.worst.toFixed(2) : 'CLEAN'} | ${t.mono.toFixed(2)} |`);
+    const u = t.uniq == null ? '?' : `${t.uniq}/${t.nHaste}` + (t.uniq / t.nHaste <= 0.5 ? ' ⚠' : '');
+    console.log(`| ${t.kit} | ${band(t)} | ${t.T} | ${t.defCols.length} | ${t.worst ? t.worst.toFixed(2) : 'CLEAN'} | ${t.mono.toFixed(2)} | ${u} |`);
   }
   console.log(`\n### Length-robust loci (kit × sim-haste violating on long/xl — start here, but ALL columns are targets)\n`);
   for (const l of [...robustLoci].sort()) console.log(`- ${l}`);
