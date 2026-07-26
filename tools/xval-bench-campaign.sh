@@ -5,6 +5,14 @@
 #   WHAT=class bash tools/xval-bench-campaign.sh      # just the 30 class tables
 #   WHAT=boss  bash tools/xval-bench-campaign.sh      # just the 6 boss tables
 #   JOBS=4 ITER=6000 XVDIR=tools/xval-results bash tools/xval-bench-campaign.sh
+#   SKIP_EXISTING=1 bash tools/xval-bench-campaign.sh        # RESUME after a container reclaim
+#
+# ★ RESUMING. A round is ~14 CPU-hours of class tables plus ~38 of boss tables, so it WILL outlive
+# something. `SKIP_EXISTING=1` skips any cell whose file already carries an `XVAL-DONE` line (checked:
+# it skips exactly the complete ones and re-runs the rest), and `tools/xval-checkpoint.sh` commits and
+# pushes completed tables while the campaign runs — so restore the repo, re-run with SKIP_EXISTING=1,
+# and only the unfinished cells cost anything. ⚠ The content-addressed caches live in `.xval-cache/`,
+# which is gitignored and therefore NOT durable: a resumed cell re-solves and re-sims from scratch.
 #
 # Replaces xval-campaign.sh + xval-kit.sh + xval-boss.sh for the bench era. Those three drove
 # `tools/xval.mjs`, which needs RUNNER + EXPORT_BASE (a native rig built per session); this drives
