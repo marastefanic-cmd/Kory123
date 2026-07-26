@@ -20,6 +20,31 @@ duels, not a corpus.
 
 **Read this first — it supersedes the round-6/7 block below on what to do next.**
 
+- 🎨 **UI ROUND 2 LANDED (07-26, user-directed; engine untouched, exact-match 25/25 bit-identical).**
+  Three user calls, all presentation:
+  **(1) The timeline legend is DELETED.** The `#viz-note` paragraph ("White line your cast speed…
+  ····· +25% Frostbolt breakpoint … ▨ intermission · ■ AoE · ■ burn") is gone on the grounds that a
+  chart needing a paragraph to be read is a chart that isn't finished. Everything it said moved onto
+  the drawing: a `SPELL HASTE — gear X% + cooldowns` caption in the gutter above the curve, a
+  `<title>` on **both** the gutter label and the line for every reference line (so hovering either
+  explains it), phase bands already captioned in place, per-bar hover titles. `#viz-note` survives
+  only as a contextual hint — hidden unless there are ghost bars to explain or you are mid-drag,
+  which is the residue a static drawing genuinely can't carry. **Do not restore a legend.**
+  **(2) The timeline toolbar is now a sequence, not a row of five equals.** `Customize` / `Revert` │
+  segmented `Check in benchmark sim` + `?` │ quiet `Debug export` — left to right *is* the workflow
+  (adjust → prove → take away), with exactly one filled button because exactly one is the thing to do
+  next. One `.tbtn` vocabulary (icon + `.lab` span; `.primary`/`.quiet`/`.armed` encode rank) now
+  covers `Copy as text` and the sim-help dialog too. Verbose mode labels shrank to the action
+  ("Unlock timeline for customization" → **Customize**, "Lock timeline & validate" → **Lock &
+  validate**, "Revert to model plan" → **Revert**) with the explanation moved to the tooltip.
+  **(3) Trinkets are grouped by the content they drop from** — `Pre-TBC` (MQG) → `Phase 1` (Icon) →
+  `Phase 2` (Serpent-Coil) → `Phase 3` (Skull, Ashtongue) — so the list doubles as a progression
+  ladder and you find yours by where you raid instead of by name. `TRINKET_TIERS` is the single
+  source and `TRINKETS` derives from it, so display order and key list can't drift.
+  Two traps worth remembering: `copyToClipboard` used to write `btn.textContent`, which now **erases
+  the inline SVG icon** — every label swap goes through `btnLabel()`; and `TRINKETS` reordering is
+  only safe because `state.enabled` is keyed by name (goldens confirm: 25/25 byte-identical).
+  Record: ARCHITECTURE (`renderTimeline`, trinket-tier bullet, toolbar bullet), DIARY 07-26.
 - 🎨 **UI REWORK LANDED (07-26, user-directed; engine untouched, exact-match 25/25 bit-identical).**
   For first-time legibility on the published site: the live **Pressboard is deleted** (board, clock,
   play/stop/reset, next-up banner, timeline playhead, `follow`/`pressPlan` code) and the **activation
@@ -889,7 +914,7 @@ TOOLING). Findings, all sim-measured on the fixed rig:
 ## Status (as of the current work)
 
 - **Customizable timeline + debug export LANDED (07-25, user-requested — UI only, engine untouched).**
-  "Unlock timeline for customization" makes the burn-timeline presses drag-editable (release snaps the
+  "Customize" (labelled "Unlock timeline for customization" until the 07-26 toolbar pass) makes the burn-timeline presses drag-editable (release snaps the
   intent to the nearest whole second); the model plan stays visible as dashed ghost bars; a second tile
   row compares the custom layout to the model (Δ% damage + the four headline metrics with deltas, live
   during the drag via memoized `simulate()`); re-locking validates with `repair()` (violations listed +

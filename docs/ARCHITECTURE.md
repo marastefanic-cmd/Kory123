@@ -296,6 +296,14 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   for a `RAID_PINNABLE` key, so a stale mage-cooldown time in a saved/custom preset is ignored. The
   optimizer still treats any `cfg.fixed[key]` as an immovable anchor (unchanged), and presets only ever
   pin `bloodlust`, so goldens are untouched.
+- **Trinkets are listed in content order, under tier headers.** `TRINKET_TIERS` (next to `BUFFS`) is
+  the presentational source of truth — `Pre-TBC` (MQG) → `Phase 1` (Icon) → `Phase 2` (Serpent-Coil)
+  → `Phase 3` (Skull, Ashtongue) — and `TRINKETS` is derived from it (`flatMap`), so the flat key
+  list and the displayed order can never drift apart. `buildBuffList` emits a `.tsec` rule before the
+  first row of each tier. **Purely cosmetic**: the tiers feed nothing in the model, `OFF_TRINKETS`
+  and the 2-slot cap are unaffected, and `state.enabled` is keyed by name, so reordering changes no
+  plan (exact-match 25/25 unchanged). Each `BUFFS[k].src` names the *source* only — the phase is the
+  header's job now, so don't reintroduce "Phase N" into `src`.
 
 ## Phases & rendering
 - `buildSegments(rows, T)` (~2191): turns phase rows into `{start,end,type,mult,targets}` segments;
@@ -304,7 +312,16 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   **deterministic** haste step-curve (`multNoAti` — no averaged Ashtongue proc, RULES §14) + area fill,
   three reference lines (**+50% GCD cap**, **"cap if Ashtongue" ≈ +40.8%** when ATI on, **+25% "4× FB"**
   filler soft cap — RULES §15), phase bands (intermission hatched, AoE/burn tinted with ×N badges),
-  buff-uptime lanes with press ticks. `scheduleRows`/`renderSchedule` build the **activation schedule**
+  buff-uptime lanes with press ticks.
+  **The chart is self-describing — there is NO legend paragraph** (deleted 2026-07-26, user decision).
+  Everything the old `#viz-note` legend spelled out now lives on the drawing: a `SPELL HASTE — gear
+  X% + cooldowns` caption in the gutter above the curve panel, a gutter label **and** an
+  explanatory `<title>` on every reference line (label and line carry the same tip, so hovering
+  either works), in-place captions on the phase bands, and a per-bar `<title>`. `#viz-note` survives
+  as a **contextual hint only** — it is `hidden` unless `opts.ghost` (says the dashed outlines are
+  the planner's timings) or `opts.editing` (the drag instruction) is in play, which is exactly the
+  two things a static drawing cannot say for itself. Do not restore a legend: a legend has to be
+  re-read forever, a caption is read once. `scheduleRows`/`renderSchedule` build the **activation schedule**
   (peak-haste / AB-cast / floor also read the deterministic `multNoAti`/`castDn`/`capDn`); rows print, sort,
   and group by the **fire-time second** `a.sec` (see the display bullet in the optimizer section); `btn-copy` emits the
   canonical copy-as-text plan the tests compare (`exact-match.mjs` mirrors the same `a.sec` convention). (The dashed leeway bands that used to overlay the lanes
@@ -334,6 +351,15 @@ UI-only module (after the copy handler, ~3990); the engine block is untouched an
 never mutated — `lastRun` stays the optimizer's output, the hand-edited intent schedule lives in
 `CUSTOM.s`, and `activeRun()` = the locked custom run if one exists, else `lastRun` (what `btn-copy`
 reads). A fresh "Find optimal overlay" run calls `customReset()`.
+- **The toolbar is one vocabulary, ordered as the workflow.** Left to right: `Customize` /
+  `Revert` → a segmented `Check in benchmark sim` + `?` → a quiet `Debug export`, separated by
+  `.vdiv` rules so the row reads as *adjust → prove → take away* rather than five equal choices.
+  All of them are `.tbtn` (icon + `<span class="lab">`), with weight encoding rank: exactly one
+  `.primary` (the sim), `.quiet` for utilities, `.armed` for the held edit mode. Two consequences
+  for the JS: label swaps must go through **`btnLabel(btn, text)`** (writing `textContent` would
+  delete the inline SVG icon — `copyToClipboard` and the sim's busy states both do), and the
+  customize button's label/icon/tooltip are set in one place, **`setEditBtn(editing)`**, which names
+  the action that *leaves* the current mode ("Customize" ⇄ "Lock & validate").
 - **Unlock** (`#btn-edit` → `enterEdit`): clones `best.s`, re-renders the timeline via
   `renderTimeline(run, opts)` — the new optional second arg: `opts.ghost` draws the MODEL plan as
   dashed outline bars in every lane (always shown while a custom timeline exists), `opts.editing`
