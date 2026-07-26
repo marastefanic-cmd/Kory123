@@ -2713,7 +2713,9 @@ instrument first re-derived §17.5's model leg (`dModelReq` A +0.2600 / B +0.360
 - **F3 (additivity) DOES NOT CLOSE** — residual **0.0724 pp** above the 0.05 bar, reported as
   unexplained per the pre-registration (not absorbed). Sensitivity: identical in the untapered
   currency (`total`), so the kill taper is excluded; the estimator's remaining approximation and/or
-  a genuine third term share it.
+  a genuine third term share it. **[Both halves of this sentence were later withdrawn: the taper
+  check is VACUOUS (erratum below) and the residual is not a third term but an artifact of an
+  ill-posed additive decomposition (§24).]**
 - ★ **Bonus finding, the sharpest fact of the round:** `dQuant` — the press's DISCRETE realization —
   is nearly context-INDEPENDENT (1.5832 vs 1.5894 pp; both boards gain exactly 3 whole casts), while
   the CONTINUOUS credit varies by 0.1167 pp. **The asymmetry lives entirely in the integral's
@@ -2929,6 +2931,39 @@ pure-opener cell. Two candidate framings die together here: implementing the bou
 and the ramp-length refinement of it (§23.2). Phase 8's remaining charter is unchanged and now
 better constrained: **a mechanism worth ~0.445 pp, with a U-shaped length profile, and with ~0.16
 to ~0.91 pp of quantization headwind against it depending on length.**
+
+## §24 — F3's 0.0724 pp residual is NOT a third mechanism: the additive test is ill-posed (07-26)
+
+Instrument: `tools/p8-f3-additivity.mjs` (sim-free). Closes the goal's item 3.
+
+F3 required C-BE + C-CASCADE to close the 0.1962 pp asymmetry to within 0.05 pp and reported the
+0.0724 pp shortfall as *unexplained, not absorbed*. That test **assumes the two terms are additive**
+— and since both are estimated from the same board, the assumption is checkable: re-estimate C-BE
+with the cascade already applied (IV#3 at its §17.5 **executed** time, not the requested one).
+
+| | C-BE @requested | C-BE @executed | shift |
+|---|---|---|---|
+| ctx A | +0.1505 | +0.1615 | +0.0110 |
+| ctx B | +0.2610 | +0.1304 | **−0.1306** |
+| **ΔC-BE** | **0.1105** | **0.0311** | **−0.0794** |
+
+- The interaction is **1.10× the residual** in magnitude — a tempting match.
+- ⚠ **But the sign goes the wrong way.** Applying the cascade *shrinks* ΔC-BE, so the decomposition
+  explains **22.6 %** instead of 63.1 % and the residual **grows to 0.1518 pp**. This does **not**
+  absorb the residual and must not be recorded as explaining it.
+- ★ **What it does establish:** C-BE's value depends on whether the cascade is applied, by an amount
+  comparable to the whole residual. The terms are **not independent**, so F3's additive bar is
+  **ill-posed** — it can be neither met nor missed meaningfully, because the quantity under test is
+  basis-dependent. **F3's residual is therefore not evidence for a third mechanism**; it is an
+  artifact of decomposing two interacting terms additively.
+- **The right reading of §21.5 is unchanged where it matters:** F1/F2/F4 are basis-robust and C-BE
+  is dominant. Only the leftover is uninterpretable. This retires the residual as a lead rather
+  than solving it — and note it cuts *against* the §21.5 erratum's hope that a taper test might
+  explain it: there is nothing well-posed there to explain.
+
+**Lesson for the next decomposition:** pre-register the **independence check alongside the
+additivity bar**. F3 tested whether two terms sum to a target without ever testing whether they
+*can* — and a basis-dependent estimator will produce a confident-looking residual every time.
 
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it

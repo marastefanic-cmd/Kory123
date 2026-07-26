@@ -36,7 +36,14 @@
   T=40 against a `−0.197` pp bias. ⇒ **§22's verdict is not a T=229 artifact** — the quantization
   family points wrong at every length and is *strongest* in the pure-opener cell. Instrument:
   `tools/p8-b2-length.mjs` (anchored to §13.8's recorded −0.037, exit 3 on drift).
-- **Consequently the goal's items 2–3 are BLOCKED, not skipped.** The two persistence columns
+- ✅ **F3's 0.0724 pp residual is CLOSED as a lead (PHASE8 §24; sim-free).** Not a third mechanism —
+  the additive test that produced it is **ill-posed**. Re-estimating C-BE with the cascade applied
+  moves ΔC-BE `0.1105 → 0.0311` (interaction = −0.0794 pp, **1.10× the residual**), so the two terms
+  are not independent and the 0.05 pp bar can be neither met nor missed meaningfully. ⚠ Note the
+  sign: applying it makes the decomposition explain *less* (22.6 %, residual grows to 0.152), so it
+  **does not absorb** the residual — it retires it as uninterpretable. F1/F2/F4 are basis-robust and
+  C-BE's dominance is unaffected. Instrument: `tools/p8-f3-additivity.mjs`.
+- **Consequently the goal's item 2 is BLOCKED, not skipped.** The two persistence columns
   (`isc-mqg h40` 5/5, `isc-skull h20` 4/5) and KT `mqg+skull` 0.31 % were to be re-diagnosed *after*
   the charge landed. The charge is not landing, so they revert to their prior status — same physics
   family, still open, now with the charge explicitly ruled out as their explanation too.
