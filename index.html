@@ -1803,6 +1803,18 @@ function optimizeCore(cfg, starts, onProgress) {
         };
         const counts = sch => Object.fromEntries(Object.keys(sch).map(k => [k, sch[k].length]));
         const sameCounts = (a, b) => Object.keys(a).every(k => a[k] === (b[k] || 0));
+        // PHASE9 §4.13.1 item 0a / §4.21 — the legality prefix shared VERBATIM by 5 candidate loops.
+        // Pure text motion: same calls, same order, same short-circuit, same epsilon.
+        // ⚠ Three OTHER sites share the shape but NOT the rule and must keep their longhand:
+        //   two omit the clip guard deliberately, and one splits the prefix around a simulate()
+        //   (converting that one would hoist clipOf ahead of simulate — a reordering whose
+        //   performance sign is unknown in both directions, so it lands separately, §4.21 Class C).
+        const admit = (cand, base) => {
+          const rep = repair(cand, cfg);
+          if (!sameCounts(counts(base), counts(rep))) return null;
+          if (clipOf(rep) > clipOf(base) + 1e-9) return null;
+          return rep;
+        };
         // total buff-seconds running past the kill — among damage-equal spots,
         // prefer windows that complete (bank the value before the boss dies)
         const clipOf = sch => { let c = 0; for (const k in sch) for (const t of sch[k]) c += Math.max(0, t + BUFFS[k].dur - cfg.T); return c; };
@@ -2438,9 +2450,8 @@ function optimizeCore(cfg, starts, onProgress) {
               let bestRep = null, bestRob = robNow;
               for (let t = 0; t <= cfg.T - 1; t++) {
                 const cand = cloneS(s); cand[key] = cand[key].slice(); cand[key][i] = t; cand[key].sort((a, b) => a - b);
-                const rep = repair(cand, cfg);
-                if (!sameCounts(counts(s), counts(rep))) continue;
-                if (clipOf(rep) > clipOf(s) + 1e-9) continue;
+                const rep = admit(cand, s);
+                if (!rep) continue;
                 const rr = simulate(rep, cfg).robust;
                 if (rr > bestRob + 0.5) { bestRob = rr; bestRep = rep; }
               }
@@ -2621,9 +2632,8 @@ function optimizeCore(cfg, starts, onProgress) {
                 cand[key][i] = t;
                 for (let j = i + 1; j < cand[key].length; j++) cand[key][j] = Math.max(cand[key][j], cand[key][j - 1] + BUFFS[key].cd);
                 cand[key].sort((a, b) => a - b);
-                const rep = repair(cand, cfg);
-                if (!sameCounts(counts(s), counts(rep))) continue;
-                if (clipOf(rep) > clipOf(s) + 1e-9) continue;
+                const rep = admit(cand, s);
+                if (!rep) continue;
                 const rr = simulate(rep, cfg).robust;
                 if (rr > bestR) { bestR = rr; bestRep = rep; }
               }
@@ -2757,9 +2767,8 @@ function optimizeCore(cfg, starts, onProgress) {
                   else cand[sl.key].forEach((t, j) => { const d = Math.abs(t - sl.at); if (d < bd) { bd = d; bi = j; } });
                   cand[sl.key][bi] = sl.at; cand[sl.key].sort((a, b) => a - b);
                 }
-                const rep = repair(cand, cfg);
-                if (!sameCounts(counts(base), counts(rep))) continue;
-                if (clipOf(rep) > clipOf(base) + 1e-9) continue;
+                const rep = admit(cand, base);
+                if (!rep) continue;
                 const rr = simulate(rep, cfg);
                 if (rr.robust > bestRob + 0.5) { bestRob = rr.robust; bestRep = rep; }
                 else if (canonical && !tieRep && Math.abs(rr.robust - rob0) <= TIE_EPS &&
@@ -2806,9 +2815,8 @@ function optimizeCore(cfg, starts, onProgress) {
                 if (target === null) continue;
                 const cand = cloneS(sx); cand[key] = cand[key].slice();
                 cand[key][i] = target; cand[key].sort((a, b) => a - b);
-                const rep = repair(cand, cfg);
-                if (!sameCounts(counts(sx), counts(rep))) continue;
-                if (clipOf(rep) > clipOf(sx) + 1e-9) continue;
+                const rep = admit(cand, sx);
+                if (!rep) continue;
                 if (simulate(rep, cfg).robust >= r0 - castVal / 8) { sx = rep; moved = true; break; }
               }
               if (moved) break;
@@ -2857,9 +2865,8 @@ function optimizeCore(cfg, starts, onProgress) {
                   if (uses.some(u => Math.abs(u - tick) < dur - 1e-9)) continue; // slot taken
                   const cand = cloneS(sx);
                   cand[key] = cand[key].filter(t => Math.abs(t - use) > 1e-9).concat(tick).sort((a, b) => a - b);
-                  const rep = repair(cand, cfg);
-                  if (!sameCounts(counts(sx), counts(rep))) continue;
-                  if (clipOf(rep) > clipOf(sx) + 1e-9) continue;
+                  const rep = admit(cand, sx);
+                  if (!rep) continue;
                   if (simulate(rep, cfg).robust >= r0 - 0.5) { sx = rep; moved = true; break; }
                 }
                 if (moved) break;

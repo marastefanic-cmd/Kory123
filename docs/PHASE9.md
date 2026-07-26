@@ -3076,3 +3076,32 @@ that site, `:1515`'s `reps.map(sigOf)`, and the two UI comparisons.
 **Next on the ladder:** §4.13.1's (0a) `admit` helper extraction (byte-identical by construction,
 worth landing on legibility alone, and it collapses item 5's "every call site must be converted"
 to one), then (0b) the `counts(base)`/`clipOf(base)` hoists.
+
+### §5.22 LANDED — §4.13.1 item 0a: the `admit` helper, **5 sites** (not 7, not 9) (07-26)
+
+Class A only: the 5 loops whose prefix is *verbatim* `repair` → `sameCounts` → `clipOf`, all four
+lines identical but for the base variable (`s`, `s`, `base`, `sx`, `sx`). Three lines → two at each.
+Byte-identical by construction; `PLAN-DIFF IDENTICAL`, exact-match **25/25**.
+
+★ **The site count has now been corrected TWICE, in the same direction each time.** §4.16 said 9;
+§4.21 read them and said 7 (two omit the clip guard deliberately); reading them again against
+today's file says **5** convertible, because the file drifted after §4.21 was written and there are
+now **three** non-convertible sites, not two:
+
+| site | shape | verdict |
+|---|---|---|
+| ×5 | `repair` → `sameCounts` → `clipOf`, verbatim | ✅ converted |
+| ×2 | `sameCounts` → `some(x => …)` → `simulate` → combined guard | ✗ §4.21 Class C — converting hoists `clipOf` ahead of `simulate`; sign unknown both ways |
+| ×1 | `sameCounts` → `simulate(rep,cfg).robust >= r0 - 0.5` | ✗ different rule entirely |
+| ×1 | `JSON.stringify` guard first, then the prefix | ⏸ §4.21 Class B — a reorder, deferred |
+| ×1 | `sameCounts \|\| clipOf` inline, then `break` | ⏸ §4.21 Class B — deferred |
+
+**The standing lesson, now three-for-three: the grep finds the SHAPE, only reading finds the RULE** —
+and every recount has moved the number *down*. A "pure text motion" patch sized from a grep would
+have shipped a behaviour change at three sites under a no-op label. Classify by reading each site's
+actual following lines, never by the line numbers in a doc — they drift.
+
+**Remaining on this rung:** §4.21 Class B (2 sites, a reorder the doc argues is unobservable) and
+Class C (1 site, its own measurement, revert on a null result). Then (0b) the `counts`/`clipOf`
+hoists, then the §4.1 five-walk fusion — for which item 0a has now collapsed "every call site must
+be converted" to **one**.
