@@ -467,6 +467,28 @@ dialog still says *"no gear, no buffs"*, which this change makes **stale** — a
 product, which DIARY 07-26 already names as the kind that goes stale unnoticed. Both need
 `index.html`, and §8.5 forbids touching it until the round stops gathering.
 
+### 8.12a ⚠ CORRECTION TO MY OWN CLAIM — `isc+scb` is NOT what a default user runs
+
+I first justified the fixed pair as covering "the default kit — which is every shipped preset". That
+is true of **`GOLDEN_DEFAULTS.kit`** (`isc, scb`), the fixture the 25 goldens, `cfgFor` and
+`bench.mjs --preset` all use. It is **not** true of the page. `index.html`'s UI default is
+
+```
+state.enabled = { bloodlust:true, icyVeins:true, drums:true, skull:true, arcanePower:true, scb:true,
+                  ati:false, berserking:false, mqg:false, powerInfusion:false, isc:false }
+```
+
+— **Skull on, Icon off.** So a first-time user's plan presses **Skull**, which the fixed `isc+scb`
+character still cannot see. The two "defaults" in this repo are different kits, and I conflated them.
+
+★ **This does not argue for swapping the pair — it kills the idea of a fixed pair.** Choosing
+`skull+scb` would just trade the silent no-op onto `bench.mjs --preset` and the preset path instead.
+`isc+scb` stays because it keeps the *committed tooling* self-consistent (it is what
+`tests/sim-request.mjs` and the preset path exercise), and because the honest fix is dynamic
+equipping from the user's own kit. What this sharpens is the **motivation**: the page's own default
+kit contains a trinket the verification is blind to, so the owed `index.html` work is not an edge
+case for unusual kits — it is the common path.
+
 ## 8.13 ✅ The whole transcription surface swept — and one of my own readings corrected
 
 §8.7 found two silent no-ops. That is a *class*, not two incidents, so every key `sim/planspec.mjs`
