@@ -111,6 +111,11 @@ changing the model or the passes**, and keep it updated as the living theorycraf
   lives in TOOLING (★★★), RULES §3, and PHASE6 §4.7.
 - Commit to the designated feature branch provided at session start; follow the session's configured
   commit author/trailers; don't open a PR unless asked.
+- **`master` is the live site.** The tool is deployed as a free static site on Netlify that
+  **auto-redeploys on every push/merge to `master`**. So never develop on `master` — branch off it,
+  develop, and merge back via PR (merging *is* shipping). Only `index.html` is published; `docs/`,
+  `tools/`, `tests/`, and the `.md` files are not. Full workflow, headers, and anonymity rules:
+  `docs/DEPLOYMENT.md`.
 
 ## Keep this documentation alive (do this, every session)
 
@@ -136,6 +141,8 @@ Treat maintaining them as part of the work, not an afterthought:
 - Before a big change, re-read the relevant doc; after it, leave the docs describing reality.
 
 ## Pointers
+- `docs/DEPLOYMENT.md` — how the tool ships: free Netlify static site, **auto-deploys from `master`**,
+  branch-off-and-merge workflow, what's published (only `index.html`), headers, and anonymity rules.
 - `docs/MECHANICS.md` — **read first.** The verified game formulas (haste, cast time, damage per cast,
   the cast-rate DPS equation) that everything else is derived from.
 - `docs/RULES.md` — the theorycraft rules, each with its sim evidence (derived from MECHANICS.md).
