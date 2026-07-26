@@ -319,6 +319,41 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   press staying put; RULES §14); rows carry no `.tag`, and the old inference logic lives only in git
   history. Do not restore.
 
+## Timeline customization — unlock → drag → lock → validate (+ debug export)
+UI-only module (after the copy handler, ~3990); the engine block is untouched and the model's run is
+never mutated — `lastRun` stays the optimizer's output, the hand-edited intent schedule lives in
+`CUSTOM.s`, and `activeRun()` = the locked custom run if one exists, else `lastRun` (what `btn-copy`
+and the pressboard read). A fresh "Find optimal overlay" run calls `customReset()`.
+- **Unlock** (`#btn-edit` → `enterEdit`): clones `best.s`, re-renders the timeline via
+  `renderTimeline(run, opts)` — the new optional second arg: `opts.ghost` draws the MODEL plan as
+  dashed outline bars in every lane (always shown while a custom timeline exists), `opts.editing`
+  wraps each planner press in a draggable `<g class="pressg">`, `opts.illegal` flags presses. No
+  opts ⇒ byte-identical to the old render. Schedule table + pressboard dim (`.stale`) until lock.
+- **Drag** (`attachDrag`): pointer-events on the SVG; the bar follows the pointer, a bubble shows the
+  whole second the press will snap to, and **release locks the intent to the nearest full second**
+  (the search's own granularity; clamped to `[0, T−1]`). Bars always render at the engine's actual
+  FIRE times (`actEff` of `simulate(CUSTOM.s)`), so an intent that would slip (mid-ramp boundary,
+  cooldown, trinket lockout) visibly lands where it would really fire. Pinned raid calls
+  (`cfg.fixed`) get no `pressg` — not editable, exactly the keys `repair()` would reset anyway.
+- **Live comparison** (`renderCustomTiles`): a second tile row — custom-vs-model Δ% damage headline +
+  the four headline metrics (gain vs no-cooldowns / vs mashing / effective casts / GCD-floor time),
+  each with a delta chip vs the model (`tileStats` computes both in `renderTiles`' exact units).
+  Updates in realtime during a drag: rAF-throttled `simulate()` at the snapped second (memoized —
+  a revisited second is a cache hit), full refresh on release.
+- **Lock** (`tryLock`): the validator IS `repair()` — `validateCustom` diffs the schedule against
+  `repair(CUSTOM.s, cfg)`; legal ⇔ fixpoint. Legal → the activation schedule, pressboard, and
+  copy-text regenerate from the custom plan (`CUSTOM.run`, `isCustom: true`; copy-text gains a
+  "CUSTOM timeline" marker line). Illegal → lock refused: per-press violations listed in `#edit-msg`
+  (moved/dropped, with the earliest legal time), offending bars flagged, and an **auto-fix** button
+  adopts `repair()`'s nearest-legal times. Locking an unchanged schedule reverts to pristine;
+  `#btn-revert` discards the customization outright.
+- **Debug export** (`#btn-debug` → `debugExportText`): one clipboard payload for pasting into a
+  debugging session — human-readable input header + model plan text/stats + custom plan text/stats
+  + deltas + validation state, then a machine block: `{input, model, custom, evalsched}` with intent
+  schedules, fire times, totals, and baseline/naive references. The `evalsched` object is **directly
+  runnable** as `node tests/evalsched.mjs '<json>'` (round-trip verified: identical totals), and the
+  notes point at the TOOLING sim workflow (`genapl`, `_prestack:0`) for "sim my custom timeline".
+
 ## Presets & tests — two baked strips, both the fight table
 `index.html` defines **two** baked preset arrays + `GOLDEN_DEFAULTS` (near the localStorage-preset
 section, tail of the file) and exposes them on `window`:

@@ -283,12 +283,41 @@
   .tip b { color: var(--ink); font-family: var(--font-mono); font-weight: 600; }
 
   .sched { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 16px; }
-  .sched .toolbar { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
-  .sched button.copy {
+  .sched .toolbar, .viz .toolbar { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; flex-wrap: wrap; }
+  .toolbar .vbtns { display: flex; gap: 8px; align-items: baseline; }
+  .sched button.copy, .viz button.copy {
     background: var(--panel); border: 1px solid var(--grid); color: var(--ink-2);
     border-radius: 6px; font-size: 12.5px; padding: 5px 10px; cursor: pointer;
   }
-  .sched button.copy:hover { color: var(--ink); border-color: var(--accent); }
+  .sched button.copy:hover, .viz button.copy:hover { color: var(--ink); border-color: var(--accent); }
+  .viz button.copy.armed { color: var(--gold); border-color: color-mix(in srgb, var(--gold) 55%, var(--grid)); }
+
+  /* ————— timeline customization (unlock → drag → lock) ————— */
+  .chartbox.editing svg { touch-action: none; }
+  .chartbox.editing .pressg { cursor: grab; }
+  .chartbox.editing .pressg.dragging { cursor: grabbing; }
+  .pressg.illegal rect { stroke: var(--warn); stroke-width: 2; stroke-dasharray: 4 3; }
+  #edit-msg { margin: 0 0 10px; }
+  #edit-msg .fixbtns { margin-top: 7px; display: flex; gap: 8px; flex-wrap: wrap; }
+  #edit-msg button {
+    background: var(--panel); border: 1px solid var(--grid); color: var(--ink);
+    border-radius: 6px; font-size: 12.5px; padding: 4px 10px; cursor: pointer;
+  }
+  #edit-msg button:hover { border-color: var(--accent); }
+  #edit-msg.ok { background: color-mix(in srgb, var(--good) 8%, var(--surface)); border-color: color-mix(in srgb, var(--good) 35%, var(--surface)); }
+  #edit-msg.ok div::before { content: "✓ "; color: var(--good); }
+  #customstats .tiles-cap { font-size: 12.5px; color: var(--muted); margin: 0 0 6px; display: flex; gap: 12px; align-items: baseline; flex-wrap: wrap; }
+  #customstats .tiles-cap b {
+    color: var(--gold); font-family: var(--font-display); font-size: 13px; font-weight: 600;
+    letter-spacing: 0.06em; text-transform: uppercase;
+  }
+  .tile .delta { font-size: 12px; font-family: var(--font-mono); margin-left: 7px; vertical-align: 3px; }
+  .tile .delta.up { color: var(--good); }
+  .tile .delta.down { color: var(--warn); }
+  .tile .delta.flat { color: var(--muted); }
+  .tile.vsmodel.up .v { color: var(--good); }
+  .tile.vsmodel.down .v { color: var(--warn); }
+  .stale { opacity: 0.5; }
   .tablebox { overflow-x: auto; margin-top: 8px; }
   table { border-collapse: collapse; width: 100%; font-size: 13.5px; }
   th {
@@ -524,6 +553,10 @@
   <section class="results" id="results">
       <div class="warnbar" id="warnbar" hidden></div>
       <div class="tiles" id="tiles" hidden></div>
+      <div id="customstats" hidden>
+        <div class="tiles-cap" id="tiles-cap"></div>
+        <div class="tiles" id="tiles-custom"></div>
+      </div>
       <div class="sense" id="sense" hidden></div>
       <div class="follow" id="follow" hidden>
         <div class="follow-head">
@@ -543,8 +576,16 @@
         <div class="pressboard" id="pressboard"></div>
       </div>
       <div class="viz" id="viz" hidden>
-        <h3>Burn timeline</h3>
+        <div class="toolbar">
+          <h3>Burn timeline</h3>
+          <div class="vbtns">
+            <button class="copy" id="btn-edit">Unlock timeline for customization</button>
+            <button class="copy" id="btn-revert" hidden>Revert to model plan</button>
+            <button class="copy" id="btn-debug">Debug export</button>
+          </div>
+        </div>
         <p class="note" id="viz-note"></p>
+        <div class="warnbar" id="edit-msg" hidden></div>
         <div class="chartbox" id="chartbox">
           <div class="tip" id="tip"></div>
         </div>
@@ -3513,6 +3554,7 @@ el("btn-run").addEventListener("click", async () => {
 
 function render(run) {
   followReset();
+  customReset(); // a fresh optimize invalidates any hand-edited timeline
   const wb = el("warnbar");
   wb.hidden = !run.cfg.warnings.length;
   wb.innerHTML = run.cfg.warnings.map(w => `<div>${esc(w)}</div>`).join("");
@@ -3548,8 +3590,15 @@ function renderTiles({ cfg, baseline, naiveR, optR }) {
     <div class="tile"><div class="k">Time at GCD floor</div><div class="v">${capPct.toFixed(0)}<small>% of fight</small></div></div>`;
 }
 
-/* timeline: haste curve + buff lanes */
-function renderTimeline(run) {
+/* timeline: haste curve + buff lanes.
+   opts (all optional — plain model render passes none, so the default view is unchanged):
+     ghost   — {key: [fireTimes]} drawn as dashed outlines in each lane (the model plan, for
+               comparing against a hand-edited timeline)
+     editing — bars become draggable press groups (unlock mode); drag edits the INTENT second,
+               bars always render at the engine's actual FIRE times
+     illegal — validateCustom() diffs; flags the presses repair() would move/drop */
+function renderTimeline(run, opts) {
+  opts = opts || {};
   const { cfg, best, optR } = run;
   el("viz").hidden = false;
   const lanes = LANE_ORDER.filter(k => cfg.enabled[k]);
@@ -3668,12 +3717,26 @@ function renderTimeline(run) {
       sv += `<rect x="${PADL}" y="${ly}" width="${plotW}" height="${LANE_H}" fill="${col}" opacity="${(0.14 + atiUp * 0.5).toFixed(2)}" rx="4"/>`;
       sv += `<text x="${PADL + 8}" y="${ly + LANE_H / 2 + 4}" fill="${col}" font-size="11">~${(atiUp * 100).toFixed(0)}% avg uptime (+${atiR.toFixed(0)} rating avg)</text>`;
     } else {
-      const times = (run.optR.actEff && run.optR.actEff[k]) || best.s[k] || [];
-      for (const t of times) {
+      // ghost bars first (under the solid ones): the model plan, for visual comparison
+      const ghostTimes = (opts.ghost && opts.ghost[k]) || [];
+      for (const t of ghostTimes) {
         const bw = Math.max(3, (Math.min(def.dur, cfg.T - t) / cfg.T) * plotW);
-        sv += `<rect x="${x(t).toFixed(1)}" y="${ly}" width="${bw.toFixed(1)}" height="${LANE_H}" fill="${col}" rx="4"><title>${def.name} @ ${fmtT(t)}</title></rect>`;
-        sv += `<line x1="${x(t).toFixed(1)}" y1="${ly - 1}" x2="${x(t).toFixed(1)}" y2="${ly + LANE_H + 1}" stroke="${ink}" stroke-width="1.5" opacity="0.9"/>`;
+        sv += `<rect x="${x(t).toFixed(1)}" y="${ly + 1}" width="${bw.toFixed(1)}" height="${LANE_H - 2}" fill="${col}" opacity="0.12" stroke="${col}" stroke-width="1.2" stroke-dasharray="4 3" rx="4"><title>Model plan: ${def.name} @ ${fmtT(t)}</title></rect>`;
       }
+      const times = (run.optR.actEff && run.optR.actEff[k]) || best.s[k] || [];
+      // intents pair with fire times by index (both ascend per track) — the drag edits the intent
+      const intents = (best.s[k] || []).slice().sort((a, b) => a - b);
+      const pinned = !!(cfg.fixed && cfg.fixed[k]);
+      times.forEach((t, j) => {
+        const bw = Math.max(3, (Math.min(def.dur, cfg.T - t) / cfg.T) * plotW);
+        const tipTxt = `${def.name} @ ${fmtT(t)}` + (opts.editing ? (pinned ? " · pinned raid call — not editable" : " · drag to move") : "");
+        let bar = `<rect x="${x(t).toFixed(1)}" y="${ly}" width="${bw.toFixed(1)}" height="${LANE_H}" fill="${col}" rx="4"><title>${tipTxt}</title></rect>`;
+        bar += `<line x1="${x(t).toFixed(1)}" y1="${ly - 1}" x2="${x(t).toFixed(1)}" y2="${ly + LANE_H + 1}" stroke="${ink}" stroke-width="1.5" opacity="0.9"/>`;
+        if (opts.editing && !pinned) {
+          const bad = (opts.illegal || []).some(d => d.k === k && d.i === j);
+          sv += `<g class="pressg${bad ? " illegal" : ""}" data-k="${k}" data-j="${j}" data-int="${intents[j] !== undefined ? intents[j] : t}" data-fire="${t}">${bar}</g>`;
+        } else sv += bar;
+      });
       // (leeway "press anywhere" bands DEFERRED — user-directed; restore from git once the search is airtight)
     }
   });
@@ -3682,6 +3745,7 @@ function renderTimeline(run) {
   box.querySelectorAll("svg").forEach(s => s.remove());
   box.insertAdjacentHTML("beforeend", sv);
   lastGeo = { x, PADL, PADR, VW, plotW, H, T: cfg.T };
+  box.classList.toggle("editing", !!opts.editing);
   if (!box.querySelector(".playhead")) {
     const ph = document.createElement("div");
     ph.className = "playhead";
@@ -3693,13 +3757,17 @@ function renderTimeline(run) {
     (cfg.enabled.ati ? `<b style="color:${colorOf("ati")}">╌╌</b> GCD cap if an Ashtongue proc aligns · ` : ``) +
     `<b style="color:#5cc6e6">·····</b> +25% = 4-Frostbolt filler cap (~394 rating) · ` +
     `bars are buff uptime, ticks are presses · <span style="color:${PH.intermission}">▨ intermission</span> · ` +
-    `<span style="color:${PH.aoe}">■ AoE</span> · <span style="color:${PH.burn}">■ burn</span>`;
+    `<span style="color:${PH.aoe}">■ AoE</span> · <span style="color:${PH.burn}">■ burn</span>` +
+    (opts.ghost ? ` · <span style="color:${ink2}">▢ dashed outline = model plan</span>` : ``) +
+    (opts.editing ? ` · <b style="color:${cv("--gold") || "#d9b96a"}">drag a bar to move its press — release snaps to the whole second</b>` : ``);
   hookTooltip(run, { PADL, PADR, VW, plotW, samples });
+  if (opts.editing) attachDrag(box.querySelector("svg"), run);
 }
 function hookTooltip(run, geo) {
   const box = el("chartbox"), tip = el("tip"), svg = box.querySelector("svg");
   const { cfg, best } = run;
   svg.addEventListener("mousemove", e => {
+    if (DRAG.active) return; // a press-bar drag owns the pointer — the hover tip would fight it
     const r = svg.getBoundingClientRect();
     const vbX = (e.clientX - r.left) / r.width * geo.VW; // rendered px → viewBox units (responsive svg)
     if (vbX < geo.PADL || vbX > geo.VW - geo.PADR) { tip.style.display = "none"; return; }
@@ -3810,10 +3878,11 @@ function renderSchedule(run) {
   html += `</tbody></table>`;
   el("tablebox").innerHTML = html;
 }
-el("btn-copy").addEventListener("click", () => {
-  if (!lastRun) return;
-  const windows = scheduleRows(lastRun);
-  const g = lastRun.cfg;
+// Canonical copy-as-text plan for any run (model or hand-edited). The model output is
+// byte-identical to the pre-refactor btn-copy text — this is the format the goldens mirror.
+function planText(run) {
+  const windows = scheduleRows(run);
+  const g = run.cfg;
   let out = `Arcane burn plan — ${fmtT(g.T)} fight, ${g.hasteRating} haste rating\n`;
   // Setup block — travels with the plan so a pasted schedule reproduces exactly
   // (deterministic output: earliest-on-ties makes "setup X ⇒ output Y" exact).
@@ -3822,12 +3891,12 @@ el("btn-copy").addEventListener("click", () => {
   const pins = Object.entries(g.fixed || {}).filter(([, v]) => v && v.length).map(([k, v]) => `${BUFFS[k].name} @ ${v.map(t => fmtT(t)).join("/")}`);
   if (pins.length) out += `Pinned: ${pins.join("; ")}\n`;
   if (g.segments) {
-    for (const s of lastRun.cfg.segments) {
+    for (const s of g.segments) {
       if (s.type === "normal") continue;
       out += `[${s.type === "intermission" ? "Intermission" : s.type === "burn" ? "Burn x" + s.mult : "AoE x" + s.targets} ${fmtT(s.start)}-${fmtT(s.end)}]\n`;
     }
   }
-  const ctags = new Map((lastRun.pressRows || []).filter(r => r.tag).map(r => [Math.round(r.t), r.tag]));
+  const ctags = new Map((run.pressRows || []).filter(r => r.tag).map(r => [Math.round(r.t), r.tag]));
   const ctagged = new Set();
   windows.forEach((w, wi) => {
     out += `\n[Window ${wi + 1} @ ${fmtT(Math.min(...w.acts.map(x => x.sec)))}]` + (w.peakHaste != null ? ` peak +${w.peakHaste.toFixed(0)}% haste` : "") + (w.mana ? ` · ~${(Math.round(w.mana / 100) / 10).toFixed(1)}k mana to spam` : "") + "\n";
@@ -3839,13 +3908,16 @@ el("btn-copy").addEventListener("click", () => {
     }
   });
   // (Cold Snap commentary removed from the copy text too — user decision; the CS→IV rows carry it)
+  return out;
+}
+function copyToClipboard(text, btn, restoreLabel, failLabel) {
   const done = ok => {
-    el("btn-copy").textContent = ok ? "Copied" : "Copy failed — select the table instead";
-    setTimeout(() => el("btn-copy").textContent = "Copy as text", ok ? 1200 : 2600);
+    btn.textContent = ok ? "Copied" : (failLabel || "Copy failed — select the table instead");
+    setTimeout(() => btn.textContent = restoreLabel, ok ? 1200 : 2600);
   };
   const fallback = () => {
     const ta = document.createElement("textarea");
-    ta.value = out;
+    ta.value = text;
     ta.style.position = "fixed"; ta.style.opacity = "0";
     document.body.appendChild(ta);
     ta.select();
@@ -3855,8 +3927,303 @@ el("btn-copy").addEventListener("click", () => {
     done(ok);
   };
   if (navigator.clipboard && navigator.clipboard.writeText) {
-    navigator.clipboard.writeText(out).then(() => done(true), fallback);
+    navigator.clipboard.writeText(text).then(() => done(true), fallback);
   } else fallback();
+}
+el("btn-copy").addEventListener("click", () => {
+  const run = activeRun();
+  if (!run) return;
+  let out = planText(run);
+  if (run.isCustom) out = `CUSTOM timeline (hand-edited — not the model's optimum; use Debug export for the full comparison)\n` + out;
+  copyToClipboard(out, el("btn-copy"), "Copy as text");
+});
+
+/* ═══════════════ timeline customization: unlock → drag → lock → validate (+ debug export) ═══════════════
+   The model's plan stays the reference — `lastRun` is ALWAYS the optimizer's output. A hand-edited
+   copy of its intent schedule lives in CUSTOM.s. Dragging edits INTENT seconds (release snaps to the
+   nearest whole second — the search's own granularity); bars always render at the engine's actual
+   FIRE times, so a press that would slip (mid-ramp boundary, cooldown, trinket lockout) visibly
+   lands where it would really fire. Locking runs repair() as the validator: legal → the activation
+   schedule / pressboard / copy-text regenerate from the custom plan; illegal → the violations are
+   listed, the offending presses are flagged, and an auto-fix to repair()'s nearest-legal times is
+   offered. Scoring is the same simulate() the optimizer maximizes (memoized, rAF-throttled), so the
+   comparison tiles update in realtime during a drag. UI-only: nothing here feeds the optimizer, the
+   engine block is untouched, and a fresh "Find optimal overlay" run discards the customization. */
+const CUSTOM = { editing: false, locked: false, s: null, run: null, rep: null, legal: true, diffs: [] };
+const DRAG = { active: false, raf: 0 };
+const activeRun = () => (CUSTOM.locked && CUSTOM.run) || lastRun;
+window.__custom = CUSTOM; // debug/test hook
+function sortedClone(s) { const o = {}; for (const k in s) o[k] = s[k].slice().sort((a, b) => a - b); return o; }
+function customReset() {
+  CUSTOM.editing = CUSTOM.locked = false;
+  CUSTOM.s = CUSTOM.run = CUSTOM.rep = null;
+  CUSTOM.legal = true; CUSTOM.diffs = [];
+  el("customstats").hidden = true;
+  el("edit-msg").hidden = true;
+  el("btn-edit").textContent = "Unlock timeline for customization";
+  el("btn-edit").classList.remove("armed");
+  el("btn-revert").hidden = true;
+  el("sched").classList.remove("stale");
+  el("follow").classList.remove("stale");
+  el("chartbox").classList.remove("editing");
+  window.__customRun = null;
+}
+// The validator IS repair() — the same feasibility projector the optimizer trusts (per-track
+// cooldowns, IV+Cold-Snap chaining, the shared trinket lockout, use caps, the T−1 cutoff).
+// A schedule is legal iff repair() maps it to itself; otherwise the diff says what repair would do.
+function validateCustom(s, cfg) {
+  const rep = repair(s, cfg);
+  const diffs = [];
+  const keys = new Set([...Object.keys(s), ...Object.keys(rep)]);
+  for (const k of keys) {
+    if (cfg.fixed && cfg.fixed[k]) continue; // pinned raid calls aren't editable
+    const a = (s[k] || []).slice().sort((x, y) => x - y);
+    const b = (rep[k] || []).slice().sort((x, y) => x - y);
+    for (let i = 0; i < Math.max(a.length, b.length); i++) {
+      if (a[i] === undefined) diffs.push({ k, i, to: b[i], kind: "added" });
+      else if (b[i] === undefined) diffs.push({ k, i, from: a[i], kind: "dropped" });
+      else if (Math.abs(a[i] - b[i]) > 1e-6) diffs.push({ k, i, from: a[i], to: b[i], kind: "moved" });
+    }
+  }
+  return { rep, legal: diffs.length === 0, diffs };
+}
+function diffText(d) {
+  const name = BUFFS[d.k].name;
+  if (d.kind === "dropped") return `${name} @ ${fmtT(d.from)}: no legal slot left (cooldown / shared trinket lockout / charges) — this press would be skipped.`;
+  if (d.kind === "moved") return `${name} @ ${fmtT(d.from)}: earliest legal time is ${fmtT(d.to)} (cooldown, shared trinket lockout, or Cold Snap already spent).`;
+  return `${name}: a use would land at ${fmtT(d.to)}.`;
+}
+// The four headline metrics for any simulate() result, in the exact units renderTiles shows.
+function tileStats(run, r) {
+  const { cfg, baseline, naiveR } = run;
+  const crit = Math.min(1, Math.max(0, cfg.critPct / 100));
+  const plainCast = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + crit * (GAME.CRIT_MULT - 1)) * (cfg.t5two ? 1.2 : 1);
+  return {
+    gain: 100 * (r.total / baseline.total - 1),
+    vsNaive: 100 * (r.total / naiveR.total - 1),
+    effCasts: r.total / plainCast,
+    capPct: 100 * r.gcdCappedTime / cfg.T,
+  };
+}
+function renderCustomTiles(r, live) {
+  const run = lastRun; if (!run || !run.optR.castCount) return;
+  const M = tileStats(run, run.optR), C = tileStats(run, r);
+  const dPct = 100 * (r.total / run.optR.total - 1);
+  const dir = Math.abs(dPct) < 0.005 ? "flat" : dPct > 0 ? "up" : "down";
+  const fd = (dv, digits, unit) => {
+    const cls = Math.abs(dv) < Math.pow(10, -digits) / 2 ? "flat" : dv > 0 ? "up" : "down";
+    return `<span class="delta ${cls}">${dv >= 0 ? "+" : "−"}${Math.abs(dv).toFixed(digits)}${unit || ""}</span>`;
+  };
+  el("tiles-cap").innerHTML = `<b>Custom timeline</b><span>${
+    CUSTOM.locked ? "locked &amp; validated · deltas vs the model plan"
+      : live ? "live — release to snap to the whole second"
+      : "editing · deltas vs the model plan" + (CUSTOM.legal ? "" : " · ⚠ cooldown violations flagged on the chart")}</span>`;
+  el("tiles-custom").innerHTML = `
+    <div class="tile vsmodel ${dir}"><div class="k">Custom vs model plan</div><div class="v">${dPct >= 0 ? "+" : "−"}${Math.abs(dPct).toFixed(2)}<small>% damage</small></div></div>
+    <div class="tile"><div class="k">Damage gain vs no cooldowns</div><div class="v">+${C.gain.toFixed(1)}<small>%</small>${fd(C.gain - M.gain, 1, "pp")}</div></div>
+    <div class="tile"><div class="k">vs mashing on cooldown</div><div class="v">+${C.vsNaive.toFixed(1)}<small>%</small>${fd(C.vsNaive - M.vsNaive, 1, "pp")}</div></div>
+    <div class="tile"><div class="k">Effective casts</div><div class="v">${C.effCasts.toFixed(1)}<small> (${r.castCount} real)</small>${fd(C.effCasts - M.effCasts, 1)}</div></div>
+    <div class="tile"><div class="k">Time at GCD floor</div><div class="v">${C.capPct.toFixed(0)}<small>% of fight</small><span class="delta flat">${(C.capPct - M.capPct) >= 0 ? "+" : "−"}${Math.abs(C.capPct - M.capPct).toFixed(0)}pp</span></div></div>`;
+  el("customstats").hidden = false;
+}
+function showEditMsg(html, kind) {
+  const m = el("edit-msg");
+  m.hidden = !html;
+  m.classList.toggle("ok", kind === "ok");
+  m.innerHTML = html || "";
+}
+function renderEditMsg() {
+  if (CUSTOM.legal) { showEditMsg(""); return; }
+  showEditMsg(
+    CUSTOM.diffs.map(d => `<div>${esc(diffText(d))}</div>`).join("") +
+    `<div class="fixbtns"><button id="btn-autofix" type="button">Auto-fix to the nearest legal times</button></div>`);
+  el("btn-autofix").addEventListener("click", () => {
+    CUSTOM.s = sortedClone(CUSTOM.rep);
+    refreshCustomView();
+  });
+}
+// Full redraw of the edit view: validate, re-simulate the custom intents (bars land on the real
+// fire times, so an illegal press visibly slips), refresh the comparison tiles + violation list.
+function refreshCustomView() {
+  const run = lastRun;
+  if (!run || !CUSTOM.s) return;
+  const v = validateCustom(CUSTOM.s, run.cfg);
+  CUSTOM.rep = v.rep; CUSTOM.legal = v.legal; CUSTOM.diffs = v.diffs;
+  const optR = simulate(CUSTOM.s, run.cfg, true);
+  renderTimeline({ cfg: run.cfg, best: { s: CUSTOM.s }, optR }, { ghost: run.optR.actEff, editing: CUSTOM.editing, illegal: v.diffs });
+  renderCustomTiles(optR);
+  renderEditMsg();
+}
+function enterEdit() {
+  CUSTOM.editing = true; CUSTOM.locked = false; CUSTOM.run = null;
+  window.__customRun = null;
+  if (!CUSTOM.s) CUSTOM.s = sortedClone(lastRun.best.s);
+  el("btn-edit").textContent = "Lock timeline & validate";
+  el("btn-edit").classList.add("armed");
+  el("btn-revert").hidden = false;
+  el("sched").classList.add("stale");   // the table/pressboard regenerate on lock — dim them until then
+  el("follow").classList.add("stale");
+  followReset();
+  refreshCustomView();
+}
+function tryLock() {
+  const run = lastRun, cfg = run.cfg;
+  const v = validateCustom(CUSTOM.s, cfg);
+  CUSTOM.rep = v.rep; CUSTOM.legal = v.legal; CUSTOM.diffs = v.diffs;
+  if (!v.legal) { refreshCustomView(); return; } // stays unlocked: violations + auto-fix are on screen
+  if (sigOf(CUSTOM.s) === sigOf(sortedClone(run.best.s))) { revertCustom(); return; } // unchanged → back to pristine
+  CUSTOM.editing = false; CUSTOM.locked = true;
+  const optR = simulate(CUSTOM.s, cfg, true);
+  CUSTOM.run = { cfg, baseline: run.baseline, naive: run.naive, naiveR: run.naiveR, best: { s: CUSTOM.s, val: optR.robust }, optR, isCustom: true };
+  pressPlan(CUSTOM.run);
+  renderTimeline(CUSTOM.run, { ghost: run.optR.actEff });
+  renderSchedule(CUSTOM.run);
+  followPrime(CUSTOM.run);
+  renderCustomTiles(optR);
+  el("btn-edit").textContent = "Unlock timeline for customization";
+  el("btn-edit").classList.remove("armed");
+  el("sched").classList.remove("stale");
+  el("follow").classList.remove("stale");
+  showEditMsg(`<div>Validated — all cooldown requirements met. Activation schedule and pressboard regenerated from your timeline.</div>`, "ok");
+  window.__customRun = CUSTOM.run; // debug/test hook
+}
+function revertCustom() {
+  if (!lastRun) return;
+  customReset();
+  renderTimeline(lastRun);
+  renderSchedule(lastRun);
+  followPrime(lastRun);
+}
+// Pointer-drag on the lane bars (edit mode only). The bar follows the pointer continuously;
+// the bubble shows the whole second the press will snap to on release; the comparison tiles
+// re-score at that snapped second in realtime (rAF-throttled — simulate() is memoized, so a
+// revisited second is a cache hit).
+function attachDrag(svg, run) {
+  const cfg = run.cfg, geo = lastGeo, tip = el("tip"), box = el("chartbox");
+  let d = null;
+  const vbOf = e => { const r = svg.getBoundingClientRect(); return (e.clientX - r.left) / r.width * geo.VW; };
+  svg.addEventListener("pointerdown", e => {
+    const g = e.target.closest ? e.target.closest(".pressg") : null;
+    if (!g) return;
+    e.preventDefault();
+    d = { g, k: g.dataset.k, j: +g.dataset.j, int0: +g.dataset.int, fire0: +g.dataset.fire, x0: vbOf(e), snap: Math.round(+g.dataset.int), moved: false };
+    DRAG.active = true;
+    g.classList.add("dragging");
+    try { svg.setPointerCapture(e.pointerId); } catch (_) {}
+    tip.style.display = "none";
+  });
+  svg.addEventListener("pointermove", e => {
+    if (!d) return;
+    let dxT = (vbOf(e) - d.x0) / geo.plotW * cfg.T;
+    dxT = Math.max(-d.fire0, Math.min(cfg.T - 1 - d.fire0, dxT)); // keep the bar inside the fight
+    if (Math.abs(dxT) > 0.01) d.moved = true;
+    d.g.setAttribute("transform", `translate(${(dxT / cfg.T * geo.plotW).toFixed(2)} 0)`);
+    const snap = Math.max(0, Math.min(Math.floor(cfg.T - 1), Math.round(d.int0 + dxT)));
+    tip.innerHTML = `<b>${fmtT(snap)}</b> · ${BUFFS[d.k].name} — release snaps here`;
+    tip.style.display = "block";
+    const bx = box.getBoundingClientRect();
+    tip.style.left = Math.min(e.clientX - bx.left + 14, box.clientWidth - tip.offsetWidth - 8) + "px";
+    tip.style.top = Math.max(0, e.clientY - bx.top - 36) + "px";
+    if (snap !== d.snap) {
+      d.snap = snap;
+      if (!DRAG.raf) DRAG.raf = requestAnimationFrame(() => {
+        DRAG.raf = 0;
+        if (!d) return;
+        const temp = {};
+        for (const kk in CUSTOM.s) temp[kk] = CUSTOM.s[kk].slice();
+        temp[d.k][d.j] = d.snap;
+        temp[d.k].sort((a, b) => a - b);
+        renderCustomTiles(simulate(temp, cfg), true);
+      });
+    }
+  });
+  const finish = () => {
+    if (!d) return;
+    const { g, k, j, snap, moved } = d;
+    g.classList.remove("dragging");
+    d = null;
+    DRAG.active = false;
+    if (DRAG.raf) { cancelAnimationFrame(DRAG.raf); DRAG.raf = 0; }
+    tip.style.display = "none";
+    if (!moved) return;
+    CUSTOM.s[k] = CUSTOM.s[k].slice();
+    CUSTOM.s[k][j] = snap;                       // release: lock to the closest full second
+    CUSTOM.s[k].sort((a, b) => a - b);
+    refreshCustomView();
+  };
+  svg.addEventListener("pointerup", finish);
+  svg.addEventListener("pointercancel", finish);
+}
+el("btn-edit").addEventListener("click", () => {
+  if (!lastRun) return;
+  if (CUSTOM.editing) tryLock();
+  else enterEdit();
+});
+el("btn-revert").addEventListener("click", revertCustom);
+
+/* ————— debug export: everything a later debugging session needs, in one paste ————— */
+function statLine(label, S, r) {
+  return `${label}: total=${r.total.toFixed(1)} robust=${r.robust.toFixed(1)} · effective casts ${S.effCasts.toFixed(2)} (${r.castCount} real) · gain vs no-cooldowns +${S.gain.toFixed(2)}% · vs mashing +${S.vsNaive.toFixed(2)}% · GCD-floor ${S.capPct.toFixed(1)}% of fight`;
+}
+function debugExportText() {
+  const run = lastRun, cfg = run.cfg;
+  const M = tileStats(run, run.optR);
+  const phases = (cfg.segments || []).filter(s => s.type !== "normal").map(s => ({ from: s.start, to: s.end, type: s.type, mult: s.mult, targets: s.targets }));
+  const kit = LANE_ORDER.filter(k => cfg.enabled[k]);
+  const L = [];
+  L.push("=== ARCANE BURN PLANNER — DEBUG EXPORT ===");
+  L.push(`Input: ${fmtT(cfg.T)} fight (${cfg.T}s) · ${cfg.hasteRating} haste rating (+${(cfg.hasteRating / GAME.HASTE_RATING_PER_PCT).toFixed(1)}%) · ${cfg.sp} SP · ${cfg.critPct}% crit · Cold Snap ${cfg.coldSnap ? "on" : "off"} · Tirisfal-2pc ${cfg.t5two ? "on" : "off"}`);
+  L.push(`Cooldowns enabled: ${kit.map(k => BUFFS[k].name).join(", ") || "none"}`);
+  const pins = Object.entries(cfg.fixed || {}).filter(([, v]) => v && v.length);
+  if (pins.length) L.push(`Pinned raid calls: ${pins.map(([k, v]) => `${BUFFS[k].name} @ ${v.map(t => fmtT(t)).join("/")}`).join("; ")}`);
+  if (phases.length) L.push(`Phases: ${phases.map(p => `${p.type}${p.type === "burn" ? " x" + p.mult : p.type === "aoe" ? " x" + p.targets : ""} ${fmtT(p.from)}-${fmtT(p.to)}`).join("; ")}`);
+  for (const w of cfg.warnings || []) L.push(`input warning: ${w}`);
+  L.push("", "--- MODEL PLAN (optimizer output) ---");
+  L.push(planText(run).trimEnd());
+  L.push(statLine("model", M, run.optR));
+  const customR = CUSTOM.s ? (CUSTOM.run ? CUSTOM.run.optR : simulate(CUSTOM.s, cfg, true)) : null;
+  let C = null;
+  if (customR) {
+    C = tileStats(run, customR);
+    L.push("", `--- CUSTOM TIMELINE (hand-edited · ${CUSTOM.locked ? "locked & validated" : CUSTOM.legal ? "valid, not locked" : "HAS COOLDOWN VIOLATIONS"}) ---`);
+    L.push(planText(CUSTOM.run || { cfg, best: { s: CUSTOM.s }, optR: customR }).trimEnd());
+    L.push(statLine("custom", C, customR));
+    const dEff = C.effCasts - M.effCasts;
+    L.push(`custom vs model: ${(100 * (customR.total / run.optR.total - 1)).toFixed(3)}% total damage · ${dEff >= 0 ? "+" : ""}${dEff.toFixed(2)} effective casts · GCD-floor ${(C.capPct - M.capPct).toFixed(1)}pp`);
+    if (!CUSTOM.legal) {
+      L.push("validation — repair() would adjust:");
+      for (const d of CUSTOM.diffs) L.push("  - " + diffText(d));
+    }
+  }
+  L.push("", "--- MACHINE-READABLE (JSON) ---");
+  const j = {
+    input: { T: cfg.T, hasteRating: cfg.hasteRating, sp: cfg.sp, critPct: cfg.critPct, coldSnap: cfg.coldSnap, t5two: !!cfg.t5two, kit, pins: cfg.fixed || {}, phases, warnings: cfg.warnings || [] },
+    model: {
+      intents: run.best.s, fireTimes: run.optR.actEff || null,
+      total: run.optR.total, robust: run.optR.robust, castCount: run.optR.castCount, gcdCappedTime: run.optR.gcdCappedTime,
+      effCasts: +M.effCasts.toFixed(3), gainVsNoCooldownsPct: +M.gain.toFixed(3), gainVsNaivePct: +M.vsNaive.toFixed(3),
+      baselineTotal: run.baseline.total, naiveTotal: run.naiveR.total, naiveIntents: run.naive,
+    },
+    custom: customR ? {
+      intents: CUSTOM.s, fireTimes: customR.actEff || null,
+      total: customR.total, robust: customR.robust, castCount: customR.castCount, gcdCappedTime: customR.gcdCappedTime,
+      effCasts: +C.effCasts.toFixed(3), gainVsNoCooldownsPct: +C.gain.toFixed(3), gainVsNaivePct: +C.vsNaive.toFixed(3),
+      vsModelPct: +(100 * (customR.total / run.optR.total - 1)).toFixed(4),
+      locked: CUSTOM.locked, legal: CUSTOM.legal,
+      repairWould: CUSTOM.legal ? null : CUSTOM.rep,
+    } : null,
+    evalsched: {
+      case: { T: cfg.T, pins: cfg.fixed || {}, gear: { haste: cfg.hasteRating, sp: cfg.sp, crit: cfg.critPct, coldSnap: cfg.coldSnap }, kit, ...(phases.length ? { phases } : {}) },
+      scheds: { model: run.best.s, ...(CUSTOM.s ? { custom: CUSTOM.s } : {}) },
+    },
+  };
+  L.push(JSON.stringify(j));
+  L.push("", "Notes for whoever debugs this: times are SECONDS from pull. `intents` are press intents (the schedule the engine takes); `fireTimes` are when each press actually fires (displayed plan times = floor(fireTime)). The `evalsched` object is ready to run as  node tests/evalsched.mjs '<that json>'  to score both layouts under the model scorer; to sim-verify a layout, build an APL per docs/TOOLING.md (genapl — keep _prestack:0)." + (cfg.t5two ? " ⚠ Tirisfal-2pc is ON here but evalsched.mjs's harness cfg has no t5 field — compare via the stats above, or add t5two to its cfg." : ""));
+  return L.join("\n");
+}
+el("btn-debug").addEventListener("click", () => {
+  if (!lastRun) return;
+  copyToClipboard(debugExportText(), el("btn-debug"), "Debug export", "Copy failed — clipboard blocked");
 });
 
 // Fight lengths at which an enabled, planner-controlled cooldown gains one
