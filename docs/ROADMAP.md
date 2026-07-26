@@ -17,25 +17,15 @@
   was an invalid inference. Instrument: `tools/p8-boundary-charge.mjs` (sim-free; reproduces §21.5's
   C-BE to 4 dp as a built-in gate, and asserts the value/haste cleanliness split it depends on).
   `index.html` is **untouched** — no golden risk, exact-match still 25/25.
-- ★★★ **THE RIG'S BASE SOURCE IS NOT PUBLICLY RECOVERABLE — PROVEN (TOOLING, 07-26).** The sim is not
-  broken, it is **absent**: it lived in a sibling scratchpad and that container was recycled. `ade9f39`
-  exists in **no** public wowsims repo — full clone of `wowsims/tbc` (no such commit; the two patch
-  targets never existed in ANY commit; HEAD is the legacy pre-APL sim), Go module proxy (`unknown
-  revision` for both tbc and classic), and GitHub's refusal to serve bare SHAs all agree. But
-  `runner-main.go` imports `github.com/wowsims/tbc/...`, so the base declared that module path **while
-  having APL** — which public tbc never did ⇒ **it was a FORK or a local clone, and its origin was
-  never recorded.** Restore via (a) the fork URL+commit — ask the owner; (b) a surviving local copy;
-  or (c) re-base onto `wowsims/classic` (has APL + commits `db.bin`) — real porting work, then
-  re-certify the trust anchor. ★ **Lesson: the project's only independent check on the model was never
-  reproducible from the repo.** Commit the provenance when it is restored.
-- ★★★ **(superseded detail) THE WOWSIMS RIG IS GONE (PHASE8 §22.6).** Only this
-  session's scratchpad exists and it has no `runner-ap180`. A rebuild was attempted and failed at
-  step one: **`ade9f39` is not in `wowsims/tbc`** (that repo is the legacy pre-APL sim), and GitHub
-  **will not serve a bare SHA**, so the commit can't be fetched without identifying the right repo.
-  Good news: `wowsims/{classic,cata,wotlk}` all carry the APL core AND now **commit
-  `assets/database/db.bin`**, so TOOLING's "DB assets are generated, not committed" blocker has
-  expired. `TOOLING.md`'s build recipe is flagged known-stale. **Everything Phase 8 still owes is a
-  sim question**, so nothing further lands until a runner exists and the trust anchor is re-certified.
+- ✅ **THE RIG REBUILDS FROM THE DOCUMENTED RECIPE — nothing was lost (TOOLING, verified 07-26).**
+  Executed end to end in a fresh container: `wowsims/tbc-new` @ `ade9f39` + `tools/wowsims-patches/*`
+  → `runner-ap180`, 18 MB, provenance checks passing (`innerSpell`=3, `CD.Use`=0). ⚠ **The repo is
+  `wowsims/tbc-new`, NOT `wowsims/tbc`** — it declares module `github.com/wowsims/tbc`, so deriving
+  the URL from the runner's imports lands on the archived pre-APL repo and wastes a lot of time.
+  Two steps the recipe omitted are now written down: `sim/core/proto` must be generated with
+  `protoc` (plugin **v1.36.10**, matching the repo), and `cmd/runner/` must be created from
+  `tools/wowsims-patches/runner-main.go`. **The only thing not in the repo is the gear export, and
+  that is deliberate** (user data). Ask the owner for it.
 - ✅✅ **PHASE 8'S CHARTER IS DISCHARGED (PHASE8 §26) — with a NEGATIVE result.** The phase narrowed
   to one deliverable, "implement the per-window boundary charge", and that is done: implemented,
   audited, gated, **sign gate FAILED (6/7 lengths worse)**, shipped OFF. Eight findings are now

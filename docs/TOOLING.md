@@ -469,123 +469,39 @@ Lesson 7 above is the instrument for the second axis; lessons 1–4 are the firs
 
 ## Building the runner (do this once per fresh session)
 
-> ⚠⚠⚠ **THE BASE SOURCE IS NOT PUBLICLY RECOVERABLE. PROVEN 07-26 — read this before trying.**
-> The rig is not *broken*, it is **absent**: it lived in a sibling session's scratchpad (see
-> "Where the drivers FIND the runner" below), and that container was recycled. What makes that fatal
-> rather than annoying is that **`ade9f39` does not exist in any public wowsims repo**, established
-> three independent ways:
->   1. **Full clone of `wowsims/tbc`** (3555 commits, all refs): no `ade9f39`, and
->      `sim/core/apl_actions_timing.go` + `sim/mage/arcane_power.go` — the two patch targets — have
->      **never existed in any commit**. Its HEAD (`7a2613fd`, 2026-07-24, *"Remove auto-redirect"*)
->      is the legacy **pre-APL** sim: hardcoded `sim/mage/rotations.go`, no APL anywhere.
->   2. **Go module proxy** (`proxy.golang.org`, reachable directly — it is in the agent proxy's
->      noProxy list): `github.com/wowsims/tbc@ade9f39` and `github.com/wowsims/classic@ade9f39` both
->      return **`invalid version: unknown revision ade9f39`**.
->   3. **`git fetch <url> <sha>`** — GitHub refuses bare SHAs (`couldn't find remote ref`).
+> ### ✅ VERIFIED WORKING 07-26 — the recipe below is correct; here are the two undocumented steps
+> A full rebuild was executed from a fresh container. **Nothing about the rig was lost.** `ade9f39`
+> is present in **`wowsims/tbc-new`** (`ade9f39cc`, *"Merge pull request #421 from
+> wowsims/fix/armor-reduction"*), both patches apply cleanly, `assets/database/*.bin` **are
+> committed** in that repo, and the provenance checks in `docs/archive/07` pass exactly as written
+> (`grep -c innerSpell sim/core/apl_actions_timing.go` = **3**; `grep -c 'CD.Use'
+> sim/mage/arcane_power.go` = **0**). The runner builds to an 18 MB binary.
 >
-> Yet `tools/wowsims-patches/runner-main.go` imports `github.com/wowsims/tbc/sim/core/proto`, so the
-> base module *declared itself* `github.com/wowsims/tbc` **while containing APL** — which public
-> `wowsims/tbc` never did. ⇒ **The rig was built from a FORK or a local clone carrying local
-> commits, and nothing in this repo records where it came from.**
+> ⚠ **THE REPO IS `wowsims/tbc-new`, NOT `wowsims/tbc`.** It declares Go module
+> `github.com/wowsims/tbc`, so inferring the clone URL from `runner-main.go`'s imports leads to the
+> WRONG repo — the archived `wowsims/tbc`, which is the legacy pre-APL sim and contains neither
+> `ade9f39` nor either patch target. That inference cost a full detour; the URL is written here and
+> in `SOURCES.md` for exactly this reason. **Read it, don't derive it.**
 >
-> ### What the fork actually WAS — and the cheap way to rebuild it (07-26)
+> **Two steps the recipe omits, both needed on a bare clone:**
+> 1. `sim/core/proto/*.pb.go` is **generated, not committed** — the build fails with
+>    *"no required module provides package github.com/wowsims/tbc/sim/core/proto"* until you run:
+>    ```
+>    apt-get install -y protobuf-compiler
+>    GOBIN=/usr/local/bin go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.36.10
+>    protoc -I=./proto --go_out=./sim/core ./proto/*.proto        # makefile:210
+>    ```
+>    ★ Match the plugin to the repo's `google.golang.org/protobuf` version (**v1.36.10** at
+>    `ade9f39`) — an older plugin emits code the newer runtime rejects.
+> 2. `cmd/runner/` does not exist upstream; create it and copy
+>    `tools/wowsims-patches/runner-main.go` to `cmd/runner/main.go` before building.
 >
-> **TBC content and APL live in DISJOINT public repos, and no public repo has both:**
->
-> | repo | Arcane Blast (TBC lvl-64 — the planner's whole subject) | APL |
-> |---|---|---|
-> | `wowsims/tbc` (archived 2026-07-24) | ✅ `sim/mage/arcane_blast.go` | ❌ **0 apl files on ALL 15 branches, ever** |
-> | `wowsims/classic` | ❌ none (Vanilla/SoD, level 60) | ✅ |
-> | `wowsims/cata`, `wowsims/wotlk` | wrong expansion | ✅ |
->
-> Our runner imports `github.com/wowsims/tbc` **and** the patches touch `sim/core/apl_actions_timing.go`
-> ⇒ the fork was **archived `wowsims/tbc` with the modern APL core back-ported into it**. *That
-> back-port is the lost artifact — the base is fine and still public.*
->
-> **★ DO NOT REDO THE BACK-PORT. It is ~21 `sim/core/apl*.go` files against a 2022-era core, and we
-> do not need APL at all.** What the harness actually requires is only *"fire cooldown X at time T"*,
-> and **archived `wowsims/tbc` already has that natively**: `sim/core/major_cooldown.go` defines
-> `MajorCooldown{ CanActivate, ShouldActivate CooldownActivationCondition, Priority, Type }`, already
-> used across `sim/mage/{talents,mana_gems}.go`. A scheduled press is one predicate:
-> `ShouldActivate: func(sim, char) bool { return sim.CurrentTime >= scheduledTime }`.
->
-> **The rebuild, then, is:**
-> 1. Clone `wowsims/tbc` at HEAD (`7a2613fd`) — public, complete, has Arcane Blast and the item DB path.
-> 2. Port `tools/wowsims-patches/runner-main.go` (imports already match `github.com/wowsims/tbc`) and
->    replace its APL-rotation input with **scheduled `ShouldActivate` predicates** built from the same
->    press-time list `tools/genapl.mjs` already emits. No core surgery.
-> 3. Re-target `ap-cd-at-cast.patch`: TBC has **no `sim/mage/arcane_power.go`** — Arcane Power is
->    `registerArcanePowerCD()` at **`sim/mage/talents.go:211`** (`SpellID: 12042`). The patch's job is
->    unchanged: stop the aura's `OnExpire` from re-setting the CD, restoring the true 180 s cadence.
-> 4. `apl-schedule-strict-ready.patch` becomes **unnecessary** — it existed to fix APL's schedule
->    drop-bug, and there is no APL in this design. Its *intent* (a scheduled press must not fire while
->    the spell is on cooldown) becomes a `CanActivate` guard, which is the idiomatic hook for exactly that.
-> 5. Re-certify the **trust anchor** (~0.4 % vs `wowsimcli`) before any gate reads the output, and
->    **commit the provenance here** (repo, commit, module path, build flags).
->
-> ### ✅ EXECUTED 07-26 — the base sim BUILDS FROM SCRATCH in a fresh container
->
-> Verified end to end, not planned. Exact recipe (≈2 min, no fork, no `ade9f39`):
-> ```
-> git clone --depth 1 https://github.com/wowsims/tbc.git      # HEAD 7a2613fd
-> apt-get install -y protobuf-compiler                        # protoc 3.21.12
-> GOBIN=/usr/local/bin go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.0
-> protoc -I=./proto --go_out=./sim/core ./proto/*.proto       # sim/core/proto is GENERATED
-> go build ./sim/core/... ./sim/mage/... ./sim                # all OK
-> ```
-> - ★ **`sim/core/proto` and `binary_dist` are generated, not committed** — a bare clone fails to
->   build until `protoc` runs. That is the whole reason a naive rebuild "doesn't work".
-> - ★★ **THE ITEM DB IS COMMITTED AS GO SOURCE** — `sim/core/items/all_items.go`, 1.9 MB, ~4513
->   entries. **No `db.bin`, no `-tags with_db`, no DB generation.** The "DB assets are generated, not
->   committed" warning below applies to the MODERN repos at `ade9f39`-era commits and **does not apply
->   to this one**. The single biggest feared blocker is not real.
->
-> ### ✗ What still blocks a working runner (both are PORTS, not mysteries)
->
-> 1. **`runner-main.go` will not compile against archived tbc.** It uses `proto.APLRotation`,
->    `player.Rotation.Type = APLRotation_TypeAPL`, and `proto.UnitStats` — none exist in this proto
->    (no APL; older stat representation). Port per the `ShouldActivate` design above: drop the `-apl`
->    flag, take the press-time list directly, and register each cooldown with a time predicate.
-> 2. **⚠⚠ THE REFERENCE GEAR EXPORT IS ALSO LOST.** `EXPORT=$SP/seedband/export.json` lived in the
->    same dead scratchpad and **is not in this repo**. `tools/reference-gear.mjs` preserves only the
->    *derived* model parameters (`t5two`, effective `sp ≈ 1450`) plus the Tirisfal item IDs
->    (30206/30196/30207, 4pc `SpellID 37444`) — **not the gear list the sim consumes.** Without it the
->    trust anchor cannot be reproduced *exactly*, only approximated, and an approximation voids the
->    ~0.4 % agreement claim that every gate rests on. **This is the harder of the two blockers, and it
->    is DATA, not code — no amount of rebuilding recovers it.** Ask the owner for the export, or
->    re-export the same character from the wowsims UI and re-certify from scratch.
->
-> ⚠ Two things to verify early, as they are the plausible blockers: whether HEAD still builds with
-> `-tags with_db` (the archived repo's `assets/database/db.bin` is `//go:embed`-ed and **generated,
-> not committed** at that commit — see below), and whether press-time granularity through
-> `ShouldActivate` reproduces the boundary-snap behaviour RULES §3 depends on.
->
-> **Other restore paths, cheaper if available:** (a) the fork's clone URL + commit — ask the owner;
-> (b) a surviving local copy of the old `wowsims` tree.
->
-> ★★ **THE LESSON — the most important instrument in the project was never reproducible from the
-> repo.** We committed the *patches* and our *custom runner* but never the base source, its origin,
-> or even its URL, and the built binary lived in ephemeral scratch outside version control. A single
-> container recycle therefore cost the project its only independent check on the model. **Whoever
-> restores it: commit the provenance (URL + commit + `go.mod` module path) into this file in the
-> same change, and treat "can a fresh container rebuild the runner from the repo alone?" as a
-> standing requirement, not a nicety.**
-
-> ⚠⚠ **THIS RECIPE IS KNOWN-STALE AS OF 07-26 AND HAS NOT BEEN RE-VALIDATED — see PHASE8 §22.6.**
-> A rebuild attempt from scratch failed at step one: **`ade9f39` is not in `wowsims/tbc`**, which is
-> the legacy pre-APL sim (3555 commits, no `sim/core/apl_actions_timing.go`, no `sim/mage/`) — so
-> the "wowsims-tbc-clone" below cannot be the repo the rig was actually built from. **GitHub will
-> not serve a bare SHA** (`git fetch <url> <sha>` ⇒ `couldn't find remote ref`), so the commit
-> cannot be recovered without first identifying the right repo. `wowsims/{classic,cata,wotlk}` all
-> carry `sim/core/apl_actions_timing.go` + `cmd/wowsimcli`, and all three now **commit
-> `assets/database/db.bin`** (so the DB-regeneration blocker noted below has expired), but none has
-> `sim/mage/arcane_power.go` at HEAD — `ap-cd-at-cast.patch` needs re-targeting either way.
-> **Whoever restores the rig: record the ACTUAL repo + commit here, and re-certify the trust anchor
-> (~0.4 % vs `wowsimcli`) before gating anything.** The one true binary's provenance is the only
-> thing standing between this project and the stale-runner failure logged below.
+> **The only thing genuinely NOT in the repo is the gear export**, and that is deliberate — it is
+> user data (`docs/archive/07` §6.3: *"The gear export is user data (NOT in repo) … never commit an
+> export"*). Ask the owner for it; everything else rebuilds from the recipe.
 
 ```
-cd <wowsims-tbc-clone>            # git checkout ade9f39   ← repo unidentified; see warning above
+git clone https://github.com/wowsims/tbc-new.git && cd tbc-new && git checkout ade9f39
 go build -tags with_db -o runner ./cmd/runner
 ```
 
