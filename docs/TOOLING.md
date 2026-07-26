@@ -523,6 +523,38 @@ Lesson 7 above is the instrument for the second axis; lessons 1–4 are the firs
 > 5. Re-certify the **trust anchor** (~0.4 % vs `wowsimcli`) before any gate reads the output, and
 >    **commit the provenance here** (repo, commit, module path, build flags).
 >
+> ### ✅ EXECUTED 07-26 — the base sim BUILDS FROM SCRATCH in a fresh container
+>
+> Verified end to end, not planned. Exact recipe (≈2 min, no fork, no `ade9f39`):
+> ```
+> git clone --depth 1 https://github.com/wowsims/tbc.git      # HEAD 7a2613fd
+> apt-get install -y protobuf-compiler                        # protoc 3.21.12
+> GOBIN=/usr/local/bin go install google.golang.org/protobuf/cmd/protoc-gen-go@v1.28.0
+> protoc -I=./proto --go_out=./sim/core ./proto/*.proto       # sim/core/proto is GENERATED
+> go build ./sim/core/... ./sim/mage/... ./sim                # all OK
+> ```
+> - ★ **`sim/core/proto` and `binary_dist` are generated, not committed** — a bare clone fails to
+>   build until `protoc` runs. That is the whole reason a naive rebuild "doesn't work".
+> - ★★ **THE ITEM DB IS COMMITTED AS GO SOURCE** — `sim/core/items/all_items.go`, 1.9 MB, ~4513
+>   entries. **No `db.bin`, no `-tags with_db`, no DB generation.** The "DB assets are generated, not
+>   committed" warning below applies to the MODERN repos at `ade9f39`-era commits and **does not apply
+>   to this one**. The single biggest feared blocker is not real.
+>
+> ### ✗ What still blocks a working runner (both are PORTS, not mysteries)
+>
+> 1. **`runner-main.go` will not compile against archived tbc.** It uses `proto.APLRotation`,
+>    `player.Rotation.Type = APLRotation_TypeAPL`, and `proto.UnitStats` — none exist in this proto
+>    (no APL; older stat representation). Port per the `ShouldActivate` design above: drop the `-apl`
+>    flag, take the press-time list directly, and register each cooldown with a time predicate.
+> 2. **⚠⚠ THE REFERENCE GEAR EXPORT IS ALSO LOST.** `EXPORT=$SP/seedband/export.json` lived in the
+>    same dead scratchpad and **is not in this repo**. `tools/reference-gear.mjs` preserves only the
+>    *derived* model parameters (`t5two`, effective `sp ≈ 1450`) plus the Tirisfal item IDs
+>    (30206/30196/30207, 4pc `SpellID 37444`) — **not the gear list the sim consumes.** Without it the
+>    trust anchor cannot be reproduced *exactly*, only approximated, and an approximation voids the
+>    ~0.4 % agreement claim that every gate rests on. **This is the harder of the two blockers, and it
+>    is DATA, not code — no amount of rebuilding recovers it.** Ask the owner for the export, or
+>    re-export the same character from the wowsims UI and re-certify from scratch.
+>
 > ⚠ Two things to verify early, as they are the plausible blockers: whether HEAD still builds with
 > `-tags with_db` (the archived repo's `assets/database/db.bin` is `//go:embed`-ed and **generated,
 > not committed** at that commit — see below), and whether press-time granularity through
