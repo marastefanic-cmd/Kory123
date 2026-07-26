@@ -155,6 +155,26 @@ Mana Tide are silently suppressed (−6 % DPS, TOOLING ★).
 - The model's own objective is unchanged: **effective ABs cast** stays the arbiter (`CLAUDE.md`,
   `MECHANICS.md §4`). Bench mode changes what the *sim* measures, never what the model maximises.
 
+## 4b. ✅ TRUST ANCHOR CERTIFIED ON GEAR B — runner ≡ wowsimcli, exactly (07-26)
+
+The documented gate (*"do this once per fresh session"*) is passed, and by a wider margin than the
+recorded ~0.4 %. Same request both sides (`runner --dumpreq` → `wowsimcli sim --infile`), gear B,
+`--dur 145 --var 0 --iter 10000 --seed 1`:
+
+| | avg DPS | stdev | max |
+|---|---|---|---|
+| `runner-ap180` (ours) | 1146.9 | 86.1 | 1586.3 |
+| `wowsimcli` (upstream) | 1146.9094876137967 | 86.13208492668227 | 1586.2720464676802 |
+
+**Identical to full float precision** — not "within 0.4 %". That certifies something narrower and
+more useful than absolute realism: **our runner adds no distortion of its own.** It is a faithful
+wrapper around the same `core.RunRaidSimConcurrent` the upstream CLI drives, so any model-vs-sim
+disagreement is attributable to the model or the harness *inputs*, never to the binary.
+
+Both binaries are built from the same `wowsims/tbc-new` @ `ade9f39` tree (+ our two patches for the
+runner). ⚠ Re-run this whenever the tree, the patches, or the export change — it is the check that
+would catch a stale binary, the failure that once cost this project a day of gates.
+
 ## 5. Standing requirement
 
 **A fresh container must be able to produce a number from the repo alone.** That now holds:
