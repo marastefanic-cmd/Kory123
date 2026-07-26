@@ -1609,20 +1609,26 @@ function optimizeCore(cfg, starts, onProgress) {
         // the final is the max of the two hops: ≥ the pre-groupSeeds pipeline (base hop is a floor)
         // AND ≥ the single-winner pipeline (its selection is one of the two arms), by construction.
         const grpLeads = bestGrp && bestGrp.val > best.val;
+        // When the group entrant led the snap (the old single-winner rule would carry it), BOTH
+        // arms are hopped and BOTH carry their own finishing tail below — the final is the max of
+        // the FINALS. Hop-stage selection was measurably not enough: the tail is path-dependent
+        // (three cells, both directions, incl. a +5.85-hop-win arm whose tail lost −14), so the
+        // only closure is deciding on the objective at the END. Primary = the old-rule carry
+        // (byte-stability at ties); the alt arm may only ADD value, never replace ties.
+        let hopAlt = null;
         if (grpLeads) {
-          // The old single-winner rule carried the snap leader (here: the group entrant) through
-          // everything. The base line's hop is run as a STRICT-improvement override only — at a
-          // hop-value tie the old selection stands, so this engine differs from the single-winner
-          // one exactly where the base basin provably beats the chain basin (h160: +3560), and
-          // nowhere else. (Ties are real: h260 hops meet at 1059624.234589852 on two layouts.)
-          const hb = await basinHop(best, cfg, async f => { stageFrac(f); await tick(); });
+          hopAlt = await basinHop(best, cfg, async f => { stageFrac(f); await tick(); });
           best = await basinHop(bestGrp, cfg, async f => { stageFrac(f); await tick(); });
-          if (hb.val > best.val) best = hb;
         } else {
           best = await basinHop(best, cfg, async f => { stageFrac(f); await tick(); });
         }
         // ——— tie-breaks among damage-equal plans (never lose damage: v ≥ val−EPS) ———
-        let s = best.s, val = best.val;
+        // ——— the finishing tail as a CALLABLE, run once per hop arm (PHASE9 §5.16 residual
+        // closed): `best` inside shadows the outer champion on purpose, so the body is unchanged.
+        let bestNMemo = null; // the no-Cold-Snap comparison solve is arm-independent — solve once
+        const finishLine = async (entrant) => {
+        let best = null;
+        let s = entrant.s, val = entrant.val;
         setStage(0.72, 0.82, "Grooming (ties & legibility)");
         const EPS = 0.5;
         // Execution beats microtiming: expected-damage differences under ONE
@@ -2955,7 +2961,8 @@ function optimizeCore(cfg, starts, onProgress) {
           if (consumed) {
             // second full pass, honestly labeled — the bar RESTARTS for it (the UI resets its
             // monotone clamp on a label change) instead of stalling near-done for its duration
-            optimizeCore({ ...cfg, coldSnap: false, _noPool: true }, starts, (p, lbl) => onProgress(p, `No-Cold-Snap comparison — ${lbl || "optimizing"}`)).then(async bestN => {
+            if (!bestNMemo) bestNMemo = optimizeCore({ ...cfg, coldSnap: false, _noPool: true }, starts, (p, lbl) => onProgress(p, `No-Cold-Snap comparison — ${lbl || "optimizing"}`));
+            return await bestNMemo.then(async bestN => {
               // deterministically offer the CS chain GEOMETRIES on the no-CS champion. RULES §8:
               // the CS-IV press restarts the 180s cadence from wherever it lands, so each "which
               // slot is the compressed pair" choice is its own basin — the cross-val proved the
@@ -3033,19 +3040,25 @@ function optimizeCore(cfg, starts, onProgress) {
               // pre-transform values: it records the margin the branch was DECIDED on.
               if (bestN.val >= champ.val - bar) {
                 const sOut = await canonicalWindowOrder(await normalize(bestN.s));
-                resolve({ s: sOut, val: simulate(sOut, cfg).robust, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote });
+                return { s: sOut, val: simulate(sOut, cfg).robust, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote };
               } else {
                 const sOut = await canonicalWindowOrder(await normalize(champ.s));
-                resolve({ ...champ, s: sOut, val: simulate(sOut, cfg).robust, csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote });
+                return { ...champ, s: sOut, val: simulate(sOut, cfg).robust, csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote };
               }
             });
-            return;
           }
           best.csNote = { unused: true };
         }
         best.s = await canonicalWindowOrder(best.s); // §5.11 final canonicalization (exact-tie only)
         best.val = simulate(best.s, cfg).robust;     // …and report the score of THAT plan (PHASE7 §5.14)
-        resolve(best);
+        return best;
+        };
+        let fin = await finishLine(best);
+        if (hopAlt && sigOf(hopAlt.s) !== sigOf(best.s)) {
+          const fin2 = await finishLine(hopAlt);
+          if (fin2.val > fin.val) fin = fin2; // strict: the primary (old-rule) line keeps ties
+        }
+        resolve(fin);
       }
     })();
   });

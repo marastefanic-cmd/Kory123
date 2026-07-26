@@ -2920,3 +2920,52 @@ test (the same way §5.10 filed the 5:40 basin anchor that became §5.14):
 Until one lands, the acceptance verdict carries the note: the engine is ≥ round 6 at every
 measured cell and ≥ round 5 at 6 of the 7 attributed cells, with a −0.001-eff known hair at
 `isc-mqg-medlong @h20` vs the superseded round-5 engine.
+### §5.17 ★★ THE TAIL LOTTERY CLOSED — `finishLine(entrant)`: the finishing stack runs per hop arm and the FINAL values decide (07-26)
+
+§5.16 landed with a filed residual: the finishing stack (challengePass / groom / marginal-relocation /
+CS-comparison) ran on ONE line chosen at hop-exit, and its outcome is not monotone in its entry value.
+The round-7 identity filter promptly produced the third instance — `isc-mqg-xl @h20`, where round 6 rode
+the group line on a **1e-10 float-dust snap lead**, the landed rule correctly preferred the base hop
+(**+5.85**), and the group line's tail would have finished **+14 higher**. Three measured instances,
+both directions, every hop-exit selection rule provably loses some tails ⇒ the filed remedy became due.
+
+**The refactor.** The tail (from `let s/val` through the Cold-Snap comparison to the final
+canonicalization, ~1,400 lines) is now a callable `finishLine(entrant)` — its body byte-unchanged (the
+inner `best` deliberately shadows the outer champion), its five exits converted from `resolve(...)` to
+`return`. The two-arm hop keeps both outputs (primary = the old-rule carry, for byte-stability at
+ties); the driver runs `finishLine` on the primary, then on the alt arm when its layout differs
+(`sigOf`), and keeps the strictly-better FINAL:
+
+- the no-Cold-Snap comparison solve inside the tail is **arm-independent and memoized**
+  (`bestNMemo`) — the second arm's tail costs groom passes, not a second full solve;
+- ties keep the primary line, so cells where the arms' finals tie emit exactly what the
+  single-arm engine emitted.
+
+**Guarantee, now end-to-end:** final ≥ tail(pre-groupSeeds pipeline's line) AND ≥ tail(single-winner
+pipeline's line) at every cell, by construction — the §5.16 statement without the tail asterisk.
+
+**Validation.**
+- The four lottery tables re-swept end-to-end: `isc-mqg-medlong` **ALL cells ≥ max(r5, r6) — the §5.16
+  h20 hair (−0.001) HEALS** (the base arm's tail wins, as the §5.16 trace predicted: 509401.7 vs
+  509398.9); `mqg-skull-medlong` heals hold (h160/h265); `scb-skull-xl` both cells at max (h240 heal +
+  h260 tie-kept).
+- **Golden gate: `PLAN-DIFF compared=25 changed=0 — IDENTICAL`,** scorer pinned on all 25. The refactor
+  is invisible on the golden corpus; exact-match needs no re-record.
+- CPU (clean same-session jobs=3 A/B, full 25): landed 738.9 s → finishLine **816.0 s (+10.4 %)**,
+  wall 280.4 → 296.5 s (+5.7 %). Cumulative with §5.16's +16.5 %, the engine now runs ≈ **+18 % vs
+  the pre-§5.12 baseline** — the two correctness landings have fully consumed the phase's CPU win,
+  and §4's reclaim catalogue (admissibility triple §4.16, `admit` patch §4.21, and the arm-dedup
+  ideas this refactor enables) is now genuinely loaded.
+
+**⚠ The one residual, named and bounded — and structurally DIFFERENT from the three it closes:**
+`isc-mqg-xl @h20` reads 346.228 = round 5, −0.005 eff (−0.0014 %) vs round 6's 346.233. Both engines
+carry the SAME line into the tail here; the divergence is inside the Cold-Snap comparison, whose
+chain-candidate family derives from the **recursive no-CS sub-solve** (`chains` are built from
+`bestN.s.icyVeins`), and THAT solve differs between engines (round 6's ran with the evicted-random
+seed pool). This is not a selection defect of the current engine — it is a difference between two
+engines' sub-solves feeding a candidate generator. Chasing bit-dominance over every historical
+engine's recursive internals relocates the coin flip one level deeper each time (seed → snap → hop →
+tail → sub-solve chains) at vanishing stakes; the chase stops here. The cell is the **named
+`--observe` trade for the round-7 diff** (≥ round 5, sub-band vs round 6, spec re-simmed honestly in
+the round-7 ledger), and any future work on it starts from the chain-offer union idea (offer the
+chain family from BOTH the champ's own IV row and `bestN`'s), not from another selection rule.

@@ -22,9 +22,17 @@
   381→396)**, golden re-recorded on the arbiter rule; exact-match re-run and green post-update.
   CPU: +16.5% vs the −8.5% landing (net ≈ +6.6% vs pre-§5.12) — reclaim candidates open in
   PHASE9 §4. The landing also carries the footer build stamp and the preset-overwrite flash.
-  **Next: ROUND 7 — re-gather the cells fix moved** (the 7 healed class cells + KT under the
-  better plan; cheap under DPS_CACHE) so the acceptance ledger reflects the landed engine, then
-  the round-diff vs round 6 must read `worse=0`. All 7 cells
+  ★ **THEN THE TAIL LOTTERY CLOSED THE SAME NIGHT (PHASE9 §5.17):** the round-7 identity filter
+  found a third instance (`isc-mqg-xl @h20`: round 6 rode a 1e-10 float-dust snap lead and its tail
+  won +14), so the filed remedy landed — **`finishLine(entrant)`**, the whole finishing tail run
+  once per hop arm, FINALS decide. The §5.16 h20 hair heals; goldens byte-identical (25/25, no
+  re-record); CPU +10.4% (cumulative ≈ +18% vs pre-§5.12 — reclaim is now the live §4 work). ONE
+  residual, structurally new and stopped-by-decision: `isc-mqg-xl @h20` −0.005 vs round 6 via the
+  recursive no-CS sub-solve's chain-candidate family — the named `--observe` trade for round 7.
+  **Next: ROUND 7 — re-gather the cells the fix moved** (identity filter re-run under the FINAL
+  engine → r7-resim.sh the changed list; cheap under DPS_CACHE) so the acceptance ledger reflects
+  the landed engine, then the round-diff vs round 6 must read `worse=0` (+ the one named observe).
+  All 7 cells
   = **groupSeeds ALONE** (groom exit exonerated by single-variable isolation). Mechanism: an
   ADDITIVE seed class wired through three EXCLUSIVE selection points (seed-fill eviction of
   randoms · top-6 snap displacement · winner-take-all into basinHop — h160: a +34 snap lead in a

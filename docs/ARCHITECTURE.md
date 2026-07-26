@@ -135,12 +135,12 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   after each cold start, read from the champion's own board — the h160-class descent-valley basin
   sits exactly there, one fast cast off any 5s-grid anchor) + the kill anchor, re-polishes, keeps
   strict improvements, to fixpoint. This is what guarantees "never worse than a plan reachable from
-  the search's own anchors" (the Phase-4 misses all fell to it). ★ **Two-arm hop when a group
-  entrant snap-leads** (PHASE9 §5.16): the base champion is hopped ALWAYS and the snap-leading group
-  entrant ADDITIONALLY, the old single-winner selection standing unless the base hop strictly beats
-  it (ties carry the group line — hop values tie EXACTLY on distinct layouts, measured). A raw/snap
-  lead is not a basin lead: at one round-6 cell the group entrant led the snap by +34 and its basin
-  dead-ended while the displaced base basin climbed +3594.
+  the search's own anchors" (the Phase-4 misses all fell to it). ★ **Two-arm hop + two-arm TAIL when
+  a group entrant snap-leads** (PHASE9 §5.16/§5.17): both arms are hopped, and the whole finishing
+  stack below is a callable **`finishLine(entrant)`** run once per arm — the FINAL values decide
+  (hop-exit selection measurably loses tails in both directions; a +5.85 hop win's tail lost −14).
+  Primary = the old-rule carry, ties keep it; the no-Cold-Snap comparison solve inside the tail is
+  arm-independent and memoized (`bestNMemo`), so the second arm costs groom passes, not a full solve.
 - Tie-break helpers (local closures): `anchored` ~1087, `overlapOf` ~1103, `joinsRow` ~1116,
   `counts`/`sameCounts` ~1122/1123, `clipOf` ~1126. `castVal`/`QTOL` ~1077/1078 (tie tolerance = one
   cast).
