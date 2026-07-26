@@ -588,3 +588,26 @@ detect, and deliberately creating a case for them to detect is not a cheap win.
 ⇒ **The right moment is the START of a phase that is establishing a baseline anyway, not the end of
 one that just gathered 36 tables.** It is now a ~10-minute job with the location, the mechanism and
 the genapl key all written down, plus a trust-anchor re-certification that §8.8 has made routine.
+
+## 8.16 ✅ The grading pipeline is integration-tested end to end, on real gear-B data
+
+Every step of §4's loop 3–5 now runs against real tables rather than against expectation, so the
+final analysis is not the first time any of it executes:
+
+```
+xval-bench-campaign.sh → tools/xval-results/*.txt
+  → xval-verify.mjs      independent recompute + verdict (exit 0/1/2)
+  → xval-collect.mjs     ledger + width distribution + plateau breadth  (--json → targets)
+  → xval-persist.mjs     the length-persistence prioritizer
+  → xval-band.mjs        §5's grading rule: is a column real at ≥3 seeds?
+```
+
+Run on the partial round, `verify` and `collect` agree on every headline number (the cross-check
+ACCEPTANCE demands), `persist` groups the kit families correctly and excludes boss tables, and `band`
+consumes the collector's own JSON without hand-editing.
+
+**And it already answers something.** The two widest columns in the partial set both survive a
+three-seed paired band — `isc+scb short @sim165 ← plan@245` at **+0.232 ± 0.090** and
+`@sim195 ← plan@215` at **+0.264 ± 0.100**, 3/3 seeds each. Under §5's pre-registered rule those are
+**real**, not noise. ⚠ Recorded as a *pipeline* result, **not a verdict**: this is 9 tables of 36 at
+`ITER=2000`, and a round is 36 tables at the round's own iteration count.
