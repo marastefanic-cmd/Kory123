@@ -682,3 +682,45 @@ user-directed and unchanged; `xval-band.mjs` prints that in its own footer. "Not
 statement about this instrument at this iteration count — it prioritizes work, it does not retire a
 column. The failure mode this paragraph exists to prevent is reporting *"N real, M not resolvable"*
 and quietly treating `M` as passed.
+
+## 8.19 ✅ THE STAMPS NOW HAVE AN INSTRUMENT — `tools/xval-stamp-audit.mjs`
+
+§8.6 stated the round-1 protocol "once" and put all of it on every `XVAL-DONE` line; `xval-results/
+README.md` says the `char=bench-gearB` stamp "**not the directory name**, is what tells the two
+baselines apart"; §8.5 warns that an `index.html` edit mid-round "would assemble a matrix from two
+engines". **Nothing read any of it.** `xval-verify.mjs` recomputes the invariants from the matrices
+and `xval-collect.mjs` builds the ledger — neither asks whether the 36 files in front of it are the
+36 cells of *one* round. ACCEPTANCE's round-5 certification paragraph did exactly these checks **by
+hand, once**, which makes them a property of that round rather than of the corpus.
+
+The gate asserts, in order: the **expected cell set** (derived from the campaign's own job-list
+formula); **one protocol** across `var/emit/iter/simseed/mana/char/wasm/tool/pool`; `char=bench-gearB`
++ `emit=fire` + `artifact=0` on every table; `wj`/`targets` matching each cell's shape; every table's
+haste grid **equal to the committed set for its kit**; `_prestack:0` on every plan row; and no
+NUL/NaN/undefined. Exit `0` / `1` / `2` on the shared contract, with **a partial directory exit 2** —
+the judgement the README says no tool could make for you, reachable only because the cell set is
+derived rather than counted.
+
+**Controlled in both directions before being believed**, which is the only reason it is in the chain:
+
+| control | expected | got |
+|---|---|---|
+| the five complete `mqg+skull` cells | 0 | **0** |
+| mutated `wasm=` on one table | 1 | **1** — `MIXED PROTOCOL on wasm` |
+| `char=bench-gearA` on one table | 1 | **1** — `MIXED PROTOCOL on char` |
+| a `_prestack:1` plan row | 1 | **1** — names the ★★★ prepull rule |
+| the coarse `[0,100,200,300,400]` grid | 1 | **1** — ≠ the committed set for the kit |
+| `wj=2` on a class table | 1 | **1** — two instruments pooled |
+| one table deleted | 2 | **2** |
+| injected NUL bytes | 2 | **2** |
+| `XVAL-DONE` stripped | 2 | **2** |
+| **the whole archived gear-A round** (36 correctly-named tables) | 1 | **1** — the gear-B stamp set is absent |
+| `[null]` press time · `[[10,null]]` nested | 1 | **1** · **1** |
+
+★ **And the gear-A control caught a bug in the tool itself** — the fourth instance this phase of an
+instrument aimed slightly wrong producing a confident verdict (§8.10's `grep -c $'\0'`, §8.13's Cold
+Snap control, §8.14's Potency-inclusive crit). `_intermissions` and `_aoe` are arrays of **pairs**, so
+a flat `some(x => !isFinite(x))` reported **every boss plan row** as non-finite: 157 "violations", 96
+of them fictional, and the seven real ones (the absent gear-B stamps) were buried under them. Fixed by
+flattening — and because that *loosens* a check, two further controls were added to prove it still
+fires at both nesting depths. **A relaxed guard has to re-earn its negative control.**

@@ -157,6 +157,30 @@ the authoritative row-by-row ledger.
   `totalCols === 0 ⇒ PASS` branch. **Lesson: an instrument that can report PASS on no data is not an
   instrument.** The bug never bit in practice only because the documented command above passes the
   directory that happens to equal the default.
+- **`tools/xval-stamp-audit.mjs`** — **the round's PROVENANCE gate: is this one round, under one
+  protocol, over the right cells?** Run it *before* `xval-verify`. Everything it checks was already a
+  written rule with **no instrument behind it** — the round-5 certification paragraph below did all of
+  it **by hand, once**, and `tools/xval-results/README.md`'s "*that stamp, not the directory name, is
+  what tells the two baselines apart*" was read by nothing at all. It asserts: the expected cell set
+  (derived from the campaign's own job-list formula, so changing the kit list makes it disagree loudly
+  rather than grade a different round); **one protocol** — `var/emit/iter/simseed/mana/char/wasm/tool/
+  pool` identical across every table, which is how a mid-round `index.html` edit or a stray gear-A
+  table would actually show; `char=bench-gearB` and `artifact=0` on every table; `wj` and `targets`
+  matching the cell's shape (class vs boss, AoE vs not); each table's haste grid **equal to the
+  committed set for its kit** (an empty `HASTES` substitutes the coarse `[0,100,200,300,400]` default
+  and would report a verdict about adaptation for a kit whose breakpoints were never sampled);
+  `_prestack:0` on every plan row (the ★★★ never-prepull rule); and no NUL/NaN/undefined. Exit `0`
+  clean · `1` graded and failing · `2` could not grade — **a partial directory is exit 2**, which is
+  the one judgement the README says no tool could make for you, made possible by deriving the cell set.
+  Controlled in both directions before being believed: a **positive** control on the five complete
+  `mqg+skull` cells (exit 0), and **eleven** negatives each required to name the right thing — mutated
+  `wasm=`, `char=bench-gearA`, a `_prestack:1` row, the coarse default grid, `wj=2` on a class table, a
+  deleted table, injected NULs, a stripped `XVAL-DONE`, and the **whole archived gear-A round**
+  (36 correctly-named tables ⇒ exit 1, refused as a different baseline). ⚠ That last control is also
+  what caught a bug in the tool itself: `_intermissions`/`_aoe` are arrays of **pairs**, so the first
+  finiteness check reported every boss plan row as non-finite — 96 fictional violations. Fixed by
+  flattening, and two further controls (`[null]` flat, `[[10,null]]` nested) prove the loosened check
+  still fires. **It says nothing about the model** — that is the three tools below.
 - **`tools/xval-verify.mjs`** — the deterministic invariant **recompute** (restart-proof, unlike an LLM
   adversary): re-derives monoDip and diagonal dominance from every matrix and cross-checks each file's
   reported `diagWorst`. Run it before believing any ledger. **It now ends in a verdict with an exit

@@ -21,6 +21,13 @@
 > identifiable by `char=bench-gearB`; **that stamp, not the directory name, is what tells the two
 > baselines apart.**
 >
+> ★★ **AND IT IS NOW READ BY AN INSTRUMENT — run it first:** `node tools/xval-stamp-audit.mjs
+> tools/xval-results` asserts one protocol across every table, the expected 36-cell set, each kit's
+> committed haste grid, `_prestack:0` on every plan row, and no NUL/NaN. It refuses the archived
+> gear-A round outright. Exit `0`/`1`/`2`; **a partial directory is exit 2**, so the "do not read a
+> verdict off a partial directory" warning below is no longer purely a matter of your own judgement
+> (PHASE10 §8.19).
+>
 > ⚠ **NUL bytes mean the table is CORRUPT — two processes wrote it.** `run_cell` opens with `>`, which
 > truncates, so a second campaign pointed at this directory cuts a file the first has open and the gap
 > fills with NULs. It happened once (07-26) and the corrupted table **still parsed** — header, ten plan

@@ -30,7 +30,8 @@ bash tools/xval-status.sh          # processes · tables complete · cache size
 
 1. **Wait for 36 tables**, then grade — the chain is validated end to end on real data:
    ```
-   node tools/xval-verify.mjs  tools/xval-results     # RUN FIRST — independent recompute, exit 0/1/2
+   node tools/xval-stamp-audit.mjs tools/xval-results # RUN FIRST — is this ONE round, ONE protocol?
+   node tools/xval-verify.mjs  tools/xval-results     # independent invariant recompute, exit 0/1/2
    node tools/xval-collect.mjs tools/xval-results     # ledger + width distribution + plateau breadth
    node tools/xval-persist.mjs tools/xval-results     # length-persistence prioritizer
    node tools/xval-collect.mjs tools/xval-results --json /tmp/targets.json
