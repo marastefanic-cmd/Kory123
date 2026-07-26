@@ -3017,6 +3017,12 @@ zero data and §21.5's vacuous F3: **an instrument whose failure mode looks like
 
 - Fixed by adding the field, with the rule written at the function: *every cfg field that can change
   a score must appear in the signature.*
+- ★★ **AND IT BIT A SECOND TIME, IN THE SAME SESSION.** The first fix stored
+  `cfg.boundaryCharge ? 1 : 0` — which collapses `"value"`, `"haste"` and `true` onto one key, so a
+  three-variant comparison returned **three identical columns** (PHASE8 §25.4). ⇒ the rule is not
+  "remember to add your field", it is **"the signature must preserve the field's DISTINCTIONS"** —
+  a boolean cast of a multi-valued field is itself a collision, and it fails exactly as silently as
+  omitting the field. Store the value (`cfg.boundaryCharge || 0`), not a truthiness flag.
 - ⚠ **The trap is structural, not a one-off.** The list is hand-maintained and nothing checks it
   against the fields `simulateRaw` actually reads. A cheap guard for the §4 catalogue: in a debug
   build, `Proxy`-wrap `cfg` inside `simulateRaw`, collect the keys actually read, and assert they

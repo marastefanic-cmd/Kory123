@@ -3001,13 +3001,13 @@ the `ON` call hit the `OFF` entry and returned it.
 
 | T | sim % | model OFF | model ON | gap OFF | **gap ON** | |
 |---|---|---|---|---|---|---|
-| 40 | +7.850 | +7.653 | +8.317 | −0.197 | **+0.467** | worse (sign flips) |
-| 70 | +5.666 | +5.605 | +5.888 | −0.061 | **+0.222** | worse |
-| 100 | +4.217 | +4.129 | +4.336 | −0.088 | **+0.119** | worse |
-| 140 | +3.116 | +3.057 | +3.208 | −0.059 | **+0.092** | worse |
-| 180 | +2.435 | +2.222 | +2.338 | −0.213 | **−0.097** | *better* |
-| 205 | +2.387 | +2.228 | +1.968 | −0.159 | **−0.419** | worse |
-| 229 | +0.360 | −0.037 | −0.096 | −0.397 | **−0.456** | worse |
+| 40 | +7.850 | +7.653 | +8.259 | −0.197 | **+0.409** | worse (sign flips) |
+| 70 | +5.666 | +5.605 | +5.852 | −0.061 | **+0.186** | worse |
+| 100 | +4.217 | +4.129 | +4.309 | −0.088 | **+0.092** | worse |
+| 140 | +3.116 | +3.057 | +3.188 | −0.059 | **+0.072** | worse |
+| 180 | +2.435 | +2.222 | +2.323 | −0.213 | **−0.112** | *better* |
+| 205 | +2.387 | +2.228 | +2.001 | −0.159 | **−0.386** | worse |
+| 229 | +0.360 | −0.037 | −0.089 | −0.397 | **−0.449** | worse |
 
 **6 of 7 worse.** And the failure mode is now visible in a way the proxy could not show: the charge
 **overshoots at short fights** — at T=40 it does not merely fail to close the −0.197 gap, it drives
@@ -3015,7 +3015,47 @@ it to **+0.467**, flipping the sign and increasing the magnitude. That is the §
 attacked from the wrong end: the charge is largest exactly where the bias is *already* explained
 least by it. At the headline cell it simply deepens the deficit (−0.397 → −0.456).
 
-### 25.4 Verdict and status
+### 25.4 ⚠ Two implementation errors the gate's own audit caught — the verdict survives both
+
+The first version of this table was WRONG in detail (T=40 read `+0.467`, T=229 `−0.456`). Both
+defects were found by auditing the implementation *after* the gate failed, on the principle that a
+failing gate is only a result if the thing being gated is correct.
+
+1. **The `dmg`-window premium assumed a pure multiplier.** It used `avgDmg × (1 − 1/value)`, but the
+   engine pools Arcane Power **additively** with the Tirisfal 2pc term — damage carries
+   `(dmgMult + t5add)`, so with `t5two` on (which the B2 config sets) AP's true premium fraction is
+   `1 − 1.2/1.5 = 0.200`, not `1 − 1/1.3 = 0.231`: **overstated by 15.4 %**, on exactly the window
+   driving the T=40 overshoot. Fixed by pricing every premium as a **counterfactual through the
+   engine's own damage formula** (`dmgOf`, called with `w` removed from `sp`/`dmgMult`) rather than
+   any closed form — correct by construction for AB, AoE and burn segments alike.
+2. **`cfgSigOf` bit the SECOND time, in the same session.** After §25.2's fix the signature stored
+   `cfg.boundaryCharge ? 1 : 0`, which collapses `"value"`, `"haste"` and `true` to the same key —
+   so a three-variant comparison returned **three identical columns**. Fixed to store the value
+   (`cfg.boundaryCharge || 0`). ⇒ **The trap is not "remember to add your field"; it is "the
+   signature must preserve the field's DISTINCTIONS."** A boolean cast is itself a collision.
+
+**Neither changed the verdict**: 6/7 worse before and after. That the sign survives a 15 % premium
+correction is the strongest form of the result — it is not sitting on a knife-edge.
+
+### 25.5 ✗ The HASTE half is not a count mismatch — attempted, measured, and REMOVED
+
+§13.8 prices the family as `L − U` (value over-credit minus haste under-credit) and found h70's net
+≈0 *by cancellation*, so a value-only charge is arguably the wrong object. The haste half was
+therefore implemented symmetrically — `(nModel − nSim) × cast damage`, with `nSim` counting cast
+**starts** inside the window (§3b-note: haste is read at start and frozen).
+
+**It is physically unsound and the numbers say so immediately:** it reads **−3.139 pp at T=40**, an
+order of magnitude past anything the family can be worth. The reason is structural — **for a haste
+window a cast that "does not fit" is not LOST**; it happens after the window at the slower rate. The
+value case has no such displacement (a cast completing outside the window simply gets no premium),
+which is why the same form is right there and wrong here. The haste error is a *rate* effect across
+the boundary, which the continuous integral already largely captures, not a count mismatch.
+
+**Removed from `index.html`** rather than shipped behind a flag, so nobody can select an unsound
+term. Recorded here because it is a real constraint on any future attempt: **do not model the haste
+half by analogy to the value half.** `cfg.boundaryCharge` is therefore value-only = §13.8's `L`.
+
+### 25.6 Verdict and status
 
 - **The sign gate FAILS. The charge ships OFF and must stay off** until a sim gate exists to justify
   it on fidelity grounds *other* than B2 ranking. Three independent measurements now agree on the
