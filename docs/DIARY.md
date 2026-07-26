@@ -330,6 +330,54 @@ hit cap 16). The real negative control — break *one* side — then failed as i
 
 ---
 
+### 07-26 — the bench becomes the practice: `tools/bench.mjs`
+
+The user asked whether the new gear-agnostic approach should become the standing way this project
+sims — noting that phases 6/7/8 kept *setting it up again* and that the repo held no consistent tool.
+Checking rather than agreeing produced a better answer than either of us had:
+
+- **`docs/BENCH.md` already declared exactly that**, written hours earlier the same day: it supersedes
+  the ad-hoc reference-export convention, **reverses the "never commit an export" policy** (that policy
+  was what made the rig unreproducible when a container recycled), and specifies
+  difference-in-differences as the primary normalisation.
+- **But nothing implemented it.** No tool read `tools/bench/export.json`; all 15 sim-capable tools
+  still resolved `RUNNER` + `EXPORT_BASE` out of a session scratchpad. The design had been standing
+  practice on paper for a few hours and zero runs.
+
+So the answer was not "adopt the new thing" but **"implement the thing you already decided"** —
+`tools/bench.mjs`, BENCH.md §2.1 with a never-press control, a seed band on the *paired* difference,
+and the model's own Δ printed alongside with a sign-agreement check.
+
+**What the sim/ work actually contributed was the missing half: zero setup.** BENCH.md §5 requires
+that "a fresh container must be able to produce a number from the repo alone" — true only in the sense
+that you could *rebuild* the runner (clone, protoc, `go build`, ~2 min + network). With the committed
+`sim/sim.wasm` it is now literally true: **~10 s, cold, `node tools/bench.mjs --preset X --vs naive`**.
+The native runner keeps exactly one job — `tests/sim-request.mjs`, the gate that proves the wasm and
+the native path agree.
+
+**Two traps found while building it, both by the repo's own prior scar tissue:**
+
+1. **The model cfg must describe the character the sim runs.** The first working version simmed gear-B
+   while scoring the model at the *preset's* gear (sp 1387, no T5) — reproducing PHASE8 §6/§7's
+   defect, where "agrees/disagrees" compares two different mages. Fixed by having each character carry
+   its model parameters and **spreading `REF` from `tools/reference-gear.mjs`** rather than re-typing
+   it, exactly as that file's own ★ instructs. The model Δ moved 1.434% → 1.314% on the same duel when
+   the operating point was corrected — a real repricing that had been silently wrong.
+2. **The tool finished its work and then hung** at 1.9% CPU, looking (through `tail`) exactly like a
+   slow tool. `breathe()`'s MessageChannel and the Go runtime inside the wasm both keep node's event
+   loop ref'd. `tools/plan-sweep.mjs` had already met this and documented the fix — *"a gate that
+   HANGS reads as a slow gate, which is the same false signal as one that passes wrongly"* — so the
+   fix was one `process.exit(0)` and a comment pointing at its ancestor.
+
+**One conflict was left open rather than silently resolved.** BENCH.md §3's RNG table lists `--var 0`
+as "standard for gates"; TOOLING ★★ says `--var 0` quantizes DPS to a staircase and has faked a result
+twice. §2.1's control does not rescue it (the difference of two staircases is still a staircase, and
+quantization is not zero-mean, so pairing cannot cancel it). `tools/bench.mjs` defaults to **0.5** —
+TOOLING's rule, and what the website uses, so both fronts agree — and the conflict is now written into
+BENCH.md §3 as a **user call**, to be resolved there and in `sim/benchmark.mjs` in one edit.
+
+---
+
 ## The corrections ledger — what we believed, and what disproved it
 
 The most valuable part of this diary. Each entry: the belief, why we held it, what overturned it, and

@@ -154,6 +154,11 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/RULES.md` — the theorycraft rules, each with its sim evidence (derived from MECHANICS.md).
 - `docs/ARCHITECTURE.md` — `index.html` internals and the optimizer pass order.
 - `docs/TOOLING.md` — the wowsims sim harness (how to verify a plan) and its gotchas.
+- `docs/BENCH.md` — **the standing sim practice**, and `tools/bench.mjs`, the tool that implements it.
+  **Reach for `node tools/bench.mjs --preset X --vs naive` before building any rig**: it runs the
+  committed `sim/sim.wasm` (no clone, no protoc, no `go build`, no `RUNNER`/`EXPORT_BASE`), prints the
+  sim Δ with a seed band next to the model's Δ, and shares its whole backbone with the website's
+  verification button — so one change moves both fronts.
 - `sim/README.md` — the **in-page** sim verifier: the shared chain (`planspec` → `genapl-core` →
   `simreq` → `sim.wasm`), the gear-agnostic reference character, the wasm-equals-native proof, and the
   rebuild recipe. The terminal harness and the button are ONE code path by construction.

@@ -59,6 +59,27 @@ seed, common random numbers) is reported.** Full rationale and the known gaps: `
 genapl press (both arms run without them, and the UI names what it dropped); Burn phases have no
 encounter knob at all, so the button declines.
 
+## ★ THE AGENT-FACING BENCH: `tools/bench.mjs` (07-26) — start here, it needs no rig
+
+Before building a runner or hand-rolling an experiment, try:
+
+```
+node tools/bench.mjs --preset "2:00 lust 0:05" --vs naive      # ~10s, cold, from the repo alone
+```
+
+It solves the plan with the real engine, transcribes it, sims it against a **never-press control**
+(BENCH.md §2.1's difference-in-differences), and prints the sim Δ with a seed band **next to the
+model's Δ**, flagging a sign disagreement as a finding. It runs the **committed `sim/sim.wasm`**, so
+there is no clone / protoc / go build / scratchpad probe and no `RUNNER`+`EXPORT_BASE` to resolve —
+which is what phases 6–8 spent real time re-establishing every session. It is also the SAME chain the
+website's button runs (§ below), so an agent's number and a user's number cannot drift apart.
+Full contract, the two characters, and why the model cfg is forced to match the simmed character:
+`docs/BENCH.md` §6.
+
+The native runner is still needed for exactly one thing: `tests/sim-request.mjs`, the gate that proves
+the wasm path and the native path agree. Build it per "Building the runner" below when you need to
+re-certify, not to run an experiment.
+
 ## Methodology — the model is the objective, the sim calibrates it
 
 The planner already knows, deterministically, every cast, every buff window, and every timing in a

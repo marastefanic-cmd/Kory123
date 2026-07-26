@@ -27,6 +27,14 @@ import { BENCH, runnerFlags } from '../sim/benchmark.mjs';
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const EXPORT = path.join(REPO, 'sim/model-ref.json');
 const TEMPLATE_PATH = path.join(REPO, 'sim/model-ref-request.json');
+// Every committed character/template PAIR is gated the same way: a template is a generated artifact,
+// and a generated artifact that nothing regenerates is a stale artifact waiting to happen.
+const CHARACTERS = [
+  { name: 'model-ref (website + tools/bench.mjs --char model-ref)', export: EXPORT, template: TEMPLATE_PATH },
+  { name: 'bench gear-B (tools/bench.mjs default, BENCH.md)',
+    export: path.join(REPO, 'tools/bench/export.json'),
+    template: path.join(REPO, 'tools/bench/export-request.json') },
+];
 const RUNNER = process.env.RUNNER;
 
 if (!RUNNER || !fs.existsSync(RUNNER)) {
@@ -100,22 +108,24 @@ const diff = (a, b, p = '', out = []) => {
   }
 }
 
-// ── 1. template freshness ─────────────────────────────────────────────────────────────────────────
-{
+// ── 1. template freshness, for every committed character ─────────────────────────────────────────
+for (const ch of CHARACTERS) {
+  if (!fs.existsSync(ch.template)) { failures++; console.error(`FAIL  ${ch.name}: ${path.relative(REPO, ch.template)} is missing`); continue; }
+  const tpl = JSON.parse(fs.readFileSync(ch.template, 'utf8'));
   const dump = path.join(tmp, 'fresh.json');
-  execFileSync(RUNNER, ['--export', EXPORT, '--dur', String(template.encounter.duration),
-    '--var', String(template.encounter.durationVariation), '--iter', String(template.simOptions.iterations),
-    '--seed', String(template.simOptions.randomSeed), '--dumpreq', dump, '--tag', 't', '--quiet'],
+  execFileSync(RUNNER, ['--export', ch.export, '--dur', String(tpl.encounter.duration),
+    '--var', String(tpl.encounter.durationVariation), '--iter', String(tpl.simOptions.iterations),
+    '--seed', String(tpl.simOptions.randomSeed), '--dumpreq', dump, '--tag', 't', '--quiet'],
     { encoding: 'utf8', stdio: ['ignore', 'ignore', 'ignore'] });
   const fresh = JSON.parse(fs.readFileSync(dump, 'utf8'));
-  const d = diff(normalize(fresh), normalize(template));
+  const d = diff(normalize(fresh), normalize(tpl));
   if (d.length) {
     failures++;
-    console.error('FAIL  model-ref-request.json is STALE — regenerate it from model-ref.json:');
-    console.error(`      ${path.basename(RUNNER)} --export sim/model-ref.json --dur ${template.encounter.duration} --var ${template.encounter.durationVariation} --iter ${template.simOptions.iterations} --seed ${template.simOptions.randomSeed} --dumpreq sim/model-ref-request.json --quiet`);
+    console.error(`FAIL  ${ch.name}: ${path.relative(REPO, ch.template)} is STALE — regenerate it:`);
+    console.error(`      runner --export ${path.relative(REPO, ch.export)} --dur ${tpl.encounter.duration} --var ${tpl.encounter.durationVariation} --iter ${tpl.simOptions.iterations} --seed ${tpl.simOptions.randomSeed} --dumpreq ${path.relative(REPO, ch.template)} --quiet`);
     for (const line of d.slice(0, 12)) console.error('        ' + line);
   } else {
-    console.log('PASS  template matches the runner\'s own --dumpreq for the committed character');
+    console.log(`PASS  ${ch.name}: template is a fresh --dumpreq of its export`);
   }
 }
 

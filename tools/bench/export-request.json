@@ -1,0 +1,484 @@
+{
+  "requestId": "",
+  "raid": {
+    "parties": [
+      {
+        "players": [
+          {
+            "apiVersion": 13,
+            "name": "Player",
+            "race": "RaceTroll",
+            "class": "ClassMage",
+            "equipment": {
+              "items": [
+                {
+                  "id": 30206,
+                  "randomSuffix": 0,
+                  "enchant": 3002,
+                  "gems": [
+                    34220,
+                    28120
+                  ]
+                },
+                {
+                  "id": 30015,
+                  "randomSuffix": 0,
+                  "enchant": 0,
+                  "gems": []
+                },
+                {
+                  "id": 30210,
+                  "randomSuffix": 0,
+                  "enchant": 2982,
+                  "gems": [
+                    28123,
+                    30600
+                  ]
+                },
+                {
+                  "id": 28797,
+                  "randomSuffix": 0,
+                  "enchant": 2621,
+                  "gems": []
+                },
+                {
+                  "id": 30196,
+                  "randomSuffix": 0,
+                  "enchant": 2661,
+                  "gems": [
+                    32638,
+                    24047,
+                    24065
+                  ]
+                },
+                {
+                  "id": 32820,
+                  "randomSuffix": 0,
+                  "enchant": 2650,
+                  "gems": [
+                    24047
+                  ]
+                },
+                {
+                  "id": 29987,
+                  "randomSuffix": 0,
+                  "enchant": 2937,
+                  "gems": []
+                },
+                {
+                  "id": 30038,
+                  "randomSuffix": 0,
+                  "enchant": 0,
+                  "gems": [
+                    24065,
+                    30588
+                  ]
+                },
+                {
+                  "id": 30207,
+                  "randomSuffix": 0,
+                  "enchant": 2748,
+                  "gems": [
+                    28118
+                  ]
+                },
+                {
+                  "id": 30067,
+                  "randomSuffix": 0,
+                  "enchant": 2656,
+                  "gems": []
+                },
+                {
+                  "id": 29302,
+                  "randomSuffix": 0,
+                  "enchant": 2928,
+                  "gems": []
+                },
+                {
+                  "id": 29287,
+                  "randomSuffix": 0,
+                  "enchant": 2928,
+                  "gems": []
+                },
+                {
+                  "id": 29370,
+                  "randomSuffix": 0,
+                  "enchant": 0,
+                  "gems": []
+                },
+                {
+                  "id": 30720,
+                  "randomSuffix": 0,
+                  "enchant": 0,
+                  "gems": []
+                },
+                {
+                  "id": 32055,
+                  "randomSuffix": 0,
+                  "enchant": 2671,
+                  "gems": []
+                },
+                {
+                  "id": 0,
+                  "randomSuffix": 0,
+                  "enchant": 0,
+                  "gems": []
+                },
+                {
+                  "id": 28783,
+                  "randomSuffix": 0,
+                  "enchant": 0,
+                  "gems": []
+                }
+              ]
+            },
+            "consumables": {
+              "potId": 22832,
+              "flaskId": 0,
+              "battleElixirId": 28103,
+              "guardianElixirId": 32067,
+              "foodId": 27657,
+              "conjuredId": 0,
+              "explosiveId": 0,
+              "superSapper": true,
+              "goblinSapper": false,
+              "mhImbueId": 25122,
+              "ohImbueId": 0,
+              "drumsId": "DrumsUnknown",
+              "scrollAgi": false,
+              "scrollStr": false,
+              "scrollInt": false,
+              "scrollSpi": true,
+              "scrollArm": false,
+              "petScrollAgi": false,
+              "petScrollStr": false,
+              "nightmareSeed": false,
+              "petFoodId": 0,
+              "potions": [],
+              "conjuredItems": []
+            },
+            "bonusStats": {
+              "apiVersion": 13,
+              "stats": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ],
+              "pseudoStats": [
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0,
+                0
+              ]
+            },
+            "enableItemSwap": false,
+            "itemSwap": null,
+            "buffs": {
+              "blessingOfKings": true,
+              "blessingOfSalvation": false,
+              "blessingOfSanctuary": false,
+              "blessingOfWisdom": "TristateEffectImproved",
+              "blessingOfMight": "TristateEffectMissing",
+              "shadowPriestDps": 1000,
+              "unleashedRage": false,
+              "innervates": 1,
+              "powerInfusions": 0
+            },
+            "mage": {
+              "options": {
+                "classOptions": {
+                  "defaultMageArmor": "MageArmorMageArmor"
+                }
+              }
+            },
+            "talentsString": "2500052300030150330125--053500031003001",
+            "profession1": "Enchanting",
+            "profession2": "Engineering",
+            "cooldowns": {
+              "cooldowns": [],
+              "hpPercentForDefensives": 0
+            },
+            "rotation": {
+              "type": "TypeAPL",
+              "simple": null,
+              "prepullActions": [],
+              "priorityList": [
+                {
+                  "hide": false,
+                  "notes": "",
+                  "action": {
+                    "condition": null,
+                    "castSpell": {
+                      "spellId": {
+                        "spellId": 30451,
+                        "tag": 0,
+                        "rank": 0
+                      },
+                      "target": null
+                    }
+                  }
+                }
+              ],
+              "groups": [],
+              "valueVariables": []
+            },
+            "reactionTimeMs": 0,
+            "channelClipDelayMs": 0,
+            "inFrontOfTarget": false,
+            "distanceFromTarget": 20,
+            "darkIntentUptime": 0,
+            "challengeMode": false,
+            "healingModel": {
+              "hps": 0,
+              "cadenceSeconds": 0,
+              "cadenceVariation": 0,
+              "absorbFrac": 0,
+              "burstWindow": 0,
+              "inspirationUptime": 0
+            },
+            "database": null
+          }
+        ],
+        "buffs": {
+          "ferociousInspiration": 0,
+          "bloodPact": "TristateEffectMissing",
+          "moonkinAura": "TristateEffectMissing",
+          "leaderOfThePack": "TristateEffectMissing",
+          "sanctityAura": "TristateEffectMissing",
+          "devotionAura": "TristateEffectMissing",
+          "retributionAura": "TristateEffectMissing",
+          "concentrationAura": "TristateEffectMissing",
+          "trueshotAura": false,
+          "draeneiRacialMelee": false,
+          "draeneiRacialCaster": false,
+          "drums": "DrumsUnknown",
+          "atieshDruid": 0,
+          "atieshMage": 0,
+          "atieshPriest": 0,
+          "atieshWarlock": 0,
+          "braidedEterniumChain": false,
+          "eyeOfTheNight": false,
+          "chainOfTheTwilightOwl": false,
+          "jadePendantOfBlasting": false,
+          "manaSpringTotem": "TristateEffectRegular",
+          "manaTideTotems": 1,
+          "totemOfWrath": 0,
+          "wrathOfAirTotem": "TristateEffectRegular",
+          "snapshotImprovedWrathOfAirTotem": false,
+          "graceOfAirTotem": "TristateEffectMissing",
+          "strengthOfEarthTotem": "TristateEffectMissing",
+          "soeEnhancement2pt4": false,
+          "snapshotImprovedStrengthOfEarthTotem": false,
+          "tranquilAirTotem": false,
+          "windfuryTotem": "TristateEffectMissing",
+          "totemTwisting": false,
+          "battleShout": "TristateEffectMissing",
+          "bsSolarianSapphire": false,
+          "snapshotBsSolarianSapphire": false,
+          "snapshotBsT2": false,
+          "snapshotBsBoomingVoiceRank": 0,
+          "commandingShout": "TristateEffectMissing",
+          "frostResistanceAura": false,
+          "frostResistanceTotem": false,
+          "natureResistanceTotem": false,
+          "fireResistanceTotem": false,
+          "fireResistanceAura": false,
+          "shadowResistanceAura": false,
+          "aspectOfTheWild": false
+        }
+      }
+    ],
+    "numActiveParties": 0,
+    "buffs": {
+      "arcaneBrilliance": true,
+      "powerWordFortitude": "TristateEffectImproved",
+      "shadowProtection": true,
+      "divineSpirit": "TristateEffectMissing",
+      "giftOfTheWild": "TristateEffectImproved",
+      "thorns": "TristateEffectMissing",
+      "bloodlust": true
+    },
+    "debuffs": {
+      "judgementOfWisdom": true,
+      "judgementOfLight": false,
+      "improvedSealOfTheCrusader": "TristateEffectImproved",
+      "jocRetribution2pt4": true,
+      "misery": true,
+      "curseOfElements": "TristateEffectImproved",
+      "isbUptime": 0.59,
+      "shadowWeaving": false,
+      "improvedScorch": false,
+      "wintersChill": false,
+      "bloodFrenzy": false,
+      "giftOfArthas": false,
+      "mangle": false,
+      "exposeArmor": "TristateEffectMissing",
+      "faerieFire": "TristateEffectMissing",
+      "sunderArmor": false,
+      "curseOfRecklessness": false,
+      "huntersMark": "TristateEffectMissing",
+      "exposeWeaknessUptime": 0,
+      "exposeWeaknessHunterAgility": 0,
+      "demoralizingRoar": "TristateEffectMissing",
+      "demoralizingShout": "TristateEffectMissing",
+      "thunderClap": "TristateEffectMissing",
+      "insectSwarm": false,
+      "scorpidSting": false,
+      "shadowEmbrace": false,
+      "screech": false,
+      "hemorrhageUptime": 0
+    },
+    "tanks": [],
+    "staggerStormstrikes": false,
+    "targetDummies": 0
+  },
+  "encounter": {
+    "apiVersion": 13,
+    "duration": 300,
+    "durationVariation": 0.5,
+    "executeProportion20": 0.2,
+    "executeProportion25": 0.25,
+    "executeProportion35": 0.35,
+    "executeProportion45": 0.45,
+    "executeProportion90": 0.9,
+    "useHealth": false,
+    "targets": [
+      {
+        "id": 31146,
+        "name": "Raid Target",
+        "level": 73,
+        "mobType": "MobTypeMechanical",
+        "stats": [
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          320,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          54,
+          0,
+          0,
+          0,
+          7685,
+          0,
+          6070400,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0,
+          0
+        ],
+        "minBaseDamage": 15113,
+        "damageSpread": 0.5,
+        "swingSpeed": 2,
+        "dualWield": false,
+        "dualWieldPenalty": false,
+        "parryHaste": true,
+        "suppressDodge": false,
+        "canCrush": true,
+        "spellSchool": "SpellSchoolPhysical",
+        "tankIndex": 0,
+        "secondTankIndex": 0,
+        "disabledAtStart": false,
+        "targetInputs": []
+      }
+    ]
+  },
+  "simOptions": {
+    "iterations": 1,
+    "randomSeed": "11",
+    "debug": false,
+    "debugFirstIteration": false,
+    "isTest": false,
+    "saveAllValues": false,
+    "interactive": false,
+    "useLabeledRands": false
+  },
+  "type": "SimTypeUnknown"
+}

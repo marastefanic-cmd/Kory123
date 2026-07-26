@@ -1,6 +1,8 @@
 # BENCH.md — the gear-agnostic, RNG-minimal sim bench
 
-**Status: DESIGN + baseline change, 2026-07-26. Supersedes the ad-hoc "reference export" convention.**
+**Status: IMPLEMENTED, 2026-07-26 — `tools/bench.mjs`. Supersedes the ad-hoc "reference export"
+convention.** The design below stood for hours with nothing reading `tools/bench/export.json`; it now
+has a tool, and that tool shares its backbone with the website's verification button (§6).
 
 ## 0. Why this exists
 
@@ -75,7 +77,7 @@ When a single *absolute* comparable number is wanted across trinket sets, equip 
 
 | source | action | note |
 |---|---|---|
-| fight-length variation | **`--var 0`** | already standard for gates |
+| fight-length variation | ⚠ **contested — see below** | this table said `--var 0`; `tools/bench.mjs` defaults to **0.5** |
 | Tirisfal 4pc `+70 SP on crit` (37444) | **replace with flat SP** — drop the 4pc, inject `+70 × uptime ≈ +63` via `bonusStats` | PHASE8 §7 already treats it as *effective SP ≈1450* on the model side; this makes the sim agree deterministically instead of in expectation |
 | Ashtongue (ATI) | **keep excluded**, and when it is finally modelled, flatten it the same way | already out of the xval kits (a random proc needing separate treatment) |
 | base-damage roll, partial resist, hit roll | **leave** | zero-mean and CRN-paired; they cancel in an A/B |
@@ -83,6 +85,23 @@ When a single *absolute* comparable number is wanted across trinket sets, equip 
 
 **The rule:** flatten a random source when it is a *stat* the presses do not interact with; keep it
 when it is *coupled to the mechanic under test*. Crit is coupled (via AoE); the 4pc SP proc is not.
+
+### ⚠ OPEN CONFLICT — `--var 0` here vs TOOLING ★★ (raised 07-26, a USER CALL, not resolved)
+
+This table lists `--var 0` as "standard for gates". `docs/TOOLING.md` ★★ says the opposite in strong
+terms: with zero jitter every iteration is the *same fight*, so reported DPS is
+`(integer cast count × avg damage)/T` — a **staircase, not a function** — and it has **faked a result
+twice** (PHASE8 §13's "haste buffs are exempt from the floor law", and half of §14's round-4 table).
+
+**§2.1's control does not rescue it.** The difference of two staircases is still a staircase: if the
+control and the arm land on the same cast count, a real sub-cast marginal reads as exactly 0; if they
+straddle a step, it reads as a whole cast. Quantization is not zero-mean, so pairing cannot cancel it.
+
+**`tools/bench.mjs` therefore defaults to `--var 0.5`** (TOOLING's rule, and the value the website's
+button uses, so both fronts agree), and takes `--var 0` explicitly for a deliberate count-preserving
+read. This is deliberately left as a **conflict on the record rather than a silent overrule** — if the
+`--var 0` line here reflects a decision made with evidence this file does not cite, resolve it here and
+in `sim/benchmark.mjs` in the same edit.
 
 ## 3b. ★ What the export actually contributes — fixed vs varied vs ignored
 
@@ -354,3 +373,49 @@ any hit-rating change moves them. Gear-A tables stay in `xval-results-archive/`.
 **A fresh container must be able to produce a number from the repo alone.** That now holds:
 `wowsims/tbc-new` @ `ade9f39` + `tools/wowsims-patches/*` + `tools/bench/export.json`. If any future
 change breaks that chain, fix the chain — do not work around it in a scratchpad.
+
+## 6. ★ THE TOOL — `tools/bench.mjs` (implements §2.1, shares the website's backbone)
+
+```
+node tools/bench.mjs --list                                  what presets exist
+node tools/bench.mjs --preset "5:00 lust 0:05"               what the model's plan is WORTH
+node tools/bench.mjs --preset "2:00 lust 0:05" --vs naive    model plan vs mash-on-cooldown
+node tools/bench.mjs --preset X --char model-ref             on the website's gear-agnostic character
+node tools/bench.mjs --spec-a '{"IV":[0],…}' --spec-b '…' --T 300 --haste 0
+     [--seeds 11,100011,200011] [--iter 10000] [--var 0.5] [--no-control] [--json]
+```
+
+**Zero setup.** It runs the committed `sim/sim.wasm` (patched wowsims @ `ade9f39`), so there is no
+clone, no `protoc`, no `go build`, no scratchpad probe, no `RUNNER`/`EXPORT_BASE`. That is §5's
+standing requirement in its strong form — a fresh container prints a number in ~10 s, cold.
+`tests/sim-duel.mjs` asserts the shipped wasm equals the native runner **to the printed decimal**, so
+using it costs nothing in fidelity. (A native runner is still required for `tests/sim-request.mjs`,
+which is precisely the test that compares the two.)
+
+**One backbone with the website.** Protocol `sim/benchmark.mjs` · transcription `sim/planspec.mjs` ·
+APL `tools/genapl-core.mjs` · request `sim/simreq.mjs` · engine `sim/sim.wasm`. The user-facing
+"Check in the benchmark sim" button and this tool are the same chain with different front doors —
+change a link and both move. `tests/sim-request.mjs` asserts they build identical requests.
+
+**Two characters, and the tool moves the MODEL to whichever it sims:**
+
+| `--char` | the sim character | the model cfg |
+|---|---|---|
+| `bench` *(default)* | `tools/bench/export.json` — this file's frozen gear-B, real gear + raid buffs, its own stats | forced to `...REF` from `tools/reference-gear.mjs` (sp 1450, crit 38, **t5two on**) |
+| `model-ref` | `sim/model-ref.json` — the synthetic gear-less mage, stats **injected** | the preset's own gear, `t5two: false` (no gear ⇒ no set bonus) |
+
+★ **This is the line that makes the comparison mean anything.** If the cfg the model scores does not
+describe the character the sim runs, the two numbers are about different mages and "agrees/disagrees"
+is noise — the exact defect PHASE8 §6/§7 found in the xval harness (`t5two` omitted, `sp: 1387` where
+effective SP was ≈1450). The tool spreads `REF` rather than re-typing it, per that file's own rule.
+
+**What it prints:** each arm's DPS with presses, its never-press control, and `value = presses −
+control`; then the sim's Δ between arms with a **seed band** (sd of the *paired* per-seed difference —
+CRN makes that far tighter than either arm's own spread), the **model's** Δ on the same pair, and
+whether the two **agree in sign**. A disagreement is flagged as a finding, and a Δ inside 1σ of the
+band is flagged as unresolvable at that iteration count rather than reported as a winner.
+
+⚠ **The control is identical across arms whenever the character is** (same gear, same fight), so for a
+same-character duel it does not change the *ranking* — it converts DPS into "what the actives were
+worth", which is the number that stays comparable across gear. Its ranking power is for §2.1's real
+target: comparing arms whose **passives differ** (trinket sets).

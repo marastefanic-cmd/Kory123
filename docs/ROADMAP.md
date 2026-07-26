@@ -20,6 +20,17 @@
   optimizer for Arcane mages"; phase-editor dropdown no longer overlays its label and its trailing
   number field states its unit (`× damage`, `targets`). Record: DIARY 07-26 + its ledger row;
   ARCHITECTURE `renderSchedule`/`renderAssumptions`.
+- 🧪 **THE BENCH IS NOW A TOOL — `tools/bench.mjs` (07-26, user-directed).** `docs/BENCH.md` had
+  declared the gear-agnostic bench the standing practice hours earlier but **nothing implemented it**
+  (all 15 sim-capable tools still resolved `RUNNER`+`EXPORT_BASE` from a scratchpad). Now:
+  `node tools/bench.mjs --preset "2:00 lust 0:05" --vs naive` → **~10s, cold, from the repo alone**,
+  because it runs the committed `sim/sim.wasm`. Implements BENCH §2.1 (never-press control), prints a
+  **seed band on the paired difference** and the **model's Δ beside the sim's** with a sign-agreement
+  check, and **forces the model cfg to the simmed character** (spreads `REF` — the first version
+  reproduced PHASE8 §6/§7's two-different-mages defect and mispriced a duel 1.434% → 1.314%).
+  Same backbone as the website button; `tests/sim-request.mjs` now gates BOTH committed characters.
+  ⚠ Left open on purpose: BENCH §3 says `--var 0`, TOOLING ★★ says never — the tool defaults to 0.5
+  and the conflict is recorded in BENCH §3 as a user call.
 - 🔬 **THE SIM SHIPS IN THE PAGE (07-26, user-directed; engine untouched, exact-match 25/25).**
   A **"Check in the benchmark sim"** button runs the real wowsims engine as WASM in the browser and duels the
   model plan against your hand-edited timeline (or against "mash on cooldown" when there isn't one).
