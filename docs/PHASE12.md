@@ -167,6 +167,54 @@ Whether any gear-A table pressed an unworn trinket is *checkable* — the archiv
 kits — and nobody has checked. If some did, the affected gear-A deficits were measured against a plan
 the sim never actually executed.
 
+### 2.1b ★★ THE NATIVE RUNNER IS ~6× FASTER THAN THE SHIPPED WASM — measured, and it changes the plan
+
+**Raised by the user:** *"Can't we clone the wowsims repo (or the parts we need) and run the
+simulations locally? Wouldn't that be bajillion times quicker? More under our control?"*
+
+**First, a clarification the docs should make louder: the sim ALREADY runs locally.** `sim/sim.wasm`
+executes in-process — no network, no service, nothing remote. So the question is not local-vs-remote,
+it is **native Go binary vs WebAssembly**. That one has a real answer:
+
+```
+iters   wasm(ms)  native(ms)  speedup   wasmDPS    nativeDPS   |delta|
+10000       4882         787     6.20x    2099.38     2099.40    0.0183
+40000      16574        2885     5.74x    2099.25     2099.20    0.0478
+```
+
+Same spec, same protocol, same seed; the native runner is `runner-ap180` built from `tbc-new` at the
+pinned `ade9f39cc`. **~6× faster, and it agrees to 0.02–0.05 DPS** — inside the 0.05 tolerance
+`tests/sim-duel.mjs` already uses to assert wasm ≡ native.
+
+**Why this was not already the default, and why that reasoning is still right.** The wasm was chosen
+for *zero setup* (PHASE10 §1.3, BENCH §5's standing requirement: "a fresh container must be able to
+produce a number from the repo alone") and because it is **what the page runs** — so an agent's
+finding and a user's finding are the same measurement. Both remain true and neither is negotiable.
+
+**So the answer is BOTH, with the equality gate as the bridge — not a replacement:**
+
+| use | engine | why |
+|---|---|---|
+| the website button | **wasm** | it is the browser; nothing else can run there |
+| any single check, any fresh container, CI | **wasm** | zero setup beats 6× on a 10 s job |
+| **bulk corpus gathering** (a 36-table round) | **native runner** | 6× on the sim half is hours |
+| proving they are interchangeable | `tests/sim-duel.mjs` with `RUNNER` | already asserts equality to the printed decimal |
+
+⚠ **Scope the win honestly: it is 6× on the SIM half only.** A round's cost splits between *solving*
+(the planner, in node — untouched by this) and *simming*. The boss half was ~29 of ~38 CPU-hours in
+**pre-solves**, so those cells barely move; class cells are sim-heavier and move a lot. Do not budget
+a re-gather at "50 → 8 hours".
+
+**Directly actionable for the gear-agnostic re-gather (§1.1).** That round has to be gathered anyway;
+gathering it on the native runner is the cheapest version of it. The toolchain is not hypothetical
+here — Go 1.24.7 and protoc are installed, `tbc-new` is cloned at the pin, and `runner-ap180` is
+**already built**. ⚠ But it lives in `/tmp/wowsims-build/`, so it dies with the container: treat the
+~4-minute rebuild (BENCH §3d) as part of round setup, not as a thing that exists.
+
+**Bonus, banked while measuring this:** with `RUNNER` set, `tests/sim-request.mjs` runs **9/9** —
+including the two halves that skip without it, and both template-freshness checks. The full
+anti-drift gate is green at HEAD.
+
 ### 2.2 The page and the terminal are the same mechanism — now MEASURED, not argued
 
 Driving the page's own arm-A path in Chromium (over http; `file://` blocks both the module imports

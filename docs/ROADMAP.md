@@ -4,6 +4,15 @@
 
 ### ▶ IN EXECUTION: PHASE 10 — re-baseline acceptance on GEAR B (`docs/PHASE10.md`; started 07-26)
 
+> ## ★★★ DIRECTION CHANGE, 07-26 — THE PROJECT IS GOING GEAR-AGNOSTIC. READ `docs/GEAR-AGNOSTIC.md`.
+> User decision: all simming and verification moves to a character defined **only** by the planner's
+> declared inputs. **The round below is the LAST one gathered on the exported gear-B character** — it
+> finishes as-is (it is ~50 CPU-hours in and killing it leaves ACCEPTANCE with nothing), is archived
+> as the final geared round, and is then kept as a *control* rather than as the acceptance reading:
+> it is what makes "do scheduling conclusions transfer across stat distributions?" answerable.
+> Implementation is gated on 36/36 — `sim/simreq.mjs` and `tools/xval-bench.mjs` are frozen exactly as
+> `index.html` is (the campaign spawns `xval-bench` per cell and it imports `simreq`).
+>
 > ## ☞ RESUMING? READ `docs/PHASE10-RESUME.md` FIRST — the 60-second state + the exact next actions.
 > Round 1 is **gathering unattended** (`tools/xval-round-pipeline.sh`, ~12 h left, checkpointing to
 > git). ⚠ **Do not touch `index.html` until it finishes** — the plan cache keys on its bytes, so an

@@ -194,7 +194,16 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/RULES.md` — the theorycraft rules, each with its sim evidence (derived from MECHANICS.md).
 - `docs/ARCHITECTURE.md` — `index.html` internals and the optimizer pass order.
 - `docs/TOOLING.md` — the wowsims sim harness (how to verify a plan) and its gotchas.
-- `docs/BENCH.md` — **the standing sim practice**, and `tools/bench.mjs`, the tool that implements it.
+- `docs/GEAR-AGNOSTIC.md` — ★★★ **READ BEFORE ANY SIM WORK. The single source of truth for how this
+  project sims.** User decision 07-26: every simulation — the website button *and* the internal
+  model-verification corpus — runs on a character defined **only** by the planner's declared inputs
+  (SP, crit, passive haste, hit hardset at cap, the T5-2pc checkbox). No exported gear file, ever
+  again, because a corpus denominated in one can be voided by re-exporting it — which is exactly what
+  happened on 07-26. Where it disagrees with an older doc, **it wins and the older doc is the
+  remnant.** It also carries the measured trinket passive/active split, the wasm-vs-native-runner
+  numbers, and the freeze rules that gate the implementation.
+- `docs/BENCH.md` — ⚠ **superseded in part by GEAR-AGNOSTIC.md (see its banner)** —
+  **the standing sim practice**, and `tools/bench.mjs`, the tool that implements it.
   **Reach for `node tools/bench.mjs --preset X --vs naive` before building any rig**: it runs the
   committed `sim/sim.wasm` (no clone, no protoc, no `go build`, no `RUNNER`/`EXPORT_BASE`), prints the
   sim Δ with a seed band next to the model's Δ, and shares its whole backbone with the website's

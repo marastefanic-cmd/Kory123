@@ -39,10 +39,18 @@
 //
 // ── COVERAGE ────────────────────────────────────────────────────────────────────────────────────
 // Two fights, chosen for the two things that have actually broken here:
-//   · a plain fight            — the ordinary path
-//   · Kael'thas Sunstrider     — the corpus's only AoE preset (`targets: 6`). Targets are exactly
-//                                what B1 dropped, and a dropped target count is invisible in any
-//                                single-target case.
+//   · a plain preset fight  — the ordinary path, taken from index.html's own tables so the case list
+//                             is not a third copy of the fight table (PHASE11 §1.2 F3's failure mode)
+//   · a short SYNTHETIC AoE fight — because `targets` is exactly what B1 dropped, and a dropped
+//                             target count is invisible in any single-target case.
+//
+// ⚠ The AoE case is synthetic ON PURPOSE, and the first draft of this file got it wrong. The obvious
+// choice is Kael'thas — the corpus's only AoE preset — but a KT solve is **~280 s** (420 s fight, 6
+// targets), which is not a gate, it is a coffee break; the first run of this test hung for 5 minutes
+// on it with no output. A 40 s fight with one AoE window exercises the identical plumbing (planToSpec
+// computing `targets` from the segments → `buildRequest` putting N targets in the encounter) in about
+// a second. **This trades fight REALISM for plumbing COVERAGE, deliberately** — realism is what the
+// 36-table corpus is for; a CI gate's job is to catch a dropped field.
 import { chromium } from 'playwright-core';
 import http from 'node:http';
 import fs from 'node:fs';
@@ -59,9 +67,15 @@ const WANT_DPS = process.argv.includes('--dps');
 const SELF_TEST = process.argv.includes('--self-test');
 const INDEX = path.join(REPO, 'index.html');
 
-// Fights to check. `name` is matched against the page's own preset tables, so the cases stay in sync
-// with index.html rather than being a third copy of the fight list (PHASE11 §1.2 F3's failure mode).
-const CASES = ['2:00 lust 0:05', "Kael'thas Sunstrider"];
+// Fights to check. A `preset` case is looked up in the page's own tables (so the list is not a third
+// copy of the fight table); an `inline` case carries its own row in the SAME shape a preset row has,
+// and both sides build it through the engine's own `buildSegments`.
+const CASES = [
+  { label: '2:00 lust 0:05 (preset)', preset: '2:00 lust 0:05' },
+  { label: '0:40 + AoE window (synthetic)', row: {
+      name: '__equiv_aoe__', T: 40, pins: { bloodlust: [5] },
+      phases: [{ from: 12, to: 22, type: 'aoe', targets: 6 }] } },
+];
 
 const MIME = { '.html': 'text/html', '.mjs': 'text/javascript', '.js': 'text/javascript',
                '.json': 'application/json', '.wasm': 'application/wasm' };
@@ -101,12 +115,18 @@ function firstDiff(a, b, at = '') {
 // ── the terminal side ───────────────────────────────────────────────────────────────────────────
 const api = loadEngine(INDEX);
 const byName = Object.fromEntries(api.cases.map(c => [c.name, c]));
-for (const n of CASES) if (!byName[n]) { console.error(`SETUP ERROR: preset ${JSON.stringify(n)} is not in index.html's tables`); process.exit(2); }
+// Fail loudly if a preset case names a fight index.html no longer has — a silently-skipped case is
+// the false-pass this repo keeps re-learning (engine-node.mjs's own header says the same).
+for (const c of CASES)
+  if (c.preset && !byName[c.preset]) {
+    console.error(`SETUP ERROR: preset ${JSON.stringify(c.preset)} is not in index.html's tables`);
+    process.exit(2);
+  }
 
 const TEMPLATE = JSON.parse(fs.readFileSync(path.join(REPO, 'sim/model-ref-request.json'), 'utf8'));
 
-async function terminalSide(name) {
-  const c = byName[name];
+async function terminalSide(kase) {
+  const c = kase.preset ? byName[kase.preset] : kase.row;
   const cfg = cfgFor(api, c);
   const best = await api.optimizeAsync(cfg, 14, () => {});
   const optR = api.simulate(best.s, cfg, true);
@@ -117,10 +137,10 @@ async function terminalSide(name) {
 }
 
 // ── the page side ───────────────────────────────────────────────────────────────────────────────
-const PAGE_ARM = async ({ name, breakIt }) => {
+const PAGE_ARM = async ({ preset, row, breakIt }) => {
   const all = [...(window.BOSS_PRESETS || []), ...(window.GOLDEN_PRESETS || [])];
-  const c = all.find(x => x.name === name);
-  if (!c) throw new Error('preset not found in page: ' + name);
+  const c = preset ? all.find(x => x.name === preset) : row;
+  if (!c) throw new Error('preset not found in page: ' + preset);
   const d = window.GOLDEN_DEFAULTS;
   const gear = { ...d.gear, ...(c.gear || {}) };
   const kit = c.kit || d.kit;
@@ -155,16 +175,17 @@ await page.goto(`http://127.0.0.1:${PORT}/index.html`, { waitUntil: 'load' });
 if (pageErrs.length) { console.error('PAGEERROR loading index.html:\n' + pageErrs.join('\n')); process.exit(2); }
 
 let failed = 0;
-for (const name of CASES) {
+for (const kase of CASES) {
   // --self-test breaks the AoE case only: a single-target case cannot express a dropped target
   // count, which is itself the point B1 made.
-  const breakIt = SELF_TEST && name === CASES[1];
-  const [P, T] = [await page.evaluate(PAGE_ARM, { name, breakIt }), await terminalSide(name)];
+  const breakIt = SELF_TEST && !!kase.row;
+  const [P, T] = [await page.evaluate(PAGE_ARM, { preset: kase.preset, row: kase.row, breakIt }),
+                  await terminalSide(kase)];
 
   const specDiff = firstDiff(P.spec, T.spec);
   const reqDiff = firstDiff(P.request, T.request);
   const ok = !specDiff && !reqDiff;
-  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}${T.targets ? `  (targets=${T.targets})` : ''}`);
+  console.log(`${ok ? 'PASS' : 'FAIL'}  ${kase.label}${T.targets ? `  (targets=${T.targets})` : ''}`);
   if (specDiff) console.log(`        spec differs at    ${specDiff}`);
   if (reqDiff) console.log(`        request differs at ${reqDiff}`);
   if (!ok) failed++;

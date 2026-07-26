@@ -1,5 +1,23 @@
 # BENCH.md — the gear-agnostic, RNG-minimal sim bench
 
+> ## ⚠ SUPERSEDED IN PART, 2026-07-26 — read `docs/GEAR-AGNOSTIC.md` first
+>
+> The user has decided that **all** simming and verification moves to a character defined solely by
+> the planner's declared inputs (SP, crit, passive haste, hit-at-cap, the T5-2pc checkbox). The frozen
+> gear-B export this file is built around — `tools/bench/export.json` — is therefore **retired as the
+> baseline**, and the in-flight round is the last one gathered on it.
+>
+> **What still stands here, unchanged and load-bearing:** §0's statement of the problem, §2.1's
+> difference-in-differences, §3's RNG/`--var 0.5` work, §5's "a fresh container must produce a number
+> from the repo alone", and §6's tool. **What is superseded:** §1's framing of gear B as *the* baseline,
+> and §1.1's argument that committing an export is the fix (the fix is not needing one).
+>
+> ★ §0.1 called the passive-ride-along problem correctly and answered it with §2.1's cancellation.
+> `GEAR-AGNOSTIC.md` §3 shows that cancellation is **not sufficient** — it fixes the DPS scale but not
+> the fact that the model plans for the declared stats while the sim runs those stats *plus* whatever
+> the worn trinkets add (up to **+4.00 %**, spread **3.25 %** across the six kits, measured). The new
+> answer removes the passives instead of cancelling them downstream.
+
 **Status: IMPLEMENTED, 2026-07-26 — `tools/bench.mjs`. Supersedes the ad-hoc "reference export"
 convention.** The design below stood for hours with nothing reading `tools/bench/export.json`; it now
 has a tool, and that tool shares its backbone with the website's verification button (§6).
