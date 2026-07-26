@@ -95,7 +95,7 @@ well-defined (user-directed, 07-26):
 | **talents** `2500052300030150330125--053500031003001` | ★ **HARDLOCKED** — always correct, never varied | mirrored to `tools/bench/talents.txt` so a drifted export cannot silently change them; the model's coefficients (Arcane Potency, Arcane Meditation 3/3, the AB stack reduction) are derived assuming exactly this build |
 | **rotation / priorityList / valueVariables** | ★ **IGNORED — deliberately stripped** | *this is the thing the tool computes.* `runner-main.go` replaces it wholesale via `--apl`, so whatever the export carries is dead weight at best and a silent confound at worst. The committed bench export keeps a **one-line AB-spam placeholder** so the file is still a valid standalone request. **Never gate on the export's own rotation.** |
 | **damage/stat raid settings** — Kings, Wrath of Air, elixirs, food, Misery, Curse of Elements, `isbUptime` | **FROZEN** (not ignored) | they set the **operating point** — the SP/crit/haste at which a plan is optimal. They cancel as a *difference* under §2.1, but they decide *which* layout wins, so they are part of the configuration, not noise |
-| **mana raid settings** — Shadow-Priest DPS, Innervate, Mana Tide, Mana Spring, Blessing of Wisdom, JoW, potions, gems | ✅ **GENUINELY IGNORABLE** — measured inert (§3c) | the model is **infinite-mana** and the bench injects `--mana`, so nothing mana-side can bind |
+| **mana raid settings** — Shadow-Priest DPS, Innervate, Mana Tide, Mana Spring, Blessing of Wisdom, JoW, potions, gems | ✅ **GENUINELY IGNORABLE** — each measured at **Δ = 0.00 DPS** (§3c.1) | the model is **infinite-mana** and the bench injects `--mana`, so nothing mana-side can bind. ⚠ but **Intellect is damage-side** (int → crit): the guardian elixir stays |
 | **encounter duration / variation** | **OVERRIDDEN** per run (`--dur`, `--var 0`) | fight shape is an input to the planner, not a property of the character |
 
 ★ **The raid-settings question answers itself under §2.1.** It does not matter whether raid buffs are
@@ -146,6 +146,58 @@ planner at all.
 inert. If a finite-mana study is ever wanted (`docs/EP.md` option B), that is a *different* bench and
 must re-enable them deliberately — including `autocastOtherCooldowns`, without which Innervate and
 Mana Tide are silently suppressed (−6 % DPS, TOOLING ★).
+
+## 3c. The raid-SUPPORT settings, measured (07-26)
+
+"Settings" here means the raid-support block — Shadow-Priest DPS, Innervate, shaman totems, paladin
+blessings, consumables, potions. They split into two classes, and only one is ignorable.
+
+### 3c.1 ✅ Mana-side support is INERT under the bench's infinite-mana condition
+
+Dropped one at a time, `--dur 145 --var 0 --iter 25000 --mana 500000`, all **Δ = 0.00 DPS**:
+
+`manaSpringTotem` · `manaTideTotems` · `blessingOfWisdom` · `shadowPriestDps` (Vampiric Touch
++250 mp5) · `innervates` · `potId` (Super Mana Potion) · `scrollSpi` · `judgementOfWisdom`
+
+This is the expected result and now it is a *measured* one: the model is infinite-mana by
+construction and the bench injects `--mana`, so nothing regen- or restoration-side can bind. **These
+may be left in or taken out freely.**
+
+⚠ **Intellect is NOT mana-side for a mage** — it gives **spell crit** as well as mana pool. So the
+guardian elixir (`32067`, +30 int/+30 spirit) is **damage-side** and must be frozen, even though it
+looks like a mana consumable. Judge a setting by *what stat it grants*, not by what it is *for*.
+
+### 3c.2 ✗ Damage/stat support is NOT ignorable — freeze it
+
+Same probe, dropping **Improved Seal of the Crusader**: **−40.4 DPS (−1.9 %)**. That is ~35× the
+noise floor and ~5× the deficits this project chases. Kings, Wrath of Air, Arcane Brilliance, Misery,
+Curse of Elements, `isbUptime`, the battle elixir, food and the weapon imbue are all in this class.
+
+They cancel as a *difference* under §2.1, so they do not corrupt a press-timing A/B — but they set
+the **operating point** (the SP/crit/haste at which a layout is optimal), and the optimal layout is a
+function of that point. So the rule is **freeze, don't ignore**: one committed export, never edited
+per-arm.
+
+### 3c.3 ★★ THE SEED TRAP — this invalidated the first two versions of the result above
+
+**wowsims seeds per-iteration, so nearby seeds share nearly all their iterations.** At 25 000 iters,
+seeds 1/2/3 draw iteration streams `1..25000`, `2..25001`, `3..25002` — **99.99 % identical**. A
+"repeat it with three seeds" robustness check using 1, 2, 3 is therefore **one sample, not three**,
+and it reports a spuriously *stable* number.
+
+That is exactly what happened here. The first run of §3c.1 read a delta of **+1.20 DPS reproduced
+identically across seeds 1, 2, 3** — which reads as a clean deterministic effect and was nearly
+written up as "mana support costs 1.2 DPS". Re-run with **widely separated seeds
+(1 / 500 000 / 1 000 000 / 1 500 000)** the same comparison gives **+1.20, −0.50, +0.50, −1.00** —
+mean ≈ 0, sign flipping. **Noise.**
+
+**Rules, now standing:**
+- **Separate seeds by ≫ iteration count** (use `1`, `500000`, `1000000`, …) whenever seeds are meant
+  to be independent samples. Adjacent seeds are a false-agreement generator.
+- **Identical results across "different" seeds is a red flag, not a confirmation.** Real independent
+  samples at σ≈80/√25000 should wobble by ~±0.5 DPS; if they do not, the samples are not independent.
+- CRN pairing (deliberately reusing one seed across two arms) is still correct and still wanted —
+  the trap is only in treating *nearby* seeds as *independent*.
 
 ## 4. What this does NOT fix
 
