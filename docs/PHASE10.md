@@ -1,6 +1,6 @@
 # PHASE 10 — re-establish the acceptance baseline on gear B, with the new instrument
 
-**Status: PLANNED (2026-07-26). Not started — no gear-B table exists yet.**
+**Status: IN EXECUTION (2026-07-26). §4.1 shakedown PASSED; round 1 gathering. Execution log: §8.**
 
 ## 0. The one-sentence charter
 
@@ -126,3 +126,129 @@ belief the re-measurement overturned.
   this phase is already set up to do. Details of why it is needed: `sim/planspec.mjs` header.
 - **A multi-seed band in the page.** The website currently uses a fixed ±0.05 % tie band; the terminal
   bench already computes a real paired band. Doubling the ~10 s wall clock buys an honest error bar.
+
+---
+
+# §8 — EXECUTION LOG (2026-07-26)
+
+## 8.1 ✅ The §4.1 shakedown PASSED — all four cells, all four gate conditions
+
+`tools/bench.mjs --vs naive --iter 4000`, gear-B bench character, var 0.5, seed 11, never-press control:
+
+| cell | model plan (value) | mash on cooldown | SIM Δ | MODEL Δ | sign |
+|---|---|---|---|---|---|
+| `2:00 lust 0:05` (T=120) | +590.5 | +539.5 | **+51.0 DPS** | +1.314 % | AGREE |
+| `5:00 lust 0:05` (T=300) | +351.5 | +319.2 | **+32.3 DPS** | +1.293 % | AGREE |
+| `2:40 lust 0:07 interm 1:30–2:10` (T=160) | +488.1 | +414.5 | **+73.6 DPS** | +2.896 % | AGREE |
+| `Kael'thas Sunstrider` (T=420, AoE) | +359.6 | +246.6 | **+113.0 DPS** | +6.338 % | AGREE |
+
+Against the gate, item by item — and note that **none of it is about the DPS values**, which are
+supposed to be new:
+
+- **model beats mash everywhere, by a plausible margin, model and sim agree in sign** — 4/4, margins
+  1.3–6.3 %. The ordering across cells is the recognisable shape: the two plain fights sit together at
+  ≈1.3 %, the walled fight is worth more (a plan that works around downtime has more to gain), and the
+  AoE boss most of all.
+- **the never-press control is identical across the two arms of every cell** — 2128.8 / 2163.1 /
+  1574.7 / 1667.8, each printed twice. The control is picking up nothing but the character and fight.
+- **no NaN, no `errorResult`, no `skipped`** — the skipped list was **empty** on all four, not merely
+  within the known Drums/PI/Ashtongue set, because none of those is in the default kit these presets
+  run.
+- **the intermission and AoE cells transcribe.** Verified directly off the segments the transcription
+  reads rather than inferred from the DPS: KT builds `aoe[105,145]×6` (⇒ `_aoe: [[105,145]]`,
+  `targets = 6`) among six intermissions, and the 2:40 cell builds `intermission[90,130]`.
+
+## 8.2 ★ The instrument audit — what the four cells could NOT have told us
+
+§3's first trap says the instrument is new and lightly exercised, and that a systematic flaw would
+show as coherent weirdness across many cells rather than as noise. Four passing duels do not test the
+things a 36-table campaign actually leans on, so those were probed separately.
+
+- ✅ **The wasm is bit-deterministic at a fixed seed.** Two identical requests returned
+  `2149.4813305933517` twice, to the last digit. This is what licenses the content-addressed caches.
+- ✅ **★ Trinket swapping reaches the wasm's item DB, and all four on-uses FIRE.** The campaign varies
+  the kit by rewriting equipment slots 12/13 of the committed request template — and nothing had ever
+  exercised that path, while a silent no-op there is precisely `sim/planspec.mjs`'s documented
+  Drums/PI failure mode wearing a different hat (a whole kit simmed with its actives absent, printing
+  plausible DPS). Measured, one press at t=0 against never-press: **isc +20.6 · scb +19.5 · skull
+  +49.3 · mqg +81.3 DPS**, and each kit's control moves with its passives. The 22.8 MB `sim.wasm` is a
+  `with_db` build, so item ids resolve inside the engine.
+- ⚠ **`tests/sim-request.mjs` cannot run here** — it needs a native `RUNNER`, and `protoc` is not
+  installed in this container (Go is). It skips loudly, as designed. So the *anti-drift* half of the
+  gate is unexercised this session; what stands in for it is that `xval-bench.mjs` imports
+  `buildRequest`/`build`/`planToSpec` rather than reimplementing them, and reproduces `bench.mjs` on a
+  shared cell to the decimal (below).
+
+## 8.3 ⚠ §4.2 AS WRITTEN HAS NO EXECUTABLE PATH — and that is the phase's first real finding
+
+> *"Gather round 1 — the 36 tables, `tools/bench.mjs --json`."*
+
+**`bench.mjs` cannot produce a table.** It is a two-arm duel; the acceptance test is *defined* as an
+N×N plan-haste × sim-haste matrix, and `xval-collect.mjs`, `xval-verify.mjs` and `xval-persist.mjs`
+all parse that matrix. The tool that does emit it, `tools/xval.mjs`, resolves `RUNNER` +
+`EXPORT_BASE` — the native rig whose absence is §1.3's whole argument for doing this phase now. So
+the charter and the named instrument did not meet.
+
+Resolved by building the missing piece rather than by lowering the charter: **`tools/xval-bench.mjs`**
+— `xval.mjs`'s protocol on `bench.mjs`'s engine. Every link is imported, not reimplemented (protocol
+`sim/benchmark.mjs` · transcription `sim/planspec.mjs` · APL `tools/genapl-core.mjs` · request
+`sim/simreq.mjs` · engine `sim/sim.wasm` · model `tools/engine-node.mjs` · gear `reference-gear.mjs`).
+
+**Cross-checked against the tool it stands in for:** the matrix cell `plan@h0 simmed@h0` of
+`isc+scb short` reads **2782.6 DPS**, and `bench.mjs --spec-a <that plan> --T 108 --haste 0` reads
+**2782.6 DPS**. The two front doors are one chain, which is the property §2 claims for the round.
+
+**Deliberately unchanged from `xval.mjs`**, because changing it would make the round mean something
+else: the seeded fight draw, the length classes, cross-haste pooling, the wall-jitter wash and its
+variant seeds, the `simulate()`-independent artifact guard, and the output format. ★ **All 36 seeds
+reproduce the gear-A fights exactly** (`isc-mqg short` = seed 5521 ⇒ T=108, Lust@42, as archived), so
+the holdout **sample** is unchanged and only the **baseline** is new. ⚠ That still does not license
+diffing a gear-B number against a gear-A one (BENCH §1): same fight, different character.
+
+## 8.4 Two instrument defects found and fixed, both of the house failure shape
+
+- **`tools/bench.mjs --json` was not self-describing.** It emitted the protocol but not what was
+  *run*: no preset name, no press times, no target count, and no identity for the two artefacts that
+  decide the answer (the engine block, the wasm). §3 says stamp everything; a corpus of those objects
+  could not have been read back. Now carries `tool`, `preset`, `cfg.t5two`, `protocol.targets/emit/
+  prestack/mana`, each arm's emitted `spec`, and sha1s of `index.html` + `sim/sim.wasm`.
+- **★ The campaign driver's pre-pass silently did nothing.** `while IFS=$'\t' read -r … cls boss`:
+  tab is IFS *whitespace*, so bash collapses a run of tabs into one delimiter — the deliberately empty
+  `TCLASS` field of a boss row vanished, the boss name landed in `cls`, and `boss` came out empty. The
+  `[ -n "$boss" ]` filter then matched nothing, the pre-pass built an empty job list, and the campaign
+  carried on at half utilisation **with no error anywhere**. This is the repo's dominant failure mode
+  (a wrapper that runs and does nothing) in a new hat. Rewritten with `awk -F'\t'`, which does not
+  collapse; and a pre-pass that generates zero jobs from a list containing boss cells is now a hard
+  error rather than a silent skip.
+
+## 8.5 The measured cost model — why the round is shaped the way it is
+
+Measured on this 4-core box, not estimated:
+
+| | cost |
+|---|---|
+| solve, T≈110 | ~3–5 s |
+| solve, T≈230 | ~40 s |
+| solve, T≈420 (`xl`) | **113–165 s** |
+| solve, T=420 + AoE (KT) | **~280 s** |
+| sim, T=420, single target, ITER=6000 | ~18 s |
+| sim, T=420, **6 targets**, ITER=6000 | **~103 s** (≈9× — the AoE window is priced across the whole pull) |
+
+A boss table is 100 cells × 5 wall-jitter variants = 500 sims, so **one KT table ≈ 14 CPU-hours** and
+the KT pair is ~55 % of the whole round. With only two tables per boss, a table-per-core campaign
+would idle half the box on the longest job of the round. Hence the two additions to `xval-bench.mjs`:
+a **plan cache** and **`SHARD=k/n`** (solve once, fan the sims, assemble from a warm cache). Both are
+lossless — the optimizer is deterministic by construction and the wasm is deterministic by
+measurement (§8.2) — and both keys carry the **engine and wasm bytes**, so an edit to either
+invalidates rather than silently mixing two engines into one matrix.
+
+⚠ **Consequence to respect while the round is gathering: do not touch `index.html`.** The PHASE9 §4
+CPU-reclaim work is exactly the kind of change that would invalidate every cached plan mid-round and
+leave a matrix assembled from two engines. It waits for the round.
+
+## 8.6 The round-1 protocol, stated once
+
+`ITER=6000 · var 0.5 · seed 11 (CRN) · mana 1e8 · cold open (_prestack 0) · emit=fire · pooling ON ·
+WJITTER=2 on boss tables · breakpoint-straddle haste sets · gear-B bench character, trinket-swapped
+per kit · committed sim.wasm`. Every one of those lands on each table's `XVAL-DONE` line, which is
+more than gear-A tables carried (`iter`, `simseed`, `mana`, `targets`, `char`, `wasm`, `tool` are new).
