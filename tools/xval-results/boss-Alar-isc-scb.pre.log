@@ -1,0 +1,12 @@
+seed=8121  class=any  fight=3:40 (220s)  Lust@2:23  trinkets=isc+scb  haste=[0,20,65,95,140,165,195,215,245,400]  emit=fire
+  plan h0 from cache
+  plan h20 from cache
+  plan h65 from cache
+  plan h95 from cache
+  plan h140 from cache
+  plan h165 from cache
+  plan h195 from cache
+  plan h215 from cache
+  plan h245 from cache
+  plan h400 from cache
+SOLVE-ONLY seed=8121 kit=isc+scb hastes=10 — plans cached, no table emitted.

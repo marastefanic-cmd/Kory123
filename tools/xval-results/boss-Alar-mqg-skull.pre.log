@@ -1,0 +1,12 @@
+seed=7406  class=any  fight=4:34 (274s)  Lust@0:01  trinkets=mqg+skull  haste=[0,30,70,100,160,190,235,265,295,400]  emit=fire
+  plan h0 from cache
+  plan h30 from cache
+  plan h70 from cache
+  plan h100 from cache
+  plan h160 from cache
+  plan h190 from cache
+  plan h235 from cache
+  plan h265 from cache
+  plan h295 from cache
+  plan h400 from cache
+SOLVE-ONLY seed=7406 kit=mqg+skull hastes=10 — plans cached, no table emitted.

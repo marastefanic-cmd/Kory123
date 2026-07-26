@@ -1,5 +1,33 @@
 # RULES.md — the theorycraft the planner encodes
 
+> ## ⚠ BASELINE NOTICE — every sim MAGNITUDE below is **gear-A** denominated
+>
+> Read this doc on two levels, because the 2026-07-26 gear A → gear B re-export
+> (`docs/BENCH.md` §1) hits exactly one of them.
+>
+> - **The MECHANISM of every rule survives, unconditionally.** The GCD floor, the discrete ramp,
+>   buff-into-Lust packing, SP-on-fast-casts, the AoE modifier — these are statements about TBC's
+>   physics and about the scoring law in §1. Gear does not change them, and none of them is on trial.
+> - **Every sim FIGURE attached to a rule is a gear-A measurement** (`+0.39%`, `+61 DPS var0`,
+>   `−0.66%`, `0.0439 pp`, the §12 crossover brackets, the §-ACCEPTANCE floor statistics …). They were
+>   all gathered before 07-26, on the archived character
+>   (`tools/xval-results-archive/gearA-pre-20260726/`), most of them with `--var 0`/`var10` on the
+>   native rig rather than today's measured `--var 0.5` + never-press control. **BENCH §1's rule is
+>   absolute: do not compare a gear-B number to one of these.** They are not wrong; they are about a
+>   character that is no longer the reference.
+>
+> **What this does and does not license.** A rule stays in force — it is the theorycraft the planner
+> encodes, and re-measuring 40-odd deltas is not a prerequisite for believing the GCD floor. What is
+> *not* licensed is quoting one of these figures as a current target, a current tolerance, or the
+> other side of a gear-B comparison. When a rule's magnitude actually matters to a decision,
+> **re-measure it** — `node tools/bench.mjs --preset X --vs naive` is ~10 s from the repo alone — and
+> record the gear-B figure beside the gear-A one rather than overwriting it.
+>
+> Crossover *thresholds* (§12's `~264`, `~139`, `~77`) deserve their own caution: they are functions of
+> the character's haste and SP, so they are the figures **most** likely to have moved, and the ones a
+> future phase should re-derive first. The §-ACCEPTANCE resolution-floor statistics are superseded
+> wholesale by the gear-B round (`docs/ACCEPTANCE.md`).
+
 Living record of the TBC Arcane cooldown rules, each with the **evidence** it was checked against. The
 one quantity to maximize is **effective ABs cast** (§1 / `MECHANICS §4`), which the planner computes
 deterministically — so the **cast-count is the arbiter** when comparing two lines. The **sim
