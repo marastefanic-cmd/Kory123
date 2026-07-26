@@ -557,3 +557,34 @@ wrong producing a confident verdict (§8.10's `grep -c $'\0'`, §8.13's Cold Sna
 crit really moved, only the AoE tables would have been at risk — on single target `critPct` is a
 uniform factor that appears in both `robust` and `plain`, so `eff` and every ranking are invariant to
 it. `reference-gear.mjs` is unchanged, which also means the plan cache stays valid.
+
+## 8.15 ✗ THE DRUMS PATCH IS DEFERRED — §7 offers it as a ride-along, and it is not one
+
+§7 lists the Drums `SpellFlagAPL` patch as a cheap win, and §8.12a strengthened the case for it: the
+page's default kit is `bloodlust/icyVeins/drums/skull/arcanePower/scb`, so **Drums is on for a
+first-time user** and the verification silently excludes it (honestly — the UI names it as dropped —
+but excludes it nonetheless).
+
+**The change itself is one line.** `sim/core/buffs.go:1358`, `drumsSpellConfig`:
+
+```go
+Flags: SpellFlagNoOnCastComplete,              →  Flags: SpellFlagNoOnCastComplete | SpellFlagAPL,
+```
+
+`drumsSpellConfig` is shared by the self-cast path (`registerDrumsCD`, from consumables) and the raid
+external (`DrumsBuff`, `ActionID` tagged `-1`, registered as a `MajorCooldown`). The model treats
+Drums as a **raid external** (`index.html`'s "Raid externals" group, alongside Bloodlust and Power
+Infusion), so the APL press wanted is the tagged-`-1` one — exactly Bloodlust's shape
+(`{spellId: 2825, tag: -1}`), which is why Bloodlust works and Drums does not.
+
+**Why it is deferred anyway, and this is the load-bearing part:** *it moves the engine.* Landing it
+means rebuilding `sim/sim.wasm`, which is a **protocol constant** of this round — every table stamps
+`wasm=aa3005508d3b`, BENCH §4d says the pin is deliberate and moving it is "a new baseline for every
+number here", and §3d's trust anchor would need re-certifying. The patch is *provably inert for the
+round* (no cross-val kit contains Drums, so no gathered APL presses it), but the shipped engine would
+then differ from the one the corpus was gathered on. That is precisely the mixing the stamps exist to
+detect, and deliberately creating a case for them to detect is not a cheap win.
+
+⇒ **The right moment is the START of a phase that is establishing a baseline anyway, not the end of
+one that just gathered 36 tables.** It is now a ~10-minute job with the location, the mechanism and
+the genapl key all written down, plus a trust-anchor re-certification that §8.8 has made routine.
