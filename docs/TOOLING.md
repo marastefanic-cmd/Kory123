@@ -532,6 +532,31 @@ Lesson 7 above is the instrument for the second axis; lessons 1–4 are the firs
     `2·WJ ≥ 11` can put them **out of order** and sim a geometrically impossible fight. `cell-band.mjs` has a
     hard wall-order guard that dies rather than run one; `xval.mjs` never needed it (WJ is fixed at 2).
 
+## ★★★ THE TWO wowsims — AND WE USE THE NEW ONE (read before citing, linking or cloning)
+
+| repo | deployed at | status | our use |
+|---|---|---|---|
+| **`wowsims/tbc-new`** | **https://www.wowsims.com/tbc/** | **live, maintained** | ✅ **this is what we build, pin, patch and link** |
+| `wowsims/tbc` | https://wowsims.github.io/tbc/ | **ARCHIVED** — original TBC Classic (2021), pre-APL; the page itself now says *"This sim is outdated!"* | ❌ never |
+
+★ **The trap is that `tbc-new` declares Go module `github.com/wowsims/tbc`.** Deriving a URL from the
+import path lands on the ARCHIVED repo, which has neither our pinned commit nor either patch target.
+It has cost this project a full detour once already. **Read the URL, don't derive it.**
+
+⚠ **The same trap in its OTHER form: the LINK, not the clone.** On 07-26 the shipped page linked to
+`wowsims.github.io/tbc` in two places — the engine was always `tbc-new`, but a user reasonably read the
+link as "this whole project is built on the dead sim". A wrong citation costs credibility exactly as
+much as a wrong dependency. **Any user-facing mention of the simulator points at
+`https://www.wowsims.com/tbc/`.**
+
+**Are we behind upstream, and does it matter?** One command:
+```
+bash tools/upstream-drift.sh
+```
+It reports the commit distance from our pin and filters the changes to the paths that could move an
+arcane mage's cast stream. Being pinned is deliberate — a moving sim under a calibrated model would
+make every recorded number unreproducible — so the goal is an *informed* pin, not a current one.
+
 ## Building the runner (do this once per fresh session)
 
 > ### ✅ VERIFIED WORKING 07-26 — the recipe below is correct; here are the two undocumented steps

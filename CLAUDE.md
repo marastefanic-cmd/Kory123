@@ -118,6 +118,12 @@ changing the model or the passes**, and keep it updated as the living theorycraf
 - **Never leak identity or model identifiers** into `index.html` or anything the user shares
   publicly (it's a shareable artifact): no real names, emails, usernames, repo names, session ids,
   or model ids. The user's Discord handle is the only acceptable attribution.
+- **★ There are TWO wowsims and we use the NEW one.** `wowsims/tbc-new` → deployed at
+  **https://www.wowsims.com/tbc/** — this is what we build, pin (`ade9f39cc`), patch and **link**.
+  `wowsims/tbc` → `wowsims.github.io/tbc` is **ARCHIVED** (2021, pre-APL) and its own page says so.
+  The trap: `tbc-new` declares Go module `github.com/wowsims/tbc`, so deriving the URL from an import
+  lands on the dead repo — and on 07-26 the shipped page *linked* to the dead one for the same reason.
+  Read the URL, never derive it; check drift with `bash tools/upstream-drift.sh`. Details: TOOLING.
 - **Determinism is a feature.** Any change must keep one-setup-⇒-one-schedule, or the exact-match
   tests become meaningless. Don't add `Date.now()`/`Math.random()` outside the seeded PRNG.
 - **The model is the objective; the sim calibrates it.** The one number to maximize is **effective

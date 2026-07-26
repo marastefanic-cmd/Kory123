@@ -99,6 +99,15 @@ which is what makes a 0.1% difference readable at 10 000 iterations.
   encounter knob behind it. The button refuses rather than compare something else.
 - Intermissions and AoE phases **do** verify (`_intermissions`, `_aoe` + duplicated targets).
 
+## Which wowsims
+
+`sim.wasm` is built from **`wowsims/tbc-new`** @ `ade9f39cc` — the repo deployed at
+**https://www.wowsims.com/tbc/**. The archived `wowsims/tbc` (`wowsims.github.io/tbc`) is the original
+2021 pre-APL sim and is never used; **every link the page shows must point at `wowsims.com`**, since a
+user who follows one to the dead sim will reasonably conclude the whole tool is built on it (that is
+exactly how the mistake surfaced on 07-26). `bash tools/upstream-drift.sh` answers "are we behind, and
+does it matter" in one command.
+
 ## Rebuilding
 
 ```

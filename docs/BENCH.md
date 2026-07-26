@@ -400,6 +400,21 @@ assumption until then.
 equivalence of the *sim outputs* — absolute DPS and the trust anchor are still gear-B numbers, and
 any hit-rating change moves them. Gear-A tables stay in `xval-results-archive/`.
 
+## 4d. ★ Which wowsims — and the pin
+
+Everything in this file is `wowsims/tbc-new` @ `ade9f39cc`, the repo deployed at
+**https://www.wowsims.com/tbc/**. The archived `wowsims/tbc` (`wowsims.github.io/tbc`, original 2021
+TBC Classic, pre-APL) is **never** used and must never be linked — full table and the reason the
+mistake is easy in `docs/TOOLING.md`.
+
+**The pin is deliberate and should stay pinned**: a moving engine under a calibrated model would make
+§3d's trust anchor, §3e's B2 observation and every recorded delta unreproducible. To stay *informed*
+rather than merely pinned, run `bash tools/upstream-drift.sh` — it filters upstream commits to the
+paths that can reach an arcane cast stream. Checked 07-26: **21 commits behind, all inert** (the only
+mage-side change, #422's Mana Gem MajorCooldown, leaves the APL-castable gem spell untouched and adds
+an auto-cast our APLs never trigger). Moving the pin = a new baseline for every number here, by §1's
+own rule.
+
 ## 5. Standing requirement
 
 **A fresh container must be able to produce a number from the repo alone.** That now holds:

@@ -20,6 +20,14 @@
   optimizer for Arcane mages"; phase-editor dropdown no longer overlays its label and its trailing
   number field states its unit (`× damage`, `targets`). Record: DIARY 07-26 + its ledger row;
   ARCHITECTURE `renderSchedule`/`renderAssumptions`.
+- 🔗 **THE SIM LINK WAS WRONG; THE SIM WAS NOT (07-26, user-spotted).** The page cited
+  `wowsims.github.io/tbc` — the ARCHIVED 2021 pre-APL sim — while the engine has always been
+  `wowsims/tbc-new` (`wowsims.com/tbc`). Links fixed; the two-repos table is now in TOOLING, SOURCES,
+  BENCH §4d, sim/README and CLAUDE.md. New guard: **`bash tools/upstream-drift.sh`** reports the
+  distance from our pin and filters upstream commits to the paths that could move an arcane cast
+  stream. **Checked: 21 commits behind, all inert** — the one mage-side change (#422 Mana Gem MCD)
+  leaves the APL-castable gem spell untouched and adds an auto-cast our APLs never emit. The pin
+  stays deliberate; moving it means a new baseline for every recorded number (BENCH §1).
 - 🧪 **THE BENCH IS NOW A TOOL — `tools/bench.mjs` (07-26, user-directed).** `docs/BENCH.md` had
   declared the gear-agnostic bench the standing practice hours earlier but **nothing implemented it**
   (all 15 sim-capable tools still resolved `RUNNER`+`EXPORT_BASE` from a scratchpad). Now:
