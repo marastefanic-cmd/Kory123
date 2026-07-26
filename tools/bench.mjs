@@ -92,11 +92,18 @@ if (KIT !== undefined) {
   if (pair.length !== 2 || pair.some(k => !byTrinket[k]) || pair[0] === pair[1])
     die(`--kit must be two DISTINCT keys from ${Object.keys(byTrinket).join(',')} (got "${KIT}")`);
   const items = TEMPLATE.raid.parties[0].players[0].equipment.items;
-  if (items.length < 14) die(`the request template has ${items.length} equipment slots — expected ≥14 (trinkets are 12/13).`);
+  // `model-ref` carries ZERO equipment slots, so pad rather than reject — equipping a pair onto the
+  // gear-less character is exactly what makes its trinket presses do anything at all (§ the guard).
+  while (items.length < 14) items.push({ id: 0, randomSuffix: 0, enchant: 0, gems: [] });
   items[12] = { id: byTrinket[pair[0]].item, randomSuffix: 0, enchant: 0, gems: [] };
   items[13] = { id: byTrinket[pair[1]].item, randomSuffix: 0, enchant: 0, gems: [] };
 }
 const EQUIPPED = TEMPLATE.raid.parties[0].players[0].equipment.items.map(i => i && i.id).filter(Boolean);
+// Bloodlust is the same silent no-op reached through a raid buff instead of an item: `raidBuffs
+// .bloodlust` does not auto-apply a Lust (BENCH §3b measured that), it only makes one CASTABLE — so
+// with it false the scheduled `spellId 2825` press is a bit-identical nothing. Measured 07-26 on the
+// committed model-ref character: moving Bloodlust 55 s changed the DPS by EXACTLY 0.000.
+const LUST_CASTABLE = !!(TEMPLATE.raid && TEMPLATE.raid.buffs && TEMPLATE.raid.buffs.bloodlust);
 
 const ITER = +arg('iter', BENCH.iterations);
 // ⚠ DEFAULT 0.5, NOT 0. BENCH.md §3's RNG table lists `--var 0` as "standard for gates"; TOOLING ★★
@@ -181,10 +188,15 @@ if (specA) {
 // That is `sim/planspec.mjs`'s documented Drums/PI failure mode reached by a different route, and the
 // only place it can be caught is here, where a spec and a character first meet.
 for (const a of arms) {
-  const missing = unequippedPresses(a.spec, EQUIPPED);
-  if (missing.length) die(`arm "${a.label}" presses ${missing.join(', ')}, which the ${CHAR} character is NOT wearing.\n` +
-    `  wowsims does not complain — the press would be a silent no-op and the duel would be meaningless.\n` +
-    `  Pass --kit <a>,<b> to equip the pair this plan was built for (e.g. --kit mqg,skull).`);
+  const dead = unequippedPresses(a.spec, EQUIPPED);
+  if ((a.spec.BL || []).length && !LUST_CASTABLE) dead.push('BL (Bloodlust — raid.buffs.bloodlust is false, so no Lust is castable)');
+  if (dead.length) die(`arm "${a.label}" presses ${dead.join(', ')}, which do NOTHING on the ${CHAR} character.\n` +
+    `  wowsims does not complain — each is a bit-identical no-op, so the duel would compare two plans\n` +
+    `  with those presses deleted and still print a plausible number.\n` +
+    (EQUIPPED.length === 0
+      ? `  ⚠ ${CHAR} carries NO equipment at all, which is why every trinket press is dead here.\n` +
+        `     Pass --kit <a>,<b> to equip a pair onto it (e.g. --kit isc,scb).`
+      : `  Pass --kit <a>,<b> to equip the pair this plan was built for (e.g. --kit mqg,skull).`));
 }
 
 // The never-press control: the SAME fight with no cooldown presses at all. Phase gating

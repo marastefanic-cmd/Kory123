@@ -252,3 +252,61 @@ leave a matrix assembled from two engines. It waits for the round.
 WJITTER=2 on boss tables · breakpoint-straddle haste sets · gear-B bench character, trinket-swapped
 per kit · committed sim.wasm`. Every one of those lands on each table's `XVAL-DONE` line, which is
 more than gear-A tables carried (`iter`, `simseed`, `mana`, `targets`, `char`, `wasm`, `tool` are new).
+
+## 8.7 ★★★ THE AUDIT'S BIGGEST FINDING IS NOT ABOUT ACCEPTANCE — the SHIPPED in-page sim is blind to Bloodlust and every trinket
+
+§8.2 established that a press of an **unequipped** trinket is a bit-identical no-op in wowsims rather
+than an error. Following that where it led:
+
+**`sim/model-ref.json` — the character the website's "Check in the benchmark sim" button runs — carries
+ZERO equipment items, and `raid.buffs.bloodlust: false`.** Measured on the committed
+`model-ref-request.json` (the exact file `index.html` fetches), one press at t=0 vs never-press, T=120:
+
+| press | Δ DPS | |
+|---|---|---|
+| Icy Veins (spell) | **+49.269** | fires |
+| Arcane Power (spell) | **+39.715** | fires |
+| Berserking (spell) | **+16.100** | fires |
+| **Bloodlust** (needs `raidBuffs.bloodlust` to be castable) | **+0.000** | ⚠ **silent no-op** |
+| **Icon of the Silver Crescent** (trinket) | **+0.000** | ⚠ **silent no-op** |
+| **Skull of Gul'dan** (trinket) | **+0.000** | ⚠ **silent no-op** |
+| **Mind Quickening Gem** (trinket) | **+0.000** | ⚠ **silent no-op** |
+| Serpent-Coil "Gem" | **−2.982** | ⚠ *worse than a no-op* — it casts a Mana Emerald for a GCD and, with no SCB worn, collects none of the +225 SP that is the whole point |
+
+**The decisive test.** Two plans identical except for where one press goes, 4000 iters, same seed:
+
+| | committed character | with isc+scb worn and bloodlust on |
+|---|---|---|
+| `Icon@6` vs `Icon@80` (74 s apart) | **0.000 DPS — EXACTLY ZERO** | +14.380 DPS (**+0.756 %**) |
+| `Lust@5` vs `Lust@60` (55 s apart) | **0.000 DPS — EXACTLY ZERO** | +24.417 DPS (**+1.290 %**) |
+
+So a user who moves their Icon or their Bloodlust — **the two most consequential decisions the planner
+makes** — and presses the verify button gets a dead tie, which the page renders as *"too close to
+call"*. Not a wrong number: a confident-looking **null on the exact question asked**. And on the
+shakedown's own duel the distortion is large even when a signal does survive: `2:00 lust 0:05`,
+model plan vs mash-on-cooldown, reads **+2.70 %** as shipped and **+9.93 %** with the character
+fixed — the press *value* more than doubles (193.0 → 446.6 DPS) once Lust and the trinkets exist.
+
+⚠ **Why it was invisible.** Both arms lose the same presses, so nothing looks broken: no error, no
+NaN, plausible DPS, and the *sign* usually still agrees with the model (it did in all four shakedown
+cells) because IV/AP/Zerk survive and carry the residual signal. It is the same silent-omission class
+as Drums/PI — which `sim/planspec.mjs` reports precisely because it is silent — reached by a route
+nothing was checking.
+
+**What is now in place (the guard), and what is still owed (the fix).** `tools/bench.mjs` refuses to
+run any arm whose spec presses something dead on that character, naming the item and the flag that
+fixes it, and gained `--kit a,b` to equip a pair (padding a gear-less character's slots). This
+*independently reproduces* the finding through a second route: `bench.mjs --preset X --char model-ref`,
+a documented invocation, now errors instead of printing a meaningless duel.
+
+**Still owed — and it needs `index.html`, so it waits for the round** (§8.5: editing `index.html`
+mid-round would make the plan cache assemble a matrix from two engines):
+1. equip the trinkets the user's kit actually enables, and set `raid.buffs.bloodlust`;
+2. ⚠ **wowsims has TWO trinket slots and the planner offers FOUR on-use trinkets** — so a kit naming
+   three or more can never be fully equipped. That is a real structural limit of the verification, and
+   it must be *reported in the UI*, exactly as Drums/PI/Ashtongue already are, rather than silently
+   dropped. This limit is probably why the character was gear-less in the first place; going gear-less
+   made every kit equally unverifiable instead of one kit partly so.
+3. `sim/model-ref.json` and `sim/model-ref-request.json` must be edited **together** so a future
+   `--dumpreq` still reproduces the template, and `tests/sim-request.mjs` re-run **with a native
+   `RUNNER`** before the change is trusted — that is the gate this session cannot execute (§8.2).
