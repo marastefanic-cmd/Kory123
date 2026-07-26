@@ -205,22 +205,35 @@ at 1 stack** — i.e. the unhasted AB base (2.5) and one stack of the 0.333 s/st
 (2.5 − 0.333 = 2.167). Any gear haste would scale both down. ⇒ **gear-B haste rating = 0**, matching
 `GOLDEN_DEFAULTS.haste: 0`. No probe needed; this one is exact.
 
-### ⚠ Crit — the naive log count is a TRAP, and it is still owed
+### Crit — ≈38 %, consistent with gear A (and a correction to my own first reading)
 
-Counting `Crit` vs `Hit` in the log gives **56.4 %**, which is *not* the gear crit and must not be
-written into `reference-gear.mjs`. The observed rate is inflated by **Arcane Potency**: Clearcasting
-procs (Arcane Concentration, per hit) grant **+30 % crit on the next cast**, so a large share of
-casts roll at `base + 30`. Reading 56.4 % as the character's crit would overstate it by ~18 points
-and corrupt every damage number downstream.
+**First attempt was wrong and is corrected here.** Counting bare `Crit`/`Hit` substrings across the
+whole log gave **56.4 %**, which I attributed to Arcane Potency inflation. The real cause was
+simpler and entirely mine: that grep swept **every line and every spell** — stat-change lines, other
+spells, threat text — not Arcane Blast outcomes. Filtering to actual AB damage lines
+(`{SpellID: 30451} … Hit for` / `Crit for`):
 
-**The correct probe is talent-isolated**, the same technique SOURCES used to prove the AoE crit
-amplification is *entirely* Arcane Potency: zero the Clearcasting/Potency talents (or read only
-casts not preceded by a Clearcasting proc) and count again — or finite-difference with `--crit`
-(≈22.08 rating per 1 %) and solve for the base. Not done here.
+| | count |
+|---|---|
+| AB casts | 84 |
+| Hit | 52 |
+| **Crit** | **32** |
+| **effective AB crit** | **38.1 %** (binomial 1 SE = **5.3 %**) |
 
-**Still owed before the first gear-B round:** `critPct` only. **Until then `reference-gear.mjs` is
-gear-A data and every gear-B model-vs-sim number inherits that error** — exactly the class of
-harness-input defect PHASE8 §6/§7 spent a round finding. Fix it *before* gathering, never mid-round.
+⇒ **consistent with `critPct: 38`**, the gear-A value already in `reference-gear.mjs`. At n = 84 the
+band is wide (±5.3 % at 1 SE cannot separate 38 from 34 or 42), so this is *"no evidence of change"*,
+**not** *"proven identical"* — the same one-iteration logging limit as the SP uptime above.
+
+★ **Provisional conclusion: gear B is model-equivalent to gear A.** All three parameters —
+base SP **1386.2 identical**, haste **0 exactly**, crit **38.1 % ± 5.3 %** — are unchanged within
+measurement. The gem/wand swap appears to have moved **hit**, or stats the model does not read.
+⇒ `reference-gear.mjs` may stand as-is. **Tighten the crit band before relying on that** (repeated
+single-iteration runs at varied seeds, or a `--crit` finite-difference), and treat it as an
+assumption until then.
+
+⚠ **This does NOT un-archive the gear-A corpus.** Model-equivalence of the *inputs* is not
+equivalence of the *sim outputs* — absolute DPS and the trust anchor are still gear-B numbers, and
+any hit-rating change moves them. Gear-A tables stay in `xval-results-archive/`.
 
 ## 5. Standing requirement
 
