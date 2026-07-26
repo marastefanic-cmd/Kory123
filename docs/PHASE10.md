@@ -417,3 +417,21 @@ look corrupt. Re-measured in node.
 ★ **The general lesson, which is this repo's oldest one in a new costume:** every guard in the
 campaign checked *structure* — is there a header, ten plan rows, a matrix, an `XVAL-DONE`? Structure
 survived the corruption intact. **A file can be well-formed and still not be a record of anything.**
+
+## 8.11 ✅ The solve → shard → assemble path is proven byte-identical to a direct run
+
+§8.5's sharding is what makes the KT pair fit on a 4-core box, and it would otherwise only be
+exercised for the first time *during* the ~9-hour boss phase — where a defect would surface at the
+very end. Validated up front on a small boss cell (`Lady Vashj`, `isc+scb`, 2 hastes, ITER=200):
+
+```
+SOLVE_ONLY=1  → plans cached
+SHARD=0/2     → rows=1  cache=0/10      (each shard sims its own rows: 2 sim-hastes × 5 wall-jitter variants)
+SHARD=1/2     → rows=1  cache=0/10
+(assembly)    → cache=20/20             ← every sim a hit; the assembling process re-simulates NOTHING
+```
+
+and the assembled table **diffs byte-identical** against the same cell run directly with a *fresh*
+cache directory. So sharding is a pure scheduling change: it buys wall-clock and changes no number.
+The run also confirms the boss path engages what it should — `wj=2` (five wall-jitter variants) and
+`targets=0` for a Vashj table, which carries intermissions but no AoE phase.
