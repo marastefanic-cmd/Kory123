@@ -84,9 +84,38 @@ which is what makes a 0.1% difference readable at 10 000 iterations.
 
 ## Known gaps (stated in the UI, not hidden)
 
+- **★★★ AND THE BIGGEST ONE, FOUND 07-26 (`docs/PHASE10.md` §8.7): being gear-less means the trinket
+  on-uses and Bloodlust DO NOTHING here.** "No gear, no consumes, no raid buffs" above is stated as a
+  feature, and for *stats* it is one — but an on-use trinket is only castable while its item is
+  **worn**, and wowsims does not complain when it is not: the press is a **bit-identical no-op**.
+  `raid.buffs.bloodlust` is likewise `false` in `model-ref.json`, and that flag does not auto-apply a
+  Lust (BENCH §3b) — it is what makes one *castable*. Measured on the committed
+  `model-ref-request.json`, one press vs never-press, T=120:
+
+  | | Δ DPS | |
+  |---|---|---|
+  | Icy Veins · Arcane Power · Berserking | +49.269 · +39.715 · +16.100 | fire |
+  | **Bloodlust · Icon · Skull · MQG** | **+0.000 each** | ⚠ silent no-ops |
+  | Serpent-Coil "Gem" | **−2.982** | ⚠ *worse* — a GCD spent casting a Mana Emerald, and with no SCB worn it collects none of the +225 SP that is the point of pressing it |
+
+  Consequence, measured directly: two plans differing **only** in where one press goes read
+  **exactly 0.000 DPS apart** here — `Icon@6` vs `Icon@80` (74 s), `Lust@5` vs `Lust@60` (55 s) —
+  where the same pairs read **+0.756 %** and **+1.290 %** once isc+scb are worn and bloodlust is on.
+  So the button returns *"too close to call"* for the two most consequential decisions the planner
+  makes, and it looks like a clean null rather than a failure, because **both arms lose the same
+  presses**: no error, no NaN, plausible DPS, and the sign usually still agrees with the model since
+  IV/AP/Zerk survive and carry the residual.
+  ⚠ **The structural part that has to be designed around, not just fixed:** wowsims has **two**
+  trinket slots and the planner offers **four** on-use trinkets, so a kit naming three or more can
+  never be fully equipped — which must be *reported*, exactly as Drums/PI/Ashtongue are, rather than
+  silently dropped. Going gear-less made every kit equally unverifiable instead of one kit partly so.
+  **Guard already in place:** `tools/bench.mjs` refuses any arm whose spec presses something dead on
+  the chosen character and offers `--kit a,b` to equip a pair onto it.
 - **Drums of Battle and Power Infusion cannot be pressed from an APL — an UPSTREAM fact, not a genapl
   gap.** wowsims only exposes a spell to an APL if it is registered with `SpellFlagAPL`.
-  `registerBloodlustCD` has it (which is why Bloodlust works); `drumsSpellConfig` (35476) and
+  `registerBloodlustCD` has it (so Bloodlust is APL-*addressable* — ⚠ which is a statement about the
+  engine, **not** about this character: see the gap above, where the press is inert because no Lust is
+  castable); `drumsSpellConfig` (35476) and
   `registerExternalConsecutiveCDApproximation` (PI, 10060) do not — they are auto-fired
   `MajorCooldown`s, so the *sim* would choose the timing, which is exactly what a press-timing duel
   must not delegate. ⚠ **The attempt fails silently**: measured 2128.9 DPS with and without the
