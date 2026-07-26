@@ -160,6 +160,33 @@ if (specA) {
           enabled: {}, fixed: {}, warnings: [], coldSnap: true, segments: null, ...CHARS[CHAR].model };
   arms = [{ label: 'A', spec: JSON.parse(specA) }];
   if (specB) arms.push({ label: 'B', spec: JSON.parse(specB) });
+
+  // ── --targets, and a REFUSAL rather than a wrong number (PHASE11 §1.1 B1) ──────────────────────
+  // `--spec-a` mode used to leave `targets` at 0 with no way to set it, while the plumbing below
+  // (`buildRequest`, `runnerFlags`) has supported targets all along. Only the `--preset` branch set
+  // it. So an AoE duel pasted in as a spec — which is exactly what the page's Debug-export
+  // "reproduce" command produces — ran Arcane Explosion against ONE target and printed a confident,
+  // plausible, wrong DPS. For Kael'thas, the corpus's only AoE fight, that values the AE windows at
+  // one sixth.
+  //
+  // ★ The flag alone would not have closed it, because the failure is SILENT: a user who does not
+  // know to pass `--targets` gets the same wrong number as before. So an `_aoe` window with no
+  // target count is a hard error. The spec carries the windows; only the caller knows how many mobs
+  // stood in them, and guessing on their behalf is how one-sixth got printed in the first place.
+  const aoeArms = arms.filter(a => (a.spec._aoe || []).length);
+  if (arg('targets') !== undefined) {
+    targets = +arg('targets');
+    if (!Number.isInteger(targets) || targets < 0) die(`--targets must be a non-negative integer, got ${JSON.stringify(arg('targets'))}`);
+    if (targets > 1 && !aoeArms.length)
+      die(`--targets ${targets} but neither spec has an \`_aoe\` window — Arcane Blast is single-target, ` +
+          `so the extra dummies would be inert and the number would not mean what it looks like.`);
+  } else if (aoeArms.length) {
+    die(`spec ${aoeArms[0].label} has an \`_aoe\` window but no --targets was given.\n` +
+        `  Simming it anyway would run Arcane Explosion against ONE target — a plausible, confident, ` +
+        `WRONG number (for Kael'thas, the AE windows valued at one sixth).\n` +
+        `  Pass --targets N with the number of mobs in the window. Only you know it: the spec carries ` +
+        `the windows, not the pull.`);
+  }
 } else {
   const name = arg('preset');
   if (!name) die('need --preset <name> (see --list) or --spec-a <json> --T <seconds>');

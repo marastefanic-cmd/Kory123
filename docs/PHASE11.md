@@ -473,10 +473,51 @@ deliberately OFF by default: it cannot pass until §2 lands, and a permanently-r
 reads. **Turn `--strict` on in CI (§3.5) as the last step of §2** — it is the check that proves the
 convergence actually fixed the thing it was for.
 
-### 10.4 What is still blocked, and on what
+### 10.4 ✅ B1 and B2: the halves outside the frozen set landed, and B1's SILENT half is fully closed
 
-- **B1** — the `tools/bench.mjs --targets` half is landable; the `planToSpecInline` half needs
-  `index.html`. Deferred as a unit so the fix and its gate land together.
-- **B2** — `sim/duel-worker.js`'s cached rejection is landable; the worker eviction and listener
-  cleanup are in `index.html`. Same reasoning.
+Both bugs straddle the freeze. Rather than defer them whole, the landable half of each was taken —
+and in B1's case that turns out to close the part that actually matters.
+
+**B1 · `tools/bench.mjs` now REFUSES an AoE spec with no target count.** The plumbing below it
+(`buildRequest`, `runnerFlags`) has supported targets all along; only the `--preset` branch set them,
+so `--spec-a` — which is exactly the shape the page's Debug-export "reproduce" command emits — ran
+Arcane Explosion against one target and printed a confident, plausible, wrong DPS.
+
+★ **Adding the flag alone would NOT have closed it**, because the failure is silent: a user who does
+not know to pass `--targets` gets the same wrong number. So an `_aoe` window with no `--targets` is
+now a hard error. The spec carries the windows; only the caller knows how many mobs stood in them,
+and guessing on their behalf is how one-sixth got printed. A pasted KT reproduce command now *stops*
+instead of lying, before the `index.html` half exists.
+
+Measured, same spec, `_aoe [40,60]`, T=80: **`--targets 1` → 2243.1 DPS · `--targets 6` → 3377.2 DPS
+(+50.6 %)**. That gap is the size of the error the old command was silently printing — and it doubles
+as the no-op check this repo runs on every new sim knob (§8.7's lesson: a flag that reaches nothing
+looks exactly like a flag that works). Three refusals controlled: `_aoe` without `--targets`,
+`--targets > 1` without `_aoe` (inert dummies), and a non-integer count.
+
+**B2 · `sim/duel-worker.js` no longer caches a REJECTED boot.** `if (ready) return ready` memoized
+failure identically to success, so one flaky 22 MB `sim.wasm` fetch bricked the sim button until a
+page reload the UI never suggests. The promise now un-memoizes itself on rejection, guarded by
+`ready === p` so a slow failing boot cannot clear a later succeeding one, and with the `.catch` also
+serving to mark the rejection handled. The retry is deliberately *partial*: `importScripts` is
+skipped when `self.Go` already exists and `go.run` is never re-entered, because the Go runtime parks
+on a channel forever — a second `go.run` is not a retry, it is a second runtime.
+
+Controlled on the exact shape, with a fetch that fails once:
+
+| | boot attempts | duel 1 | duel 2 | duel 3 |
+|---|---|---|---|---|
+| pre-fix | 1 | FAILED | **FAILED** | **FAILED** |
+| post-fix | 2 | FAILED | booted | booted |
+
+⚠ **Honest limit:** this is verified on the memoization shape and by syntax check, not in a browser.
+The worker is a classic script driven by the page, and the repo has no headless test that boots it —
+§1.2 F5's blind seam. The `index.html` half of B2 (evicting the dead worker, symmetric listener
+cleanup) is still owed and is where a real end-to-end test would have to attach.
+
+### 10.5 What is still blocked, and on what
+
+- **B1's page half** — `planToSpecInline` must emit `targets` and the reproduce command must carry
+  `--targets`; both in `index.html`. The tool no longer prints a wrong number in the meantime.
+- **B2's page half** — worker eviction on failure + symmetric listener cleanup, `index.html`.
 - **Everything in §2, §3.1, §3.3** — the frozen set, until PHASE10's round completes.
