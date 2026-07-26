@@ -3001,3 +3001,27 @@ one out of the §21.5 erratum; all are CPU/redundancy items, none changes a plan
    engine change (an SP buff that starts moving cast times) that no golden would flag, because the
    goldens only see the final plan. Pattern to copy into other instruments: **assert the property
    your measurement DEPENDS on, not just the measurement.**
+
+### §5.19 ★★ The `cfgSigOf` memo trap — a scoring cfg field that isn't in the signature is a SILENT no-op (07-26)
+
+Found while implementing PHASE8 §25's boundary charge. `simulate()` memoizes on
+`cfgSigOf(cfg) + "|" + sigOf(schedule)`, and `cfgSigOf` enumerates scoring inputs **by hand**:
+`T, hasteRating, sp, critPct, coldSnap, t5two, enabled, fixed, segments`. A new field
+(`boundaryCharge`) that changes the score but is **not** in that list makes the `ON` call hit the
+`OFF` cache entry and return it.
+
+**The first gate run therefore read ON and OFF as bit-identical at all 7 fight lengths** — a perfect
+null result, no error, no warning. The charge was not zero; it was never computed. That is the most
+believable kind of wrong answer, and it is the same family as the round-4 collector that passed on
+zero data and §21.5's vacuous F3: **an instrument whose failure mode looks like a clean measurement.**
+
+- Fixed by adding the field, with the rule written at the function: *every cfg field that can change
+  a score must appear in the signature.*
+- ⚠ **The trap is structural, not a one-off.** The list is hand-maintained and nothing checks it
+  against the fields `simulateRaw` actually reads. A cheap guard for the §4 catalogue: in a debug
+  build, `Proxy`-wrap `cfg` inside `simulateRaw`, collect the keys actually read, and assert they
+  are a subset of the signature's key list. That converts a silent staleness bug into a loud one.
+- **Performance note (why the memo exists at all, so nobody "fixes" this by removing it):** the
+  identity fast path (`simMemoCfg === cfg`) means the signature is rebuilt only when the cfg object
+  changes, which in a normal run is once. The cost of the extra field is one array slot. There is no
+  CPU argument for keeping the signature narrow — only the correctness argument for keeping it wide.

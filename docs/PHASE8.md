@@ -2965,6 +2965,69 @@ with the cascade already applied (IV#3 at its §17.5 **executed** time, not the 
 additivity bar**. F3 tested whether two terms sum to a target without ever testing whether they
 *can* — and a basis-dependent estimator will produce a confident-looking residual every time.
 
+## §25 — THE CHARGE IS IMPLEMENTED, GATED, AND THE GATE FAILS. It ships OFF. (07-26)
+
+§22/§23 falsified the charge with a *proxy* (whole-window toggling). That is not what an in-scorer
+charge does, so the finale was executed properly: **the charge is now implemented in `simulate()`**
+and run against the §20 sign gate. It fails, and the real implementation fails *harder* than the
+proxy predicted.
+
+### 25.1 What landed (default OFF)
+
+`cfg.boundaryCharge` (absent ⇒ off). Implementation follows §21.5's constraint — the count comes
+from the board's own anchored lattice, never a closed form:
+
+- **Board loop** records each steady cast's **completion** (`bcDone`); ramp casts are excluded
+  because they are already scored discretely and carry no quantization error.
+- **Integral loop** accumulates, per value window, the **continuous cast-equivalents** the integral
+  actually paid (`len / intervalAt(...)`, the same denominator `rateAt` divides by) plus a
+  damage-weighted total used to price the premium.
+- **After the integral**: `charge = Σ_w (nModel(w) − nSim(w)) × premium(w)`, where `nSim` counts
+  completions inside `[scoreStart, scoreStart + dur)`. Docked from `total`/`totalEarly`/`robust`.
+
+### 25.2 ★★ The bug that made it read as a NO-OP — and it is a general trap
+
+The first gate run showed `ON` and `OFF` **bit-identical at all 7 lengths**. The charge was not
+zero; it was never computed. `simulate()` memoizes on `cfgSigOf(cfg)`, and that signature listed
+`T, hasteRating, sp, critPct, coldSnap, t5two, enabled, fixed, segments` — **not the new field**. So
+the `ON` call hit the `OFF` entry and returned it.
+
+> ⚠ **Any cfg field that can change a SCORE must be added to `cfgSigOf`, or `SIM_MEMO` silently
+> serves the other setting's result and the two become indistinguishable.** The failure is
+> invisible: no error, no warning, and the "measurement" looks like a clean null result — the most
+> believable kind of wrong answer. Fixed, with the reason recorded at the function.
+
+### 25.3 The gate — model vs sim across fight length, charge ON vs OFF
+
+| T | sim % | model OFF | model ON | gap OFF | **gap ON** | |
+|---|---|---|---|---|---|---|
+| 40 | +7.850 | +7.653 | +8.317 | −0.197 | **+0.467** | worse (sign flips) |
+| 70 | +5.666 | +5.605 | +5.888 | −0.061 | **+0.222** | worse |
+| 100 | +4.217 | +4.129 | +4.336 | −0.088 | **+0.119** | worse |
+| 140 | +3.116 | +3.057 | +3.208 | −0.059 | **+0.092** | worse |
+| 180 | +2.435 | +2.222 | +2.338 | −0.213 | **−0.097** | *better* |
+| 205 | +2.387 | +2.228 | +1.968 | −0.159 | **−0.419** | worse |
+| 229 | +0.360 | −0.037 | −0.096 | −0.397 | **−0.456** | worse |
+
+**6 of 7 worse.** And the failure mode is now visible in a way the proxy could not show: the charge
+**overshoots at short fights** — at T=40 it does not merely fail to close the −0.197 gap, it drives
+it to **+0.467**, flipping the sign and increasing the magnitude. That is the §23 U-shape being
+attacked from the wrong end: the charge is largest exactly where the bias is *already* explained
+least by it. At the headline cell it simply deepens the deficit (−0.397 → −0.456).
+
+### 25.4 Verdict and status
+
+- **The sign gate FAILS. The charge ships OFF and must stay off** until a sim gate exists to justify
+  it on fidelity grounds *other* than B2 ranking. Three independent measurements now agree on the
+  sign: §22 (anchored proxy at T=229), §23 (anchored proxy across length), §25 (the real scorer).
+- **Gates run, all green for the OFF path** — which is what makes shipping it safe:
+  `plan-sweep` × 2 + `plan-diff` ⇒ `SCORE-AUDIT scorerMoved=0`, `PLAN-DIFF IDENTICAL` (re-run after
+  the `cfgSigOf` fix, since that changed the memo key); exact-match **25/25**.
+- **No golden churn, so the "sim-verified better" gate is not engaged** — nothing to certify.
+- **What this buys even though it failed:** the implementation is written, reviewed and gated, so
+  when the rig returns the question is one command, not a rebuild. And §25.2's memo trap is now
+  closed for every future cfg field.
+
 ## Guardrails (unchanged)
 Determinism; exact-match 25/25; a golden may move ONLY if its effective-AB count improves AND it
 sim-verifies (var0.5 CRN); B1 must stay clean by construction (pooling); monoDip=0. The full acceptance

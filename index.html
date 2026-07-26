@@ -693,7 +693,10 @@ let simMemoCfg = null, simMemoCfgSig = "";
 function cfgSigOf(cfg) {
   if (simMemoCfg === cfg) return simMemoCfgSig; // identity fast path — one cfg dominates any run
   simMemoCfg = cfg;
-  simMemoCfgSig = JSON.stringify([cfg.T, cfg.hasteRating, cfg.sp, cfg.critPct, cfg.coldSnap ? 1 : 0, cfg.t5two ? 1 : 0, cfg.enabled, cfg.fixed, cfg.segments]);
+  // ⚠ EVERY cfg field that can change a SCORE must appear here, or SIM_MEMO serves a stale result
+  // for the other setting and the two are silently indistinguishable (PHASE8 §25 was measured as a
+  // no-op for exactly this reason before `boundaryCharge` was added to the signature).
+  simMemoCfgSig = JSON.stringify([cfg.T, cfg.hasteRating, cfg.sp, cfg.critPct, cfg.coldSnap ? 1 : 0, cfg.t5two ? 1 : 0, cfg.boundaryCharge ? 1 : 0, cfg.enabled, cfg.fixed, cfg.segments]);
   return simMemoCfgSig;
 }
 function simulate(schedule, cfg, collect) {
@@ -775,6 +778,9 @@ function simulateRaw(schedule, cfg, collect) {
   let t = 0, stacks = 0, lastCastStart = -Infinity, prevCastRamp = false, total = 0, totalEarly = 0, robust = 0, gcdCappedTime = 0, castCount = 0;
   let aoeSegI = -1, aoeExact = false; // per-AoE-segment: is its AE lattice locked to the phase start?
   const boardRamp = []; // ramp casts recorded for the scorer: {s: start, c: completion, e: next boundary}
+  // PHASE8 §25 — per-window continuous-vs-discrete boundary charge. OFF by default: it is
+  // sim-UNVERIFIED and measured ANTI-B2 (§22/§23), so it must not silently change any plan.
+  const bcOn = !!cfg.boundaryCharge, bcDone = [], bcModel = [], bcDmg = [];
   const casts = collect ? [] : null;
   while (t < cfg.T + KILL_WINDOW) {
     let seg = null;
@@ -917,6 +923,10 @@ function simulateRaw(schedule, cfg, collect) {
     prevInterval = interval;
     prevCastRamp = !isAoe && stacks < g.AB.MAX_STACKS;
     if (prevCastRamp) boardRamp.push({ s: t, c: prevCastEnd, e: t + interval }); // a true ramp cast — scored discretely
+    // PHASE8 §25 — the boundary charge needs each STEADY cast's COMPLETION (the instant wowsims
+    // reads a value buff, §5). Ramp casts are already scored discretely, so they carry no
+    // quantization error and are excluded. Gated: zero cost when the charge is off.
+    else if (bcOn && !isAoe) bcDone.push(prevCastEnd);
     if (!isAoe) { lastCastStart = t; if (stacks < g.AB.MAX_STACKS) stacks++; }
     t += interval;
   }
@@ -1059,6 +1069,49 @@ function simulateRaw(schedule, cfg, collect) {
     if (b <= cfg.T + 1e-9) total += contrib;
     if (b <= cfg.T - KW + 1e-9) totalEarly += contrib;
     robust += contrib * Math.min(1, Math.max(0, (cfg.T + KW - mid) / (2 * KW)));
+    // §25: cast-EQUIVALENTS this span credits, per value window covering it. Same denominator
+    // rateAt uses, so nModel is exactly the continuous count the integral paid for.
+    if (bcOn) {
+      const st = scanAt(mid, segB);
+      const nSpan = len / intervalAt(st.multDn2, st.aoe, g.AB.MAX_STACKS);
+      for (let k = 0; k < active.length; k++) {
+        const w = active[k];
+        if (w.def.kind !== "dmg" && w.def.kind !== "sp") continue;
+        if (mid < w.scoreStart || mid >= w.scoreStart + w.def.dur) continue;
+        bcModel[k] = (bcModel[k] || 0) + nSpan;
+        bcDmg[k] = (bcDmg[k] || 0) + st.dmg2 * nSpan;   // damage-weighted, to price the premium
+      }
+    }
+  }
+  // ═══════════ PHASE8 §25 — the boundary charge ═══════════
+  // wowsims reads a VALUE buff at cast COMPLETION (§5, source-checked), so a window covers exactly
+  // the casts COMPLETING inside it. The rate integral instead credits a continuous D/Δ, which
+  // over-pays the partial cast straddling the back edge. Charge the difference, priced from the
+  // window's OWN anchored lattice (§21.5: a flat frac(D/Δ) is the wrong shape — flush vs offset-2s
+  // moves it 0.11pp — so the count must come from the board, not a closed form).
+  //   nModel = continuous cast-equivalents the integral paid inside the window
+  //   nSim   = board casts whose COMPLETION lands inside the window
+  //   charge = (nModel − nSim) × premium-per-cast
+  // ⚠ DEFAULT OFF, and it must stay off until a sim gate exists: §22/§23 measure it ANTI-B2 at
+  // every fight length tested (ΔL +0.156pp at T=229, +0.912pp at T=40, both the wrong sign).
+  if (bcOn) {
+    let charge = 0;
+    for (let k = 0; k < active.length; k++) {
+      const w = active[k];
+      if (w.def.kind !== "dmg" && w.def.kind !== "sp") continue;
+      const nModel = bcModel[k] || 0;
+      if (nModel <= 0) continue;
+      const ws = w.scoreStart, we = ws + w.def.dur;
+      let nSim = 0;
+      for (let j = 0; j < bcDone.length; j++) { const tc = bcDone[j]; if (tc >= ws && tc < we) nSim++; }
+      // premium per cast = the part of this window's average cast damage the buff itself adds.
+      const avgDmg = bcDmg[k] / nModel;
+      const prem = w.def.kind === "dmg" ? avgDmg * (1 - 1 / w.def.value)
+                                        : avgDmg * (g.AB.COEF * w.def.value) / (g.AB.AVG_BASE_DMG + g.AB.COEF * (cfg.sp + w.def.value));
+      charge += (nModel - nSim) * prem;
+    }
+    // the charge is damage the model credited and the sim would not: dock all three currencies.
+    total -= charge; totalEarly -= charge; robust -= charge;
   }
   // the discrete ramp casts' damage (suppressed spans above), kill-window-weighted like the integral
   for (const c of rampCasts) {

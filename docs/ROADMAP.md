@@ -25,6 +25,18 @@
   `assets/database/db.bin`**, so TOOLING's "DB assets are generated, not committed" blocker has
   expired. `TOOLING.md`'s build recipe is flagged known-stale. **Everything Phase 8 still owes is a
   sim question**, so nothing further lands until a runner exists and the trust anchor is re-certified.
+- ✅ **THE CHARGE IS IMPLEMENTED AND GATED — AND IT SHIPS OFF (PHASE8 §25).** The finale was executed,
+  not just proxied: `cfg.boundaryCharge` (default OFF) prices each value window from the board's own
+  anchored lattice (`nModel` continuous cast-equivalents − `nSim` completions inside the window) ×
+  premium. **The §20 sign gate FAILS on the real scorer: 6 of 7 fight lengths WORSE**, and it
+  overshoots at short fights — T=40 goes `−0.197 → +0.467`, flipping sign and growing. Three
+  independent measurements now agree (§22 proxy@229, §23 proxy across length, §25 the real scorer).
+  Gates green for the OFF path: `plan-diff SCORE-AUDIT scorerMoved=0`, `PLAN-DIFF IDENTICAL`,
+  exact-match **25/25**. No golden churn, so the "sim-verified better" gate never engages.
+  ⚠ **Do not turn it on** without a sim gate justifying it on fidelity grounds other than B2 ranking.
+- ★★ **A cfg field that changes a score MUST be in `cfgSigOf` (PHASE9 §5.19).** The first §25 gate
+  run read ON≡OFF at all 7 lengths — the charge was never computed, because `SIM_MEMO` served the
+  OFF entry. Silent, no error, looked like a clean null. Fixed; guard proposed in PHASE9 §4.
 - ★ **B2's bias is U-SHAPED IN FIGHT LENGTH, and §22 holds at every length (PHASE8 §23; sim-free).**
   `model − sim` = **−0.197** pp at T=40, mean **−0.116** across T=70..205, **−0.397** at T=229 — both
   ENDS ≈2–3× the middle, and 7/7 negative on the *corrected* harness (so §2's sign test is not a
