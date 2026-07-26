@@ -63,8 +63,29 @@ user's finding are therefore the same measurement, which has never been true bef
 
 ## 4. The loop
 
-1. **Shakedown** — the four known-shape cells above. Gate: shapes recognisable, no NaNs, no silent
-   `skipped` entries beyond the known Drums/PI/Ashtongue set.
+1. **Shakedown — start here, before any gathering.** Four cells, ~1 minute total:
+
+   ```
+   node tools/bench.mjs --preset "2:00 lust 0:05"  --vs naive --iter 4000
+   node tools/bench.mjs --preset "5:00 lust 0:05"  --vs naive --iter 4000
+   node tools/bench.mjs --preset "2:40 lust 0:07 intermission 1:30-2:10" --vs naive --iter 4000
+   node tools/bench.mjs --preset "Kael'thas Sunstrider" --vs naive --iter 4000   # the AoE cell
+   ```
+
+   Gate — **all four must hold, and none of them is about the DPS values** (the baseline changed, so
+   the values are *supposed* to be new):
+   - the model plan beats mash-on-cooldown in every one, by a plausible margin (a few tenths to a few
+     percent), and `MODEL` and `SIM` **agree in sign**;
+   - the never-press control is identical across the two arms of a cell (same character, same fight) —
+     if it is not, the control is picking up something it should not;
+   - no NaN, no `errorResult`, and **no `skipped` entry beyond the known Drums / PI / Ashtongue set**
+     — a silent omission here is the failure mode `planspec.mjs` exists to prevent;
+   - the intermission and AoE cells transcribe (`_intermissions` / `_aoe` present in the emitted spec,
+     targets > 1 on the AoE one).
+
+   If any of that is off, **stop**: the phase becomes tool debugging (§3, first bullet), and the
+   36-table campaign waits. Cross-check with `RUNNER=… node tests/sim-duel.mjs` and
+   `RUNNER=… node tests/sim-request.mjs` before suspecting the model.
 2. **Gather round 1** — the 36 tables, `tools/bench.mjs --json`, one protocol, all stamped, into
    `tools/xval-results/`.
 3. **Verify invariants** — `xval-verify.mjs` + `xval-collect.mjs` must agree on every headline number,
