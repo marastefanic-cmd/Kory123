@@ -105,3 +105,29 @@ modern one, so its numbers were right for it. The hazard is reusing those litera
   exactly what that patch exists to correct.
 - **The reference gear export** — still lost, still the blocking unknown for trust-anchor parity.
   This runner uses `mage.P1FireGear`, which is NOT the reference gear.
+
+## ⚠ THE AP-195 QUIRK IS PRESENT HERE TOO — and the original patch does NOT apply
+
+Reading `sim/mage/talents.go:210` `registerArcanePowerCD()` suggests the cadence is already correct:
+`OnExpire` **only** reverses the multipliers (there is no `arcanePowerSpell.CD.Use(sim)` line for
+`ap-cd-at-cast.patch` to delete), and the cooldown is declared `Duration: time.Minute * 3`.
+
+**The measurement says otherwise.** 3000 iter, dur 229, seed 1, infinite mana:
+
+| schedule | dps | reads |
+|---|---|---|
+| `AP@0` only | 1407.0816 | — |
+| `AP@0,180` | **1407.0816** | **bit-identical — the 180 s press NEVER FIRES** |
+| `AP@0,195` | 1414.0496 | +6.97 — this one *does* fire |
+
+So the effective AP cooldown is **195 s = 180 + the 15 s aura**, exactly the quirk
+`ap-cd-at-cast.patch` exists to remove — reached by a *different mechanism* than in the modern core.
+⇒ **The patch is still REQUIRED, and it must be rewritten, not re-targeted.** Its root cause is not
+yet located; candidates are the `MajorCooldown` activation path refusing to fire while the aura is
+up, or the CD timer being started on aura expiry rather than at cast.
+
+★ **Do not skip this.** RULES/TOOLING record the real-TBC cadence as 180 s at cast; running the stock
+sim silently gives every plan one fewer AP window on a 229 s fight, which is precisely the class of
+harness-input error that cost this project two re-gathered rounds (`t5two`, effective SP). **Locate
+and fix it before any gate reads this runner's output**, and add `AP@0,180` vs `AP@0` as a permanent
+regression probe — if they are ever bit-identical again, the fix has regressed.
