@@ -488,13 +488,48 @@ Lesson 7 above is the instrument for the second axis; lessons 1–4 are the firs
 > `wowsims/tbc` never did. ⇒ **The rig was built from a FORK or a local clone carrying local
 > commits, and nothing in this repo records where it came from.**
 >
-> **To restore it, one of:** (a) the fork's clone URL + commit — the cheap path, ask the owner;
-> (b) a surviving local copy of the old `wowsims` tree; (c) **re-base onto a modern repo**
-> (`wowsims/classic` has the APL core, `cmd/wowsimcli`, and — unlike `ade9f39` — now *commits*
-> `assets/database/db.bin`, so the DB-generation blocker below has expired). (c) is real work, not a
-> checkout: the module path changes, `runner-main.go`'s imports change with it, both patches need
-> re-targeting (`sim/mage/arcane_power.go` is absent at every candidate's HEAD), and the trust
-> anchor must be re-certified (~0.4 % vs `wowsimcli`) before any gate reads its output.
+> ### What the fork actually WAS — and the cheap way to rebuild it (07-26)
+>
+> **TBC content and APL live in DISJOINT public repos, and no public repo has both:**
+>
+> | repo | Arcane Blast (TBC lvl-64 — the planner's whole subject) | APL |
+> |---|---|---|
+> | `wowsims/tbc` (archived 2026-07-24) | ✅ `sim/mage/arcane_blast.go` | ❌ **0 apl files on ALL 15 branches, ever** |
+> | `wowsims/classic` | ❌ none (Vanilla/SoD, level 60) | ✅ |
+> | `wowsims/cata`, `wowsims/wotlk` | wrong expansion | ✅ |
+>
+> Our runner imports `github.com/wowsims/tbc` **and** the patches touch `sim/core/apl_actions_timing.go`
+> ⇒ the fork was **archived `wowsims/tbc` with the modern APL core back-ported into it**. *That
+> back-port is the lost artifact — the base is fine and still public.*
+>
+> **★ DO NOT REDO THE BACK-PORT. It is ~21 `sim/core/apl*.go` files against a 2022-era core, and we
+> do not need APL at all.** What the harness actually requires is only *"fire cooldown X at time T"*,
+> and **archived `wowsims/tbc` already has that natively**: `sim/core/major_cooldown.go` defines
+> `MajorCooldown{ CanActivate, ShouldActivate CooldownActivationCondition, Priority, Type }`, already
+> used across `sim/mage/{talents,mana_gems}.go`. A scheduled press is one predicate:
+> `ShouldActivate: func(sim, char) bool { return sim.CurrentTime >= scheduledTime }`.
+>
+> **The rebuild, then, is:**
+> 1. Clone `wowsims/tbc` at HEAD (`7a2613fd`) — public, complete, has Arcane Blast and the item DB path.
+> 2. Port `tools/wowsims-patches/runner-main.go` (imports already match `github.com/wowsims/tbc`) and
+>    replace its APL-rotation input with **scheduled `ShouldActivate` predicates** built from the same
+>    press-time list `tools/genapl.mjs` already emits. No core surgery.
+> 3. Re-target `ap-cd-at-cast.patch`: TBC has **no `sim/mage/arcane_power.go`** — Arcane Power is
+>    `registerArcanePowerCD()` at **`sim/mage/talents.go:211`** (`SpellID: 12042`). The patch's job is
+>    unchanged: stop the aura's `OnExpire` from re-setting the CD, restoring the true 180 s cadence.
+> 4. `apl-schedule-strict-ready.patch` becomes **unnecessary** — it existed to fix APL's schedule
+>    drop-bug, and there is no APL in this design. Its *intent* (a scheduled press must not fire while
+>    the spell is on cooldown) becomes a `CanActivate` guard, which is the idiomatic hook for exactly that.
+> 5. Re-certify the **trust anchor** (~0.4 % vs `wowsimcli`) before any gate reads the output, and
+>    **commit the provenance here** (repo, commit, module path, build flags).
+>
+> ⚠ Two things to verify early, as they are the plausible blockers: whether HEAD still builds with
+> `-tags with_db` (the archived repo's `assets/database/db.bin` is `//go:embed`-ed and **generated,
+> not committed** at that commit — see below), and whether press-time granularity through
+> `ShouldActivate` reproduces the boundary-snap behaviour RULES §3 depends on.
+>
+> **Other restore paths, cheaper if available:** (a) the fork's clone URL + commit — ask the owner;
+> (b) a surviving local copy of the old `wowsims` tree.
 >
 > ★★ **THE LESSON — the most important instrument in the project was never reproducible from the
 > repo.** We committed the *patches* and our *custom runner* but never the base source, its origin,
