@@ -3055,6 +3055,38 @@ the boundary, which the continuous integral already largely captures, not a coun
 term. Recorded here because it is a real constraint on any future attempt: **do not model the haste
 half by analogy to the value half.** `cfg.boundaryCharge` is therefore value-only = §13.8's `L`.
 
+**Why a per-window haste term cannot be right, stated properly.** For a value window the casts
+outside it simply earn no premium — a local, per-window fact. For a haste window the "missing" cast
+is **not lost, it is displaced**: it happens after the window at the ambient rate, and the only
+place displacement becomes a real loss is the **fight end**, where the clock runs out. So the haste
+error is a *fight-end* effect, not a window effect — which is exactly why §13.8's measured `U`
+(0.075 % / 0.105 %) is an order of magnitude below the 1.7 % a per-window count mismatch predicts.
+The naive form does not merely over-count; it charges a loss that never occurs.
+
+### 25.5a ★ Does COMPLETING the family rescue the sign? No — the haste half is wrong-signed too
+
+⚠ The goal's sizing ("+0.15/+0.26 pp at the P3 anchor") comes from §21.5's C-BE, which was measured
+on **`MQG@202` — a HASTE window**. The implemented charge is value-only, so the gate above tests
+half the family. Closing that gap does not need a haste implementation, because §13.8 already
+measured `U` on both B2 plans. Combining the two rulers — this phase's **anchored `L`** with
+§13.8's `U` — and applying `S = M − L + U`:
+
+| plan | L (anchored, §22) | U (§13.8) | net `L − U` |
+|---|---|---|---|
+| h40 | +0.0214 | +0.0750 | **−0.0536** |
+| h70 | −0.1346 | +0.1050 | **−0.2396** |
+| | | | **Δ = +0.1860 pp** |
+
+- **The complete family is MORE anti-B2 than the value half alone** (+0.186 vs +0.156), and ~2.9× the
+  flat-ruler figure §13.8 reported (+0.065).
+- **The haste half is wrong-signed as well.** To flip the verdict, `ΔU = U(h40) − U(h70)` would have
+  to exceed `ΔL = +0.156 pp`; it is measured at **−0.030 pp** — the wrong direction entirely. So
+  completing the family moves the differential **away** from B2, not toward it.
+
+⇒ **The gate's verdict covers the whole term as the goal sized it, not just the half that is coded.**
+There is no version of the lattice-quantization family — value, haste, or both, flat ruler or
+anchored — that closes B2. This is the fourth and most complete statement of the same result.
+
 ### 25.6 Verdict and status
 
 - **The sign gate FAILS. The charge ships OFF and must stay off** until a sim gate exists to justify

@@ -41,6 +41,11 @@
   Gates green for the OFF path: `plan-diff SCORE-AUDIT scorerMoved=0`, `PLAN-DIFF IDENTICAL`,
   exact-match **25/25**. No golden churn, so the "sim-verified better" gate never engages.
   ⚠ **Do not turn it on** without a sim gate justifying it on fidelity grounds other than B2 ranking.
+  ★ **And COMPLETING the family does not rescue it (§25.5a):** the goal's "+0.15/+0.26 pp" sizing
+  came from a HASTE window (`MQG@202`), so the coded charge is half the term — but combining the
+  anchored `L` with §13.8's measured `U` gives **Δnet = +0.186 pp**, *more* anti-B2 than value-only
+  (+0.156). `ΔU` is **−0.030** where it would need to exceed **+0.156** to flip. **No version of the
+  family — value, haste or both, flat or anchored — closes B2.** Tool: `tools/p8-family-net.mjs`.
 - ★★ **A cfg field that changes a score MUST be in `cfgSigOf` (PHASE9 §5.19).** The first §25 gate
   run read ON≡OFF at all 7 lengths — the charge was never computed, because `SIM_MEMO` served the
   OFF entry. Silent, no error, looked like a clean null. Fixed; guard proposed in PHASE9 §4.
