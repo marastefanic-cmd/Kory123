@@ -52,6 +52,40 @@ bash tools/xval-status.sh          # processes · tables complete · cache size
    over unchanged.)
 4. **Then decide the next phase from the new table, not the old one.**
 
+## 3b. ⚠⚠ AN UNMERGED BRANCH IS WAITING, AND IT MOVES THE ENGINE
+
+`origin/claude/webapp-optimization-brainstorm-unpipp` carries three commits. **One is already in**
+(`2dd54e6`, PHASE 11's plan — cherry-picked 07-26 because it is docs-only: CLAUDE.md, PHASE11.md,
+ROADMAP.md, no `index.html`). Git will still list it as unmerged; that is the cherry-pick's new sha,
+not missing content.
+
+**The other two are NOT in, deliberately:** `e577d08` (UI: timeline legend, toolbar sequencing,
+trinkets shelved by phase) and `f9cedec` (merge: ship the in-page sim + deploy config). Together they
+rewrite `index.html` by **+147/−52**, which alone would void the round — `ENGINE_ID` in
+`tools/xval-bench.mjs:174` hashes the **whole file**, so every one of the ~293 cached plans
+invalidates and the remaining cells re-solve against a different engine than the finished ones.
+
+★ **And it is not only a cache-invalidation problem.** The `engine-src` block itself differs
+(`acf45c8a3b55` → `be3121b02a78`, +616 bytes). Most of it is presentational — `src:` loot strings, a
+new `TRINKET_TIERS` grouping — but it **reorders the flat `TRINKETS` array**:
+
+```
+["skull","ati","scb","mqg","isc"]   →   ["mqg","isc","scb","skull","ati"]
+```
+
+and iteration order can move a tie-break in the search. The incoming comment asserts the tiers are
+"purely presentational … TRINKETS stays the flat key list" — true of the *contents*, silent about the
+*order*. **Treat that as unverified until `tests/exact-match.mjs` says 25/25.**
+
+**Merge order, once the round is graded and archived:**
+1. Grade + archive round 1 first. A merge before that costs the round.
+2. `git merge origin/claude/webapp-optimization-brainstorm-unpipp`.
+3. `cd tests && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs` — **25/25 or investigate the
+   TRINKETS ordering before anything else.** If plans moved, `plan-diff` the two engines and duel
+   every changed cell (TOOLING: aggregates can hold while a cell regresses).
+4. `node tools/census-build.mjs index.html /tmp/c.html` — content-anchored now, but a UI diff of this
+   size is exactly what would move a probe's *subject* (PHASE11 §10.2).
+
 ## 4. Blocked on `index.html` — unblocks the moment the round is done
 
 - **§8.7's remaining half.** The page must equip the user's **actual** kit and *report* what it could
