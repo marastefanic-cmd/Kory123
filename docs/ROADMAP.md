@@ -44,6 +44,23 @@ exists. B2's sim preference has already moved ~0.39pp *and changed sign* across 
   **two** trinket slots and the planner offers **four** on-use trinkets, so a kit naming three can
   never be fully equipped and the UI has to *say so*.
 
+### 🧭 PLANNED (parallel track): PHASE 11 — the platform phase (`docs/PHASE11.md`, written 07-26)
+
+**The single-file convention is retired (user decision, 07-26).** Phase 11 is the platform / perf /
+product track: it touches no scorer term, search pass, or protocol constant — plans stay
+byte-identical except where one of its §1 bug fixes is itself the change (all plan-neutral:
+tools/UI/deploy). It opens with the 07-26 audit's findings ledger — **8 confirmed bugs to fix
+first**, worst three: the Debug export's "reproduce" command silently mis-reproduces AoE duels
+(`planToSpecInline` drops `targets`; `bench.mjs` has no `--targets` flag), one transient fetch
+failure bricks the sim button until reload (`duel-worker.js` caches the rejected boot forever), and
+the unhashed `sim/sim.wasm` is served `immutable` (stale physics for returning visitors on the first
+rebuild). Then: CI bring-up (verified: no `.github/` exists), the module split under a
+plan-sweep-IDENTICAL + exact-match gate, the PHASE9 §4 reclaim ladder, and lazily-loaded product
+routes (URL-shareable setups first — today a mid-raid refresh loses the fight being planned).
+PHASE11 §8 lists the user calls it needs (file:// fate, build-or-no-build, precomputed preset plans,
+comparison/EP features, wasm-in-git). It interleaves with Phase 10 freely — the only declared
+boundary is a wasm rebuild (new baseline, BENCH §1).
+
 ### ⏳ 0. FRESHEST STATE (07-26) — PHASE 8's FINALE IS FALSIFIED; the sim rig is GONE and is the next task
 
 **Read this first — it supersedes the round-6/7 block below on what to do next.**
