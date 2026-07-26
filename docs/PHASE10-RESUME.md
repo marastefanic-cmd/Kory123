@@ -75,7 +75,42 @@ new `TRINKET_TIERS` grouping — but it **reorders the flat `TRINKETS` array**:
 
 and iteration order can move a tie-break in the search. The incoming comment asserts the tiers are
 "purely presentational … TRINKETS stays the flat key list" — true of the *contents*, silent about the
-*order*. **Treat that as unverified until `tests/exact-match.mjs` says 25/25.**
+*order*. ~~**Treat that as unverified until `tests/exact-match.mjs` says 25/25.**~~
+
+**✅ RESOLVED BY READING, 07-26 — and the prescribed gate was the WRONG ONE.** Every reference to the
+bare `TRINKETS` identifier, classified by script block (engine = `index.html:783–3357`):
+
+| line | block | use | order-sensitive? |
+|---|---|---|---|
+| 837 | ENGINE | the definition | — |
+| 840 | ENGINE | `GROUPS[1].keys` — and `GROUPS` is read **only** at `:3451`, checkbox rendering | no (UI paint order) |
+| 3408 | UI | `trinketCount()` — a `.filter().length` | no |
+| 3513 | UI | `TRINKETS.includes(key)` | no |
+| **5114** | **UI** | **`for (const k of TRINKETS) if (enabled[k] && ++eq > 2) enabled[k] = false`** | **YES** |
+
+**The search never reads it.** All three ordering-sensitive engine uses (`:1001`, `:1040`, `:1345`) go
+through **`OFF_TRINKETS`**, whose order the incoming diff does not touch. So the tie-break worry is
+unfounded — but the *reason* it is unfounded also means the gate cannot see it:
+
+★ **`exact-match` is BLIND to this change by construction, so 25/25 would NOT have verified the claim.**
+`tests/exact-match.mjs:47` declares **its own** hardcoded `ALL_BUFFS` and builds `enabled` from
+`kit.includes(k)` (`:53`); it never calls `applyState`. A green suite here is a true statement about the
+engine and **no statement at all** about the reorder. Pre-registered: **25/25 is expected, and is not
+evidence about TRINKETS ordering.** (Still run it — it gates the other +147/−52.)
+
+⚠ **What the reorder DOES change, which the incoming comment does not cover.** `applyState:5114` caps a
+setup at wowsims' two trinket slots, and **which two survive is first-two-in-`TRINKETS`-order**:
+
+```
+legacy save {skull, scb, mqg}   old ⇒ keeps skull+scb      new ⇒ keeps mqg+scb      ← different plan, silently
+```
+
+Reachability today is **narrow but nonzero**: no shipped preset can trigger it — `GOLDEN_DEFAULTS.kit`
+names exactly two trinkets (`isc`,`scb`), and `BOSS_PRESETS` carry no `kit` — so the only live path is
+`:5166`, loading a **saved setup** with ≥3 trinkets, which is precisely what `:5113`'s own comment
+("*sanitize old presets*") exists for. ⚠ **PHASE11 §2's URL-shareable setups would promote this from a
+legacy-localStorage corner to a routine path taking third-party input** — decide the clamp's priority
+order deliberately there rather than inheriting it from a presentational regroup.
 
 **Merge order, once the round is graded and archived:**
 1. Grade + archive round 1 first. A merge before that costs the round.
