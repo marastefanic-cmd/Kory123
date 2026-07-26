@@ -701,7 +701,14 @@ function cfgSigOf(cfg) {
 }
 function simulate(schedule, cfg, collect) {
   if (collect) return simulateRaw(schedule, cfg, collect);
-  const key = cfgSigOf(cfg) + "|" + sigOf(schedule);
+  // PHASE9 §4.13: the NATIVE encoder is a cheaper memo key than the hand-rolled `sigOf`
+  // (0.483 vs 1.400 µs/call over ~1.98M calls/solve). Safe here because this is a MEMO: if two
+  // key orders ever diverged, JSON.stringify yields two keys for one schedule ⇒ a memo MISS ⇒ a
+  // recompute of the same value. Slower, never wrong. (Injectivity — the half that could return a
+  // WRONG score — is unaffected: distinct schedules still encode distinctly.)
+  // ⚠ NOT applicable to the `seen` dedup at the candidate-build site: a miss THERE admits a
+  // duplicate candidate instead of skipping it, which can change the plan. That site keeps sigOf.
+  const key = cfgSigOf(cfg) + "|" + JSON.stringify(schedule);
   let r = SIM_MEMO.get(key);
   if (r === undefined) {
     r = simulateRaw(schedule, cfg, collect);
@@ -1534,7 +1541,7 @@ async function basinHop(champ, cfg, onStep) {
       let hopStep = 0;
       for (const pr of pairs) {
         const rep = teleportRep(bestS, cfg, pr);
-        const sg = sigOf(rep);
+        const sg = JSON.stringify(rep);   // §4.13 — memo key; a miss re-scores to the same value
         let p = cache.get(sg);
         if (!p) { p = polish(rep, cfg); cache.set(sg, p); }
         if (p.val > bestV + 1e-7) { bestS = cloneS(p.s); bestV = p.val; again = true; }

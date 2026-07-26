@@ -3046,3 +3046,33 @@ the PHASE8 §25 charge block then calls `scanAt(mid, segB)` **again** for the sa
 - Filed rather than fixed because fixing it now would touch the hot loop to speed up a path that is
   disabled — the wrong trade under this phase's own measure-first rule. **Do it as part of enabling
   the charge, if that ever happens; do not do it before.**
+
+### §5.21 ★ LANDED — §4.13's `JSON.stringify` memo key: **−14 % CPU**, plans byte-identical (07-26)
+
+The first item off the §4 reclaim ladder, and the first repayment of the ≈+18 % CPU that §5.16
+(`groupSeeds`) and §5.17 (`finishLine`) spent on correctness.
+
+**Change:** two sites, both memos, `sigOf` → `JSON.stringify`:
+- `simulate()`'s memo key — `cfgSigOf(cfg) + "|" + JSON.stringify(schedule)`
+- `basinHop`'s candidate cache — `const sg = JSON.stringify(rep)`
+
+**⚠ NOT swapped: the `seen` dedup at the candidate-build site** (`repair(s,cfg)` → `seen.has(sg)`).
+§4.13 named only the two memo sites and the distinction is load-bearing: at a **memo**, a key-order
+divergence causes a MISS ⇒ recompute ⇒ same value (slower, never wrong). At the **dedup**, a miss
+admits a duplicate candidate instead of skipping it — the candidate array changes and **the plan can
+change**. Same function, same call shape, opposite safety. `sigOf` stays defined and still serves
+that site, `:1515`'s `reps.map(sigOf)`, and the two UI comparisons.
+
+**Measured** (`plan-sweep`, 16 cases, jobs=3, two samples each):
+
+| build | CPU | |
+|---|---|---|
+| baseline | 78 s, 72 s | mean 75 s |
+| `JSON.stringify` | 66 s, 63 s | **mean 64.5 s — −14 %** |
+
+**Gates:** `PLAN-DIFF IDENTICAL`, `SCORE-AUDIT scorerMoved=0 movedCells=0`; exact-match **25/25**
+(suite wall 247 s vs ~390 s on the same box earlier this session — the win shows up there too).
+
+**Next on the ladder:** §4.13.1's (0a) `admit` helper extraction (byte-identical by construction,
+worth landing on legibility alone, and it collapses item 5's "every call site must be converted"
+to one), then (0b) the `counts(base)`/`clipOf(base)` hoists.
