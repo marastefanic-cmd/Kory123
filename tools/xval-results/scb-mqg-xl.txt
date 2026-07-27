@@ -7,34 +7,6 @@ seed=5796  class=xl  fight=6:46 (406s)  Lust@0:32  trinkets=scb+mqg  haste=[0,20
   plan@h265: eff=359.467  {"_prestack":0,"BL":[32],"AP":[4,185,372],"Zerk":[1,185,372],"Gem":[4,185,372],"MQG":[12,363],"IV":[0,180,201,383],"CS":[201]}
   plan@h400: eff=380.463  {"_prestack":0,"BL":[32],"AP":[4,185,386],"Zerk":[86,356],"Gem":[4,185,386],"MQG":[66,366],"IV":[1,181,203,386],"CS":[203]}
 unique plans: 4/7
-2026/07/26 20:07:53 running 6000 iterations took 14.436000256s
-2026/07/26 20:08:06 running 6000 iterations took 13.28176896s
-2026/07/26 20:08:19 running 6000 iterations took 13.390575872s
-2026/07/26 20:08:33 running 6000 iterations took 13.488217088s
-2026/07/26 20:08:48 running 6000 iterations took 14.557627648s
-2026/07/26 20:09:03 running 6000 iterations took 15.120077568s
-2026/07/26 20:09:18 running 6000 iterations took 14.996271872s
-2026/07/26 20:09:30 running 6000 iterations took 12.408936704s
-2026/07/26 20:09:43 running 6000 iterations took 12.904231424s
-2026/07/26 20:09:56 running 6000 iterations took 12.787842048s
-2026/07/26 20:10:09 running 6000 iterations took 13.0132224s
-2026/07/26 20:10:22 running 6000 iterations took 13.33627008s
-2026/07/26 20:10:36 running 6000 iterations took 13.794706176s
-2026/07/26 20:10:51 running 6000 iterations took 14.431587072s
-2026/07/26 20:11:04 running 6000 iterations took 13.088855552s
-2026/07/26 20:11:16 running 6000 iterations took 12.417333504s
-2026/07/26 20:11:28 running 6000 iterations took 11.998645504s
-2026/07/26 20:11:41 running 6000 iterations took 13.178057728s
-2026/07/26 20:11:55 running 6000 iterations took 13.333048832s
-2026/07/26 20:12:08 running 6000 iterations took 13.32504576s
-2026/07/26 20:12:22 running 6000 iterations took 14.159706112s
-2026/07/26 20:12:34 running 6000 iterations took 12.057024512s
-2026/07/26 20:12:47 running 6000 iterations took 12.088168192s
-2026/07/26 20:12:59 running 6000 iterations took 12.459933952s
-2026/07/26 20:13:11 running 6000 iterations took 12.328191232s
-2026/07/26 20:13:25 running 6000 iterations took 13.396761856s
-2026/07/26 20:13:39 running 6000 iterations took 13.765763328s
-2026/07/26 20:13:54 running 6000 iterations took 15.080603648s
 
 DPS matrix (row = plan optimized @haste, col = simmed @haste):
 plan\sim        0      20      75     105     235     265     400
@@ -48,4 +20,4 @@ plan\sim        0      20      75     105     235     265     400
 
 (a) haste-monotonicity [OBSERVED, not interpreted]: worst downward dip = 0.00%
 (b) DIAGONAL DOMINANCE: DEFICIT 0.03%  [@sim75: plan@0 (2587.7) > native@75 (2586.9)]
-XVAL-DONE seed=5796 kit=scb+mqg class=xl T=406 lust=32 var=0.5 wj=0 emit=fire artifact=0 iter=6000 simseed=11 mana=100000000 targets=0 char=bench-gearB wasm=aa3005508d3b tool=xval-bench pool=1 cache=21/49 monoDip=0.00% diag=DEFICIT diagWorst=0.03%
+XVAL-DONE seed=5796 kit=scb+mqg class=xl T=406 lust=32 var=0.5 wj=0 emit=fire artifact=0 iter=6000 simseed=11 mana=100000000 targets=0 char=bench-gearB engine=native:runner-ap180:18102540 tool=xval-bench pool=1 cache=21/49 monoDip=0.00% diag=DEFICIT diagWorst=0.03%
