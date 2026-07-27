@@ -1523,3 +1523,101 @@ reason. If a wall genuinely needs smoothing, the principled route is the kill's:
 ⚠ **Adjacent, NOT settled:** a cast starting in a normal segment and completing inside an **AoE** phase.
 `dmgOf`'s `nonAB` covers `aoe` too, but the boss IS targetable there — the cast lands, it just lands
 during AoE. Decide that deliberately rather than inheriting it from this fix.
+
+---
+
+## 9. ★★★ USER RULING 2026-07-27 — THE BOUNDARY MODEL GOES DETERMINISTIC (proportional partial credit)
+
+> **The ruling, in the user's own words:** *"I want a cast completing exactly at T to be accredited
+> exactly a full cast... if the last full cast ends 0.613 s before T, and that next Arcane Blast would
+> take 1.37 s and be worth 1.14 casts, I want the model to add (0.613/1.37)×1.14."* And on scope and
+> cost: *"same for casts before intermissions/AoE phases... given this deterministic approach we don't
+> need variance to the fight length. I understand that the sim can't do that and we'd have to account
+> for that in setting up the sim and comparing the results from it, but common sense and the fact that
+> the sim has logs should be enough to be computable."*
+
+**This supersedes §8's conclusion about the fight end.** §8 argued the kill taper was already correct
+because it is the sim's expectation at `--var 0.5`. That argument assumed an uncertain T, which is the
+thing being ruled out. §8's *intermission* finding (the model pays FULL price for a cast completing
+into downtime — `index.html:1183-1184` never asks) stands and is still a defect; the ruling changes what
+it should be corrected **to**.
+
+### 9.1 Everything it needs is already on the board — confirmed
+
+At the moment the straddling cast starts, the walk knows its haste (passive × temporary) and its stack
+count, hence `cast`; and it knows the SP and damage multipliers, hence `dmg`. Both are already recorded
+per cast (`index.html:1187-1202`). **No new physics, no new inputs.**
+
+### 9.2 ★ It is not a heuristic — it is a ONE-SIDED kill window whose width is the cast's own length
+
+Worth writing down because it turns "a smoothing convenience" into a stated model, and because it
+explains *exactly* where the current 0.5 comes from:
+
+```
+one-sided window, T_actual ~ U[T, T+W]:   credit = (T + W − tc)/W ,  tc = ts + d
+set W = d:                                       = (T + d − ts − d)/d = (T − ts)/d   ← the ruling, exactly
+```
+
+Verified numerically (`ts = 199.167, d = 1.140, T = 200`): the proposal and the one-sided window with
+`W = d` both give **0.730702**. So the ruling reads as: *"the fight lasts at least T, and at most one
+more cast."*
+
+| model of T | credit for a cast completing exactly at T |
+|---|---|
+| symmetric `U[T−W, T+W]` — **what ships today** | **0.5** (half the time the boss is already dead) |
+| one-sided `U[T, T+d]` — **the ruling** | **1.0** |
+| hard known T | 1.0, and 0 for the straddler — a staircase |
+
+### 9.3 Measured: it does what it is meant to, and the term is large
+
+One fixed layout, T swept in 0.2 s steps (`3:20`-shaped, haste 150):
+
+| | behaviour across T |
+|---|---|
+| hard cutoff | **staircase** — 166.461 → 167.968 → 169.474, flat between, jumping a whole ~1.5-cast step |
+| the ruling | **linear**, +0.264 eff casts per 0.2 s of T — the staircase is gone entirely |
+| today's `robust` | also linear, +0.301 per 0.2 s, offset ~0.8 casts below |
+
+Tail credit reaches **1.44 effective casts** and swings **1.32 (0.789 % of score)** across a 2 s T
+range. ⚠ For scale, the cross-val margins this objective is asked to resolve are **median 0.035 %,
+p90 0.159 %** — the boundary term is 5–20× them, so this is not a rounding decision.
+
+### 9.4 The consequences, stated once so nobody rediscovers them
+
+1. **`KILL_WINDOW` and the `total`/`robust` split collapse.** With T deterministic there is one number.
+2. **`--var 0.5` stops being the matched protocol.** ⚠ TOOLING ★★ bans `--var 0` because it *"quantizes
+   DPS to (integer casts × avg damage)/T and has faked a result twice"* — that ban is about comparing
+   **DPS**, and it does not survive the change of comparison method below. Re-state it, do not delete it.
+3. **★ The user's proposed comparison route is not only possible, it is CHEAPER than what we do now.**
+   At a fixed T the sim's completed-cast set is deterministic, and `tools/model-audit.mjs` already
+   requires the model to predict the log **cast for cast** (94/94 on single-use fights). If that holds,
+   both sides agree on the straddling cast's start and duration, so the partial credit is a
+   deterministic function of numbers the two already share — **it needs no extra sim run at all.**
+   Model-vs-sim verification becomes *identity*, not a statistical DPS comparison. That is a strictly
+   stronger bar and a strictly cheaper one.
+4. **The acceptance corpus is voided again** — but §6 already says it has no current reading, so the
+   marginal cost is only the re-gather, which §5 says is now mostly arithmetic.
+
+### 9.5 ⚠ The one place the two boundaries are NOT the same, which needs a deliberate call
+
+The fight-end story is *"the cast would have completed if the fight ran on"* — that is what makes
+`U[T, T+d]` meaningful. **At an intermission wall there is no such world.** The boss returns afterwards,
+the cast in flight is lost, and the mage resumes on the far side; no lengthening of anything completes
+it. Crediting `frac × value` there pays for damage that does not exist in any continuation.
+
+What it *does* buy is a smooth, phase-independent reward for having fast casts up against the wall —
+which is a real planning property, just not a damage one.
+
+⚠ And **AoE phases are a third case, not a copy of the second**: the boss is targetable and the mage
+is casting Arcane Explosion, so a cast straddling into an AoE phase is neither lost nor an AB.
+
+⇒ **Implement the fight end first** (it has the cleanest justification and is where §9.3's numbers were
+measured), and take the intermission and AoE walls as a separate, explicitly-decided step. Do not let
+one `frac` helper quietly define policy for all three.
+
+### 9.6 Landing order
+
+Scoring change ⇒ plans move ⇒ **it rides alone** (§0.3), and it queues **behind the cooldown chain**
+(§3), because a legality bug and a scoring change must not move plans in the same commit. Gates:
+`self-consistency` back to `0.00e+0` (the board must carry the same partial credit the ranking number
+does), `model-audit` unchanged, and goldens re-recorded only per §0.4.
