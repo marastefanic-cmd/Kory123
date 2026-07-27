@@ -83,6 +83,13 @@ append-only record and the evidence trail — but their verdicts are not the mod
 142 borrowed-win columns, worst 0.380 %" measures a broken instrument, not the search. Re-gather
 (mostly sim-less, §5) before quoting any of it.
 
+## 6b. ⏸ PRESENTATION, AFTER THE MODEL — not a model task
+
+The printed press second is wrong on **1.8 %** of presses (§6.13): pressing it fires the macro a cast
+early. Always fixable (`floor(auraAt)`, and a correct whole second provably always exists). **User
+ruling: the model and its activations come first; how findings are presented is a separate, later
+pass.** Do not pick this up ahead of the model work in §3.
+
 ## 7. Loose ends, all resumable and none blocking
 
 - **7 of 8 boss band columns ungraded** — `tools/xval-results/band-scope/` has the targets + resume

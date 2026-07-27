@@ -1212,7 +1212,17 @@ isc+mqg T=281 h=230  icyVeins: model fires 26.58, plan prints 25, pressing 25 fi
 isc+mqg T=229 h=70   arcanePower: model fires 187.32, plan prints 186, pressing 186 fires 186.22 (correct: 187)
 ```
 
-### 6.13c ⇒ The fix, and it is small and always available
+### 6.13c ⇒ The fix — ⚠ PRESENTATION, and it comes AFTER the model
+
+**User, setting the order:** *"the model itself and the calculations and correct activations come
+first. We then just round the shown number in the timeline and activation schedule to be human
+readable, but that's secondary. First we get the model to work, then we can figure out how to present
+the findings."*
+
+⇒ **This is a PRESENTATION task, and it is deliberately not queued behind the model work — it is
+queued AFTER it.** Nothing here affects the scorer, the search, or which plan is chosen; it changes
+only which second the plan prints. It is written up now so it is a task rather than a rediscovery, and
+it should be picked up when the model is settled, together with the rest of how findings are shown.
 
 **Print `floor(auraAt)`, not `floor(actEff)`.** A correct whole second always exists: cast intervals are
 ≥ the 1 s GCD floor, and any half-open real interval of length ≥ 1 contains an integer — which is why
