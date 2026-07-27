@@ -2,7 +2,39 @@
 
 ## Resuming after a context clear (start here)
 
-### ▶ IN EXECUTION: PHASE 10 — re-baseline acceptance on GEAR B (`docs/PHASE10.md`; started 07-26)
+### ✅ CLOSED: PHASE 10 — re-baseline acceptance on GEAR B (`docs/archive/11-phase10-gearb-baseline.md`; 07-26 → 07-27)
+
+> ## ★ ROUND 1 IS COMPLETE AND GRADED — **ACCEPTANCE NOT PASSING (B2)**, and it is a REAL reading now
+> `tools/xval-results/` holds 36/36 tables under **one protocol on one engine**
+> (`char=bench-gearB · engine=native:runner-ap180 · var 0.5 · emit=fire · iter 6000 · pool=1`),
+> certified by `tools/xval-stamp-audit.mjs` (exit 0). **`docs/ACCEPTANCE.md` → "Current status
+> (GEAR B, round 1)" is the reading** — the project's "are we done" verdict is defined again.
+>
+> | | |
+> |---|---|
+> | invariant A | **PASSES** — `monoDip = 0.0000%` on all 36 |
+> | invariant B1 | holds by construction (pooling) |
+> | invariant B2 | **FAILS** — 142 borrowed-win columns of 345, across 33/36 tables (bar = zero) |
+> | worst | **0.380 %** `isc-mqg medlong @sim40 ← plan@70` — B2's own cell |
+> | persistence | **3 columns** of 57, reproducing gear A's first two **cell for cell** |
+>
+> **The debts, re-priced (PHASE10 §8.31):** **B2 SURVIVES** — banded **+0.368 ± 0.020 pp, 5/5 seeds,
+> REAL**, so its ≈0.43 pp target stands at **≈0.38–0.41 pp** and §5's closure test fails emphatically.
+> The **low-haste basin REPRODUCES** but is misnamed — a third persistent column sits at h130, and the
+> family is **two columns of one-terminal-cast blindness + one sub-resolution value column** (§8.25).
+> The **KT/AoE cells DO NOT REPRODUCE**, discharging PHASE7 §5.19's standing prediction: gear A's three
+> `isc+scb` KT survivors now read 0.07 %, 0.05 % and *not a borrowed win at all*.
+>
+> ⚠ **Two instrument findings the next phase inherits.** (1) `ripple-audit` **fails two of its own
+> pre-registered self-checks** (P5 monotonicity, P3 KT discrimination), so **no ripple decomposition is
+> quotable on this round** — and its `mono=0` stamp means FAILURE while the adjacent `vacuous=0` means
+> success, which is why §8.22 recorded a failing check as clean. (2) *"wasm == native"* has always meant
+> **within 0.05 DPS**, not bit-identity: the re-gather moved six published summary figures, one of them
+> a **verdict flip** (`scb-mqg-medlong` DEFICIT → CLEAN) off a ~1e-6 relative difference (§8.27).
+>
+> **The freeze is LIFTED.** `index.html` and the rest of the import closure are editable again.
+
+### ▶ SUPERSEDED — the in-flight text below is kept for its reasoning (started 07-26)
 
 > ## ★★★ DIRECTION CHANGE, 07-26 — THE PROJECT IS GOING GEAR-AGNOSTIC. READ `docs/GEAR-AGNOSTIC.md`.
 > User decision: all simming and verification moves to a character defined **only** by the planner's
