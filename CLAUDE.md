@@ -235,9 +235,13 @@ Treat maintaining them as part of the work, not an afterthought:
 - `docs/PHASE10.md` — ▶ **IN EXECUTION. Round 1 is GATHERING — read `docs/PHASE10-RESUME.md` first**
   (60-second state + exact next actions). Re-establishes the acceptance baseline on gear B; every
   gear-A number is archived, so ACCEPTANCE still has **no reading** until 36/36.
-  ⚠⚠ **While it gathers, `index.html`, `sim/simreq.mjs` and `tools/xval-bench.mjs` are FROZEN**
-  (GEAR-AGNOSTIC §6.2) — the campaign spawns a fresh `xval-bench.mjs` per cell and the plan cache keys
-  on `index.html`'s bytes, so an edit assembles the matrix from two instruments.
+  ⚠⚠ **While it gathers, `tools/xval-bench.mjs` AND ITS WHOLE IMPORT CLOSURE ARE FROZEN**
+  (GEAR-AGNOSTIC §6.2; closure found 07-27, PHASE12 §1.1e) — the campaign spawns a fresh
+  `xval-bench.mjs` per cell, and the plan cache keys on **`index.html`'s bytes alone**, so an edit to
+  any other imported file changes plans while the key stays put. That is: `index.html`,
+  `tools/engine-node.mjs`, `tools/genapl-core.mjs`, `tools/reference-gear.mjs`, `sim/planspec.mjs`,
+  `sim/simreq.mjs`, `sim/benchmark.mjs`. "Provably behaviour-neutral" is **not** the test — *in the
+  closure* is. Everything outside it (`tools/bench.mjs`, `tests/`, `docs/`) stays editable.
   Its §8 is the execution log. Landed so far: the shakedown PASSED; the instrument is certified
   (wasm == native runner · anti-drift 9/9 · anchor ≡ `wowsimcli` · exact-match 25/25); **§4.2 had no
   executable path** (`bench.mjs` is a duel, the test is a matrix) so `tools/xval-bench.mjs` was built

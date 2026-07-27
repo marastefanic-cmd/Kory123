@@ -193,10 +193,19 @@ choice ever needs to vary, it becomes a §2 input — it must not become a secon
 
 1. **The in-flight round finishes as-is, on the geared export.** It is ~50 CPU-hours in at 30/36;
    killing it leaves ACCEPTANCE with literally nothing. It is **the last geared round**.
-2. **⚠⚠ `sim/simreq.mjs` and `tools/xval-bench.mjs` are FROZEN until 36/36, exactly as `index.html` is.**
-   The campaign spawns a fresh copy of `xval-bench.mjs` per cell and it imports `simreq.mjs`, so
-   editing either mid-round changes the instrument between cells and assembles the matrix from two of
-   them. **The §3.3 fix must not land before the round completes.**
+2. **⚠⚠ `tools/xval-bench.mjs` AND ITS WHOLE IMPORT CLOSURE ARE FROZEN until 36/36, exactly as
+   `index.html` is.** The campaign spawns a fresh copy of `xval-bench.mjs` per cell, so editing it
+   mid-round assembles the matrix from two instruments. **★ And the closure is the real boundary
+   (found 07-27):** `ENGINE_ID` — the plan cache's key — hashes **`index.html` alone**
+   (`xval-bench.mjs:179`), so every *other* imported file can be edited and the cache will keep
+   serving plans computed by the old code under an unchanged key, silently, for the cells gathered
+   after the edit. The frozen set is therefore `index.html`, `tools/xval-bench.mjs`,
+   **`tools/engine-node.mjs`**, `tools/genapl-core.mjs`, `tools/reference-gear.mjs`,
+   `sim/planspec.mjs`, `sim/simreq.mjs`, `sim/benchmark.mjs`. ⚠ *"Provably behaviour-neutral"* is not
+   the test — **in the closure** is; this was found by nearly making an obviously-inert one-field
+   addition to `engine-node.mjs`. **The §3.3 fix must not land before the round completes.**
+   PHASE12 §1.1e proposes the durable fix: fold the closure's hashes into `ENGINE_ID`, so a mid-round
+   edit *misses* the cache instead of silently mixing instruments.
 3. **Then land §3.3**, with the §3 table re-measured to all-zero as its gate.
 4. **Then re-gather** on the gear-agnostic character (native runner, per §4).
 5. **Keep the geared round as a control, not as an acceptance reading.** It makes one question

@@ -14,10 +14,15 @@
 > `index.html` is (the campaign spawns `xval-bench` per cell and it imports `simreq`).
 >
 > ## ☞ RESUMING? READ `docs/PHASE10-RESUME.md` FIRST — the 60-second state + the exact next actions.
-> Round 1 is **gathering unattended** (`tools/xval-round-pipeline.sh`, ~12 h left, checkpointing to
-> git). ⚠ **Do not touch `index.html` until it finishes** — the plan cache keys on its bytes, so an
-> edit mid-round makes the campaign assemble a matrix from two engines. `bash tools/xval-status.sh`
-> shows where it is.
+> Round 1 is **gathering unattended** under `tools/xval-watchdog.sh` (singleton; relaunches both the
+> campaign and the checkpoint loop, which commit completed tables to git). **`bash tools/xval-status.sh`
+> is the only current statement of where it is** — do not trust a hours-remaining figure written into
+> a doc; the boss half is sim-bound and its rate depends on the backend and the box.
+> ⚠ **THE FREEZE IS THE WHOLE IMPORT CLOSURE, not just `index.html`** (found 07-27, PHASE12 §1.1e):
+> the plan cache keys on `index.html`'s bytes **alone**, so editing anything else `xval-bench.mjs`
+> imports changes plans while the key stays put. Also frozen: `tools/engine-node.mjs`,
+> `tools/genapl-core.mjs`, `tools/reference-gear.mjs`, `sim/planspec.mjs`, `sim/benchmark.mjs`.
+> Everything outside the closure — `tools/bench.mjs`, `tests/`, `docs/` — is editable mid-round.
 
 **Read this before resuming any model work.** The reference character was re-exported on 07-26 and the
 entire gear-A corpus archived, so **ACCEPTANCE has no current reading**, and every open debt below —

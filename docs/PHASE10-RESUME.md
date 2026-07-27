@@ -46,6 +46,16 @@ writer lock makes a duplicate refuse the cell rather than truncate it (§8.10).
 - **DO NOT TOUCH `index.html`.** The plan cache keys on its bytes, so an edit mid-round makes the
   campaign assemble a matrix from two engines. This blocks three known pieces of work (§4 below).
   Once the round is complete this rule lifts.
+  **★ AND THE RULE IS WIDER THAN `index.html` — it is `xval-bench.mjs`'s whole IMPORT CLOSURE**
+  (found 07-27, PHASE12 §1.1e). `ENGINE_ID` hashes `index.html` **alone**, so editing anything else
+  the driver imports changes plans while the cache key stays put — silently, and only for the cells
+  gathered afterwards. Also frozen, therefore: `tools/xval-bench.mjs` itself (spawned fresh per cell),
+  **`tools/engine-node.mjs`** (it builds the engine), `tools/genapl-core.mjs`,
+  `tools/reference-gear.mjs`, `sim/planspec.mjs`, `sim/simreq.mjs`, `sim/benchmark.mjs`.
+  ⚠ This caught a change that looked obviously inert — adding a missing `t5two` to `cfgFor` for
+  PHASE11 §1.1 B6. "Provably behaviour-neutral" is not the test; **in the closure** is the test.
+  Everything *outside* it is fair game mid-round: `tools/bench.mjs`, `tests/`, `docs/`, and the
+  retired `xval.mjs` drivers were all edited today with the round running.
 - **DO NOT `pkill -f` from an interactive shell** — it matches the shell issuing it, which dies while
   the target survives (PHASE10 §8.17). Do process work from a script file, e.g. `tools/xval-status.sh`.
 
@@ -156,8 +166,10 @@ order deliberately there rather than inheriting it from a presentational regroup
 - **Stale copy in the product.** The "?" dialog and the block at `index.html:4589` still say *"no
   gear, no buffs"*, which §8.12 made false — the benchmark mage now wears isc+scb with Bloodlust
   castable.
-- **PHASE9 §4 CPU reclaim** (~+18% vs pre-§5.12). Landing order is written out in PHASE9 §4.13.1;
-  every step must keep plans byte-identical (exact-match 25/25 + `plan-diff` SCORE-AUDIT).
+- **The CPU reclaim ladder** (~+18% vs pre-§5.12). Landing order is written out in PHASE9 §4.13.1
+  (`docs/archive/10-phase9-performance.md` — Phase 9 **closed 07-27**; the unfinished rungs are
+  **PHASE11 §3.1's** now). Every step must keep plans byte-identical (exact-match 25/25 + `plan-diff`
+  SCORE-AUDIT), and none may run while a round gathers.
 
 ## 5. What this phase already changed, that a reader should not re-derive
 
