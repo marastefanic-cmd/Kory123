@@ -191,10 +191,21 @@ choice ever needs to vary, it becomes a §2 input — it must not become a secon
 
 ## 6. Sequencing — what is blocked on what
 
-1. **The in-flight round finishes as-is, on the geared export.** It is ~50 CPU-hours in at 30/36;
-   killing it leaves ACCEPTANCE with literally nothing. It is **the last geared round**.
-2. **⚠⚠ `tools/xval-bench.mjs` AND ITS WHOLE IMPORT CLOSURE ARE FROZEN until 36/36, exactly as
-   `index.html` is.** The campaign spawns a fresh copy of `xval-bench.mjs` per cell, so editing it
+> ## ✅ STEPS 1–2 ARE DONE (2026-07-27). **THE FREEZE IS LIFTED.**
+> Round 1 finished **36/36**, was graded, and is archived as
+> `docs/archive/11-phase10-gearb-baseline.md`; the reading is `docs/ACCEPTANCE.md` → *"Current status
+> (GEAR B, round 1)"*. **No import-closure freeze is in effect** — `index.html`, `tools/xval-bench.mjs`
+> and the rest of the set below are editable again, and step 3 (§3.3) is unblocked. The two steps are
+> kept below because their *reasoning* is what a future round has to re-apply.
+> ⚠ **The closure freeze will be needed again for the gear-agnostic re-gather (step 4)** — and PHASE12
+> §1.1e's durable fix (fold the closure's hashes into `ENGINE_ID`) is worth landing *before* it, so the
+> next round's freeze is enforced by a tool rather than requested by a doc.
+
+1. ~~**The in-flight round finishes as-is, on the geared export.**~~ **DONE.** It was ~50 CPU-hours in
+   at 30/36 and killing it would have left ACCEPTANCE with literally nothing. It is **the last geared
+   round**, and it is now complete and graded.
+2. ~~**⚠⚠ `tools/xval-bench.mjs` AND ITS WHOLE IMPORT CLOSURE ARE FROZEN until 36/36.**~~ **LIFTED —
+   the round reached 36/36 on 07-27.** The rule as it stood, because the next round needs it again: The campaign spawns a fresh copy of `xval-bench.mjs` per cell, so editing it
    mid-round assembles the matrix from two instruments. **★ And the closure is the real boundary
    (found 07-27):** `ENGINE_ID` — the plan cache's key — hashes **`index.html` alone**
    (`xval-bench.mjs:179`), so every *other* imported file can be edited and the cache will keep
@@ -206,6 +217,10 @@ choice ever needs to vary, it becomes a §2 input — it must not become a secon
    addition to `engine-node.mjs`. **The §3.3 fix must not land before the round completes.**
    PHASE12 §1.1e proposes the durable fix: fold the closure's hashes into `ENGINE_ID`, so a mid-round
    edit *misses* the cache instead of silently mixing instruments.
+   ✅ **The freeze held, and it is now CHECKABLE that it held**: the closing audit
+   (`git log --since=<round start> -- <frozen paths>`, archive/11 §8.28) names four commits and
+   **`index.html` is in none of them**, so no plan in the corpus was solved by a different engine than
+   any other. A freeze is only meaningful if violations are detectable.
 3. **Then land §3.3**, with the §3 table re-measured to all-zero as its gate.
 4. **Then re-gather** on the gear-agnostic character (native runner, per §4).
 5. **Keep the geared round as a control, not as an acceptance reading.** It makes one question
