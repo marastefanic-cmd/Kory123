@@ -19,7 +19,14 @@ if [ -f "$LOG" ]; then
   echo "  shard jobs done: $(grep -c 'SHARD-DONE' "$LOG")/24"
   echo "  cells touched  : $(grep 'SHARD-DONE' "$LOG" | sed 's/.*seed=\([0-9]*\).*/\1/' | sort -u | tr '\n' ' ')"
 fi
-echo "  in flight      : $(ps -eo cmd | grep '[x]val-bench.mjs' | awk '{print $NF}' | sort -u | tr '\n' ' ')"
+# ⚠ Take the argument AFTER `xval-bench.mjs`, and require it to be digits — NOT `$NF`.
+# `$NF` was the last word of the whole command line, so any wrapper that merely MENTIONS the driver
+# (an agent shell, a `bash -c cd <dir> && …`) contributed its own last word as a phantom "cell".
+# Observed live: `in flight : /tmp/claude-b341-cwd 5043`. A status tool that invents a cell is the
+# same family as `pgrep -fc` counting its own caller — read the field you mean, not the last one.
+echo "  in flight      : $(ps -eo cmd | grep '[x]val-bench.mjs' \
+  | awk '{for (i = 1; i < NF; i++) if ($i ~ /xval-bench\.mjs$/ && $(i+1) ~ /^[0-9]+$/) { print $(i+1); break }}' \
+  | sort -u | tr '\n' ' ')"
 a=$(ls /home/user/Kory123/.xval-cache 2>/dev/null | wc -l); sleep 20
 b=$(ls /home/user/Kory123/.xval-cache 2>/dev/null | wc -l)
 echo "  sim rate       : $(( (b-a)*3 ))/min   (cache $a -> $b over 20s)"
