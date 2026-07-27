@@ -1077,17 +1077,34 @@ function simulateRaw(schedule, cfg, collect) {
       if (actEff) (actEff[e.key] = actEff[e.key] || []).push(eff);
     }
     while (evi < evs.length && evs[evi].fired) evi++;
+    // ═══════════ TWO SNAPSHOT RULES, NOT ONE (measured — `tools/snapshot-rule.mjs`) ═══════════
+    // wowsims — and the game — resolve the two kinds of buff at DIFFERENT moments, and this walk used
+    // to resolve both at the cast's start:
+    //
+    //   · HASTE  (`mult`, `rating`, and Power Infusion) is fixed when the cast BEGINS. A haste buff
+    //     fading mid-cast does not lengthen the cast in flight — measured: Berserking faded at 21.00,
+    //     the cast that started 20.55 still ran its buffed 1.362 s while the next ran 1.498 s.
+    //   · VALUE  (`dmg`, `sp`) is read at cast COMPLETION, unconditionally. Measured with Icon of the
+    //     Silver Crescent (+225 SP), aura 11.00–31.00 at h=0:
+    //         9.50 -> 11.00 : SP 1386.2   <- completes ON the gain, does NOT get it
+    //        11.00 -> 12.50 : SP 1611.2
+    //        29.00 -> 30.50 : SP 1611.2
+    //        30.50 -> 32.00 : SP 1456.2   <- STARTED inside the window and still LOST it
+    //     So the test is `completion > windowStart` (strict) and `completion < windowEnd`.
+    //
+    // ⚠ This was known and deliberately left unimplemented, on the grounds that "charging it moves the
+    // B2 deficit the wrong way". That reason is VOID: B2 was measured against a scorer that disagreed
+    // with itself by ~30x the margins it was resolving (PHASE12 §6.8). A defect justified by a
+    // measurement taken through another defect is not justified at all.
     let rating = cfg.hasteRating;
-    let mult = 1, dmgMult = 1, sp = cfg.sp;
+    let mult = 1;
     let blActive = false, piActive = false;
     for (let i = 0; i < active.length; i++) {
       const w = active[i];
-      if (t >= w.start + w.def.dur) continue; // expired window
-      if (w.key === "powerInfusion") piActive = true; // resolved after loop (no stack with BL)
+      if (t >= w.start + w.def.dur) continue;            // expired at this cast's START
+      if (w.key === "powerInfusion") piActive = true;    // resolved after loop (no stack with BL)
       else if (w.def.kind === "mult") { mult *= w.def.value; if (w.key === "bloodlust") blActive = true; }
       else if (w.def.kind === "rating") rating += w.def.value;
-      else if (w.def.kind === "dmg") dmgMult *= w.def.value;
-      else sp += w.def.value;
     }
     if (piActive && !blActive) mult *= BUFFS.powerInfusion.value; // PI is overridden while Bloodlust runs
     const multDn = mult * (1 + rating / (g.HASTE_RATING_PER_PCT * 100));
@@ -1110,6 +1127,23 @@ function simulateRaw(schedule, cfg, collect) {
     const dn = stepFor(multDn);
     const up = atiOn && pUp > 0 ? stepFor(multUp) : dn;
     const interval = pUp * up.interval + (1 - pUp) * dn.interval;
+    // ── the VALUE pass: read `dmg`/`sp` windows at this cast's COMPLETION, not at its start ──
+    // It has to come after `stepFor`, because the completion time depends on the haste the START pass
+    // just resolved. No circularity, and no lookahead is needed: a press that has not fired yet in this
+    // walk fires at the NEXT boundary, which is at or after this completion, and the rule is strict.
+    const tcVal = t + pUp * up.cast + (1 - pUp) * dn.cast;
+    let dmgMult = 1, sp = cfg.sp;
+    for (let i = 0; i < active.length; i++) {
+      const w = active[i];
+      if (w.def.kind !== "dmg" && w.def.kind !== "sp") continue;
+      // The window is `(start, end]` — OPEN on the left, CLOSED on the right. Both edges are measured,
+      // not chosen: a cast completing exactly ON the gain does NOT get the buff (9.50->11.00 read SP
+      // 1386.2 with the gain at 11.00), and a cast completing exactly ON the fade DOES (`credit-check`
+      // Gem@20: the sim paid the 33.50->35.00 cast against a window ending at 35.00). Both follow from
+      // one ordering — damage resolving at instant X is settled BEFORE the aura events at X.
+      if (!(tcVal > w.start + 1e-9 && tcVal < w.start + w.def.dur + 1e-9)) continue;
+      if (w.def.kind === "dmg") dmgMult *= w.def.value; else sp += w.def.value;
+    }
     let dmg;
     if (isAoe) {
       dmg = (g.AE.AVG_BASE_DMG + g.AE.COEF * sp) * seg.targets * critFactor * dmgMult * aoeCritAmp(seg.targets, crit);

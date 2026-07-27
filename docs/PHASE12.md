@@ -1112,3 +1112,69 @@ optional follow-up.** Order: land the constant, re-run `scorer-duel`, and only t
 - ⛔ **Do NOT run `exact-match --update` to make it green.** That would freeze an objective whose
   superiority is unproven into the project's own definition of correct, and destroy the only record of
   what the retired scorer emitted.
+
+## 6.12 ★★★ BUG 3 — ONE SNAPSHOT RULE WHERE THE GAME USES TWO
+
+**User challenge, and it is the correct mechanical read:** *"since we know when the casts begin and end,
+can't we also treat it properly and start the buffs in between casts like the sim does? And treat the
+cast based on if it began in the buff window or outside of it — that's how the real game does it."*
+
+Half right, and the wrong half is the valuable one. **There are two rules, not one**, and the board walk
+applied the start rule to both.
+
+### 6.12a The measurement (`tools/snapshot-rule.mjs`, h=0, native runner)
+
+Press a buff so its window ends *inside* a cast, then read that cast's own `[DEBUG] SP:` and duration:
+
+```
+  HASTE  Berserking faded 21.00
+         the cast that started 20.55 ran 1.362s (buffed);  the next, from 21.91, ran 1.498s
+         ⇒ ★ SPEED IS FIXED AT CAST START — an in-flight cast keeps its speed
+
+  VALUE  Icon of the Silver Crescent (+225 SP), aura 11.00–31.00
+          9.50 -> 11.00 : SP 1386.2   <- completes ON the gain, does NOT get it
+         11.00 -> 12.50 : SP 1611.2
+         29.00 -> 30.50 : SP 1611.2
+         30.50 -> 32.00 : SP 1456.2   <- STARTED inside the window and still LOST it
+         ⇒ ★ VALUE IS READ AT CAST COMPLETION
+```
+
+**The window is `(start, end]`** — open on the left, closed on the right. Both edges are measured: a cast
+completing exactly on the gain is not paid (above), and one completing exactly on the fade **is**
+(`credit-check` Gem@20 — the sim paid the 33.50→35.00 cast against a window ending at 35.00). One
+ordering explains both: **damage resolving at instant X settles BEFORE the aura events at X.**
+
+### 6.12b ⚠ WHY IT SURVIVED — the two old defects CANCELLED
+
+On a press landing MID-CAST the pre-fix engine agreed with the sim exactly. It had two errors that
+undid each other: the window ended one cast early (§6.11) *and* the test point was one cast early. The
+discriminating case is a press landing **ON a cast boundary**, where the window is right and only the
+test point is wrong:
+
+| engine | Icon@11 (on a boundary) | Icon@10.5 (mid-cast) |
+|---|---|---|
+| pre-fix | model paid **14**, sim paid 13 — over by the 30.50 cast | 13 / 13 ✔ (the errors cancelled) |
+| fixed | **13 / 13 ✔** | 13 / 13 ✔ |
+
+★ **A gate that only ran the mid-cast case would have passed on the broken engine.** `credit-check`
+therefore names its press times and says why in the file.
+
+### 6.12c The fix
+
+The scan splits in two. Haste (`mult`, `rating`, Power Infusion) is read at the cast's **start** and
+sets the cast time; value (`dmg`, `sp`) is then read at the **completion** that haste implies. No
+circularity — completion depends on haste, not the reverse — and no lookahead is needed, because a
+press that has not fired yet in the walk fires at the next boundary, which is at or after this
+completion, and the left-hand test is strict.
+
+### 6.12d ⛔ The reason it was "deliberately unimplemented" is VOID
+
+`index.html` carried this as a known refinement, declined because *"charging it moves the B2 deficit the
+wrong way, so it needs its own physics justification and sim gate"* (RULES 3b.3). **B2 was measured
+against a scorer that disagreed with itself by ~30× the margins it was resolving** (§6.8). A defect kept
+because a measurement *taken through another defect* disliked the fix is not justified at all — it is
+the same masking pattern as §6.11, for the third time in one phase.
+
+⇒ Both halves it asked for now exist: the **physics justification** is §6.12a, measured in both
+directions on both kinds of buff; the **sim gate** is `tools/credit-check.mjs`, controlled in the
+negative direction against the pre-fix engine.
