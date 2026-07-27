@@ -1241,3 +1241,86 @@ line is the defect; the misreading is its consequence.
 were both found by reading the tool's own output rather than its summary line.** The stamp said
 `mono=0` and the prose above it said *stop here*; the gate compared at 1 dp and the conclusion was
 quoted at 2. Neither tool was broken. Both were *read* at a resolution they never claimed.
+
+## 8.31 ★★★ THE OPEN DEBTS, RE-PRICED IN GEAR-B TERMS — one survives, one reproduces, one does NOT
+
+§4.5's mandate: *"re-price the open debts — B2, the low-haste basin, the KT/AoE cells — and close any
+that no longer reproduce. A debt that does not survive re-measurement was a property of the old
+baseline."* All three, in order.
+
+### 1. B2 — **SURVIVES, and is now measured in-corpus for the first time**
+
+B2's cell is `isc+mqg medlong, T=229, Lust@162`, the `h40` vs `h70` pair (archive/09 §13.4). That is
+**exactly** this round's worst column and exactly §8.23's diagnosed cell, so round 1 prices B2
+directly rather than by a hand-built duel:
+
+| measurement | engine | seeds | sim %(rival − native) |
+|---|---|---|---|
+| **round 1, in-corpus band** | native runner | **5** spaced | **+0.368 ± 0.020**, **5/5 seeds → REAL** |
+| BENCH §3e re-measurement | native runner | 3 spaced | +0.389 |
+| `tools/plan-walk.mjs` | committed wasm | 3 | +0.375 ± 0.81 DPS |
+
+Three independent measurements on two engines agree inside their bands. The model half reads
+**0.014 %** in favour of native at the corpus cfg (§8.23) and **−0.037 %** via `plan-walk`
+(BENCH §3e), so the **model-vs-sim ranking error on gear B is ≈ 0.38–0.41 pp**.
+
+⛔ **B2 is NOT closed.** §5 pre-registered that *"B2 is considered CLOSED by this phase if the gear-B
+corpus shows no residual of the same shape above the noise band"*. It is the corpus's **worst**
+column, it is banded **REAL at 5/5 seeds with sd 0.020**, and it is one of only three persistent
+columns. The residual is emphatically above the band.
+★ And the sharper statement §8.23 already earned: **the model does not mis-rank this pair, it cannot
+distinguish it** — 0.014 % apart on an objective whose own resolution is ~0.02 %, against a sim that
+is emphatic at ~13σ. No search fix reaches that; it needs a scorer term that sees a terminal cast
+without discretizing the integral (which is separately falsified).
+
+### 2. The low-haste micro-placement slack — **REPRODUCES, and the "low-haste" framing is now wrong**
+
+`isc-mqg h40` (5/5) and `isc-skull h20` (4/5) come back cell for cell (§8.22, confirmed over the full
+36-table round in §8.29). The debt is real and gear-independent. **But two things it used to say are
+no longer accurate:**
+
+- **It is not confined to low haste.** The third persistent column, `isc-skull h130 ← plan@h230`
+  (4/5), sits mid-grid. "≤70" was a description of gear A's two cells, not of the mechanism.
+- **It is not one mechanism.** §8.25 counted Arcane Blasts in each arm: the two columns carrying real
+  magnitude are **one terminal cast** (176→177 and 233→234, with the measured DPS margins at ≈⅔ of
+  the cast fraction in both cases — the marginal cast is an unbuffed tail cast), while the third has
+  **equal cast counts** and is a *value* difference. ⇒ **rename it: the terminal-cast blindness (2
+  columns) + one separate sub-resolution value column.**
+
+### 3. The KT / AoE cells — **DO NOT REPRODUCE. This closes a standing PHASE7 prediction.**
+
+ACCEPTANCE's gear-A record ends the AoE thread with an explicit, unresolved prediction:
+
+> ⚠ **The boss-side acceptance re-run has NOT been re-gathered under the fix** — the 3 surviving boss
+> cells are expected to move, but that is a prediction until a round is run.
+
+**Round 1 is that run, and the prediction holds.** Gear A's three survivors — the only boss cells to
+clear the ±0.1251 pp band, all `isc+scb` KT — read, on gear B:
+
+| gear-A survivor | gear-B reading |
+|---|---|
+| `isc+scb` KT @95 | **0.07 %** |
+| `isc+scb` KT @195 | **0.05 %** |
+| `isc+scb` KT @245 | **not a borrowed-win column at all** |
+
+The whole `isc+scb` KT table now tops out at **0.08 %**, and its `diagWorst` stamp reads `0.08%`.
+⚠ **This is a STRUCTURAL statement, not a cross-baseline subtraction** (BENCH §1): the claim is that
+the cells gear A named no longer carry a deficit worth grading, not that "0.377 became 0.07".
+
+★ **The mechanism was named in advance.** PHASE7 §5.19's AoE press-snap fix landed *after* those
+gear-A measurements and its predicted blast radius was exactly one preset — Kael'thas, the corpus's
+only `aoe` phase. This is the first round gathered under it, and the family it was aimed at is gone.
+
+⚠ **What replaces it, and what is still owed.** The KT family's magnitude has moved to the *other*
+kit: `mqg+skull` KT `@0` (0.304 %) and `@100` (0.290 %), which on gear A sat inside the band. Those
+two are first in the boss band queue (§8.18's descending-`pct` order). **And the ±0.1251 pp boss band
+itself cannot be re-derived from this round** — it was measured at one gear-A cell, and the
+instrument that would price boss cells here (`ripple-audit`) fails its KT discrimination check
+(§8.30). ⇒ **the KT/AoE debt is re-priced, not closed**: gear A's named cells are discharged, a new
+pair is queued for grading, and the boss-cell noise band is owed a fresh measurement.
+
+### Carried over unchanged (structural, not baseline-dependent)
+
+The resolution-floor criterion question (a **user call**, PHASE12 §1.3), the absence of exhaustive
+ground truth above ~h150, and Ashtongue's exclusion from the kits. None of these is a number that
+re-measurement could move.

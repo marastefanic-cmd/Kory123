@@ -1,8 +1,15 @@
 # ACCEPTANCE — the standing test the model must pass to be called complete
 
-> ## ⚠ READ FIRST — THIS DOCUMENT IS ON THE **GEAR-A** BASELINE AND THE **PRE-07-26 INSTRUMENT**
+> ## ✅ THE CURRENT READING IS **"Current status (GEAR B, round 1)"** BELOW — measured 2026-07-27
 >
-> Every sim number below was gathered on **gear A** (now archived at
+> Round 1 is complete (36/36, one protocol, one engine) and graded: **invariant A passes, B2 fails,
+> ACCEPTANCE NOT PASSING**. Jump to that block. **Everything from the banner below down to it is
+> about GEAR A and is a historical record of a different experiment** — its mechanisms, traps and
+> corrections are permanently valid; its verdicts and figures are not the current ones.
+>
+> ## ⚠ THE ARCHIVED BLOCK BELOW IS ON THE **GEAR-A** BASELINE AND THE **PRE-07-26 INSTRUMENT**
+>
+> Every sim number in it was gathered on **gear A** (now archived at
 > `tools/xval-results-archive/gearA-pre-20260726/`) with the old harness. Two things changed on
 > 2026-07-26, and **each on its own breaks cross-baseline comparison**:
 >
@@ -30,9 +37,9 @@ is the **completion criterion**, re-run after every fix/upgrade phase. Phase 6 b
 future phases fix what it exposes and re-run it. A documented deficit is a **debt to fix, not a state to
 accept** (user-directed).
 
-> **The current committed round is GEAR-B round 1** (`tools/xval-results/`, `char=bench-gearB`) — see
-> "Current status (gear B)" below. Rounds 2–7 were gear A and are archived intact at
-> `tools/xval-results-archive/gearA-pre-20260726/`.
+> **The current committed round is GEAR-B round 1** (`tools/xval-results/`, `char=bench-gearB`),
+> complete and graded 2026-07-27 — see **"Current status (GEAR B, round 1)"** below. Rounds 2–7 were
+> gear A and are archived intact at `tools/xval-results-archive/gearA-pre-20260726/`.
 >
 > *Historical, about gear A:* round 5 was the first gathered on the **corrected** harness gear
 > (`tools/reference-gear.mjs`, `t5two` + effective `sp: 1450`; PHASE8 §20). The repricing moved
@@ -306,26 +313,105 @@ the authoritative row-by-row ledger.
   nothing" as a real negative verdict. Now exit **2**, per the shared contract (0 = graded clean · 1 =
   graded and failing · 2 = could not grade).
 
-## Current status (gear B) — ⏳ **NO READING YET**
+## Current status (GEAR B, round 1, 2026-07-27) — **NOT PASSING (B2)**
 
-**This is the honest answer and it should stay uncomfortable: the project's own "are we done" verdict
-is currently _undefined_.** Every figure in the gear-A block below is about a character that is no
-longer the reference (BENCH §1), so the acceptance test has **no gear-B result at all** until the
-in-flight round reads 36/36 and `tools/xval-grade.sh` exits. Do not quote the gear-A verdict as the
-current one, and do not soften this line into "probably still failing".
+> **★ READ THIS AS A FIRST MEASUREMENT, NOT AS A DELTA.** BENCH §1 forbids comparing a gear-B number
+> to a gear-A number, so nothing below is a change *from* the archived rounds 2–7 — every figure is
+> the first reading of that quantity on this character, under one settled protocol. Where a gear-A
+> figure happens to be nearby, that is an observation about the *shape* of the corpus, never
+> arithmetic across baselines. The gear-A block that follows is kept as a historical record of a
+> different experiment.
 
-| | state |
+**The protocol stamp** — asserted identical on all 36 tables by `tools/xval-stamp-audit.mjs`
+(exit 0: *"ONE PROTOCOL, 36/36 EXPECTED CELLS, cold open on every plan row"*):
+
+```
+var=0.5 · emit=fire · iter=6000 · simseed=11 · mana=100000000 · char=bench-gearB
+engine=native:runner-ap180:18102540 · tool=xval-bench · pool=1 · artifact=0 · _prestack:0 everywhere
+```
+
+| | round 1, gear B |
 |---|---|
-| round | **gear-B round 1**, gathering — `tools/xval-results/`, `char=bench-gearB` |
-| verdict | **none** — `xval-grade.sh` refuses to grade a partial directory (exit 2), by design |
-| invariant A (`monoDip`) | not yet graded over the round |
-| invariant B | not yet graded over the round |
-| what is known | the **persistence list reproduces cell for cell** from gear A (PHASE10 §8.22) — a *shape* result, not a verdict |
+| **Invariant A** (`monoDip`) | **PASSES** — `0.0000%` on **all 36** tables, recomputed cell-by-cell by `xval-verify.mjs`, cross-checked against every table's own stamp ("all match") |
+| **Invariant B1** (model, by construction) | **HOLDS** — cross-haste pooling on (`pool=1`), so no borrowed plan can out-*score* a native |
+| **Invariant B2** (sim) | **FAILS** — **142** borrowed-win columns of **345**, across **33/36** tables. Bar = zero |
+| worst column | **0.380 %** — `isc-mqg medlong T=229 @sim40 ← plan@70` |
+| width distribution | median **0.035 %** · mean **0.066 %** · p90 **0.159 %** · max **0.380 %** · ≥0.3 %: **3** · ≥0.2 %: **11** · ≥0.1 %: **31** |
+| borrowed-win rate | **41.2 %** of columns · **37.3 %** are ≤0.02 % (at/below CRN resolution) · **78.2 %** are ≤0.10 % |
+| the diagonal's own margin | median **0.006 %** — native's *wins* are near-ties too |
+| borrower distance | byte-identical **0** · adjacent haste **85 (59.9 %)** · ≤2 grid steps **122 (85.9 %)** · ≥5 steps **4** |
+| **CLEAN tables** | **3/36** — ⚠ and see the two caveats below; the honest figure is **1** |
+| **plateau breadth** *(new this round)* | median **90 %** of a table's haste points carry a distinct plan · **3/36** are ≤50 % · ⚠ **2 of those 3 are CLEAN** (`isc+scb medlong` 2/10, `isc+scb xl` 3/10) |
+| **persistence work list** | **3 columns** of 57 kit-columns (`xval-persist.mjs`, exit 1) |
 
-**To fill this in:** finish the round, then `OUT=/tmp/grade bash tools/xval-grade.sh` and
-`node tools/xval-band.mjs /tmp/grade/targets.json`. Replace this block with the graded numbers, and
-move the gear-A block below into `tools/xval-results-archive/gearA-pre-20260726/README.md` if it has
-grown redundant with it.
+**⚠ Two things make the `CLEAN 3/36` number worth less than it looks, and both are published rather
+than folded in.** (a) Two of the three are the low-plateau tables above — where the tool emits 2–3
+distinct plans across 10 haste points, the cross-val is barely testing adaptation, so that CLEAN is
+partly vacuous. (b) The third, `scb+mqg medlong`, is CLEAN **only as an engine-rounding artefact**:
+its borrowed and native plans both sim to `2914.8`, and the wasm's doubles put the borrowed one a
+hair above while the native runner's did not (PHASE10 §8.27). ⇒ **one non-vacuous, non-artefact CLEAN
+table in 36.**
+
+### The persistence work list — the only shape a genuine haste-adaptation defect can take
+
+```
+isc-mqg   h40  <- rival plan@h70   wins 5/5   margins% [0.070, 0.008, 0.380, 0.094, 0.071]
+isc-skull h20  <- rival plan@h100  wins 4/5   margins% [0.075, 0.004, 0.059, 0.008]
+isc-skull h130 <- rival plan@h230  wins 4/5   margins% [0.213, 0.018, 0.013, 0.007]
+```
+
+★★ **This list reproduces the gear-A list cell for cell on its first two entries** — same kit, same
+haste column, same rival haste, same win count. That is **not** a BENCH §1 violation: no number
+crosses the baselines. What is compared is *which cells a threshold-free structural test names*, and
+that test has no magnitude filter, no borrower-distance filter and nothing tuned after seeing the
+data. ⇒ **the low-haste basin debt is a property of the MODEL, not of the reference gear** — it
+survived a character change intact (PHASE10 §8.22). The third entry, `isc-skull h130`, is new and is
+reported without promotion: gear A's *discredited post-hoc sieve* once named it and the unrigged test
+correctly rejected it there.
+
+### The band grading (PHASE10 §5's ≥3-seed rule, scope pre-registered in §8.18)
+
+Scope = **every column `xval-persist` names ∪ every column `ripple-audit` puts over-floor or
+INDETERMINATE** — applied mechanically by `tools/xval-band-scope.mjs` so it could not be re-chosen
+after the widths were visible. **44 of 142 columns are in scope** (36 class, 8 boss); the other
+**98 are published as NOT GRADED**, with loci, and are **not** thereby passed — the bar is zero
+borrowed-win columns and "not resolvable by this instrument at this taper width" is a statement about
+the ruler, not a verdict.
+
+<!-- BAND-RESULTS -->
+
+⚠ **Two honest limits on the band.** (a) `xval-band.mjs` loads `sim/sim.wasm` directly and has no
+`RUNNER` option, so it grades on the **wasm** while the round was gathered on the **native runner** —
+and §8.27 measured that engine offset at up to **0.01 pp** on a derived percentage, which is the size
+of the seed band itself for class cells. It is a *paired* difference measured wholly within one
+engine, so systematic offsets largely cancel; but a column whose survival turns on <0.02 pp should
+not be adjudicated by the band alone. (b) Set 2 of the scope comes from `ripple-audit`, which **fails
+two of its own pre-registered self-checks on this round** (below).
+
+### ⚠⚠ The ripple decomposition is NOT quotable on this round
+
+`tools/ripple-audit.mjs` declines to certify itself in two of the five predictions its own header
+pre-registers: **P5** (median floor must fall with fight length — it inverts at `medlong 0.103 <
+long 0.106`, marginally but with no tolerance declared) and **P3** (the KT family must not be
+explained away — **3/13** over floor against a bar of 7). Its own words are *"this tool is suspect,
+stop here"*. So this round publishes **no** ripple headline, **no** "N % is below the instrument's
+resolution", and **no** family ranking. ⚠ **And its footer stamps `mono=0` for FAILURE while the
+adjacent `vacuous=0` means success** — opposite polarity on one line, which is exactly why PHASE10
+§8.22 recorded a failing self-check as clean. Repairing P3/P5 is inherited work (PHASE10 §8.30).
+
+### What this round does NOT say
+
+Every standing limitation below still applies unchanged, and two are worth restating here because
+they bound this verdict directly: the test is **purely relative** (it detects misallocation *across
+haste*, and is blind by construction to uniform error), and a PASS would mean *"no plan is beaten by
+a plan built for different gear"*, **not** *"every plan is optimal"*. The B-banner analysis at the
+end of this file — the bar is right, the banner is nearly powerless — is the right way to read
+`33/36 tables FAIL`; steer by `xval-persist.mjs`, not by the banner.
+
+**To reproduce:** `OUT=/tmp/grade bash tools/xval-grade.sh`, then
+`node tools/ripple-audit.mjs /tmp/grade/targets.json --json /tmp/grade/ripple.json`,
+`node tools/xval-band-scope.mjs /tmp/grade/targets.json /tmp/grade/ripple.json /tmp/grade/persist.txt /tmp/grade/targets-scoped.json`,
+`node tools/xval-band.mjs /tmp/grade/targets-scoped.json`.
 
 ---
 
