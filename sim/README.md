@@ -81,8 +81,11 @@ The planner asks for four numbers and knows nothing else about your character, s
   and Arcane Potency are load-bearing for AoE (RULES §9)
 - **spell hit pinned at the 16% cap** (202 rating at 12.615/1%, vs a level-73 target). A **1% miss
   floor is irreducible** in this engine — it cancels between arms
-- **infinite mana** (`1e8`), **cold open** (`_prestack: 0`), **`durationVariation` 0.5s** = the model's
-  kill-window width. Never `--var 0`: it quantizes to integer casts and has faked a result twice
+- **infinite mana** (`1e8`), **cold open** (`_prestack: 0`), and a **kill window DERIVED from the
+  model's own boundary rule** — `encounterFor(T, haste)` gives `duration = T + d/2,
+  variation = d/2` ⇒ `U[T, T+d]`, with `d` the terminal 3-stack Arcane Blast's duration at the
+  character's passive haste (7.8x tighter model/sim tracking than the flat 0.5 it replaced).
+  ⛔ Never `--var 0`: it quantizes to integer casts and has faked a result twice
 - Troll (Berserking is a troll racial)
 
 ⇒ **The absolute DPS is not your DPS and is not meant to be.** Only the paired difference is

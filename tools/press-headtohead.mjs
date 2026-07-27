@@ -37,7 +37,15 @@ const flag = (n, d) => { const i = argv.indexOf(`--${n}`); return i < 0 ? d : ar
 // under test and defaults to the WORKING TREE. Loading the round blob as the engine makes the tool
 // blind to the change it is being pointed at — `tools/lattice-drift.mjs` reported a byte-identical
 // number across two consecutive cast-timing fixes for exactly this reason.
-const IDX = flag('index', process.env.ROUND_INDEX || '/tmp/index-round.html');
+// ⚠ …and the ROUND BLOB must EXIST. This defaulted to `/tmp/index-round.html`, a session scratch
+// file nothing in the repo creates: on a clean checkout the tool died on a raw `node:fs` stack trace,
+// and against a stale blob it found 0 cached plans and reported over an empty set. Fall back to the
+// repo's own index.html and SAY SO, exactly as the five sibling tools already do — a silent fallback
+// would quietly change which plans are found, which is the same defect one level down.
+const IDX = flag('index', process.env.ROUND_INDEX || path.join(REPO, 'index.html'));
+if (!fs.existsSync(IDX)) { console.error(`ERROR: round blob ${IDX} does not exist.`); process.exit(2); }
+if (!process.env.ROUND_INDEX) console.error('note: no ROUND_INDEX set — keying the plan cache on the repo\'s own index.html.\n' +
+  '      Cached plans from a different engine will simply not be found, so the corpus may be smaller.');
 const ENGINE = process.env.ENGINE || path.join(REPO, 'index.html');
 const N = +flag('n', '12');
 

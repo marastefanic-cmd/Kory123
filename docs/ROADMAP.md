@@ -7,7 +7,8 @@
 >
 > ## ✅ THE OBJECTIVE IS EXACT, AND THE TREE IS GREEN
 > `simulate()` ranks on the deterministic per-cast sum; gate `tools/self-consistency.mjs` reads
-> `0.00e+0` over 2755 scorings. **Four scoring defects and one transcription defect** were fixed
+> `0.00e+0` over **3000 generated scorings (460 699 casts, 0.78 s, no cache)** with **0 structural
+> violations**. **Four scoring defects and one transcription defect** were fixed
 > (PHASE12 §6.9 transcription · §6.10 the integral · §6.11 press-anchored windows · §6.12 the single
 > snapshot rule · §8→§9 the boundary), the **cast lattice was closed** (§6.14: `STACK_CAST_REDUCTION
 > 1/3 → 334 ms` **plus** millisecond rounding), and the cooldown chain now anchors on the **fire**
@@ -40,7 +41,11 @@
 > Kael'thas: Arcane Explosion is **instant**, so `dur = 0`, and a divide-by-zero guard returning `0`
 > credited **every AE at nothing** — the limit is `1`. **Guard against NaN, not against the answer**, and
 > note that **no existing gate could reach either defect** (`self-consistency` compares the objective
-> against itself; `exact-match` locks in whatever the search emits). A cast completing exactly at `T` now earns a **full** cast
+> against itself; `exact-match` locks in whatever the search emits). ⇒ **That gap was closed 07-27**
+> after it let two more defects through: `self-consistency` now generates its own corpus (the old one
+> lived in a `.gitignore`d cache keyed on the page's sha1, so it graded **nothing** the moment
+> `simulate()` was edited) and carries a **structural** check that grades the board against the
+> millisecond lattice rather than against the accumulator — PHASE13 §2.5. A cast completing exactly at `T` now earns a **full** cast
 > (it earned 0.5 under the taper), and a cast completing inside an intermission is no longer paid in
 > full (measured: starts 89.616, wall 90 — was `2242.1`, now `frac 0.2563` / `credited 574.8`).
 > `total`, `robust` and `totalEarly` are now the **same number**; the per-cast board gains `frac` and
@@ -49,11 +54,15 @@
 > **Blast radius:** `plan-sweep` **11 of 16** cases moved plans; `tools/blast-radius.mjs` **102 of 285**
 > cells (35.8 %). Docs updated: RULES §1/§8/§9, ARCHITECTURE, MECHANICS §4, ACCEPTANCE, TOOLING, BENCH,
 > GEAR-AGNOSTIC.
-> ⚠ **`sim/benchmark.mjs` keeps `variation: 0.5`, but its justification changed**: it is no longer "the
-> model's kill-window width" (that constant is gone) — it is the **sim's own** smoothing, resting
-> entirely on `tools/var-decision.mjs`. Reconciling the model's analytic partial credit with the sim's
-> numerical averaging is an **OPEN question** — `docs/PHASE13.md` §2.4, and ⛔ **not** to be "fixed" by
-> setting `--var 0`.
+> ✅ **`sim/benchmark.mjs`'s kill window is now DERIVED from the model's** (closed 07-27, PHASE13 §2.4,
+> on the user's proposal). The model's credit rule *is* a one-sided window `U[T, T+d]` with `d` the
+> terminal cast's own duration, so the sim gets that window: `duration = T + d/2, variation = d/2` via
+> `killWindow(hasteRating)` / `encounterFor(T, hasteRating)`, the single definition both the wasm and
+> the native path read. The retired flat `0.5` was not merely unjustified but **wrong** — 33 % too
+> narrow at zero haste (half a 3-stack Blast is 0.749 s) and never moved with gear. Measured
+> (`tools/window-match.mjs`, sweeping T across one cast interval): model/sim ratio spread **0.0208 %
+> derived vs 0.1627 % flat — 7.8× tighter**, and monotone instead of wobbling. ⛔ Still **not** to be
+> "fixed" by setting `--var 0`.
 >
 > ▶ **NEXT: `docs/PHASE13.md`.** Its §1 — the **AoE edge** — is ✅ **decided and landed** (as a cut, on
 > policy — see above), so **no open item changes numbers the tool prints**. §2 re-measures what Phase 12
@@ -514,6 +523,14 @@ Payoffs the same engine then unlocks (secondary — the planner's correctness co
   spot on a plain fight, physics anchored (RULES §13, SOURCES, TOOLING).
 - **Task 3 — Ashtongue model → LEEWAY ZONES (user-refined): in progress.** Kept ATI **passive** (steady-state
   proc-uptime folded into window haste — real DPS; excluding from scoring rejected). No scheduled press / no
+> ⛔⛔ **BUILT, THEN PERMANENTLY REJECTED — kept only as the record of a decision, not as a description
+> of the code.** `leewayZones()` and `pressPlan()` no longer exist in `index.html`: the leeway bands and
+> the reasoning tags were cut for good by user decision (see "UI: leeway bands + reasoning tags
+> PERMANENTLY REJECTED" above, and PHASE13 §9), and the Pressboard rework deleted `pressPlan` with the
+> live board. ⚠ The present/past tense below is the tense these entries were WRITTEN in and is
+> preserved deliberately — do not read "Landed"/"Building" as a claim about the current tree, and do
+> not go looking for either symbol.
+
   proc verdict: the scorer averages the proc, and within a true free-leeway interval aligning a press with a
   proc is **never anti-synergous** (user's call), so the honest depiction is just the interval. **Building:**
   `leewayZones` computes, per mobile press, the maximal contiguous interval where moving it ties the champion
@@ -881,6 +898,14 @@ the drop was systematic, it also lost AP/IV/Zerk uses; no golden regressed, exac
   (+0.6); do not prioritize over the payoffs, but it's now a *verified* gain, not just a hypothesis.
 
 ## DONE — placement REASONING annotations (Phase 3 task 6)
+
+> ⛔⛔ **BUILT, THEN PERMANENTLY REJECTED — kept only as the record of a decision, not as a description
+> of the code.** `leewayZones()` and `pressPlan()` no longer exist in `index.html`: the leeway bands and
+> the reasoning tags were cut for good by user decision (see "UI: leeway bands + reasoning tags
+> PERMANENTLY REJECTED" above, and PHASE13 §9), and the Pressboard rework deleted `pressPlan` with the
+> live board. ⚠ The present/past tense below is the tense these entries were WRITTEN in and is
+> preserved deliberately — do not read "Landed"/"Building" as a claim about the current tree, and do
+> not go looking for either symbol.
 
 **Landed.** `pressPlan` (~3271) now emits *why-here* reasons — Alignment / Flexible (leeway) /
 Cooldown-timed / Cold Snap / Positioned — replacing the raw `deliberate: +N dmg` / `locked here by its

@@ -29,8 +29,12 @@
 //   • Spell hit is pinned at the 16% cap in the reference character's bonusStats (202 rating at
 //     12.615/1%, vs a level-73 target). A 1% miss floor is irreducible in this engine; it cancels.
 //   • Mana is effectively infinite (`MANA_INJECT`), matching the model's infinite-mana assumption.
-//   • Duration variation is 0.5s — the model's kill-window WIDTH (RULES §8). Never 0: `--var 0`
-//     quantizes to integer casts and has faked a result twice (TOOLING ★★).
+//   • The fight's kill window is DERIVED FROM THE MODEL, not a round number: `encounterFor(T, haste)`
+//     yields `duration = T + d/2, variation = d/2` ⇒ `U[T, T+d]`, with `d` the terminal 3-stack Arcane
+//     Blast's own duration. That is exactly the one-sided window the model's boundary credit already
+//     is (PHASE13 §2.4). ⛔ It used to be a flat 0.5 justified as "the model's kill-window WIDTH" — a
+//     constant that no longer exists in the objective, and 33% too narrow at zero haste besides.
+//     Never 0: `--var 0` quantizes to integer casts and has faked a result twice (TOOLING ★★).
 //   • The APL opens COLD (`_prestack: 0`, genapl's default). Never prepull in a model-compared sim.
 
 // ★ Every protocol constant comes from sim/benchmark.mjs — the ONE definition the terminal harness

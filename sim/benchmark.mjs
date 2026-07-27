@@ -64,12 +64,18 @@ export const BENCH = Object.freeze({
   variation: 0.5,
 
   // The cast whose duration sets the window. Constants mirror `index.html`'s GAME.AB — they are
-  // re-stated here because `sim/` must not import the page, and `tests/cfg-contract.mjs` is where a
-  // drift between the two would be caught.
+  // re-stated here because `sim/` must not import the page. ⚠ They are NOT gated: this block used to
+  // claim `tests/cfg-contract.mjs` would catch a drift, and that file contains no reference to any of
+  // them. Treat the claim as what it is — absent — until someone writes the comparison.
+  //   ⛔ And do NOT re-add `hasteRatingPerPct` here. It was declared in this block AND again below at
+  //   the wowsims rating conversions, so the later literal silently won and the first was dead code
+  //   from the moment it was written (measured: `BENCH.hasteRatingPerPct === 15.76923`). The haste
+  //   divisor for the window is the one below — 15.76923 vs the model's 15.77 is a 0.005 % difference,
+  //   6 µs of window at 400 rating, so nothing moved; a duplicate key that happens not to matter is
+  //   still a duplicate key.
   abBaseCast: 2.5,
   abStackReduction: 0.334,
   abMaxStacks: 3,
-  hasteRatingPerPct: 15.77,
 
   // Mana is not in the model at all, so it must not be in the arbiter either: the duel isolates the
   // LAYOUT. 1e8 is "infinite" for any fight length this tool accepts.

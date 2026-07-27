@@ -53,9 +53,11 @@ plan → sim/planspec.mjs → tools/genapl-core.mjs → sim/simreq.mjs → sim/s
   The model's credit rule is a ONE-SIDED window `U[T, T+d]` (`d` = the terminal cast's duration), and
   `encounterFor` reproduces it exactly as `duration = T + d/2, variation = d/2`. Half a 3-stack Arcane
   Blast at zero haste is **0.749 s**, so the retired flat 0.5 was **33 % too narrow** there and never
-  moved with gear. Measured 8.79× tighter model/sim tracking across a cast boundary
-  (`tools/window-match.mjs`: ratio spread 0.0374 % vs 0.3284 %). `BENCH.variation` survives only as the
-  legacy default, and as the value every archived corpus was gathered at.
+  moved with gear. Measured **7.8–8.8× tighter** model/sim tracking across a cast boundary
+  (`tools/window-match.mjs`: ratio spread **0.0208 % vs 0.1627 %** on the current engine; 0.0374 % vs
+  0.3284 % as first measured — the numbers moved slightly with the PHASE13 §2.5 epsilon fix, the verdict
+  did not). `BENCH.variation` survives only as the legacy default, and as the value every archived
+  corpus was gathered at.
   ⛔ *The paragraph below is the RETIRED framing, kept because it is what the flat value rested on.*
   ⛔ **`variation: 0.5` KEPT ITS VALUE AND LOST ITS OLD JUSTIFICATION (07-27, PHASE12 §9).** It used to
   be documented as mirroring *"the model's kill-window WIDTH"* (`KILL_WINDOW = 0.5`). **That constant no
@@ -63,9 +65,11 @@ plan → sim/planspec.mjs → tools/genapl-core.mjs → sim/simreq.mjs → sim/s
   fitting fraction — so there is nothing on the model side to mirror. The value stands **solely** on
   `tools/var-decision.mjs` / BENCH §3, evidence that never depended on the model: it is the **SIM's own**
   smoothing, the way the sim avoids parking its fight end on a discontinuity the model no longer has.
-  ⚠ **OPEN QUESTION (PHASE12 §9.4):** model and sim now smooth the same problem by different means —
-  **analytic partial credit vs numerical averaging** — and reconciling the two answers is unresolved.
-  Do not "fix" it by flipping `variation` to 0; that reintroduces the measured failure in BENCH §3.
+  ⚠ ~~**OPEN QUESTION (PHASE12 §9.4):** model and sim smooth the same problem by different means —
+  analytic partial credit vs numerical averaging — and reconciling the two is unresolved.~~
+  ✅ **CLOSED 07-27, PHASE13 §2.4** — see the ✅ block above this one: the sim's window is derived from
+  the model's. Do not "fix" anything by flipping `variation` to 0; that reintroduces BENCH §3's
+  measured failure.
   (This also discharges PHASE11 §1.2 F9's "aligned by prose only" pairing for this constant: there is
   no longer a pair.)
 
@@ -133,14 +137,19 @@ number; ranking lines is *its* job.
 > measurement, restored on the user's policy ruling. **It deliberately buys a sim divergence — see the
 > standing block immediately below.**
 >
-> ⚠ **Two calibration debts are still open and they bound what the SIM can settle.** (a) wowsims takes 334 ms
-> per Arcane Blast stack where the model takes 1/3 s, so **26 of 196 presses** still miss the cast the
-> model scored them on (§6.9d). Until that constant is fixed, **no sim-vs-model disagreement smaller
-> than ~0.1 % is attributable** — the referee mis-executes ~13 % of presses.
-> (b) The model now hedges the fight boundary **analytically** (partial credit on the straddling cast)
-> while the sim still hedges it **numerically** (`--var 0.5`, averaging over `T ± 0.5`). The two are no
-> longer the same question and **no residual between them has been derived** — the old `1 − W/c`
-> tail-lattice floor priced the *retired* scorer and does not transfer. OPEN: PHASE12 §9.4.
+> ✅ **Both calibration debts this block opened are now DISCHARGED.** They are kept because they bounded
+> every sim-vs-model reading taken before them, and an archived number must still be read through them.
+> (a) ~~wowsims takes 334 ms per Arcane Blast stack where the model takes 1/3 s, so **26 of 196 presses**
+> still miss the cast the model scored them on (§6.9d); until that constant is fixed **no sim-vs-model
+> disagreement smaller than ~0.1 % is attributable**.~~ **Fixed** — PHASE12 §6.14, plus millisecond
+> rounding on every cast and GCD.
+> (b) ~~The model hedges the fight boundary **analytically** (partial credit on the straddling cast)
+> while the sim hedges it **numerically** at a flat `±0.5`; the two are no longer the same question and
+> no residual between them has been derived.~~ **Fixed** — PHASE13 §2.4: the sim's window is now
+> *derived from* the model's (`duration = T + d/2, variation = d/2` ⇒ `U[T, T+d]`, the same one-sided
+> window the credit rule already is), measured 7.8× tighter across a cast boundary. ⚠ One bounded
+> approximation remains, stated rather than hidden: `d` is a 3-stack Blast at **passive** haste, so on a
+> plan whose burst runs to the buzzer the window is slightly wide.
 
 ### ⚠⚠⚠ STANDING, EXPECTED DIVERGENCE — THE MODEL CANCELS A CAST AT AN AoE WALL AND THE SIM CANNOT (07-27)
 
@@ -165,6 +174,16 @@ number; ranking lines is *its* job.
   only**, in the direction *model credits less, sim credits full*, plus a lattice offset on the AE
   stream that follows it. Everything away from an AoE wall must still match cast for cast. **A gap
   anywhere else is a real finding; the gap at the wall is priced.**
+  ★ **Don't assume it; the tool measures it.** `model-audit --by-cause` classifies every mismatch by
+  location and states at each wall whether a Blast was in flight across it. **Measured 07-27: on the
+  23-preset corpus it is NEVER in flight** — Kael'thas is the only `aoe` preset and its wall at 105
+  follows an intermission ending at 105, so both sides start the AE stream at 105.000 and cast 33 of
+  them. ⇒ **this priced divergence explains 0 of the audit's failures.** The ruling is unaffected; it is
+  simply not exercised, and a pass count "corrected for the AoE wall" is the same number as the raw one.
+  ⚠ And only the wall (the phase **START**) is priced. The phase's **far edge** — where both sides
+  resume Arcane Blast after the AE stream — carries no ruling, so a disagreement there is a finding
+  (`aoexit`, measured 0.118 s on Kael'thas). Folding the exit into the priced bucket would forgive a
+  defect with a ruling that does not cover it.
 - ⚠ **Do not close this by removing the AoE start from the cut lattice.** That is exactly what happened
   once already on 07-27 (removed on the physics measurement above, restored hours later on the user's
   ruling) — the flip is recorded in RULES §9 and `docs/DIARY.md` so it is not made a third time.

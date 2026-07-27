@@ -60,9 +60,11 @@
 # policy for a mutable artifact at a stable URL, and it costs one conditional request per session on
 # a file that is only fetched when the user presses the sim button at all.
 #
-# ☞ The better fix, when the freeze lifts: content-hash the published filenames in the build command
-# so the URL changes with the bytes, and `immutable` becomes true instead of merely asserted
-# (PHASE11 §2.4). That needs the fetch sites to learn the hashed name, which lives in `index.html`.
+# ☞ The better fix, and the FREEZE HAS LIFTED (07-27): content-hash the published filenames in the
+# build command so the URL changes with the bytes, and `immutable` becomes true instead of merely
+# asserted (archived PHASE11 §2.4, now docs/PHASE13.md §5). That needs the fetch sites to learn the
+# hashed name, which lives in `index.html` — the file the module split exists to break up, which is
+# why it is sequenced behind it rather than done here.
 # ★ ONE POLICY FOR THE WHOLE LAZY BUNDLE, BY GLOB — not by a list of filenames.
 # The files below form one shared chain (planspec → genapl-core → simreq → benchmark → wasm_exec →
 # sim.wasm), and a bundle whose members expire on different schedules can serve a MISMATCHED SET.

@@ -179,11 +179,17 @@ terminal-cast-rate swing, the seed band. `variation: 0.5` keeps its value on **i
 it is now correctly described as the **sim's** smoothing — how the sim avoids parking its fight end on
 a discontinuity that the model, since 07-27, no longer has.
 
-⚠ **OPEN QUESTION — PHASE12 §9.4.** Model and sim now smooth the same problem by different means,
-**analytic partial credit vs numerical averaging over `T ± 0.5`**. What the residual between those two
-answers is has **not been derived**. The old `1 − W/c` tail-lattice floor priced the *retired* scorer
-and does not transfer (RULES §8's historical banner). Do not close the question by flipping
-`variation` to 0 — that reintroduces the measured failure above.
+✅ **CLOSED 2026-07-27 — PHASE13 §2.4.** The sim's kill window is now **derived from the model's**:
+the credit rule is algebraically the one-sided window `U[T, T+d]` (`d` = the terminal 3-stack Blast's
+own duration), and `encounterFor(T, haste)` hands the sim exactly that as `duration = T + d/2,
+variation = d/2`. Measured 7.8x tighter model/sim tracking across a cast boundary (ratio spread
+0.0208 % vs 0.1627 %, `tools/window-match.mjs`). `BENCH.variation: 0.5` survives only as a legacy
+default and as the value every archived corpus was gathered at. ⛔ Still never `--var 0`.
+
+⚠ The paragraph above this one still describes `variation: 0.5` as the protocol. Read it as the
+**legacy** default: it is what `--var 0.5` reproduces and what every archived corpus was gathered at,
+and the derived window is what an unqualified run now uses. The old `1 − W/c` tail-lattice floor
+priced the *retired* scorer and still does not transfer (RULES §8's historical banner).
 
 ## 3b. ★ What the export actually contributes — fixed vs varied vs ignored
 

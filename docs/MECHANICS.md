@@ -11,9 +11,14 @@ Notation: `m` = total haste multiplier; `SP` = spell power; a "cast" below means
 
 ## 1. Cast time, Arcane Blast stacks, and the GCD
 
-- **Arcane Blast** base cast = **2.5 s**, reduced by **1/3 s per AB debuff stack** (max 3 stacks):
-  `cast_base(stacks) = 2.5 − (1/3)·stacks`. At 3 stacks = **1.5 s**. Each stack also costs +75% mana;
+- **Arcane Blast** base cast = **2.5 s**, reduced by **334 ms per AB debuff stack** (max 3 stacks):
+  `cast_base(stacks) = 2.5 − 0.334·stacks`. At 3 stacks = **1.498 s**. Each stack also costs +75% mana;
   the debuff lasts 8 s. We model steady-state **3 stacks** (the opener ramp is over in ~3 casts).
+  ⚠ **0.334, NOT 1/3** — this line said "1/3 s … at 3 stacks = 1.5 s" until 07-27, which is the
+  tooltip's phrasing and not the game's number. wowsims encodes `time.Millisecond * -334`
+  (`sim/mage/arcane_charge.go:17`), the 0.667 ms per stack COMPOUNDS one-signed, and the two cast
+  lattices drifted ~0.35 s apart by t=200 on a buffed plan — costing 26 of 196 presses the cast the
+  model scored them on. §1.1 carries the measurement and the history.
 - **GCD** = 1.5 s base, reduced by haste, **floored at 1.0 s**.
 - Haste divides both: `hasted_cast = cast_base / m`, `hasted_gcd = max(1.0, 1.5 / m)`. You can't start
   the next cast until both finish, so the **interval between cast starts** is:
@@ -141,7 +146,10 @@ begins already-buffed. Consequences the model must respect:
 > power buffs apply (normalizable against a plain cast), and crit as a constant factor that cancels.
 > **There is nothing to approximate**, and since 07-27 `simulate()` accumulates exactly that sum and
 > returns it as `total`/`totalEarly`/`robust` — which are now **one and the same number**. Gate:
-> `tools/self-consistency.mjs` reads `0.00e+0` over 2755 plan-scorings, no sim.
+> `tools/self-consistency.mjs` reads `0.00e+0` over 3000 generated plan-scorings (460 699 casts) with
+> 0 structural violations, no sim, no cache. ⚠ The `0.00e+0` alone is NOT sufficient — it compares two
+> accounts that both read the same `casts` board, so it passed straight through the PHASE13 §2.5
+> epsilon defects. The **structural** line is the one that leaves the model.
 >
 > ★ **Each term carries a BOUNDARY CREDIT (PHASE12 §9, user ruling 07-27):**
 > ```

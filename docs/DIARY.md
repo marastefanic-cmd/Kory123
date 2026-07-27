@@ -669,6 +669,67 @@ moves cast times, the lattice, plans and goldens — so it rides alone. Recorded
 SOURCES, where MECHANICS' old *"matches our sims exactly"* is now marked as a 60-second measurement
 mistaken for a general claim.
 
+### 07-27 — one epsilon, and the gate that watched two defects go past
+
+`tools/model-audit.mjs`, run cast-for-cast against real combat logs, turned up **two model defects with
+one root**: the walk's clock is a running float sum of millisecond-quantized intervals, so a boundary the
+fight geometry puts at `90.000` arrives as `89.999999999999972` — and the walk's boundary comparisons did
+not all agree on how to treat that.
+
+The **segment advance** (`t >= segs[si].end`) carried no epsilon, so the walk did not jump the
+intermission wall and started a cast there; `nextCut` (`c > ts + 1e-9`) *did*, so it skipped the wall and
+returned the fight end. Result: **a whole Arcane Blast, banked at 100 % credit, completing 1.5 s inside an
+intermission where the boss is untargetable and the sim casts nothing.** Worth **0.99 %** (Lurker) and
+**1.47 %** (Solarian) of the entire fight score — against a corpus whose argued deficits are 0.004–0.380 %.
+Separately, the **press loop** (`e.ts > t`) carried none, so a press written at `184.00` missed the
+boundary stored as `183.99999999999994` and slipped a whole cast — while `sim/planspec.mjs`
+(`starts[i] >= fire - 1e-9`) transcribed it to the *other* cast. The model and its own transcriber
+disagreed about which cast a buff covered.
+
+The fix is one declared `const EPS = 1e-9` and four comparison sites that name it. `plan-sweep` moved
+**4 of 16** cells; `search-miss` — which scores both engines' plans under **one** scorer, the only
+question a repricing does not confound — read **4 better, 0 regressions**. The scores at those cells went
+*down*, and that is the fix: the model stopped being paid for a cast the boss was untargetable for.
+
+**The part worth more than the fix: the project's headline sim-free gate read `0.00e+0` through both.**
+`tools/self-consistency.mjs` failed twice over.
+
+1. *Its corpus was untracked scratch that evaporated on the change it was meant to grade.* It read plans
+   from `.xval-cache/` — `.gitignore`d, keyed on the **sha1 of `index.html`**. A clean checkout has no
+   corpus; worse, **editing `simulate()` changes the hash**, so the gate CLAUDE.md tells you to run after
+   any change to `simulate()` stopped finding its corpus at exactly the moment it mattered. Measured:
+   8993 cache entries present, **0 hits** against every committed revision of the page. The corpus is now
+   generated from the page's own presets × a haste ladder × a deterministic schedule family — 3000
+   scorings over 460 699 casts in **0.78 s from a bare clone**.
+2. *It could not see the bug even with a corpus.* Its check is `robust` against a re-derived credit sum,
+   and **both sides read the same `c.t`** — so a defect in *which casts exist* makes the accumulator and
+   the re-derivation wrong identically, and they agree. Confirmed rather than assumed: with the segmented
+   presets added the rebuilt gate **still** read `0.00e+0` on the broken engine.
+
+So it gained a third, **structural** check that leaves the model and asks the world: at **millisecond**
+resolution — the lattice wowsims actually runs on — *no cast may begin inside an intermission*, and
+*re-deriving the credit must not change it*. Plus a corpus arm that **constructs** the coincidence
+instead of waiting for it: walk the fight with no wall, read the cast starts off the board, put a wall at
+the millisecond each one rounds to. Discrimination, which is the only property that makes a gate worth
+having: **167 violations** before the fix, **0** after.
+
+★ **The general lesson.** A consistency gate can only catch a disagreement between two accounts. When
+both accounts derive from the same intermediate, it grades a tautology and reports a reassuring zero.
+Every such gate needs at least one check that leaves the model entirely.
+
+**And a search result landed the same day, from a separate investigation.** The `1:40 lust 0:05` miss
+recorded in PHASE13 §3.1 was root-caused, and the recorded diagnosis was wrong: *"the basin is not being
+entered at all"* is **false**. The witness is found by the outer search from 20 restarts on — and then
+**destroyed in the finishing tail every single time**, so more restarts never help. It is a `finishLine`
+monotonicity bug: a groom pass admits a −46.4 move against a **stale high-water mark** (`val =
+Math.max(val, pick.v)` — the exact defect `challengePass` had already fixed for itself), and the
+Cold-Snap comparison then inherits the groomed plan wholesale, turning it into −127.2. Two fixes were
+measured; the clean one (an entrant floor) makes the QTOL legibility budget unspendable and so silently
+reverses a **user-directed** ruling, which makes it a product call rather than a search fix. Neither
+landed. PHASE13 §3.1.
+
+---
+
 ---
 
 ## The corrections ledger — what we believed, and what disproved it
@@ -688,6 +749,8 @@ is to compute one number correctly**, and because each has a cheap standing gate
 | *"a buff window lasts its duration."* The walk started it at the fire boundary and expired it at **press + duration**, so every mid-cast press was short by the slip — a whole cast in the measured case. | `tools/window-span.mjs` vs wowsims: IV at 9.6 covered 15 casts, sim 16 | that same tool must match at every offset |
 | *"a press at `floor(F) ≤ F` snaps to the same boundary"* (`planspec`'s own header). False whenever F is not itself a boundary; it put **7.14 %** of presses on a cast the model never chose and left 25.2 % on a knife edge. | `tools/press-headtohead.mjs` on real combat logs | `tests/press-fire.mjs` (part A needs no sim) |
 | *"the sim's schedule fires at the first boundary STRICTLY AFTER the scheduled time."* Right consequence, wrong cause — `IsReady` is `>=`. wowsims takes **334 ms** per AB stack where the model takes 1/3 s, so the boundary a log prints as `11.00` is `10.998`. | `tools/press-ns-probe.mjs` (killed the ns theory), `tools/press-threshold-probe.mjs` (bisected `B − 0.002`) | ⚠ **still open** — the constant is unfixed |
+| *"a float clock comparison against a boundary is a style question."* It is behaviour: the walk's clock reaches `89.999999999999972` where geometry says `90.000`, and the segment advance and the cut lattice carried **different** epsilons — so the walk skipped an intermission wall and banked a whole Arcane Blast at **100 % credit** completing inside it (0.99 % / 1.47 % of fight score). | `tools/model-audit.mjs --by-cause` on real combat logs, then a direct two-scorer probe on the same plan | `index.html`'s single `const EPS`, and `tools/self-consistency.mjs`'s **structural** check (167 violations before, 0 after) |
+| *"`self-consistency` reading `0.00e+0` means the objective is sound."* It means the accumulator agrees with a re-derivation **that reads the same `c.t`**. It printed a clean zero through both epsilon defects, and its corpus lived in a `.gitignore`d cache keyed on the page's sha1 — so it silently graded **nothing at all** the moment `simulate()` was edited. | 8993 cache entries, **0 hits** on every committed revision; and the rebuilt segmented corpus still reading `0.00e+0` on the broken engine | the same tool: a **generated** corpus (no cache), a refusal on 0 scorings *or* a corpus with no segmented/AoE preset, and the ms-resolution structural check |
 
 ★ **The meta-lesson, and it is the one worth carrying:** three of the four were *"harmless"* until
 something else was fixed. The short-window bug did nothing while the integral ranked; the transcription

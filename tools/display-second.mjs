@@ -29,7 +29,15 @@ import { loadEngine, ALL_BUFFS } from './engine-node.mjs';
 import { REF } from './reference-gear.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const ROUND = process.env.ROUND_INDEX || '/tmp/index-round.html';
+// ⚠ …and the ROUND BLOB must EXIST. This defaulted to `/tmp/index-round.html`, a session scratch
+// file nothing in the repo creates: on a clean checkout the tool died on a raw `node:fs` stack trace,
+// and against a stale blob it found 0 cached plans and reported over an empty set. Fall back to the
+// repo's own index.html and SAY SO, exactly as the five sibling tools already do — a silent fallback
+// would quietly change which plans are found, which is the same defect one level down.
+const ROUND = process.env.ROUND_INDEX || path.join(REPO, 'index.html');
+if (!fs.existsSync(ROUND)) { console.error(`ERROR: round blob ${ROUND} does not exist.`); process.exit(2); }
+if (!process.env.ROUND_INDEX) console.error('note: no ROUND_INDEX set — keying the plan cache on the repo\'s own index.html.\n' +
+  '      Cached plans from a different engine will simply not be found, so the corpus may be smaller.');
 const api = loadEngine(process.env.ENGINE || path.join(REPO, 'index.html'));
 const EID = crypto.createHash('sha1').update(fs.readFileSync(ROUND)).digest('hex').slice(0, 12);
 const planOf = cfg => {
@@ -85,6 +93,16 @@ for (const f of fs.readdirSync(dir).filter(x => x.endsWith('.txt')).sort()) {
   }
 }
 
+// ⛔ ZERO PRESSES IS NOT A PASS. Without a matching ROUND_INDEX the plan cache is keyed on a
+// different engine hash and nothing is found — this then printed `0 / NaN%` and the cheerful verdict
+// "so the display can always be made correct" while exiting 0, i.e. the strongest possible conclusion
+// drawn from no data at all. It is this repo's most expensive recurring failure shape; refuse.
+if (!presses) {
+  console.error('ERROR: 0 presses — the plan cache holds nothing for this engine hash.\n' +
+    '       Point ROUND_INDEX at the index.html the cached plans were solved with, or re-solve.\n' +
+    '       Refusing to report a verdict over an empty set.');
+  process.exit(2);
+}
 const pct = n => (100 * n / presses).toFixed(1) + '%';
 console.log(`DISPLAYED PRESS SECOND vs THE WINDOW THE MODEL SCORED — ${plans} plans, ${presses} presses. NO SIM.\n`);
 console.log(`  pressing the printed second lands the scored window   ${String(exact).padStart(6)}   ${pct(exact)}`);

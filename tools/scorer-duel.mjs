@@ -58,7 +58,10 @@ const N = +arg('n', '20');
 const SEEDS = arg('seeds', '11,12,13').split(',').map(Number);
 const ITER = +arg('iter', String(BENCH.iterations));
 const FLOOR = +arg('floor', '0.25');   // DPS below which this instrument declares a tie — see below
-const VAR = arg('var') === undefined ? BENCH.variation : +arg('var');
+// ⚠ DEFAULT: pass NOTHING, so `buildRequest` derives the model's own kill window
+// (`encounterFor(T, haste)`, PHASE13 §2.4). Defaulting to the flat `BENCH.variation` here would
+// make this instrument sim a different fight from the website's button, which passes no variation.
+const VAR = arg('var') === undefined ? undefined : +arg('var');
 
 // ⚠ ROUND_INDEX = the round blob the plan cache keys on (sha1), the only thing that looks the two
 // duelling plans UP. ENGINE = the code under test, defaulting to the working tree. ROUND_INDEX used to

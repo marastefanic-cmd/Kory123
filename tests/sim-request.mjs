@@ -81,7 +81,21 @@ const diff = (a, b, p = '', out = []) => {
 // it is load-bearing, so a future edit has to argue with a sentence rather than a bare number.
 {
   const bad = [];
-  if (BENCH.variation === 0) bad.push('variation must NOT be 0 — `--var 0` makes every iteration the same fight, turning DPS into a staircase of whole casts. It has faked a result twice (TOOLING ★★).');
+  // ⛔ A DUPLICATE KEY IN `BENCH` IS SILENT AND THIS FILE IS THE ONLY PLACE THAT CAN SEE IT.
+  // `hasteRatingPerPct` was declared twice — once in the GAME.AB mirror block (15.77) and again in
+  // the wowsims rating conversions (15.76923). JS keeps the LAST one, so the first was dead from the
+  // moment it was written, and `killWindow()` silently used wowsims' divisor where the comment said
+  // the model's. It happened not to matter (0.005 %, 6 µs of window at 400 rating) — which is exactly
+  // why nothing caught it. Parse the source: the evaluated object cannot report a key it never kept.
+  {
+    const src = fs.readFileSync(path.join(REPO, 'sim/benchmark.mjs'), 'utf8');
+    const body = src.slice(src.indexOf('export const BENCH'), src.indexOf('export function'));
+    const keys = [...body.matchAll(/^ {2}([A-Za-z_$][\w$]*):/gm)].map(m => m[1]);
+    const dup = [...new Set(keys.filter((k, i) => keys.indexOf(k) !== i))];
+    if (dup.length) bad.push(`sim/benchmark.mjs declares ${dup.map(d => `\`${d}\``).join(', ')} more than once. ` +
+      'JS keeps the last, so the earlier one is dead code that reads as a decision — and the protocol ' +
+      'is meant to be defined exactly once.');
+  }
   // ★ THE WINDOW IS DERIVED NOW, NOT PINNED (2026-07-27). `BENCH.variation` survives only as the
   // legacy flat default; the live protocol is `killWindow(haste)` + `encounterFor(T, haste)`, which
   // reproduce the MODEL's one-sided window `U[T, T+d]` with `d` the terminal cast's own duration.
@@ -91,8 +105,8 @@ const diff = (a, b, p = '', out = []) => {
   //   · `encounterFor` must produce exactly `U[T, T+2w]`, i.e. the interval must START at T. Setting
   //     `variation` without re-centring `duration` silently lengthens the average fight, which is the
   //     one mistake this construction exists to prevent.
-  // Measured: the derived window tracks the model across a cast boundary 8.79x more tightly than the
-  // flat one (ratio spread 0.0374 % vs 0.3284 %, tools/window-match.mjs).
+  // Measured: the derived window tracks the model across a cast boundary 7.8-8.8x more tightly than
+  // the flat one (ratio spread 0.0208 % vs 0.1627 % on the current engine, tools/window-match.mjs).
   { const w0 = killWindow(0), w250 = killWindow(250);
     if (!(w0 > 0)) bad.push(`killWindow(0) must be positive, got ${w0}`);
     if (!(w250 < w0)) bad.push(`killWindow must SHRINK with haste: killWindow(250)=${w250} is not < killWindow(0)=${w0} — a width that ignores gear is exactly the flat-0.5 defect.`);

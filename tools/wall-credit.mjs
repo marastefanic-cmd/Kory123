@@ -97,7 +97,11 @@ if (cfg.segments) for (let k = 0; k < cfg.segments.length; k++)
 CUTS.push(cfg.T);
 CUTS.sort((a, b) => a - b);
 const nextCut = ts => { for (const c of CUTS) if (c > ts + 1e-9) return c; return cfg.T; };
-const expectFrac = c => c.cast > 1e-9 ? Math.min(1, Math.max(0, (nextCut(c.t) - c.t) / c.cast)) : 0;
+// ⚠⚠ AN INSTANT CAST TAKES CREDIT 1, NOT 0. Arcane Explosion has `cast === 0`; the limit of
+// `min(1, (cut - t)/dur)` as `dur -> 0` is **1**, and a divide-by-zero guard returning 0 once
+// credited every AE in a Kael'thas AoE phase at nothing — a 42 % error (368,018 vs 524,173).
+// Guard against NaN, not against the answer (index.html's boundary-credit block says the same).
+const expectFrac = c => c.cast > 1e-9 ? Math.min(1, Math.max(0, (nextCut(c.t) - c.t) / c.cast)) : 1;
 
 console.log(`# wall-credit — boundary-credit regression gate — "${NAME}"`);
 console.log(`  T = ${cfg.T} · intermissions ${JSON.stringify(walls.map(w => [w.start, w.end]))}`);

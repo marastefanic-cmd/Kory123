@@ -49,7 +49,11 @@ const planOf=cfg=>{const k='plan-'+crypto.createHash('sha1').update(JSON.stringi
   const f=path.join(REPO,'.xval-cache',k+'.json'); return fs.existsSync(f)?JSON.parse(fs.readFileSync(f,'utf8')).s:null;};
 // The boundary credit, re-derived from the cast's own start and duration. This corpus is
 // `segments: null`, so the only cut is T — asserted at the scoring site.
-const creditOf=(c,T)=>c.cast>1e-9?Math.min(1,Math.max(0,(T-c.t)/c.cast)):0;
+// ⚠⚠ AN INSTANT CAST TAKES CREDIT 1, NOT 0. Arcane Explosion has `cast === 0`; the limit of
+// `min(1, (cut - t)/dur)` as `dur -> 0` is **1**, and a divide-by-zero guard returning 0 once
+// credited every AE in a Kael'thas AoE phase at nothing — a 42 % error (368,018 vs 524,173).
+// Guard against NaN, not against the answer (index.html's boundary-credit block says the same).
+const creditOf=(c,T)=>c.cast>1e-9?Math.min(1,Math.max(0,(T-c.t)/c.cast)):1;
 const dir=path.join(REPO,'tools/xval-results'); const cols=[];
 for(const f of fs.readdirSync(dir).filter(x=>x.endsWith('.txt')).sort()){
   const txt=fs.readFileSync(path.join(dir,f),'utf8'); const d=txt.match(/^XVAL-DONE .*/m); if(!d) continue;

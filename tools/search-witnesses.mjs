@@ -82,3 +82,7 @@ if (stillMissing) {
 }
 console.log(`✓ all ${reached} witness(es) reached. ⚠ That closes the known holes; it does NOT mean the`);
 console.log('  search finds the optimum. Optimality needs enumeration, not witnesses.');
+// ⚠ EXPLICIT, and not decoration. The failure path calls `process.exit(1)`; falling off the end here
+// left node alive on a pending engine handle, so the PASS path HUNG — a green gate that never
+// returns reads as a timeout, i.e. exactly like a failure. It cost a reviewer a 600 s timeout.
+process.exit(0);

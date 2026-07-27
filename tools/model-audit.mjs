@@ -125,8 +125,12 @@ async function gather(kase) {
   const best = await api.optimizeAsync(cfg, 3, () => {});
   const optR = api.simulate(best.s, cfg, true);
   const A = planToSpec({ cfg, best, optR }, api.BUFFS);
-  if (A.burn) return { name: kase.name, skip: 'burn phase, not simmable' };
-  if (A.skipped.length) return { name: kase.name, skip: `untranscribable: ${A.skipped.join(', ')}` };
+  // ⚠ A SKIP RECORD CARRIES THE CACHE KEY TOO. Without `v`/`key` it never validates, so every run
+  // re-solved the untranscribable fights and printed "cache stale" at them — a warning that means
+  // "your engine changed" firing when nothing had.
+  const stub = why => ({ v: 1, key: cacheKey(), name: kase.name, skip: why });
+  if (A.burn) return stub('burn phase, not simmable');
+  if (A.skipped.length) return stub(`untranscribable: ${A.skipped.join(', ')}`);
 
   const apl = `/tmp/audit-${slug(kase.name)}.json`, log = apl + '.log';
   fs.writeFileSync(apl, JSON.stringify(build(A.spec)));
@@ -548,9 +552,16 @@ for (const kase of picked) {
     (explainedByAoe ? '   ← AoE-wall ONLY (priced)' : explainedByMicro ? `   ← ms-lattice ONLY (worst ${(Math.max(A.micro.worstT, A.micro.worstCast) * 1000).toFixed(0)} ms)` : ''));
 
   if (has('by-cause') && (A.events.length || A.lone.length)) {
+    // ★ PRINT THE CREDIT, AT FULL PRECISION, AND SAY WHEN IT IS MATERIAL. An unmatched model cast at a
+    // wall is TWO different findings wearing one label. A cast starting a few ms before the wall and
+    // credited ~0.1 % is a rounding sliver the model has already priced at nothing. A cast starting
+    // 3e-14 before it and credited 100 % is a whole Arcane Blast the model banked in full inside an
+    // intermission — and only the raw float says which, because both print as "90.000".
     for (const l of A.lone) console.log(
       `      · UNMATCHED ${l.side === 'model' ? 'model' : 'sim  '} cast @${l.t.toFixed(12)}` +
-      (l.frac !== undefined ? ` credited ${(l.frac * 100).toFixed(1)}%` : '') + `   [${l.cls}] ${l.why}`);
+      (l.frac !== undefined ? ` credited ${(l.frac * 100).toFixed(2)}%` +
+        (l.frac > 0.5 ? '  ⛔ MATERIAL — a whole cast the sim never makes' : ' (sliver, priced ~0)') : '') +
+      `   [${l.cls}] ${l.why}`);
     for (const e of A.events) {
       const head = `      · ${e.col.padEnd(5)} i=${String(e.i).padStart(3)} t=${e.t.toFixed(3).padStart(8)}`;
       const body = e.col === 'start' ? `model→sim ${e.delta >= 0 ? '+' : ''}${e.delta.toFixed(3)}s (jump ${e.jump.toFixed(3)}s)`

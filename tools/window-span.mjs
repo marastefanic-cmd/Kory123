@@ -1,21 +1,25 @@
-// HOW LONG DOES A BUFF WINDOW LAST IN THE MODEL'S DISCRETE WALK, vs in the sim?
+// THE WINDOW-SPAN GATE — does a buff window cover the SAME casts in the model as in wowsims?
 //
 //   RUNNER=… node tools/window-span.mjs
 //
-// The discrete cast walk pushes a fired buff onto `active` at the first cast boundary ≥ its effective
-// press time, but expires it on `t >= w.start + dur` where `w.start` is the PRESS time. So a press
-// landing mid-cast gets a window that starts late and ends on time — i.e. SHORTER than the buff's own
-// duration, by the press slip.
+// Exit: 0 = every probed offset agrees (or no runner, skipped LOUDLY) · 1 = a mismatch · 2 = no data.
 //
-// That never mattered while the rate integral was the arbiter: the integral scored from
-// `scoreStart = eff + slip` for a FULL duration, which is the phase-average of "starts at the next
-// boundary, runs its full length" — the correct semantics. PHASE12 step 1 makes the discrete walk the
-// arbiter, so the approximation is now load-bearing and has to be checked against the sim rather than
-// inherited.
+// ⛔ THIS FILE HAD NO ASSERTION AND NO NON-ZERO EXIT PATH UNTIL 07-27, while CLAUDE.md called it a
+// GATE that "must match wowsims at every probe offset". It printed two columns and exited 0 whatever
+// they said — and without RUNNER it printed `—` in the sim column and still exited 0. A gate whose
+// verdict is "a human will read the table" is a probe wearing a gate's name; every wrapper that
+// checked its exit code was reading a constant. It now compares, per offset, and fails.
 //
-// This counts, for one press at a series of offsets, how many Arcane Blasts the buff covers in the
-// model's walk and in wowsims. If the model is systematically one cast short, the walk's expiry is
-// wrong and the fix is to expire from the boundary the buff actually started on.
+// ── WHAT IT CHECKS, AND WHAT IT ONCE CAUGHT ──────────────────────────────────────────────────────
+// For one Icy Veins press at a series of offsets, it counts how many Arcane Blasts the buff covers in
+// the model's discrete walk and in wowsims' combat log, and asserts the two counts are equal.
+//
+// ✅ The defect it was built for is FIXED (PHASE12 §6.11, `index.html`'s `auraAt`): the walk used to
+// push a fired buff onto `active` at the first cast boundary ≥ the press but expire it at
+// `press + duration`, so a press landing mid-cast got a window SHORTER than the buff's own duration by
+// the press slip — measured, Icy Veins at 9.6 covered 15 casts in the model and 16 in the sim, model
+// window 11.00–28.50 against the sim's 11.00–29.75. Windows now run their full duration from when the
+// ability actually FIRES. This file is what keeps that true; the past tense is deliberate.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -31,6 +35,7 @@ const IV_DUR = api.BUFFS.icyVeins.dur;
 
 console.log(`# buff-window span, model walk vs wowsims — Icy Veins (${IV_DUR}s), h=0, 60s, no other cooldowns\n`);
 console.log('  press   model: buffed casts   sim: buffed casts   model window          sim aura window');
+const rows = [];   // collected so the verdict at the bottom can ASSERT rather than narrate
 for (const press of [0, 8, 9.6, 10, 10.4, 12]) {
   const en = {}; for (const k of ALL_BUFFS) en[k] = (k === 'icyVeins');
   const cfg = { T: 60, hasteRating: 0, ...REF, enabled: en, fixed: {}, warnings: [], coldSnap: false, segments: null };
@@ -63,10 +68,39 @@ for (const press of [0, 8, 9.6, 10, 10.4, 12]) {
       sFirst = inWin[0]; sLast = inWin[inWin.length - 1];
     }
   }
+  rows.push({ press, model: buffed.length, sim: simBuffed === '—' ? null : +simBuffed,
+              mFirst, mLast, sFirst, sLast });
   console.log(`  ${String(press).padEnd(6)}  ${String(buffed.length).padStart(16)}   ${simBuffed.padStart(17)}   ` +
     `${mFirst === null ? '—' : `${mFirst.toFixed(2)}–${mLast.toFixed(2)}`.padEnd(18)}    ` +
     `${sFirst === undefined || sFirst === null ? '—' : `${sFirst.toFixed(2)}–${sLast.toFixed(2)}`}` +
     `   (eff ${eff === undefined ? '?' : eff.toFixed(3)})`);
 }
-console.log('\n  If the model is short by a cast wherever the press lands mid-cast, the walk is expiring');
-console.log('  the window from the PRESS time instead of from the boundary the buff started on.');
+// ── THE VERDICT ──────────────────────────────────────────────────────────────────────────────────
+if (!rows.length) {
+  console.error('\nERROR: 0 probe offsets produced a row. Refusing a verdict over an empty set.');
+  process.exit(2);
+}
+const compared = rows.filter(r => r.sim !== null);
+if (!compared.length) {
+  console.log('\nSKIPPED the comparison — no runner, so the sim column is empty and there is nothing to');
+  console.log(`  assert. ${rows.length} model rows printed above. Set RUNNER=/path/to/runner for the gate.`);
+  console.log('  ⚠ This is a SKIP, not a pass: exiting 0 so a runner-less CI is not blocked, and saying so.');
+  process.exit(0);
+}
+const bad = compared.filter(r => r.model !== r.sim);
+console.log('');
+if (bad.length) {
+  console.error(`✗ ${bad.length} of ${compared.length} probed offsets disagree — the model and the sim do not`);
+  console.error('  cover the same casts with the same window:');
+  for (const r of bad)
+    console.error(`     press ${r.press}: model ${r.model} casts, sim ${r.sim}` +
+                  `  (model ${r.mFirst === null ? '—' : r.mFirst.toFixed(2) + '–' + r.mLast.toFixed(2)}` +
+                  `, sim ${r.sFirst === undefined ? '—' : r.sFirst.toFixed(2) + '–' + r.sLast.toFixed(2)})`);
+  console.error('\n  If the model is short by a cast wherever the press lands MID-CAST, the walk is expiring');
+  console.error('  the window from the PRESS time instead of from the boundary the buff started on');
+  console.error('  (PHASE12 §6.11 — that exact defect shipped once and this gate exists to keep it dead).');
+  process.exit(1);
+}
+console.log(`✓ all ${compared.length} probed offsets agree: the model's window covers exactly the casts`);
+console.log('  wowsims covers, mid-cast presses included.');
+process.exit(0);

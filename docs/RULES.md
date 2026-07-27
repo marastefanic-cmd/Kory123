@@ -38,7 +38,7 @@ sum** the planner has everything it needs to compute exactly.
 > **boundary credit** (§8), one rule at every **cut**: the fight end, an intermission start (the cast
 > **cannot land**) and an **AoE phase start** (the cast lands, but you would **cancel** it for Arcane
 > Explosion — a policy cut, §9). ⛔ **A burn edge is not a cut** — you would not cancel there; it is a
-> *value* boundary. Standing gate, no sim: `node tools/self-consistency.mjs` reads `0.00e+0` over 2755
+> *value* boundary. Standing gate, no sim: `node tools/self-consistency.mjs` reads `0.00e+0` over 3000
 > scorings.
 >
 > ⛔ **This banner used to say the opposite, and the warning it carried still applies to the EVIDENCE
@@ -582,7 +582,10 @@ on the patched runner.
 > banner).
 >
 > **Blast radius when it landed:** `plan-sweep` moved **11 of 16** cases; `tools/blast-radius.mjs`
-> **102 of 285** cells (35.8 %); `tools/self-consistency.mjs` still reads `0.00e+0` over 2755 scorings.
+> **102 of 285** cells (35.8 %); `tools/self-consistency.mjs` still reads `0.00e+0` over 3000 scorings
+> — ⚠ and that zero is *not* proof of a correct lattice: see PHASE13 §2.5, where it held through a
+> whole Arcane Blast being banked inside an intermission. The tool's **structural** check is the one
+> that catches that class, and it reads 0 violations.
 
 - **Plan for the known kill; react live.** The scorer credits the final partial cast by exactly the
   fraction of it that fits before the kill, so the model accounts for the kill honestly on its own —
@@ -606,10 +609,11 @@ on the patched runner.
 > all consequences 4/5 ("the deficit hides half the disagreement"; "three currencies gave three
 > orderings, so do not target a family") and the ★★★ lesson at the very end (*matching an objective's
 > width is not matching the objective — derive the residual*). That lesson now applies to a **new** open
-> question: the model hedges the boundary **analytically** (partial credit) while the sim still hedges
-> it **numerically** (averaging over `T ± 0.5`, and `sim/benchmark.mjs` keeps `variation: 0.5` on its
-> **own** evidence — `tools/var-decision.mjs` — not on any link to a model constant). Reconciling those
-> two smoothings is **open**, recorded as PHASE12 §9.4. Whatever replaces the floor must be re-derived
+> question — ~~the model hedges the boundary **analytically** (partial credit) while the sim hedges it
+> **numerically** (averaging over `T ± 0.5`), and reconciling those two smoothings is open~~
+> ✅ **CLOSED 07-27, PHASE13 §2.4:** the sim's window is now DERIVED from the model's
+> (`duration = T + d/2, variation = d/2` ⇒ `U[T, T+d]`, the same one-sided window the credit rule is),
+> measured 7.8x tighter across a cast boundary. Whatever replaces the floor must still be re-derived
 > against the credit rule, not inherited from here.
 
 - **★★★ THE TAIL-LATTICE RIPPLE — the model's integral and the sim's cast count differ by a bounded

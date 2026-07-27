@@ -77,9 +77,11 @@ request the **website** builds equals the one the **runner** builds, field for f
 loudly** without `RUNNER` rather than passing quietly. Run it after touching anything under `sim/`,
 `tools/genapl-core.mjs`, or a character export.
 
-**⚠ The 9m07s figure below is `exact-match`'s, not `sim-request`'s** (PHASE9 §5.1) — it sits here
+**⚠ The figure below is `exact-match`'s, not `sim-request`'s** (PHASE9 §5.1) — it sits here
 because the *plan* gate is the one you would otherwise reach for on every edit. **That gate takes
-9m07s, so it is not the every-edit loop.** For that, sweep the same corpus in **bare
+~6 minutes (348 s at `jobs=3`, measured 07-27; the long-standing "9m07s" predates Phase 12's rewrite
+of the scoring walk — treat EVERY CPU figure in this repo the same way), so it is not the every-edit
+loop.** For that, sweep the same corpus in **bare
 node** (the engine is DOM-free — it already runs in a Web Worker) and diff the two runs at full float
 precision — **~33s for 16 of 25 cases, ~16× faster**:
 ```
@@ -143,8 +145,15 @@ changing the model or the passes**, and keep it updated as the living theorycraf
   against a plain cast), and crit as a constant that cancels. **Nothing needs approximating.** That
   sum is now what `simulate()` accumulates and what `robust`/`total` return.
   **The standing gate, and it needs no sim:** `node tools/self-consistency.mjs` must read
-  `0.00e+0` — it compares the number that RANKS against a sum recomputed independently from the
-  `casts` board. Run it after ANY change to `simulate()`.
+  `0.00e+0` **and `0` structural violations**. Run it after ANY change to `simulate()` — it generates
+  its own corpus (3000 scorings, 460k casts, 0.78 s, no cache, works from a bare clone).
+  ⚠ **The `0.00e+0` alone is NOT sufficient and never was.** It compares the number that RANKS against
+  a sum recomputed from the `casts` board — but *both read the same board*, so a defect in **which
+  casts exist** makes them wrong identically and they agree. It printed a clean zero straight through
+  two defects worth up to 1.47 % of a fight score (PHASE13 §2.5). The **structural** line is the one
+  that leaves the model and asks the world: at millisecond resolution, no cast may begin inside an
+  intermission, and re-deriving the credit must not change it. It reads 167 violations on the engine
+  that shipped those defects and 0 after.
   ⛔ **THE TWO RETIRED APPROACHES — do not let either back in.**
   1. **Ranking on the rate integral.** It differed from the sum by a **median 0.2114 % of score**
      against ranking margins of ~0.005–0.07 % — the model disagreeing with itself by ~30× the effect
@@ -161,6 +170,15 @@ changing the model or the passes**, and keep it updated as the living theorycraf
      the start over-paid one cast per window. Gate: `tools/credit-check.mjs`.
      ⚠ Its discriminating case is a press landing **ON a cast boundary**; on a mid-cast press the old
      defects cancelled and the broken engine passed.
+  4. **Letting boundary comparisons disagree about their epsilon.** The walk's clock is a running float
+     sum, so a wall the geometry puts at `90.000` arrives as `89.999999999999972`. `nextCut` carried an
+     epsilon and the segment advance did not ⇒ the walk failed to jump an intermission while the lattice
+     skipped past it, and **a whole Arcane Blast was banked at 100 % credit completing 1.5 s inside the
+     intermission** (0.99 % Lurker / 1.47 % Solarian of fight score). The press loop's `e.ts > t` had
+     none, so a press at `184.00` missed a boundary stored as `183.99999999999994` while
+     `sim/planspec.mjs` transcribed it to the *other* cast. ⇒ `index.html` declares **one** `const EPS =
+     1e-9` and every clock comparison in the walk names it. Not a tuned tolerance: wowsims rounds to the
+     millisecond, so nothing real lives below ~1e-6 s. PHASE13 §2.5.
   4. **A SYMMETRIC kill window, and treating any boundary as an exact instant.** ✅ **Retired 07-27 by
      user ruling (PHASE12 §9).** `KILL_WINDOW = 0.5` paid a cast completing exactly at T only **0.5**,
      because `U[T−W, T+W]` says the boss is already dead half the time. One rule now applies at
@@ -212,10 +230,13 @@ changing the model or the passes**, and keep it updated as the living theorycraf
      second every pull either**, so modelling it as exact is the same mistake as modelling T as exact.
      ⇒ `total` / `robust` / `totalEarly` are now **one number**, and the board carries `frac` +
      `credited` so the gate can recompute the objective independently. Gate: `tools/wall-credit.mjs`.
-     ⚠ **Consequence for the sim protocol:** `BENCH.variation: 0.5` is no longer "the model's
-     kill-window width" — that constant is gone. It stays at 0.5 on its own measured evidence
-     (`var-decision.mjs`) as the **sim's** smoothing. Model and sim now smooth the same discontinuity
-     analytically vs numerically, and **reconciling the two is an OPEN question** (PHASE12 §9.4).
+     ⚠ **Consequence for the sim protocol, and it is ✅ SETTLED (07-27, PHASE13 §2.4):** the sim's
+     kill window is now **derived from the model's**. The credit rule is algebraically the one-sided
+     window `U[T, T+d]`, so `encounterFor(T, haste)` gives the sim `duration = T + d/2,
+     variation = d/2` — the same window. `BENCH.variation: 0.5` survives ONLY as a legacy default and
+     as the value every archived corpus was gathered at; it was never the model's width once that
+     constant was deleted, and it was 33 % too narrow at zero haste besides. Measured 7.8× tighter
+     model/sim tracking across a cast boundary (`tools/window-match.mjs`). ⛔ Still never `--var 0`.
   Full evidence: `docs/archive/13-phase12-exact-objective.md` §6.10 (the objective), §6.11 (the
   windows), §6.12 (the snapshot rules), §9 (the boundary credit).
 - **The sim's job is to FALSIFY THE SEARCH, not to arbitrate the scorer.** With an exact objective the

@@ -50,7 +50,7 @@ import { fileURLToPath } from 'node:url';
 import { build } from './genapl-core.mjs';
 import { planToSpec, REQUIRES_EQUIPPED, unequippedPresses } from '../sim/planspec.mjs';
 import { buildRequest, dpsOf } from '../sim/simreq.mjs';
-import { BENCH } from '../sim/benchmark.mjs';
+import { BENCH, killWindow } from '../sim/benchmark.mjs';
 import { loadEngine, cfgFor, ALL_BUFFS } from './engine-node.mjs';
 import { REF } from './reference-gear.mjs';
 
@@ -112,12 +112,18 @@ const EQUIPPED = TEMPLATE.raid.parties[0].players[0].equipment.items.map(i => i 
 const LUST_CASTABLE = !!(TEMPLATE.raid && TEMPLATE.raid.buffs && TEMPLATE.raid.buffs.bloodlust);
 
 const ITER = +arg('iter', BENCH.iterations);
-// ⚠ DEFAULT 0.5, NOT 0. BENCH.md §3's RNG table lists `--var 0` as "standard for gates"; TOOLING ★★
-// says `--var 0` quantizes DPS to (integer casts × avg damage)/T and has faked a result twice. The
-// difference of two staircases is still a staircase, so §2.1's control does NOT rescue it. Default
-// follows TOOLING and matches the website's button; pass `--var 0` deliberately if you want the
-// count-preserving read, and confirm anything it says at 0.5 (TOOLING).
-const VAR = arg('var') === undefined ? BENCH.variation : +arg('var');
+// ⚠ DEFAULT: the DERIVED window, which means passing NOTHING and letting `buildRequest` call
+// `encounterFor(T, haste)`. ⛔ It used to default to `BENCH.variation` (the flat 0.5) and justify that
+// with "matches the website's button" — true when it was written, FALSE from the moment the window
+// became derived (PHASE13 §2.4): the page passes no `variation` and gets `U[T, T+d]`, so an
+// always-set 0.5 here made every terminal instrument sim a DIFFERENT FIGHT from the one the button
+// sims (measured at T=160, h=0: `160.749 / 0.749` vs `160 / 0.5`). `tests/page-equiv.mjs` cannot see
+// it, because it hands both sides the same `opts` — the divergence is in the CALL SITE, not the module.
+// ⚠ `--var 0` is still explicitly available and still dangerous: TOOLING ★★ records that it quantizes
+// DPS to (integer casts × avg damage)/T and has faked a result twice; the difference of two staircases
+// is still a staircase, so §2.1's control does not rescue it. Confirm anything it says against the
+// default. `--var 0.5` reproduces the archived corpora, which were all gathered flat.
+const VAR = arg('var') === undefined ? undefined : +arg('var');
 const SEEDS = arg('seeds', String(BENCH.seed)).split(',').map(Number);
 if (SEEDS.some(s => !Number.isFinite(s))) die('--seeds must be comma-separated integers');
 const CONTROL = !has('no-control');
@@ -280,7 +286,7 @@ if (JSONOUT) {
   console.log(JSON.stringify({
     tool: 'bench.mjs', preset: presetName, char: CHAR,
     cfg: { T: cfg.T, hasteRating: cfg.hasteRating, sp: cfg.sp, critPct: cfg.critPct, t5two: !!cfg.t5two },
-    protocol: { iterations: ITER, variation: VAR, seeds: SEEDS, control: CONTROL, targets,
+    protocol: { iterations: ITER, variation: VAR === undefined ? `derived ${killWindow(cfg.hasteRating || 0).toFixed(4)}` : VAR, seeds: SEEDS, control: CONTROL, targets,
                 emit: 'fire', prestack: BENCH.prestack, mana: BENCH.manaInject },
     provenance: { engine: sha1('index.html'), wasm: sha1('sim/sim.wasm'), request: CHARS[CHAR].request },
     arms: rows, wallSeconds: +wall,
@@ -292,7 +298,7 @@ const f = n => (n >= 0 ? '+' : '−') + Math.abs(n).toFixed(1);
 console.log(`\n  character  ${CHAR} — ${CHARS[CHAR].note}`);
 console.log(`  fight      ${cfg.T}s · ${cfg.hasteRating} haste rating · ${cfg.sp} SP · ${cfg.critPct}% crit · T5-2pc ${cfg.t5two ? 'on' : 'off'}` +
             (INJECT ? '  (stats injected; the character wears only the on-use trinkets — sim/simreq.mjs)' : '  (the export\'s own gear; the MODEL was moved to it — reference-gear.mjs)'));
-console.log(`  protocol   ${ITER} iters · var ${VAR} · seed${SEEDS.length > 1 ? 's' : ''} ${SEEDS.join(',')} · ${CONTROL ? 'never-press control (BENCH §2.1)' : 'RAW DPS, no control'} · ${wall}s\n`);
+console.log(`  protocol   ${ITER} iters · var ${VAR === undefined ? killWindow(cfg.hasteRating || 0).toFixed(4) + ' (derived — the model\'s own kill window)' : VAR + ' (explicit)'} · seed${SEEDS.length > 1 ? 's' : ''} ${SEEDS.join(',')} · ${CONTROL ? 'never-press control (BENCH §2.1)' : 'RAW DPS, no control'} · ${wall}s\n`);
 for (const r of rows) {
   console.log(`  ${r.label}`);
   console.log(`    presses ${r.dps.toFixed(1)} DPS` + (CONTROL ? ` · control ${r.control.toFixed(1)} · value ${f(r.value)}` + (SEEDS.length > 1 ? ` ± ${r.sd.toFixed(2)}` : '') : ''));

@@ -835,6 +835,26 @@
 
 <script id="engine-src">
 "use strict";
+// ═══════════════ ONE BOUNDARY EPSILON, AND EVERY COMPARISON USES IT ═══════════════
+// The walk's clock is a running float sum of cast intervals, so by t≈180 it has drifted into the
+// last bits: a boundary geometry puts at 184.000000000 arrives as 183.99999999999994. Whether a
+// comparison against that clock carries an epsilon therefore decides real behaviour, and for a
+// while only SOME of them did. Two measured defects came from exactly that mismatch (PHASE13 §2.5):
+//   1. `nextCut` had an epsilon and the segment-advance did not, so at an intermission wall the walk
+//      failed to jump the wall while the cut lattice skipped past it — a whole Arcane Blast banked
+//      at frac = 1.0 while completing 1.5 s INSIDE the intermission. Worth 0.99 % (Lurker) and
+//      1.47 % (Solarian) of fight score, against a corpus that argues over 0.004–0.380 %.
+//   2. The press loop's `e.ts > t` had none, so a press written at 184.00 missed the boundary stored
+//      as 183.99999999999994 and slipped a whole cast — while `sim/planspec.mjs`, which DOES carry
+//      an epsilon (`starts[i] >= fire - EPS`), transcribed it to the other cast. The model and its
+//      own transcriber disagreed about which cast a buff covered.
+// ⇒ 1e-9 s, the same value `sim/planspec.mjs` uses, and it is not a tuned tolerance: wowsims rounds
+// every cast and GCD to the MILLISECOND, so anything below ~1e-6 s is pure float noise and nothing
+// real can hide there. Every clock comparison in `simulate()`'s board walk names `EPS` rather than
+// repeating the literal, so the next one that is missing an epsilon is visible by inspection. (The
+// search passes further down still carry bare `1e-9`s; those compare SCORES and plan times, not this
+// clock, and sweeping them is a rename with no defect behind it — left alone deliberately.)
+const EPS = 1e-9;
 /* ═══════════════ game constants (TBC 2.4.3 — see README for sources) ═══════════════ */
 const GAME = {
   HASTE_RATING_PER_PCT: 15.77,
@@ -1016,9 +1036,14 @@ function simulateRaw(schedule, cfg, collect) {
   // ★★ THE SAME RULE AT EVERY CUT, and that is the user's second ruling: an intermission does not
   // land on the same second every pull either, so modelling it as exact is the identical mistake.
   //
-  // ★★★ A CUT IS WHERE THE CAST STOPS **LANDING** — nothing else. That is the fight end and an
-  // intermission start (boss untargetable). It is NOT a burn edge and — settled by the sim, 07-27 —
-  // it is NOT an AoE edge either.
+  // ★★★ A CUT IS WHERE THE CAST STOPS LANDING **OR WOULD BE CANCELLED** — nothing else. Three
+  // boundaries, TWO cuts, two different reasons: the fight end and an intermission start are cuts by
+  // PHYSICS (the boss is untargetable, the cast cannot land); an AoE phase start is a cut by POLICY
+  // (it lands, and you cancel it anyway). A burn edge is NOT a cut.
+  // ⛔ This heading read *"it is NOT an AoE edge either — settled by the sim"* until 07-27, which
+  // contradicted the AoE bullet three lines below it and `cutsAt()` below that. It was the middle
+  // state of a question that flipped twice in one day; the sim measurement it cited is still true and
+  // is still not what decides it. Do not restore it.
   //   · A **burn** edge changes what a cast is WORTH, not whether it lands. Value question ⇒ the
   //     snapshot rule, not the cut lattice.
   //   · An **AoE phase START is a cut — by POLICY, not by physics** (user ruling 07-27, and it took
@@ -1060,14 +1085,14 @@ function simulateRaw(schedule, cfg, collect) {
   const cutsAt = sg => !!sg && (sg.type === "intermission" || sg.type === "aoe");
   const CUTS = [], AOE_CUTS = new Set();
   if (segs) for (let k = 0; k < segs.length; k++)
-    if (cutsAt(segs[k]) && !cutsAt(segs[k - 1]) && segs[k].start > 1e-9) {
+    if (cutsAt(segs[k]) && !cutsAt(segs[k - 1]) && segs[k].start > EPS) {
       CUTS.push(segs[k].start);
       if (segs[k].type === "aoe") AOE_CUTS.add(segs[k].start);   // the truncating kind
     }
   CUTS.push(cfg.T);
   CUTS.sort((a, b) => a - b);
   // The earliest cut strictly after a cast's start. Linear scan: CUTS is tiny (phases per fight).
-  const nextCut = ts => { for (const c of CUTS) if (c > ts + 1e-9) return c; return cfg.T; };
+  const nextCut = ts => { for (const c of CUTS) if (c > ts + EPS) return c; return cfg.T; };
   // Ramp-aware board: the mage opens COLD (0 stacks at the first Arcane Blast — no prestack
   // modeled; a start-intermission input expresses a delayed opener) and re-ramps 0→3 after every
   // AB gap ≥ DEBUFF_DUR (intermissions; AoE phases cast Arcane Explosion, which neither builds nor
@@ -1109,7 +1134,7 @@ function simulateRaw(schedule, cfg, collect) {
   while (t < cfg.T) {   // a cast STARTING at or after T earns nothing; one starting before earns its fraction
     let seg = null;
     if (segs) {
-      while (si < segs.length - 1 && t >= segs[si].end) si++;
+      while (si < segs.length - 1 && t >= segs[si].end - EPS) si++;   // EPS: the clock lands a hair SHORT of a wall
       seg = segs[si];
       if (seg.type === "intermission" && t < seg.end) { t = seg.end; continue; } // boss untargetable: wait it out
       if (seg.type === "intermission") seg = null; // past the last defined phase: plain casting
@@ -1119,14 +1144,16 @@ function simulateRaw(schedule, cfg, collect) {
     // phaseStart + k·GCD with no phase freedom — sparse, deterministic boundaries, exactly the
     // ramp case. After a BURN phase the lattice inherits the AB stream's phase, which the model
     // itself treats as arbitrary, so there only the phase-averaged slip is defensible.
-    if (seg && seg.type === "aoe" && si !== aoeSegI) { aoeSegI = si; aoeExact = Math.abs(t - seg.start) < 1e-9; }
+    if (seg && seg.type === "aoe" && si !== aoeSegI) { aoeSegI = si; aoeExact = Math.abs(t - seg.start) < EPS; }
     // fire pending activations at this press opportunity: a scheduled time in
     // [prevCastEnd, t) was a non-casting gap (press lands exactly there); a
     // time inside the previous cast fires now, with this cast's press
     for (let k2 = evi; k2 < evs.length; k2++) {
       const e = evs[k2];
       if (e.fired) continue;
-      if (e.ts > t) break;
+      // EPS, and it is load-bearing: `sim/planspec.mjs` asks `starts[i] >= fire - EPS`, so without the
+      // same tolerance here the model and its own transcriber pick DIFFERENT casts for the same press.
+      if (e.ts > t + EPS) break;
       let eff, slip = 0;
       // Raid EXTERNALS are pressed by someone else, so they land when CALLED rather than at one of
       // this mage's cast boundaries. That distinction decides where their aura starts (see `auraAt`).
@@ -1140,7 +1167,7 @@ function simulateRaw(schedule, cfg, collect) {
         // lattice boundary, not the call. This also balances the ramp-compression credit: pressing
         // IV earlier still shortens the ramp, but the model now charges the phase it imposes on a
         // near-pull raid call (the VR −0.18% phantom; RULES §3's compression bullet, re-derived).
-        if (e.ts < prevCastEnd - 1e-9) slip = prevCastEnd - e.ts;
+        if (e.ts < prevCastEnd - EPS) slip = prevCastEnd - e.ts;
       } else {
         let minStart = e.ts;
         // ★ CHAINED FROM THE FIRE, NOT THE PRESS (PHASE12 §3, fixed 07-27). `lastFire` holds the
@@ -1151,9 +1178,9 @@ function simulateRaw(schedule, cfg, collect) {
         // `fire + cd`, and `innerSpell.IsReady` deferred it a whole cast — so the model could emit a
         // plan the sim cannot execute, and score a fight that never happens (HELD = 18 of 196).
         // A reset-chained use (Cold Snap) still only needs the previous window to finish.
-        if (e.gap && lastFire[e.key] !== undefined) minStart = Math.max(minStart, lastFire[e.key] + (e.gap >= e.def.cd - 1e-9 ? e.def.cd : e.def.dur));
+        if (e.gap && lastFire[e.key] !== undefined) minStart = Math.max(minStart, lastFire[e.key] + (e.gap >= e.def.cd - EPS ? e.def.cd : e.def.dur));
         if (lastTrinket && lastTrinket.key !== e.key && OFF_TRINKETS.includes(e.key)) minStart = Math.max(minStart, lastTrinket.end);
-        if (minStart > t) continue; // slipped past this boundary — try again later
+        if (minStart > t + EPS) continue; // slipped past this boundary — try again later (EPS: same lattice)
         // Effective start = the PRESS moment (a self-buff macro applies its buff to
         // the same press's Arcane Blast). At STEADY state we deliberately do NOT snap
         // to the exact next cast boundary: which boundary you land on is set by opener
@@ -1165,7 +1192,7 @@ function simulateRaw(schedule, cfg, collect) {
         // a press landing mid-ramp-cast snaps to that cast's real end, exactly where
         // the macro fires it (sim-log-verified: intent 5 in a fresh opener lands 6.5).
         eff = Math.max(minStart, e.ts);
-        if (prevCastRamp && e.ts < prevCastEnd - 1e-9) eff = Math.max(minStart, prevCastEnd);
+        if (prevCastRamp && e.ts < prevCastEnd - EPS) eff = Math.max(minStart, prevCastEnd);
         // INSIDE AN AoE PHASE the same argument applies to the AE lattice: AEs are instant, so
         // every one of them is a press opportunity, but a press still fires on the NEXT one — and
         // when the lattice is exact (above) that boundary is deterministic, so snap to it rather
@@ -1186,7 +1213,7 @@ function simulateRaw(schedule, cfg, collect) {
         // press times (actEff) stay at the fire/intent convention — pressing at the printed second
         // still fires at the same boundary. Ramp presses (sparse boundaries) already snap exactly;
         // gap presses (idle — downtime, GCD-idle remainder) fire at the press moment: both slip 0.
-        else if (eff < prevCastEnd - 1e-9) slip = prevInterval / 2;
+        else if (eff < prevCastEnd - EPS) slip = prevInterval / 2;
       }
       e.fired = true;
       // ★★★ WHEN THE BUFF ACTUALLY STARTS — and it is NOT always the press moment.
@@ -1288,7 +1315,7 @@ function simulateRaw(schedule, cfg, collect) {
       // 1386.2 with the gain at 11.00), and a cast completing exactly ON the fade DOES (`credit-check`
       // Gem@20: the sim paid the 33.50->35.00 cast against a window ending at 35.00). Both follow from
       // one ordering — damage resolving at instant X is settled BEFORE the aura events at X.
-      if (!(tcVal > w.start + 1e-9 && tcVal < w.start + w.def.dur + 1e-9)) continue;
+      if (!(tcVal > w.start + EPS && tcVal < w.start + w.def.dur + EPS)) continue;
       if (w.def.kind === "dmg") dmgMult *= w.def.value; else sp += w.def.value;
     }
     let dmg;
@@ -1327,7 +1354,7 @@ function simulateRaw(schedule, cfg, collect) {
     // it completes at the moment it starts, so it either happens before the cut or does not, and
     // the walk only ever starts a cast at a `t` where it does. Guard against NaN, not against the
     // answer.
-    const frac = t >= cfg.T ? 0 : dur > 1e-9 ? Math.min(1, Math.max(0, (nextCut(t) - t) / dur)) : 1;
+    const frac = t >= cfg.T ? 0 : dur > EPS ? Math.min(1, Math.max(0, (nextCut(t) - t) / dur)) : 1;
     if (t < cfg.T) {
       countTotal += dmg * frac;
       countRobust += dmg * frac;   // ⚠ deliberately the same number — see the boundary-credit note
@@ -1378,7 +1405,7 @@ function simulateRaw(schedule, cfg, collect) {
     // penalty. Only an AoE wall truncates: an intermission is jumped over at the top of the loop, and
     // the fight end ends the loop.
     const cutT = nextCut(t);
-    if (AOE_CUTS.has(cutT) && t + interval > cutT + 1e-9) { prevCastEnd = Math.min(prevCastEnd, cutT); t = cutT; }
+    if (AOE_CUTS.has(cutT) && t + interval > cutT + EPS) { prevCastEnd = Math.min(prevCastEnd, cutT); t = cutT; }
     else t += interval;
   }
   // ═══════════ continuous cast-rate integral — ⛔ RETIRED AS THE SCORING MODEL (PHASE12 §6.10) ═══════════
@@ -2216,7 +2243,8 @@ function optimizeCore(cfg, starts, onProgress) {
         let best = null;
         let s = entrant.s, val = entrant.val;
         setStage(0.72, 0.82, "Grooming (ties & legibility)");
-        const EPS = 0.5;
+        const SCORE_SLOP = 0.5;   // ⚠ NOT the clock EPS at the top of this file — a SCORE tolerance, in raw
+                                 // damage units, and it shadowed `EPS` under the same name until 07-27.
         // Execution beats microtiming: expected-damage differences under ONE
         // effective cast are below real-world execution noise (movement, the
         // opener, latency), so aesthetics may trade up to a full cast of
@@ -2753,7 +2781,7 @@ function optimizeCore(cfg, starts, onProgress) {
               const r1 = simulate(rep, cfg, true);
               if (r1.robust < val - QTOL) continue;
               if (clipOf(rep) > clipOf(s) + 1e-9) continue;
-              if (r1.robust < robNow - EPS && onTickSec(from)) continue;
+              if (r1.robust < robNow - SCORE_SLOP && onTickSec(from)) continue;
               if (from < to) {
                 // pushing a haste active later is fine only if it doesn't pick
                 // up more floor-dead seconds at the merged spot

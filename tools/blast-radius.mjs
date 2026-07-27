@@ -37,7 +37,11 @@ if(!fs.existsSync(ENGINE)){console.error(`ERROR: ENGINE=${ENGINE} does not exist
 const api=loadEngine(ENGINE);
 const EID=crypto.createHash('sha1').update(fs.readFileSync(IDX)).digest('hex').slice(0,12);
 // The boundary credit, re-derived from the cast's own start and duration (see the header).
-const creditOf=(c,T)=>c.cast>1e-9?Math.min(1,Math.max(0,(T-c.t)/c.cast)):0;
+// ⚠⚠ AN INSTANT CAST TAKES CREDIT 1, NOT 0. Arcane Explosion has `cast === 0`; the limit of
+// `min(1, (cut - t)/dur)` as `dur -> 0` is **1**, and a divide-by-zero guard returning 0 once
+// credited every AE in a Kael'thas AoE phase at nothing — a 42 % error (368,018 vs 524,173).
+// Guard against NaN, not against the answer (index.html's boundary-credit block says the same).
+const creditOf=(c,T)=>c.cast>1e-9?Math.min(1,Math.max(0,(T-c.t)/c.cast)):1;
 const planOf=cfg=>{const k='plan-'+crypto.createHash('sha1').update(JSON.stringify({cfg,engine:EID,restarts:14})).digest('hex').slice(0,24);
   const f=path.join(REPO,'.xval-cache',k+'.json'); return fs.existsSync(f)?JSON.parse(fs.readFileSync(f,'utf8')).s:null;};
 const dir=path.join(REPO,'tools/xval-results');
