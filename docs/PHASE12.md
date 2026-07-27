@@ -1178,3 +1178,50 @@ the same masking pattern as §6.11, for the third time in one phase.
 ⇒ Both halves it asked for now exist: the **physics justification** is §6.12a, measured in both
 directions on both kinds of buff; the **sim gate** is `tools/credit-check.mjs`, controlled in the
 negative direction against the pre-fix engine.
+
+## 6.13 ⚠ THE PRINTED PRESS SECOND IS WRONG ON 1.8 % OF PRESSES — and it is always fixable
+
+**User, correcting me:** *"Make the model fire them like wowsims does, that's how it is in game. We even
+say so in the model assumptions, that it's macroed onto the next available cast."*
+
+**Correct, and my §6.12-era framing of off-GCD trinkets as a defect is WITHDRAWN.** `index.html`'s
+assumptions panel states the playstyle outright — *"macro'd into your spam ('/cast Berserking /cast
+Arcane Blast'), so they fire between casts … if you hit the macro mid-cast it takes effect as that cast
+ends"* — and `auraAt = max(eff, prevCastEnd)` implements exactly that, for on-GCD and off-GCD alike.
+Under the macro there is no such thing as an instant off-GCD press, so there is nothing to fix.
+
+### 6.13a But the same panel makes two promises that cannot both hold
+
+> *"The times in the plan are when the buff is actually up … **Press at the second shown.**"*
+
+The printed second is `floor(actEff)`, and `actEff` is the **press moment**; the buff is up at the
+**boundary after it**. Under the macro, pressing at second `S` gives the buff at `nextBoundary(S)` — so
+promise 2 holds only if `nextBoundary(floor(actEff)) == auraAt`. Flooring walks backwards, and when it
+walks back **past a cast boundary** the macro fires a whole cast early.
+
+### 6.13b Measured — `tools/display-second.mjs`, 285 plans, 3060 presses, no sim
+
+| | |
+|---|---|
+| pressing the printed second lands the window the model scored | 3005 · **98.2 %** |
+| it fires a cast EARLY — a different window than was costed | 55 · **1.8 %** |
+| presses for which NO whole second can name the scored window | **0** |
+
+```
+isc+mqg T=281 h=230  icyVeins: model fires 26.58, plan prints 25, pressing 25 fires 25.49  (correct: 26)
+isc+mqg T=229 h=70   arcanePower: model fires 187.32, plan prints 186, pressing 186 fires 186.22 (correct: 187)
+```
+
+### 6.13c ⇒ The fix, and it is small and always available
+
+**Print `floor(auraAt)`, not `floor(actEff)`.** A correct whole second always exists: cast intervals are
+≥ the 1 s GCD floor, and any half-open real interval of length ≥ 1 contains an integer — which is why
+the "unfixable" count above is 0, not a lucky 0.
+
+⚠ It is **display-only** — the scorer and the search are untouched — but `actEff` is read by the
+transcription, the timeline, and the custom-plan editor as well as by the printed plan, so the change
+should introduce the boundary as its own field rather than redefine `actEff` underneath its other
+callers. **Not done in this phase**; specified here so it is a task, not a rediscovery.
+
+★ This is the human-facing twin of §6.9's transcription bug: the same "flooring walks back past a
+boundary" error, found in the number handed to the *player* instead of the one handed to the sim.
