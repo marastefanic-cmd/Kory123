@@ -476,6 +476,61 @@ change) and one trap aimed squarely at this session's own output: **the new inst
 and a handful of duels, not a corpus** — so the phase opens with a shakedown on known-shape cells, and
 if that fails it becomes a tool-debugging phase instead of a 36-table campaign.
 
+### 07-26 — the legend comes off, the toolbar becomes a sentence, the trinkets become a ladder
+
+Three user-directed presentation calls in one pass. Engine untouched; exact-match 25/25
+byte-identical throughout. No model claim is affected by anything below.
+
+**The timeline legend is deleted, and the argument for deleting it is the interesting part.** The
+paragraph under the chart had grown to eleven clauses — white line, dashed +50% cap, dotted +25%
+Frostbolt breakpoint, bars-are-uptime, ticks-are-presses, three phase swatches, the ghost outline,
+the drag hint. Every clause was *true*, and several had been hard-won in the copy audit five commits
+earlier. The user's objection was not that it was wrong: **"The UI should be intuitive enough that
+this isn't needed."** That is a different standard, and the right one. A legend is a permanent tax:
+it is re-read on every visit, by every visitor, forever, because it lives outside the thing it
+describes. A caption on the drawing is read once and then recognised.
+
+So everything moved onto the SVG. The curve got a `SPELL HASTE — gear X% + cooldowns` caption in
+its own gutter, so the chart names its y-axis the way the lanes already name themselves. Every
+reference line got its explanation attached to **both** the gutter label and the line — previously
+only the thin 1.2px line was hoverable, which is a tooltip you have to already know about to find.
+The phase bands were already captioned in place ("Intermission", "Burn ×2", "AoE ×4"); the swatch
+legend for them had been pure duplication.
+
+★ **What survived, and why it isn't a legend.** `#viz-note` still exists, `hidden` by default, and
+shows at most two sentences: the dashed outlines are the planner's own timings (only when ghost bars
+are on screen), and drag-a-bar-to-move-it (only in edit mode). Those are the residue a static
+drawing genuinely cannot carry — one is about a *second* plan that isn't the subject, the other is
+about a *mode*. The test for "is this a legend or a hint" turned out to be: **does it describe the
+picture, or does it describe the state you're in?** Only the second kind earns space.
+
+**The toolbar became a sequence.** Five buttons had been sitting in a flat row in the order they
+were built: sim, `?`, unlock, revert, debug — no grouping, no rank, all identical weight, and the
+two verbose ones ("Unlock timeline for customization", "Check in the benchmark sim") reading as
+sentences rather than actions. Now it is `Customize` / `Revert` │ `Check in benchmark sim` + `?` │
+`Debug export`, left-to-right in workflow order (adjust → prove → take away), with exactly one
+filled button because exactly one is the thing to do next. Labels shrank to the verb and the
+explanation moved into the tooltip, where it costs nothing until wanted. The `?` is *segmented onto*
+the sim button rather than floating beside it, so it reads as help-for-this rather than a sixth
+action.
+
+⚠ **The trap this created, recorded because it will recur.** Toolbar buttons now carry an inline SVG
+icon next to a `<span class="lab">`. `copyToClipboard` had always signalled success by writing
+`btn.textContent = "Copied"` — which silently **destroys the icon** and never restores it, since the
+restore path writes textContent too. Every label swap now goes through `btnLabel(btn, text)`, which
+targets `.lab` and falls back to the button. Same shape, same fix, in the sim button's
+Loading/Simulating states and in `setEditBtn()`. **If you add an icon to a button, grep for who
+writes its `textContent`.**
+
+**Trinkets are grouped by the content they drop from**: Pre-TBC (Mind Quickening Gem, Azuregos) →
+Phase 1 (Icon of the Silver Crescent, badges) → Phase 2 (Serpent-Coil Braid, Serpentshrine) →
+Phase 3 (Skull of Gul'dan and the Ashtongue Talisman, Black Temple). The old flat list was in no
+order at all, so finding yours meant reading all five names. A player knows *where they raid*
+before they know which trinket that implies, so the tier is the better index. `TRINKET_TIERS` is
+now the single source and the flat `TRINKETS` array derives from it, so the displayed order and the
+key list cannot drift apart. Purely cosmetic: reordering is safe only because `state.enabled` is
+keyed by name, and the goldens confirm it (25/25 byte-identical).
+
 ---
 
 ### 07-27 — PHASE 10 CLOSED: the acceptance verdict is defined again, and three debts get real prices
