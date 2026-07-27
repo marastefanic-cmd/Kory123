@@ -23,6 +23,19 @@
 set -u
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO"
+# ★ SINGLETON. Two watchdogs each relaunch a campaign, and two campaigns on 4 cores is not twice the
+# work — it is the same work at half the throughput, plus every cell hitting the other's writer lock.
+# Observed directly: a restart raced the previous watchdog and produced 2 campaigns / 9 workers.
+# `noclobber` is the atomic test-and-set; a stale lock from a killed run is reclaimed by PID check.
+LOCK=/tmp/xval-watchdog.lock
+if ! ( set -o noclobber; echo $$ > "$LOCK" ) 2>/dev/null; then
+  other=$(cat "$LOCK" 2>/dev/null || echo "")
+  if [ -n "$other" ] && kill -0 "$other" 2>/dev/null; then
+    echo "$(date +%H:%M) another watchdog is live (pid $other) — exiting rather than racing it."; exit 0
+  fi
+  echo "$(date +%H:%M) reclaiming stale lock from pid ${other:-?}"; echo $$ > "$LOCK"
+fi
+trap 'rm -f "$LOCK"' EXIT
 WHAT=${1:-all}
 NEED=${NEED:-36}
 INTERVAL=${INTERVAL:-120}

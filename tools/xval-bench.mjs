@@ -21,6 +21,9 @@
 //   APL           tools/genapl-core.mjs
 //   request       sim/simreq.mjs           (patches tools/bench/export-request.json)
 //   engine        sim/sim.wasm             (patched wowsims @ ade9f39; == native runner, tests/sim-duel.mjs)
+//                 …or the NATIVE runner via `RUNNER=/path/to/runner-ap180` — ~6× faster for bulk
+//                 gathering (GEAR-AGNOSTIC §4). Stamped `engine=` and keyed into the DPS cache, so a
+//                 matrix can never mix the two. See the engine block below.
 //   model         tools/engine-node.mjs    (index.html's engine block in bare node — no chromium)
 //   gear          tools/reference-gear.mjs (spread, never re-typed)
 //
@@ -38,7 +41,9 @@
 // ★ A gear-B table must NEVER be diffed against a gear-A one (BENCH §1). The `char=` stamp is what
 // lets a later reader tell them apart without trusting a directory name.
 import crypto from 'node:crypto';
+import { execFileSync } from 'node:child_process';
 import fs from 'node:fs';
+import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { build } from './genapl-core.mjs';
@@ -261,14 +266,78 @@ const TEMPLATE = JSON.parse(fs.readFileSync(TEMPLATE_PATH, 'utf8'));
   items[12] = { id: TMETA[PAIR[0]].item, randomSuffix: 0, enchant: 0, gems: [] };
   items[13] = { id: TMETA[PAIR[1]].item, randomSuffix: 0, enchant: 0, gems: [] };
 }
-const WASM_PATH = path.join(REPO, 'sim/sim.wasm');
-const WASM_ID = crypto.createHash('sha1').update(fs.readFileSync(WASM_PATH)).digest('hex').slice(0, 12);
-globalThis.wasmready = () => {};
-await import(path.join(REPO, 'sim/wasm_exec.js'));
-const go = new globalThis.Go();
-const { instance } = await WebAssembly.instantiate(fs.readFileSync(WASM_PATH), go.importObject);
-go.run(instance);
-if (typeof globalThis.raidSimJson !== 'function') die('sim.wasm did not expose raidSimJson — rebuild with sim/build-wasm.sh');
+// ── THE ENGINE: committed wasm by default, native runner via RUNNER= ──────────────────────────────
+// ★ WHY A SECOND BACKEND EXISTS (added 07-27, mid-round, deliberately — PHASE10 §8.26).
+// `docs/GEAR-AGNOSTIC.md` §4 measured the native runner at **~6× the wasm** on the sim half and
+// prescribes it for exactly this job: *"bulk corpus gathering → native runner — 6× on the sim half is
+// hours per round"*. Its own caveat ("the boss half is solve-dominated") does NOT apply once the
+// solves are cached, which is the state a boss table reaches after the SOLVE_ONLY pre-pass — the boss
+// half is then purely sim-bound. Measured on this box: a boss cell costs ~80 CPU-s per sim on wasm
+// (a Vashj APL evaluates a 7-clause intermission condition every GCD), i.e. ~13 h for the remaining
+// stratum against ~2 h native.
+//
+// ⚠⚠ THE RULES THIS MUST OBEY, because `tools/xval-bench.mjs` is otherwise FROZEN mid-round
+// (GEAR-AGNOSTIC §6.2). That freeze exists so a MATRIX is never assembled from two instruments — so:
+//   1. an engine switch is legitimate only BETWEEN whole tables, never within one. Enforced by the
+//      cache key below, which carries the engine identity, so a wasm-warmed entry can never be served
+//      into a native matrix (that is the exact failure the freeze names).
+//   2. it is STAMPED — `engine=` on every XVAL-DONE line — so no reader has to infer it.
+//   3. it is only defensible because the two are PROVEN equal here: `tests/sim-duel.mjs` with RUNNER
+//      passes in this container (wasm == native to the printed decimal), and GEAR-AGNOSTIC §4 puts the
+//      residual at 0.02–0.05 DPS ≈ 0.002 %, ~15× below the smallest deficit this corpus grades.
+//   4. the strata stay separate anyway — ACCEPTANCE ★★ forbids pooling boss and class cells, since
+//      they already differ in wall-jitter structure and noise.
+const RUNNER = process.env.RUNNER || '';
+let ENGINE, sim;
+if (RUNNER) {
+  if (!fs.existsSync(RUNNER)) die(`RUNNER="${RUNNER}" does not exist.`);
+  const rst = fs.statSync(RUNNER);
+  ENGINE = `native:${path.basename(RUNNER)}:${rst.size}`;   // size pins a rebuilt binary as a new engine
+  // The runner takes an EXPORT, not a request, so the trinket swap happens on the export instead.
+  const exp = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/bench/export.json'), 'utf8'));
+  exp.player.equipment.items[12] = { id: TMETA[PAIR[0]].item };
+  exp.player.equipment.items[13] = { id: TMETA[PAIR[1]].item };
+  const EXPORT = path.join(os.tmpdir(), `xvb-export-${PAIR.join('-')}-${process.pid}.json`);
+  fs.writeFileSync(EXPORT, JSON.stringify(exp));
+  const APLDIR = fs.mkdtempSync(path.join(os.tmpdir(), 'xvb-apl-'));
+  let n = 0;
+  sim = (spec, simHaste) => {
+    const aplPath = path.join(APLDIR, `a${n++}.json`);
+    fs.writeFileSync(aplPath, JSON.stringify(build(spec)));
+    const args = ['--export', EXPORT, '--apl', aplPath, '--dur', String(fightT), '--var', String(VAR),
+      '--iter', String(ITER), '--seed', String(SIMSEED), '--mana', String(BENCH.manaInject),
+      '--haste', String(simHaste), '--quiet', '--tag', 'xvb'];
+    if (aoeTargets) args.push('--targets', String(aoeTargets));
+    const out = execFileSync(RUNNER, args, { encoding: 'utf8', maxBuffer: 1 << 26 });
+    // The runner prints a TSV line; DPS is whitespace field 5. A NaN here would propagate into the
+    // matrix and BOTH invariant loops compare with `>`, which is FALSE for NaN — a confident double
+    // PASS over nothing. This was xval.mjs's worst historical defect; the guard is carried over.
+    const dps = parseFloat(out.trim().split('\n').pop().split(/\s+/)[4]);
+    if (!Number.isFinite(dps)) die(`could not parse DPS (field 5) from the runner: ${JSON.stringify(out.trim().split('\n').pop())}`);
+    return dps;
+  };
+} else {
+  const WASM_PATH = path.join(REPO, 'sim/sim.wasm');
+  ENGINE = 'wasm:' + crypto.createHash('sha1').update(fs.readFileSync(WASM_PATH)).digest('hex').slice(0, 12);
+  globalThis.wasmready = () => {};
+  await import(path.join(REPO, 'sim/wasm_exec.js'));
+  const go = new globalThis.Go();
+  const { instance } = await WebAssembly.instantiate(fs.readFileSync(WASM_PATH), go.importObject);
+  go.run(instance);
+  if (typeof globalThis.raidSimJson !== 'function') die('sim.wasm did not expose raidSimJson — rebuild with sim/build-wasm.sh');
+  sim = (spec, simHaste) => {
+    const req = buildRequest(TEMPLATE, {
+      sp: 0, critPct: 0, hasteRating: simHaste,
+      T: fightT, iterations: ITER, seed: SIMSEED, variation: VAR, targets: aoeTargets || 0, apl: build(spec),
+    });
+    const out = JSON.parse(globalThis.raidSimJson(JSON.stringify(req)));
+    if (out && out.errorResult) die('sim returned an error: ' + out.errorResult);
+    const d = dpsOf(out);
+    if (!d || !Number.isFinite(d.avg)) die(`sim returned no DPS for a plan simmed @${simHaste}.`);
+    return d.avg;
+  };
+}
+const WASM_ID = ENGINE;   // the cache key's engine field — see runSim below
 
 // ── wall jitter (boss tables) — verbatim from xval.mjs, including the variant seeds ───────────────
 // Within a wall-bounded segment the cast train is phase-locked to the exit, so a plan realizes haste
@@ -314,21 +383,11 @@ const runSim = (spec, simHaste) => {
     const hit = readCache(key);
     if (hit && Number.isFinite(hit.dps)) { cacheHit++; return hit.dps; }
   }
-  const req = buildRequest(TEMPLATE, {
-    sp: 0, critPct: 0,              // a geared export already HAS its stats; injecting double-counts
-    hasteRating: simHaste,          // gear haste IS the sweep variable
-    T: fightT, iterations: ITER, seed: SIMSEED, variation: VAR, targets: aoeTargets || 0, apl: build(spec),
-  });
-  const out = JSON.parse(globalThis.raidSimJson(JSON.stringify(req)));
-  if (out && out.errorResult) die('sim returned an error: ' + out.errorResult);
-  const d = dpsOf(out);
-  // ★ THE WORST FAILURE THIS HARNESS EVER HAD. A NaN propagates into the matrix, and BOTH invariant
-  // loops compare with `>` — FALSE for NaN — so monoDip stays 0.00% and diag stays CLEAN. A confident
-  // double PASS over zero real data.
-  if (!d || !Number.isFinite(d.avg)) die(`sim returned no DPS for a plan simmed @${simHaste}.`);
+  // both backends guard their own NaN (see the engine block); this is the one call site.
+  const dps = sim(spec, simHaste);
   cacheMiss++;
-  if (key) writeCache(key, { dps: d.avg });
-  return d.avg;
+  if (key) writeCache(key, { dps });
+  return dps;
 };
 
 // SHARD=k/n — sim only the plan-rows congruent to k, warm the cache, emit no table. The full run
@@ -379,7 +438,7 @@ console.log(`\n(a) haste-monotonicity [OBSERVED, not interpreted]: worst downwar
 console.log(`(b) DIAGONAL DOMINANCE: ${diagClean ? 'CLEAN — native dominates every column' : `DEFICIT ${(diagWorst * 100).toFixed(2)}%  [${diagAt}]`}`);
 // ★ EVERY protocol constant is stamped. A number without its protocol cannot be compared to anything
 // later — PHASE10 §3, and the round-5/round-6 `emit=` confusion is the recorded case.
-console.log(`XVAL-DONE seed=${SEED} kit=${PAIR.join('+')} class=${BOSS ? 'BOSS:' + BOSS.replace(/[^A-Za-z]/g, '') : (cls || 'any')} T=${fightT} lust=${lust} var=${VAR} wj=${WJ} emit=${EMIT} artifact=0${wallPresses.length ? ` wallPress=${wallPresses.length}` : ''} iter=${ITER} simseed=${SIMSEED} mana=${BENCH.manaInject} targets=${aoeTargets || 0} char=bench-gearB wasm=${WASM_ID} tool=xval-bench pool=${POOL ? 1 : 0} cache=${cacheHit}/${cacheHit + cacheMiss} monoDip=${(monoWorst * 100).toFixed(2)}% diag=${diagClean ? 'CLEAN' : 'DEFICIT'} diagWorst=${(diagWorst * 100).toFixed(2)}%`);
+console.log(`XVAL-DONE seed=${SEED} kit=${PAIR.join('+')} class=${BOSS ? 'BOSS:' + BOSS.replace(/[^A-Za-z]/g, '') : (cls || 'any')} T=${fightT} lust=${lust} var=${VAR} wj=${WJ} emit=${EMIT} artifact=0${wallPresses.length ? ` wallPress=${wallPresses.length}` : ''} iter=${ITER} simseed=${SIMSEED} mana=${BENCH.manaInject} targets=${aoeTargets || 0} char=bench-gearB engine=${ENGINE} tool=xval-bench pool=${POOL ? 1 : 0} cache=${cacheHit}/${cacheHit + cacheMiss} monoDip=${(monoWorst * 100).toFixed(2)}% diag=${diagClean ? 'CLEAN' : 'DEFICIT'} diagWorst=${(diagWorst * 100).toFixed(2)}%`);
 // The Go runtime inside sim.wasm parks on a channel and optimizeAsync's breathe() holds a
 // MessageChannel — both keep node's event loop ref'd, so this process never exits on its own.
 process.exit(0);
