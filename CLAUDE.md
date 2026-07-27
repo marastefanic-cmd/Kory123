@@ -229,12 +229,21 @@ Treat maintaining them as part of the work, not an afterthought:
   (a value window covers exactly `floor(D/Δ)` casts in the sim; haste buffs exempt) and two harness input
   errors (`t5two`, effective SP ≈1450), which together zero the mean bias — and **falsified** the
   SP-under-haste candidate on sign. Reserved as the highest-effort model work.
-- `docs/PHASE10.md` — **THE NEXT PHASE (planned, not started): re-establish the acceptance baseline on
-  GEAR B with `tools/bench.mjs`.** Every model-vs-sim number the project owns is gear A and archived
-  (`tools/xval-results-archive/gearA-pre-20260726/`), so ACCEPTANCE currently has **no reading at
-  all** — and B2's target already moved ~0.39pp and changed sign across the baselines. ⚠ Its §3 traps
-  matter more than usual: the new instrument is lightly exercised, so the phase opens with a shakedown
-  on known-shape cells before anything is graded.
+- `docs/PHASE10.md` — ▶ **IN EXECUTION. Round 1 is GATHERING — read `docs/PHASE10-RESUME.md` first**
+  (60-second state + exact next actions). Re-establishes the acceptance baseline on gear B; every
+  gear-A number is archived, so ACCEPTANCE still has **no reading** until 36/36.
+  ⚠⚠ **While it gathers, `index.html`, `sim/simreq.mjs` and `tools/xval-bench.mjs` are FROZEN**
+  (GEAR-AGNOSTIC §6.2) — the campaign spawns a fresh `xval-bench.mjs` per cell and the plan cache keys
+  on `index.html`'s bytes, so an edit assembles the matrix from two instruments.
+  Its §8 is the execution log. Landed so far: the shakedown PASSED; the instrument is certified
+  (wasm == native runner · anti-drift 9/9 · anchor ≡ `wowsimcli` · exact-match 25/25); **§4.2 had no
+  executable path** (`bench.mjs` is a duel, the test is a matrix) so `tools/xval-bench.mjs` was built
+  and *proven* equivalent to `xval.mjs`; and the audit found the **shipped in-page sim was blind to
+  Bloodlust and every trinket** (§8.7, half-fixed in §8.12 — Bloodlust `0.000 → +165.5 DPS`).
+  ★ The 30 class tables are in: invariant A **passes** (`monoDip = 0.0000%`), and the persistence work
+  list **reproduces gear A's cell for cell** (§8.22) — so the low-haste basin is *not* a gear artifact.
+  §8.23 diagnoses its worst cell: **two local optima and one terminal cast**, which the model scores as
+  a 0.014 % tie while the sim is emphatic at ~13σ. ⚠ Discretizing the scorer is already falsified.
 - `docs/PHASE11.md` — **PLANNED (parallel track): the platform phase — the single-file convention is
   RETIRED (user decision 07-26).** Its §1 is the 07-26 audit's findings ledger — **8 confirmed bugs,
   fix first** (worst: the Debug-export "reproduce" command silently mis-reproduces AoE duels; one

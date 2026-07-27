@@ -954,3 +954,25 @@ replacing the integral — which is a real modelling problem, not a patch.
 `exact-match` 25/25 + `plan-diff SCORE-AUDIT` + a head-to-head duel at the moved cells.
 ⛔ **Not landable yet regardless:** the scorer lives in `index.html`, and §8.5 forbids touching it
 until the round stops gathering.
+
+## 8.24 ✅ FREEZE AUDIT — two frozen files WERE edited mid-round, and both edits are PROVEN inert
+
+`docs/GEAR-AGNOSTIC.md` §6.2 freezes `sim/simreq.mjs` and `tools/xval-bench.mjs` for the duration of
+the round, on the same reasoning as `index.html`: the campaign spawns a fresh `xval-bench.mjs` per
+cell and that file imports `simreq.mjs`, so an edit between cells assembles the matrix from two
+instruments. **Two commits landed while the round was gathering and touched files in that set.**
+"I believe they were harmless" is not the standard here, so:
+
+| commit | file | non-comment diff | verdict |
+|---|---|---|---|
+| `74c3254` | `sim/simreq.mjs` | **empty** | comment-only — the header now documents the §8.12 trinket/Lust exceptions |
+| `23c201a` | `sim/planspec.mjs` | `+REQUIRES_EQUIPPED`, `+unequippedPresses` | **pure additions**; `planToSpec` — the only thing `xval-bench.mjs` imports — untouched |
+
+⇒ **no behavioural change reached the campaign, and the round is internally consistent.** Checked with
+`git show <sha> -- <file>` filtered to non-comment, non-blank changed lines, not by reading the commit
+message. (`sim/model-ref.json` also changed in `74c3254`; the campaign runs on
+`tools/bench/export-request.json` and never loads it.)
+
+★ **The rule this earns:** a freeze is only meaningful if violations are *detectable*. The check is two
+commands and belongs in any future round's closing checklist —
+`git log --since=<round start> -- <frozen paths>`, then a non-comment diff of anything it names.
