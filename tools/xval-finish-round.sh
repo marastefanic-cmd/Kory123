@@ -13,7 +13,7 @@
 set -u
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$REPO"
-: "${RUNNER:?set RUNNER=/path/to/runner-ap180 — the point is to match the boss half's engine}"
+if [ -z "${RUNNER:-}" ]; then echo "set RUNNER=/path/to/runner-ap180 — it must match the engine the boss half used"; exit 2; fi
 [ -x "$RUNNER" ] || { echo "RUNNER=$RUNNER is not executable"; exit 2; }
 
 echo "$(date +%H:%M) waiting for the boss half to reach 36 tables…"
