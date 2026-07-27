@@ -771,3 +771,38 @@ recorded nowhere — the first gear-B reading is the one taken at 36/36 under th
 partial campaign; narrowing the expected set to whatever happens to be on disk turns the provenance
 gate into a rubber stamp, which is why `STAMP_EXPECT` must be set to match and the audit hard-fails on
 the size cross-check if it is not.
+
+## 8.21 ⚠⚠ THE ROUND STALLED SILENTLY FOR ~10 HOURS — and the reason it went unnoticed is the finding
+
+At 18:59 the campaign died mid-shard. It was found at **04:55 the next morning**, by a human asking an
+unrelated question. Ten hours of a four-core box, idle.
+
+**Cause.** The pipeline was launched with `nohup … &` from an agent shell. That is not enough: the
+process stays in the session's **process group**, so when the session's shell went away the whole
+campaign went with it — *and took the checkpoint loop with it*, so the durability mechanism stopped at
+the same instant as the thing it was there to protect.
+
+★ **Why nothing caught it, which is the part worth keeping.** Every liveness signal in play was
+"tables are appearing". But a boss cell legitimately takes the better part of an hour, so **slow
+progress and no progress are the same observation from outside.** The monitor watching the round was
+watching the *output*, and the output of a dead campaign is indistinguishable from the output of a
+working one until you wait longer than the longest legitimate gap — which for this corpus is longer
+than anyone would wait before assuming it was fine. This is the same shape as every other finding in
+this log: **a signal that cannot distinguish two states is not a signal**, whether it is a NUL-blind
+structural check (§8.10), a control that already contains the effect (§8.13), or a progress metric
+that cannot separate "slow" from "stopped".
+
+**Fixes, both landed.**
+1. `setsid` on launch, so the campaign outlives the shell that starts it.
+2. **`tools/xval-watchdog.sh`** — because `setsid` only helps if nothing *else* kills it. It watches
+   for the condition directly ("no campaign process **and** the round is incomplete") rather than for
+   its symptom, relaunches the campaign and the checkpoint loop, and logs every intervention. Safe to
+   run beside a live campaign: `run_cell`'s writer lock (§8.10) makes a duplicate **refuse** the cell
+   rather than truncate it, and `SKIP_EXISTING=1` picks up only what is missing.
+
+**Nothing was lost.** `.xval-cache/` survived (348 plans, 2950 sims), so the expensive boss
+pre-solves were still banked and the restarted shards report `cache=100/100`. All **30 class tables**
+were complete and committed before the stall; only the 6 boss cells remain.
+
+☞ **Operational rule now standing: launch a long round with `setsid`, and start the watchdog with it.**
+A round is hours of compute whose failure mode is silence.
