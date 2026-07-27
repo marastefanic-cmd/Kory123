@@ -1,0 +1,11 @@
+# Deficit band — 8 column(s) · 5 seeds 11,100011,200011,300011,400011 · ITER=6000 · var 0.5
+# PHASE10 §5: a deficit is REAL only if it survives at >=3 seeds with |Δ| > 1σ of the paired band.
+
+| kit | class | T | sim-haste | borrowed | round-1 pct | band mean pct | band sd | seeds borrowed wins | verdict |
+|---|---|---|---|---|---|---|---|---|---|
+| mqg+skull | BOSS:KaelthasSunstrider | 420 | 0 | plan@30 | 0.304 | +0.348 | 0.045 | 5/5 | **REAL** |
+
+# ⚠ PARTIAL — 1 of 8 boss columns. The run was killed by the session ending, not by a decision.
+# Resume: node tools/xval-band.mjs tools/xval-results/band-scope/scoped-boss.json
+# The remaining 7 are listed in band-scope/scoped-boss.json in §8.18's descending-pct drop order.
+# Cost: ~86 min per Kael'thas column at the default 5 seeds (50 sims each, ~103 s/sim at 6 targets).
