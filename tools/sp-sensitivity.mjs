@@ -64,6 +64,38 @@
 // ARCANE POWER, not by the SP trinkets.** AP is x1.30 at every gear level, so the dominant reason to
 // stack does not weaken as base SP rises — the SP premium halving from 8.57% to 4.55% is a change to a
 // secondary term. Expect base SP to nudge these layouts, never to overturn them.
+// ── ★★★ YOU DO NOT NEED TO BRUTE-FORCE PER SP POINT — eff(SP) IS CLOSED FORM (proved 07-27) ──────
+// Read the scorer (`index.html:1165-1184`): every SP-touching term is AFFINE in `sp`, and `sp` is
+// `SP_base + Δ` where Δ is the temporary buff total. Everything else — critFactor, dmgMult, t5add,
+// seg.mult, seg.targets, aoeCritAmp, the kill taper — is SP-free, and **cast times never reference
+// `sp` at all**, so the entire cast lattice is SP-INVARIANT. Therefore, for a FIXED schedule:
+//
+//     countTotal(SP) = P + Q·SP        plain(SP) = R + S·SP        eff(SP) = A + C/(BASE + COEF·SP)
+//
+// a Möbius function, pinned exactly by TWO evaluations. Verified numerically on a hand-built
+// schedule: fit A and C from SP 900 and 2300 only, then predict SP ∈ {300…5000} — worst relative
+// error **6.6e-15**, i.e. float noise.
+//
+// ★ The two constants are interpretable, which is the useful part:
+//     A = Σ mult_i / M0   the MULTIPLIER-WEIGHTED CAST COUNT — what the plan scores at infinite SP,
+//                         where temporary +SP is worth nothing. (Measured exactly 206.000 on a
+//                         4:00 plan: 180 plain casts + 1.3 × 20 Arcane-Power casts.)
+//     C/B                 the SP-BUFF CONTRIBUTION, decaying as 1/(720 + 0.714·SP).
+//   So eff(SP) falls monotonically toward A. That IS the hypothesis at the top of this file, exactly.
+//
+// ★★ And comparing two schedules, the denominator is shared, so
+//        eff_P(SP) − eff_Q(SP) = (A_P − A_Q) + (C_P − C_Q)/B
+//   is monotone in 1/B ⇒ **AT MOST ONE CROSSOVER over the whole SP axis**, at the closed form
+//        B* = −(C_P − C_Q)/(A_P − A_Q),   SP* = (B* − BASE)/COEF.
+//   `--curve` prints A, C and every pairwise crossover, so a handful of solves gives the exact
+//   SP-envelope instead of a sampled one.
+//
+// ⚠ WHAT IS *NOT* CLOSED FORM: the argmax over all conceivable schedules. The SEARCH still has to
+// find candidates. But because the lattice is SP-invariant, the candidate set is the SAME at every
+// SP — so one search pass that RETAINS its candidates yields the exact envelope. This is the sharp
+// contrast with HASTE, which moves the lattice and genuinely does require re-solving per point.
+// That asymmetry is why the acceptance corpus is an N×N *haste* matrix and there is no SP matrix.
+//
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadEngine, cfgFor } from './engine-node.mjs';
@@ -89,6 +121,7 @@ if (HASTE !== null && (!Number.isFinite(HASTE) || HASTE < 0)) { console.error('-
 // window" is not a choice the fight offers, and a flat result says nothing about the hypothesis.
 // To put the trade on the table you need a haste trinket beside an SP one: `--kit
 // icyVeins,arcanePower,berserking,bloodlust,isc,mqg` (MQG is +330 haste for 20 s).
+const CURVE = argv.includes('--curve');   // report A, C and the exact crossovers (header ★★★)
 const KIT = flag('kit', null);
 const KEYS = KIT === null ? null : KIT.split(',').map(s => s.trim()).filter(Boolean);
 if (KEYS) {
@@ -134,9 +167,52 @@ for (const NAME of NAMES) {
     const at = k => ((r.actEff || {})[k] || []).map(x => +x.toFixed(0));
     const plan = Object.keys(cfg.enabled).filter(k => cfg.enabled[k] && at(k).length)
       .map(k => `${k} ${JSON.stringify(at(k))}`).join(' ');
-    rows.push({ sp, wasteSec, spCasts, casts: board.length, plan });
+    // A and C for THIS schedule — two extra scorings, and they give the whole SP axis (see header).
+    let A = null, C = null;
+    if (CURVE) {
+      const ev = q => {
+        const c2 = { ...cfg, sp: q };
+        const B = g.AB.AVG_BASE_DMG + g.AB.COEF * q;
+        const pl = B * (1 + crit * (g.CRIT_MULT - 1)) * (c2.t5two ? 1.2 : 1);
+        return { e: api.simulate(best.s, c2).total / pl, B };
+      };
+      const q1 = ev(900), q2 = ev(2300);
+      C = (q1.e - q2.e) / (1 / q1.B - 1 / q2.B);
+      A = q1.e - C / q1.B;
+    }
+    rows.push({ sp, wasteSec, spCasts, casts: board.length, plan, A, C });
     console.log(`     ${String(sp).padStart(7)}   ${wasteSec.toFixed(2).padStart(8)}   ` +
       `${String(spCasts).padStart(5)}/${String(board.length).padEnd(5)}   ${(r.total / plain).toFixed(1).padStart(5)}   ${plan}`);
+  }
+  if (CURVE) {
+    console.log('\n     closed form  eff(SP) = A + C/(BASE + COEF·SP)   — two scorings each, no sampling');
+    console.log('     solved@SP          A            C');
+    for (const r of rows) console.log(`     ${String(r.sp).padStart(9)}   ${r.A.toFixed(4).padStart(10)}   ${r.C.toFixed(1).padStart(10)}`);
+    // Pairwise crossovers. Shared denominator ⇒ the difference is monotone in 1/B ⇒ at most one root.
+    const seen = new Map();
+    for (const r of rows) { const k = r.plan; if (!seen.has(k)) seen.set(k, r); }
+    const uniq = [...seen.values()];
+    if (uniq.length > 1) {
+      console.log('\n     where the argmax would change (closed form, NOT sampled):');
+      for (let i = 0; i < uniq.length; i++) for (let j = i + 1; j < uniq.length; j++) {
+        const dA = uniq[i].A - uniq[j].A, dC = uniq[i].C - uniq[j].C;
+        if (Math.abs(dA) < 1e-12) { console.log(`       @${uniq[i].sp} vs @${uniq[j].sp}: parallel (ΔA≈0) — never cross`); continue; }
+        const Bs = -dC / dA, sp = (Bs - g.AB.AVG_BASE_DMG) / g.AB.COEF;
+        console.log(`       @${uniq[i].sp} vs @${uniq[j].sp}: crossover at SP ${sp.toFixed(0)}` +
+          `${sp < 0 || sp > 6000 ? '  (outside any real gear — one dominates everywhere)' : ''}`);
+      }
+    }
+  }
+  // ★ (A, C) IDENTITY OVERRIDES THE LAYOUT COUNT, and this is the tool's most important guard.
+  // Two schedules with the same A and the same C are the SAME POINT in objective space at EVERY SP —
+  // a plateau, not a decision. Counting "3 distinct layouts" and reading it as SP-responsiveness is
+  // exactly the mistake the sampled sweep invites, and it is the mistake this tool made first.
+  if (CURVE && rows.length > 1 && rows.every(r => Math.abs(r.A - rows[0].A) < 1e-9 && Math.abs(r.C - rows[0].C) < 1e-6)) {
+    console.log('\n     ⛔ EVERY ROW HAS THE SAME (A, C) — the layouts differ on the timeline but are');
+    console.log('        OBJECTIVE-IDENTICAL at every SP. Base spell power does not move this plan at');
+    console.log('        all; the apparent movement is the search picking between tied arrangements.');
+    console.log('        Do NOT report this as "the model responds to SP". It is a plateau.');
+    continue;
   }
   const a = rows[0], z = rows[rows.length - 1];
   const dWaste = z.wasteSec - a.wasteSec, dSp = z.spCasts - a.spCasts;
