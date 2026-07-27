@@ -115,7 +115,7 @@ export function build(spec){
 }
 // The two spell ids that make up the cast stream itself (as opposed to the scheduled cooldowns).
 // Exported so instruments can find the player's casts in a combat log without RE-TYPING an id —
-// `tools/press-verify.mjs` grades presses against this stream, and CLAUDE.md's rule is that a
+// `tools/press-verify.mjs` grades presses against this stream, and the project's rule is that a
 // protocol constant lives in exactly one place.
 export const CAST_STREAM_IDS = { AB, AE };
 export { SPEC_KEYS, TIME_KEYS };

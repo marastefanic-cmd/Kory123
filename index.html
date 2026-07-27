@@ -1070,7 +1070,7 @@ function simulateRaw(schedule, cfg, collect) {
   // and as the input to the default-off boundary charge. PHASE12 §0.1 is why: the integral and this
   // sum are two accounts of the same fight that differed by a median 0.2114 % of score — against
   // ranking margins of ~0.005–0.07 %. The model was disagreeing with itself by ~30× the effect it was
-  // being asked to resolve, and the sum is the account CLAUDE.md and MECHANICS §4 define.
+  // being asked to resolve, and the sum is the account the project's own docs define.
   let countTotal = 0, countEarly = 0, countRobust = 0;
   let aoeSegI = -1, aoeExact = false; // per-AoE-segment: is its AE lattice locked to the phase start?
   const boardRamp = []; // ramp casts recorded for the scorer: {s: start, c: completion, e: next boundary}
