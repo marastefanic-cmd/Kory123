@@ -75,7 +75,13 @@ const HS = JSON.parse(fs.readFileSync(path.join(REPO, 'tools/xval-haste-sets.jso
 // as varying can silently mix two rounds, and a per-cell field listed as protocol makes every round
 // fail.  `wj` and `targets` are deliberately NOT here — they are protocol-derived but cell-shaped
 // (class vs boss, AoE vs not) and are checked structurally below.
-const PROTOCOL = ['var', 'emit', 'iter', 'simseed', 'mana', 'char', 'wasm', 'tool', 'pool'];
+// ⚠ `engine` replaced `wasm` on 2026-07-27 (PHASE10 §8.26): a table now stamps WHICH engine ran
+// it (`wasm:<sha>` or `native:<binary>:<size>`), because the round may legitimately use the
+// native runner for bulk gathering (GEAR-AGNOSTIC §4). It stays in this list — uniformity is
+// still required — so a round that MIXES engines is a hard failure here, exactly as a round that
+// mixed `var` or `iter` would be. Proving two engines bit-identical (§8.26) licenses choosing
+// one for a whole round; it does not license mixing them inside one.
+const PROTOCOL = ['var', 'emit', 'iter', 'simseed', 'mana', 'char', 'engine', 'tool', 'pool'];
 const seen = new Map(PROTOCOL.map(k => [k, new Map()]));   // field -> value -> [files]
 const tables = [];
 

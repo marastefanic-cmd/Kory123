@@ -190,3 +190,34 @@ order deliberately there rather than inheriting it from a presentational regroup
 | `tests/sim-request.mjs` | **9/9**, including both template-freshness checks |
 | gear-B trust anchor | runner ≡ `wowsimcli` to every printed digit, reproducing BENCH §3d exactly |
 | `tests/exact-match.mjs` | **25 passed, 0 failed** |
+
+---
+
+## ⚠ 7. THE ROUND WILL BE MIXED-ENGINE UNTIL THE CLASS TABLES ARE RE-RUN — do this before grading
+
+**State:** the 30 **class** tables were gathered on the wasm (`wasm=aa3005508d3b`); the 6 **boss**
+tables are being gathered on the **native runner** (`engine=native:runner-ap180:…`, PHASE10 §8.26,
+~7.6× faster and gated bit-identical on a completed class table).
+
+`tools/xval-stamp-audit.mjs` **requires one protocol across the round** and now checks `engine`, so as
+it stands the round would fail with `MIXED PROTOCOL` — **correctly.** Proving two engines
+bit-identical licenses picking one for a whole round; it does not license mixing them inside one.
+
+**So the last gathering step is: re-run the 30 class tables on the native runner.**
+
+```
+# after the boss half reaches 36/36:
+RUNNER=/tmp/wowsims-build/tbc-new/runner-ap180 WHAT=class ITER=6000 JOBS=4 \
+  bash tools/xval-bench-campaign.sh          # NOTE: no SKIP_EXISTING — they must be re-emitted
+OUT=/tmp/grade bash tools/xval-grade.sh      # then this should pass the provenance gate
+```
+
+- **Cost ~20–30 min.** Class cells are far cheaper than boss cells (no 5-variant wall jitter, no
+  7-clause intermission condition) and every plan is already in the plan cache, so it is sim-only.
+- **Content is provably unchanged.** §8.26's gate re-ran a completed class table
+  (`mqg-skull-short`, all 100 cells) through the native backend and got a **bit-identical matrix**.
+  The re-run changes the *stamp*, not the numbers — but re-running is still the honest way to get
+  there, rather than editing a stamp by hand.
+- ⚠ **If the native rig is gone** (it lives in `/tmp` and dies with the container — GEAR-AGNOSTIC §4),
+  either rebuild it (~4 min, BENCH §3d) or re-gather the **boss** half on wasm instead. Do not grade a
+  mixed round.
