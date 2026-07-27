@@ -715,7 +715,49 @@ Two properties make this strong: pooling across both plans cancels **crit varian
 identical, only the counts differ), and it needs **no assumption** about coefficients, amp curves or
 stacking order — it is pure observed damage. On P7.14 (PHASE7 §5.18, RULES §9 Correction 3) it closed a
 0.29 pp deficit to **102.6 %** at **zero additional sim cost**, after five sim campaigns had been
-pre-registered to attack the same question. Reference implementation: `$SP/aoewin/walk.mjs`.
+pre-registered to attack the same question.
+
+**★ The implementation is `tools/duel-walk.mjs`** (committed 07-27). ⚠ It previously lived only at
+`$SP/aoewin/walk.mjs` — gone with the scratchpad — and was rebuilt from this description (PHASE12 §3.6).
+
+```
+node tools/duel-walk.mjs --log-a A.log --log-b B.log [--json] [--watch-all]
+RUNNER=…/runner-ap180 node tools/duel-walk.mjs --spec-a '{…}' --spec-b '{…}' \
+     --T 229 --haste 70 --kit isc,mqg          # runs both arms and walks them
+```
+
+It excludes from the state label anything already up at **t = 0** (raid buffs, equip auras — they are in
+every state and carry no information, and an equipped trinket's t=0 `ItemID` aura would otherwise read as
+a press), plus five **high-churn or inert** auras: the AB stack, Clearcasting, the Tirisfal 4pc and
+Serpent-Coil SP procs, and **Sated (57724)** — that last one is not churn but a permanent marker with no
+combat effect, and leaving it in splits "before Lust" from "after Lust ended", which are exactly the
+casts pooling most needs to merge.
+
+### ⚠⚠ THE POOLED LEDGER'S ASSUMPTION IS NOT ALWAYS TRUE — measured 07-27, and it is why there are TWO
+
+*"Pooling cancels crit variance because the states are identical and only the counts differ"* silently
+assumes the casts that **migrate** between states are interchangeable with that state's other casts.
+That held on P7.14 — 37 near-identical Arcane Explosions inside one AoE window — and it is **false in
+general**: an Arcane Blast's damage depends on its stack and on where in the ramp it sits, so "the
+average no-buff cast" is polluted by cheap opener casts that a migrating mid-fight cast is nothing like.
+Two controls, both run on the committed tool:
+
+| duel | pooled ledger | paired ledger |
+|---|---|---|
+| `Icon@6` vs **no Icon at all** (12 casts migrate) | right shape, **187 % closure** — 1.9× too big | **100.0 %** |
+| `Icon@6` vs `Icon@80` (counts identical, *different casts* in the window) | **every Δ is 0 — completely blind** | **100.0 %**, showing both 12-cast migrations |
+
+So `duel-walk` prints a **second, exact ledger** whenever both arms cast the same *number* of times —
+the common case under CRN with one seed and no haste change. Then cast `i` is the same cast in both
+fights, at nearly the same second and stack, and `Σ_i (dmg_B[i] − dmg_A[i])` grouped by the state
+**transition** that cast made needs no pooling assumption at all. It closes to 100.0 % by construction.
+Rows whose two sides are the **same** state are the instrument's own noise floor — a cast that changed
+value without changing which buffs were up. ★ **If those rows dominate, the duel is not decided by buff
+placement**, and on the B2 pair at one iteration they do (+2378 of noise against a −1675 measured Δ),
+which is the honest reason a near-cancellation needs a seed campaign rather than a log walk.
+
+Other controls: a log walked **against itself** produces an empty ledger in both halves; an empty log,
+a NUL-bearing log, and a log with no `[Player (#N)]` events each exit **2**.
 
 Corollary: **capture `SIMLOG=1` for both arms of every duel as a matter of course.** The legality gate
 is the cheap excuse to obtain the expensive-looking data.

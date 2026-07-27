@@ -734,7 +734,9 @@ durations the contained region shrinks to the **intersection** of the constraint
   - **Correction 3 — CONFIRMED (07-25): a press inside an AoE phase FIRES LATE, and a window that ends
     flush with the phase wall LOSES ITS LAST CAST. Never place a value window so that `press + dur`
     lands within ~1 cast-interval of the AoE phase end — sit it a second earlier and it is free.**
-    (PHASE7 §5.18; ledger `$SP/aoewin/walk.mjs`, predictive sweep `tools/cell-band.mjs`. This was §5.17's
+    (PHASE7 §5.18; ledger `tools/duel-walk.mjs` — the instrument that produced the 102.6 % closure below,
+    rebuilt and committed 07-27 after its scratchpad original was lost; predictive sweep
+    `tools/cell-band.mjs`. This was §5.17's
     Correction-3 *candidate*; the "model packs against the window END, sim wants it 10 s earlier" framing
     is **RETIRED** — the model's press-time curve is *flat* across the window interior and spikes only at
     the wall.) The mechanism, on `isc+scb / KT / T=420 / sim@195`, model champion P=130 vs rival P=120:

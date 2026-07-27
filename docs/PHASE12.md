@@ -272,16 +272,20 @@ closes that gap using only the committed wasm.
 | 3.3 | `tests/sim-request.mjs` §1+§2 unexercised without a native runner | probe exists (§2.2); promote per §4.1 |
 | 3.4 | `RULES.md` figures are gear-A; banner added, **none re-measured** | banner landed 07-26 |
 | 3.5 | §12 crossover thresholds (`~264`, `~139`, `~77`) are haste/SP functions | most likely to have moved; re-derive first |
-| 3.6 | The SIMLOG **press verifier** exists only as prose + a dead scratchpad path | **CLOSED 07-27** — promoted to `tools/press-verify.mjs`; see §3.6 note |
+| 3.6 | The two SIMLOG log-walking instruments exist only as prose + dead scratchpad paths | **CLOSED 07-27** — promoted to `tools/press-verify.mjs` and `tools/duel-walk.mjs`; see §3.6 note |
 | 3.7 | Interior-wall contribution to the ripple floor is unpriced at any boss length/kit but the one measured | open — ACCEPTANCE "coverage gaps"; boss cells priced at ±0.1251, interiors not |
 | 3.8 | **Ashtongue** (random on-crit proc) is outside every kit — needs a stochastic treatment | open, and **un-owned since Phase 7 closed without it**; RULES §14 folds it into passive haste, which is the *modelling* answer, not the *cross-val* one |
 
 **§3.6 note.** `docs/TOOLING.md`'s "★★ DECOMPOSE A DUEL BY WALKING THE LOG" calls log-walking *the
-cheapest instrument in the project*, and then pointed its reference implementation at
-`$SP/p8/r6verify.mjs` — a **session scratchpad path that no longer exists**. The log-format facts it
-depended on (the `[Player (#1)]` source prefix, Bloodlust having no `Casting` line, Cold Snap having no
-aura, exact-id matching with a trailing-digit guard) were all written out in prose beside it, so the
-instrument was rebuilt from the doc rather than lost.
+cheapest instrument in the project* — and both implementations it pointed at (`$SP/p8/r6verify.mjs` for
+presses, `$SP/aoewin/walk.mjs` for the aura-state decomposition) were **session scratchpad paths that no
+longer exist anywhere**. The method descriptions and the log-format facts were written out in prose
+beside them (the `[Player (#1)]` source prefix, Bloodlust having no `Casting` line, Cold Snap having no
+aura, trinkets logging by ItemID, exact brace-group matching), so both were rebuilt from the doc rather
+than lost. ★ Rebuilding the second one **found a flaw in the documented method** — the pooled ledger's
+sampling assumption — and the tool now ships an exact paired ledger alongside it (DIARY 07-27).
+⚠ **The general lesson for anything else filed as "the reference implementation is `$SP/…`": treat that
+as UNIMPLEMENTED.** Two out of two such pointers were dead.
 
 ---
 
