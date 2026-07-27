@@ -1598,22 +1598,44 @@ p90 0.159 %** — the boundary term is 5–20× them, so this is not a rounding 
 4. **The acceptance corpus is voided again** — but §6 already says it has no current reading, so the
    marginal cost is only the re-gather, which §5 says is now mostly arithmetic.
 
-### 9.5 ⚠ The one place the two boundaries are NOT the same, which needs a deliberate call
+### 9.5 ~~The one place the two boundaries are NOT the same~~ → ⛔ WITHDRAWN, same error twice
 
-The fight-end story is *"the cast would have completed if the fight ran on"* — that is what makes
-`U[T, T+d]` meaningful. **At an intermission wall there is no such world.** The boss returns afterwards,
-the cast in flight is lost, and the mage resumes on the far side; no lengthening of anything completes
-it. Crediting `frac × value` there pays for damage that does not exist in any continuation.
+**This section argued** that the fight-end story (*"the cast would have completed if the fight ran on"*)
+has no analogue at an intermission, because the boss returns afterwards and nothing completes the lost
+cast — so crediting `frac × value` there would pay for damage that exists in no continuation.
 
-What it *does* buy is a smooth, phase-independent reward for having fast casts up against the wall —
-which is a real planning property, just not a damage one.
+**The user's correction, 07-27:** *"nono, all of the same. even the intermissions can happen a little
+sooner or later. That's not a given that they will happen at the exact same time so modelling wise it
+shouldn't treat it as such."*
 
-⚠ And **AoE phases are a third case, not a copy of the second**: the boss is targetable and the mage
-is casting Arcane Explosion, so a cast straddling into an AoE phase is neither lost nor an AB.
+⇒ **The objection assumed the wall time is known exactly — which is the identical mistake §8 made about
+T**, one boundary over, after the first one had already been corrected. If the wall lands at
+`W_actual ≥ W`, then a cast completing before `W_actual` *does* land, the continuation exists, and the
+one-sided window applies verbatim with the wall in place of T. Nothing distinguishes the two.
 
-⇒ **Implement the fight end first** (it has the cleanest justification and is where §9.3's numbers were
-measured), and take the intermission and AoE walls as a separate, explicitly-decided step. Do not let
-one `frac` helper quietly define policy for all three.
+★ **So the rule is ONE rule, and the implementation is one helper**: for every cast,
+
+```
+credit = min(1, (nextBoundary − ts) / d) × value ,   nextBoundary = min(T, next intermission start, next AoE start)
+```
+
+That is simpler than what ships today, and it **subsumes §8's defect for free** — today a cast
+straddling into an intermission is paid in FULL (measured: starts 89.616, wall at 90, completes 91.114,
+credited 2242.1). The fix is not `dmg = 0`; it is the fraction, like everywhere else.
+
+**Two sub-decisions that remain, both small, neither a reason to delay:**
+
+1. **One-sided or symmetric at a wall?** The kill is one-sided by construction — a fight lasts *at
+   least* T. A wall that can come *"sooner or later"* is symmetric, and a symmetric window pays **0.5**
+   at the nominal instant where a one-sided one pays **1.0**. The ruling's formula `(W − ts)/d` is the
+   one-sided form. Recommend following the kill's convention (one-sided, full credit at the nominal
+   boundary) so there is a single rule; note it as a stated choice rather than letting the helper
+   decide it silently.
+2. **AoE walls are still a third case, for a reason that is not about timing.** The boss is
+   **targetable** during an AoE phase, so an Arcane Blast completing inside one is not lost at all — it
+   lands, for full AB damage; you would simply rather have been casting Arcane Explosion. ⚠ Today
+   `dmgOf` (`index.html:1327`) zeroes it via `nonAB`, which covers `aoe` as well as `intermission`, and
+   that looks wrong independently of this ruling. Decide it on its own merits.
 
 ### 9.6 Landing order
 
