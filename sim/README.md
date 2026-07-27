@@ -91,7 +91,7 @@ which is what makes a 0.1% difference readable at 10 000 iterations.
 
 ## Known gaps (stated in the UI, not hidden)
 
-- **★★★ AND THE BIGGEST ONE, FOUND 07-26 (`docs/PHASE10.md` §8.7): being gear-less means the trinket
+- **★★★ AND THE BIGGEST ONE, FOUND 07-26 (`docs/archive/11-phase10-gearb-baseline.md` §8.7): being gear-less means the trinket
   on-uses and Bloodlust DO NOTHING here.** "No gear, no consumes, no raid buffs" above is stated as a
   feature, and for *stats* it is one — but an on-use trinket is only castable while its item is
   **worn**, and wowsims does not complain when it is not: the press is a **bit-identical no-op**.

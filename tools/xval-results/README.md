@@ -1,10 +1,22 @@
 # Cross-validation raw matrices — the CURRENT acceptance round
 
-> ## 🔄 GEAR-B ROUND 1 IS GATHERING HERE (`docs/PHASE10.md` §8)
+> ## ✅ GEAR-B ROUND 1 IS COMPLETE AND GRADED (`docs/archive/11-phase10-gearb-baseline.md` §8)
 >
 > On 2026-07-26 the reference character was re-exported and this directory was cleared
-> (`docs/BENCH.md` §1), leaving the project with no acceptance measurement at all. The first gear-B
-> round is now landing here. Everything up to and including round 7 — the entire gear-A corpus — is at
+> (`docs/BENCH.md` §1), leaving the project with no acceptance measurement at all. **The first gear-B
+> round is now here in full: 36/36 tables under ONE protocol on ONE engine**
+> (`char=bench-gearB · engine=native:runner-ap180:18102540 · var 0.5 · emit=fire · iter 6000 ·
+> simseed 11 · mana 1e8 · pool=1`), certified by `tools/xval-stamp-audit.mjs` (exit 0).
+> **The reading is `docs/ACCEPTANCE.md` → "Current status (GEAR B, round 1)":** invariant A passes
+> (`monoDip = 0.0000%` on all 36), **B2 fails** (142 borrowed-win columns of 345 across 33/36 tables,
+> worst 0.380 %) ⇒ **ACCEPTANCE NOT PASSING**. Also here: `BAND-class-round1.txt` (the ≥3-seed
+> grading, 30 real · 6 not resolvable) and `band-scope/` (the pre-registered scope, including the
+> **8 boss columns still ungraded** — that half is resumable, see its README).
+>
+> ⚠ **The `engine=` / `char=` stamp, not the directory name, is what tells the two baselines apart.**
+> This round is also the LAST one gathered on the exported gear-B character: `docs/GEAR-AGNOSTIC.md`
+> moves everything to a character defined only by the planner's declared inputs, and keeps this round
+> as a **control** rather than as the acceptance reading. Everything up to and including round 7 — the entire gear-A corpus — is at
 > [`../xval-results-archive/gearA-pre-20260726/`](../xval-results-archive/gearA-pre-20260726/); read
 > that directory's README before quoting any figure from it.
 >
@@ -47,7 +59,7 @@
 > void. B2's sim preference already moved ~0.39 pp *and changed sign* across the baselines (BENCH §3e),
 > which is larger than most effects the corpus exists to resolve.
 >
-> **How the next round differs from every previous one** (`docs/PHASE10.md`):
+> **How this round differs from every previous one** (`docs/archive/11-phase10-gearb-baseline.md`):
 > `tools/bench.mjs` + the committed `sim/sim.wasm` (no clone, no protoc, no `go build`, no
 > `RUNNER`/`EXPORT_BASE` — a duel is ~10 s cold) · **`--var 0.5` settled by measurement**
 > (`tools/var-decision.mjs`) rather than by convention · **difference-in-differences** against a
