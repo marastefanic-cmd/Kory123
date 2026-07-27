@@ -29,13 +29,25 @@
 > wholesale by the gear-B round (`docs/ACCEPTANCE.md`).
 
 Living record of the TBC Arcane cooldown rules, each with the **evidence** it was checked against. The
-one quantity to maximize is **effective ABs cast** (§1 / `MECHANICS §4`), which the planner computes
-deterministically — so the **cast-count is the arbiter** when comparing two lines. The **sim
-calibrates** that count (anchors the physics — the model is a ~0.4%-accurate proxy — covers its blind
-spots: ramp / mana / AoE / multi-AP timing, and verifies novel findings); the sim evidence cited under
-each rule is exactly that calibration, not a routine per-line referee. When a clean cast-count and a
-sim number disagree with **no blind spot in play**, audit the sim *setup* before either — see
-`docs/TOOLING.md`. Update this file when a rule is added, refined, or overturned.
+one quantity to maximize is **effective ABs cast** (§1 / `MECHANICS §4`) — a **deterministic per-cast
+sum** the planner has everything it needs to compute exactly.
+
+> ## ⚠⚠ BUT HEAD DOES NOT COMPUTE IT EXACTLY (07-27, `docs/PHASE12.md` §0/§6.8)
+> `simulate()` computes that sum in its discrete cast walk and then **ranks on a continuous rate
+> integral instead**. The two differ by a **median 0.2114 % of score** (max 1.4263 %) over 2755
+> plan-scorings, measured with **no sim**. ⇒ **"the cast-count is the arbiter" is the DESIGN, not
+> HEAD**, and any rule below resting on a model margin under ~0.5 % rests on a number that is not
+> single-valued. Making it exact is the project's top priority; re-check such rules afterwards.
+
+The **sim's primary job is to FALSIFY THE SEARCH**: with an exact objective, ranking two plans is
+arithmetic and cannot be wrong, so a sim preferring a plan the tool did not emit means **the search
+missed it** — and each such disagreement is a *pattern to generalize into a rule*, which is how this
+file grows. Secondarily the sim **anchors the physics** (~0.4 % absolute agreement), **covers genuine
+blind spots** (mana, AoE weighting) and **builds user trust** via the in-page benchmark. The sim
+evidence cited under each rule is that calibration, not a routine per-line referee. When a clean
+cast-count and a sim number disagree with **no blind spot in play**, audit the sim *setup* before
+either — the press-fire offset of PHASE12 §6.7 is the newest cautionary tale. Update this file when a
+rule is added, refined, or overturned.
 
 **Read every rule below as a *method*, not a law.** There is exactly one thing to maximize — the
 **effective ABs cast** (`docs/MECHANICS.md §4`: each cast scored by its multiplier vs a plain AB,
