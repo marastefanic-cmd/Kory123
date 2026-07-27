@@ -25,5 +25,5 @@ plan\sim        0      30      70     100     160     190     235     265     29
 400        2584.8  2625.8  2684.6  2726.8  2813.8  2849.3  2919.5  2955.7  2991.5  3123.9
 
 (a) haste-monotonicity [OBSERVED, not interpreted]: worst downward dip = 0.00%
-(b) DIAGONAL DOMINANCE: DEFICIT 0.09%  [@sim160: plan@190 (2828.5) > native@160 (2825.8)]
-XVAL-DONE seed=9988 kit=mqg+skull class=medlong T=226 lust=0 var=0.5 wj=0 emit=fire artifact=0 iter=6000 simseed=11 mana=100000000 targets=0 char=bench-gearB wasm=aa3005508d3b tool=xval-bench pool=1 cache=100/100 monoDip=0.00% diag=DEFICIT diagWorst=0.09%
+(b) DIAGONAL DOMINANCE: DEFICIT 0.10%  [@sim160: plan@190 (2828.5) > native@160 (2825.8)]
+XVAL-DONE seed=9988 kit=mqg+skull class=medlong T=226 lust=0 var=0.5 wj=0 emit=fire artifact=0 iter=6000 simseed=11 mana=100000000 targets=0 char=bench-gearB engine=native:runner-ap180:18102540 tool=xval-bench pool=1 cache=10/100 monoDip=0.00% diag=DEFICIT diagWorst=0.10%

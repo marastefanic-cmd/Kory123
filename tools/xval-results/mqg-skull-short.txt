@@ -10,96 +10,6 @@ seed=9986  class=short  fight=1:50 (110s)  Lust@0:45  trinkets=mqg+skull  haste=
   plan@h295: eff=108.852  {"_prestack":0,"BL":[45],"AP":[25],"Zerk":[0],"Skull":[20],"MQG":[0],"IV":[25,86],"CS":[86]}
   plan@h400: eff=111.326  {"_prestack":0,"BL":[45],"AP":[4],"Zerk":[19],"Skull":[6],"MQG":[26],"IV":[0,86],"CS":[86]}
 unique plans: 9/10
-2026/07/26 16:22:07 running 6000 iterations took 13.6811776s
-2026/07/26 16:22:16 running 6000 iterations took 8.953900544s
-2026/07/26 16:22:25 running 6000 iterations took 9.274517504s
-2026/07/26 16:22:34 running 6000 iterations took 8.321291264s
-2026/07/26 16:22:44 running 6000 iterations took 10.359539712s
-2026/07/26 16:22:54 running 6000 iterations took 9.664282112s
-2026/07/26 16:23:04 running 6000 iterations took 10.282278912s
-2026/07/26 16:23:15 running 6000 iterations took 10.680225792s
-2026/07/26 16:23:24 running 6000 iterations took 8.822035968s
-2026/07/26 16:23:34 running 6000 iterations took 10.156413696s
-2026/07/26 16:23:44 running 6000 iterations took 9.905237504s
-2026/07/26 16:23:55 running 6000 iterations took 10.502055168s
-2026/07/26 16:24:04 running 6000 iterations took 9.54771584s
-2026/07/26 16:24:15 running 6000 iterations took 10.568194304s
-2026/07/26 16:24:24 running 6000 iterations took 8.661344768s
-2026/07/26 16:24:35 running 6000 iterations took 10.643812352s
-2026/07/26 16:24:47 running 6000 iterations took 11.9301248s
-2026/07/26 16:24:57 running 6000 iterations took 10.552174336s
-2026/07/26 16:25:08 running 6000 iterations took 10.594698752s
-2026/07/26 16:25:20 running 6000 iterations took 12.354282496s
-2026/07/26 16:25:30 running 6000 iterations took 9.371720704s
-2026/07/26 16:25:40 running 6000 iterations took 9.651279104s
-2026/07/26 16:25:47 running 6000 iterations took 7.866792192s
-2026/07/26 16:25:57 running 6000 iterations took 9.919356672s
-2026/07/26 16:26:08 running 6000 iterations took 10.546774784s
-2026/07/26 16:26:19 running 6000 iterations took 10.749567744s
-2026/07/26 16:26:28 running 6000 iterations took 9.106395648s
-2026/07/26 16:26:42 running 6000 iterations took 13.75514368s
-2026/07/26 16:26:53 running 6000 iterations took 10.669321984s
-2026/07/26 16:27:05 running 6000 iterations took 12.341065728s
-2026/07/26 16:27:15 running 6000 iterations took 9.49225472s
-2026/07/26 16:27:26 running 6000 iterations took 11.561323264s
-2026/07/26 16:27:38 running 6000 iterations took 11.480807936s
-2026/07/26 16:27:50 running 6000 iterations took 11.945831424s
-2026/07/26 16:28:01 running 6000 iterations took 10.596628736s
-2026/07/26 16:28:14 running 6000 iterations took 12.718374144s
-2026/07/26 16:28:27 running 6000 iterations took 13.46111488s
-2026/07/26 16:28:42 running 6000 iterations took 14.826516736s
-2026/07/26 16:28:53 running 6000 iterations took 11.218941696s
-2026/07/26 16:29:05 running 6000 iterations took 11.677501184s
-2026/07/26 16:29:17 running 6000 iterations took 12.07908096s
-2026/07/26 16:29:28 running 6000 iterations took 11.093219072s
-2026/07/26 16:29:42 running 6000 iterations took 13.352108032s
-2026/07/26 16:29:56 running 6000 iterations took 13.96248832s
-2026/07/26 16:30:06 running 6000 iterations took 10.388834816s
-2026/07/26 16:30:17 running 6000 iterations took 10.336762368s
-2026/07/26 16:30:31 running 6000 iterations took 14.37455872s
-2026/07/26 16:30:43 running 6000 iterations took 11.434319872s
-2026/07/26 16:30:53 running 6000 iterations took 10.522832896s
-2026/07/26 16:31:05 running 6000 iterations took 11.932091904s
-2026/07/26 16:31:15 running 6000 iterations took 9.808089856s
-2026/07/26 16:31:26 running 6000 iterations took 10.686698752s
-2026/07/26 16:31:40 running 6000 iterations took 14.40710784s
-2026/07/26 16:31:52 running 6000 iterations took 11.859756032s
-2026/07/26 16:32:05 running 6000 iterations took 12.76915328s
-2026/07/26 16:32:18 running 6000 iterations took 13.278358016s
-2026/07/26 16:32:30 running 6000 iterations took 11.232509952s
-2026/07/26 16:32:42 running 6000 iterations took 12.402161152s
-2026/07/26 16:32:53 running 6000 iterations took 11.011864832s
-2026/07/26 16:33:03 running 6000 iterations took 9.3950656s
-2026/07/26 16:33:11 running 6000 iterations took 7.742033408s
-2026/07/26 16:33:21 running 6000 iterations took 10.67493248s
-2026/07/26 16:33:31 running 6000 iterations took 9.307563776s
-2026/07/26 16:33:37 running 6000 iterations took 5.833374464s
-2026/07/26 16:33:44 running 6000 iterations took 7.286687488s
-2026/07/26 16:33:51 running 6000 iterations took 6.702464s
-2026/07/26 16:33:58 running 6000 iterations took 7.307281664s
-2026/07/26 16:34:04 running 6000 iterations took 6.194573312s
-2026/07/26 16:34:11 running 6000 iterations took 7.100239872s
-2026/07/26 16:34:19 running 6000 iterations took 7.262379008s
-2026/07/26 16:34:25 running 6000 iterations took 6.238425088s
-2026/07/26 16:34:31 running 6000 iterations took 5.932888064s
-2026/07/26 16:34:37 running 6000 iterations took 5.951331584s
-2026/07/26 16:34:44 running 6000 iterations took 6.942741248s
-2026/07/26 16:34:51 running 6000 iterations took 7.208684032s
-2026/07/26 16:34:58 running 6000 iterations took 7.191198208s
-2026/07/26 16:35:07 running 6000 iterations took 8.805624832s
-2026/07/26 16:35:16 running 6000 iterations took 8.606774528s
-2026/07/26 16:35:23 running 6000 iterations took 7.155931392s
-2026/07/26 16:35:29 running 6000 iterations took 6.405156608s
-2026/07/26 16:35:36 running 6000 iterations took 6.171237888s
-2026/07/26 16:35:43 running 6000 iterations took 6.903425792s
-2026/07/26 16:35:49 running 6000 iterations took 6.631057664s
-2026/07/26 16:35:57 running 6000 iterations took 7.325346304s
-2026/07/26 16:36:05 running 6000 iterations took 7.942224128s
-2026/07/26 16:36:12 running 6000 iterations took 7.767764992s
-2026/07/26 16:36:19 running 6000 iterations took 6.129391104s
-2026/07/26 16:36:26 running 6000 iterations took 7.398077184s
-2026/07/26 16:36:33 running 6000 iterations took 7.028122368s
-2026/07/26 16:36:40 running 6000 iterations took 6.737751552s
 
 DPS matrix (row = plan optimized @haste, col = simmed @haste):
 plan\sim        0      30      70     100     160     190     235     265     295     400
@@ -115,5 +25,5 @@ plan\sim        0      30      70     100     160     190     235     265     29
 400        2771.6  2828.0  2889.7  2953.6  3044.3  3086.4  3164.0  3191.8  3208.8  3292.6
 
 (a) haste-monotonicity [OBSERVED, not interpreted]: worst downward dip = 0.00%
-(b) DIAGONAL DOMINANCE: DEFICIT 0.03%  [@sim190: plan@235 (3103.7) > native@190 (3102.6)]
-XVAL-DONE seed=9986 kit=mqg+skull class=short T=110 lust=45 var=0.5 wj=0 emit=fire artifact=0 iter=6000 simseed=11 mana=100000000 targets=0 char=bench-gearB wasm=aa3005508d3b tool=xval-bench pool=1 cache=10/100 monoDip=0.00% diag=DEFICIT diagWorst=0.03%
+(b) DIAGONAL DOMINANCE: DEFICIT 0.04%  [@sim190: plan@235 (3103.7) > native@190 (3102.6)]
+XVAL-DONE seed=9986 kit=mqg+skull class=short T=110 lust=45 var=0.5 wj=0 emit=fire artifact=0 iter=6000 simseed=11 mana=100000000 targets=0 char=bench-gearB engine=native:runner-ap180:18102540 tool=xval-bench pool=1 cache=10/100 monoDip=0.00% diag=DEFICIT diagWorst=0.04%
