@@ -976,3 +976,36 @@ message. (`sim/model-ref.json` also changed in `74c3254`; the campaign runs on
 ★ **The rule this earns:** a freeze is only meaningful if violations are *detectable*. The check is two
 commands and belongs in any future round's closing checklist —
 `git log --since=<round start> -- <frozen paths>`, then a non-comment diff of anything it names.
+
+## 8.25 ★★ THE FAMILY SPLITS BY MAGNITUDE — the two big persistent cells are BOTH one terminal cast
+
+§8.23 ended with a named next step: *is the mechanism shared, or is it three separate problems?*
+Answered by counting Arcane Blasts in each arm at the length where each column's margin is largest
+(native runner, `SIMLOG=1`, one iteration, seed 11, `--var 0`, the column's own sim-haste):
+
+| column | length | T | margin % | native casts | rival casts | Δ |
+|---|---|---|---|---|---|---|
+| `isc-mqg @40 ← plan@70` | medlong | 229 | **0.380** | 176 | 177 | **+1** |
+| `isc-skull @130 ← plan@230` | long | 293 | **0.213** | 233 | 234 | **+1** |
+| `isc-skull @20 ← plan@100` | medium | 177 | 0.075 | 136 | 136 | **0** |
+
+**The two columns that carry real magnitude are the same mechanism**, and the third is not — it has
+**equal cast counts**, so its 0.075 % is a *value* difference (which casts got buffed) rather than a
+*count* difference. The family is not homogeneous, but it splits cleanly along magnitude rather than
+along kit or haste.
+
+★ **The arithmetic cross-checks, which is what makes this more than a coincidence of counts.** One
+cast in 176 is 0.57 % and one in 233 is 0.43 %; the measured DPS margins are 0.380 % and 0.213 %,
+i.e. **≈⅔ of the cast fraction in both cases**. That is exactly what a *marginal* cast should be
+worth: it is the unbuffed one at the tail, not an average cast. Two independent cells agreeing on
+that ratio is a much stronger statement than either count alone.
+
+⇒ **The target is one modelling problem, not three.** A term that lets the objective see a terminal
+cast it currently integrates away would address both large persistent columns. The 0.075 % column is
+a separate, much smaller question, and it sits close enough to the model's own resolution (§8.23: the
+objective's margin on these pairs is ~0.014 %) that it may not be reachable at all.
+
+⚠ **Still not landable, and still not designed.** The scorer is in `index.html`, frozen until 36/36
+(§8.5, GEAR-AGNOSTIC §6.2). And the obvious implementation is already falsified — discretizing the
+scorer measured *worse* across a full column on gear A (r 0.7910 vs 0.9337). What §8.23–§8.25
+establish is the **target and its size**, not the fix.
