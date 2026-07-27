@@ -1333,3 +1333,66 @@ So a press the model legalises at `eff + cd` is still on cooldown in the sim unt
 scoring one, so it does not touch the objective — but it is the next thing to fix, and the fix is the
 same one applied three times already: chain from the moment the ability fires, not from the moment it
 was pressed.
+
+## 6.15 ★ "16 OF 16 PLANS CHANGED" OVERSTATES IT — the plan moves far more than the score does
+
+**User:** *"I expect the very simple fights to not change that much, no? Or do you mean just the
+effective casts calculation in them?"*
+
+Right on the value, and the distinction is exactly the one to draw — **two different things changed, and
+they are different sizes.**
+
+### 6.15a The READOUT — same plan, reported count drops ~0.5–0.9 casts
+
+Scoring the *identical* plan with the old engine and the new one (`total`, in effective ABs at T):
+
+```
+  Hydross the Unstable    87.451 -> 86.918   -0.533
+  2:00 lust 0:05         100.784 ->  99.918  -0.867
+  2:40 lust 0:05         129.674 -> 129.080  -0.594
+```
+
+Honest re-accounting, not a loss: `total` now counts casts that **complete** by the kill, where the rate
+integral credited the straddling cast fractionally. A cast still in flight when the boss dies did not
+happen.
+
+### 6.15b The PLAN — better everywhere, by a little, with no regressions
+
+Both plan sets rescored by the **same** (current) engine, so the numbers are comparable
+(`tools/plan-rescore.mjs`):
+
+| | |
+|---|---|
+| new plan better | **15 of 16** |
+| plateau (\|Δ\| < 0.001 casts) | 1 |
+| ⛔ new plan WORSE than the old one | **0** |
+| range of the gain | +0.061 … +0.703 effective ABs |
+
+Zero regressions is the load-bearing line: a cell where the OLD engine's plan outscores the NEW
+engine's own output, under the new engine's own scorer, would be a **search** failure with nothing to do
+with the scorer change. There are none.
+
+### 6.15c ⇒ AND THAT REFRAMES THE BLAST RADIUS
+
+`plan-diff` says 16 of 16 changed. `tools/plan-shift.mjs` says how far, over 142 presses:
+
+```
+  identical press time              29.6%
+  moved ≤ 1 s (same plan, nudged)   26.1%
+  moved 1–5 s                       24.6%
+  moved > 5 s                       19.7%      max 91 s
+  presses added/removed outright        0
+```
+
+**No press was added or dropped anywhere** — every plan keeps its shape: the same cooldowns, the same
+clustering into Lust, the same second wave. And the biggest move is the tell: `2:40 lust 0:05` shifts a
+press by **91 s** and gains **+0.061 effective ABs**, a sixteenth of a cast. **The objective is nearly
+flat across that band, so the argmax hops around a plateau.**
+
+★ **The plan moves far more than the score does, and on the simple fights almost all of the visible
+churn is plateau-hopping rather than a changed decision.** "16 of 16 changed" is true and misleading;
+quote §6.15b's Δ alongside it, or a reader will price a re-placement as a rewrite.
+
+⚠ This is also why `exact-match` being red is not itself informative here — an exact-match diff cannot
+tell a 91 s plateau hop from a real re-decision, and neither can `plan-diff`. That is what
+`plan-rescore` and `plan-shift` are for.
