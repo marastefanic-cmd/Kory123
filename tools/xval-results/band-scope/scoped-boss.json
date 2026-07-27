@@ -1,0 +1,1081 @@
+[
+ {
+  "file": "boss-KaelthasSunstrider-mqg-skull.txt",
+  "kit": "mqg+skull",
+  "class": "BOSS:KaelthasSunstrider",
+  "T": 420,
+  "lust": 260,
+  "seed": 7946,
+  "simH": 0,
+  "borrowedH": 30,
+  "nativeDPS": 2102.2,
+  "borrowedDPS": 2108.6,
+  "pct": 0.304,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    109,
+    395
+   ],
+   "Zerk": [
+    135,
+    395
+   ],
+   "Skull": [
+    0,
+    125,
+    265,
+    385
+   ],
+   "MQG": [
+    105,
+    405
+   ],
+   "IV": [
+    105,
+    125,
+    395
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    105,
+    395
+   ],
+   "Zerk": [
+    134,
+    395
+   ],
+   "Skull": [
+    0,
+    125,
+    261,
+    385
+   ],
+   "MQG": [
+    105,
+    405
+   ],
+   "IV": [
+    105,
+    125,
+    395
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "nativeEff": 266.679,
+  "borrowedEff": 271.39,
+  "_scope": "over-floor"
+ },
+ {
+  "file": "boss-KaelthasSunstrider-mqg-skull.txt",
+  "kit": "mqg+skull",
+  "class": "BOSS:KaelthasSunstrider",
+  "T": 420,
+  "lust": 260,
+  "seed": 7946,
+  "simH": 100,
+  "borrowedH": 0,
+  "nativeDPS": 2207.4,
+  "borrowedDPS": 2213.8,
+  "pct": 0.29,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    105,
+    385
+   ],
+   "Zerk": [
+    2,
+    207,
+    406
+   ],
+   "Skull": [
+    0,
+    125,
+    261,
+    385
+   ],
+   "MQG": [
+    105,
+    405
+   ],
+   "IV": [
+    105,
+    125,
+    385
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    109,
+    395
+   ],
+   "Zerk": [
+    135,
+    395
+   ],
+   "Skull": [
+    0,
+    125,
+    265,
+    385
+   ],
+   "MQG": [
+    105,
+    405
+   ],
+   "IV": [
+    105,
+    125,
+    395
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "nativeEff": 280.465,
+  "borrowedEff": 266.679,
+  "_scope": "over-floor"
+ },
+ {
+  "file": "boss-KaelthasSunstrider-mqg-skull.txt",
+  "kit": "mqg+skull",
+  "class": "BOSS:KaelthasSunstrider",
+  "T": 420,
+  "lust": 260,
+  "seed": 7946,
+  "simH": 160,
+  "borrowedH": 235,
+  "nativeDPS": 2274,
+  "borrowedDPS": 2277.2,
+  "pct": 0.141,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    105,
+    385
+   ],
+   "Zerk": [
+    3,
+    215,
+    406
+   ],
+   "Skull": [
+    0,
+    125,
+    245,
+    385
+   ],
+   "MQG": [
+    105,
+    405
+   ],
+   "IV": [
+    105,
+    125,
+    385
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    130,
+    370
+   ],
+   "Zerk": [
+    3,
+    214,
+    407
+   ],
+   "Skull": [
+    0,
+    125,
+    245,
+    366
+   ],
+   "MQG": [
+    105,
+    405
+   ],
+   "IV": [
+    106,
+    126,
+    366
+   ],
+   "CS": [
+    126
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "nativeEff": 288.331,
+  "borrowedEff": 297.873,
+  "_scope": "over-floor"
+ },
+ {
+  "file": "boss-Alar-mqg-skull.txt",
+  "kit": "mqg+skull",
+  "class": "BOSS:Alar",
+  "T": 240,
+  "lust": 6,
+  "seed": 7406,
+  "simH": 295,
+  "borrowedH": 235,
+  "nativeDPS": 2352,
+  "borrowedDPS": 2354.9,
+  "pct": 0.123,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    10,
+    190
+   ],
+   "Zerk": [
+    47,
+    229
+   ],
+   "Skull": [
+    45,
+    166
+   ],
+   "MQG": [
+    69
+   ],
+   "IV": [
+    112,
+    186
+   ],
+   "CS": [
+    186
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    6,
+    190
+   ],
+   "Zerk": [
+    47,
+    229
+   ],
+   "Skull": [
+    45,
+    186
+   ],
+   "MQG": [
+    69
+   ],
+   "IV": [
+    112,
+    186
+   ],
+   "CS": [
+    186
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "nativeEff": 171.127,
+  "borrowedEff": 167.284,
+  "_scope": "over-floor"
+ },
+ {
+  "file": "boss-Alar-mqg-skull.txt",
+  "kit": "mqg+skull",
+  "class": "BOSS:Alar",
+  "T": 240,
+  "lust": 6,
+  "seed": 7406,
+  "simH": 0,
+  "borrowedH": 100,
+  "nativeDPS": 2043.3,
+  "borrowedDPS": 2045.6,
+  "pct": 0.113,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    6,
+    186
+   ],
+   "Zerk": [
+    40,
+    229
+   ],
+   "Skull": [
+    20,
+    166
+   ],
+   "MQG": [
+    186
+   ],
+   "IV": [
+    0,
+    186,
+    229
+   ],
+   "CS": [
+    229
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    6,
+    186
+   ],
+   "Zerk": [
+    20,
+    229
+   ],
+   "Skull": [
+    30,
+    166
+   ],
+   "MQG": [
+    186
+   ],
+   "IV": [
+    0,
+    181,
+    229
+   ],
+   "CS": [
+    229
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "nativeEff": 149.156,
+  "borrowedEff": 156.553,
+  "_scope": "INDETERMINATE"
+ },
+ {
+  "file": "boss-LadyVashj-mqg-skull.txt",
+  "kit": "mqg+skull",
+  "class": "BOSS:LadyVashj",
+  "T": 390,
+  "lust": 345,
+  "seed": 7975,
+  "simH": 295,
+  "borrowedH": 265,
+  "nativeDPS": 1833.4,
+  "borrowedDPS": 1834.7,
+  "pct": 0.071,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    345
+   ],
+   "AP": [
+    4,
+    184,
+    365
+   ],
+   "Zerk": [
+    20,
+    200,
+    380
+   ],
+   "Skull": [
+    0,
+    120,
+    240,
+    370
+   ],
+   "MQG": [
+    25,
+    325
+   ],
+   "IV": [
+    0,
+    180,
+    290
+   ],
+   "CS": [
+    290
+   ],
+   "_intermissions": [
+    [
+     50,
+     110
+    ],
+    [
+     140,
+     150
+    ],
+    [
+     165,
+     180
+    ],
+    [
+     210,
+     240
+    ],
+    [
+     265,
+     290
+    ],
+    [
+     310,
+     325
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    345
+   ],
+   "AP": [
+    4,
+    190,
+    370
+   ],
+   "Zerk": [
+    19,
+    199,
+    381
+   ],
+   "Skull": [
+    0,
+    120,
+    242,
+    371
+   ],
+   "MQG": [
+    20,
+    325
+   ],
+   "IV": [
+    0,
+    185,
+    290
+   ],
+   "CS": [
+    290
+   ],
+   "_intermissions": [
+    [
+     50,
+     110
+    ],
+    [
+     140,
+     150
+    ],
+    [
+     165,
+     180
+    ],
+    [
+     210,
+     240
+    ],
+    [
+     265,
+     290
+    ],
+    [
+     310,
+     325
+    ]
+   ]
+  },
+  "nativeEff": 217.374,
+  "borrowedEff": 214.968,
+  "_scope": "over-floor"
+ },
+ {
+  "file": "boss-LadyVashj-mqg-skull.txt",
+  "kit": "mqg+skull",
+  "class": "BOSS:LadyVashj",
+  "T": 390,
+  "lust": 345,
+  "seed": 7975,
+  "simH": 235,
+  "borrowedH": 265,
+  "nativeDPS": 1797.2,
+  "borrowedDPS": 1798,
+  "pct": 0.045,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    345
+   ],
+   "AP": [
+    4,
+    194,
+    374
+   ],
+   "Zerk": [
+    19,
+    199,
+    380
+   ],
+   "Skull": [
+    0,
+    120,
+    240,
+    370
+   ],
+   "MQG": [
+    20,
+    325
+   ],
+   "IV": [
+    0,
+    189,
+    240
+   ],
+   "CS": [
+    240
+   ],
+   "_intermissions": [
+    [
+     50,
+     110
+    ],
+    [
+     140,
+     150
+    ],
+    [
+     165,
+     180
+    ],
+    [
+     210,
+     240
+    ],
+    [
+     265,
+     290
+    ],
+    [
+     310,
+     325
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    345
+   ],
+   "AP": [
+    4,
+    190,
+    370
+   ],
+   "Zerk": [
+    19,
+    199,
+    381
+   ],
+   "Skull": [
+    0,
+    120,
+    242,
+    371
+   ],
+   "MQG": [
+    20,
+    325
+   ],
+   "IV": [
+    0,
+    185,
+    290
+   ],
+   "CS": [
+    290
+   ],
+   "_intermissions": [
+    [
+     50,
+     110
+    ],
+    [
+     140,
+     150
+    ],
+    [
+     165,
+     180
+    ],
+    [
+     210,
+     240
+    ],
+    [
+     265,
+     290
+    ],
+    [
+     310,
+     325
+    ]
+   ]
+  },
+  "nativeEff": 212.917,
+  "borrowedEff": 214.968,
+  "_scope": "over-floor"
+ },
+ {
+  "file": "boss-KaelthasSunstrider-mqg-skull.txt",
+  "kit": "mqg+skull",
+  "class": "BOSS:KaelthasSunstrider",
+  "T": 420,
+  "lust": 260,
+  "seed": 7946,
+  "simH": 235,
+  "borrowedH": 265,
+  "nativeDPS": 2346.5,
+  "borrowedDPS": 2347.1,
+  "pct": 0.026,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    130,
+    370
+   ],
+   "Zerk": [
+    3,
+    214,
+    407
+   ],
+   "Skull": [
+    0,
+    125,
+    245,
+    366
+   ],
+   "MQG": [
+    105,
+    405
+   ],
+   "IV": [
+    106,
+    126,
+    366
+   ],
+   "CS": [
+    126
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    125,
+    396
+   ],
+   "Zerk": [
+    0,
+    211,
+    398
+   ],
+   "Skull": [
+    0,
+    121,
+    241,
+    376
+   ],
+   "MQG": [
+    55,
+    396
+   ],
+   "IV": [
+    105,
+    125,
+    346
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "nativeEff": 297.873,
+  "borrowedEff": 300.454,
+  "_scope": "INDETERMINATE"
+ }
+]

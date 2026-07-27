@@ -1,0 +1,8523 @@
+[
+ {
+  "file": "boss-Alar-isc-scb.txt",
+  "kit": "isc+scb",
+  "class": "BOSS:Alar",
+  "T": 240,
+  "lust": 6,
+  "seed": 8121,
+  "simH": 65,
+  "borrowedH": 195,
+  "nativeDPS": 2100.9,
+  "borrowedDPS": 2101.5,
+  "pct": 0.029,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    5,
+    185
+   ],
+   "Zerk": [
+    0,
+    186
+   ],
+   "Icon": [
+    4,
+    180
+   ],
+   "Gem": [
+    5,
+    185
+   ],
+   "IV": [
+    0,
+    180,
+    229
+   ],
+   "CS": [
+    229
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    4,
+    186
+   ],
+   "Zerk": [
+    0,
+    186
+   ],
+   "Icon": [
+    4,
+    186
+   ],
+   "Gem": [
+    4,
+    186
+   ],
+   "IV": [
+    0,
+    186,
+    229
+   ],
+   "CS": [
+    229
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "nativeEff": 153.087,
+  "borrowedEff": 164.029
+ },
+ {
+  "file": "boss-Alar-isc-scb.txt",
+  "kit": "isc+scb",
+  "class": "BOSS:Alar",
+  "T": 240,
+  "lust": 6,
+  "seed": 8121,
+  "simH": 140,
+  "borrowedH": 195,
+  "nativeDPS": 2193,
+  "borrowedDPS": 2193.3,
+  "pct": 0.014,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    5,
+    185
+   ],
+   "Zerk": [
+    0,
+    185
+   ],
+   "Icon": [
+    4,
+    181
+   ],
+   "Gem": [
+    5,
+    185
+   ],
+   "IV": [
+    0,
+    181,
+    229
+   ],
+   "CS": [
+    229
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    4,
+    186
+   ],
+   "Zerk": [
+    0,
+    186
+   ],
+   "Icon": [
+    4,
+    186
+   ],
+   "Gem": [
+    4,
+    186
+   ],
+   "IV": [
+    0,
+    186,
+    229
+   ],
+   "CS": [
+    229
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "nativeEff": 159.413,
+  "borrowedEff": 164.029
+ },
+ {
+  "file": "boss-Alar-isc-scb.txt",
+  "kit": "isc+scb",
+  "class": "BOSS:Alar",
+  "T": 240,
+  "lust": 6,
+  "seed": 8121,
+  "simH": 0,
+  "borrowedH": 195,
+  "nativeDPS": 2023.1,
+  "borrowedDPS": 2023.3,
+  "pct": 0.01,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    5,
+    185
+   ],
+   "Zerk": [
+    0,
+    187
+   ],
+   "Icon": [
+    4,
+    181
+   ],
+   "Gem": [
+    5,
+    185
+   ],
+   "IV": [
+    0,
+    181,
+    229
+   ],
+   "CS": [
+    229
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    4,
+    186
+   ],
+   "Zerk": [
+    0,
+    186
+   ],
+   "Icon": [
+    4,
+    186
+   ],
+   "Gem": [
+    4,
+    186
+   ],
+   "IV": [
+    0,
+    186,
+    229
+   ],
+   "CS": [
+    229
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "nativeEff": 147.54,
+  "borrowedEff": 164.029
+ },
+ {
+  "file": "boss-Alar-isc-scb.txt",
+  "kit": "isc+scb",
+  "class": "BOSS:Alar",
+  "T": 240,
+  "lust": 6,
+  "seed": 8121,
+  "simH": 165,
+  "borrowedH": 0,
+  "nativeDPS": 2219.6,
+  "borrowedDPS": 2219.8,
+  "pct": 0.009,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    5,
+    185
+   ],
+   "Zerk": [
+    0,
+    186
+   ],
+   "Icon": [
+    4,
+    180
+   ],
+   "Gem": [
+    5,
+    185
+   ],
+   "IV": [
+    0,
+    180,
+    229
+   ],
+   "CS": [
+    229
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    5,
+    185
+   ],
+   "Zerk": [
+    0,
+    187
+   ],
+   "Icon": [
+    4,
+    181
+   ],
+   "Gem": [
+    5,
+    185
+   ],
+   "IV": [
+    0,
+    181,
+    229
+   ],
+   "CS": [
+    229
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "nativeEff": 161.513,
+  "borrowedEff": 147.54
+ },
+ {
+  "file": "boss-Alar-isc-scb.txt",
+  "kit": "isc+scb",
+  "class": "BOSS:Alar",
+  "T": 240,
+  "lust": 6,
+  "seed": 8121,
+  "simH": 195,
+  "borrowedH": 0,
+  "nativeDPS": 2264.7,
+  "borrowedDPS": 2264.9,
+  "pct": 0.009,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    4,
+    186
+   ],
+   "Zerk": [
+    0,
+    186
+   ],
+   "Icon": [
+    4,
+    186
+   ],
+   "Gem": [
+    4,
+    186
+   ],
+   "IV": [
+    0,
+    186,
+    229
+   ],
+   "CS": [
+    229
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    5,
+    185
+   ],
+   "Zerk": [
+    0,
+    187
+   ],
+   "Icon": [
+    4,
+    181
+   ],
+   "Gem": [
+    5,
+    185
+   ],
+   "IV": [
+    0,
+    181,
+    229
+   ],
+   "CS": [
+    229
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "nativeEff": 164.029,
+  "borrowedEff": 147.54
+ },
+ {
+  "file": "boss-Alar-mqg-skull.txt",
+  "kit": "mqg+skull",
+  "class": "BOSS:Alar",
+  "T": 240,
+  "lust": 6,
+  "seed": 7406,
+  "simH": 70,
+  "borrowedH": 0,
+  "nativeDPS": 2126.6,
+  "borrowedDPS": 2126.7,
+  "pct": 0.005,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    6,
+    187
+   ],
+   "Zerk": [
+    40,
+    229
+   ],
+   "Skull": [
+    20,
+    166
+   ],
+   "MQG": [
+    187
+   ],
+   "IV": [
+    0,
+    187,
+    229
+   ],
+   "CS": [
+    229
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    6,
+    186
+   ],
+   "Zerk": [
+    40,
+    229
+   ],
+   "Skull": [
+    20,
+    166
+   ],
+   "MQG": [
+    186
+   ],
+   "IV": [
+    0,
+    186,
+    229
+   ],
+   "CS": [
+    229
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "nativeEff": 154.833,
+  "borrowedEff": 149.156
+ },
+ {
+  "file": "boss-Alar-mqg-skull.txt",
+  "kit": "mqg+skull",
+  "class": "BOSS:Alar",
+  "T": 240,
+  "lust": 6,
+  "seed": 7406,
+  "simH": 400,
+  "borrowedH": 295,
+  "nativeDPS": 2443,
+  "borrowedDPS": 2443.1,
+  "pct": 0.004,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    6,
+    187
+   ],
+   "Zerk": [
+    47,
+    229
+   ],
+   "Skull": [
+    45,
+    166
+   ],
+   "MQG": [
+    69
+   ],
+   "IV": [
+    112,
+    187
+   ],
+   "CS": [
+    187
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    6
+   ],
+   "AP": [
+    10,
+    190
+   ],
+   "Zerk": [
+    47,
+    229
+   ],
+   "Skull": [
+    45,
+    166
+   ],
+   "MQG": [
+    69
+   ],
+   "IV": [
+    112,
+    186
+   ],
+   "CS": [
+    186
+   ],
+   "_intermissions": [
+    [
+     65,
+     69
+    ],
+    [
+     95,
+     112
+    ],
+    [
+     154,
+     166
+    ],
+    [
+     208,
+     229
+    ]
+   ]
+  },
+  "nativeEff": 178.156,
+  "borrowedEff": 171.127
+ },
+ {
+  "file": "boss-KaelthasSunstrider-isc-scb.txt",
+  "kit": "isc+scb",
+  "class": "BOSS:KaelthasSunstrider",
+  "T": 420,
+  "lust": 260,
+  "seed": 5043,
+  "simH": 0,
+  "borrowedH": 140,
+  "nativeDPS": 2031.3,
+  "borrowedDPS": 2033,
+  "pct": 0.084,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    130,
+    392
+   ],
+   "Zerk": [
+    130,
+    392
+   ],
+   "Icon": [
+    0,
+    125,
+    260,
+    387
+   ],
+   "Gem": [
+    130,
+    271,
+    392
+   ],
+   "IV": [
+    105,
+    125,
+    387
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    122,
+    381
+   ],
+   "Zerk": [
+    122,
+    381
+   ],
+   "Icon": [
+    0,
+    122,
+    260,
+    381
+   ],
+   "Gem": [
+    122,
+    260,
+    381
+   ],
+   "IV": [
+    105,
+    125,
+    381
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "nativeEff": 257.1,
+  "borrowedEff": 280.778
+ },
+ {
+  "file": "boss-KaelthasSunstrider-isc-scb.txt",
+  "kit": "isc+scb",
+  "class": "BOSS:KaelthasSunstrider",
+  "T": 420,
+  "lust": 260,
+  "seed": 5043,
+  "simH": 95,
+  "borrowedH": 65,
+  "nativeDPS": 2159.1,
+  "borrowedDPS": 2160.7,
+  "pct": 0.074,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    129,
+    395
+   ],
+   "Zerk": [
+    129,
+    395
+   ],
+   "Icon": [
+    0,
+    125,
+    260,
+    390
+   ],
+   "Gem": [
+    129,
+    260,
+    395
+   ],
+   "IV": [
+    105,
+    125,
+    390
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    120,
+    395
+   ],
+   "Zerk": [
+    121,
+    395
+   ],
+   "Icon": [
+    0,
+    120,
+    260,
+    395
+   ],
+   "Gem": [
+    120,
+    260,
+    395
+   ],
+   "IV": [
+    105,
+    125,
+    395
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "nativeEff": 273.07,
+  "borrowedEff": 267.936
+ },
+ {
+  "file": "boss-KaelthasSunstrider-isc-scb.txt",
+  "kit": "isc+scb",
+  "class": "BOSS:KaelthasSunstrider",
+  "T": 420,
+  "lust": 260,
+  "seed": 5043,
+  "simH": 195,
+  "borrowedH": 140,
+  "nativeDPS": 2296.1,
+  "borrowedDPS": 2297.2,
+  "pct": 0.048,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    116,
+    381
+   ],
+   "Zerk": [
+    116,
+    381
+   ],
+   "Icon": [
+    0,
+    120,
+    260,
+    381
+   ],
+   "Gem": [
+    116,
+    260,
+    381
+   ],
+   "IV": [
+    105,
+    125,
+    381
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    122,
+    381
+   ],
+   "Zerk": [
+    122,
+    381
+   ],
+   "Icon": [
+    0,
+    122,
+    260,
+    381
+   ],
+   "Gem": [
+    122,
+    260,
+    381
+   ],
+   "IV": [
+    105,
+    125,
+    381
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "nativeEff": 289.95,
+  "borrowedEff": 280.778
+ },
+ {
+  "file": "boss-KaelthasSunstrider-isc-scb.txt",
+  "kit": "isc+scb",
+  "class": "BOSS:KaelthasSunstrider",
+  "T": 420,
+  "lust": 260,
+  "seed": 5043,
+  "simH": 20,
+  "borrowedH": 95,
+  "nativeDPS": 2071.7,
+  "borrowedDPS": 2072.1,
+  "pct": 0.019,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    125,
+    395
+   ],
+   "Zerk": [
+    125,
+    395
+   ],
+   "Icon": [
+    0,
+    125,
+    260,
+    390
+   ],
+   "Gem": [
+    125,
+    275,
+    395
+   ],
+   "IV": [
+    105,
+    125,
+    390
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    129,
+    395
+   ],
+   "Zerk": [
+    129,
+    395
+   ],
+   "Icon": [
+    0,
+    125,
+    260,
+    390
+   ],
+   "Gem": [
+    129,
+    260,
+    395
+   ],
+   "IV": [
+    105,
+    125,
+    390
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "nativeEff": 260.486,
+  "borrowedEff": 273.07
+ },
+ {
+  "file": "boss-KaelthasSunstrider-isc-scb.txt",
+  "kit": "isc+scb",
+  "class": "BOSS:KaelthasSunstrider",
+  "T": 420,
+  "lust": 260,
+  "seed": 5043,
+  "simH": 65,
+  "borrowedH": 95,
+  "nativeDPS": 2132.8,
+  "borrowedDPS": 2133.2,
+  "pct": 0.019,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    120,
+    395
+   ],
+   "Zerk": [
+    121,
+    395
+   ],
+   "Icon": [
+    0,
+    120,
+    260,
+    395
+   ],
+   "Gem": [
+    120,
+    260,
+    395
+   ],
+   "IV": [
+    105,
+    125,
+    395
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    129,
+    395
+   ],
+   "Zerk": [
+    129,
+    395
+   ],
+   "Icon": [
+    0,
+    125,
+    260,
+    390
+   ],
+   "Gem": [
+    129,
+    260,
+    395
+   ],
+   "IV": [
+    105,
+    125,
+    390
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "nativeEff": 267.936,
+  "borrowedEff": 273.07
+ },
+ {
+  "file": "boss-KaelthasSunstrider-isc-scb.txt",
+  "kit": "isc+scb",
+  "class": "BOSS:KaelthasSunstrider",
+  "T": 420,
+  "lust": 260,
+  "seed": 5043,
+  "simH": 215,
+  "borrowedH": 95,
+  "nativeDPS": 2329.3,
+  "borrowedDPS": 2329.6,
+  "pct": 0.013,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    125,
+    395
+   ],
+   "Zerk": [
+    125,
+    395
+   ],
+   "Icon": [
+    0,
+    125,
+    260,
+    390
+   ],
+   "Gem": [
+    125,
+    275,
+    395
+   ],
+   "IV": [
+    105,
+    125,
+    390
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    129,
+    395
+   ],
+   "Zerk": [
+    129,
+    395
+   ],
+   "Icon": [
+    0,
+    125,
+    260,
+    390
+   ],
+   "Gem": [
+    129,
+    260,
+    395
+   ],
+   "IV": [
+    105,
+    125,
+    390
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "nativeEff": 293.408,
+  "borrowedEff": 273.07
+ },
+ {
+  "file": "boss-KaelthasSunstrider-isc-scb.txt",
+  "kit": "isc+scb",
+  "class": "BOSS:KaelthasSunstrider",
+  "T": 420,
+  "lust": 260,
+  "seed": 5043,
+  "simH": 165,
+  "borrowedH": 245,
+  "nativeDPS": 2264.8,
+  "borrowedDPS": 2265,
+  "pct": 0.009,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    120,
+    381
+   ],
+   "Zerk": [
+    121,
+    381
+   ],
+   "Icon": [
+    0,
+    120,
+    260,
+    381
+   ],
+   "Gem": [
+    120,
+    260,
+    381
+   ],
+   "IV": [
+    105,
+    125,
+    381
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    121,
+    396
+   ],
+   "Zerk": [
+    122,
+    396
+   ],
+   "Icon": [
+    0,
+    121,
+    265,
+    396
+   ],
+   "Gem": [
+    121,
+    265,
+    396
+   ],
+   "IV": [
+    105,
+    125,
+    396
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "nativeEff": 284.819,
+  "borrowedEff": 297.731
+ },
+ {
+  "file": "boss-KaelthasSunstrider-mqg-skull.txt",
+  "kit": "mqg+skull",
+  "class": "BOSS:KaelthasSunstrider",
+  "T": 420,
+  "lust": 260,
+  "seed": 7946,
+  "simH": 30,
+  "borrowedH": 70,
+  "nativeDPS": 2142.5,
+  "borrowedDPS": 2143.7,
+  "pct": 0.056,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    105,
+    395
+   ],
+   "Zerk": [
+    134,
+    395
+   ],
+   "Skull": [
+    0,
+    125,
+    261,
+    385
+   ],
+   "MQG": [
+    105,
+    405
+   ],
+   "IV": [
+    105,
+    125,
+    395
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    105,
+    399
+   ],
+   "Zerk": [
+    125,
+    395
+   ],
+   "Skull": [
+    0,
+    126,
+    260,
+    385
+   ],
+   "MQG": [
+    105,
+    405
+   ],
+   "IV": [
+    105,
+    125,
+    399
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "nativeEff": 271.39,
+  "borrowedEff": 277.273
+ },
+ {
+  "file": "boss-KaelthasSunstrider-mqg-skull.txt",
+  "kit": "mqg+skull",
+  "class": "BOSS:KaelthasSunstrider",
+  "T": 420,
+  "lust": 260,
+  "seed": 7946,
+  "simH": 190,
+  "borrowedH": 235,
+  "nativeDPS": 2308.6,
+  "borrowedDPS": 2309.3,
+  "pct": 0.03,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    105,
+    385
+   ],
+   "Zerk": [
+    3,
+    215,
+    406
+   ],
+   "Skull": [
+    0,
+    125,
+    245,
+    385
+   ],
+   "MQG": [
+    105,
+    405
+   ],
+   "IV": [
+    105,
+    125,
+    385
+   ],
+   "CS": [
+    125
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    260
+   ],
+   "AP": [
+    130,
+    370
+   ],
+   "Zerk": [
+    3,
+    214,
+    407
+   ],
+   "Skull": [
+    0,
+    125,
+    245,
+    366
+   ],
+   "MQG": [
+    105,
+    405
+   ],
+   "IV": [
+    106,
+    126,
+    366
+   ],
+   "CS": [
+    126
+   ],
+   "_intermissions": [
+    [
+     15,
+     30
+    ],
+    [
+     42,
+     55
+    ],
+    [
+     69,
+     80
+    ],
+    [
+     94,
+     105
+    ],
+    [
+     160,
+     205
+    ],
+    [
+     306,
+     346
+    ]
+   ],
+   "_aoe": [
+    [
+     105,
+     145
+    ]
+   ]
+  },
+  "nativeEff": 292.31,
+  "borrowedEff": 297.873
+ },
+ {
+  "file": "boss-LadyVashj-isc-scb.txt",
+  "kit": "isc+scb",
+  "class": "BOSS:LadyVashj",
+  "T": 390,
+  "lust": 345,
+  "seed": 6059,
+  "simH": 140,
+  "borrowedH": 165,
+  "nativeDPS": 1702.2,
+  "borrowedDPS": 1702.9,
+  "pct": 0.041,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    345
+   ],
+   "AP": [
+    4,
+    185,
+    366
+   ],
+   "Zerk": [
+    5,
+    185,
+    366
+   ],
+   "Icon": [
+    0,
+    120,
+    245,
+    365
+   ],
+   "Gem": [
+    4,
+    185,
+    366
+   ],
+   "IV": [
+    0,
+    182,
+    242
+   ],
+   "CS": [
+    242
+   ],
+   "_intermissions": [
+    [
+     50,
+     110
+    ],
+    [
+     140,
+     150
+    ],
+    [
+     165,
+     180
+    ],
+    [
+     210,
+     240
+    ],
+    [
+     265,
+     290
+    ],
+    [
+     310,
+     325
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    345
+   ],
+   "AP": [
+    4,
+    185,
+    370
+   ],
+   "Zerk": [
+    5,
+    185,
+    379
+   ],
+   "Icon": [
+    0,
+    120,
+    245,
+    365
+   ],
+   "Gem": [
+    4,
+    185,
+    370
+   ],
+   "IV": [
+    0,
+    182,
+    242
+   ],
+   "CS": [
+    242
+   ],
+   "_intermissions": [
+    [
+     50,
+     110
+    ],
+    [
+     140,
+     150
+    ],
+    [
+     165,
+     180
+    ],
+    [
+     210,
+     240
+    ],
+    [
+     265,
+     290
+    ],
+    [
+     310,
+     325
+    ]
+   ]
+  },
+  "nativeEff": 201.174,
+  "borrowedEff": 204.074
+ },
+ {
+  "file": "boss-LadyVashj-isc-scb.txt",
+  "kit": "isc+scb",
+  "class": "BOSS:LadyVashj",
+  "T": 390,
+  "lust": 345,
+  "seed": 6059,
+  "simH": 95,
+  "borrowedH": 165,
+  "nativeDPS": 1662.9,
+  "borrowedDPS": 1663.4,
+  "pct": 0.03,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    345
+   ],
+   "AP": [
+    5,
+    185,
+    366
+   ],
+   "Zerk": [
+    5,
+    185,
+    366
+   ],
+   "Icon": [
+    0,
+    120,
+    244,
+    364
+   ],
+   "Gem": [
+    5,
+    185,
+    366
+   ],
+   "IV": [
+    0,
+    182,
+    244
+   ],
+   "CS": [
+    244
+   ],
+   "_intermissions": [
+    [
+     50,
+     110
+    ],
+    [
+     140,
+     150
+    ],
+    [
+     165,
+     180
+    ],
+    [
+     210,
+     240
+    ],
+    [
+     265,
+     290
+    ],
+    [
+     310,
+     325
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    345
+   ],
+   "AP": [
+    4,
+    185,
+    370
+   ],
+   "Zerk": [
+    5,
+    185,
+    379
+   ],
+   "Icon": [
+    0,
+    120,
+    245,
+    365
+   ],
+   "Gem": [
+    4,
+    185,
+    370
+   ],
+   "IV": [
+    0,
+    182,
+    242
+   ],
+   "CS": [
+    242
+   ],
+   "_intermissions": [
+    [
+     50,
+     110
+    ],
+    [
+     140,
+     150
+    ],
+    [
+     165,
+     180
+    ],
+    [
+     210,
+     240
+    ],
+    [
+     265,
+     290
+    ],
+    [
+     310,
+     325
+    ]
+   ]
+  },
+  "nativeEff": 196.023,
+  "borrowedEff": 204.074
+ },
+ {
+  "file": "boss-LadyVashj-isc-scb.txt",
+  "kit": "isc+scb",
+  "class": "BOSS:LadyVashj",
+  "T": 390,
+  "lust": 345,
+  "seed": 6059,
+  "simH": 65,
+  "borrowedH": 95,
+  "nativeDPS": 1639.1,
+  "borrowedDPS": 1639.2,
+  "pct": 0.006,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    345
+   ],
+   "AP": [
+    5,
+    185,
+    366
+   ],
+   "Zerk": [
+    5,
+    185,
+    366
+   ],
+   "Icon": [
+    0,
+    120,
+    244,
+    365
+   ],
+   "Gem": [
+    5,
+    185,
+    366
+   ],
+   "IV": [
+    0,
+    184,
+    244
+   ],
+   "CS": [
+    244
+   ],
+   "_intermissions": [
+    [
+     50,
+     110
+    ],
+    [
+     140,
+     150
+    ],
+    [
+     165,
+     180
+    ],
+    [
+     210,
+     240
+    ],
+    [
+     265,
+     290
+    ],
+    [
+     310,
+     325
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    345
+   ],
+   "AP": [
+    5,
+    185,
+    366
+   ],
+   "Zerk": [
+    5,
+    185,
+    366
+   ],
+   "Icon": [
+    0,
+    120,
+    244,
+    364
+   ],
+   "Gem": [
+    5,
+    185,
+    366
+   ],
+   "IV": [
+    0,
+    182,
+    244
+   ],
+   "CS": [
+    244
+   ],
+   "_intermissions": [
+    [
+     50,
+     110
+    ],
+    [
+     140,
+     150
+    ],
+    [
+     165,
+     180
+    ],
+    [
+     210,
+     240
+    ],
+    [
+     265,
+     290
+    ],
+    [
+     310,
+     325
+    ]
+   ]
+  },
+  "nativeEff": 192.482,
+  "borrowedEff": 196.023
+ },
+ {
+  "file": "boss-LadyVashj-isc-scb.txt",
+  "kit": "isc+scb",
+  "class": "BOSS:LadyVashj",
+  "T": 390,
+  "lust": 345,
+  "seed": 6059,
+  "simH": 215,
+  "borrowedH": 165,
+  "nativeDPS": 1780.2,
+  "borrowedDPS": 1780.3,
+  "pct": 0.006,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    345
+   ],
+   "AP": [
+    4,
+    184,
+    369
+   ],
+   "Zerk": [
+    4,
+    184,
+    380
+   ],
+   "Icon": [
+    0,
+    120,
+    245,
+    365
+   ],
+   "Gem": [
+    4,
+    184,
+    369
+   ],
+   "IV": [
+    0,
+    180,
+    242
+   ],
+   "CS": [
+    242
+   ],
+   "_intermissions": [
+    [
+     50,
+     110
+    ],
+    [
+     140,
+     150
+    ],
+    [
+     165,
+     180
+    ],
+    [
+     210,
+     240
+    ],
+    [
+     265,
+     290
+    ],
+    [
+     310,
+     325
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    345
+   ],
+   "AP": [
+    4,
+    185,
+    370
+   ],
+   "Zerk": [
+    5,
+    185,
+    379
+   ],
+   "Icon": [
+    0,
+    120,
+    245,
+    365
+   ],
+   "Gem": [
+    4,
+    185,
+    370
+   ],
+   "IV": [
+    0,
+    182,
+    242
+   ],
+   "CS": [
+    242
+   ],
+   "_intermissions": [
+    [
+     50,
+     110
+    ],
+    [
+     140,
+     150
+    ],
+    [
+     165,
+     180
+    ],
+    [
+     210,
+     240
+    ],
+    [
+     265,
+     290
+    ],
+    [
+     310,
+     325
+    ]
+   ]
+  },
+  "nativeEff": 209.993,
+  "borrowedEff": 204.074
+ },
+ {
+  "file": "boss-LadyVashj-mqg-skull.txt",
+  "kit": "mqg+skull",
+  "class": "BOSS:LadyVashj",
+  "T": 390,
+  "lust": 345,
+  "seed": 7975,
+  "simH": 160,
+  "borrowedH": 100,
+  "nativeDPS": 1734.2,
+  "borrowedDPS": 1734.7,
+  "pct": 0.029,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    345
+   ],
+   "AP": [
+    4,
+    189,
+    370
+   ],
+   "Zerk": [
+    19,
+    199,
+    380
+   ],
+   "Skull": [
+    0,
+    120,
+    240,
+    360
+   ],
+   "MQG": [
+    20,
+    325
+   ],
+   "IV": [
+    0,
+    189,
+    240
+   ],
+   "CS": [
+    240
+   ],
+   "_intermissions": [
+    [
+     50,
+     110
+    ],
+    [
+     140,
+     150
+    ],
+    [
+     165,
+     180
+    ],
+    [
+     210,
+     240
+    ],
+    [
+     265,
+     290
+    ],
+    [
+     310,
+     325
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    345
+   ],
+   "AP": [
+    4,
+    186,
+    366
+   ],
+   "Zerk": [
+    0,
+    186,
+    380
+   ],
+   "Skull": [
+    0,
+    120,
+    240,
+    360
+   ],
+   "MQG": [
+    20,
+    325
+   ],
+   "IV": [
+    0,
+    186,
+    240
+   ],
+   "CS": [
+    240
+   ],
+   "_intermissions": [
+    [
+     50,
+     110
+    ],
+    [
+     140,
+     150
+    ],
+    [
+     165,
+     180
+    ],
+    [
+     210,
+     240
+    ],
+    [
+     265,
+     290
+    ],
+    [
+     310,
+     325
+    ]
+   ]
+  },
+  "nativeEff": 205.388,
+  "borrowedEff": 199.476
+ },
+ {
+  "file": "boss-LadyVashj-mqg-skull.txt",
+  "kit": "mqg+skull",
+  "class": "BOSS:LadyVashj",
+  "T": 390,
+  "lust": 345,
+  "seed": 7975,
+  "simH": 30,
+  "borrowedH": 0,
+  "nativeDPS": 1627.4,
+  "borrowedDPS": 1627.6,
+  "pct": 0.012,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    345
+   ],
+   "AP": [
+    9,
+    189,
+    370
+   ],
+   "Zerk": [
+    10,
+    190,
+    380
+   ],
+   "Skull": [
+    0,
+    120,
+    240,
+    360
+   ],
+   "MQG": [
+    20,
+    325
+   ],
+   "IV": [
+    9,
+    189,
+    325
+   ],
+   "CS": [
+    325
+   ],
+   "_intermissions": [
+    [
+     50,
+     110
+    ],
+    [
+     140,
+     150
+    ],
+    [
+     165,
+     180
+    ],
+    [
+     210,
+     240
+    ],
+    [
+     265,
+     290
+    ],
+    [
+     310,
+     325
+    ]
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    345
+   ],
+   "AP": [
+    9,
+    189,
+    370
+   ],
+   "Zerk": [
+    10,
+    190,
+    379
+   ],
+   "Skull": [
+    0,
+    120,
+    240,
+    360
+   ],
+   "MQG": [
+    20,
+    325
+   ],
+   "IV": [
+    9,
+    189,
+    325
+   ],
+   "CS": [
+    325
+   ],
+   "_intermissions": [
+    [
+     50,
+     110
+    ],
+    [
+     140,
+     150
+    ],
+    [
+     165,
+     180
+    ],
+    [
+     210,
+     240
+    ],
+    [
+     265,
+     290
+    ],
+    [
+     310,
+     325
+    ]
+   ]
+  },
+  "nativeEff": 192.539,
+  "borrowedEff": 189.045
+ },
+ {
+  "file": "isc-mqg-long.txt",
+  "kit": "isc+mqg",
+  "class": "long",
+  "T": 281,
+  "lust": 131,
+  "seed": 5524,
+  "simH": 230,
+  "borrowedH": 260,
+  "nativeDPS": 2855.9,
+  "borrowedDPS": 2857.1,
+  "pct": 0.042,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    131
+   ],
+   "AP": [
+    5,
+    251
+   ],
+   "Zerk": [
+    5,
+    251
+   ],
+   "Icon": [
+    5,
+    131,
+    251
+   ],
+   "MQG": [
+    46
+   ],
+   "IV": [
+    5,
+    25,
+    251
+   ],
+   "CS": [
+    25
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    131
+   ],
+   "AP": [
+    4,
+    251
+   ],
+   "Zerk": [
+    0,
+    251
+   ],
+   "Icon": [
+    4,
+    131,
+    251
+   ],
+   "MQG": [
+    172
+   ],
+   "IV": [
+    0,
+    20,
+    251
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 247.533,
+  "borrowedEff": 250.789
+ },
+ {
+  "file": "isc-mqg-long.txt",
+  "kit": "isc+mqg",
+  "class": "long",
+  "T": 281,
+  "lust": 131,
+  "seed": 5524,
+  "simH": 70,
+  "borrowedH": 0,
+  "nativeDPS": 2617.6,
+  "borrowedDPS": 2618.6,
+  "pct": 0.038,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    131
+   ],
+   "AP": [
+    4,
+    260
+   ],
+   "Zerk": [
+    20,
+    260
+   ],
+   "Icon": [
+    20,
+    140,
+    260
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    0,
+    20,
+    260
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    131
+   ],
+   "AP": [
+    6,
+    187
+   ],
+   "Zerk": [
+    6,
+    251
+   ],
+   "Icon": [
+    6,
+    131,
+    251
+   ],
+   "MQG": [
+    187
+   ],
+   "IV": [
+    6,
+    187,
+    251
+   ],
+   "CS": [
+    251
+   ]
+  },
+  "nativeEff": 226.652,
+  "borrowedEff": 217.19
+ },
+ {
+  "file": "isc-mqg-long.txt",
+  "kit": "isc+mqg",
+  "class": "long",
+  "T": 281,
+  "lust": 131,
+  "seed": 5524,
+  "simH": 0,
+  "borrowedH": 70,
+  "nativeDPS": 2505.5,
+  "borrowedDPS": 2505.7,
+  "pct": 0.008,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    131
+   ],
+   "AP": [
+    6,
+    187
+   ],
+   "Zerk": [
+    6,
+    251
+   ],
+   "Icon": [
+    6,
+    131,
+    251
+   ],
+   "MQG": [
+    187
+   ],
+   "IV": [
+    6,
+    187,
+    251
+   ],
+   "CS": [
+    251
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    131
+   ],
+   "AP": [
+    4,
+    260
+   ],
+   "Zerk": [
+    20,
+    260
+   ],
+   "Icon": [
+    20,
+    140,
+    260
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    0,
+    20,
+    260
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 217.19,
+  "borrowedEff": 226.652
+ },
+ {
+  "file": "isc-mqg-medium.txt",
+  "kit": "isc+mqg",
+  "class": "medium",
+  "T": 176,
+  "lust": 93,
+  "seed": 5522,
+  "simH": 20,
+  "borrowedH": 0,
+  "nativeDPS": 2596.5,
+  "borrowedDPS": 2599.1,
+  "pct": 0.1,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    93
+   ],
+   "AP": [
+    119
+   ],
+   "Zerk": [
+    120
+   ],
+   "Icon": [
+    0,
+    120
+   ],
+   "MQG": [
+    21
+   ],
+   "IV": [
+    0,
+    21
+   ],
+   "CS": [
+    21
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    93
+   ],
+   "AP": [
+    118
+   ],
+   "Zerk": [
+    93
+   ],
+   "Icon": [
+    0,
+    120
+   ],
+   "MQG": [
+    21
+   ],
+   "IV": [
+    21,
+    118
+   ],
+   "CS": [
+    118
+   ]
+  },
+  "nativeEff": 140.947,
+  "borrowedEff": 139.42
+ },
+ {
+  "file": "isc-mqg-medium.txt",
+  "kit": "isc+mqg",
+  "class": "medium",
+  "T": 176,
+  "lust": 93,
+  "seed": 5522,
+  "simH": 110,
+  "borrowedH": 140,
+  "nativeDPS": 2728.9,
+  "borrowedDPS": 2731.4,
+  "pct": 0.092,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    93
+   ],
+   "AP": [
+    22
+   ],
+   "Zerk": [
+    8
+   ],
+   "Icon": [
+    0,
+    120
+   ],
+   "MQG": [
+    22
+   ],
+   "IV": [
+    0,
+    22
+   ],
+   "CS": [
+    22
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    93
+   ],
+   "AP": [
+    128
+   ],
+   "Zerk": [
+    133
+   ],
+   "Icon": [
+    6,
+    126
+   ],
+   "MQG": [
+    27
+   ],
+   "IV": [
+    6,
+    133
+   ],
+   "CS": [
+    133
+   ]
+  },
+  "nativeEff": 148.07,
+  "borrowedEff": 150.666
+ },
+ {
+  "file": "isc-mqg-medium.txt",
+  "kit": "isc+mqg",
+  "class": "medium",
+  "T": 176,
+  "lust": 93,
+  "seed": 5522,
+  "simH": 140,
+  "borrowedH": 260,
+  "nativeDPS": 2771.9,
+  "borrowedDPS": 2774.1,
+  "pct": 0.079,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    93
+   ],
+   "AP": [
+    128
+   ],
+   "Zerk": [
+    133
+   ],
+   "Icon": [
+    6,
+    126
+   ],
+   "MQG": [
+    27
+   ],
+   "IV": [
+    6,
+    133
+   ],
+   "CS": [
+    133
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    93
+   ],
+   "AP": [
+    118
+   ],
+   "Zerk": [
+    23
+   ],
+   "Icon": [
+    0,
+    120
+   ],
+   "MQG": [
+    20
+   ],
+   "IV": [
+    0,
+    133
+   ],
+   "CS": [
+    133
+   ]
+  },
+  "nativeEff": 150.666,
+  "borrowedEff": 160.398
+ },
+ {
+  "file": "isc-mqg-medium.txt",
+  "kit": "isc+mqg",
+  "class": "medium",
+  "T": 176,
+  "lust": 93,
+  "seed": 5522,
+  "simH": 70,
+  "borrowedH": 110,
+  "nativeDPS": 2672.4,
+  "borrowedDPS": 2673.4,
+  "pct": 0.037,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    93
+   ],
+   "AP": [
+    119
+   ],
+   "Zerk": [
+    120
+   ],
+   "Icon": [
+    0,
+    120
+   ],
+   "MQG": [
+    21
+   ],
+   "IV": [
+    0,
+    21
+   ],
+   "CS": [
+    21
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    93
+   ],
+   "AP": [
+    22
+   ],
+   "Zerk": [
+    8
+   ],
+   "Icon": [
+    0,
+    120
+   ],
+   "MQG": [
+    22
+   ],
+   "IV": [
+    0,
+    22
+   ],
+   "CS": [
+    22
+   ]
+  },
+  "nativeEff": 145.236,
+  "borrowedEff": 148.07
+ },
+ {
+  "file": "isc-mqg-medium.txt",
+  "kit": "isc+mqg",
+  "class": "medium",
+  "T": 176,
+  "lust": 93,
+  "seed": 5522,
+  "simH": 400,
+  "borrowedH": 305,
+  "nativeDPS": 3117.2,
+  "borrowedDPS": 3117.3,
+  "pct": 0.003,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    93
+   ],
+   "AP": [
+    5
+   ],
+   "Zerk": [
+    45
+   ],
+   "Icon": [
+    5,
+    134
+   ],
+   "MQG": [
+    25
+   ],
+   "IV": [
+    5,
+    134
+   ],
+   "CS": [
+    134
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    93
+   ],
+   "AP": [
+    125
+   ],
+   "Zerk": [
+    46
+   ],
+   "Icon": [
+    5,
+    125
+   ],
+   "MQG": [
+    26
+   ],
+   "IV": [
+    5,
+    133
+   ],
+   "CS": [
+    133
+   ]
+  },
+  "nativeEff": 169.035,
+  "borrowedEff": 163.149
+ },
+ {
+  "file": "isc-mqg-medlong.txt",
+  "kit": "isc+mqg",
+  "class": "medlong",
+  "T": 229,
+  "lust": 162,
+  "seed": 5523,
+  "simH": 110,
+  "borrowedH": 140,
+  "nativeDPS": 2744.5,
+  "borrowedDPS": 2748,
+  "pct": 0.128,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    162
+   ],
+   "AP": [
+    4,
+    196
+   ],
+   "Zerk": [
+    21,
+    201
+   ],
+   "Icon": [
+    21,
+    191
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    0,
+    21,
+    202
+   ],
+   "CS": [
+    21
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    162
+   ],
+   "AP": [
+    4,
+    197
+   ],
+   "Zerk": [
+    22,
+    202
+   ],
+   "Icon": [
+    22,
+    192
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    0,
+    22,
+    202
+   ],
+   "CS": [
+    22
+   ]
+  },
+  "nativeEff": 193.58,
+  "borrowedEff": 196.691
+ },
+ {
+  "file": "isc-mqg-medlong.txt",
+  "kit": "isc+mqg",
+  "class": "medlong",
+  "T": 229,
+  "lust": 162,
+  "seed": 5523,
+  "simH": 20,
+  "borrowedH": 110,
+  "nativeDPS": 2605.7,
+  "borrowedDPS": 2608.5,
+  "pct": 0.107,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    162
+   ],
+   "AP": [
+    7,
+    187
+   ],
+   "Zerk": [
+    0,
+    187
+   ],
+   "Icon": [
+    29,
+    182
+   ],
+   "MQG": [
+    9
+   ],
+   "IV": [
+    0,
+    20,
+    200
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    162
+   ],
+   "AP": [
+    4,
+    196
+   ],
+   "Zerk": [
+    21,
+    201
+   ],
+   "Icon": [
+    21,
+    191
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    0,
+    21,
+    202
+   ],
+   "CS": [
+    21
+   ]
+  },
+  "nativeEff": 183.957,
+  "borrowedEff": 193.58
+ },
+ {
+  "file": "isc-mqg-medlong.txt",
+  "kit": "isc+mqg",
+  "class": "medlong",
+  "T": 229,
+  "lust": 162,
+  "seed": 5523,
+  "simH": 70,
+  "borrowedH": 140,
+  "nativeDPS": 2686.4,
+  "borrowedDPS": 2688.1,
+  "pct": 0.063,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    162
+   ],
+   "AP": [
+    6,
+    186
+   ],
+   "Zerk": [
+    6,
+    186
+   ],
+   "Icon": [
+    6,
+    182
+   ],
+   "MQG": [
+    26
+   ],
+   "IV": [
+    6,
+    26,
+    206
+   ],
+   "CS": [
+    26
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    162
+   ],
+   "AP": [
+    4,
+    197
+   ],
+   "Zerk": [
+    22,
+    202
+   ],
+   "Icon": [
+    22,
+    192
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    0,
+    22,
+    202
+   ],
+   "CS": [
+    22
+   ]
+  },
+  "nativeEff": 189.557,
+  "borrowedEff": 196.691
+ },
+ {
+  "file": "isc-mqg-short.txt",
+  "kit": "isc+mqg",
+  "class": "short",
+  "T": 108,
+  "lust": 42,
+  "seed": 5521,
+  "simH": 305,
+  "borrowedH": 260,
+  "nativeDPS": 3245.3,
+  "borrowedDPS": 3251.4,
+  "pct": 0.188,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    42
+   ],
+   "AP": [
+    42
+   ],
+   "Zerk": [
+    0
+   ],
+   "Icon": [
+    42
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    20,
+    82
+   ],
+   "CS": [
+    82
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    42
+   ],
+   "AP": [
+    42
+   ],
+   "Zerk": [
+    0
+   ],
+   "Icon": [
+    42
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    20,
+    83
+   ],
+   "CS": [
+    83
+   ]
+  },
+  "nativeEff": 107.94,
+  "borrowedEff": 106.564
+ },
+ {
+  "file": "isc-mqg-short.txt",
+  "kit": "isc+mqg",
+  "class": "short",
+  "T": 108,
+  "lust": 42,
+  "seed": 5521,
+  "simH": 20,
+  "borrowedH": 70,
+  "nativeDPS": 2832.7,
+  "borrowedDPS": 2835.8,
+  "pct": 0.109,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    42
+   ],
+   "AP": [
+    42
+   ],
+   "Zerk": [
+    58
+   ],
+   "Icon": [
+    42
+   ],
+   "MQG": [
+    7
+   ],
+   "IV": [
+    7,
+    37
+   ],
+   "CS": [
+    37
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    42
+   ],
+   "AP": [
+    42
+   ],
+   "Zerk": [
+    42
+   ],
+   "Icon": [
+    42
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 94.347,
+  "borrowedEff": 97.043
+ },
+ {
+  "file": "isc-mqg-short.txt",
+  "kit": "isc+mqg",
+  "class": "short",
+  "T": 108,
+  "lust": 42,
+  "seed": 5521,
+  "simH": 110,
+  "borrowedH": 260,
+  "nativeDPS": 2957.5,
+  "borrowedDPS": 2960.6,
+  "pct": 0.105,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    42
+   ],
+   "AP": [
+    42
+   ],
+   "Zerk": [
+    42
+   ],
+   "Icon": [
+    42
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    0,
+    82
+   ],
+   "CS": [
+    82
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    42
+   ],
+   "AP": [
+    42
+   ],
+   "Zerk": [
+    0
+   ],
+   "Icon": [
+    42
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    20,
+    83
+   ],
+   "CS": [
+    83
+   ]
+  },
+  "nativeEff": 98.759,
+  "borrowedEff": 106.564
+ },
+ {
+  "file": "isc-mqg-short.txt",
+  "kit": "isc+mqg",
+  "class": "short",
+  "T": 108,
+  "lust": 42,
+  "seed": 5521,
+  "simH": 140,
+  "borrowedH": 230,
+  "nativeDPS": 3004,
+  "borrowedDPS": 3006.4,
+  "pct": 0.08,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    42
+   ],
+   "AP": [
+    42
+   ],
+   "Zerk": [
+    0
+   ],
+   "Icon": [
+    42
+   ],
+   "MQG": [
+    20
+   ],
+   "IV": [
+    0,
+    82
+   ],
+   "CS": [
+    82
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    42
+   ],
+   "AP": [
+    42
+   ],
+   "Zerk": [
+    21
+   ],
+   "Icon": [
+    42
+   ],
+   "MQG": [
+    20
+   ],
+   "IV": [
+    0,
+    83
+   ],
+   "CS": [
+    83
+   ]
+  },
+  "nativeEff": 100.188,
+  "borrowedEff": 105.35
+ },
+ {
+  "file": "isc-mqg-short.txt",
+  "kit": "isc+mqg",
+  "class": "short",
+  "T": 108,
+  "lust": 42,
+  "seed": 5521,
+  "simH": 260,
+  "borrowedH": 140,
+  "nativeDPS": 3198.5,
+  "borrowedDPS": 3199.6,
+  "pct": 0.034,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    42
+   ],
+   "AP": [
+    42
+   ],
+   "Zerk": [
+    0
+   ],
+   "Icon": [
+    42
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    20,
+    83
+   ],
+   "CS": [
+    83
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    42
+   ],
+   "AP": [
+    42
+   ],
+   "Zerk": [
+    0
+   ],
+   "Icon": [
+    42
+   ],
+   "MQG": [
+    20
+   ],
+   "IV": [
+    0,
+    82
+   ],
+   "CS": [
+    82
+   ]
+  },
+  "nativeEff": 106.564,
+  "borrowedEff": 100.188
+ },
+ {
+  "file": "isc-mqg-short.txt",
+  "kit": "isc+mqg",
+  "class": "short",
+  "T": 108,
+  "lust": 42,
+  "seed": 5521,
+  "simH": 230,
+  "borrowedH": 260,
+  "nativeDPS": 3157.1,
+  "borrowedDPS": 3157.7,
+  "pct": 0.019,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    42
+   ],
+   "AP": [
+    42
+   ],
+   "Zerk": [
+    21
+   ],
+   "Icon": [
+    42
+   ],
+   "MQG": [
+    20
+   ],
+   "IV": [
+    0,
+    83
+   ],
+   "CS": [
+    83
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    42
+   ],
+   "AP": [
+    42
+   ],
+   "Zerk": [
+    0
+   ],
+   "Icon": [
+    42
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    20,
+    83
+   ],
+   "CS": [
+    83
+   ]
+  },
+  "nativeEff": 105.35,
+  "borrowedEff": 106.564
+ },
+ {
+  "file": "isc-mqg-xl.txt",
+  "kit": "isc+mqg",
+  "class": "xl",
+  "T": 451,
+  "lust": 163,
+  "seed": 5525,
+  "simH": 20,
+  "borrowedH": 70,
+  "nativeDPS": 2489.2,
+  "borrowedDPS": 2491.4,
+  "pct": 0.088,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    163
+   ],
+   "AP": [
+    9,
+    189,
+    370
+   ],
+   "Zerk": [
+    0,
+    180,
+    424
+   ],
+   "Icon": [
+    29,
+    184,
+    304,
+    424
+   ],
+   "MQG": [
+    9,
+    370
+   ],
+   "IV": [
+    9,
+    190,
+    370,
+    424
+   ],
+   "CS": [
+    424
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    163
+   ],
+   "AP": [
+    9,
+    189,
+    384
+   ],
+   "Zerk": [
+    0,
+    189,
+    424
+   ],
+   "Icon": [
+    29,
+    184,
+    304,
+    424
+   ],
+   "MQG": [
+    9,
+    384
+   ],
+   "IV": [
+    10,
+    204,
+    384,
+    424
+   ],
+   "CS": [
+    424
+   ]
+  },
+  "nativeEff": 346.228,
+  "borrowedEff": 356.557
+ },
+ {
+  "file": "isc-mqg-xl.txt",
+  "kit": "isc+mqg",
+  "class": "xl",
+  "T": 451,
+  "lust": 163,
+  "seed": 5525,
+  "simH": 110,
+  "borrowedH": 140,
+  "nativeDPS": 2621.8,
+  "borrowedDPS": 2623,
+  "pct": 0.046,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    163
+   ],
+   "AP": [
+    7,
+    187,
+    384
+   ],
+   "Zerk": [
+    7,
+    187,
+    422
+   ],
+   "Icon": [
+    7,
+    182,
+    302,
+    422
+   ],
+   "MQG": [
+    27,
+    384
+   ],
+   "IV": [
+    7,
+    204,
+    384,
+    422
+   ],
+   "CS": [
+    422
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    163
+   ],
+   "AP": [
+    5,
+    195,
+    427
+   ],
+   "Zerk": [
+    5,
+    203,
+    431
+   ],
+   "Icon": [
+    5,
+    190,
+    310,
+    430
+   ],
+   "MQG": [
+    25,
+    410
+   ],
+   "IV": [
+    5,
+    203,
+    383,
+    427
+   ],
+   "CS": [
+    427
+   ]
+  },
+  "nativeEff": 364.05,
+  "borrowedEff": 370.174
+ },
+ {
+  "file": "isc-mqg-xl.txt",
+  "kit": "isc+mqg",
+  "class": "xl",
+  "T": 451,
+  "lust": 163,
+  "seed": 5525,
+  "simH": 70,
+  "borrowedH": 40,
+  "nativeDPS": 2563.8,
+  "borrowedDPS": 2563.9,
+  "pct": 0.004,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    163
+   ],
+   "AP": [
+    9,
+    189,
+    384
+   ],
+   "Zerk": [
+    0,
+    189,
+    424
+   ],
+   "Icon": [
+    29,
+    184,
+    304,
+    424
+   ],
+   "MQG": [
+    9,
+    384
+   ],
+   "IV": [
+    10,
+    204,
+    384,
+    424
+   ],
+   "CS": [
+    424
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    163
+   ],
+   "AP": [
+    8,
+    188,
+    378
+   ],
+   "Zerk": [
+    0,
+    188,
+    423
+   ],
+   "Icon": [
+    28,
+    183,
+    303,
+    423
+   ],
+   "MQG": [
+    8,
+    378
+   ],
+   "IV": [
+    9,
+    198,
+    378,
+    423
+   ],
+   "CS": [
+    423
+   ]
+  },
+  "nativeEff": 356.557,
+  "borrowedEff": 350.354
+ },
+ {
+  "file": "isc-mqg-xl.txt",
+  "kit": "isc+mqg",
+  "class": "xl",
+  "T": 451,
+  "lust": 163,
+  "seed": 5525,
+  "simH": 230,
+  "borrowedH": 260,
+  "nativeDPS": 2799.9,
+  "borrowedDPS": 2800,
+  "pct": 0.004,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    163
+   ],
+   "AP": [
+    5,
+    185,
+    421
+   ],
+   "Zerk": [
+    5,
+    203,
+    421
+   ],
+   "Icon": [
+    5,
+    181,
+    301,
+    421
+   ],
+   "MQG": [
+    25,
+    325
+   ],
+   "IV": [
+    5,
+    203,
+    223,
+    421
+   ],
+   "CS": [
+    223
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    163
+   ],
+   "AP": [
+    4,
+    184,
+    420
+   ],
+   "Zerk": [
+    0,
+    225,
+    420
+   ],
+   "Icon": [
+    4,
+    180,
+    300,
+    420
+   ],
+   "MQG": [
+    40,
+    340
+   ],
+   "IV": [
+    0,
+    20,
+    204,
+    420
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 388.997,
+  "borrowedEff": 394.447
+ },
+ {
+  "file": "isc-scb-long.txt",
+  "kit": "isc+scb",
+  "class": "long",
+  "T": 300,
+  "lust": 223,
+  "seed": 1102,
+  "simH": 0,
+  "borrowedH": 20,
+  "nativeDPS": 2511,
+  "borrowedDPS": 2514.1,
+  "pct": 0.123,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    223
+   ],
+   "AP": [
+    7,
+    247
+   ],
+   "Zerk": [
+    7,
+    224
+   ],
+   "Icon": [
+    7,
+    127,
+    247
+   ],
+   "Gem": [
+    7,
+    127,
+    247
+   ],
+   "IV": [
+    7,
+    27,
+    247
+   ],
+   "CS": [
+    27
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    223
+   ],
+   "AP": [
+    5,
+    248
+   ],
+   "Zerk": [
+    5,
+    238
+   ],
+   "Icon": [
+    5,
+    125,
+    245
+   ],
+   "Gem": [
+    5,
+    125,
+    248
+   ],
+   "IV": [
+    2,
+    22,
+    248
+   ],
+   "CS": [
+    22
+   ]
+  },
+  "nativeEff": 230.94,
+  "borrowedEff": 233.599
+ },
+ {
+  "file": "isc-scb-long.txt",
+  "kit": "isc+scb",
+  "class": "long",
+  "T": 300,
+  "lust": 223,
+  "seed": 1102,
+  "simH": 95,
+  "borrowedH": 65,
+  "nativeDPS": 2657.6,
+  "borrowedDPS": 2658,
+  "pct": 0.015,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    223
+   ],
+   "AP": [
+    6,
+    247
+   ],
+   "Zerk": [
+    8,
+    247
+   ],
+   "Icon": [
+    6,
+    126,
+    246
+   ],
+   "Gem": [
+    6,
+    126,
+    247
+   ],
+   "IV": [
+    6,
+    28,
+    263
+   ],
+   "CS": [
+    28
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    223
+   ],
+   "AP": [
+    6,
+    249
+   ],
+   "Zerk": [
+    6,
+    249
+   ],
+   "Icon": [
+    6,
+    126,
+    246
+   ],
+   "Gem": [
+    6,
+    126,
+    249
+   ],
+   "IV": [
+    6,
+    26,
+    260
+   ],
+   "CS": [
+    26
+   ]
+  },
+  "nativeEff": 244.227,
+  "borrowedEff": 239.98
+ },
+ {
+  "file": "isc-scb-long.txt",
+  "kit": "isc+scb",
+  "class": "long",
+  "T": 300,
+  "lust": 223,
+  "seed": 1102,
+  "simH": 165,
+  "borrowedH": 245,
+  "nativeDPS": 2772.1,
+  "borrowedDPS": 2772.4,
+  "pct": 0.011,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    223
+   ],
+   "AP": [
+    4,
+    245
+   ],
+   "Zerk": [
+    5,
+    201
+   ],
+   "Icon": [
+    4,
+    124,
+    244
+   ],
+   "Gem": [
+    4,
+    124,
+    245
+   ],
+   "IV": [
+    0,
+    20,
+    201
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    223
+   ],
+   "AP": [
+    4,
+    245
+   ],
+   "Zerk": [
+    8,
+    188
+   ],
+   "Icon": [
+    4,
+    124,
+    244
+   ],
+   "Gem": [
+    4,
+    124,
+    245
+   ],
+   "IV": [
+    0,
+    20,
+    264
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 254.161,
+  "borrowedEff": 265.449
+ },
+ {
+  "file": "isc-scb-long.txt",
+  "kit": "isc+scb",
+  "class": "long",
+  "T": 300,
+  "lust": 223,
+  "seed": 1102,
+  "simH": 65,
+  "borrowedH": 95,
+  "nativeDPS": 2613.3,
+  "borrowedDPS": 2613.5,
+  "pct": 0.008,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    223
+   ],
+   "AP": [
+    6,
+    249
+   ],
+   "Zerk": [
+    6,
+    249
+   ],
+   "Icon": [
+    6,
+    126,
+    246
+   ],
+   "Gem": [
+    6,
+    126,
+    249
+   ],
+   "IV": [
+    6,
+    26,
+    260
+   ],
+   "CS": [
+    26
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    223
+   ],
+   "AP": [
+    6,
+    247
+   ],
+   "Zerk": [
+    8,
+    247
+   ],
+   "Icon": [
+    6,
+    126,
+    246
+   ],
+   "Gem": [
+    6,
+    126,
+    247
+   ],
+   "IV": [
+    6,
+    28,
+    263
+   ],
+   "CS": [
+    28
+   ]
+  },
+  "nativeEff": 239.98,
+  "borrowedEff": 244.227
+ },
+ {
+  "file": "isc-scb-long.txt",
+  "kit": "isc+scb",
+  "class": "long",
+  "T": 300,
+  "lust": 223,
+  "seed": 1102,
+  "simH": 195,
+  "borrowedH": 140,
+  "nativeDPS": 2813.9,
+  "borrowedDPS": 2814,
+  "pct": 0.004,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    223
+   ],
+   "AP": [
+    4,
+    245
+   ],
+   "Zerk": [
+    5,
+    201
+   ],
+   "Icon": [
+    4,
+    124,
+    244
+   ],
+   "Gem": [
+    4,
+    124,
+    245
+   ],
+   "IV": [
+    0,
+    20,
+    201
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    223
+   ],
+   "AP": [
+    4,
+    245
+   ],
+   "Zerk": [
+    9,
+    201
+   ],
+   "Icon": [
+    4,
+    124,
+    244
+   ],
+   "Gem": [
+    4,
+    124,
+    245
+   ],
+   "IV": [
+    0,
+    20,
+    200
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 258.562,
+  "borrowedEff": 250.499
+ },
+ {
+  "file": "isc-scb-medium.txt",
+  "kit": "isc+scb",
+  "class": "medium",
+  "T": 184,
+  "lust": 116,
+  "seed": 1100,
+  "simH": 65,
+  "borrowedH": 20,
+  "nativeDPS": 2662.3,
+  "borrowedDPS": 2663.7,
+  "pct": 0.053,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    116
+   ],
+   "AP": [
+    0,
+    180
+   ],
+   "Zerk": [
+    0,
+    180
+   ],
+   "Icon": [
+    0,
+    120
+   ],
+   "Gem": [
+    4,
+    124
+   ],
+   "IV": [
+    0,
+    163
+   ],
+   "CS": [
+    163
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    116
+   ],
+   "AP": [
+    141
+   ],
+   "Zerk": [
+    0,
+    180
+   ],
+   "Icon": [
+    4,
+    136
+   ],
+   "Gem": [
+    4,
+    141
+   ],
+   "IV": [
+    0,
+    141
+   ],
+   "CS": [
+    141
+   ]
+  },
+  "nativeEff": 150.121,
+  "borrowedEff": 146.313
+ },
+ {
+  "file": "isc-scb-medium.txt",
+  "kit": "isc+scb",
+  "class": "medium",
+  "T": 184,
+  "lust": 116,
+  "seed": 1100,
+  "simH": 20,
+  "borrowedH": 0,
+  "nativeDPS": 2600.6,
+  "borrowedDPS": 2601.8,
+  "pct": 0.046,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    116
+   ],
+   "AP": [
+    141
+   ],
+   "Zerk": [
+    0,
+    180
+   ],
+   "Icon": [
+    4,
+    136
+   ],
+   "Gem": [
+    4,
+    141
+   ],
+   "IV": [
+    0,
+    141
+   ],
+   "CS": [
+    141
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    116
+   ],
+   "AP": [
+    125
+   ],
+   "Zerk": [
+    0,
+    180
+   ],
+   "Icon": [
+    4,
+    125
+   ],
+   "Gem": [
+    4,
+    125
+   ],
+   "IV": [
+    0,
+    125
+   ],
+   "CS": [
+    125
+   ]
+  },
+  "nativeEff": 146.313,
+  "borrowedEff": 144.776
+ },
+ {
+  "file": "isc-scb-short.txt",
+  "kit": "isc+scb",
+  "class": "short",
+  "T": 98,
+  "lust": 27,
+  "seed": 1099,
+  "simH": 165,
+  "borrowedH": 245,
+  "nativeDPS": 3095.6,
+  "borrowedDPS": 3103.9,
+  "pct": 0.268,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    27
+   ],
+   "AP": [
+    62
+   ],
+   "Zerk": [
+    67
+   ],
+   "Icon": [
+    57
+   ],
+   "Gem": [
+    62
+   ],
+   "IV": [
+    0,
+    67
+   ],
+   "CS": [
+    67
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    27
+   ],
+   "AP": [
+    27
+   ],
+   "Zerk": [
+    0
+   ],
+   "Icon": [
+    27
+   ],
+   "Gem": [
+    27
+   ],
+   "IV": [
+    0,
+    68
+   ],
+   "CS": [
+    68
+   ]
+  },
+  "nativeEff": 93.178,
+  "borrowedEff": 97.295
+ },
+ {
+  "file": "isc-scb-short.txt",
+  "kit": "isc+scb",
+  "class": "short",
+  "T": 98,
+  "lust": 27,
+  "seed": 1099,
+  "simH": 195,
+  "borrowedH": 215,
+  "nativeDPS": 3145.8,
+  "borrowedDPS": 3153.4,
+  "pct": 0.242,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    27
+   ],
+   "AP": [
+    62
+   ],
+   "Zerk": [
+    67
+   ],
+   "Icon": [
+    57
+   ],
+   "Gem": [
+    62
+   ],
+   "IV": [
+    6,
+    67
+   ],
+   "CS": [
+    67
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    27
+   ],
+   "AP": [
+    27
+   ],
+   "Zerk": [
+    2
+   ],
+   "Icon": [
+    27
+   ],
+   "Gem": [
+    27
+   ],
+   "IV": [
+    2,
+    68
+   ],
+   "CS": [
+    68
+   ]
+  },
+  "nativeEff": 94.793,
+  "borrowedEff": 95.787
+ },
+ {
+  "file": "isc-scb-short.txt",
+  "kit": "isc+scb",
+  "class": "short",
+  "T": 98,
+  "lust": 27,
+  "seed": 1099,
+  "simH": 245,
+  "borrowedH": 195,
+  "nativeDPS": 3244.8,
+  "borrowedDPS": 3246.5,
+  "pct": 0.052,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    27
+   ],
+   "AP": [
+    27
+   ],
+   "Zerk": [
+    0
+   ],
+   "Icon": [
+    27
+   ],
+   "Gem": [
+    27
+   ],
+   "IV": [
+    0,
+    68
+   ],
+   "CS": [
+    68
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    27
+   ],
+   "AP": [
+    62
+   ],
+   "Zerk": [
+    67
+   ],
+   "Icon": [
+    57
+   ],
+   "Gem": [
+    62
+   ],
+   "IV": [
+    6,
+    67
+   ],
+   "CS": [
+    67
+   ]
+  },
+  "nativeEff": 97.295,
+  "borrowedEff": 94.793
+ },
+ {
+  "file": "isc-skull-long.txt",
+  "kit": "isc+skull",
+  "class": "long",
+  "T": 293,
+  "lust": 219,
+  "seed": 3950,
+  "simH": 155,
+  "borrowedH": 230,
+  "nativeDPS": 2808.9,
+  "borrowedDPS": 2811.8,
+  "pct": 0.103,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    219
+   ],
+   "AP": [
+    18,
+    254
+   ],
+   "Zerk": [
+    18,
+    259
+   ],
+   "Icon": [
+    9,
+    129,
+    249
+   ],
+   "Skull": [
+    29,
+    149,
+    269
+   ],
+   "IV": [
+    9,
+    29,
+    259
+   ],
+   "CS": [
+    29
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    219
+   ],
+   "AP": [
+    6,
+    254
+   ],
+   "Zerk": [
+    7,
+    259
+   ],
+   "Icon": [
+    6,
+    126,
+    249
+   ],
+   "Skull": [
+    27,
+    147,
+    269
+   ],
+   "IV": [
+    6,
+    27,
+    259
+   ],
+   "CS": [
+    27
+   ]
+  },
+  "nativeEff": 248.285,
+  "borrowedEff": 258.486
+ },
+ {
+  "file": "isc-skull-medium.txt",
+  "kit": "isc+skull",
+  "class": "medium",
+  "T": 177,
+  "lust": 101,
+  "seed": 3948,
+  "simH": 230,
+  "borrowedH": 260,
+  "nativeDPS": 2981.5,
+  "borrowedDPS": 2983,
+  "pct": 0.05,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    101
+   ],
+   "AP": [
+    120
+   ],
+   "Zerk": [
+    0
+   ],
+   "Icon": [
+    0,
+    120
+   ],
+   "Skull": [
+    20,
+    142
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    101
+   ],
+   "AP": [
+    120
+   ],
+   "Zerk": [
+    20
+   ],
+   "Icon": [
+    0,
+    120
+   ],
+   "Skull": [
+    20,
+    141
+   ],
+   "IV": [
+    0,
+    40
+   ],
+   "CS": [
+    40
+   ]
+  },
+  "nativeEff": 159.508,
+  "borrowedEff": 161.419
+ },
+ {
+  "file": "isc-skull-medium.txt",
+  "kit": "isc+skull",
+  "class": "medium",
+  "T": 177,
+  "lust": 101,
+  "seed": 3948,
+  "simH": 100,
+  "borrowedH": 20,
+  "nativeDPS": 2775.9,
+  "borrowedDPS": 2776.2,
+  "pct": 0.011,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    101
+   ],
+   "AP": [
+    120
+   ],
+   "Zerk": [
+    120
+   ],
+   "Icon": [
+    0,
+    120
+   ],
+   "Skull": [
+    20,
+    141
+   ],
+   "IV": [
+    20,
+    141
+   ],
+   "CS": [
+    141
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    101
+   ],
+   "AP": [
+    120
+   ],
+   "Zerk": [
+    4
+   ],
+   "Icon": [
+    20,
+    140
+   ],
+   "Skull": [
+    0,
+    120
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 148.567,
+  "borrowedEff": 141.814
+ },
+ {
+  "file": "isc-skull-medium.txt",
+  "kit": "isc+skull",
+  "class": "medium",
+  "T": 177,
+  "lust": 101,
+  "seed": 3948,
+  "simH": 185,
+  "borrowedH": 130,
+  "nativeDPS": 2914.5,
+  "borrowedDPS": 2914.6,
+  "pct": 0.003,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    101
+   ],
+   "AP": [
+    126
+   ],
+   "Zerk": [
+    15
+   ],
+   "Icon": [
+    6,
+    126
+   ],
+   "Skull": [
+    26,
+    146
+   ],
+   "IV": [
+    15,
+    146
+   ],
+   "CS": [
+    146
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    101
+   ],
+   "AP": [
+    120
+   ],
+   "Zerk": [
+    9
+   ],
+   "Icon": [
+    0,
+    120
+   ],
+   "Skull": [
+    20,
+    141
+   ],
+   "IV": [
+    9,
+    141
+   ],
+   "CS": [
+    141
+   ]
+  },
+  "nativeEff": 155.804,
+  "borrowedEff": 150.98
+ },
+ {
+  "file": "isc-skull-medlong.txt",
+  "kit": "isc+skull",
+  "class": "medlong",
+  "T": 251,
+  "lust": 47,
+  "seed": 3949,
+  "simH": 70,
+  "borrowedH": 40,
+  "nativeDPS": 2718.4,
+  "borrowedDPS": 2718.8,
+  "pct": 0.015,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    47
+   ],
+   "AP": [
+    47,
+    230
+   ],
+   "Zerk": [
+    48,
+    230
+   ],
+   "Icon": [
+    47,
+    220
+   ],
+   "Skull": [
+    0,
+    120,
+    240
+   ],
+   "IV": [
+    0,
+    210,
+    230
+   ],
+   "CS": [
+    230
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    47
+   ],
+   "AP": [
+    47,
+    235
+   ],
+   "Zerk": [
+    48,
+    239
+   ],
+   "Icon": [
+    47,
+    220
+   ],
+   "Skull": [
+    0,
+    120,
+    240
+   ],
+   "IV": [
+    0,
+    210,
+    230
+   ],
+   "CS": [
+    230
+   ]
+  },
+  "nativeEff": 205.771,
+  "borrowedEff": 202.189
+ },
+ {
+  "file": "isc-skull-short.txt",
+  "kit": "isc+skull",
+  "class": "short",
+  "T": 99,
+  "lust": 49,
+  "seed": 3947,
+  "simH": 40,
+  "borrowedH": 70,
+  "nativeDPS": 2930,
+  "borrowedDPS": 2940.1,
+  "pct": 0.345,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    49
+   ],
+   "AP": [
+    59
+   ],
+   "Zerk": [
+    59
+   ],
+   "Icon": [
+    49
+   ],
+   "Skull": [
+    69
+   ],
+   "IV": [
+    8,
+    28
+   ],
+   "CS": [
+    28
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    49
+   ],
+   "AP": [
+    59
+   ],
+   "Zerk": [
+    59
+   ],
+   "Icon": [
+    49
+   ],
+   "Skull": [
+    69
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 87.834,
+  "borrowedEff": 89.418
+ },
+ {
+  "file": "isc-skull-short.txt",
+  "kit": "isc+skull",
+  "class": "short",
+  "T": 99,
+  "lust": 49,
+  "seed": 3947,
+  "simH": 230,
+  "borrowedH": 155,
+  "nativeDPS": 3245.8,
+  "borrowedDPS": 3253.2,
+  "pct": 0.228,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    49
+   ],
+   "AP": [
+    49
+   ],
+   "Zerk": [
+    0
+   ],
+   "Icon": [
+    49
+   ],
+   "Skull": [
+    20
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    49
+   ],
+   "AP": [
+    49
+   ],
+   "Zerk": [
+    21
+   ],
+   "Icon": [
+    49
+   ],
+   "Skull": [
+    0
+   ],
+   "IV": [
+    0,
+    21
+   ],
+   "CS": [
+    21
+   ]
+  },
+  "nativeEff": 97.317,
+  "borrowedEff": 93.438
+ },
+ {
+  "file": "isc-skull-short.txt",
+  "kit": "isc+skull",
+  "class": "short",
+  "T": 99,
+  "lust": 49,
+  "seed": 3947,
+  "simH": 70,
+  "borrowedH": 100,
+  "nativeDPS": 2981.4,
+  "borrowedDPS": 2985.2,
+  "pct": 0.127,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    49
+   ],
+   "AP": [
+    59
+   ],
+   "Zerk": [
+    59
+   ],
+   "Icon": [
+    49
+   ],
+   "Skull": [
+    69
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    49
+   ],
+   "AP": [
+    49
+   ],
+   "Zerk": [
+    49
+   ],
+   "Icon": [
+    49
+   ],
+   "Skull": [
+    0
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 89.418,
+  "borrowedEff": 90.684
+ },
+ {
+  "file": "isc-skull-short.txt",
+  "kit": "isc+skull",
+  "class": "short",
+  "T": 99,
+  "lust": 49,
+  "seed": 3947,
+  "simH": 185,
+  "borrowedH": 230,
+  "nativeDPS": 3178,
+  "borrowedDPS": 3178.6,
+  "pct": 0.019,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    49
+   ],
+   "AP": [
+    49
+   ],
+   "Zerk": [
+    0
+   ],
+   "Icon": [
+    49
+   ],
+   "Skull": [
+    21
+   ],
+   "IV": [
+    0,
+    21
+   ],
+   "CS": [
+    21
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    49
+   ],
+   "AP": [
+    49
+   ],
+   "Zerk": [
+    0
+   ],
+   "Icon": [
+    49
+   ],
+   "Skull": [
+    20
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 95.058,
+  "borrowedEff": 97.317
+ },
+ {
+  "file": "isc-skull-xl.txt",
+  "kit": "isc+skull",
+  "class": "xl",
+  "T": 417,
+  "lust": 361,
+  "seed": 3951,
+  "simH": 0,
+  "borrowedH": 40,
+  "nativeDPS": 2534.9,
+  "borrowedDPS": 2537,
+  "pct": 0.083,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    361
+   ],
+   "AP": [
+    4,
+    201,
+    386
+   ],
+   "Zerk": [
+    5,
+    201,
+    381
+   ],
+   "Icon": [
+    20,
+    141,
+    261,
+    381
+   ],
+   "Skull": [
+    0,
+    121,
+    241,
+    361
+   ],
+   "IV": [
+    0,
+    20,
+    201,
+    391
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    361
+   ],
+   "AP": [
+    4,
+    201,
+    386
+   ],
+   "Zerk": [
+    7,
+    201,
+    386
+   ],
+   "Icon": [
+    20,
+    140,
+    261,
+    382
+   ],
+   "Skull": [
+    0,
+    120,
+    241,
+    362
+   ],
+   "IV": [
+    0,
+    20,
+    201,
+    396
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 319.139,
+  "borrowedEff": 326.811
+ },
+ {
+  "file": "mqg-skull-long.txt",
+  "kit": "mqg+skull",
+  "class": "long",
+  "T": 283,
+  "lust": 160,
+  "seed": 9989,
+  "simH": 235,
+  "borrowedH": 265,
+  "nativeDPS": 2888.6,
+  "borrowedDPS": 2889.1,
+  "pct": 0.017,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    160
+   ],
+   "AP": [
+    4,
+    240
+   ],
+   "Zerk": [
+    20,
+    201
+   ],
+   "Skull": [
+    0,
+    120,
+    240
+   ],
+   "MQG": [
+    20
+   ],
+   "IV": [
+    0,
+    201,
+    240
+   ],
+   "CS": [
+    240
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    160
+   ],
+   "AP": [
+    4,
+    184
+   ],
+   "Zerk": [
+    40,
+    240
+   ],
+   "Skull": [
+    0,
+    120,
+    240
+   ],
+   "MQG": [
+    40
+   ],
+   "IV": [
+    0,
+    20,
+    201
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 250.581,
+  "borrowedEff": 253.563
+ },
+ {
+  "file": "mqg-skull-long.txt",
+  "kit": "mqg+skull",
+  "class": "long",
+  "T": 283,
+  "lust": 160,
+  "seed": 9989,
+  "simH": 400,
+  "borrowedH": 295,
+  "nativeDPS": 3094.9,
+  "borrowedDPS": 3095.3,
+  "pct": 0.013,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    160
+   ],
+   "AP": [
+    4,
+    220
+   ],
+   "Zerk": [
+    27,
+    260
+   ],
+   "Skull": [
+    20,
+    140,
+    260
+   ],
+   "MQG": [
+    62
+   ],
+   "IV": [
+    0,
+    40,
+    220
+   ],
+   "CS": [
+    40
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    160
+   ],
+   "AP": [
+    4,
+    184
+   ],
+   "Zerk": [
+    20,
+    260
+   ],
+   "Skull": [
+    20,
+    140,
+    260
+   ],
+   "MQG": [
+    40
+   ],
+   "IV": [
+    0,
+    201,
+    222
+   ],
+   "CS": [
+    222
+   ]
+  },
+  "nativeEff": 268.158,
+  "borrowedEff": 256.738
+ },
+ {
+  "file": "mqg-skull-long.txt",
+  "kit": "mqg+skull",
+  "class": "long",
+  "T": 283,
+  "lust": 160,
+  "seed": 9989,
+  "simH": 190,
+  "borrowedH": 160,
+  "nativeDPS": 2822.1,
+  "borrowedDPS": 2822.3,
+  "pct": 0.007,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    160
+   ],
+   "AP": [
+    4,
+    240
+   ],
+   "Zerk": [
+    20,
+    261
+   ],
+   "Skull": [
+    0,
+    120,
+    240
+   ],
+   "MQG": [
+    20
+   ],
+   "IV": [
+    0,
+    240,
+    261
+   ],
+   "CS": [
+    261
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    160
+   ],
+   "AP": [
+    4,
+    240
+   ],
+   "Zerk": [
+    20,
+    201
+   ],
+   "Skull": [
+    0,
+    120,
+    240
+   ],
+   "MQG": [
+    201
+   ],
+   "IV": [
+    0,
+    20,
+    240
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 244.984,
+  "borrowedEff": 240.949
+ },
+ {
+  "file": "mqg-skull-long.txt",
+  "kit": "mqg+skull",
+  "class": "long",
+  "T": 283,
+  "lust": 160,
+  "seed": 9989,
+  "simH": 295,
+  "borrowedH": 265,
+  "nativeDPS": 2958.9,
+  "borrowedDPS": 2959.1,
+  "pct": 0.007,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    160
+   ],
+   "AP": [
+    4,
+    184
+   ],
+   "Zerk": [
+    20,
+    260
+   ],
+   "Skull": [
+    20,
+    140,
+    260
+   ],
+   "MQG": [
+    40
+   ],
+   "IV": [
+    0,
+    201,
+    222
+   ],
+   "CS": [
+    222
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    160
+   ],
+   "AP": [
+    4,
+    184
+   ],
+   "Zerk": [
+    40,
+    240
+   ],
+   "Skull": [
+    0,
+    120,
+    240
+   ],
+   "MQG": [
+    40
+   ],
+   "IV": [
+    0,
+    20,
+    201
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 256.738,
+  "borrowedEff": 253.563
+ },
+ {
+  "file": "mqg-skull-long.txt",
+  "kit": "mqg+skull",
+  "class": "long",
+  "T": 283,
+  "lust": 160,
+  "seed": 9989,
+  "simH": 30,
+  "borrowedH": 100,
+  "nativeDPS": 2587.2,
+  "borrowedDPS": 2587.3,
+  "pct": 0.004,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    160
+   ],
+   "AP": [
+    21,
+    262
+   ],
+   "Zerk": [
+    4,
+    262
+   ],
+   "Skull": [
+    0,
+    142,
+    262
+   ],
+   "MQG": [
+    21
+   ],
+   "IV": [
+    0,
+    21,
+    262
+   ],
+   "CS": [
+    21
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    160
+   ],
+   "AP": [
+    4,
+    200
+   ],
+   "Zerk": [
+    0,
+    180
+   ],
+   "Skull": [
+    0,
+    141,
+    261
+   ],
+   "MQG": [
+    200
+   ],
+   "IV": [
+    0,
+    200,
+    261
+   ],
+   "CS": [
+    261
+   ]
+  },
+  "nativeEff": 224.769,
+  "borrowedEff": 233.225
+ },
+ {
+  "file": "mqg-skull-medium.txt",
+  "kit": "mqg+skull",
+  "class": "medium",
+  "T": 178,
+  "lust": 58,
+  "seed": 9987,
+  "simH": 30,
+  "borrowedH": 70,
+  "nativeDPS": 2645.2,
+  "borrowedDPS": 2649.4,
+  "pct": 0.159,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    58
+   ],
+   "AP": [
+    20
+   ],
+   "Zerk": [
+    0
+   ],
+   "Skull": [
+    0,
+    120
+   ],
+   "MQG": [
+    20
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    58
+   ],
+   "AP": [
+    4
+   ],
+   "Zerk": [
+    58
+   ],
+   "Skull": [
+    20,
+    140
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 144.37,
+  "borrowedEff": 147.739
+ },
+ {
+  "file": "mqg-skull-medium.txt",
+  "kit": "mqg+skull",
+  "class": "medium",
+  "T": 178,
+  "lust": 58,
+  "seed": 9987,
+  "simH": 265,
+  "borrowedH": 295,
+  "nativeDPS": 2983.3,
+  "borrowedDPS": 2985.7,
+  "pct": 0.08,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    58
+   ],
+   "AP": [
+    58
+   ],
+   "Zerk": [
+    0
+   ],
+   "Skull": [
+    20,
+    141
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    99,
+    120
+   ],
+   "CS": [
+    120
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    58
+   ],
+   "AP": [
+    58
+   ],
+   "Zerk": [
+    0
+   ],
+   "Skull": [
+    0,
+    141
+   ],
+   "MQG": [
+    99
+   ],
+   "IV": [
+    24,
+    120
+   ],
+   "CS": [
+    120
+   ]
+  },
+  "nativeEff": 162.716,
+  "borrowedEff": 164.572
+ },
+ {
+  "file": "mqg-skull-medium.txt",
+  "kit": "mqg+skull",
+  "class": "medium",
+  "T": 178,
+  "lust": 58,
+  "seed": 9987,
+  "simH": 400,
+  "borrowedH": 295,
+  "nativeDPS": 3135.8,
+  "borrowedDPS": 3136,
+  "pct": 0.006,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    58
+   ],
+   "AP": [
+    20
+   ],
+   "Zerk": [
+    0
+   ],
+   "Skull": [
+    0,
+    138
+   ],
+   "MQG": [
+    118
+   ],
+   "IV": [
+    20,
+    98
+   ],
+   "CS": [
+    98
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    58
+   ],
+   "AP": [
+    58
+   ],
+   "Zerk": [
+    0
+   ],
+   "Skull": [
+    0,
+    141
+   ],
+   "MQG": [
+    99
+   ],
+   "IV": [
+    24,
+    120
+   ],
+   "CS": [
+    120
+   ]
+  },
+  "nativeEff": 170.977,
+  "borrowedEff": 164.572
+ },
+ {
+  "file": "mqg-skull-medlong.txt",
+  "kit": "mqg+skull",
+  "class": "medlong",
+  "T": 226,
+  "lust": 0,
+  "seed": 9988,
+  "simH": 265,
+  "borrowedH": 235,
+  "nativeDPS": 2958.2,
+  "borrowedDPS": 2959.2,
+  "pct": 0.034,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    0
+   ],
+   "AP": [
+    3,
+    183
+   ],
+   "Zerk": [
+    39,
+    219
+   ],
+   "Skull": [
+    40,
+    178
+   ],
+   "MQG": [
+    60
+   ],
+   "IV": [
+    0,
+    180,
+    200
+   ],
+   "CS": [
+    200
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    0
+   ],
+   "AP": [
+    3,
+    183
+   ],
+   "Zerk": [
+    39,
+    219
+   ],
+   "Skull": [
+    60,
+    183
+   ],
+   "MQG": [
+    40
+   ],
+   "IV": [
+    0,
+    183,
+    205
+   ],
+   "CS": [
+    205
+   ]
+  },
+  "nativeEff": 204.883,
+  "borrowedEff": 202.655
+ },
+ {
+  "file": "mqg-skull-medlong.txt",
+  "kit": "mqg+skull",
+  "class": "medlong",
+  "T": 226,
+  "lust": 0,
+  "seed": 9988,
+  "simH": 70,
+  "borrowedH": 100,
+  "nativeDPS": 2713.9,
+  "borrowedDPS": 2714.6,
+  "pct": 0.026,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    0
+   ],
+   "AP": [
+    3,
+    183
+   ],
+   "Zerk": [
+    20,
+    201
+   ],
+   "Skull": [
+    30,
+    201
+   ],
+   "MQG": [
+    180
+   ],
+   "IV": [
+    0,
+    180,
+    201
+   ],
+   "CS": [
+    201
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    0
+   ],
+   "AP": [
+    3,
+    184
+   ],
+   "Zerk": [
+    20,
+    215
+   ],
+   "Skull": [
+    30,
+    198
+   ],
+   "MQG": [
+    178
+   ],
+   "IV": [
+    0,
+    184,
+    205
+   ],
+   "CS": [
+    205
+   ]
+  },
+  "nativeEff": 188.093,
+  "borrowedEff": 190.287
+ },
+ {
+  "file": "mqg-skull-medlong.txt",
+  "kit": "mqg+skull",
+  "class": "medlong",
+  "T": 226,
+  "lust": 0,
+  "seed": 9988,
+  "simH": 190,
+  "borrowedH": 160,
+  "nativeDPS": 2865.4,
+  "borrowedDPS": 2865.5,
+  "pct": 0.003,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    0
+   ],
+   "AP": [
+    3,
+    183
+   ],
+   "Zerk": [
+    36,
+    216
+   ],
+   "Skull": [
+    60,
+    180
+   ],
+   "MQG": [
+    40
+   ],
+   "IV": [
+    0,
+    180,
+    205
+   ],
+   "CS": [
+    205
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    0
+   ],
+   "AP": [
+    3,
+    183
+   ],
+   "Zerk": [
+    35,
+    215
+   ],
+   "Skull": [
+    60,
+    180
+   ],
+   "MQG": [
+    40
+   ],
+   "IV": [
+    0,
+    180,
+    205
+   ],
+   "CS": [
+    205
+   ]
+  },
+  "nativeEff": 198.619,
+  "borrowedEff": 195.754
+ },
+ {
+  "file": "mqg-skull-short.txt",
+  "kit": "mqg+skull",
+  "class": "short",
+  "T": 110,
+  "lust": 45,
+  "seed": 9986,
+  "simH": 190,
+  "borrowedH": 235,
+  "nativeDPS": 3102.6,
+  "borrowedDPS": 3103.7,
+  "pct": 0.035,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    45
+   ],
+   "AP": [
+    86
+   ],
+   "Zerk": [
+    0
+   ],
+   "Skull": [
+    86
+   ],
+   "MQG": [
+    20
+   ],
+   "IV": [
+    0,
+    86
+   ],
+   "CS": [
+    86
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    45
+   ],
+   "AP": [
+    4
+   ],
+   "Zerk": [
+    20
+   ],
+   "Skull": [
+    0
+   ],
+   "MQG": [
+    20
+   ],
+   "IV": [
+    0,
+    85
+   ],
+   "CS": [
+    85
+   ]
+  },
+  "nativeEff": 104.931,
+  "borrowedEff": 107.344
+ },
+ {
+  "file": "mqg-skull-short.txt",
+  "kit": "mqg+skull",
+  "class": "short",
+  "T": 110,
+  "lust": 45,
+  "seed": 9986,
+  "simH": 70,
+  "borrowedH": 0,
+  "nativeDPS": 2932.2,
+  "borrowedDPS": 2932.8,
+  "pct": 0.02,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    45
+   ],
+   "AP": [
+    4
+   ],
+   "Zerk": [
+    45
+   ],
+   "Skull": [
+    56
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    0,
+    22
+   ],
+   "CS": [
+    22
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    45
+   ],
+   "AP": [
+    4
+   ],
+   "Zerk": [
+    66
+   ],
+   "Skull": [
+    45
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 99.035,
+  "borrowedEff": 95.099
+ },
+ {
+  "file": "mqg-skull-short.txt",
+  "kit": "mqg+skull",
+  "class": "short",
+  "T": 110,
+  "lust": 45,
+  "seed": 9986,
+  "simH": 400,
+  "borrowedH": 295,
+  "nativeDPS": 3292.6,
+  "borrowedDPS": 3292.9,
+  "pct": 0.009,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    45
+   ],
+   "AP": [
+    4
+   ],
+   "Zerk": [
+    19
+   ],
+   "Skull": [
+    6
+   ],
+   "MQG": [
+    26
+   ],
+   "IV": [
+    0,
+    86
+   ],
+   "CS": [
+    86
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    45
+   ],
+   "AP": [
+    25
+   ],
+   "Zerk": [
+    0
+   ],
+   "Skull": [
+    20
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    25,
+    86
+   ],
+   "CS": [
+    86
+   ]
+  },
+  "nativeEff": 111.326,
+  "borrowedEff": 108.852
+ },
+ {
+  "file": "mqg-skull-xl.txt",
+  "kit": "mqg+skull",
+  "class": "xl",
+  "T": 395,
+  "lust": 224,
+  "seed": 9990,
+  "simH": 0,
+  "borrowedH": 70,
+  "nativeDPS": 2523.3,
+  "borrowedDPS": 2523.8,
+  "pct": 0.02,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    224
+   ],
+   "AP": [
+    4,
+    184,
+    370
+   ],
+   "Zerk": [
+    4,
+    184,
+    375
+   ],
+   "Skull": [
+    0,
+    120,
+    240,
+    374
+   ],
+   "MQG": [
+    20,
+    354
+   ],
+   "IV": [
+    0,
+    180,
+    360,
+    380
+   ],
+   "CS": [
+    380
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    224
+   ],
+   "AP": [
+    19,
+    199,
+    379
+   ],
+   "Zerk": [
+    0,
+    200,
+    380
+   ],
+   "Skull": [
+    0,
+    120,
+    240,
+    374
+   ],
+   "MQG": [
+    20,
+    320
+   ],
+   "IV": [
+    0,
+    20,
+    200,
+    380
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 305.808,
+  "borrowedEff": 318.358
+ },
+ {
+  "file": "scb-mqg-medium.txt",
+  "kit": "scb+mqg",
+  "class": "medium",
+  "T": 174,
+  "lust": 121,
+  "seed": 5793,
+  "simH": 105,
+  "borrowedH": 20,
+  "nativeDPS": 2715.1,
+  "borrowedDPS": 2717.6,
+  "pct": 0.092,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    121
+   ],
+   "AP": [
+    4
+   ],
+   "Zerk": [
+    20
+   ],
+   "Gem": [
+    4,
+    124
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    121
+   ],
+   "AP": [
+    4
+   ],
+   "Zerk": [
+    125
+   ],
+   "Gem": [
+    4,
+    124
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 147.223,
+  "borrowedEff": 140.495
+ },
+ {
+  "file": "scb-mqg-medium.txt",
+  "kit": "scb+mqg",
+  "class": "medium",
+  "T": 174,
+  "lust": 121,
+  "seed": 5793,
+  "simH": 20,
+  "borrowedH": 0,
+  "nativeDPS": 2597.3,
+  "borrowedDPS": 2598.1,
+  "pct": 0.031,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    121
+   ],
+   "AP": [
+    4
+   ],
+   "Zerk": [
+    125
+   ],
+   "Gem": [
+    4,
+    124
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    121
+   ],
+   "AP": [
+    125
+   ],
+   "Zerk": [
+    141
+   ],
+   "Gem": [
+    4,
+    125
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    0,
+    120
+   ],
+   "CS": [
+    120
+   ]
+  },
+  "nativeEff": 140.495,
+  "borrowedEff": 139.009
+ },
+ {
+  "file": "scb-mqg-medium.txt",
+  "kit": "scb+mqg",
+  "class": "medium",
+  "T": 174,
+  "lust": 121,
+  "seed": 5793,
+  "simH": 235,
+  "borrowedH": 265,
+  "nativeDPS": 2912.5,
+  "borrowedDPS": 2913.2,
+  "pct": 0.024,
+  "robust": false,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    121
+   ],
+   "AP": [
+    125
+   ],
+   "Zerk": [
+    4
+   ],
+   "Gem": [
+    4,
+    125
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    20,
+    41
+   ],
+   "CS": [
+    41
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    121
+   ],
+   "AP": [
+    125
+   ],
+   "Zerk": [
+    0
+   ],
+   "Gem": [
+    4,
+    125
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    20,
+    41
+   ],
+   "CS": [
+    41
+   ]
+  },
+  "nativeEff": 157.738,
+  "borrowedEff": 159.662
+ },
+ {
+  "file": "scb-mqg-medium.txt",
+  "kit": "scb+mqg",
+  "class": "medium",
+  "T": 174,
+  "lust": 121,
+  "seed": 5793,
+  "simH": 265,
+  "borrowedH": 400,
+  "nativeDPS": 2951.7,
+  "borrowedDPS": 2952,
+  "pct": 0.01,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    121
+   ],
+   "AP": [
+    125
+   ],
+   "Zerk": [
+    0
+   ],
+   "Gem": [
+    4,
+    125
+   ],
+   "MQG": [
+    0
+   ],
+   "IV": [
+    20,
+    41
+   ],
+   "CS": [
+    41
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    121
+   ],
+   "AP": [
+    140
+   ],
+   "Zerk": [
+    60
+   ],
+   "Gem": [
+    20,
+    140
+   ],
+   "MQG": [
+    40
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 159.662,
+  "borrowedEff": 167.706
+ },
+ {
+  "file": "scb-mqg-xl.txt",
+  "kit": "scb+mqg",
+  "class": "xl",
+  "T": 406,
+  "lust": 32,
+  "seed": 5796,
+  "simH": 75,
+  "borrowedH": 0,
+  "nativeDPS": 2586.9,
+  "borrowedDPS": 2587.7,
+  "pct": 0.031,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    32
+   ],
+   "AP": [
+    4,
+    200,
+    380
+   ],
+   "Zerk": [
+    25,
+    205,
+    395
+   ],
+   "Gem": [
+    4,
+    200,
+    380
+   ],
+   "MQG": [
+    0,
+    375
+   ],
+   "IV": [
+    0,
+    180,
+    200,
+    380
+   ],
+   "CS": [
+    200
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    32
+   ],
+   "AP": [
+    4,
+    185,
+    365
+   ],
+   "Zerk": [
+    0,
+    185,
+    381
+   ],
+   "Gem": [
+    4,
+    185,
+    365
+   ],
+   "MQG": [
+    0,
+    360
+   ],
+   "IV": [
+    0,
+    180,
+    360,
+    381
+   ],
+   "CS": [
+    381
+   ]
+  },
+  "nativeEff": 326.335,
+  "borrowedEff": 312.195
+ },
+ {
+  "file": "scb-mqg-xl.txt",
+  "kit": "scb+mqg",
+  "class": "xl",
+  "T": 406,
+  "lust": 32,
+  "seed": 5796,
+  "simH": 20,
+  "borrowedH": 75,
+  "nativeDPS": 2501.2,
+  "borrowedDPS": 2501.4,
+  "pct": 0.008,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    32
+   ],
+   "AP": [
+    4,
+    185,
+    365
+   ],
+   "Zerk": [
+    0,
+    185,
+    381
+   ],
+   "Gem": [
+    4,
+    185,
+    365
+   ],
+   "MQG": [
+    0,
+    360
+   ],
+   "IV": [
+    0,
+    180,
+    360,
+    381
+   ],
+   "CS": [
+    381
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    32
+   ],
+   "AP": [
+    4,
+    200,
+    380
+   ],
+   "Zerk": [
+    25,
+    205,
+    395
+   ],
+   "Gem": [
+    4,
+    200,
+    380
+   ],
+   "MQG": [
+    0,
+    375
+   ],
+   "IV": [
+    0,
+    180,
+    200,
+    380
+   ],
+   "CS": [
+    200
+   ]
+  },
+  "nativeEff": 315.974,
+  "borrowedEff": 326.335
+ },
+ {
+  "file": "scb-skull-long.txt",
+  "kit": "scb+skull",
+  "class": "long",
+  "T": 366,
+  "lust": 283,
+  "seed": 1049,
+  "simH": 210,
+  "borrowedH": 260,
+  "nativeDPS": 2810.6,
+  "borrowedDPS": 2811.4,
+  "pct": 0.028,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    283
+   ],
+   "AP": [
+    0,
+    180,
+    360
+   ],
+   "Zerk": [
+    0,
+    180,
+    360
+   ],
+   "Gem": [
+    0,
+    180,
+    300
+   ],
+   "Skull": [
+    0,
+    120,
+    240,
+    360
+   ],
+   "IV": [
+    0,
+    180,
+    240
+   ],
+   "CS": [
+    240
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    283
+   ],
+   "AP": [
+    0,
+    180,
+    360
+   ],
+   "Zerk": [
+    0,
+    180,
+    360
+   ],
+   "Gem": [
+    0,
+    180,
+    350
+   ],
+   "Skull": [
+    0,
+    120,
+    240,
+    360
+   ],
+   "IV": [
+    0,
+    180,
+    340
+   ],
+   "CS": [
+    340
+   ]
+  },
+  "nativeEff": 313.447,
+  "borrowedEff": 320.65
+ },
+ {
+  "file": "scb-skull-medium.txt",
+  "kit": "scb+skull",
+  "class": "medium",
+  "T": 175,
+  "lust": 106,
+  "seed": 1047,
+  "simH": 60,
+  "borrowedH": 90,
+  "nativeDPS": 2713.9,
+  "borrowedDPS": 2714.5,
+  "pct": 0.022,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    106
+   ],
+   "AP": [
+    125
+   ],
+   "Zerk": [
+    106
+   ],
+   "Gem": [
+    4,
+    125
+   ],
+   "Skull": [
+    0,
+    120
+   ],
+   "IV": [
+    0,
+    21
+   ],
+   "CS": [
+    21
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    106
+   ],
+   "AP": [
+    125
+   ],
+   "Zerk": [
+    20
+   ],
+   "Gem": [
+    4,
+    125
+   ],
+   "Skull": [
+    0,
+    120
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 144.917,
+  "borrowedEff": 147.134
+ },
+ {
+  "file": "scb-skull-medium.txt",
+  "kit": "scb+skull",
+  "class": "medium",
+  "T": 175,
+  "lust": 106,
+  "seed": 1047,
+  "simH": 240,
+  "borrowedH": 210,
+  "nativeDPS": 2989.3,
+  "borrowedDPS": 2989.7,
+  "pct": 0.013,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    106
+   ],
+   "AP": [
+    4
+   ],
+   "Zerk": [
+    20
+   ],
+   "Gem": [
+    4,
+    146
+   ],
+   "Skull": [
+    0,
+    146
+   ],
+   "IV": [
+    0,
+    146
+   ],
+   "CS": [
+    146
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    106
+   ],
+   "AP": [
+    147
+   ],
+   "Zerk": [
+    20
+   ],
+   "Gem": [
+    4,
+    147
+   ],
+   "Skull": [
+    0,
+    147
+   ],
+   "IV": [
+    0,
+    147
+   ],
+   "CS": [
+    147
+   ]
+  },
+  "nativeEff": 159.234,
+  "borrowedEff": 157.092
+ },
+ {
+  "file": "scb-skull-medium.txt",
+  "kit": "scb+skull",
+  "class": "medium",
+  "T": 175,
+  "lust": 106,
+  "seed": 1047,
+  "simH": 260,
+  "borrowedH": 400,
+  "nativeDPS": 3010.9,
+  "borrowedDPS": 3011.2,
+  "pct": 0.01,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    106
+   ],
+   "AP": [
+    125
+   ],
+   "Zerk": [
+    146
+   ],
+   "Gem": [
+    4,
+    125
+   ],
+   "Skull": [
+    0,
+    146
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    106
+   ],
+   "AP": [
+    125
+   ],
+   "Zerk": [
+    20
+   ],
+   "Gem": [
+    4,
+    125
+   ],
+   "Skull": [
+    20,
+    147
+   ],
+   "IV": [
+    0,
+    40
+   ],
+   "CS": [
+    40
+   ]
+  },
+  "nativeEff": 160.337,
+  "borrowedEff": 168.778
+ },
+ {
+  "file": "scb-skull-medium.txt",
+  "kit": "scb+skull",
+  "class": "medium",
+  "T": 175,
+  "lust": 106,
+  "seed": 1047,
+  "simH": 290,
+  "borrowedH": 400,
+  "nativeDPS": 3045.4,
+  "borrowedDPS": 3045.7,
+  "pct": 0.01,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    106
+   ],
+   "AP": [
+    125
+   ],
+   "Zerk": [
+    147
+   ],
+   "Gem": [
+    4,
+    125
+   ],
+   "Skull": [
+    20,
+    147
+   ],
+   "IV": [
+    0,
+    40
+   ],
+   "CS": [
+    40
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    106
+   ],
+   "AP": [
+    125
+   ],
+   "Zerk": [
+    20
+   ],
+   "Gem": [
+    4,
+    125
+   ],
+   "Skull": [
+    20,
+    147
+   ],
+   "IV": [
+    0,
+    40
+   ],
+   "CS": [
+    40
+   ]
+  },
+  "nativeEff": 162.12,
+  "borrowedEff": 168.778
+ },
+ {
+  "file": "scb-skull-medium.txt",
+  "kit": "scb+skull",
+  "class": "medium",
+  "T": 175,
+  "lust": 106,
+  "seed": 1047,
+  "simH": 210,
+  "borrowedH": 260,
+  "nativeDPS": 2942.8,
+  "borrowedDPS": 2943,
+  "pct": 0.007,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    106
+   ],
+   "AP": [
+    147
+   ],
+   "Zerk": [
+    20
+   ],
+   "Gem": [
+    4,
+    147
+   ],
+   "Skull": [
+    0,
+    147
+   ],
+   "IV": [
+    0,
+    147
+   ],
+   "CS": [
+    147
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    106
+   ],
+   "AP": [
+    125
+   ],
+   "Zerk": [
+    146
+   ],
+   "Gem": [
+    4,
+    125
+   ],
+   "Skull": [
+    0,
+    146
+   ],
+   "IV": [
+    0,
+    20
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 157.092,
+  "borrowedEff": 160.337
+ },
+ {
+  "file": "scb-skull-medlong.txt",
+  "kit": "scb+skull",
+  "class": "medlong",
+  "T": 218,
+  "lust": 105,
+  "seed": 1048,
+  "simH": 210,
+  "borrowedH": 260,
+  "nativeDPS": 2964.9,
+  "borrowedDPS": 2966.3,
+  "pct": 0.047,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    105
+   ],
+   "AP": [
+    4,
+    196
+   ],
+   "Zerk": [
+    20,
+    201
+   ],
+   "Gem": [
+    4,
+    196
+   ],
+   "Skull": [
+    0,
+    181
+   ],
+   "IV": [
+    0,
+    180,
+    200
+   ],
+   "CS": [
+    200
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    105
+   ],
+   "AP": [
+    20,
+    200
+   ],
+   "Zerk": [
+    0,
+    190
+   ],
+   "Gem": [
+    20,
+    200
+   ],
+   "Skull": [
+    15,
+    195
+   ],
+   "IV": [
+    0,
+    20,
+    200
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 197.18,
+  "borrowedEff": 201.104
+ },
+ {
+  "file": "scb-skull-medlong.txt",
+  "kit": "scb+skull",
+  "class": "medlong",
+  "T": 218,
+  "lust": 105,
+  "seed": 1048,
+  "simH": 60,
+  "borrowedH": 90,
+  "nativeDPS": 2731.4,
+  "borrowedDPS": 2732.3,
+  "pct": 0.033,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    105
+   ],
+   "AP": [
+    4,
+    186
+   ],
+   "Zerk": [
+    4,
+    186
+   ],
+   "Gem": [
+    4,
+    186
+   ],
+   "Skull": [
+    0,
+    186
+   ],
+   "IV": [
+    0,
+    180,
+    200
+   ],
+   "CS": [
+    200
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    105
+   ],
+   "AP": [
+    4,
+    186
+   ],
+   "Zerk": [
+    0,
+    186
+   ],
+   "Gem": [
+    4,
+    186
+   ],
+   "Skull": [
+    0,
+    186
+   ],
+   "IV": [
+    0,
+    180,
+    200
+   ],
+   "CS": [
+    200
+   ]
+  },
+  "nativeEff": 181.586,
+  "borrowedEff": 184.414
+ },
+ {
+  "file": "scb-skull-medlong.txt",
+  "kit": "scb+skull",
+  "class": "medlong",
+  "T": 218,
+  "lust": 105,
+  "seed": 1048,
+  "simH": 30,
+  "borrowedH": 90,
+  "nativeDPS": 2690.6,
+  "borrowedDPS": 2691,
+  "pct": 0.015,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    105
+   ],
+   "AP": [
+    4,
+    186
+   ],
+   "Zerk": [
+    4,
+    190
+   ],
+   "Gem": [
+    4,
+    186
+   ],
+   "Skull": [
+    0,
+    186
+   ],
+   "IV": [
+    0,
+    180,
+    200
+   ],
+   "CS": [
+    200
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    105
+   ],
+   "AP": [
+    4,
+    186
+   ],
+   "Zerk": [
+    0,
+    186
+   ],
+   "Gem": [
+    4,
+    186
+   ],
+   "Skull": [
+    0,
+    186
+   ],
+   "IV": [
+    0,
+    180,
+    200
+   ],
+   "CS": [
+    200
+   ]
+  },
+  "nativeEff": 178.623,
+  "borrowedEff": 184.414
+ },
+ {
+  "file": "scb-skull-short.txt",
+  "kit": "scb+skull",
+  "class": "short",
+  "T": 100,
+  "lust": 14,
+  "seed": 1046,
+  "simH": 90,
+  "borrowedH": 30,
+  "nativeDPS": 2988.5,
+  "borrowedDPS": 2995.3,
+  "pct": 0.228,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    14
+   ],
+   "AP": [
+    39
+   ],
+   "Zerk": [
+    39
+   ],
+   "Gem": [
+    39
+   ],
+   "Skull": [
+    49
+   ],
+   "IV": [
+    55,
+    75
+   ],
+   "CS": [
+    75
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    14
+   ],
+   "AP": [
+    30
+   ],
+   "Zerk": [
+    15
+   ],
+   "Gem": [
+    30
+   ],
+   "Skull": [
+    30
+   ],
+   "IV": [
+    55,
+    75
+   ],
+   "CS": [
+    75
+   ]
+  },
+  "nativeEff": 91.27,
+  "borrowedEff": 88.352
+ },
+ {
+  "file": "scb-skull-xl.txt",
+  "kit": "scb+skull",
+  "class": "xl",
+  "T": 437,
+  "lust": 286,
+  "seed": 1050,
+  "simH": 60,
+  "borrowedH": 90,
+  "nativeDPS": 2601.1,
+  "borrowedDPS": 2601.6,
+  "pct": 0.019,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    286
+   ],
+   "AP": [
+    4,
+    185,
+    416
+   ],
+   "Zerk": [
+    4,
+    190,
+    416
+   ],
+   "Gem": [
+    4,
+    185,
+    416
+   ],
+   "Skull": [
+    0,
+    176,
+    296,
+    416
+   ],
+   "IV": [
+    0,
+    180,
+    395,
+    416
+   ],
+   "CS": [
+    416
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    286
+   ],
+   "AP": [
+    4,
+    185,
+    416
+   ],
+   "Zerk": [
+    0,
+    190,
+    416
+   ],
+   "Gem": [
+    4,
+    185,
+    416
+   ],
+   "Skull": [
+    0,
+    176,
+    296,
+    416
+   ],
+   "IV": [
+    0,
+    180,
+    200,
+    416
+   ],
+   "CS": [
+    200
+   ]
+  },
+  "nativeEff": 345.921,
+  "borrowedEff": 351.3
+ },
+ {
+  "file": "scb-skull-xl.txt",
+  "kit": "scb+skull",
+  "class": "xl",
+  "T": 437,
+  "lust": 286,
+  "seed": 1050,
+  "simH": 260,
+  "borrowedH": 210,
+  "nativeDPS": 2890.1,
+  "borrowedDPS": 2890.6,
+  "pct": 0.017,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    286
+   ],
+   "AP": [
+    4,
+    195,
+    409
+   ],
+   "Zerk": [
+    20,
+    200,
+    399
+   ],
+   "Gem": [
+    4,
+    195,
+    409
+   ],
+   "Skull": [
+    0,
+    120,
+    240,
+    404
+   ],
+   "IV": [
+    0,
+    195,
+    379,
+    409
+   ],
+   "CS": [
+    409
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    286
+   ],
+   "AP": [
+    4,
+    230,
+    415
+   ],
+   "Zerk": [
+    20,
+    230,
+    421
+   ],
+   "Gem": [
+    4,
+    230,
+    415
+   ],
+   "Skull": [
+    0,
+    120,
+    240,
+    401
+   ],
+   "IV": [
+    0,
+    20,
+    230,
+    410
+   ],
+   "CS": [
+    20
+   ]
+  },
+  "nativeEff": 383.739,
+  "borrowedEff": 375.49
+ },
+ {
+  "file": "scb-skull-xl.txt",
+  "kit": "scb+skull",
+  "class": "xl",
+  "T": 437,
+  "lust": 286,
+  "seed": 1050,
+  "simH": 290,
+  "borrowedH": 400,
+  "nativeDPS": 2925.6,
+  "borrowedDPS": 2926,
+  "pct": 0.014,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    286
+   ],
+   "AP": [
+    10,
+    210,
+    390
+   ],
+   "Zerk": [
+    0,
+    240,
+    420
+   ],
+   "Gem": [
+    10,
+    210,
+    390
+   ],
+   "Skull": [
+    0,
+    120,
+    240,
+    411
+   ],
+   "IV": [
+    10,
+    30,
+    210,
+    390
+   ],
+   "CS": [
+    30
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    286
+   ],
+   "AP": [
+    4,
+    185,
+    365
+   ],
+   "Zerk": [
+    20,
+    201,
+    402
+   ],
+   "Gem": [
+    4,
+    185,
+    365
+   ],
+   "Skull": [
+    20,
+    140,
+    260,
+    402
+   ],
+   "IV": [
+    0,
+    180,
+    360,
+    381
+   ],
+   "CS": [
+    381
+   ]
+  },
+  "nativeEff": 388.655,
+  "borrowedEff": 408.575
+ },
+ {
+  "file": "scb-skull-xl.txt",
+  "kit": "scb+skull",
+  "class": "xl",
+  "T": 437,
+  "lust": 286,
+  "seed": 1050,
+  "simH": 0,
+  "borrowedH": 30,
+  "nativeDPS": 2516,
+  "borrowedDPS": 2516.1,
+  "pct": 0.004,
+  "robust": true,
+  "nativeSpec": {
+   "_prestack": 0,
+   "BL": [
+    286
+   ],
+   "AP": [
+    4,
+    184,
+    416
+   ],
+   "Zerk": [
+    4,
+    185,
+    417
+   ],
+   "Gem": [
+    4,
+    185,
+    416
+   ],
+   "Skull": [
+    0,
+    176,
+    296,
+    416
+   ],
+   "IV": [
+    0,
+    180,
+    396,
+    416
+   ],
+   "CS": [
+    416
+   ]
+  },
+  "borrowedSpec": {
+   "_prestack": 0,
+   "BL": [
+    286
+   ],
+   "AP": [
+    4,
+    184,
+    416
+   ],
+   "Zerk": [
+    4,
+    186,
+    416
+   ],
+   "Gem": [
+    4,
+    185,
+    416
+   ],
+   "Skull": [
+    0,
+    176,
+    296,
+    416
+   ],
+   "IV": [
+    0,
+    180,
+    395,
+    416
+   ],
+   "CS": [
+    416
+   ]
+  },
+  "nativeEff": 333.949,
+  "borrowedEff": 340.157
+ }
+]
