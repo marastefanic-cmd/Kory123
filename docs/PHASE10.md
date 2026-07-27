@@ -1009,3 +1009,47 @@ objective's margin on these pairs is ~0.014 %) that it may not be reachable at a
 (§8.5, GEAR-AGNOSTIC §6.2). And the obvious implementation is already falsified — discretizing the
 scorer measured *worse* across a full column on gear A (r 0.7910 vs 0.9337). What §8.23–§8.25
 establish is the **target and its size**, not the fix.
+
+## 8.26 ⚡ THE BOSS STRATUM MOVED TO THE NATIVE RUNNER — gated bit-identical, and why that respects the freeze
+
+**The problem, measured rather than assumed.** With 30/36 in, the boss half was ~13 hours out on the
+wasm. The box was *not* under-used — 4 workers at 97 % CPU, load 4.08 on 4 cores — boss cells are
+simply **~5× slower per fight-second** than class cells, because a Vashj APL evaluates a **7-clause
+intermission condition every GCD**. (My first read of the rate was also wrong and worth flagging: I
+counted new cache *files*, which only appear on a MISS, so hits were invisible.)
+
+**`docs/GEAR-AGNOSTIC.md` §4 legislates for exactly this** — *"bulk corpus gathering → native runner —
+6× on the sim half is hours per round"* — and its caveat ("the boss half is solve-dominated") stops
+applying once the `SOLVE_ONLY` pre-pass has banked the plans, which it had.
+
+**How this respects a freeze it superficially violates.** `tools/xval-bench.mjs` is frozen mid-round
+(GEAR-AGNOSTIC §6.2), and the freeze's stated purpose is that **a MATRIX must never be assembled from
+two instruments**. So:
+
+1. the **engine identity is in the DPS cache key** — a wasm-warmed entry cannot be served into a
+   native matrix, which is precisely the failure the freeze names;
+2. it is **stamped** `engine=native:runner-ap180:<size>` on every `XVAL-DONE`;
+3. **no boss table had started**, so each runs wholly on one engine;
+4. boss and class strata are **never pooled** anyway (ACCEPTANCE ★★).
+
+**The gate was in situ, not by appeal to `sim-duel`.** A *completed* class table
+(`mqg-skull-short`, all 100 cells) re-run through the native backend reproduces the committed wasm
+matrix **BIT-IDENTICALLY**. The plan cache is engine-independent by construction, so the banked boss
+pre-solves survived — `SOLVE-ONLY` returned instantly on restart.
+
+### ⚠ Two process failures during the switch, both mine, both the same root cause
+
+- **`pkill -f <pattern>` matched the shell issuing it — twice.** §8.17 already records this trap and I
+  walked into it anyway, because the pattern sat in a **heredoc**, which is part of the invoking
+  shell's argv. It killed the cleanup script mid-run and left the (lock-less) watchdogs alive to
+  respawn everything: 2 campaigns, 13 workers, load 28. **The reliable form is to collect PIDs into a
+  FILE first, then kill by PID from a script whose own argv never contains the pattern.**
+- **Then my *count* of the survivors was wrong the same way.** `pgrep -fc 'xval-watchdog'` reported 4
+  watchdogs because it also matched my own shell wrappers. The pipeline was in fact clean — one
+  watchdog holding the lock, one campaign, four workers, one checkpoint loop — and for a few minutes
+  I believed a working singleton lock had failed. Read `ps -eo pid,ppid,cmd` and look at the tree;
+  do not trust a `-f` count.
+
+**The fix that stops the first one recurring:** `tools/xval-watchdog.sh` now takes a `noclobber` PID
+lock, so a second watchdog exits instead of racing. Two watchdogs is not twice the work — it is the
+same work at half throughput plus constant writer-lock collisions.
