@@ -61,12 +61,15 @@ a different claim from *they moved*.
 **The single-file convention is retired (user decision, 07-26).** Phase 11 is the platform / perf /
 product track: it touches no scorer term, search pass, or protocol constant — plans stay
 byte-identical except where one of its §1 bug fixes is itself the change (all plan-neutral:
-tools/UI/deploy). It opens with the 07-26 audit's findings ledger — **8 confirmed bugs to fix
-first**, worst three: the Debug export's "reproduce" command silently mis-reproduces AoE duels
-(`planToSpecInline` drops `targets`; `bench.mjs` has no `--targets` flag), one transient fetch
-failure bricks the sim button until reload (`duel-worker.js` caches the rejected boot forever), and
-the unhashed `sim/sim.wasm` is served `immutable` (stale physics for returning visitors on the first
-rebuild). Then: CI bring-up (verified: no `.github/` exists), the module split under a
+tools/UI/deploy). It opens with the 07-26 audit's findings ledger — 8 confirmed bugs, of which
+✅ **6 are FIXED as of the 07-27 status audit** (`bench --targets` and its refusal to sim an `_aoe`
+spec without one; `duel-worker.js` un-memoizing a rejected boot; `immutable` dropped from the
+unhashed wasm; `plan-duel`'s retired intent transcription; `census-build`'s line anchors →
+content anchors; `evalsched`'s missing `t5two`). **Both remaining halves are in `index.html`** — the
+Debug export's "reproduce" command still drops `targets` on AoE duels, and `simRun` still leaks a
+listener per duel and never evicts a failed worker. Not a coincidence: they are in the one file the
+split exists to break up, and the one file frozen while a round gathers.
+Then: CI bring-up (verified: no `.github/` exists), the module split under a
 plan-sweep-IDENTICAL + exact-match gate, the PHASE9 §4 reclaim ladder, and lazily-loaded product
 routes (URL-shareable setups first — today a mid-raid refresh loses the fight being planned).
 PHASE11 §8 lists the user calls it needs (file:// fate, build-or-no-build, precomputed preset plans,

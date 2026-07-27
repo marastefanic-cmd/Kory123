@@ -39,6 +39,38 @@ hardcoded line-number patcher in `tools/census-build.mjs`), feeding ~30 consumer
 
 ### §1.1 Confirmed bugs (fix these before or with the split; each is plan-neutral)
 
+> ## ✅ STATUS AUDIT, 2026-07-27 — **6 of 8 are FIXED; the ledger had not said so**
+>
+> This list was written 07-26 as "8 confirmed bugs, fix first", and CLAUDE.md's pointer repeated that
+> count. Re-checked against HEAD line by line, most had already been fixed in passing without the
+> ledger being updated — which is the same disease the ledger exists to treat. **The bullets below are
+> unedited** (their reasoning and evidence are what a future reader needs); the status column is
+> authoritative.
+>
+> | # | what | status | where |
+> |---|---|---|---|
+> | **B1** | AoE duel mis-reproduced (no `targets`) | **half fixed** — `tools/bench.mjs` has `--targets`, *and refuses* an `_aoe` spec that omits it (the flag alone would have left the failure silent). **The page half is open**: `planToSpecInline` still drops `targets` and the emitted command still carries none | `bench.mjs` ✔ · `index.html` ✗ |
+> | **B2** | one transient failure bricks the sim button | **half fixed** — `sim/duel-worker.js` un-memoizes a rejected boot, with per-step guards so a retry does not start a second Go runtime. **Open**: `simRun`'s listener leak (a `{once:true}` error listener accumulates per success; the error path leaves `onMsg` attached) and no worker eviction | `duel-worker.js` ✔ · `index.html` ✗ |
+> | **B3** | `immutable` on the unhashed wasm | ✔ **FIXED** — `netlify.toml` records both the fix and the false premise it rested on (`immutable` is a promise about a *URL*, and a bundle whose members expire on different schedules can serve a mismatched set) | `netlify.toml` |
+> | **B4** | `plan-duel.mjs` transcribed the retired INTENT convention | ✔ **FIXED** — `toSpec` now reads `actEff` (fire times), and the flag *shape* comes from `runnerFlags()` rather than being hand-assembled | `plan-duel.mjs` |
+> | **B5** | `census-build.mjs` dead against HEAD | ✔ **FIXED** — probes are **content-anchored** (`find` + optional `after`) instead of line-numbered. Note the reasoning: the answer to "one anchor is ambiguous" is to disambiguate that one, not to make all eight fragile | `census-build.mjs` |
+> | **B6** | `evalsched.mjs`'s cfg lacks `t5two` | ✔ **FIXED 07-27** — `gear.t5two` is honoured, so the page's paste-ready `evalsched` object round-trips. Controlled: same schedule scores **190 433 → 226 905** with it on (≈×1.19, not exactly ×1.2 — an AP window is worth less against a higher floor, `index.html:1159`), and **absent ⇒ falsy ⇒ byte-identical**, which is what leaves the goldens untouched | `tests/evalsched.mjs` |
+> | **B7** | `sim-duel.mjs`'s main-guard failed as a pass | ✔ **FIXED** — `pathToFileURL` on both sides | `tests/sim-duel.mjs` |
+> | **B8** | `sim-request.mjs` skipped its runner-free checks | ✔ **FIXED** — §0 hoisted above the `RUNNER` gate, so the protocol invariants run everywhere including CI | `tests/sim-request.mjs` |
+>
+> **Both remaining halves live in `index.html`**, which is frozen while a cross-val round gathers
+> (PHASE12 §1.1e). That is the whole residue of §1.1, and it is not a coincidence: the two open items
+> are precisely the ones in the file the split exists to break up.
+>
+> ⚠ **B6 surfaced a hole in the freeze rule that is worth more than B6.** Its "proper" fix is the one
+> exported `cfgFor()` (§2), and `tools/engine-node.mjs:cfgFor` has the identical gap — but that file is
+> imported by `tools/xval-bench.mjs` **while the round runs**, and the plan cache keys on
+> `index.html`'s bytes **alone** (`xval-bench.mjs:179`). So an edit there changes plans under an
+> unchanged cache key: silently, and only for the cells gathered after it. The freeze list named
+> `index.html`, `sim/simreq.mjs` and `tools/xval-bench.mjs`; the real list is the whole import closure
+> — add `tools/engine-node.mjs`, `tools/genapl-core.mjs`, `tools/reference-gear.mjs`,
+> `sim/planspec.mjs`, `sim/benchmark.mjs`. Recorded in PHASE12 §1.1e.
+
 - **B1 · The Debug export's "reproduce" command mis-reproduces AoE duels — silent wrong number.**
   `planToSpecInline` (`index.html:4573-4599`, the acknowledged copy of `sim/planspec.mjs` that
   exists only because a classic script can't import) drops the `targets` field its module twin

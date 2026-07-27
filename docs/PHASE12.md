@@ -112,6 +112,21 @@ The user asked for a guarantee, not an intention. A note in a doc is not one. Wh
    the instrument between cells and assembles the matrix from two of them — the identical failure the
    `index.html` freeze exists to prevent, one file over. **Do not add the guard below until the round
    reads 36/36.** (The `index.html` freeze is documented in three places; this one was in none.)
+
+   **★ AND THE FREEZE IS WIDER THAN ANY LIST SAYS — it is the whole IMPORT CLOSURE (found 07-27).**
+   The plan cache keys on `index.html`'s bytes **alone** (`xval-bench.mjs:179` —
+   `ENGINE_ID = sha1(index.html)`), so every *other* file `xval-bench.mjs` imports can be edited
+   mid-round and the cache will keep serving plans computed by the old code under an unchanged key.
+   The damage is silent and partial: only the cells gathered after the edit are affected, and nothing
+   in the table says which. Beyond the three files usually named, the closure is
+   **`tools/engine-node.mjs`** (it *builds* the engine), **`tools/genapl-core.mjs`**,
+   **`tools/reference-gear.mjs`**, **`sim/planspec.mjs`** and **`sim/benchmark.mjs`**.
+   This was found by trying to fix PHASE11 §1.1 B6 the "proper" way — unifying `cfgFor()` — which
+   would have edited `engine-node.mjs` mid-round for a change that looks obviously inert.
+   **Two fixes, and the second is the real one:** (a) list the closure wherever the freeze is stated;
+   (b) **fold the closure's hashes into `ENGINE_ID`**, so a mid-round edit *misses* the cache and
+   re-solves rather than silently mixing instruments — a freeze that a tool enforces beats a freeze
+   that a doc requests.
 2. **Then make the geared path opt-in, not default.** `tools/xval-bench.mjs:251` hardcodes
    `tools/bench/export-request.json`. Replace with a `CHAR=` selector defaulting to **`model-ref`**,
    and have the geared path require an explicit `CHAR=bench` *plus* a printed banner naming

@@ -248,12 +248,16 @@ Treat maintaining them as part of the work, not an afterthought:
   §8.23 diagnoses its worst cell: **two local optima and one terminal cast**, which the model scores as
   a 0.014 % tie while the sim is emphatic at ~13σ. ⚠ Discretizing the scorer is already falsified.
 - `docs/PHASE11.md` — **PLANNED (parallel track): the platform phase — the single-file convention is
-  RETIRED (user decision 07-26).** Its §1 is the 07-26 audit's findings ledger — **8 confirmed bugs,
-  fix first** (worst: the Debug-export "reproduce" command silently mis-reproduces AoE duels; one
-  transient failure bricks the sim button until reload; unhashed `sim/sim.wasm` served `immutable`) —
-  then CI bring-up (none exists), the module split under a plan-sweep-IDENTICAL gate, the PHASE9 §4
-  reclaim ladder, and lazily-loaded product routes (URL-shareable setups first). §8 lists the user
-  calls it needs. No scorer/search change is in scope; PHASE10 stays the next MODEL phase.
+  RETIRED (user decision 07-26).** Its §1 is the 07-26 audit's findings ledger. ✅ **Status-audited
+  07-27: 6 of the 8 confirmed bugs are FIXED** (`bench --targets` + its refusal, the cached-rejection
+  boot, `immutable` on the unhashed wasm, `plan-duel`'s retired intent transcription, `census-build`'s
+  line anchors, `evalsched`'s missing `t5two`). **The two open halves are both in `index.html`** —
+  the Debug-export "reproduce" command still drops `targets` on AoE duels, and `simRun` still leaks a
+  listener per duel and never evicts a failed worker — i.e. exactly the file the split exists to break
+  up, and the file that is frozen while a round gathers. Then: CI bring-up (none exists), the module
+  split under a plan-sweep-IDENTICAL gate, the PHASE9 §4 reclaim ladder (inherited at §3.1 when Phase 9
+  closed), and lazily-loaded product routes (URL-shareable setups first). §8 lists the user calls it
+  needs. No scorer/search change is in scope; PHASE10 stays the next MODEL phase.
 - `docs/archive/10-phase9-performance.md` — **Phase 9, CLOSED 07-27** (performance / refactor, under a
   byte-identical-plans constraint). Measure-first: baseline profile, call census, hypothesis table with
   verdicts, refactor catalogue landed cheapest-first. Four changes landed (groom exit, `groupSeeds`,
