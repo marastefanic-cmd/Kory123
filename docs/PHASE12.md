@@ -1225,3 +1225,47 @@ callers. **Not done in this phase**; specified here so it is a task, not a redis
 
 ★ This is the human-facing twin of §6.9's transcription bug: the same "flooring walks back past a
 boundary" error, found in the number handed to the *player* instead of the one handed to the sim.
+
+## 7. THE SEARCH — can the global optimum be PROVEN, and how?
+
+**User:** *"Then we can move onto improving the search function… Can we ever find and prove that we
+found the global optimum? Is the global optimum somehow calculatable, or is brute force the only way?"*
+
+### 7.1 The structural fact that makes this tractable
+
+**The objective is piecewise-constant in the press times.** A press time enters the score only through
+the cast boundary it snaps to (`auraAt`), and the window then covers a determined set of casts. Moving
+a press *within* the interval between two boundaries changes the score by exactly zero.
+
+⇒ **The decision variable per press is an integer — which cast it fires on.** Not a real number. The
+problem is finite and combinatorial, and the continuous search the tool runs today is exploring a space
+far larger than the one that actually exists.
+
+### 7.2 There is no closed form, and brute force alone is not the answer either
+
+No formula hands you the argmax: haste windows change *which casts exist*, and overlapping value
+windows interact multiplicatively, so the placements are coupled. And naive enumeration is hopeless —
+~200 casts × ~10–15 presses is ~10³⁴.
+
+But three things collapse it hard:
+1. **Cooldown spacing.** Uses of one cooldown are ≥ its cd apart; Icy Veins in a 300 s fight admits at
+   most 2 uses, and the second is ≥ 180 s after the first. Pairs, not squares.
+2. **Dominance.** A press whose window lies wholly in downtime, or wholly past the kill, is dominated.
+3. **An admissible upper bound.** Because the objective is now an EXACT sum, the remaining contribution
+   can be bounded optimistically — give every unplaced cooldown its best conceivable window, ignoring
+   conflicts. That over-estimates, so pruning against a good incumbent is sound.
+
+### 7.3 ⇒ The route to a PROOF, cheapest rung first
+
+1. **Exact enumeration on the cast lattice, small instances first** (short fights, 2–3 cooldowns).
+   Feasible today, **no sim**, and it yields the strongest possible statement: *for this fight, this IS
+   the global optimum.* It also certifies the heuristic on those cells.
+2. **Branch and bound** with the §7.2 bound, to push provable optimality to realistic fight lengths.
+   How far it scales is an empirical question — measure before promising.
+3. **Generalize every disagreement.** Wherever enumeration or B&B beats the heuristic, the fix is a rule
+   or a seed class, not a re-tuned scorer (§0.2). With an exact objective this entire programme is
+   arithmetic — the sim is not in the loop at all.
+
+⚠ **"Proven optimal" is PER-INSTANCE, not once and for all.** You prove it for a given fight/gear/kit.
+Across the whole input space you rely on the heuristic plus a certified corpus — which is exactly what
+`docs/ACCEPTANCE.md` is for, and why its re-gather is now cheap.
