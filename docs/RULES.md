@@ -35,9 +35,10 @@ sum** the planner has everything it needs to compute exactly.
 > ## ✅ AND SINCE 07-27 EVENING HEAD **DOES** COMPUTE IT EXACTLY (`docs/archive/13-phase12-exact-objective.md` §6.10 + §9)
 > `simulate()` accumulates the per-cast sum and returns it as `total`/`totalEarly`/`robust` — now one
 > and the same number. Each cast is credited `dmg × min(1, (nextCut − start)/duration)`: the
-> **boundary credit** (§8), one rule at the fight end and at an intermission start — the two places a
-> cast **stops landing** (⛔ **not** at an AoE edge, and not at a burn edge; both are *value*
-> boundaries — §9). Standing gate, no sim: `node tools/self-consistency.mjs` reads `0.00e+0` over 2755
+> **boundary credit** (§8), one rule at every **cut**: the fight end, an intermission start (the cast
+> **cannot land**) and an **AoE phase start** (the cast lands, but you would **cancel** it for Arcane
+> Explosion — a policy cut, §9). ⛔ **A burn edge is not a cut** — you would not cancel there; it is a
+> *value* boundary. Standing gate, no sim: `node tools/self-consistency.mjs` reads `0.00e+0` over 2755
 > scorings.
 >
 > ⛔ **This banner used to say the opposite, and the warning it carried still applies to the EVIDENCE
@@ -76,9 +77,10 @@ determined, and the two differ by a **median 0.2114 % of score** against ranking
 (PHASE12 §6.10). Ranking is a **sum over casts**, and `simulate()` has computed exactly that since 07-27.
 
 `credit_i = min(1, (nextCut − start_i)/duration_i)` is the **boundary credit** (PHASE12 §9, user ruling
-07-27): full value for a cast that lands, the fitting fraction for one that straddles a **cut** — the
-fight end or an intermission start, i.e. the two places a cast stops **landing**. ⛔ An AoE edge is
-**not** a cut (corrected 07-27 by sim — §9), nor is a burn edge. See §8 for what it replaced.
+07-27): full value for a cast the plan keeps, the fitting fraction for one that straddles a **cut** —
+the fight end, an intermission start (**cannot land**) or an **AoE phase start** (lands, but you
+**cancel** it to spam Arcane Explosion). ⛔ A **burn** edge is **not** a cut: the cast lands and you
+would not cancel it. Three boundaries, two cuts, two different reasons — §9. See §8 for what it replaced.
 
 A cast's *damage* is (for Arcane Blast)
 independent of AB stacks — only cast **time** and mana scale with stacks. Haste enters only through
@@ -555,11 +557,12 @@ on the patched runner.
 > ```
 > credit = min(1, (nextCut − castStart) / castDuration)     ← multiplies that cast's own value
 > ```
-> A **cut** is the fight end `T` or an **intermission start** — the two moments a cast stops
-> **landing**. ⛔ **Neither a BURN edge nor an AoE edge is a cut**: the boss is targetable at both and a
-> cast already in flight is unaffected by the phase it finishes in, so both are *value* questions under
-> the snapshot rule, not landing questions. (The AoE edge shipped as a cut for a few hours on 07-27 and
-> the sim falsified it — §9.) ⚠ An **instant** cast takes credit **1**, not 0.
+> A **cut** is a boundary you would not carry a cast across: the fight end `T`, an **intermission start**
+> (the cast **cannot land**) and an **AoE phase start** (it lands, but you **cancel** it for Arcane
+> Explosion — §9). ⛔ **A BURN edge is not a cut**: the cast lands and you would not cancel it, so it is
+> a *value* question under the snapshot rule. (The AoE edge has flipped **twice** — shipped as a cut,
+> removed on physics, restored on policy — §9 carries the reasoning.) ⚠ An **instant** cast takes credit
+> **1**, not 0.
 >
 > ★ **It is still a hedge — the overrun it assumes still averages half a cast; it is just drawn
 > ONE-SIDED (the fight never ends early) instead of symmetrically.**
@@ -812,20 +815,58 @@ durations the contained region shrinks to the **intersection** of the constraint
 
 - Intermissions score **zero** (boss untargetable — no casts, no damage), but cooldowns and buff
   durations keep ticking, so the planner holds cooldowns to recover across downtime.
-- **★ A WALL IS A CUT. ⛔ AN AoE EDGE IS NOT — corrected 07-27 by measurement, hours after it shipped
-  as one.** The boundary credit `min(1, (nextCut − castStart)/castDuration)` applies at an
-  **intermission start** exactly as it applies at the fight end, and **nowhere else**.
-  ~~and at both AoE edges (Arcane Blast ↔ Arcane Explosion — the spell changes, so the cast in flight
-  does not land as what it started as)~~ — **that reasoning was wrong and the sim says so**: the boss is
-  **targetable** throughout an AoE phase, and the spell a cast uses is chosen at its **START**, so a
-  cast already in flight is unaffected by the phase it completes in. Measured: an Arcane Blast started
-  at **59.000** with an AoE phase opening at **60.000** completes at **60.498** and **LANDS, for full
-  Arcane Blast damage** (1886.4 — a 25 %-resist roll off a ~2577 typical hit). Docking it paid **less
-  than the game pays**. A cut is where a cast stops **landing**; an AoE edge is a **value** boundary,
-  like a burn edge.
-  ⚠ *(The probe that first said the cast did **not** land had a regex requiring `Crit|Hit for` while
-  the log read `Hit (25% Resist) for` — the third parse bug of that family in one session. TOOLING's
-  log-format list carries it.)*
+- **★★★ A WALL IS A CUT, AND SO IS AN AoE PHASE START — BUT NOT FOR THE SAME REASON. A BURN EDGE IS
+  NOT A CUT AT ALL.** The boundary credit `min(1, (nextCut − castStart)/castDuration)` applies at an
+  **intermission start** and at an **AoE phase start** exactly as it applies at the fight end, and
+  nowhere else. There are **three** kinds of boundary, **two** of them cuts, for **two different
+  reasons**, and keeping the reasons apart is the whole rule:
+
+  | boundary | does the cast LAND? | would you CANCEL it? | cut? | the reason |
+  |---|---|---|---|---|
+  | **intermission start** | **NO** — the boss is untargetable | n/a | ✅ **cut** | **physics** |
+  | **AoE phase start** | **YES**, for full Arcane Blast damage | **YES** — adds are up, AE is worth several ABs | ✅ **cut** | **policy** |
+  | **burn edge** | yes | **NO** — you keep casting Arcane Blast | ⛔ **not a cut** | a *value* boundary (snapshot rule) |
+
+  **Why the AoE start is a cut, in full (user ruling, 07-27).** The physics first, and it **stands**:
+  the boss is **targetable** throughout an AoE phase, and an Arcane Blast started at **59.000** with the
+  phase opening at **60.000** completes at **60.498** and **LANDS, for full Arcane Blast damage** —
+  1886.4 in the sim, a 25 %-resist roll off a ~2577 typical hit. **This is NOT the intermission case.**
+  What makes it a cut is what the **player** does: adds are up, Arcane Explosion is worth several times
+  an Arcane Blast, so you **CANCEL** the Blast and start spamming AE. A cancelled cast is worth **zero**.
+  And the phase does not arrive on the same second every pull, so with the wall at `W ~ U[W, W+d]` the
+  credit `frac` is exactly `P(the wall has not arrived by completion)`: the branch where it arrives first
+  is the cancelled cast, and the expectation is `frac × dmg`. **Same one-sided window as the kill and
+  the intermission** — one rule, three cuts.
+  ⇒ **Because the cast is CANCELLED and not merely re-priced, the AE lattice starts AT THE WALL**, not at
+  the Blast's natural end. Verified: a Blast starting **58.998** against a wall at **60.000** is credited
+  **66.9 %** = `(60 − 58.998)/1.498`, and the first Arcane Explosion fires at exactly **60.000**.
+  Crediting partially *without* truncating would be the worst of both — **paying less and gaining
+  nothing**.
+  **Contrast, and it is the cleanest way to remember the rule:** at a **burn** edge you keep casting
+  Arcane Blast anyway, so **there is nothing to cancel**.
+
+  ⚠ **THIS QUESTION HAS FLIPPED TWICE IN ONE DAY. Do not read the history as noise — the reasoning is
+  the payload.**
+  1. **Shipped as a cut** (07-27, PHASE12 §9), on the reasoning that *the spell changes there, so the
+     cast in flight does not land as what it started as*.
+  2. **Removed on PHYSICS**, hours later: the sim measurement above showed the Blast **does** land, so
+     that stated reasoning was false and docking the cast looked like paying less than the game pays.
+  3. **Restored on POLICY**, same day, by user ruling — with a **different** argument. The cast landing
+     was never the question; *what the player would do with it* was.
+  ★ **The measurement in step 2 is still TRUE. It is simply not what decides the question.** Physics
+  answers *"does the cast land"*; this boundary is settled by *"would you cancel it"*, and **no sim
+  measurement can answer that**.
+
+  ⚠⚠ **A DELIBERATE, PRICED DIVERGENCE FROM THE SIM — STANDING AND EXPECTED, NOT A BUG.** wowsims' APL
+  has no way to cancel a cast: it will finish the Blast and land it. So `tools/model-audit.mjs` **WILL**
+  report a gap at an AoE wall, and any duel across one carries it. **Do not "fix" it back.** It is the
+  one place the model deliberately models a **player decision the harness cannot express** — see
+  `docs/TOOLING.md` (model-audit) and `docs/PHASE13.md` §1/§2.2.
+
+  ⚠ *(A footnote worth keeping from step 2: the probe that first said the cast did **not** land had a
+  regex requiring `Crit|Hit for` while the log read `Hit (25% Resist) for` — the third parse bug of that
+  family in one session. TOOLING's log-format list carries it. The corrected probe is what produced the
+  1886.4 above.)*
   ⚠⚠ **And Arcane Explosion is INSTANT (`cast = 0`), so its credit is 1, not 0.** A divide-by-zero
   guard returning 0 credited **all 27 AE casts of a Kael'thas plan at exactly nothing** — 368,018
   against 524,173, a **42 % error on the corpus's only AoE fight**. As `dur → 0`,
@@ -838,9 +879,10 @@ durations the contained region shrinks to the **intersection** of the constraint
   was paid in **FULL**. Measured: starts `89.616`, wall at `90`, completes `91.114` — was `2242.1`, now
   `frac 0.2563` / `credited 574.8`. The user's ruling behind it: an intermission does not land on the
   same second every pull, so treating it as exact is the same mistake the symmetric kill window made.
-  ⚠ A **BURN edge is NOT a cut** — the boss stays targetable and the spell is unchanged, so a burn
-  multiplier is a **value** question governed by the snapshot rule (haste at cast start, value at cast
-  completion), not a landing question. Do not "fix" that by adding burn edges to the cut lattice.
+  ⚠ A **BURN edge is NOT a cut** — the cast lands *and you would not cancel it*, so a burn multiplier is
+  a **value** question governed by the snapshot rule (haste at cast start, value at cast completion).
+  Do not "fix" that by adding burn edges to the cut lattice — and note that the *landing* argument is
+  not what excludes it (the AoE start lands too, and is a cut); **"nothing to cancel"** is.
 - **Strong default (not an invariant):** a buff window that *begins* inside an intermission usually
   wastes its early seconds, so a press whose window would start in the dead zone *usually* belongs at
   the exit or held to the next real burst — and placement/tie-break passes should be downtime-aware (a
@@ -918,6 +960,13 @@ durations the contained region shrinks to the **intersection** of the constraint
       `phaseStart`, then `+Δ`, Δ = `max(1.0, 1.5/m)`), and the APL stops casting AE at the phase end.
       A window therefore covers `floor(·)` **lattice points**, not seconds — PHASE8's FLOOR LAW on an
       AoE phase.
+      ★ **This is also what the model now does** — the AoE-start cut truncates the straddling Blast and
+      restarts the AE lattice **at the wall** (verified: Blast at 58.998, wall at 60.000 → first AE at
+      exactly 60.000; see the cut block above). ⚠ **But do not read it as agreement on the straddling
+      cast**: the sim has no cancel action, so when a Blast is genuinely in flight across the wall it
+      **finishes and lands** before the AE stream begins, while the model pays that Blast only `frac` and
+      starts AE at the wall regardless. This measurement was taken where that case did not arise. The
+      lattice anchors agree; the **straddling cast is the priced divergence** — PHASE13 §2.2.
     - **A press fires ~0.5–0.6 s after its intent** (cast latency / GCD boundary). Interior slip is
       **self-cancelling** — what the start loses the end regains — but slip at a **hard edge is clamped**.
       Native's AP intent 130 fires **130.58** and runs to **145.58**; the phase ends at **145.00**; the

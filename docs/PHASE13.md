@@ -18,11 +18,12 @@ every cut**:
 credit = min(1, (nextCut − castStart) / castDuration)      × that cast's own value
 ```
 
-A **cut** is a moment where a cast **stops LANDING** — the fight end and an **intermission start**.
-**Nothing else.** Neither a **burn** edge nor an **AoE** edge is a cut: the boss is targetable at both,
-and the spell a cast uses is chosen at its **START**, so a cast already in flight is unaffected by the
-phase it finishes in. Both are *value* questions under the snapshot rule. An **instant** cast (Arcane
-Explosion) takes credit **1**, not 0. `total`, `robust` and `totalEarly` are **one
+A **cut** is a boundary you would not carry a cast across. **Three boundaries, two cuts, two different
+reasons:** an **intermission start** is a cut by **physics** (the boss is untargetable — the cast cannot
+land); an **AoE phase start** is a cut by **POLICY** (the cast lands, but adds are up and Arcane
+Explosion is worth several Arcane Blasts, so the player cancels — §1); a **burn** edge is **not** a cut
+(the cast lands *and you would not cancel it*) and is a *value* question under the snapshot rule. An
+**instant** cast (Arcane Explosion) takes credit **1**, not 0. `total`, `robust` and `totalEarly` are **one
 number**; the board carries `frac` and `credited`. Cooldowns chain from the **fire** moment (`auraAt`),
 not the press, so the model can no longer emit a plan the sim declines to execute.
 
@@ -42,21 +43,67 @@ applies only *while a cross-val round gathers* (§4.1).
 
 ---
 
-## §1 ✅ THE AoE EDGE — DECIDED AND LANDED (commit `6cfaeec`, 07-27). Not open.
+## §1 ✅ THE AoE EDGE — DECIDED AND LANDED, ON THE SECOND REVERSAL (07-27). Not open.
 
 > **This section was written as a placeholder for a decision in flight. It landed while it was being
-> written, so it is recorded here rather than deleted, and then this section goes away.**
+> written — and then landed AGAIN, the other way, the same day. It is recorded here rather than deleted
+> because the question flipped TWICE and the reasoning is worth more than the verdict.**
 
-**The ruling: an AoE edge is NOT a cut. A cut is where a cast stops LANDING — the fight end and an
-intermission start, nothing else.** The boss is **targetable** throughout an AoE phase, and the spell a
-cast will use is chosen at its **START**, so a cast already in flight is unaffected by the phase it
-completes in. Measured: an Arcane Blast started at **59.000** with an AoE phase opening at **60.000**
+### The ruling as it stands
+
+**An AoE phase START is a CUT — by POLICY, not by physics.** A **burn** edge is still **not** a cut.
+Three boundaries, two cuts, **two different reasons**:
+
+| boundary | does the cast LAND? | would you CANCEL it? | cut? | the reason |
+|---|---|---|---|---|
+| **intermission start** | **NO** — boss untargetable | n/a | ✅ **cut** | **physics** |
+| **AoE phase start** | **YES**, full Arcane Blast damage | **YES** — AE is worth several ABs | ✅ **cut** | **policy** |
+| **burn edge** | yes | **NO** — you keep casting AB | ⛔ **not a cut** | *value* boundary (snapshot rule) |
+
+**The physics finding STANDS, and it is not what decides the question.** The boss is **targetable**
+throughout an AoE phase: an Arcane Blast started at **59.000** with the phase opening at **60.000**
 completes at **60.498** and **lands, for full Arcane Blast damage** — 1886.4, a 25 %-resist roll off a
-~2577 typical hit. The brief version that docked it paid **less than the game pays**. Burn and AoE
-edges are **value** boundaries; `lands()` is now deliberately the only predicate that builds the cut
-lattice.
+~2577 typical hit. **This is NOT the intermission case.** What makes it a cut is what the **player**
+does: adds are up, Arcane Explosion is worth several times an Arcane Blast, so you **CANCEL** the Blast
+and start spamming AE. A cancelled cast is worth **zero**. And the phase does not arrive on the same
+second every pull, so with the wall at `W ~ U[W, W+d]` the credit `frac` is exactly `P(the wall has not
+arrived by completion)`: the other branch is the cancelled cast, and the expectation is `frac × dmg` —
+**the same one-sided window as the kill and the intermission**, one rule at all three cuts.
 
-⚠ **Two things it exposed that are worth more than the ruling itself, both already fixed:**
+★ **Because the cast is CANCELLED and not merely re-priced, the AE lattice starts AT THE WALL**, not at
+the Blast's natural end. **Verified:** a Blast starting **58.998** against a wall at **60.000** is
+credited **66.9 %** = `(60 − 58.998)/1.498`, and the first Arcane Explosion fires at exactly **60.000**.
+Crediting partially *without* truncating would be the worst of both — paying less and gaining nothing.
+
+**The contrast is the cleanest way to remember the rule:** at a **burn** edge you keep casting Arcane
+Blast anyway, so **there is nothing to cancel**. Predicate: `cutsAt()` (`intermission` or `aoe` segment
+**starts** only), the one thing that builds the lattice; `AOE_CUTS` marks the truncating kind.
+
+### ⚠⚠ THE PRICE: A DELIBERATE, STANDING DIVERGENCE FROM THE SIM — record it, do not "fix" it
+
+**wowsims' APL has no cancel action.** It will finish the Blast and land it. Therefore
+`tools/model-audit.mjs` **WILL** report a gap at an AoE wall, and any duel or bench crossing one carries
+that offset. **That gap is not a bug.** It is the one place the model deliberately models a **player
+decision the harness cannot express**, and it is the reason §2.2's audit must be read *by location*:
+a disagreement at an AoE wall is priced, a disagreement anywhere else is a finding. Also in RULES §9,
+TOOLING (standing-divergence block), MECHANICS §4, ARCHITECTURE, BENCH.
+
+### ⚠ THE HISTORY, because this flipped twice in one day
+
+1. **Shipped as a cut** (PHASE12 §9), on the reasoning *"the spell changes there, so the cast in flight
+   does not land as what it started as."*
+2. **Removed on PHYSICS** (commit `6cfaeec`): the measurement above showed the Blast **does** land, so
+   the stated reasoning was false and docking the cast looked like paying less than the game pays.
+3. **RESTORED on POLICY** (user ruling, same day) — a **different** argument, and the one that governs.
+
+★ **The lesson, and it is the durable part:** the physics measurement was **true** and the conclusion
+drawn from it was **wrong**, because the question was never *"does the cast land"* but *"what would the
+player do"* — and **no sim measurement can answer that**. A correct measurement aimed at the wrong
+question is the most convincing way to get a modelling decision wrong. Recorded in `docs/DIARY.md`'s
+corrections ledger.
+
+### ⚠ Two things the whole episode exposed, both already fixed, both worth more than the verdict
+
 1. **Arcane Explosion is INSTANT (`cast = 0`), and the divide-by-zero guard credited every AE at
    nothing.** Kael'thas scored **368,018 instead of 524,173 — a 42 % error on the corpus's only AoE
    fight.** As `dur → 0`, `min(1, (cut − t)/dur) → 1`: an instant cast cannot be *partially*
@@ -67,7 +114,8 @@ lattice.
    one-off — see §2 and §8.
 
 ★ **And the probe that first said the cast did NOT land was wrong**: its regex required `Crit|Hit for`
-while the log reads `Hit (25% Resist) for` — the **third** parse bug of that family in one session.
+while the log reads `Hit (25% Resist) for` — the **third** parse bug of that family in one session. The
+corrected probe is what produced the 1886.4 in step 2.
 
 ⇒ **There is now no open item that changes numbers the tool prints.** Everything below is measurement,
 enforcement, platform or research.
@@ -116,6 +164,19 @@ audit's own pass rate **doubled**. That is a real, measured improvement and it i
 ★ The SP deviation being *exactly one trinket window's value* is the thread to pull: it says a window
 edge lands on a different cast in the model than in the sim, which is the same family as the three
 window/snapshot defects Phase 12 already fixed — not a new kind of error.
+
+⚠⚠ **ONE CLASS OF MISMATCH IS EXPECTED AND MUST BE SUBTRACTED BEFORE GRADING: the AoE wall (§1).** The
+model treats an AoE phase start as a **cut** and scores the straddling Arcane Blast as **cancelled** —
+partial credit, and the Arcane Explosion lattice restarting **at the wall**. wowsims cannot cancel a
+cast: it finishes the Blast and lands it for full damage. So on any preset with an `aoe` segment
+(Kael'thas is the corpus's only one) the audit **will** show a start/value disagreement at the wall plus
+the AE-lattice offset that follows it, in the direction *model credits less, sim credits full*. **That
+is a priced divergence, not a defect, and it must not be closed by removing the AoE start from the cut
+lattice** — that was done once already on 07-27 and reversed by user ruling hours later.
+⇒ **Grade the audit by LOCATION.** A mismatch at an AoE wall is expected; a mismatch anywhere else is a
+real finding. When quoting the pass rate, say which side of that line each failure falls on — the
+current *12 of 23* has never been split that way, and until it is, the residue described above is
+partly unattributed.
 
 This is the bar the user set: *"the model should be able to predict the logs press by press down to the
 milliseconds."* It holds **exactly** on single-use fights (94/94 casts, cast times to the millisecond,

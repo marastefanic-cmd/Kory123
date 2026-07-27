@@ -87,11 +87,13 @@ if (r.casts[0].frac === undefined || r.casts[0].credited === undefined)
 // Mirrors index.html's construction: merge adjacent segments calling for the same thing, and a cut is
 // a boundary between different ones. Rebuilt rather than imported, because a gate that reads the
 // engine's own lattice cannot catch the engine building the wrong lattice.
-const castMode = sg => !sg ? 'ab' : sg.type === 'intermission' ? 'none' : sg.type === 'aoe' ? 'ae' : 'ab';
+// A cut is a segment START you would not carry a cast across: an intermission (cannot land) or an
+// AoE phase (would cancel to spam Arcane Explosion). Far edges are not cuts.
+const cutsAt = sg => !!sg && (sg.type === 'intermission' || sg.type === 'aoe');
 const CUTS = [];
 if (cfg.segments) for (let k = 0; k < cfg.segments.length; k++)
-  if (k === 0 || castMode(cfg.segments[k]) !== castMode(cfg.segments[k - 1]))
-    if (cfg.segments[k].start > 1e-9) CUTS.push(cfg.segments[k].start);
+  if (cutsAt(cfg.segments[k]) && !cutsAt(cfg.segments[k - 1]) && cfg.segments[k].start > 1e-9)
+    CUTS.push(cfg.segments[k].start);
 CUTS.push(cfg.T);
 CUTS.sort((a, b) => a - b);
 const nextCut = ts => { for (const c of CUTS) if (c > ts + 1e-9) return c; return cfg.T; };

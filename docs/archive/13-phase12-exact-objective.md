@@ -25,9 +25,17 @@ built. (b) **The acceptance re-gather** — every verdict in `docs/ACCEPTANCE.md
 the scorer this phase replaced and is void as a model reading; re-gathering is now mostly arithmetic
 (`tools/xval-model.mjs`, no sim). Both carry forward to **`docs/PHASE13.md`**, together with the AoE
 edge decision this phase deliberately left open (§9.5 sub-decision 2) — ✅ **which was itself decided
-hours after this doc was archived, and AGAINST the way this phase shipped it: an AoE edge is NOT a cut.
-Chasing it also exposed a 42 % error this phase had shipped (instant casts credited at zero), reachable
-by none of its gates.** Both are annotated at §9's landing block.
+hours after this doc was archived, and then decided AGAIN the other way the same day.** The net result
+**agrees with the way this phase shipped it — an AoE phase START is a cut — but for a completely
+different reason.** This phase's reason (*"the spell changes, so the cast in flight does not land as
+what it started as"*) was **falsified by the sim**: the boss is targetable and the Blast lands. The
+reason that governs is **POLICY**: the Blast lands, but adds are up and Arcane Explosion is worth
+several Arcane Blasts, so the player **cancels** it — which also means the AE lattice restarts **at the
+wall**, something this phase's version did not do. ⚠ **Do not read this doc's shipped behaviour as
+vindicated; read `docs/RULES.md` §9 / `docs/PHASE13.md` §1 for the reasoning that actually holds, and
+for the deliberate sim divergence it prices.** Chasing the question also exposed a 42 % error this phase
+had shipped (instant casts credited at zero), reachable by none of its gates. Both are annotated at §9's
+landing block.
 
 Cited across the living docs as **"PHASE12 §x"**; section numbers are unchanged, so those citations
 still resolve. ⚠ **One citation was always wrong and is being corrected as this doc lands:** several
@@ -1771,8 +1779,9 @@ somewhere in the engine, check that the *scorer* is the code asking it.
 > exactly what §9 rejected: the wall is *not* known exactly (*"even the intermissions can happen a
 > little sooner or later"*), so a cast that completes before the wall actually falls **does** land.
 > What shipped is the fraction — `min(1, (nextCut − castStart) / castDuration)` — applied uniformly at
-> the fight end, at an intermission start, ~~and at either edge of an AoE phase~~ (⛔ **the AoE edge was
-> removed from the cut lattice hours later — see §9's landing block**). Measured on the exhibit
+> the fight end, at an intermission start, ~~and at either edge of an AoE phase~~ (⚠ **the AoE START is
+> a cut and the AoE EXIT is not — and the start's *reason* changed twice the same day: removed on
+> physics, restored on policy. See §9's landing block**). Measured on the exhibit
 > cast (`2:40 lust 0:07 intermission 1:30-2:10`, starts 89.616 against a wall at 90.000, worth 2242.1):
 > full price **before**, `frac 0.2563 → 574.8` **now**, and `dmg = 0` would have paid **zero**.
 >
@@ -1832,15 +1841,28 @@ during AoE. Decide that deliberately rather than inheriting it from this fix.
 > from the new `frac` field.** Reading `frac` would grade the accumulator against the statement that
 > writes it — the gate's entire value is that it is a second, independent account.
 >
-> ⚠ ~~**What did NOT land, and is the next thing to decide:**~~ ✅ **DECIDED AND LANDED HOURS LATER —
-> commit `6cfaeec`, 07-27 — and it went AGAINST the way this phase shipped it.**
-> As shipped here, the AoE edge was treated as a cut and an Arcane Blast completing inside an AoE phase
-> was **docked**. **That is now reversed: an AoE edge is NOT a cut.** A cut is where a cast stops
-> **LANDING** — the fight end and an intermission start, nothing else. The boss is targetable
-> throughout an AoE phase and the spell a cast uses is chosen at its **START**, so a cast in flight is
-> unaffected by the phase it finishes in. Measured: an AB started at **59.000** against an AoE phase
-> opening at **60.000** completes at **60.498** and **lands for full Arcane Blast damage** (1886.4).
-> Docking it paid **less than the game pays**. Burn and AoE edges are **value** boundaries.
+> ⚠ ~~**What did NOT land, and is the next thing to decide:**~~ ✅ **DECIDED HOURS LATER — AND THEN
+> DECIDED AGAIN, THE OTHER WAY, THE SAME DAY (07-27). Read all three steps; the reasoning is the
+> payload.**
+> 1. **As shipped here**, the AoE edge was treated as a cut and an Arcane Blast completing inside an AoE
+>    phase was **docked** — on the reasoning *"the spell changes there, so the cast in flight does not
+>    land as what it started as."*
+> 2. **Removed on PHYSICS (commit `6cfaeec`)**, because that reasoning is **false**: the boss is
+>    targetable throughout an AoE phase and the cast lands. Measured: an AB started at **59.000** against
+>    an AoE phase opening at **60.000** completes at **60.498** and **lands for full Arcane Blast damage**
+>    (1886.4, a 25 %-resist roll off a ~2577 typical hit).
+> 3. **RESTORED on POLICY (user ruling, same day) — and that is where it stands.** The Blast lands, but
+>    adds are up and Arcane Explosion is worth several Arcane Blasts, so the player **CANCELS** it; a
+>    cancelled cast is worth zero, and with the wall `~ U[W, W+d]` the credit is exactly `P(the wall has
+>    not arrived by completion)`. ★ **Because the cast is cancelled and not merely re-priced, the AE
+>    lattice restarts AT THE WALL** — verified: a Blast starting 58.998 against a wall at 60.000 is
+>    credited 66.9 % and the first AE fires at exactly 60.000. **This phase's version did not truncate**,
+>    so today's behaviour is not what shipped here even though the verdict word matches.
+> ⛔ **A BURN edge is still not a cut** — the cast lands *and you would not cancel it*.
+> ★ **The lesson:** the measurement in step 2 is **true** and it is **not what decides the question** —
+> the question was never *"does the cast land"* but *"what would the player do"*, and no sim can answer
+> that. ⚠⚠ It also prices a **deliberate divergence from the sim** (wowsims cannot cancel a cast, so
+> `model-audit` shows an expected gap at an AoE wall). Live text: RULES §9 / PHASE13 §1.
 >
 > ⚠⚠ **And chasing it found a 42 % error this phase had shipped:** Arcane Explosion is **INSTANT**
 > (`cast = 0`), so the boundary credit's divide-by-zero guard — written to avoid a NaN — returned
@@ -1945,8 +1967,12 @@ one-sided window applies verbatim with the wall in place of T. Nothing distingui
 
 ```
 credit = min(1, (nextBoundary − ts) / d) × value ,   nextBoundary = min(T, next intermission start)
-                              ⛔ this line originally also read ", next AoE start" — removed 07-27,
-                                 commit 6cfaeec: an AoE edge is NOT a cut (see §9's landing block)
+                              ⚠ this line originally also read ", next AoE start". It was removed
+                                 07-27 (commit 6cfaeec, on the physics) and then RESTORED the same
+                                 day on the user's POLICY ruling — an AoE start IS a cut because the
+                                 player cancels the Blast, and it also TRUNCATES the AE lattice to the
+                                 wall. Net: the ", next AoE start" clause is back. See §9's landing
+                                 block, and RULES §9 for the reasoning that governs.
 ```
 
 That is simpler than what ships today, and it **subsumes §8's defect for free** — today a cast
@@ -1961,15 +1987,19 @@ credited 2242.1). The fix is not `dmg = 0`; it is the fraction, like everywhere 
    one-sided form. Recommend following the kill's convention (one-sided, full credit at the nominal
    boundary) so there is a single rule; note it as a stated choice rather than letting the helper
    decide it silently.
-2. ~~**AoE walls are still a third case, for a reason that is not about timing.**~~ ✅ **DECIDED
-   07-27 (commit `6cfaeec`) — and the answer is that they are NOT a case at all: an AoE edge is not a
-   cut.** The reasoning below is *right* and this section drew the wrong conclusion from it — it
-   correctly observes that the boss is targetable, then still leaves the AoE edge in the cut lattice.
-   Measured afterwards: an AB started at 59.000 with an AoE phase opening at 60.000 completes at 60.498
-   and **lands for full AB damage**; the spell a cast uses is chosen at its **START**, so a cast in
-   flight is unaffected by the phase it finishes in. `dmgOf`'s `nonAB` zeroing it *was* wrong
-   independently of the ruling, exactly as this item suspected. See §9's landing block for the full
-   correction, and for the 42 % instant-cast defect the same investigation exposed.
+2. ~~**AoE walls are still a third case, for a reason that is not about timing.**~~ ✅ **DECIDED 07-27,
+   TWICE — and the item's HEADLINE turned out to be right: an AoE wall IS its own case, for a reason
+   that is not about timing.** The road there: commit `6cfaeec` first removed the AoE edge from the cut
+   lattice **on the physics** (this section's own observation — the boss is targetable, so the cast
+   lands; measured, an AB started at 59.000 with an AoE phase opening at 60.000 completes at 60.498 and
+   **lands for full AB damage**). Hours later the user **restored it on POLICY**: the Blast lands, but
+   adds are up and Arcane Explosion is worth several Arcane Blasts, so the player **cancels** it — a
+   cancelled cast is worth zero, and the AE lattice therefore restarts **at the wall**. ★ **So this
+   section's *observation* was right, its *conclusion* was wrong, and the correction that overturned the
+   conclusion was itself corrected** — because the deciding question is *"what would the player do"*,
+   which physics cannot answer. `dmgOf`'s `nonAB` zeroing *was* wrong independently of all of it,
+   exactly as this item suspected. See §9's landing block for the full three-step correction, and for
+   the 42 % instant-cast defect the same investigation exposed. Live text: RULES §9 / PHASE13 §1.
    *The item as written, kept because the archive is append-only:* The boss is
    **targetable** during an AoE phase, so an Arcane Blast completing inside one is not lost at all — it
    lands, for full AB damage; you would simply rather have been casting Arcane Explosion. ⚠ Today

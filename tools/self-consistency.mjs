@@ -45,13 +45,25 @@
 // vs the LIVE objective" — it now folds in the credit-rule change as well as discrete-vs-continuous,
 // so it is no longer the clean 0.2114 % measurement that opened the phase. Diagnostic, never a verdict.
 import crypto from 'node:crypto'; import fs from 'node:fs'; import path from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { loadEngine, ALL_BUFFS } from '/home/user/Kory123/tools/engine-node.mjs';
 import { REF, plainCastInPage } from '/home/user/Kory123/tools/reference-gear.mjs';
 // ⚠ TWO index.html's, on purpose. `IDX` is the ROUND BLOB: the plan cache keys on its sha1, so it is
 // the only file whose plans can be looked up. `ENGINE` is the engine those plans are SCORED with, and
 // it defaults to the working tree — otherwise this gate would measure the very engine it is meant to
 // check the change against. Plans are inputs here; the scorer is the thing under test.
-const REPO='/home/user/Kory123', IDX=process.env.ROUND_INDEX||'/tmp/index-round.html';
+const REPO=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+// ⚠ `IDX` is the ROUND BLOB — the file the plan cache keys on, so it is what looks plans UP. It is
+// NOT the scorer under test (that is `ENGINE`, below). It used to default to `/tmp/index-round.html`,
+// a session scratch file, so the project's headline gate — the one CLAUDE.md says to run after ANY
+// change to `simulate()` — died on a raw `node:fs` stack trace in any fresh container. A standing
+// gate that only runs on one machine is not a standing gate. Fall back to the repo's own index.html
+// and SAY SO, because a silent fallback would quietly change which cached plans are found.
+const ROUND=process.env.ROUND_INDEX;
+let IDX=ROUND||path.join(REPO,'index.html');
+if(!fs.existsSync(IDX)){console.error(`ERROR: ROUND_INDEX=${IDX} does not exist.`);process.exit(2);}
+if(!ROUND)console.error('note: no ROUND_INDEX set — keying the plan cache on the repo\'s own index.html.\n' +
+  '      Cached plans from a different engine will simply not be found, so the corpus may be smaller.');
 const ENGINE=process.env.ENGINE||path.join(REPO,'index.html');
 const api=loadEngine(ENGINE);
 const PLAIN=new Function('GAME','R',`return (${plainCastInPage.toString()})(R);`)(api.GAME,REF);
@@ -94,6 +106,14 @@ for(const f of fs.readdirSync(dir).filter(x=>x.endsWith('.txt')).sort()){
 const g=gaps.map(x=>x.gapEff).sort((a,b)=>a-b), p=gaps.map(x=>Math.abs(x.gapPct)).sort((a,b)=>a-b);
 const og=gaps.map(x=>x.oldEff).sort((a,b)=>a-b), op=gaps.map(x=>Math.abs(x.oldPct)).sort((a,b)=>a-b);
 const med=v=>v.length%2?v[(v.length-1)/2]:(v[v.length/2-1]+v[v.length/2])/2;
+// ⛔ ZERO SCORINGS IS NOT A PASS. Without a matching ROUND_INDEX the plan cache is keyed on a
+// different engine hash and nothing is found — the gate then had NO data and crashed on an empty
+// array, which at least was loud. Refuse explicitly instead: "the model agrees with itself" over an
+// empty set is the single most reassuring wrong answer this repo knows how to produce, and it has
+// shipped that shape three times (xval-collect, xval-verify, the wrapper banners).
+if(!n){console.error('ERROR: 0 plan-scorings — the plan cache holds nothing for this engine hash.\n' +
+  '       Point ROUND_INDEX at the index.html the cached plans were solved with, or re-solve.\n' +
+  '       Refusing to report a verdict over an empty set.');process.exit(2);}
 console.log(`INTERNAL CONSISTENCY of the model with itself — ${n} plan-scorings, NO SIM`);
 console.log(`  plans from ${IDX}  ·  scored by ${ENGINE}\n`);
 console.log(`  ★ THE GATE — robust(what RANKS) - creditedCastSum(re-derived from the board):`);

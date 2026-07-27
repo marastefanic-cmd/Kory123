@@ -21,12 +21,22 @@
 > `KILL_WINDOW = 0.5` and the symmetric kill taper are **RETIRED FROM THE OBJECTIVE** (a local
 > `KW = 0.5` survives feeding only the `integral` diagnostic). One uniform rule now applies at every
 > boundary: **`credit = min(1, (nextCut − castStart) / castDuration)`**, multiplying that cast's own
-> value, where a **cut** is where a cast stops **LANDING** — the fight end and an intermission start,
-> and **nothing else**. ⛔ **Neither a burn edge nor an AoE edge is a cut.** The AoE edge shipped as one
-> for a few hours on 07-27 and **the sim falsified it** (commit `6cfaeec`): the boss is targetable
-> throughout an AoE phase and the spell a cast uses is chosen at its START, so an AB started at 59.000
-> against an AoE opening at 60.000 completes at 60.498 and **lands for full AB damage**. Docking it paid
-> *less* than the game pays; both are **value** boundaries. ⚠⚠ The same commit fixed a 42 % error on
+> value, where a **cut** is a boundary you would not carry a cast across: the fight end, an
+> **intermission start** and an **AoE phase start**. ⛔ **A burn edge is NOT a cut.**
+> ★ **Three boundaries, two cuts, TWO DIFFERENT REASONS** — intermission = the cast **cannot land**
+> (physics); AoE start = it **lands but you cancel it** for Arcane Explosion (policy); burn edge = it
+> lands and you would **not** cancel (a *value* boundary).
+> ⚠ **The AoE edge flipped TWICE on 07-27 and the reasoning is the record.** It shipped as a cut
+> (PHASE12 §9), was **removed on physics** in commit `6cfaeec` — the sim showed an AB started at 59.000
+> against an AoE opening at 60.000 completes at 60.498 and **lands for full AB damage**, so docking it
+> looked like paying less than the game pays — and was then **RESTORED on policy** by user ruling the
+> same day: the Blast does land, but adds are up and Arcane Explosion is worth several ABs, so the player
+> **cancels**, and a cancelled cast is worth zero. The measurement is still true; it is simply not what
+> decides the question. Because the cast is *cancelled* rather than re-priced, the **AE lattice restarts
+> at the wall** (verified: Blast at 58.998 vs a wall at 60.000 → 66.9 % credit, first AE at exactly
+> 60.000). ⚠⚠ It buys a **standing, expected divergence from the sim** — wowsims cannot cancel a cast,
+> so `model-audit` will show a gap at an AoE wall and that gap is not a bug (RULES §9, TOOLING).
+> ⚠⚠ Commit `6cfaeec` also fixed a 42 % error on
 > Kael'thas: Arcane Explosion is **instant**, so `dur = 0`, and a divide-by-zero guard returning `0`
 > credited **every AE at nothing** — the limit is `1`. **Guard against NaN, not against the answer**, and
 > note that **no existing gate could reach either defect** (`self-consistency` compares the objective
@@ -45,8 +55,9 @@
 > numerical averaging is an **OPEN question** — `docs/PHASE13.md` §2.4, and ⛔ **not** to be "fixed" by
 > setting `--var 0`.
 >
-> ▶ **NEXT: `docs/PHASE13.md`.** Its §1 — the **AoE edge** — is ✅ **decided and landed**, so **no open
-> item changes numbers the tool prints**. §2 re-measures what Phase 12 voided
+> ▶ **NEXT: `docs/PHASE13.md`.** Its §1 — the **AoE edge** — is ✅ **decided and landed** (as a cut, on
+> policy — see above), so **no open item changes numbers the tool prints**. §2 re-measures what Phase 12
+> voided
 > (ACCEPTANCE, `model-audit` at scale, `scorer-duel` now that its prerequisite landed), §3 is the
 > search-optimality programme, §4 the gear-agnostic enforcement, §5 the inherited platform track.
 > ~~`STACK_CAST_REDUCTION: 1/3 → 334 ms`~~ ✅ **landed** (PHASE12 §6.14).
@@ -446,7 +457,10 @@ objective integrates away, which the model scores as a 0.014 % tie against the s
    gathered against the scorer PHASE 12 replaced and is void as a model reading. The tables stand as
    the evidence trail.
 3. **`docs/PHASE13.md` is the live plan and the only one.** §1 (the AoE edge) is **decided and
-   landed**, so nothing open changes the tool's printed numbers; §2 re-measures what Phase 12 voided;
+   landed** — an AoE phase **start IS a cut, by policy** (the Blast lands, but you cancel it for Arcane
+   Explosion); it flipped twice in one day, so read §1 before touching the cut lattice, and note it
+   prices a **deliberate divergence** from the sim at an AoE wall.
+   Nothing open changes the tool's printed numbers; §2 re-measures what Phase 12 voided;
    §3 is the search-optimality programme — and **§3.1 has one concrete known search miss already on the
    board** (`1:40 lust 0:05`, 0.065 %, the basin not entered at any restart depth,
    `tests/search-witnesses.json`); §4 the gear-agnostic enforcement; §5 the platform track inherited

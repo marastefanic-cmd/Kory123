@@ -147,12 +147,16 @@ the fire (**HELD 18 → 1 of 196**). `exact-match` **25/25**, `self-consistency`
 
 ⚠ **Closed, not finished:** §7's search-optimality proof programme (the objective being exact makes the
 per-press decision variable an **integer**, so enumeration and branch-and-bound are well-posed for the
-first time) and the acceptance re-gather — both `docs/PHASE13.md`'s. ⚠ The **AoE edge** it left open
-was decided immediately afterwards and **against** the way this phase shipped it: an AoE edge is
-**not** a cut, because the boss stays targetable and a cast in flight is unaffected by the phase it
-finishes in. The same correction found that **Arcane Explosion is instant**, so the boundary credit's
-divide-by-zero guard had been paying every AE **nothing** — a 42 % error on the only AoE fight in the
-corpus, reachable by **no existing gate**.
+first time) and the acceptance re-gather — both `docs/PHASE13.md`'s. ⚠ The **AoE edge** it left open was
+decided immediately afterwards — and then decided **again, the other way, the same day**. It was first
+removed from the cut lattice **on physics** (the boss stays targetable and the Blast measurably lands),
+then **restored on POLICY** by user ruling: an AoE phase **start IS a cut** because the player *cancels*
+the Blast to spam Arcane Explosion, which also truncates the AE lattice to the wall — something this
+phase's version never did. ⚠ So the verdict word matches what this phase shipped while the **reason and
+the behaviour do not**; read `docs/RULES.md` §9 / `docs/PHASE13.md` §1, not this doc, for what holds.
+The same correction found that **Arcane Explosion is instant**, so the boundary credit's divide-by-zero
+guard had been paying every AE **nothing** — a 42 % error on the only AoE fight in the corpus, reachable
+by **no existing gate**.
 
 ⚠ **Six of its blocks were live instructions that later sections falsified, and they are bannered in
 place** — most dangerously §6.11e's *"`exact-match` WILL FAIL on every case; do NOT `--update`"*, true

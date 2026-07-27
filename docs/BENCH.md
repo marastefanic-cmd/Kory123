@@ -165,9 +165,13 @@ WIDTH"** — the scorer's `KILL_WINDOW = 0.5` symmetric taper (TOOLING's "MODEL-
 ACCEPTANCE's protocol line; PHASE11 §1.2 F9 flagged the pairing as "aligned by prose only"). **That
 constant is retired from the objective.** The model is now deterministic at `T` and credits a
 straddling cast `min(1, (T − start)/duration)` — a **one-sided** window whose width is the *cast's own
-duration* — under one uniform rule at every cut (the fight end and an intermission start: the two
-places a cast stops **landing**. ⛔ Not an AoE edge — that shipped as a cut for a few hours on 07-27
-and the sim falsified it; RULES §9).
+duration* — under one uniform rule at every cut: the fight end, an **intermission start** (the cast
+cannot land) and an **AoE phase start** (it lands, but the player cancels it for Arcane Explosion).
+⛔ Not a burn edge — there you would not cancel. ⚠ The AoE edge flipped **twice** on 07-27 (shipped as a
+cut → removed on a correct physics measurement → **restored on policy**, where it stands); RULES §9.
+⚠⚠ And it buys a **standing, expected divergence from the sim**: wowsims cannot cancel a cast, so it
+lands the Blast the model docks. Any bench across an AoE wall carries that offset — TOOLING's
+standing-divergence block.
 There is no model window left to mirror.
 
 **Nothing in §3 above depended on that.** The experiment measured the SIM: the staircase, the

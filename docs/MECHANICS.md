@@ -147,13 +147,35 @@ begins already-buffed. Consequences the model must respect:
 > ```
 > credit = min(1, (nextCut − castStart) / castDuration)
 > ```
-> where a **cut** is a moment the cast **stops LANDING**: the fight end `T` and an **intermission
-> start** (boss untargetable) — **and nothing else**. ⛔ **Neither a burn edge nor an AoE edge is a
-> cut**: the boss is targetable at both, and the spell a cast uses is chosen at its **START**, so a
-> cast in flight is unaffected by the phase it completes in. Both are *value* questions under the
-> snapshot rule below. ⚠ The AoE edge shipped briefly **as** a cut (the spell changes there) and the
-> sim falsified it the same day: an AB started at 59.000 with an AoE phase opening at 60.000 completes
-> at 60.498 and **lands for full AB damage** — docking it paid *less* than the game pays.
+> where a **cut** is a boundary you would not carry a cast across: the fight end `T`, an **intermission
+> start**, and an **AoE phase start** — and nothing else.
+>
+> ★★ **THREE kinds of boundary, TWO of them cuts, for TWO DIFFERENT REASONS.** The asymmetry is the
+> whole rule:
+>
+> | boundary | does the cast land? | would you cancel it? | cut? | why |
+> |---|---|---|---|---|
+> | **intermission start** | **no** — boss untargetable | n/a | ✅ **cut** | **physics** |
+> | **AoE phase start** | **yes**, for full AB damage | **yes** — AE is worth several ABs | ✅ **cut** | **policy** |
+> | **burn edge** | yes | **no** — you keep casting AB | ⛔ **not a cut** | a *value* boundary, snapshot rule |
+>
+> At an AoE start the phase does not arrive on the same second every pull, so with the wall `~ U[W, W+d]`
+> the credit is exactly `P(the wall has not arrived by completion)`: the other branch is a **cancelled**
+> cast worth zero, and the expectation is `frac × dmg` — the same one-sided window as the kill.
+> ⇒ **Because the cast is CANCELLED rather than merely re-priced, the Arcane Explosion lattice starts AT
+> THE WALL**, not at the Blast's natural end. Verified: a Blast starting **58.998** against a wall at
+> **60.000** is credited **66.9 %** = `(60 − 58.998)/1.498`, and the first AE fires at exactly **60.000**.
+> Crediting partially without truncating would be the worst of both — paying less and gaining nothing.
+>
+> ⚠ **This has flipped TWICE in one day; keep the reasoning, it is the valuable part.** It shipped **as**
+> a cut (07-27, on "the spell changes there"), was **removed on physics** hours later — the sim measured
+> an AB started at 59.000 with an AoE phase opening at 60.000 completing at 60.498 and **landing for full
+> AB damage** (1886.4, a 25 %-resist roll off a ~2577 typical hit) — and was then **restored on policy**
+> by user ruling the same day. ★ **The measurement is still true and it is not what decides the
+> question**: the question was never *"does the cast land"* but *"what would the player do"*, and no sim
+> can answer that.
+> ⚠⚠ **A deliberate, PRICED divergence from the sim:** wowsims' APL cannot cancel a cast, so it finishes
+> the Blast and lands it. `model-audit` **will** show a gap at an AoE wall and that gap is **not a bug**.
 > ⚠⚠ An **instant** cast (Arcane Explosion, `cast = 0`) takes credit **1**, not 0 — `min(1, (cut−t)/dur)
 > → 1` as `dur → 0`; the first divide-by-zero guard returned 0 and credited every AE at nothing (42 %
 > error on Kael'thas). A cast completing exactly at `T` earns a **FULL**

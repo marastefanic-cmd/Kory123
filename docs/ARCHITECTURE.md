@@ -63,21 +63,31 @@ reading a field that still exists; do not "simplify" one of them away without au
 > `press + duration`** (short by the press slip — one whole cast in the measured case), and **the
 > symmetric kill taper** (below).
 
-> ### ★★★★ BOUNDARY CREDIT — ONE RULE AT EVERY CUT (PHASE12 §9, user ruling 07-27; `~1002–1041`, `~1292–1309`)
+> ### ★★★★ BOUNDARY CREDIT — ONE RULE AT EVERY CUT (PHASE12 §9, user rulings 07-27; `~1002–1070` the rule + lattice, `~1303–1345` the credit, `~1374–1381` the AoE truncation)
 > ```
 > credit = min(1, (nextCut − castStart) / castDuration)      ← multiplies that cast's own value
 > ```
-> A **cut** is any moment where the cast stops **LANDING** — the fight end `T` and an **intermission
-> start** (boss untargetable), **and nothing else**. The predicate is `lands(sg)`, deliberately the only
-> thing that builds the lattice, and the lattice is a **landing → not-landing transition**: the *far*
-> edge of an intermission is not a cut either, because no cast can start inside one so nothing is ever
-> in flight across it.
-> ⛔ ~~and **either edge of an AoE phase** (Arcane Blast ↔ Arcane Explosion)~~ — **corrected 07-27,
-> hours after it shipped.** The boss is targetable throughout an AoE phase and the spell a cast uses is
-> chosen at its **START**, so a cast in flight is unaffected by the phase it finishes in; measured, an
-> AB started at 59.000 against an AoE opening at 60.000 completes at 60.498 and lands for full AB
-> damage. ⚠ A **BURN edge is likewise NOT a cut** — the boss is targetable and the spell is
-> unchanged. Both are **value** questions under the snapshot rule, not landing questions.
+> A **cut** is a boundary a cast is not carried across — the fight end `T`, an **intermission start**
+> (boss untargetable: the cast **cannot land**) and an **AoE phase start** (it lands, but the player
+> **cancels** it to spam Arcane Explosion). **Three boundaries, two cuts, two different reasons: the
+> intermission is PHYSICS, the AoE start is POLICY.** ⛔ A **BURN edge is NOT a cut** — the cast lands
+> *and you would not cancel it*, so it is a **value** question under the snapshot rule. The predicate is
+> `cutsAt(sg)` (`sg.type === "intermission" || sg.type === "aoe"`), deliberately the only thing that
+> builds the lattice, and only segment **STARTS** enter it: the *far* edge of an intermission is not a
+> cut (no cast can start inside one, so nothing is in flight across it) and neither is an AoE exit (you
+> simply resume Arcane Blast, with nothing to cancel).
+> ★ **The AoE start truncates as well as credits** (`AOE_CUTS`, `~1381`): because the cast is
+> **cancelled** rather than re-priced, the Arcane Explosion lattice restarts **at the wall**, not at the
+> Blast's natural end — `prevCastEnd = min(prevCastEnd, cutT); t = cutT`. Verified: a Blast starting
+> `58.998` against a wall at `60.000` is credited **66.9 %** = `(60 − 58.998)/1.498` and the first AE
+> fires at exactly `60.000`. Crediting partially without truncating would pay less and gain nothing.
+> An intermission needs no such branch — the walk jumps over it at the top of the loop.
+> ⚠ **The AoE edge flipped TWICE on 07-27** — shipped as a cut, **removed on physics** (the sim showed an
+> AB started at 59.000 against an AoE opening at 60.000 completes at 60.498 and **lands** for full AB
+> damage), then **restored on policy** by user ruling. The physics measurement is still true and it is
+> not what decides it; RULES §9 carries the full reasoning.
+> ⚠⚠ **Expected consequence:** wowsims' APL cannot cancel a cast, so `model-audit` **will** show a gap at
+> an AoE wall. That is a priced divergence, not a bug.
 > ⚠⚠ **`dur === 0` ⇒ frac = 1, not 0.** Arcane Explosion is instant; a divide-by-zero guard returning 0
 > credited every AE at nothing (Kael'thas 368,018 vs 524,173, a 42 % error). `min(1, (cut−t)/dur) → 1`
 > as `dur → 0`. Guard against NaN, not against the answer.

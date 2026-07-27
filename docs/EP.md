@@ -10,8 +10,11 @@ power) for a given setup, planned by *its own* ideal cooldown usage. We get it t
 >
 > `simulate()` no longer ranks on `∫ cast_damage/interval dt`. The objective is the **per-cast sum**
 > `D = Σ_i cast_damage_i × credit_i`, with the **boundary credit**
-> `credit_i = min(1, (nextCut − start_i)/duration_i)`, where a **cut** is where a cast stops landing —
-> the fight end or an intermission start, **not** an AoE or burn edge (corrected 07-27; RULES §9).
+> `credit_i = min(1, (nextCut − start_i)/duration_i)`, where a **cut** is a boundary a cast is not
+> carried across — the fight end, an **intermission start** (the cast cannot land) and an **AoE phase
+> start** (it lands, but the player cancels it for Arcane Explosion). ⛔ **Not** a burn edge: the cast
+> lands and you would not cancel it. Three boundaries, two cuts, two reasons — RULES §9, and ⚠ the AoE
+> one flipped twice on 07-27 (shipped as a cut → removed on physics → restored on policy).
 > Two consequences for this section:
 >
 > - **The partials below still hold as the continuum form** — each `∫ … /interval dt` is the limit of
@@ -22,7 +25,8 @@ power) for a given setup, planned by *its own* ideal cooldown usage. We get it t
 >   (one cast per cut) and is **not** in the closed forms below. It **is** in the finite-difference
 >   route, which is what actually runs — `tests/ep-model.mjs` differences `simulate().total`, and
 >   `total`/`totalEarly`/`robust` are all the credited sum now. ⇒ **When the two disagree on haste on a
->   short or wall-heavy fight, the finite difference is the one to trust.**
+>   short, wall-heavy or AoE-phase-heavy fight, the finite difference is the one to trust** — an AoE
+>   phase start is a cut too, so it carries its own boundary term.
 > - ⛔ The retired symmetric kill taper (`KILL_WINDOW = 0.5`) is **not** in any formula here and never
 >   was; nothing in this file needs unwinding for it.
 

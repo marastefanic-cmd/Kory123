@@ -1021,14 +1021,26 @@ function simulateRaw(schedule, cfg, collect) {
   // it is NOT an AoE edge either.
   //   · A **burn** edge changes what a cast is WORTH, not whether it lands. Value question ⇒ the
   //     snapshot rule, not the cut lattice.
-  //   · An **AoE** edge was first written as a cut on the reasoning that the spell changes there
-  //     (Arcane Blast ↔ Arcane Explosion). **That was wrong, and the sim says so.** An Arcane Blast
-  //     started at 59.000 with an AoE phase opening at 60.000 completes at 60.498 and **LANDS, for
-  //     full Arcane Blast damage** (measured 1886.4, a 25 %-resist roll off a ~2577 typical hit) —
-  //     the boss is targetable throughout an AoE phase. The spell a cast will use is chosen at its
-  //     START, so a cast already in flight is unaffected by the phase it finishes in. Docking it paid
-  //     LESS than the game pays. An AoE edge is a value boundary, like burn.
-  //   ⇒ `lands()` below, deliberately, is the only predicate that builds the lattice.
+  //   · An **AoE phase START is a cut — by POLICY, not by physics** (user ruling 07-27, and it took
+  //     three passes to state correctly). The physics first: the boss stays targetable through an AoE
+  //     phase, and an Arcane Blast started at 59.000 with the phase opening at 60.000 completes at
+  //     60.498 and **LANDS for full damage** — measured in the sim (1886.4, a 25 %-resist roll off a
+  //     ~2577 typical hit). So this is NOT the intermission case, where the cast cannot land at all.
+  //     What makes it a cut is what the PLAYER does: adds are up, Arcane Explosion is worth several
+  //     times an Arcane Blast, so you CANCEL the Blast and start spamming. And the phase does not
+  //     arrive on the same second every pull — so with the wall at `W ~ U[W, W+d]`, `frac` is exactly
+  //     `P(the wall has not arrived by completion)`: the branch where it arrives first is a cancelled
+  //     cast worth zero, and the expectation is `frac × dmg`. Same one-sided window as the kill.
+  //     ⇒ Because the cast is CANCELLED and not merely re-priced, the AE lattice starts at the WALL,
+  //     not at the Blast's natural end — see the truncation at the bottom of the walk. Crediting
+  //     partially WITHOUT truncating would be the worst of both: paying less and gaining nothing.
+  //     ⚠ **This is a deliberate, priced divergence from the sim.** wowsims' APL does not cancel a
+  //     cast, so it will finish the Blast and land it. `model-audit` WILL show a gap at an AoE wall
+  //     and that gap is not a bug — do not "fix" it back. It is the one place the model models a
+  //     player decision the harness cannot express.
+  //   · A **burn** edge stays a non-cut, and the contrast is the cleanest way to remember the rule:
+  //     at a burn edge you keep casting Arcane Blast anyway, so there is nothing to cancel.
+  //   ⇒ `cutsAt()` below is the only predicate that builds the lattice.
   //
   // What this replaces, and why it is simpler: `total` was a hard cut at T (a staircase — measured
   // jumping a whole ~1.5-cast step as T crossed a completion boundary), `robust` was the taper, and
@@ -1042,12 +1054,16 @@ function simulateRaw(schedule, cfg, collect) {
   //
   // The cut lattice, precomputed once: merge adjacent segments that call for the same thing, and a
   // cut is a boundary between different ones. `null` segments (plain fight) ⇒ the only cut is T.
-  const lands = sg => !sg || sg.type !== "intermission";   // can a cast completing here deal damage?
-  const CUTS = [];
-  // A cut is a landing→not-landing transition. The far edge of an intermission is NOT a cut: no cast
-  // can START inside one (the walk jumps over it), so nothing is ever in flight across it.
+  // A cut is a segment START you would not carry a cast across: an intermission (cannot land) or an
+  // AoE phase (would cancel to spam AE). Their far edges are NOT cuts — no cast starts inside an
+  // intermission, and leaving an AoE phase you simply resume Arcane Blast with nothing to cancel.
+  const cutsAt = sg => !!sg && (sg.type === "intermission" || sg.type === "aoe");
+  const CUTS = [], AOE_CUTS = new Set();
   if (segs) for (let k = 0; k < segs.length; k++)
-    if (!lands(segs[k]) && (k === 0 || lands(segs[k - 1])) && segs[k].start > 1e-9) CUTS.push(segs[k].start);
+    if (cutsAt(segs[k]) && !cutsAt(segs[k - 1]) && segs[k].start > 1e-9) {
+      CUTS.push(segs[k].start);
+      if (segs[k].type === "aoe") AOE_CUTS.add(segs[k].start);   // the truncating kind
+    }
   CUTS.push(cfg.T);
   CUTS.sort((a, b) => a - b);
   // The earliest cut strictly after a cast's start. Linear scan: CUTS is tiny (phases per fight).
@@ -1355,7 +1371,15 @@ function simulateRaw(schedule, cfg, collect) {
     // quantization error and are excluded. Gated: zero cost when the charge is off.
     else if (bcOn && !isAoe) bcDone.push(prevCastEnd);
     if (!isAoe) { lastCastStart = t; if (stacks < g.AB.MAX_STACKS) stacks++; }
-    t += interval;
+    // ★ CANCELLATION AT AN AoE WALL. `frac < 1` above already prices this cast as the expectation
+    // over an uncertain wall; here is the other half of the same decision — the cast is CANCELLED, so
+    // the Arcane Explosion stream starts at the wall rather than at the Blast's natural end. Without
+    // this the model would pay less for the Blast and get nothing back, which is not a policy, just a
+    // penalty. Only an AoE wall truncates: an intermission is jumped over at the top of the loop, and
+    // the fight end ends the loop.
+    const cutT = nextCut(t);
+    if (AOE_CUTS.has(cutT) && t + interval > cutT + 1e-9) { prevCastEnd = Math.min(prevCastEnd, cutT); t = cutT; }
+    else t += interval;
   }
   // ═══════════ continuous cast-rate integral — ⛔ RETIRED AS THE SCORING MODEL (PHASE12 §6.10) ═══════════
   // Everything from here to the return computes the rate integral. Since 2026-07-27 it is returned as

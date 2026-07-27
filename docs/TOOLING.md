@@ -116,10 +116,14 @@ number; ranking lines is *its* job.
 > that differed by a median **0.2114 %** of score until then — do not restore that, and do not tune a
 > scorer term against the integral (§6.1–§6.3 record four terms falsified that way).
 > ★ **`total`, `totalEarly` and `robust` are now the same number**, each cast credited
-> `dmg × min(1, (nextCut − start)/duration)` — the **boundary credit** at every cut, and a **cut** is
-> where a cast stops **landing**: the fight end and an intermission start, **nothing else** (⛔ an AoE
-> edge is *not* a cut — corrected 07-27 by sim, hours after it shipped as one; nor is a burn edge; and
-> an **instant** cast takes credit **1**, not 0). PHASE12 §9 / RULES §8/§9.
+> `dmg × min(1, (nextCut − start)/duration)` — the **boundary credit** at every **cut**: the fight end,
+> an **intermission start** (the cast **cannot land**) and an **AoE phase start** (it lands, but you
+> **cancel** it for Arcane Explosion). ⛔ A **burn** edge is *not* a cut — the cast lands and you would
+> not cancel it. Three boundaries, two cuts, two different reasons (physics vs policy); an **instant**
+> cast takes credit **1**, not 0. PHASE12 §9 / RULES §8/§9.
+> ⚠ The AoE edge **flipped twice on 07-27** — shipped as a cut, removed on a (correct) physics
+> measurement, restored on the user's policy ruling. **It deliberately buys a sim divergence — see the
+> standing block immediately below.**
 >
 > ⚠ **Two calibration debts are still open and they bound what the SIM can settle.** (a) wowsims takes 334 ms
 > per Arcane Blast stack where the model takes 1/3 s, so **26 of 196 presses** still miss the cast the
@@ -129,6 +133,35 @@ number; ranking lines is *its* job.
 > while the sim still hedges it **numerically** (`--var 0.5`, averaging over `T ± 0.5`). The two are no
 > longer the same question and **no residual between them has been derived** — the old `1 − W/c`
 > tail-lattice floor priced the *retired* scorer and does not transfer. OPEN: PHASE12 §9.4.
+
+### ⚠⚠⚠ STANDING, EXPECTED DIVERGENCE — THE MODEL CANCELS A CAST AT AN AoE WALL AND THE SIM CANNOT (07-27)
+
+**`tools/model-audit.mjs` WILL report a gap at an AoE phase start. It is NOT a bug and it must not be
+"fixed".** This is the one place where the model deliberately does not describe what wowsims does.
+
+- **What the model does.** An **AoE phase START is a cut** (RULES §9, user ruling 07-27). The Arcane
+  Blast in flight is scored as **cancelled**: it is credited only
+  `frac = min(1, (wall − start)/duration)` — the probability the wall has not arrived by completion,
+  since the phase does not land on the same second every pull — and the Arcane Explosion lattice
+  restarts **at the wall**, not at the Blast's natural end. Verified: a Blast starting `58.998` against
+  a wall at `60.000` is credited **66.9 %** and the first AE fires at exactly `60.000`.
+- **What the sim does.** wowsims' APL has **no cancel action**. It finishes the Blast and **lands it for
+  full Arcane Blast damage** — measured, and the measurement is correct: an AB started at 59.000 with
+  the phase opening at 60.000 completes at 60.498 and hits for 1886.4 (a 25 %-resist roll off a ~2577
+  typical hit). The boss stays targetable; this is **not** the intermission case.
+- **Why the model is right anyway.** The question a cut answers is not *"does the cast land"* — it is
+  *"would the player carry the cast across"*. Adds are up and Arcane Explosion is worth several times an
+  Arcane Blast, so the player cancels. **No sim measurement can settle that**, which is exactly why this
+  ruling is POLICY and not physics.
+- **How to read an audit across an AoE wall.** Expect a one-cast start/value disagreement **at the wall
+  only**, in the direction *model credits less, sim credits full*, plus a lattice offset on the AE
+  stream that follows it. Everything away from an AoE wall must still match cast for cast. **A gap
+  anywhere else is a real finding; the gap at the wall is priced.**
+- ⚠ **Do not close this by removing the AoE start from the cut lattice.** That is exactly what happened
+  once already on 07-27 (removed on the physics measurement above, restored hours later on the user's
+  ruling) — the flip is recorded in RULES §9 and `docs/DIARY.md` so it is not made a third time.
+- ⚠ It also means a raw **DPS duel** across an AoE wall is measuring two different policies, not two
+  plans. Duel *within* a phase, or accept the wall cast as a known constant offset.
 
 **The sim's role, in priority order — and the FIRST one is the point of the whole cross-val corpus:**
 
@@ -1201,7 +1234,10 @@ all of it, not just the crit sequence).
   differs (stacked window: model +1.65 casts, sim +1.04; split: model +1.48, sim +1.54). The model's
   continuous fractional credit is the CORRECT expectation for real fights, whose transition times vary
   run to run — ★ **and since 07-27 that credit is EXPLICIT rather than incidental**: a wall is a **cut**,
-  so the cast straddling it earns `min(1, (wall − start)/duration)` (PHASE12 §9). Under the old scorer a
+  so the cast straddling it earns `min(1, (wall − start)/duration)` (PHASE12 §9). ⚠ **An AoE phase start
+  is a cut too** — same jitter argument, different reason (the cast lands, but the player cancels it for
+  Arcane Explosion; RULES §9) — and *that* one the sim cannot reproduce, so jitter measurements across an
+  AoE wall carry the standing divergence above. Under the old scorer a
   cast completing *inside* an intermission was paid in **full**, so this bullet's reasoning was right
   about the goal and wrong about HEAD. The user's ruling rests on the same argument stated here — a wall
   does not land on the same second every pull —
@@ -1453,6 +1489,12 @@ accounts for it before blaming the model.
   stayed valid).
 
 ## Evaluating AoE phases (`--targets N` + AE-spam)
+
+> ⚠⚠ **Before comparing anything across the phase START, read the standing-divergence block in
+> Methodology.** The model treats an AoE phase start as a **cut** and scores the straddling Arcane Blast
+> as **cancelled** (partial credit, AE lattice restarting at the wall); wowsims cannot cancel a cast, so
+> it finishes and lands it. That gap is **expected and priced** — it is a modelled player decision, not a
+> harness fault. RULES §9.
 
 Two additions let the runner value an Arcane-Explosion AoE phase (the model's `type:"aoe"` segment):
 - **`runner --targets N`** duplicates `encounter.targets[0]` to N mobs (config protos are read-only, so
