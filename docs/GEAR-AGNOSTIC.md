@@ -183,7 +183,12 @@ as a surprise (`sim/model-ref.json`):
   Without it the scheduled press is a bit-identical no-op (PHASE10 §8.7 — it was worth +165 DPS the
   button was scoring as exactly zero).
 - **Mana ≈ infinite** (`BENCH.manaInject`), matching the model's infinite-mana assumption.
-- **`--var 0.5`** duration variation — the model's kill-window width, settled by measurement.
+- **`--var 0.5`** duration variation — settled by measurement (`tools/var-decision.mjs`, BENCH §3).
+  ⛔ This line used to add *"the model's kill-window width"*. **Retired 07-27** (PHASE12 §9): the
+  scorer's `KILL_WINDOW` taper is gone, replaced by a one-sided boundary credit whose width is the
+  cast's own duration, so there is no model constant this mirrors. `0.5` is the **sim's own** smoothing
+  and stands on the measurement alone — which is the stronger footing, since that evidence never
+  depended on the model. Reconciling the two smoothings is open (PHASE12 §9.4).
 - **Cold open**, `_prestack: 0` — the model never prepulls.
 
 ⚠ **Talents are a fixed constant, not an input, and that is a deliberate scope boundary.** If a talent

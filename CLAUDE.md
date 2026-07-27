@@ -160,7 +160,29 @@ changing the model or the passes**, and keep it updated as the living theorycraf
      the start over-paid one cast per window. Gate: `tools/credit-check.mjs`.
      ⚠ Its discriminating case is a press landing **ON a cast boundary**; on a mid-cast press the old
      defects cancelled and the broken engine passed.
-  Full evidence: `docs/PHASE12.md` §6.10 (the objective) and §6.11 (the windows).
+  4. **A SYMMETRIC kill window, and treating any boundary as an exact instant.** ✅ **Retired 07-27 by
+     user ruling (PHASE12 §9).** `KILL_WINDOW = 0.5` paid a cast completing exactly at T only **0.5**,
+     because `U[T−W, T+W]` says the boss is already dead half the time. One rule now applies at
+     **every** cut:
+
+     ```
+     credit = min(1, (nextCut − castStart) / castDuration)      × that cast's own value
+     ```
+
+     ★ **Not a smoothing heuristic — algebraically a ONE-SIDED window whose width is the cast's own
+     duration** (`U[C, C+d]` ⇒ `(C+d−completion)/d = (C−start)/d`, verified to the digit). It reads
+     *"the cut happens no earlier than C, and no later than one cast after it."*
+     ★★ A **cut** is the fight end, an intermission start, or either edge of an AoE phase — *not* a
+     burn edge (boss targetable, same spell ⇒ a value question under rule 3, not a landing question).
+     The user's second ruling is why intermissions are included: **a wall does not land on the same
+     second every pull either**, so modelling it as exact is the same mistake as modelling T as exact.
+     ⇒ `total` / `robust` / `totalEarly` are now **one number**, and the board carries `frac` +
+     `credited` so the gate can recompute the objective independently. Gate: `tools/wall-credit.mjs`.
+     ⚠ **Consequence for the sim protocol:** `BENCH.variation: 0.5` is no longer "the model's
+     kill-window width" — that constant is gone. It stays at 0.5 on its own measured evidence
+     (`var-decision.mjs`) as the **sim's** smoothing. Model and sim now smooth the same discontinuity
+     analytically vs numerically, and **reconciling the two is an OPEN question** (PHASE12 §9.4).
+  Full evidence: `docs/PHASE12.md` §6.10 (the objective), §6.11 (the windows), §9 (the boundary credit).
 - **The sim's job is to FALSIFY THE SEARCH, not to arbitrate the scorer.** With an exact objective the
   model's ranking of two plans is arithmetic and cannot be wrong — so when the sim prefers a plan the
   tool did not emit, **the search failed to find it.** That is the whole point of the cross-val corpus:

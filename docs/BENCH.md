@@ -153,6 +153,27 @@ bench, plan-duel, the tests). `tests/sim-request.mjs` asserts it is neither 0 no
 `--var 0` remains available for a deliberate count-preserving read; anything it says must be confirmed
 at 0.5.
 
+### ⛔ 07-27 — THE VALUE STANDS, ITS *OTHER* JUSTIFICATION DIED (PHASE12 §9)
+
+Elsewhere in the project `--var 0.5` was also justified as mirroring **"the model's kill-window
+WIDTH"** — the scorer's `KILL_WINDOW = 0.5` symmetric taper (TOOLING's "MODEL-MATCHED read";
+ACCEPTANCE's protocol line; PHASE11 §1.2 F9 flagged the pairing as "aligned by prose only"). **That
+constant is retired from the objective.** The model is now deterministic at `T` and credits a
+straddling cast `min(1, (T − start)/duration)` — a **one-sided** window whose width is the *cast's own
+duration* — under one uniform rule at every cut (fight end, intermission start, either AoE edge).
+There is no model window left to mirror.
+
+**Nothing in §3 above depended on that.** The experiment measured the SIM: the staircase, the
+terminal-cast-rate swing, the seed band. `variation: 0.5` keeps its value on **its own** evidence, and
+it is now correctly described as the **sim's** smoothing — how the sim avoids parking its fight end on
+a discontinuity that the model, since 07-27, no longer has.
+
+⚠ **OPEN QUESTION — PHASE12 §9.4.** Model and sim now smooth the same problem by different means,
+**analytic partial credit vs numerical averaging over `T ± 0.5`**. What the residual between those two
+answers is has **not been derived**. The old `1 − W/c` tail-lattice floor priced the *retired* scorer
+and does not transfer (RULES §8's historical banner). Do not close the question by flipping
+`variation` to 0 — that reintroduces the measured failure above.
+
 ## 3b. ★ What the export actually contributes — fixed vs varied vs ignored
 
 An export carries far more than gear. Classifying every part of it is what makes bench mode

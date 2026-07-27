@@ -1526,7 +1526,41 @@ during AoE. Decide that deliberately rather than inheriting it from this fix.
 
 ---
 
-## 9. ★★★ USER RULING 2026-07-27 — THE BOUNDARY MODEL GOES DETERMINISTIC (proportional partial credit)
+## 9. ★★★ ✅ LANDED 2026-07-27 — THE BOUNDARY MODEL IS DETERMINISTIC (proportional partial credit)
+
+> ### THE LANDING, WITH ITS GATES
+> Landed together with §3's cooldown-chain fix, **deliberately not "riding alone"** — user direction:
+> the two are one coherent statement about what the objective evaluates and where, and splitting them
+> would have re-recorded the goldens twice for no added attribution (the sweep already names the moved
+> cells).
+>
+> | gate | result |
+> |---|---|
+> | `tests/exact-match.mjs` | **25 passed, 0 failed** — goldens re-recorded; the suite had been red *on purpose* since the objective work and is green again |
+> | `tools/self-consistency.mjs` | **0.00e+0** over 2755 plan-scorings |
+> | `tools/wall-credit.mjs` | rewritten from probe into **regression gate**; passes |
+> | `window-span` · `credit-check` · `snapshot-rule` | pass |
+> | `tests/sim-duel.mjs` · `tests/sim-request.mjs` | pass · **9/9** with the native runner |
+> | `tools/press-headtohead.mjs` | **HELD 18 → 1** of 196 presses — the chain fix, measured |
+> | `plan-sweep` / `blast-radius` | **11 of 16** plans moved · **102/285 cells (35.8 %)** |
+>
+> ★ The exhibit cast is the cleanest single proof: `2:40 lust 0:07 intermission 1:30-2:10`, a cast
+> starting **89.616** against a wall at **90.000**, worth 2242.1. It used to be paid in **full**. It is
+> now paid **frac 0.2563 → 574.8**.
+>
+> ⚠ **`self-consistency` and `blast-radius` recompute the credit from the board's raw `t`/`cast`, NOT
+> from the new `frac` field.** Reading `frac` would grade the accumulator against the statement that
+> writes it — the gate's entire value is that it is a second, independent account.
+>
+> ⚠ **What did NOT land, and is the next thing to decide:** the AoE edge is treated as a cut, so an
+> Arcane Blast completing inside an AoE phase is now docked. The boss **is** targetable there — the
+> cast lands for full damage; you would simply rather have been casting Arcane Explosion. That was
+> flagged before the ruling and is still not decided on its own merits; it currently inherits the
+> intermission's treatment. Decide it deliberately (§9.5 sub-decision 2).
+
+---
+
+### 9.0 The ruling as it was posed (kept — the reasoning is the record)
 
 > **The ruling, in the user's own words:** *"I want a cast completing exactly at T to be accredited
 > exactly a full cast... if the last full cast ends 0.613 s before T, and that next Arcane Blast would

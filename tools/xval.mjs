@@ -78,7 +78,9 @@ for (const [name, p] of [['RUNNER', RUNNER], ['EXPORT_BASE', EXPORT_BASE]]) {
 }
 const ITER = process.env.ITER || '10000';
 // Kill-time variation (s). 0.5 matches the scorer's kill-window WIDTH: `robust` tapers linearly over
-// [T−0.5, T+0.5] (KILL_WINDOW=0.5s, index.html:717). var10 asks a different question (±10s kill hedging
+// [T−0.5, T+0.5]. ⚠ This used to cite `KILL_WINDOW=0.5` as the model constant it mirrors; that
+// constant was RETIRED 07-27 (PHASE12 §9) and `--var 0.5` now stands on var-decision.mjs alone.
+// var10 asks a different question (±10s kill hedging
 // the model deliberately does not price, RULES §8) and adds a late-window premium; var0 is the
 // razor-edge whole-cast parity trap. See ACCEPTANCE (PHASE7 metric decision).
 // ★★★ 07-25: 0.5 matches the WIDTH, NOT THE KIND — it is not "exactly" the model's objective (that

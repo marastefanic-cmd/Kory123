@@ -154,6 +154,17 @@ hardcoded line-number patcher in `tools/census-build.mjs`), feeding ~30 consumer
 | F13 | UI-presentational data ships inside the "pure" engine into every worker and node tool (`BUFFS.*.color: "var(--c-…)"`, `TRINKET_TIERS` labels), and the UI string-slices the CSS var back out | `index.html:874-898`; `colorOf` `:3853` | engine/UI can't be reasoned about separately; workers carry dead UI strings |
 | F14 | Line-number cross-references rot project-wide (ARCHITECTURE "~3600 lines" vs 5,411; `xval.mjs:55` cites `index.html:717` for KILL_WINDOW, actual 1006; PHASE9 cites `:3314` for `createObjectURL`, actual 3808) | verified instances | docs mislead precisely when they're needed; CLAUDE.md institutionalizes the cost ("re-grep the line ranges") |
 
+> **⛔ 07-27 — F9's first pairing no longer exists, and F14's example moved.** PHASE12 §9 retired
+> `KILL_WINDOW` from the objective (one boundary credit at every cut, width = the cast's own duration),
+> so `BENCH.variation: 0.5` has **nothing on the model side to be "aligned by prose" with**: it now
+> rests solely on `tools/var-decision.mjs` (BENCH §3). ⇒ **F9 is half-discharged by deletion of one
+> side**, not by a fix; its surviving half is the `HASTE_RATING_PER_PCT` pairing, which still stands.
+> F14's `KILL_WINDOW` line-number example is likewise dead (`index.html` now has only a local
+> `KW = 0.5` at ~1366 feeding the `integral` diagnostic); the *finding* — line-number rot as a class —
+> is untouched, and the file is now **5,654** lines. ⚠ **This is the finding class working as
+> intended:** a constant did change on one side, and the only thing that would have caught the
+> stranding was the prose. Rows are kept verbatim; the ledger is the record of the 07-26 audit.
+
 ### §1.3 Inefficiencies
 
 - **I1 · The engine is parsed (2+n)× per session, uncacheable.** Page copy + main Blob worker +

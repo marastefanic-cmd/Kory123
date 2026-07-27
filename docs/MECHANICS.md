@@ -140,10 +140,28 @@ begins already-buffed. Consequences the model must respect:
 > the haste and the stack count (hence the cast time), whether Arcane Power is up (×1.30), which spell
 > power buffs apply (normalizable against a plain cast), and crit as a constant factor that cancels.
 > **There is nothing to approximate**, and since 07-27 `simulate()` accumulates exactly that sum and
-> returns it as `total`/`totalEarly`/`robust`. Gate: `tools/self-consistency.mjs` reads `0.00e+0` over
-> 2755 plan-scorings, no sim.
+> returns it as `total`/`totalEarly`/`robust` — which are now **one and the same number**. Gate:
+> `tools/self-consistency.mjs` reads `0.00e+0` over 2755 plan-scorings, no sim.
 >
-> ⛔ **TWO APPROACHES ARE RETIRED. Do not let either back in.**
+> ★ **Each term carries a BOUNDARY CREDIT (PHASE12 §9, user ruling 07-27):**
+> ```
+> credit = min(1, (nextCut − castStart) / castDuration)
+> ```
+> where a **cut** is the fight end `T`, an **intermission start**, or **either edge of an AoE phase**
+> (the spell changes). A **burn edge is NOT a cut** — same spell, targetable boss, so a burn multiplier
+> is a *value* question under the snapshot rule below. A cast completing exactly at `T` earns a **FULL**
+> cast; one that straddles a cut earns the fraction that fits. Algebraically this is a **one-sided**
+> window whose width is the cast's own duration: for a cut `~ U[C, C+W]`, credit `= (C+W−completion)/W`,
+> and `W = duration` gives exactly `(C − start)/duration` — i.e. *"the fight lasts at least T, and at
+> most one more cast."*
+>
+> ⛔ **THREE APPROACHES ARE RETIRED. Do not let any of them back in.**
+> 0. **The symmetric kill taper.** `KILL_WINDOW = 0.5` weighted every cast by
+>    `clamp((T + KW − completion)/2KW, 0, 1)`, which paid a cast completing **exactly at T** only
+>    **0.5** — a symmetric window asserts the boss is already dead half the time. It was also
+>    *kill-only*, so a cast completing inside an **intermission** was paid in full (measured: starts
+>    89.616, wall 90, completes 91.114 — credited 2242.1, now `frac 0.2563` / `credited 574.8`). A
+>    local `KW = 0.5` survives in `index.html` feeding **only** the `integral` diagnostic.
 > 1. **Ranking on the rate integral.** It is the continuum limit — the expectation over a uniformly
 >    random cast phase — and a given plan's phase is *determined*, so it is the wrong evaluation for
 >    ranking two concrete plans. Measured gap: **median 0.2114 % of score, max 1.4263 %**, against
@@ -182,6 +200,9 @@ CASTS and must be evaluated as one.** The integral is the continuum limit, i.e. 
 uniformly random cast phase; a given plan's phase is *determined*, so for ranking two concrete plans
 the realized per-cast sum is the correct evaluation and the integral is an approximation to it — they
 differ by a median 0.21 % of score, which is why ranking on the integral is retired (banner above). A haste buff raises how *many* casts fit; a damage/SP buff raises what each is *worth*.
+The evaluated form is therefore
+**`effectiveABs = Σ_i [cast_damage_i/plainAB] × min(1, (nextCut − start_i)/duration_i)`** — the
+boundary credit of the banner above, which is also the *only* place a fight boundary enters the number.
 `total` (`simulate` in `index.html`) is this SUM up to the constant — ⛔ it was `rateAt`'s integral
 until 07-27; `rateAt` now feeds only the `integral` diagnostic. **Everything the
 planner decides is a *consequence* of maximizing this one quantity — Lust alignment, haste sequencing,

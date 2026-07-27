@@ -7,7 +7,13 @@
 >    graded were 0.004–0.380 % and the ranking margins ~0.005–0.07 % (PHASE12 §6.8/§6.10), and
 > 2. a press transcription that put **7.14 % of presses on a cast the model never chose**, plus
 >    25.2 % on a boundary where a millisecond of lattice drift decided the answer (§6.9), and
-> 3. a discrete walk that gave **every mid-cast press a buff window short by the press slip** (§6.11).
+> 3. a discrete walk that gave **every mid-cast press a buff window short by the press slip** (§6.11),
+>    and a per-cooldown chain anchored on the **press** rather than the fire, so a chained second use
+>    could be scheduled earlier than the sim could execute it (**HELD press failures 18 → 1 of 196**
+>    once fixed — PHASE12 §3), and
+> 4. a **symmetric kill taper** (`KILL_WINDOW = 0.5`) that paid a cast completing exactly at `T` only
+>    **half** a cast, and paid a cast completing **inside an intermission in FULL** (PHASE12 §9,
+>    retired by user ruling 07-27 in favour of one boundary credit at every cut — RULES §8).
 >
 > ⇒ **The tables are KEPT — they are the append-only record and the evidence trail — but their
 > verdicts must not be cited as the model's status.** "B2 fails, 142 borrowed-win columns, worst
@@ -156,9 +162,15 @@ bash tools/xval-status.sh                       # liveness: tables, cache, shard
 > `sim/sim.wasm` and takes `RUNNER=` only as a speed option (TOOLING; PHASE12 §2.1b).
 
 Locked protocol (do NOT deviate — each cost a real bug once; PHASE6 §1, PHASE7 §5): **cold open
-(`_prestack:0`, never prepull) · ∞ mana (`--mana 100000000`) · `var 0.5` — the MODEL-MATCHED kill window
-(the scorer's `robust` is exactly expected damage under a uniform kill in T±0.5s; var10's ±10s hedging
-premium and var0's whole-cast parity are both off-question — TOOLING) · wall-jitter on boss tables
+(`_prestack:0`, never prepull) · ∞ mana (`--mana 100000000`) · `var 0.5` — ⛔ **this used to be justified
+as "the MODEL-MATCHED kill window" (the scorer's `robust` being expected damage under a uniform kill in
+T±0.5s). That justification DIED 07-27** when the kill taper was retired (PHASE12 §9): the model is now
+deterministic at `T` and credits a straddling cast its fitting fraction, so there is no model window
+left to match. **The value stays 0.5 on its own evidence** — `tools/var-decision.mjs` / BENCH §3, which
+never depended on the model — and var10's ±10s hedging premium and var0's whole-cast parity are still
+both off-question (TOOLING). ⚠ Model and sim now smooth the same discontinuity by **different means**,
+analytic partial credit vs numerical averaging; reconciling them is OPEN (PHASE12 §9.4) and a re-gather
+must state which it is measuring · wall-jitter on boss tables
 (`WJITTER=2`: cells averaged over δ∈{−2..+2}s wall shifts with post-wall presses tracking — fixed-wall
 cast parity is measurement structure no phase-averaged model can rank) · AoE phases VALUED (genapl
 `_aoe` → Arcane Explosion + `--targets N`; the KT caveat is closed) · paired seed 11 (CRN) · the AP-180
@@ -353,6 +365,17 @@ the authoritative row-by-row ledger.
 > **This does not void the round** — invariant A, the protocol stamp, the persistence structure and the
 > band all stand as measurements. It voids the *attribution*. Re-run the ledger once the objective is
 > exact and the press timing is fixed; expect the columns to move.
+>
+> ## ⛔ UPDATE, LATER THE SAME DAY — THE OBJECTIVE **IS** SINGLE-VALUED NOW, AND THAT MAKES IT WORSE
+>
+> `robust` **is** the per-cast sum since 07-27 evening (PHASE12 §6.10; gate `tools/self-consistency.mjs`
+> = `0.00e+0`), and on top of that the **kill taper was retired** for one boundary credit at every cut
+> (§9, user ruling — RULES §8). So the caveat above is no longer a warning about an ambiguous arbiter:
+> **the arbiter CHANGED.** Measured blast radius of the credit rule alone: `plan-sweep` **11 of 16**
+> cases moved plans, `tools/blast-radius.mjs` **102 of 285** cells (35.8 %). ⇒ Every plan this round
+> graded is one the current engine may no longer emit, so **the round is void as a model verdict, not
+> merely unattributable.** The tables below stay as the append-only record; read the top-of-file
+> banner for what that means.
 
 ## Current status (GEAR B, round 1, 2026-07-27) — **NOT PASSING (B2)**
 
@@ -773,9 +796,14 @@ under-credit to patch (RULES §3). (2) **Both layouts in this cell are floor-fre
 at R=40 ⇒ m=1.2304, steady cast 1.219 s, 0.219 s of slack), so **no ramp physics is in play here at all**
 and the model's 0.006% is *correct*.
 
-**The real mechanism is the tail-lattice ripple** (RULES §8, `tools/lattice-ripple.mjs`). The sim counts
-**integer** casts under the kill taper; the model integrates its **continuum limit**. Same width
-(`KILL_WINDOW = 0.5` ≡ `--var 0.5`), different kind — a sawtooth of `1 − W/c` casts, `0.3164` at this
+**The real mechanism is the tail-lattice ripple** (RULES §8, `tools/lattice-ripple.mjs`).
+⚠ **HISTORICAL as of 07-27** — this diagnosis is stated against the retired scorer, and both its
+premises are gone: the model no longer integrates a continuum limit (it sums per cast, §6.10) and there
+is no `KILL_WINDOW` to share a width with `--var 0.5` (the credit window is the cast's own duration,
+PHASE12 §9). The reading below is the record of what was measured then; do not re-derive a current
+resolution floor from it. — The sim counts
+**integer** casts under the kill taper; the model integrated its **continuum limit**. Same width
+(the then-current `KILL_WINDOW = 0.5` ≡ `--var 0.5`), different kind — a sawtooth of `1 − W/c` casts, `0.3164` at this
 fight's tail rate `c = 1.4629 s`. Evaluating the *sim's own* expected-cast sum on the *model's own* cast
 list settles it with no wowsims run:
 
@@ -847,7 +875,13 @@ an edit mid-round assembles the matrix from two different instruments (PHASE12 �
   short/low-haste DEFICIT under ~0.1–0.2% as *at the ruler's limit*. This compounds the model-side limit
   already recorded below (58/135 round-5 columns priced ≤0.02% apart — under the model's *own* resolution).
   Widening the taper toward the tail cast period would shrink the floor, but it also **changes the
-  objective** (`KILL_WINDOW` is the half-cast hedge of RULES §8) — do not "fix" the ruler by moving the goal.
+  objective** (`KILL_WINDOW` was the half-cast hedge of RULES §8) — do not "fix" the ruler by moving the goal.
+  ⚠ **HISTORICAL (07-27).** The taper *was* widened to the tail cast period — that is exactly what the
+  boundary credit is, a one-sided window of the cast's **own duration** — but by **user ruling**
+  (PHASE12 §9), as a change of goal, not as a fix to the ruler. So the caution above stands as written
+  and the derivation it protects is void: `1 − W/c` no longer prices anything, and this bullet's
+  numbers are the record of the retired scorer. A resolution floor for the credit rule has **not been
+  derived**, and PHASE12 §1.3's user call is still open.
 - **~~KT AoE simmed as downtime~~ (genapl has no Arcane-Explosion emission) — ~~KT numbers exclude AoE
   damage.~~ CLOSED at task #53.** `genapl` emits Arcane Explosion for every `_aoe` window and the runner gets
   `--targets N` (`tools/xval.mjs:133,161,177,265`); the round-5 KT columns are AoE-**valued**. ⚠ Stale copies

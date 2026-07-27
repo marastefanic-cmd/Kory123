@@ -9,7 +9,10 @@
 // The sim's expected damage under a uniform kill in [T-KW, T+KW] is EXACTLY
 //     Sum over casts of  dmg_i * clamp((T + KW - tc_i)/W, 0, 1)      (W = 2*KW = 1.0s)
 // and the model computes its CONTINUUM LIMIT — a rate integral (index.html:990). The taper WIDTH
-// matches (KILL_WINDOW=0.5 at index.html:717 == xval's `--var 0.5`); the KIND does not. Sum-vs-
+// ⚠ THIS PREMISE IS DEAD (PHASE12 §9, 07-27): the model has NO taper any more — `KILL_WINDOW` was
+// retired and replaced by a one-sided per-cast boundary credit. The `--var 0.5` below is now the
+// SIM's own smoothing, justified by var-decision.mjs alone, and the two no longer mirror each other.
+// The widths no longer match, and neither does the KIND. Sum-vs-
 // integral is the entire residual, and it is a sawtooth in T of peak-to-peak
 //
 //     ripple = 1 - W/c   casts        (c = the tail cast period)

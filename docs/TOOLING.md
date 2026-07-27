@@ -36,6 +36,17 @@ plan → sim/planspec.mjs → tools/genapl-core.mjs → sim/simreq.mjs → sim/s
   the tie band, the rating conversions, cold open. `tools/plan-duel.mjs` imports it too, and
   `runnerFlags()` generates the native command line from it, so `--var 0.5` is never retyped.
   ★ If you write a new sim instrument, import BENCH; do not copy its numbers.
+  ⛔ **`variation: 0.5` KEPT ITS VALUE AND LOST ITS OLD JUSTIFICATION (07-27, PHASE12 §9).** It used to
+  be documented as mirroring *"the model's kill-window WIDTH"* (`KILL_WINDOW = 0.5`). **That constant no
+  longer exists in the objective** — the model is deterministic at `T` and credits a straddling cast its
+  fitting fraction — so there is nothing on the model side to mirror. The value stands **solely** on
+  `tools/var-decision.mjs` / BENCH §3, evidence that never depended on the model: it is the **SIM's own**
+  smoothing, the way the sim avoids parking its fight end on a discontinuity the model no longer has.
+  ⚠ **OPEN QUESTION (PHASE12 §9.4):** model and sim now smooth the same problem by different means —
+  **analytic partial credit vs numerical averaging** — and reconciling the two answers is unresolved.
+  Do not "fix" it by flipping `variation` to 0; that reintroduces the measured failure in BENCH §3.
+  (This also discharges PHASE11 §1.2 F9's "aligned by prose only" pairing for this constant: there is
+  no longer a pair.)
 
 **Two gates, both negative-controlled.** `tests/sim-request.mjs` asserts (a) the protocol *invariants*
 (var ≠ 0, cold open, seed spacing — sharing a constant cannot make it correct), (b) that
@@ -91,11 +102,18 @@ number; ranking lines is *its* job.
 > `node tools/self-consistency.mjs` must read `0.00e+0` (PHASE12 §6.10). ⛔ It ranked on a rate integral
 > that differed by a median **0.2114 %** of score until then — do not restore that, and do not tune a
 > scorer term against the integral (§6.1–§6.3 record four terms falsified that way).
+> ★ **`total`, `totalEarly` and `robust` are now the same number**, each cast credited
+> `dmg × min(1, (nextCut − start)/duration)` — the **boundary credit** at every cut (fight end,
+> intermission start, either AoE edge; a burn edge is not a cut). PHASE12 §9 / RULES §8.
 >
-> ⚠ **One calibration debt is still open and it bounds what the SIM can settle:** wowsims takes 334 ms
+> ⚠ **Two calibration debts are still open and they bound what the SIM can settle.** (a) wowsims takes 334 ms
 > per Arcane Blast stack where the model takes 1/3 s, so **26 of 196 presses** still miss the cast the
 > model scored them on (§6.9d). Until that constant is fixed, **no sim-vs-model disagreement smaller
 > than ~0.1 % is attributable** — the referee mis-executes ~13 % of presses.
+> (b) The model now hedges the fight boundary **analytically** (partial credit on the straddling cast)
+> while the sim still hedges it **numerically** (`--var 0.5`, averaging over `T ± 0.5`). The two are no
+> longer the same question and **no residual between them has been derived** — the old `1 − W/c`
+> tail-lattice floor priced the *retired* scorer and does not transfer. OPEN: PHASE12 §9.4.
 
 **The sim's role, in priority order — and the FIRST one is the point of the whole cross-val corpus:**
 
@@ -433,14 +451,21 @@ Lesson 7 above is the instrument for the second axis; lessons 1–4 are the firs
     shows a spurious loss vs an interior placement (the sim drops the truncated tail casts; the model credits
     them proportionally). When cross-checking placement, keep the buff **interior** (lengthen `--dur`) or the
     fight-end masquerades as a real placement effect. Verified: IV pre-Lust ≡ post-Lust to 0.00% once interior.
-- **`tools/lattice-ripple.mjs`** (durable, **no sim needed**): derives and verifies the **tail-lattice
-  ripple** — the sum-vs-integral residual between the sim's expected damage and the model's rate integral
-  (RULES §8). Three argv-selectable sections: `ripple` (the `1 − W/c` table, verified to 4 decimals, with
+- **`tools/lattice-ripple.mjs`** ⛔ **— HISTORICAL as of 07-27, like `ripple-audit` above.** It derives
+  the **tail-lattice ripple** — the sum-vs-integral residual between the sim's expected damage and the
+  model's **rate integral** — and neither side of that comparison is HEAD any more (§6.10 retired the
+  integral, §9 retired the taper the widths were matched on). RULES §8 carries the banner. Its
+  *section 3* control ("do not discretize the scorer") is the part still worth reading, because it is
+  about method, not about the retired constant. (durable, **no sim needed**) Three argv-selectable sections: `ripple` (the `1 − W/c` table, verified to 4 decimals, with
   the `c = 1.000 → exactly 0` sanity check), `cell` (re-scores one disputed cross-val cell under both
   scorers), `column` (**the do-not-discretize control** — all 11 plan rows of one column, continuous vs
   discrete vs sim, `r` and RMSE). Default `all`. **Read section 3 before believing section 2:** the single
   cell makes the discrete sum look like a fix; the column shows it is a worse predictor.
-- **`tools/ripple-audit.mjs`** (durable, **no sim needed**): prices **every** cross-val deficit column
+- **`tools/ripple-audit.mjs`** ⛔ **— HISTORICAL as of 07-27.** It prices the ripple floor `1 − W/c`,
+  whose derivation assumes the model integrates the **continuum limit** of a symmetric taper of width
+  `W = 2·KILL_WINDOW = 1.0 s`. **Neither premise holds** (PHASE12 §6.10 retired the integral, §9 retired
+  the taper), so the tool is now a reader of the **archived** corpus, not a ruler for the shipping
+  model. Its design lessons below stay first-rate; its numbers do not transfer. (durable, **no sim needed**): prices **every** cross-val deficit column
   against that ripple floor, so a residual can be compared to the instrument's own resolution before it is
   called a model defect. Two commands:
   ```
@@ -826,8 +851,11 @@ node tools/genapl.mjs '<specA>' A.apl.json
 runner --export gear.json --apl A.apl.json --dur 420 --var 0.5 --iter 30000 --seed 11 --mana 100000000 --tag A --quiet
 # repeat for specB; compare column 5.
 ```
-- **`--var 0.5` is the default read** (it matches the scorer's kill-window **width** — but only the
-  width; there is a derivable `1 − W/c`-cast residual, see the metric bullets below).
+- **`--var 0.5` is the default read.** ⛔ This used to read *"it matches the scorer's kill-window
+  **width** — but only the width; there is a derivable `1 − W/c`-cast residual"*. **Retired 07-27**
+  (PHASE12 §9): the scorer has no kill window to match a width with, so there is no derived residual
+  either — see the metric bullets below. It is the default because `tools/var-decision.mjs` measured it
+  the better estimator (BENCH §3), full stop.
   `--var 0` is still useful for count-preserving CRN A/Bs (lowest pairing noise) but MUST be confirmed
   at var0.5 (var0's whole-cast parity flipped the §16 h150 gate's sign once). `--mana 100000000` =
   infinite (isolate the overlay from mana). `--haste N` tests gear breakpoints.
@@ -897,8 +925,14 @@ for reproducing a specific timeline in the combat log, never for a number you in
 ## ★ THE SIM CANNOT PRESS MID-CAST — a value window covers exactly `floor(D/Δ)` casts
 
 The direct consequence of the section above, and it bites **every** damage/SP window you A/B. A value
-window of duration `D` boosts **`floor(D/Δ)` casts in the sim**, never the fractional `D/Δ` the model's rate
-integral credits. Two facts compose: wowsims applies the modifier at **cast COMPLETION** (`applyEffects`,
+window of duration `D` boosts **`floor(D/Δ)` casts in the sim**, never the fractional `D/Δ` a *rate
+integral* credits. ⚠ **The second half of that sentence used to read "…the model's rate integral
+credits", and that is no longer HEAD (07-27).** The objective is a per-cast sum and it reads a value
+buff at the cast's **COMPLETION** over `(start, end]` — the sim's own rule (CLAUDE.md's ★ snapshot rule;
+gate `tools/credit-check.mjs`), so the model now counts the same casts rather than a fraction. `D/Δ`
+survives only in the retired `integral` diagnostic. **The section's physics is unchanged and still the
+reference for reading a sim number**; what changed is that the model is no longer the party on the
+fractional side of it. Two facts compose: wowsims applies the modifier at **cast COMPLETION** (`applyEffects`,
 `sim/core/cast.go:216/258/338/356`), and the APL can only press at a **cast boundary** — so the first
 boosted completion is a full `Δ` after the press and the window really spans `[gain+Δ, gain+D]`.
 
@@ -1095,11 +1129,18 @@ all of it, not just the crit sequence).
   point on → A and B desync → the paired diff reverts to full noise, so nearby seeds "agree" on a
   desynced sample and mislead. Measure count-changing questions (e.g. 3-vs-4 icons) with
   **far-separated-seed replicates + large N**, never a single nearby-seed pair.
-- **`--var 0` vs `--var 10` — and the MODEL-MATCHED read, `--var 0.5` (Phase 7).** `--var V` draws the
-  kill uniformly in [T−V, T+V]; intermissions stay fixed. The scorer's `robust` objective is a
-  KILL_WINDOW = 0.5s linear taper over [T−0.5, T+0.5] (`index.html:717`), the **same window width** the
-  sim draws at `--var 0.5` (`xval.mjs:49-54`) — so var 0.5 is the closest question the sim can be asked,
-  and is the cross-val/acceptance metric. var0 is the razor-edge whole-cast-parity trap (measured: the
+- **`--var 0` vs `--var 10` vs `--var 0.5` — and "MODEL-MATCHED" is RETIRED as the reason (Phase 7 →
+  07-27).** `--var V` draws the
+  kill uniformly in [T−V, T+V]; intermissions stay fixed. ⛔ This bullet used to justify `--var 0.5` by
+  *"the scorer's `robust` objective is a `KILL_WINDOW = 0.5s` linear taper over [T−0.5, T+0.5], the
+  **same window width** the sim draws at `--var 0.5` — so var 0.5 is the closest question the sim can
+  be asked."* **The taper is gone** (PHASE12 §9, user ruling): the model is deterministic at `T` and
+  credits a straddling cast `min(1, (T − start)/duration)`, a **one-sided** window of the cast's own
+  duration. So there is no width to match, and `--var 0.5` now rests **entirely** on
+  `tools/var-decision.mjs` (BENCH §3) — which is the stronger footing, since that evidence never
+  depended on the model. It remains the cross-val/acceptance metric.
+  ⚠ **What this OPENS:** the model smooths the boundary analytically, the sim numerically, and no
+  residual between the two has been derived (PHASE12 §9.4). var0 is the razor-edge whole-cast-parity trap (measured: the
   §16 h150 ramp-hug pair flips −0.08% → +0.37% from var0 to var0.5 — the var0 read was a stranded whole
   cast, the var0.5 read matches the model's +0.25 casts to 0.01%). var10 asks a *different* question —
   ±10s kill hedging the model deliberately does not price (RULES §8) — and adds a late-window premium
@@ -1108,9 +1149,13 @@ all of it, not just the crit sequence).
   var0.5. No kill-variance setting clears an **intermission-wall** effect (walls stay fixed) — that
   needs wall-jitter, below.
 - **★★★ "MODEL-MATCHED" MATCHES THE WIDTH, NOT THE KIND — var 0.5 has a RESIDUAL, and it is derivable
-  (07-25).** The bullet above used to say var 0.5 asks *exactly* the model's question. That word is
+  (07-25).** ⛔ **HISTORICAL as of 07-27 — the numbers below price the RETIRED scorer.** Both premises
+  are gone: the model no longer integrates a continuum limit (§6.10) and there is no `KILL_WINDOW`
+  (§9). `1 − W/c` prices nothing about HEAD; **no replacement floor has been derived**, and the general
+  lesson at the bottom of this bullet is exactly the warning against assuming one transfers.
+  The bullet above used to say var 0.5 asks *exactly* the model's question. That word is
   **withdrawn.** The sim sums over its **integer cast lattice**, `f(T) = Σ_i clamp((T + KW − tc_i)/W, 0,
-  1)` with `W = 2·KW = 1.0s`; the model integrates that sum's **continuum limit**, `g(T) = ((T − KW) +
+  1)` with `W = 2·KW = 1.0s`; the model integrated that sum's **continuum limit**, `g(T) = ((T − KW) +
   W/2)/c`. The difference is a sawtooth in the tail phase with **peak-to-peak = `1 − W/c` casts** —
   verified numerically to 4 decimals by `tools/lattice-ripple.mjs ripple`: `c=1.000 → 0.0000` (exactly
   zero at the GCD floor, the built-in sanity check: at `c = W` the taper smears the lattice perfectly) ·
@@ -1140,15 +1185,23 @@ all of it, not just the crit sequence).
   matches the model's floored/unfloored intervals EXACTLY; only the whole-cast truncation at walls
   differs (stacked window: model +1.65 casts, sim +1.04; split: model +1.48, sim +1.54). The model's
   continuous fractional credit is the CORRECT expectation for real fights, whose transition times vary
-  run to run — so the measurement must vary **segment lengths**: each wall gets its own seeded shift
+  run to run — ★ **and since 07-27 that credit is EXPLICIT rather than incidental**: a wall is a **cut**,
+  so the cast straddling it earns `min(1, (wall − start)/duration)` (PHASE12 §9). Under the old scorer a
+  cast completing *inside* an intermission was paid in **full**, so this bullet's reasoning was right
+  about the goal and wrong about HEAD. The user's ruling rests on the same argument stated here — a wall
+  does not land on the same second every pull —
+  so the measurement must still vary **segment lengths**: each wall gets its own seeded shift
   δ_i ∈ [−WJ,+WJ], presses shift with the wall that starts their segment, seam-coincident window edges
   move together (KT downtime→AoE). ★ A RIGID translation (one δ for walls+presses — the first design)
   preserves every segment's internal parity and washes NOTHING — do not regress to it.
 - **var10 penalizes LATE windows near the end — decide which question you're asking.** A buff window
   inside the last `var` seconds gets clipped on short draws, so var10's A/B adds a real "late-slot
   kill-variance premium" on top of the fixed-kill effect (measured: Zerk-in-Lust vs after = +0.6% at
-  T=60 var10 but exactly the model's +0.3% at T=80 var10 where nothing clips — RULES §7). The model
-  prices only a half-cast of kill variance BY DESIGN (RULES §8), so when gating a model preference,
+  T=60 var10 but exactly the model's +0.3% at T=80 var10 where nothing clips — RULES §7). ⛔ This used
+  to end *"the model prices only a half-cast of kill variance BY DESIGN"*. **The half-cast window is
+  retired** (PHASE12 §9); the model prices **no** plan-wide kill variance at all — its only boundary
+  hedge is the one-sided credit on the straddling cast, which is narrower still. The practical advice
+  is therefore *more* binding, not less: when gating a model preference,
   either use a fight long enough that no compared window sits in the variance zone, or expect the sim
   to exceed the model by the clip premium.
 
@@ -1159,7 +1212,7 @@ all of it, not just the crit sequence).
 | question you ask the sim | trustworthy? | why / what fixed it |
 |---|---|---|
 | **absolute DPS of one plan** | ✅ ~0.4% abs vs `wowsimcli` | the trust-anchor procedure ("Trust anchor", above) — re-certify per fresh session |
-| **A vs B, same press count** | ✅ sub-DPS resolvable | CRN pairing cancels the whole RNG inventory; use one seed, `--var 0.5`. ⚠ *statistically* resolvable ≠ *structurally* comparable: at var0.5 the tail lattice still leaves `1 − W/c` casts of two-signed slack (0.32 at c=1.463), so on a short low-haste fight a sub-0.1% gap can be pure ripple |
+| **A vs B, same press count** | ✅ sub-DPS resolvable | CRN pairing cancels the whole RNG inventory; use one seed, `--var 0.5`. ⚠ *statistically* resolvable ≠ *structurally* comparable: the sim's terminal cast lattice is still two-signed slack a short low-haste fight can hide a sub-0.1% gap in. ⛔ The old size for that slack — `1 − W/c` casts, 0.32 at c=1.463 — priced the **retired** scorer (PHASE12 §9) and **no replacement has been derived**, so treat the caution as qualitative until one is |
 | **A vs B, different press count** | ⚠️ noise-limited | the streams desync (shared-stream rule) — needs far-separated seeds + large N, never a nearby-seed pair |
 | **an intermission / wall-bounded plan** | ✅ *since* the `APLActionSchedule` fix | the schedule silently DROPPED on-cooldown presses (next section) — every pre-patch intermission number was garbage. Requires the patched runner (`RUNNER PROVENANCE`) **and** wall-jitter v2, because fixed walls phase-lock cast parity |
 | **an AoE phase** | ✅ *since* Phase 5 | `--targets N` + `_aoe` emission in `genapl` (AE was previously simmed as downtime). AE constants verified exact vs `arcane_explosion.go`; KT's 2.68% AoE artifact went to 0.39% (ordinary) once AoE was actually valued |

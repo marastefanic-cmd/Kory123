@@ -10,6 +10,26 @@
 > `0.00e+0` over 2755 scorings. Two scoring bugs and one transcription bug were fixed today (PHASE12
 > §6.9/§6.10/§6.11). ⛔ **`exact-match` is RED on purpose** — plans moved and goldens were deliberately
 > not re-recorded, because §0.4's demonstration is not in. **Do not `--update` it.**
+>
+> ### ✅ ALSO LANDED 07-27 — THE BOUNDARY MODEL WENT DETERMINISTIC (PHASE12 §9, **user ruling**)
+> `KILL_WINDOW = 0.5` and the symmetric kill taper are **RETIRED FROM THE OBJECTIVE** (a local
+> `KW = 0.5` survives feeding only the `integral` diagnostic). One uniform rule now applies at every
+> boundary: **`credit = min(1, (nextCut − castStart) / castDuration)`**, multiplying that cast's own
+> value, where a **cut** is the fight end, an intermission start, or either edge of an AoE phase — a
+> **burn edge is deliberately not a cut**. A cast completing exactly at `T` now earns a **full** cast
+> (it earned 0.5 under the taper), and a cast completing inside an intermission is no longer paid in
+> full (measured: starts 89.616, wall 90 — was `2242.1`, now `frac 0.2563` / `credited 574.8`).
+> `total`, `robust` and `totalEarly` are now the **same number**; the per-cast board gains `frac` and
+> `credited`. Separately, cooldown chaining now anchors on the **fire** moment (`auraAt`, via
+> `lastFire`) rather than the press: **HELD press failures 18 → 1 of 196**.
+> **Blast radius:** `plan-sweep` **11 of 16** cases moved plans; `tools/blast-radius.mjs` **102 of 285**
+> cells (35.8 %). Docs updated: RULES §1/§8/§9, ARCHITECTURE, MECHANICS §4, ACCEPTANCE, TOOLING, BENCH,
+> GEAR-AGNOSTIC.
+> ⚠ **`sim/benchmark.mjs` keeps `variation: 0.5`, but its justification changed**: it is no longer "the
+> model's kill-window width" (that constant is gone) — it is the **sim's own** smoothing, resting
+> entirely on `tools/var-decision.mjs`. Reconciling the model's analytic partial credit with the sim's
+> numerical averaging is an **OPEN question** (PHASE12 §9.4).
+>
 > ▶ **Next, and it is a prerequisite:** `STACK_CAST_REDUCTION: 1/3 → 334 ms`.
 >
 > *The original charter text is kept below for its reasoning.*
@@ -33,7 +53,9 @@
 > class*, not a scorer to re-tune. Secondary: anchor the physics, cover genuine blind spots, build user
 > trust via the in-page benchmark button.
 >
-> **Order:** (1) score the per-cast sum — gate `robust == tapered cast sum` to float precision, no sim
+> **Order:** (1) score the per-cast sum — gate `robust == the per-cast sum` to float precision, no sim
+> (⛔ the original wording was *"`robust == tapered cast sum`"*; the taper it named was itself retired
+> later the same day — PHASE12 §9, the boundary-credit block above)
 > needed; (2) ✅ **DONE 07-27** — the press-fire offset (§6.9); (3) re-gather and *then* hunt search
 > bugs. ⚠ Step 1 moves plans and re-records goldens — that is the point, not a regression.
 >
@@ -57,11 +79,17 @@
 
 ### ✅ CLOSED: PHASE 10 — re-baseline acceptance on GEAR B (`docs/archive/11-phase10-gearb-baseline.md`; 07-26 → 07-27)
 
-> ## ★ ROUND 1 IS COMPLETE AND GRADED — **ACCEPTANCE NOT PASSING (B2)**, and it is a REAL reading now
+> ## ⛔ ROUND 1 IS COMPLETE AND GRADED — AND **VOID AS A MODEL VERDICT** (07-27)
+> ⛔ This block used to read *"…and it is a REAL reading now … the project's 'are we done' verdict is
+> defined again."* **Withdrawn.** Round 1 was gathered against the pre-PHASE12 scorer — the rate
+> integral, the press-anchored buff windows and chain, and the symmetric kill taper — all three of
+> which were replaced on 07-27. The credit rule alone moved plans in **11 of 16** `plan-sweep` cases
+> and **102 of 285** `blast-radius` cells (35.8 %), so the round graded plans the current engine may no
+> longer emit. **ACCEPTANCE has no current reading until a re-gather** (see its top banner).
+> The tables stand as the append-only record and the evidence trail.
 > `tools/xval-results/` holds 36/36 tables under **one protocol on one engine**
 > (`char=bench-gearB · engine=native:runner-ap180 · var 0.5 · emit=fire · iter 6000 · pool=1`),
-> certified by `tools/xval-stamp-audit.mjs` (exit 0). **`docs/ACCEPTANCE.md` → "Current status
-> (GEAR B, round 1)" is the reading** — the project's "are we done" verdict is defined again.
+> certified by `tools/xval-stamp-audit.mjs` (exit 0).
 >
 > | | |
 > |---|---|
@@ -259,8 +287,11 @@ boundary is a wasm rebuild (new baseline, BENCH §1).
   the page's request equals the runner's field-for-field, plus protocol invariants (because sharing a
   constant proves agreement, never correctness). Record: `sim/README.md`, TOOLING ★ section, DIARY 07-26.
   ✅ **The search-miss alarm LANDED (07-26).** Lock a hand-edited timeline that is **legal** and scores
-  higher than the optimizer's own output **under `robust`** (not `total` — the tiles' headline is
-  at-kill damage, and beating that while losing `robust` is the objective working), and the page says
+  higher than the optimizer's own output **under `robust`** (⛔ the parenthetical here used to be
+  *"not `total` — the tiles' headline is at-kill damage, and beating that while losing `robust` is the
+  objective working"*. **Moot since 07-27:** `total`, `totalEarly` and `robust` are the SAME number
+  now — PHASE12 §9 — so no plan can beat one while losing another. The alarm's logic is unchanged; it
+  simply no longer has two currencies to choose between), and the page says
   so loudly, in effective casts, and asks for the Debug export — which now carries the sim
   transcription and a ready-to-run `tools/bench.mjs` command. This is `plan-duel.mjs`'s confession
   rule in the UI: no repricing can manufacture that direction, so it is gradeable with no sim at all.
@@ -718,7 +749,8 @@ TOOLING). Findings, all sim-measured on the fixed rig:
   / +0.3 var10). So the post-ramp-exit shift (RULES §9, long "not implemented") is now real. Docs are the
   authoritative record; `index.html`/`genapl.mjs` unchanged, goldens still 16/16.
 - Recent landed work: cast-rate-integral scorer; timeline redesign; spellpower-overlap forward-slide;
-  **known-kill planning** (half-cast kill window); **full docs set** so `/clear` is safe;
+  **known-kill planning** (then a half-cast kill window — ⛔ retired 07-27 for the boundary credit,
+  PHASE12 §9 / RULES §8); **full docs set** so `/clear` is safe;
   **Debugging-presets UI** (every golden is a live-computed preset off the single `GOLDEN_PRESETS`
   table that also feeds the exact-match suite); **sequential buff-into-Lust packing** (below); **the
   placement / containment workstream** (below — 3:20 +3.6, 5:00 +2.4, both sim-gated & re-locked).
