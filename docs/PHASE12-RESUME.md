@@ -31,7 +31,16 @@ sim agreed exactly and the pair was invisible to any probe that did not delibera
 boundary-aligned press. Assume the next fix uncovers the next one, and pick discriminating cases on
 purpose rather than convenience.
 
-## 3. ▶▶ THE NEXT ACTION — the cooldown chain (§6.14c)
+## 3. ▶▶ THE NEXT ACTION — the cooldown chain (§6.14c, priced by §6.16)
+
+★ **`tools/model-audit.mjs` is now the standing bar: the model must predict the combat log press by
+press.** On a single-use fight it already does — `2:00 lust 0:05`, 94/94 casts, zero mismatches on cast
+starts, cast times, spell power and damage multiplier, cast times exact to the millisecond.
+
+⛔ **On multi-use fights it does not — 17 of 23.** Cast counts still match everywhere (314/314 on the
+7:20), but `4:00 lust 0:05` is off by **exactly one Icon (155 SP) and exactly one Arcane Power (0.25)**
+on the wrong casts, dragging 0.665 s of lattice with it. The fights that pass are exactly those with a
+single use of each cooldown. Same cause as below.
 
 ✅ The cast lattice is CLOSED (§6.14): 334 ms per stack **and** millisecond rounding of every cast and
 GCD. Bare-stream drift 0.080 s → **0.005 s**, and LATTICE-class press failures **8 → 0** of 196.
@@ -119,6 +128,10 @@ pass.** Do not pick this up ahead of the model work in §3.
 | `tools/lattice-drift.mjs` | model-vs-sim cast-grid drift, by haste and fight length |
 | `tools/blast-radius.mjs` | how many emitted plans a scorer change moves (`MOVERS_OUT=` for the work list) |
 | `tools/scorer-duel.mjs` | **the §0.4 demonstration** — the two accounts' picks, duelled in the sim |
+| `tools/model-audit.mjs` | ★ **the wide gate** — the whole per-cast account vs a real combat log |
+| `tools/plan-rescore.mjs` | did the new plan actually BEAT the old one, judged by one engine? no sim |
+| `tools/plan-shift.mjs` | how FAR plans moved — plateau hop vs real re-decision |
+| `tools/display-second.mjs` | does pressing the printed second land the window the model scored? |
 
 ## 9. ⚠ TWO INSTRUMENTS LIED IN THE FLATTERING DIRECTION THIS SESSION
 
