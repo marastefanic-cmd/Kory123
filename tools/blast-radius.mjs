@@ -1,5 +1,20 @@
-// BLAST RADIUS of PHASE12 step 1, measured BEFORE changing anything. No sim.
-// If the arbiter becomes the tapered per-cast sum, how many EMITTED plans change?
+// BLAST RADIUS: how many EMITTED plans move when the arbiter is the per-cast sum instead of the
+// RETIRED rate integral? No sim.
+//
+// ⚠ ORIGINALLY a BEFORE-the-change measurement of PHASE12 step 1, when the cast-sum arm was
+// hypothetical. Step 1 has landed, so the cast-sum arm is now just `robust` — but this tool keeps
+// recomputing it from the board on purpose, because the OTHER arm (`integral`) is still live and the
+// comparison is still the honest question "how far did retiring the integral move the tool?".
+//
+// ⚠⚠ THE RECOMPUTE CHANGED WITH THE SCORER (PHASE12 §9, user ruling 07-27). This file used to carry
+// its own `KW=0.5` symmetric kill taper read at each cast's COMPLETION. That taper is RETIRED from
+// the objective. The uniform rule is now, per cast:
+//
+//     credit = min(1, (nextCut - castStart) / castDuration)          ← one-sided, read at the START
+//
+// so a cast completing exactly at T earns a FULL cast where the taper paid 0.5. Keeping the taper
+// here would have measured a blast radius against a scorer that no longer exists.
+// (This corpus is `segments: null`, so the only cut is T — see the assertion at the scoring site.)
 import crypto from 'node:crypto'; import fs from 'node:fs'; import path from 'node:path';
 import { loadEngine, ALL_BUFFS } from '/home/user/Kory123/tools/engine-node.mjs';
 import { REF } from '/home/user/Kory123/tools/reference-gear.mjs';
@@ -9,7 +24,8 @@ const REPO='/home/user/Kory123', IDX=process.env.ROUND_INDEX||'/tmp/index-round.
 const ENGINE=process.env.ENGINE||path.join(REPO,'index.html');
 const api=loadEngine(ENGINE);
 const EID=crypto.createHash('sha1').update(fs.readFileSync(IDX)).digest('hex').slice(0,12);
-const KW=0.5, taper=(tc,T)=>Math.min(1,Math.max(0,(T+KW-tc)/(2*KW)));
+// The boundary credit, re-derived from the cast's own start and duration (see the header).
+const creditOf=(c,T)=>c.cast>1e-9?Math.min(1,Math.max(0,(T-c.t)/c.cast)):0;
 const planOf=cfg=>{const k='plan-'+crypto.createHash('sha1').update(JSON.stringify({cfg,engine:EID,restarts:14})).digest('hex').slice(0,24);
   const f=path.join(REPO,'.xval-cache',k+'.json'); return fs.existsSync(f)?JSON.parse(fs.readFileSync(f,'utf8')).s:null;};
 const dir=path.join(REPO,'tools/xval-results');
@@ -27,10 +43,12 @@ for(const f of fs.readdirSync(dir).filter(x=>x.endsWith('.txt')).sort()){
   if(!ok) continue;
   for(const Hh of H){
     const cfg=mk(Hh);
+    if(cfg.segments) throw new Error('blast-radius: cfg carries segments, so T is not the only cut and '+
+      'creditOf() would credit against the wrong boundary. This corpus is meant to be segments:null.');
     let bi=Hh,bv=-Infinity, bc=Hh,bcv=-Infinity;
     for(const ph of H){
       const r=api.simulate(champ[ph],cfg,true);
-      const cnt=r.casts.reduce((a,x)=>a+x.dmg*taper(x.t+x.cast,cfg.T),0);
+      const cnt=r.casts.reduce((a,x)=>a+x.dmg*creditOf(x,cfg.T),0);
       // ⚠ read the INTEGRAL from its own field. Since PHASE12 step 1, `robust` IS the cast sum, so
       // taking the integral arm from `robust` would compare the new scorer against itself and report
       // a blast radius of zero — the most reassuring possible wrong answer.
@@ -44,7 +62,7 @@ for(const f of fs.readdirSync(dir).filter(x=>x.endsWith('.txt')).sort()){
       row:{kit:kv.kit,cls:kv.class,T:+kv.T,lust:+kv.lust,h:Hh,integralH:bi,castSumH:bc}});}
   }
 }
-console.log(`BLAST RADIUS of making the objective the tapered per-cast sum (class stratum, no sim)\n`);
+console.log(`BLAST RADIUS of the objective being the CREDITED per-cast sum rather than the RETIRED rate integral (class stratum, no sim)\n`);
 console.log(`  plans from ${IDX}  ·  scored by ${ENGINE}`);
 console.log(`  pooled-argmax cells: ${cells}`);
 console.log(`  cells where the EMITTED plan CHANGES: ${moved}  (${(100*moved/cells).toFixed(1)}%)\n`);

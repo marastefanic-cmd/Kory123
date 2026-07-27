@@ -53,7 +53,15 @@ for (const c of CASES) {
     // This file sims nothing.  It asserts a PROPERTY — more haste never scores less — that must hold at
     // ANY gear, so its gear is an arbitrary fixture and pinning it here is the point, not drift.
     const mkcfg = h => ({ T: c.T, hasteRating: h, sp: 1387, critPct: 38, enabled, fixed: c.pins || {}, warnings: [], coldSnap: true, segments: null });
-    const plain = h => { const g = mkcfg(h); return (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * g.sp) * (1 + (g.critPct / 100) * (GAME.CRIT_MULT - 1)); };
+    // ★ `(g.t5two ? 1.2 : 1)` — this was the ONE copy of the plain-cast normaliser missing that
+    // factor (index.html:2185 and :4104, tools/reference-gear.mjs:42, tools/explore.mjs:127 and
+    // tools/sp-sensitivity.mjs:160 all carry it). Added 07-27. It is NUMERICALLY INERT TODAY, and
+    // that is exactly why it was invisible: this fixture never sets `t5two`, so the factor is 1 and
+    // `eff` is unchanged to the last bit. The bug was latent — the moment anyone gave this fixture
+    // T5 2pc, the cfg would get its ×1.2 and the normaliser would not, inflating every `eff` by 1.2
+    // while EPS stayed at 0.15 effective casts. That silently narrows the miss band to 0.125 true
+    // casts, the same shape as the drift `reference-gear.mjs` was written to end. Keep them matched.
+    const plain = h => { const g = mkcfg(h); return (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * g.sp) * (1 + (g.critPct / 100) * (GAME.CRIT_MULT - 1)) * (g.t5two ? 1.2 : 1); };
     const out = []; let prevS = null;
     for (let h = 0; h <= HMAX; h += STEP) {
       const b = await optimizeAsync(mkcfg(h), 14, () => {});

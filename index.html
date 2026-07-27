@@ -983,7 +983,7 @@ function simulateRaw(schedule, cfg, collect) {
   }
   evs.sort((a, b) => a.ts - b.ts);
   let evi = 0;
-  const lastEff = Object.create(null);
+  const lastFire = Object.create(null);   // per-cooldown FIRE moment of the last use (PHASE12 §3)
   const active = []; // fired buff windows {key, def, start}
   const actEff = collect ? {} : null;
   let lastTrinket = null;
@@ -999,17 +999,47 @@ function simulateRaw(schedule, cfg, collect) {
   let ri = 0;
   const segs = cfg.segments || null; // "complicated fight" phases; null = plain fight, identical to the old model
   let si = 0;
-  // Plan for the KNOWN kill and give the sturdy, logical line — buffs snapped to
-  // fully cover their cluster and the terminal burst aligned to end at the kill.
-  // The kill taper credits the final casts by their completion time (no cliff), so it
-  // accounts for the kill honestly on its own; a broad
-  // ±variance hedge on top only drags the tail a few seconds off its clean spot for
-  // a sub-cast gain the player never executes. So the window is kept to a half-cast
-  // (the last cast is partial in expectation) — enough to smooth the exact-second
-  // boundary, not enough to distort placement. Reacting to a boss that dies early is
-  // the player's live job (pop the cooldowns sooner), not something to bake in. The
-  // optimizer maximizes this near-total "robust"; displays show the at-T total.
-  const KILL_WINDOW = 0.5;
+  // ══════════ BOUNDARY CREDIT — one rule at every cut (PHASE12 §9, user ruling 07-27) ══════════
+  // ⛔ `KILL_WINDOW` and the symmetric kill taper are RETIRED. They paid a cast completing exactly
+  // at T only **0.5**, because a symmetric window U[T−W, T+W] says the boss is already dead half the
+  // time. The ruling is that a cast completing at T earns a FULL cast, and a cast that does not fit
+  // earns the fraction that does:
+  //
+  //     credit = min(1, (nextCut − castStart) / castDuration)      ← multiplies the cast's own value
+  //
+  // ★ This is NOT a smoothing heuristic. It is algebraically a ONE-SIDED window whose width is the
+  // cast's own duration: for T_actual ~ U[T, T+W], credit = (T + W − tc)/W, and setting W = d gives
+  // exactly (T − ts)/d. So it reads "the fight lasts at least T, and at most one more cast" — and
+  // that is precisely where the retired 0.5 came from, a symmetric window where a one-sided one
+  // belongs. Verified: both forms give 0.730702 on the same cast (PHASE12 §9.2).
+  //
+  // ★★ THE SAME RULE AT EVERY CUT, and that is the user's second ruling: an intermission does not
+  // land on the same second every pull either, so modelling it as exact is the identical mistake.
+  // A cut is any moment where the cast stops landing or the spell changes — the fight end, an
+  // intermission start (boss untargetable), and both edges of an AoE phase (Arcane Blast ↔ Arcane
+  // Explosion). A BURN edge is NOT a cut: the boss is targetable and the spell is the same, so a
+  // burn multiplier is a VALUE question governed by the snapshot rule, not a landing question.
+  //
+  // What this replaces, and why it is simpler: `total` was a hard cut at T (a staircase — measured
+  // jumping a whole ~1.5-cast step as T crossed a completion boundary), `robust` was the taper, and
+  // `totalEarly` banked at T−KW. All three collapse into one number, because with the credit rule
+  // there is nothing left for them to disagree about. They are still returned, still equal, so no
+  // caller breaks — see the return.
+  //
+  // ⚠ It also subsumes a defect this replaced: the old credit test only ever asked `tcC <= cfg.T`,
+  // so a cast completing INSIDE an intermission was paid in FULL (measured: starts 89.616, wall at
+  // 90, completes 91.114, credited 2242.1 — PHASE12 §8). It is now paid its fraction, like anywhere.
+  //
+  // The cut lattice, precomputed once: merge adjacent segments that call for the same thing, and a
+  // cut is a boundary between different ones. `null` segments (plain fight) ⇒ the only cut is T.
+  const castMode = sg => !sg ? "ab" : sg.type === "intermission" ? "none" : sg.type === "aoe" ? "ae" : "ab";
+  const CUTS = [];
+  if (segs) for (let k = 0; k < segs.length; k++)
+    if (k === 0 || castMode(segs[k]) !== castMode(segs[k - 1])) { if (segs[k].start > 1e-9) CUTS.push(segs[k].start); }
+  CUTS.push(cfg.T);
+  CUTS.sort((a, b) => a - b);
+  // The earliest cut strictly after a cast's start. Linear scan: CUTS is tiny (phases per fight).
+  const nextCut = ts => { for (const c of CUTS) if (c > ts + 1e-9) return c; return cfg.T; };
   // Ramp-aware board: the mage opens COLD (0 stacks at the first Arcane Blast — no prestack
   // modeled; a start-intermission input expresses a delayed opener) and re-ramps 0→3 after every
   // AB gap ≥ DEBUFF_DUR (intermissions; AoE phases cast Arcane Explosion, which neither builds nor
@@ -1048,7 +1078,7 @@ function simulateRaw(schedule, cfg, collect) {
     'the objective (PHASE12 §0.3 step 1). It would change nothing — refusing rather than no-opping.');
   const bcOn = !!cfg.boundaryCharge, bcDone = [], bcModel = [], bcDmg = [];
   const casts = collect ? [] : null;
-  while (t < cfg.T + KILL_WINDOW) {
+  while (t < cfg.T) {   // a cast STARTING at or after T earns nothing; one starting before earns its fraction
     let seg = null;
     if (segs) {
       while (si < segs.length - 1 && t >= segs[si].end) si++;
@@ -1085,7 +1115,15 @@ function simulateRaw(schedule, cfg, collect) {
         if (e.ts < prevCastEnd - 1e-9) slip = prevCastEnd - e.ts;
       } else {
         let minStart = e.ts;
-        if (e.gap && lastEff[e.key] !== undefined) minStart = Math.max(minStart, lastEff[e.key] + (e.gap >= e.def.cd - 1e-9 ? e.def.cd : e.def.dur)); // natural spacing enforces the cooldown from the real press; a reset-chained use only needs the previous window to finish
+        // ★ CHAINED FROM THE FIRE, NOT THE PRESS (PHASE12 §3, fixed 07-27). `lastFire` holds the
+        // moment the previous use of this cooldown actually went off — `auraAt`, the cast boundary
+        // the press snapped forward to — because that is when wowsims starts the cooldown
+        // (`ap-cd-at-cast.patch` puts `triggerCooldown` at the CAST). Chaining from `eff`, the press
+        // moment, legalised a use at `press + cd` that the sim still had on cooldown until
+        // `fire + cd`, and `innerSpell.IsReady` deferred it a whole cast — so the model could emit a
+        // plan the sim cannot execute, and score a fight that never happens (HELD = 18 of 196).
+        // A reset-chained use (Cold Snap) still only needs the previous window to finish.
+        if (e.gap && lastFire[e.key] !== undefined) minStart = Math.max(minStart, lastFire[e.key] + (e.gap >= e.def.cd - 1e-9 ? e.def.cd : e.def.dur));
         if (lastTrinket && lastTrinket.key !== e.key && OFF_TRINKETS.includes(e.key)) minStart = Math.max(minStart, lastTrinket.end);
         if (minStart > t) continue; // slipped past this boundary — try again later
         // Effective start = the PRESS moment (a self-buff macro applies its buff to
@@ -1140,8 +1178,11 @@ function simulateRaw(schedule, cfg, collect) {
       // `eff = e.ts` for precisely that reason), so its aura starts there whatever we are casting.
       const auraAt = isExternal ? eff : Math.max(eff, prevCastEnd);
       active.push({ key: e.key, def: e.def, start: auraAt, scoreStart: eff + slip });
-      lastEff[e.key] = eff;
-      if (OFF_TRINKETS.includes(e.key)) lastTrinket = { key: e.key, end: eff + e.def.dur };
+      // Both chains anchor on `auraAt`, the FIRE moment — see the read above. For an external
+      // (Bloodlust/PI/Drums) `auraAt === eff` by construction, so the raid-call convention is
+      // untouched: someone else presses it and its aura starts when they call it.
+      lastFire[e.key] = auraAt;
+      if (OFF_TRINKETS.includes(e.key)) lastTrinket = { key: e.key, end: auraAt + e.def.dur };
       if (actEff) (actEff[e.key] = actEff[e.key] || []).push(eff);
     }
     while (evi < evs.length && evs[evi].fired) evi++;
@@ -1240,15 +1281,32 @@ function simulateRaw(schedule, cfg, collect) {
     // ⚠ This accumulates on EVERY call, not only when `collect` is set — `casts` is populated only
     // for the UI and the tests, while the optimizer scores with collect off, and the objective cannot
     // depend on whether someone asked for a board.
+    //
+    // ★ `frac` is computed OUTSIDE the accumulate guard and recorded on the board, because the
+    // standing gate (`tools/self-consistency.mjs`) recomputes the objective independently from
+    // `casts[]` and compares it to what RANKS. If the board carried full `dmg` while the accumulator
+    // applied `frac`, the two accounts would differ by exactly the boundary credit and the gate would
+    // report a gap that is not a bug — or worse, a future refactor would "fix" the gate by copying
+    // the accumulator, and the independence that makes it worth running would be gone.
+    const dur = pUp * up.cast + (1 - pUp) * dn.cast;
+    // The fraction of THIS cast that fits before the next cut. The `dur > 0` guard refuses a
+    // degenerate zero-length cast rather than emitting NaN — a NaN here would propagate into every
+    // ranking comparison as `false` and read as "not a regression", this repo's worst failure mode.
+    const frac = t < cfg.T ? (dur > 1e-9 ? Math.min(1, Math.max(0, (nextCut(t) - t) / dur)) : 0) : 0;
     if (t < cfg.T) {
-      const tcC = t + pUp * up.cast + (1 - pUp) * dn.cast;
-      countRobust += dmg * Math.min(1, Math.max(0, (cfg.T + KILL_WINDOW - tcC) / (2 * KILL_WINDOW)));
-      if (tcC <= cfg.T + 1e-9) countTotal += dmg;
-      if (tcC <= cfg.T - KILL_WINDOW + 1e-9) countEarly += dmg;
+      countTotal += dmg * frac;
+      countRobust += dmg * frac;   // ⚠ deliberately the same number — see the boundary-credit note
+      countEarly += dmg * frac;    //    above. Kept as separate accumulators so every existing
+                                   //    consumer keeps reading a field that still exists.
     }
     if (casts && t < cfg.T) casts.push({
       t, interval, cast: pUp * up.cast + (1 - pUp) * dn.cast, gcd: pUp * up.gcd + (1 - pUp) * dn.gcd,
       mult: pUp * multUp + (1 - pUp) * multDn, dmg, stacks,
+      // ★ The boundary credit this cast actually earned (PHASE12 §9). `dmg` stays the FULL damage —
+      // it is what the cast is worth, and `model-audit` compares it against the sim's own damage line.
+      // `frac` is what fraction of it was banked, and `credited` is the product the objective summed.
+      // Anything recomputing the objective from this board must use `credited`, not `dmg`.
+      frac, credited: dmg * frac,
       capped: (pUp >= 0.5 ? up : dn).capped, pUp, ae: isAoe,
       // deterministic (no-Ashtongue) haste for the DISPLAY — the proc is random, so its average is
       // NOT smeared into the trend curve/readouts; ATI is shown only via its own lane + the "if it
@@ -1302,7 +1360,10 @@ function simulateRaw(schedule, cfg, collect) {
   // A per-cast SUM (the old model) quantised each window to a whole number of casts,
   // so it couldn't see sub-cast alignment — that blindness produced the phantom
   // "press 2s before lust" gains and the lust-position-dependent placement.
-  const KW = KILL_WINDOW;
+  // The retired symmetric kill window, kept ONLY so the `integral` diagnostic below still
+  // computes the quantity it always did. ⛔ It no longer touches the objective — the boundary
+  // credit above is the whole story. Do not reintroduce it as a scoring term (PHASE12 §9).
+  const KW = 0.5;
   // deterministic buff state at time tt: the haste multiplier (no ATI) and the per-cast damage. Shared by
   // the rate integrand (rateAt) and the ramp-deficit dock (below), so both read one consistent state.
   const scanAt = (tt, segB) => {

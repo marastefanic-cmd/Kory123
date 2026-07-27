@@ -1,45 +1,64 @@
-// WHAT DOES THE SCORER PAY FOR A CAST THAT DOES NOT FINISH BEFORE A BOUNDARY?
+// BOUNDARY-CREDIT REGRESSION GATE — does the scorer pay only the FRACTION of a cast that fits?
 //
 //   node tools/wall-credit.mjs [--preset "2:40 lust 0:07 intermission 1:30-2:10"]
 //
-// ── THE TWO BOUNDARIES ARE NOT THE SAME PROBLEM, AND CONFLATING THEM IS THE WHOLE POINT ──────────
+// Exit: 0 = every cast is credited correctly · 1 = the scorer mis-credits at a cut · 2 = could not probe.
 //
-// **The KILL is uncertain.** Nobody knows the exact second the boss dies, so a cast completing near T
-// is worth `dmg × P(boss still alive at completion)`. With a uniform kill over T ± KILL_WINDOW that is
-// a linear ramp, and `robust` already applies it (`index.html:1183`): a cast completing exactly at T is
-// paid **0.5**, one completing at T − 0.5 is paid 1.0, one at T + 0.5 is paid 0.
-//   ★ The fraction depends on WHEN THE CAST COMPLETES — never on how far through the cast the boundary
-//   cut it. A 0.75 s cast and a 2.5 s cast that both complete at T + 0.3 are worth exactly the same,
-//   because the boss's survival does not care how long you had been channelling. Crediting cast
-//   PROGRESS instead would pay for damage that never lands and would bias the search toward parking
-//   casts against the edge, with no mechanism behind it.
-//
-// **An INTERMISSION wall is known exactly.** The boss goes untargetable at a scheduled second. There
-// is no distribution to integrate: a cast completing after the wall deals **zero**. Partial credit here
-// is not a smoothing convenience, it is a payment for damage that provably does not occur.
-//
-// ── ⚠ WHAT THIS PROBE FOUND, 2026-07-27 — THE MODEL PAYS FULL PRICE AT AN INTERMISSION WALL ──────
-// The walk advances one cast at a time and reads its segment at the cast's START (`index.html:994`);
-// the credit test at `:1183-1184` only ever asks `tcC <= cfg.T`. Nothing asks whether the cast
-// COMPLETED into downtime. Measured on `2:40 lust 0:07 intermission 1:30-2:10`:
+// ── THE DEFECT THIS FILE WAS WRITTEN TO EXHIBIT, AND ITS FIX ─────────────────────────────────────
+// Written 2026-07-27 as a PROBE. It measured, on `2:40 lust 0:07 intermission 1:30-2:10`:
 //
 //     cast starts 89.616  ·  wall at 90.000  ·  completes 91.114  ·  credited dmg = 2242.1
 //
-// i.e. **full value for a cast that finishes 1.114 s into a window where the boss cannot be hit.**
-// The sibling helper `dmgOf` gets this right — `index.html:1327`, `if (nonAB(segAt(tc))) return 0;
-// // completes into downtime/AoE — no AB damage` — so the rule is already written down in this file,
-// one function over, and the main walk does not apply it. That is the shape of every scoring bug this
-// phase has found: the correct rule exists somewhere and the path that RANKS does not take it.
+// i.e. FULL value for a cast finishing 1.114 s into a window where the boss cannot be hit. The walk
+// read each cast's segment at its START and the credit test only ever asked `tcC <= cfg.T`, so
+// nothing asked whether the cast COMPLETED into downtime.
 //
-// ⇒ The fix is `dmg = 0` when the completion lands in an intermission, NOT partial credit. It is a
-// scoring change, so plans will move and it rides alone (PHASE12 §0.3).
+// **That defect is FIXED** (PHASE12 §9, user ruling 07-27), and this file is now the gate that keeps
+// it fixed. The probe's own conclusion was overturned in the fixing, which is worth recording: it
+// argued for `dmg = 0` at a wall and partial credit only at the kill. The ruling went the other way —
+// ONE uniform rule at every cut — and the reasoning is below.
 //
-// ⚠ Adjacent and NOT settled by this probe: a cast starting in a normal segment and completing inside
-// an **AoE** phase. `dmgOf` treats that as zero too (`nonAB` covers `aoe`), but the boss IS targetable
-// there, so zero is not obviously right — the cast lands, it just lands during AoE. Decide it
-// deliberately rather than inheriting it from this fix.
+// ── WHY THE TWO BOUNDARIES ARE THE SAME RULE (the ruling this file used to argue against) ────────
+// The probe's case for treating them differently was that **the kill is uncertain** (nobody knows the
+// second the boss dies, so credit is a survival probability) while **an intermission wall is known
+// exactly** (the boss goes untargetable on a scheduled second, so a cast completing after it deals a
+// hard zero). The ruling: an intermission does not land on the same second every pull either. Phase
+// timers drift with raid damage, with the boss's own cast order, with a taunt landing late. Modelling
+// the wall as exact is the identical mistake to modelling the kill as exact — it just feels safer
+// because the number is written in a strategy guide.
 //
-// Exit: 0 = probed and clean · 1 = probed and the scorer over-credits · 2 = could not probe.
+// So there is one rule, at every cut:
+//
+//     credit = min(1, (nextCut - castStart) / castDuration)     ← multiplies the cast's own value
+//
+// A **cut** is any moment where the cast stops landing or the spell changes: the fight end T, an
+// intermission start, and either edge of an AoE phase. A BURN edge is NOT a cut — the boss is
+// targetable and the spell is the same, so a burn multiplier is a VALUE question under the snapshot
+// rule, not a landing question.
+//
+// ★ It is not a smoothing heuristic. It is algebraically a ONE-SIDED window whose width is the cast's
+// own duration: for the true cut ~ U[C, C+W], credit = (C + W − completion)/W, and setting W = the
+// cast duration gives exactly (C − start)/duration. It reads "the cut happens no earlier than C, and
+// no later than one cast after C". The RETIRED symmetric taper — which paid a cast completing exactly
+// at T only 0.5 — was that same integral with a two-sided window where a one-sided one belongs.
+//
+// ★★ Note what the credit depends on, because the probe got this backwards too. Under the retired
+// taper the fraction depended only on WHEN THE CAST COMPLETED, never on how far through the cast the
+// boundary cut it. Under the credit rule it is the opposite by construction: the fraction IS the
+// share of the cast that fits, so a 0.75 s cast and a 2.5 s cast whose completions both land at
+// cut + 0.3 are NOT worth the same. That is the intended meaning — a longer cast has more of itself
+// stranded past the boundary — and it is why this gate checks `frac` against the cast's own geometry
+// rather than against a completion-time curve.
+//
+// ── WHAT THIS GATE ASSERTS, per cast on the board ────────────────────────────────────────────────
+//   A. `frac` equals `min(1, max(0, (nextCut(start) - start) / cast))`, recomputed here from the
+//      cast's own `t` and `cast` and from the cut lattice rebuilt from `cfg.segments` and `cfg.T`.
+//   B. `credited` equals `dmg * frac` — the board reports the product the objective actually summed.
+//   C. Every cast that COMPLETES past its next cut carries `frac < 1` strictly. This is the original
+//      defect, stated as an assertion: it is the case that used to be paid in full.
+//   D. `dmg` is still the cast's FULL damage (unscaled), so `dmg > credited` exactly on the cast in C.
+// A wall-spanning cast is REQUIRED to exist — a preset that produces none cannot exercise the gate,
+// and passing vacuously is the failure mode this repo keeps catching, so that exits 2, not 0.
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadEngine, cfgFor } from './engine-node.mjs';
@@ -54,42 +73,90 @@ const NAME = flag('preset', '2:40 lust 0:07 intermission 1:30-2:10');
 const kase = api.cases.find(c => c.name === NAME) || die(`no preset "${NAME}" — see tools/bench.mjs --list`);
 const cfg = cfgFor(api, kase);
 const walls = (cfg.segments || []).filter(s => s.type === 'intermission');
-if (!walls.length) die(`preset "${NAME}" has no intermission — this probe needs a hard wall to test.`);
+if (!walls.length) die(`preset "${NAME}" has no intermission — this gate needs a hard wall to test.`);
 
 // A deliberately plain schedule: the question is about the SCORER, not about a clever layout.
 const S = api.repair({ bloodlust: [7], arcanePower: [7], icyVeins: [7] }, cfg);
 const r = api.simulate(S, cfg, true);
 if (!r.casts || !r.casts.length) die('simulate returned no cast board — pass collect=true');
+if (r.casts[0].frac === undefined || r.casts[0].credited === undefined)
+  die('the cast board carries no `frac`/`credited`. This engine predates the boundary-credit rule ' +
+      '(PHASE12 §9); there is nothing for this gate to check and a silent pass would be a lie.');
 
-const inWall = x => walls.some(w => x > w.start + 1e-9 && x < w.end - 1e-9);
-console.log(`# wall-credit — "${NAME}"`);
-console.log(`  T = ${cfg.T} · intermissions ${JSON.stringify(walls.map(w => [w.start, w.end]))}\n`);
+// ── the cut lattice, rebuilt independently of the engine ─────────────────────────────────────────
+// Mirrors index.html's construction: merge adjacent segments calling for the same thing, and a cut is
+// a boundary between different ones. Rebuilt rather than imported, because a gate that reads the
+// engine's own lattice cannot catch the engine building the wrong lattice.
+const castMode = sg => !sg ? 'ab' : sg.type === 'intermission' ? 'none' : sg.type === 'aoe' ? 'ae' : 'ab';
+const CUTS = [];
+if (cfg.segments) for (let k = 0; k < cfg.segments.length; k++)
+  if (k === 0 || castMode(cfg.segments[k]) !== castMode(cfg.segments[k - 1]))
+    if (cfg.segments[k].start > 1e-9) CUTS.push(cfg.segments[k].start);
+CUTS.push(cfg.T);
+CUTS.sort((a, b) => a - b);
+const nextCut = ts => { for (const c of CUTS) if (c > ts + 1e-9) return c; return cfg.T; };
+const expectFrac = c => c.cast > 1e-9 ? Math.min(1, Math.max(0, (nextCut(c.t) - c.t) / c.cast)) : 0;
 
-const spanning = r.casts.filter(c => !inWall(c.t) && inWall(c.t + c.cast));
-console.log('  casts that START before a wall and COMPLETE inside the untargetable window:');
-if (!spanning.length) console.log('    (none on this schedule — try another preset or layout)');
-for (const c of spanning)
-  console.log(`    start ${c.t.toFixed(3)}  →  end ${(c.t + c.cast).toFixed(3)}   credited dmg = ${c.dmg.toFixed(1)}` +
-    `   ${c.dmg > 0 ? '⚠ SHOULD BE 0 — boss untargetable' : '✓ zero'}`);
-const overcredited = spanning.filter(c => c.dmg > 0);
+console.log(`# wall-credit — boundary-credit regression gate — "${NAME}"`);
+console.log(`  T = ${cfg.T} · intermissions ${JSON.stringify(walls.map(w => [w.start, w.end]))}`);
+console.log(`  cut lattice (fight end + phase edges): [${CUTS.map(x => x.toFixed(3)).join(', ')}]\n`);
 
-// The kill edge, for contrast: here partial credit is CORRECT, and `robust` already applies it.
-const tail = r.casts.filter(c => c.t + c.cast > cfg.T + 1e-9);
-console.log('\n  for contrast — the KILL edge, where partial credit is right and already implemented:');
-console.log(`    total  = ${r.total.toFixed(1)}   (hard cut: only casts completing by T)`);
-console.log(`    robust = ${r.robust.toFixed(1)}   (kill taper: dmg × P(alive at completion), T ± 0.5 s)`);
-for (const c of tail.slice(0, 2)) {
-  const frac = Math.min(1, Math.max(0, (cfg.T + 0.5 - (c.t + c.cast)) / 1.0));
-  console.log(`    a cast completing ${(c.t + c.cast).toFixed(3)} (T+${((c.t + c.cast) - cfg.T).toFixed(3)}) is paid ` +
-    `${(100 * frac).toFixed(1)} % of ${c.dmg.toFixed(1)} — and would be paid the SAME whatever its cast LENGTH.`);
+// ── A/B/D: the board is internally honest about the credit it applied ────────────────────────────
+let badFrac = 0, badCredited = 0, badFull = 0;
+for (const c of r.casts) {
+  const f = expectFrac(c);
+  if (Math.abs(c.frac - f) > 1e-9) {
+    if (badFrac++ < 5) console.log(`  ✗ frac  start ${c.t.toFixed(3)} cast ${c.cast.toFixed(3)}: board ${c.frac.toFixed(6)} expected ${f.toFixed(6)}`);
+  }
+  if (Math.abs(c.credited - c.dmg * c.frac) > 1e-9) {
+    if (badCredited++ < 5) console.log(`  ✗ credited  start ${c.t.toFixed(3)}: board ${c.credited.toFixed(3)} != dmg*frac ${(c.dmg * c.frac).toFixed(3)}`);
+  }
+  // D: `dmg` must stay the FULL value. A partial cast whose `dmg` was already scaled would be
+  // double-docked by the objective and would make model-audit's damage comparison wrong.
+  if (c.frac < 1 - 1e-9 && !(c.dmg > c.credited + 1e-9)) badFull++;
 }
+console.log(`  A  frac == min(1,(nextCut-start)/cast)   : ${badFrac ? `✗ ${badFrac} cast(s) wrong` : `✓ all ${r.casts.length} casts`}`);
+console.log(`  B  credited == dmg * frac                : ${badCredited ? `✗ ${badCredited} cast(s) wrong` : '✓'}`);
+console.log(`  D  dmg is the FULL (unscaled) damage     : ${badFull ? `✗ ${badFull} partial cast(s) have dmg <= credited` : '✓'}`);
 
+// ── C: the original defect, as an assertion ──────────────────────────────────────────────────────
+// Every cast completing past its next cut must be docked. Reported at both kinds of cut separately,
+// because the whole point of the ruling is that they are one rule — so seeing both obey it is the
+// evidence, not a formality.
+const spanning = r.casts.filter(c => c.t + c.cast > nextCut(c.t) + 1e-9);
+const inWall = x => walls.some(w => x > w.start + 1e-9 && x < w.end - 1e-9);
+const atWall = spanning.filter(c => inWall(c.t + c.cast));
+const atKill = spanning.filter(c => c.t + c.cast > cfg.T + 1e-9);
+console.log(`\n  casts whose completion lands past their next cut: ${spanning.length}` +
+            `  (${atWall.length} into an intermission, ${atKill.length} past the kill)`);
+let undocked = 0;
+for (const c of spanning) {
+  const ok = c.frac < 1 - 1e-9;
+  if (!ok) undocked++;
+  const where = inWall(c.t + c.cast) ? 'intermission' : (c.t + c.cast > cfg.T ? 'kill' : 'cut');
+  console.log(`    start ${c.t.toFixed(3)} → end ${(c.t + c.cast).toFixed(3)}  cut ${nextCut(c.t).toFixed(3)} (${where})` +
+    `   frac ${c.frac.toFixed(4)}   dmg ${c.dmg.toFixed(1)} → credited ${c.credited.toFixed(1)}` +
+    `   ${ok ? '✓ docked' : '‼ PAID IN FULL — the original defect is back'}`);
+}
+console.log(`  C  a cast completing past a cut is docked: ${undocked ? `✗ ${undocked} paid in full` : '✓'}`);
+
+// ── the gate's own coverage: refuse to pass on a preset that exercises nothing ───────────────────
+if (!spanning.length)
+  die(`this schedule produced NO cast completing past a cut, so A-D were checked against nothing that\n` +
+      `       could distinguish a working scorer from the broken one. Pick a preset/layout that strands a\n` +
+      `       cast at a wall (the default preset does). Refusing to report a vacuous pass.`);
+if (!atWall.length)
+  die(`no cast completes into an intermission on this schedule. The kill edge alone cannot show that the\n` +
+      `       SAME rule runs at a wall, which is the finding this gate exists to hold. Refusing to pass.`);
+
+const fail = badFrac + badCredited + badFull + undocked;
 console.log('');
-if (overcredited.length) {
-  console.log(`‼ ${overcredited.length} cast(s) credited at FULL value for damage that cannot land.`);
-  console.log('  Fix is dmg = 0 on completion-into-downtime, matching `dmgOf` at index.html:1327 —');
-  console.log('  NOT partial credit: an intermission wall is known exactly, so there is no');
-  console.log('  distribution to integrate and nothing to smear. See this file\'s header.');
+if (fail) {
+  console.log(`‼ ${fail} boundary-credit violation(s). The scorer is not applying`);
+  console.log('  credit = min(1, (nextCut - castStart) / castDuration) at every cut.');
+  console.log('  This is a REGRESSION of PHASE12 §9. Read this file\'s header before "fixing" it —');
+  console.log('  in particular, do NOT reintroduce dmg = 0 at a wall or a symmetric kill taper.');
   process.exit(1);
 }
-console.log('✓ no cast is credited for completing into downtime.');
+console.log('✓ every cast is credited exactly the fraction of itself that fits before its next cut,');
+console.log('  at the intermission wall and at the kill alike — one rule, both boundaries.');

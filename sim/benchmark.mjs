@@ -30,8 +30,15 @@
 
 export const BENCH = Object.freeze({
   // ── the fight ───────────────────────────────────────────────────────────────────────────────────
-  // Duration variation = the model's kill-window WIDTH (RULES §8: the half-cast smoothing at the
-  // buzzer). ★★ NEVER 0 — SETTLED BY MEASUREMENT 07-26 (`tools/var-decision.mjs`, BENCH §3): at
+  // ⚠ Duration variation USED to be justified as "the model's kill-window WIDTH" — that rationale
+  // DIED 2026-07-27 when the kill taper was retired (PHASE12 §9). The model is now deterministic at
+  // T and credits a straddling cast its fitting fraction, so there is no window here to match.
+  // ★ The value stays 0.5 anyway, on its OWN evidence, which never depended on the model: the sim
+  // has a discontinuity the model no longer has, and averaging over T ± 0.5 is how the SIM avoids
+  // parking its fight end on it. Model and sim now smooth the same problem by different means —
+  // analytically vs numerically — and reconciling their two answers is an OPEN question recorded in
+  // PHASE12 §9.4. Do not "fix" it by flipping this to 0; that reintroduces the measured failure below.
+  // ★★ NEVER 0 — SETTLED BY MEASUREMENT 07-26 (`tools/var-decision.mjs`, BENCH §3): at
   // var 0 mean casts is flat for 1.5s then jumps +0.97 casts in one 0.1s step, and when two arms
   // differ in TERMINAL cast rate the measured effect swings −32.8 → −0.9 → −31.8 DPS across 0.1s of
   // fight length (worst step 31.4 DPS vs 3.3 here). It is also not quieter — seed band 0.06/0.40 vs

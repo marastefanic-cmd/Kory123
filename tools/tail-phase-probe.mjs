@@ -1,3 +1,30 @@
+// ⛔⛔ RETIRED — THIS PROBE MEASURES NOTHING UNDER THE CURRENT OBJECTIVE. IT NOW REFUSES TO RUN. ⛔⛔
+//
+//   Killed by: PHASE12 §9 (user ruling 07-27) — the boundary-credit rewrite.
+//   Kept because: its RESULT is a closed finding worth not re-litigating (see the verdict at the
+//   bottom, and P7 below). The code is preserved as the record of how that finding was reached.
+//
+// THE PROBE'S ENTIRE SUBJECT WAS THE SEPARATION `tailIntegral = robust - totalEarly` — the slice of
+// score living inside the symmetric kill window `[T-KW, T+KW]`, where the taper was *changing* and so
+// cast PHASE became load-bearing. That separation is now **identically zero**:
+//   · `KILL_WINDOW` and the symmetric taper are RETIRED from the objective. The one uniform rule is
+//     `credit = min(1, (nextCut - castStart) / castDuration)`, applied at every cut, read at the
+//     cast's START — a cast completing exactly at T now earns a FULL cast, not 0.5.
+//   · `total`, `robust` and `totalEarly` are consequently THE SAME NUMBER (all three still returned
+//     so no caller crashes). So `robust - totalEarly == 0` for every plan, on every fight.
+// There is no longer a "tail region" for the model to be blind in, and nothing for a tail-discrete
+// correction to correct. Letting it run would print a full table of P1/P2/P3/P4 statistics computed
+// against a zero — structurally identical to a PASS, and read by a future session as evidence.
+// It therefore DIES at the first scored plan (exit 2 = could not probe) rather than reporting.
+//
+// ★ THE FINDING IT LEAVES BEHIND, which the retirement does not overturn: the model's tail phase was
+// unusable AT ANY THRESHOLD, in BOTH its scoring form (Stage 1: P2 worse, P4 broke ~48 % of the
+// columns the model already got right) and its tie-break form (Stage 2: P7 fired, no eps met the bar).
+// The "make the objective see the terminal cast" family stayed closed; the objective was eventually
+// fixed somewhere else entirely, at the boundary CREDIT rule rather than at the tail statistic.
+//
+// ── the original header follows, unedited, as the record ─────────────────────────────────────────
+//
 // THE TAIL-PHASE PROBE — is the model's tail blindness the mechanism behind invariant B2?
 //
 //   node tools/tail-phase-probe.mjs [--index /tmp/index-round.html] [--dir tools/xval-results]
@@ -75,7 +102,22 @@ if (!fs.existsSync(CACHE)) die(`${CACHE} is missing — the plan cache is gitign
 
 const api = loadEngine(INDEX);
 const ENGINE_ID = crypto.createHash('sha1').update(fs.readFileSync(INDEX)).digest('hex').slice(0, 12);
-const KW = 0.5;   // index.html:944 KILL_WINDOW. Asserted against the engine below.
+
+// ★ ALWAYS-ON RETIREMENT BANNER. `--index` names BOTH the engine and the plan-cache key, so pointing
+// it at an old round blob replays a RETIRED scorer and prints a full, plausible, current-looking
+// result. Say what it is before any number appears; the runtime gate in `score()` catches the other
+// case (a current engine, where the separation is exactly 0).
+console.log('='.repeat(96));
+console.log('⛔ RETIRED INSTRUMENT — HISTORICAL REPLAY ONLY.');
+console.log(`   Everything below describes the engine at ${INDEX}`);
+console.log('   and is a re-run of a CLOSED investigation, NOT a measurement of the current scorer.');
+console.log('   The objective no longer has the tail region this probe separates: total, robust and');
+console.log('   totalEarly are one accumulator (PHASE12 §9 boundary credit), so robust - totalEarly = 0.');
+console.log('   Against a current engine this tool exits 2. See the file header.');
+console.log('='.repeat(96) + '\n');
+// ⛔ The RETIRED symmetric kill window. It no longer corresponds to anything in the objective — it is
+// left here only so the preserved code below still parses and still reads as it did when it ran.
+const KW = 0.5;
 
 // ── read the round's tables ──────────────────────────────────────────────────────────────────────
 const tables = [], skippedBoss = [];
@@ -113,6 +155,19 @@ const planOf = (cfg) => {
 const taper = (tc, T) => Math.min(1, Math.max(0, (T + KW - tc) / (2 * KW)));
 const score = (s, cfg) => {
   const r = api.simulate(s, cfg, true);
+  // ★ THE RETIREMENT GATE. `robust` and `totalEarly` are the same accumulator since the
+  // boundary-credit rewrite, so this difference is exactly 0 and every statistic downstream of it is
+  // a statistic about nothing. Refuse, loudly, instead of reporting zeros that look like results.
+  if (r.robust === r.totalEarly) {
+    console.error('⛔ tail-phase-probe is RETIRED and cannot run against this engine.');
+    console.error('   `tailIntegral = robust - totalEarly` came back EXACTLY 0: the engine returns');
+    console.error('   total === robust === totalEarly (PHASE12 §9 boundary credit — the symmetric kill');
+    console.error('   window and its taper are retired, so there is no tail region to separate).');
+    console.error('   This probe measures NOTHING here. Its finding stands and is in the file header:');
+    console.error('   the model\'s tail phase was unusable at any threshold, in both the scoring and');
+    console.error('   the tie-break form. Do not re-open that family; do not "fix" this by re-adding KW.');
+    process.exit(2);
+  }
   const tailIntegral = r.robust - r.totalEarly;
   let tailDiscrete = 0, lastTc = -Infinity, tailN = 0;
   for (const c of (r.casts || [])) {
