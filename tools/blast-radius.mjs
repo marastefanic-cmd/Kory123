@@ -3,8 +3,11 @@
 import crypto from 'node:crypto'; import fs from 'node:fs'; import path from 'node:path';
 import { loadEngine, ALL_BUFFS } from '/home/user/Kory123/tools/engine-node.mjs';
 import { REF } from '/home/user/Kory123/tools/reference-gear.mjs';
-const REPO='/home/user/Kory123', IDX='/tmp/index-round.html';
-const api=loadEngine(IDX);
+// IDX = the round blob (the plan cache keys on its sha1). ENGINE = the scorer under test, defaulting
+// to the working tree — see tools/self-consistency.mjs for why the two must be separable.
+const REPO='/home/user/Kory123', IDX=process.env.ROUND_INDEX||'/tmp/index-round.html';
+const ENGINE=process.env.ENGINE||path.join(REPO,'index.html');
+const api=loadEngine(ENGINE);
 const EID=crypto.createHash('sha1').update(fs.readFileSync(IDX)).digest('hex').slice(0,12);
 const KW=0.5, taper=(tc,T)=>Math.min(1,Math.max(0,(T+KW-tc)/(2*KW)));
 const planOf=cfg=>{const k='plan-'+crypto.createHash('sha1').update(JSON.stringify({cfg,engine:EID,restarts:14})).digest('hex').slice(0,24);
@@ -28,15 +31,26 @@ for(const f of fs.readdirSync(dir).filter(x=>x.endsWith('.txt')).sort()){
     for(const ph of H){
       const r=api.simulate(champ[ph],cfg,true);
       const cnt=r.casts.reduce((a,x)=>a+x.dmg*taper(x.t+x.cast,cfg.T),0);
-      if(r.robust>bv+1e-9){bv=r.robust;bi=ph;}
+      // ⚠ read the INTEGRAL from its own field. Since PHASE12 step 1, `robust` IS the cast sum, so
+      // taking the integral arm from `robust` would compare the new scorer against itself and report
+      // a blast radius of zero — the most reassuring possible wrong answer.
+      const integ=r.integral??r.robust;
+      if(integ>bv+1e-9){bv=integ;bi=ph;}
       if(cnt>bcv+1e-9){bcv=cnt;bc=ph;}
     }
     cells++;
-    if(bi!==bc){moved++; movers.push(`${kv.kit} ${kv.class} T=${kv.T} @h${Hh}: integral picks plan@${bi} -> cast-sum picks plan@${bc}`);}
+    if(bi!==bc){moved++; movers.push({
+      txt:`${kv.kit} ${kv.class} T=${kv.T} @h${Hh}: integral picks plan@${bi} -> cast-sum picks plan@${bc}`,
+      row:{kit:kv.kit,cls:kv.class,T:+kv.T,lust:+kv.lust,h:Hh,integralH:bi,castSumH:bc}});}
   }
 }
 console.log(`BLAST RADIUS of making the objective the tapered per-cast sum (class stratum, no sim)\n`);
+console.log(`  plans from ${IDX}  ·  scored by ${ENGINE}`);
 console.log(`  pooled-argmax cells: ${cells}`);
 console.log(`  cells where the EMITTED plan CHANGES: ${moved}  (${(100*moved/cells).toFixed(1)}%)\n`);
-for(const m of movers.slice(0,14)) console.log('   '+m);
+for(const m of movers.slice(0,14)) console.log('   '+m.txt);
 if(movers.length>14) console.log(`   … and ${movers.length-14} more`);
+// The mover list is the WORK LIST for the sim demonstration (PHASE12 §0.4: deriving that the cast sum
+// is right is not the same as showing it), so hand it over as data rather than as prose.
+if(process.env.MOVERS_OUT){fs.writeFileSync(process.env.MOVERS_OUT,JSON.stringify(movers.map(m=>m.row),null,1));
+  console.log(`\n  wrote ${movers.length} mover(s) -> ${process.env.MOVERS_OUT}`);}

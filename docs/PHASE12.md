@@ -979,3 +979,64 @@ which drifted once before (PHASE11 §1.1 B1).
 ★ **`--cast` grades the CAST, not the clock.** The grids drift ~0.35 s by t=200 on a buffed plan, so a
 press can land on exactly the right cast with its wall-clock time a third of a second off. A
 clock-tolerance verdict calls that a failure and sends the next reader hunting a bug that is not there.
+
+
+## 6.10 ✅ STEP 1 LANDED — the objective is exact, and the demonstration it needs is NOT yet in
+
+**2026-07-27.** `simulate()` now ranks on the deterministic per-cast sum. The gate is green and the
+blast radius is measured; the *superiority* claim §0.4 demands is a separate question and §6.11 is where
+it goes.
+
+### 6.10a The change
+
+The board walk already knew, per Arcane Blast, the haste and the stack count (hence the cast time),
+whether Arcane Power was up, which spell-power buffs applied, and the crit factor — `dmg` **is** the
+answer. It now accumulates `dmg x taper(completion)` on every call (not only when `collect` is set: the
+optimizer scores with `collect` off, and an objective cannot depend on whether someone asked for a
+board), and that sum is what `total` / `totalEarly` / `robust` return.
+
+The rate integral is **kept** and returned as `integral` / `integralTotal`, so the gap stays
+measurable. It must never be the arbiter again.
+
+### 6.10b The gate, and why it is not circular
+
+`tools/self-consistency.mjs`, 2755 plan-scorings, no sim:
+
+```
+  ★ THE GATE — robust(what RANKS) - taperedCastSum(the board the tool SHOWS):
+     min 0.00e+0   median 0.00e+0   max 0.00e+0   (effective ABs)
+     ✓ PASS — one objective, to float precision
+```
+
+`robust` is now the cast sum, so this could be zero by construction. It is not: `robust` is accumulated
+**inside** the board walk, while the number checked against it is recomputed **independently** from the
+`casts` array the walk reports. Zero says the thing that RANKS and the board the tool SHOWS are the same
+quantity — the invariant that was broken, and the one a refactor would break again.
+
+⚠ The tool grew `ENGINE=` / `ROUND_INDEX=`: the plan cache keys on the round blob's sha1, so plans must
+come from it, but the SCORER under test is the working tree. Scoring the round blob with itself is the
+control, and it still reports the old **median 0.2114 %, max 1.4263 %** — the gate can fail, which is
+the only reason its passing means anything.
+
+### 6.10c Blast radius, re-measured against the new engine
+
+| | |
+|---|---|
+| pooled-argmax cells where the emitted plan changes | **117 of 285 — 41.1 %** |
+| presets whose plan changes at all (`plan-sweep`, 16 QUICK cases) | **16 of 16** |
+
+⚠ `tools/blast-radius.mjs` had to be taught to read the integral from `r.integral`. Left reading
+`r.robust` it would have compared the new scorer **against itself** and reported a blast radius of zero
+— the most reassuring possible wrong answer.
+
+### 6.10d ⛔ THE DEMONSTRATION FAILED AT FIRST ASKING — and that is how bug 2 was found
+
+`tools/scorer-duel.mjs` (built for this): for every cell where the two accounts pick a different plan,
+duel those two plans in the sim at that cell's own fight and character, with the now-correct press
+transcription. Whichever the sim scores higher is the better plan.
+
+**First run, 20 cells, 3 seeds: cast-sum 11, integral 9, mean Δ −0.10 DPS.** A coin flip.
+
+Per §0.4 that is a REFUSAL to re-record goldens, not a rounding error — and it was the right refusal,
+because the cause turned out to be a second scoring bug that only became load-bearing once step 1
+landed. See §6.11. **No golden was re-recorded on this evidence.**

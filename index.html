@@ -953,6 +953,13 @@ function simulateRaw(schedule, cfg, collect) {
   // part is unchanged. Scoring: ramp casts are scored DISCRETELY (damage around each completion),
   // the cast-rate integral covers everything else — see the scoring section.
   let t = 0, stacks = 0, lastCastStart = -Infinity, prevCastRamp = false, total = 0, totalEarly = 0, robust = 0, gcdCappedTime = 0, castCount = 0;
+  // The objective, accumulated cast by cast in the board walk below. `total`/`totalEarly`/`robust`
+  // are RETURNED from these; the rate integral further down is kept only as a diagnostic (`integral`)
+  // and as the input to the default-off boundary charge. PHASE12 §0.1 is why: the integral and this
+  // sum are two accounts of the same fight that differed by a median 0.2114 % of score — against
+  // ranking margins of ~0.005–0.07 %. The model was disagreeing with itself by ~30× the effect it was
+  // being asked to resolve, and the sum is the account CLAUDE.md and MECHANICS §4 define.
+  let countTotal = 0, countEarly = 0, countRobust = 0;
   let aoeSegI = -1, aoeExact = false; // per-AoE-segment: is its AE lattice locked to the phase start?
   const boardRamp = []; // ramp casts recorded for the scorer: {s: start, c: completion, e: next boundary}
   // PHASE8 §25 — per-window continuous-vs-discrete boundary charge. OFF by default: it is
@@ -961,6 +968,14 @@ function simulateRaw(schedule, cfg, collect) {
   // implemented: for a haste window a cast that does not fit is not LOST, it happens later at the
   // slower rate, so the error is not a count mismatch and the naive `(nModel−nSim) × cast` form
   // overstates it ~10× (measured: −3.1 pp at T=40). See PHASE8 §25.5.
+  // ⚠ PHASE12 step 1 retired the rate integral as the arbiter, and this charge is defined against the
+  // integral (it corrects the integral's over-payment of a partial cast at a window's back edge — an
+  // error a per-cast sum cannot make). Setting it now changes only the `integral` diagnostic, so a
+  // caller expecting it to move a plan would get silence. Refuse instead: a knob that quietly does
+  // nothing is this repo's most expensive recurring failure, not a harmless leftover.
+  if (cfg.boundaryCharge) throw new Error(
+    'simulate: cfg.boundaryCharge is defined against the RETIRED rate integral and no longer affects ' +
+    'the objective (PHASE12 §0.3 step 1). It would change nothing — refusing rather than no-opping.');
   const bcOn = !!cfg.boundaryCharge, bcDone = [], bcModel = [], bcDmg = [];
   const casts = collect ? [] : null;
   while (t < cfg.T + KILL_WINDOW) {
@@ -1081,8 +1096,23 @@ function simulateRaw(schedule, cfg, collect) {
       dmg = (g.AB.AVG_BASE_DMG + g.AB.COEF * sp) * critFactor * (dmgMult + t5add);
       if (seg && seg.type === "burn") dmg *= seg.mult;
     }
-    if (t < cfg.T) castCount++; // discrete press count (board/UI); damage is scored by the integral below
+    if (t < cfg.T) castCount++; // discrete press count (board/UI)
     if (t < cfg.T) gcdCappedTime += pUp * (up.capped ? up.interval : 0) + (1 - pUp) * (dn.capped ? dn.interval : 0);
+    // ═══════════ THE OBJECTIVE — the deterministic per-cast sum (PHASE12 §0) ═══════════
+    // For THIS Arcane Blast the walk already knows the haste and the stack count (hence the cast
+    // time), whether Arcane Power is up, which spell-power buffs apply, and the crit factor. `dmg`
+    // above IS the answer. There is nothing left to approximate: the objective is a sum, so sum it.
+    // Damage lands on COMPLETION (Phase 4's rule), so the kill taper is read there.
+    //
+    // ⚠ This accumulates on EVERY call, not only when `collect` is set — `casts` is populated only
+    // for the UI and the tests, while the optimizer scores with collect off, and the objective cannot
+    // depend on whether someone asked for a board.
+    if (t < cfg.T) {
+      const tcC = t + pUp * up.cast + (1 - pUp) * dn.cast;
+      countRobust += dmg * Math.min(1, Math.max(0, (cfg.T + KILL_WINDOW - tcC) / (2 * KILL_WINDOW)));
+      if (tcC <= cfg.T + 1e-9) countTotal += dmg;
+      if (tcC <= cfg.T - KILL_WINDOW + 1e-9) countEarly += dmg;
+    }
     if (casts && t < cfg.T) casts.push({
       t, interval, cast: pUp * up.cast + (1 - pUp) * dn.cast, gcd: pUp * up.gcd + (1 - pUp) * dn.gcd,
       mult: pUp * multUp + (1 - pUp) * multDn, dmg, stacks,
@@ -1304,6 +1334,12 @@ function simulateRaw(schedule, cfg, collect) {
       charge += (nModel - nSim) * (bcDmg[k] / nModel);
     }
     // the charge is damage the model credited and the sim would not: dock all three currencies.
+    // ⚠ SINCE PHASE12 STEP 1 THIS ONLY REACHES THE DIAGNOSTIC `integral`, NOT THE OBJECTIVE. The
+    // charge exists to correct the rate integral's over-payment of the partial cast straddling a
+    // window's back edge — an error the per-cast sum does not make, because it counts casts. So it is
+    // not merely off by default now, it is *undefined* against the current arbiter. Left in place
+    // because §25's derivation and its ANTI-B2 measurements are the record of a closed investigation;
+    // the guard below makes sure nobody mistakes it for a live knob.
     total -= charge; totalEarly -= charge; robust -= charge;
   }
   // the discrete ramp casts' damage (suppressed spans above), kill-window-weighted like the integral
@@ -1312,7 +1348,22 @@ function simulateRaw(schedule, cfg, collect) {
     if (c.tc <= cfg.T - KW + 1e-9) totalEarly += c.dmg;
     robust += c.dmg * Math.min(1, Math.max(0, (cfg.T + KW - c.tc) / (2 * KW)));
   }
-  return { total, totalEarly, robust, castCount, gcdCappedTime, casts, actEff, dps: total / cfg.T };
+  // ═══════════ THE ARBITER IS THE PER-CAST SUM (PHASE12 §0.3 step 1) ═══════════
+  // Everything above this line computed the rate integral. It is no longer what anything ranks on: it
+  // is the *expectation over cast phase*, while the sum accumulated in the board walk is the *realized
+  // value for this plan*, and ranking two specific plans wants the realized value. Measured over 2755
+  // plan-scorings with no sim (tools/self-consistency.mjs) the two differed by a median 0.2114 % of
+  // score, max 1.4263 %, against a corpus whose entire deficit range is 0.004–0.380 %.
+  //
+  // The integral is KEPT — as `integral`, so the gap stays measurable, and because the default-off
+  // boundary charge is defined against it. It must never be the arbiter again.
+  // ⚠ It is also still the search's smoothing story: the ramp's jitter averaging and the piecewise
+  // breakpoints exist so the score moves smoothly as haste slides a completion across a window edge.
+  // The sum has no such smoothing, so if the SEARCH degrades, that is the place to look — not here.
+  const integral = robust;
+  return { total: countTotal, totalEarly: countEarly, robust: countRobust,
+           integral, integralTotal: total,
+           castCount, gcdCappedTime, casts, actEff, dps: countTotal / cfg.T };
 }
 
 function trackRule(key, cfg) {
