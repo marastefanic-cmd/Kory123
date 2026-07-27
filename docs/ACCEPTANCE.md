@@ -379,7 +379,59 @@ after the widths were visible. **44 of 142 columns are in scope** (36 class, 8 b
 borrowed-win columns and "not resolvable by this instrument at this taper width" is a statement about
 the ruler, not a verdict.
 
-<!-- BAND-RESULTS -->
+**Class stratum — COMPLETE, 36/36 scoped columns at 5 spaced seeds (`11 · 100011 · 200011 · 300011 ·
+400011`, ITER=6000, var 0.5):** **30 REAL · 6 not resolvable.**
+
+★ **The persistence work list survives almost entirely: 12 of its 13 rows grade REAL.** The single
+exception is the one this document already predicted — `isc+skull medlong @20`, whose round-1 margin
+is **0.004 %**, i.e. the "at least one length at 0.007 %, well inside the ±0.02 % ruler" caveat under
+the B-banner analysis. Every row carrying measurable magnitude survives:
+
+| column | round-1 % | band mean % | sd | seeds | verdict |
+|---|---|---|---|---|---|
+| `isc+mqg` medlong T=229 @40 ← plan@70 | 0.380 | **+0.368** | 0.020 | 5/5 | **REAL** ← B2's own cell |
+| `isc+skull` long T=293 @130 ← plan@185 | 0.289 | **+0.283** | 0.014 | 5/5 | **REAL** |
+| `isc+mqg` short T=108 @40 ← plan@20 | 0.133 | **+0.197** | 0.047 | 5/5 | **REAL** |
+| `isc+skull` medium T=177 @20 ← plan@70 | 0.075 | **+0.059** | 0.046 | 4/5 | **REAL** |
+| `isc+mqg` xl T=451 @40 ← plan@70 | 0.071 | **+0.072** | 0.009 | 5/5 | **REAL** |
+| `isc+mqg` long T=281 @40 ← plan@70 | 0.070 | **+0.068** | 0.023 | 5/5 | **REAL** |
+| `isc+skull` medlong T=251 @20 ← plan@70 | 0.004 | −0.078 | 0.054 | 1/5 | *not resolvable* |
+
+**The 6 not-resolvable columns are exactly the low-magnitude tail** — round-1 widths 0.004–0.034 %,
+every one at or inside the CRN resolution the corpus reports (37.3 % of all columns are ≤0.02 %).
+⚠ **"Not resolvable" is NOT "passed."** It is a statement about this instrument at this iteration
+count; the bar remains zero borrowed-win columns. Loci, so the list is resumable:
+`scb+skull xl @90` · `scb+skull medlong @240` · `mqg+skull xl @295` · `scb+mqg short @75` ·
+`scb+skull long @90` · `isc+skull medlong @20`.
+
+**Boss stratum — 8 scoped columns, graded in descending round-1 `pct` per §8.18's drop order, and
+NOT COMPLETE.** A boss column is a 5-variant wall-jitter mean, so at 5 seeds it is 50 sims; the four
+Kael'thas columns run ≈103 s/sim (6 targets), i.e. ~86 min each. §8.18's escape hatch applies —
+*"band in descending round-1 `pct` and name the dropped columns explicitly, with their loci, so the
+list is resumable rather than merely honest"*:
+
+| boss column | round-1 % | scope | banded? |
+|---|---|---|---|
+| `mqg+skull` KT T=420 @0 ← plan@30 | 0.304 | over-floor | queued |
+| `mqg+skull` KT T=420 @100 ← plan@0 | 0.290 | over-floor | queued |
+| `mqg+skull` KT T=420 @160 ← plan@235 | 0.141 | over-floor | queued |
+| `mqg+skull` Al'ar T=240 @295 ← plan@235 | 0.123 | over-floor | queued |
+| `mqg+skull` Al'ar T=240 @0 ← plan@100 | 0.113 | INDETERMINATE | queued |
+| `mqg+skull` Vashj T=390 @295 | 0.071 | over-floor | queued |
+| `mqg+skull` Vashj T=390 @235 | 0.045 | over-floor | queued |
+| `mqg+skull` KT T=420 @235 | 0.026 | INDETERMINATE | queued |
+
+⚠ **And a boss column could not be graded against a trustworthy ruler this round anyway**: the
+±0.1251 pp boss-cell band was measured at **one** gear-A cell and cannot be re-derived here, because
+the tool that prices boss cells fails its own KT discrimination check (below). Re-run with
+`node tools/xval-band.mjs /tmp/grade/scoped-boss.json` when a box is free.
+
+★ **What the band says overall, and it is not a small thing: the ≥3-seed rule filtered almost
+nothing.** It was pre-registered to catch single-seed artefacts after the gear-A corpus learned that
+wall-jitter variance (0.1427 pp) dwarfs seed variance (0.0058 pp). On this round **30 of 36 graded
+columns survive at 5/5 or 4/5 seeds**, and the 6 that don't are the sub-resolution tail. **The scoped
+deficits are real measurements, not noise** — which is what makes B2 a model debt rather than an
+instrument one.
 
 ⚠ **Two honest limits on the band.** (a) `xval-band.mjs` loads `sim/sim.wasm` directly and has no
 `RUNNER` option, so it grades on the **wasm** while the round was gathered on the **native runner** —
