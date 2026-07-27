@@ -32,10 +32,16 @@ const RUNNER = process.env.RUNNER || '/tmp/wowsims-build/tbc-new/runner-ap180';
 if (!fs.existsSync(RUNNER)) { console.error(`ERROR: no RUNNER at ${RUNNER}`); process.exit(2); }
 const argv = process.argv.slice(2);
 const flag = (n, d) => { const i = argv.indexOf(`--${n}`); return i < 0 ? d : argv[i + 1]; };
-const IDX = flag('index', '/tmp/index-round.html');
+// ⚠ TWO index.html's, and conflating them is a defect this session hit THREE times. `ROUND_INDEX` is
+// the blob the plan cache keys on (sha1), so plans must be looked up against it. `ENGINE` is the code
+// under test and defaults to the WORKING TREE. Loading the round blob as the engine makes the tool
+// blind to the change it is being pointed at — `tools/lattice-drift.mjs` reported a byte-identical
+// number across two consecutive cast-timing fixes for exactly this reason.
+const IDX = flag('index', process.env.ROUND_INDEX || '/tmp/index-round.html');
+const ENGINE = process.env.ENGINE || path.join(REPO, 'index.html');
 const N = +flag('n', '12');
 
-const api = loadEngine(IDX);
+const api = loadEngine(ENGINE);
 const EID = crypto.createHash('sha1').update(fs.readFileSync(IDX)).digest('hex').slice(0, 12);
 const planOf = cfg => {
   const k = 'plan-' + crypto.createHash('sha1').update(JSON.stringify({ cfg, engine: EID, restarts: 14 })).digest('hex').slice(0, 24);

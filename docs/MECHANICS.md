@@ -23,7 +23,7 @@ Notation: `m` = total haste multiplier; `SP` = spell power; a "cast" below means
 
 *Verified:* wowsims mage/cast code.
 
-### ⚠ 1.1 The model and wowsims DISAGREE about the stack reduction, by 0.667 ms per stack
+### ✅ 1.1 The model and wowsims agree on the cast lattice — CLOSED 2026-07-27
 
 *"Matches our sims exactly" was measured at 60 s and is false as a general statement.* Found 2026-07-27
 (PHASE12 §6.9a) while diagnosing the press-fire offset:
@@ -44,10 +44,19 @@ wowsims also rounds every cast to the millisecond (`sim/core/cast.go:137-138`), 
   **0.080 s over 300 s bare** (`tools/lattice-drift.mjs`), and **~0.35 s by t=200 on a plan with haste
   buffs in it**, because every buff re-quantizes the interval.
 
-Consequences already measured: it is the entire mechanism behind "a scheduled press fires a full cast
-late" (`10.998 >= 11.000` is false), and it still costs **26 of 196 presses** their intended cast after
-the transcription fix (PHASE12 §6.9d). **The correction — take 334 ms — is a MODEL change: it moves
-cast times, so the lattice, so plans and goldens.** Not yet made; it must land alone.
+**✅ Both were corrected on 2026-07-27** — the model now takes 334 ms per stack and rounds every cast
+and GCD to the millisecond, exactly as `sim/core/cast.go:137-138` does. The bare-stream drift went from
+**0.080 s to 0.005 s over 300 s**, which is the combat log's own 2-decimal printing floor: the grids
+coincide. Gate: `tools/lattice-drift.mjs`.
+
+⚠ **The millisecond rounding is the part that mattered; the 334 ms constant alone moved the bare
+lattice by exactly nothing** — measured twice before the cause was understood. In steady state Arcane
+Blast is **GCD-bound**: the 3-stack cast is 1.498 s, under the 1.5 s GCD at every haste, so the interval
+comes from `max(1.0, 1.5/m)` and the stack constant never enters it. The constant still matters for the
+**ramp** and for **cast completion times**, which is where the value-snapshot rule (§4) reads.
+
+Consequence that made it worth chasing: this was the entire mechanism behind "a scheduled press fires a
+full cast late" (`10.998 >= 11.000` is false).
 
 ## 2. Haste
 

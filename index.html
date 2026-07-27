@@ -786,7 +786,13 @@ const GAME = {
   HASTE_RATING_PER_PCT: 15.77,
   GCD_BASE: 1.5,
   GCD_FLOOR: 1.0,
-  AB: { BASE_CAST: 2.5, STACK_CAST_REDUCTION: 1/3, MAX_STACKS: 3, AVG_BASE_DMG: 720, COEF: 2.5/3.5, DEBUFF_DUR: 8, MANA_FLAT: 195 },
+  // ★ 0.334, NOT 1/3 — and the difference is 0.667 ms per stack that COMPOUNDS. wowsims (and the
+  // 2.4.3 client it encodes) takes a whole millisecond: `sim/mage/arcane_charge.go:17` reads
+  // `castTimeReduction := time.Millisecond * -334`. Wowhead phrases the tooltip as "1/3 sec", which is
+  // what this used to encode literally. Off the GCD cap that 2 ms per ramp accumulates once per cast,
+  // one-signed, and the two cast lattices drifted ~0.35 s apart by t=200 on a buffed plan — which cost
+  // 26 of 196 presses the cast the model scored them on (PHASE12 §6.9d, MECHANICS §1.1).
+  AB: { BASE_CAST: 2.5, STACK_CAST_REDUCTION: 0.334, MAX_STACKS: 3, AVG_BASE_DMG: 720, COEF: 2.5/3.5, DEBUFF_DUR: 8, MANA_FLAT: 195 },
   AE: { AVG_BASE_DMG: 392, COEF: 0.214 }, // Arcane Explosion r8 (377-407), instant, GCD-bound
   // 1 + (1.5×1.03 − 1)×1.5: base 150% crit, ×1.03 Chaotic Skyfire Diamond (assumed —
   // everyone wears it), bonus portion ×1.5 from 2/2 Spell Power. A constant factor on
@@ -1118,10 +1124,20 @@ function simulateRaw(schedule, cfg, collect) {
     const multUp = atiOn ? multDn + mult * atiScale : multDn;
     const isAoe = !!(seg && seg.type === "aoe");
     if (!isAoe && t - lastCastStart >= g.AB.DEBUFF_DUR) stacks = 0; // AB debuff fell off during the gap — re-ramp
+    // ★ ROUND TO THE MILLISECOND, because wowsims does and the lattices have to be the same lattice:
+    //   sim/core/cast.go:137-138  CurCast.GCD      = ApplyCastSpeed(GCD).Round(time.Millisecond)
+    //                             CurCast.CastTime = ApplyCastSpeedForSpell(...).Round(time.Millisecond)
+    // Unrounded, the model's grid slid ~0.4 ms per cast against the sim's and reached 0.080 s over a
+    // 300 s bare stream — and far more on a buffed plan, where it cost 26 of 196 presses the cast the
+    // model scored them on. ⚠ Note this is the GCD's rounding that dominates: in steady state the AB
+    // interval is GCD-bound (the 3-stack cast, 1.498 s, is under the 1.5 s GCD at every haste), so
+    // fixing STACK_CAST_REDUCTION alone moved the bare lattice by exactly nothing — measured, not
+    // assumed. Go's Duration.Round is half-away-from-zero, which for positives is Math.round.
     const stepFor = m => {
-      const gcd = Math.max(g.GCD_FLOOR, g.GCD_BASE / m);
+      const msq = x => Math.round(x * 1000) / 1000;
+      const gcd = msq(Math.max(g.GCD_FLOOR, g.GCD_BASE / m));
       if (isAoe) return { cast: 0, gcd, interval: gcd, capped: g.GCD_BASE / m <= g.GCD_FLOOR };
-      const cast = (g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * stacks) / m;
+      const cast = msq((g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * stacks) / m);
       return { cast, gcd, interval: Math.max(cast, gcd), capped: cast < gcd };
     };
     const dn = stepFor(multDn);

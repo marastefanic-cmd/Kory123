@@ -104,7 +104,8 @@ the *result* lands here with a citation so it never has to be re-litigated.
 
 | constant | model | wowsims | gap | status |
 |---|---|---|---|---|
-| Arcane Blast cast reduction per stack | `1/3` s = 333.333… ms | `time.Millisecond * -334` (`sim/mage/arcane_charge.go:17`) | 0.667 ms/stack | ⚠ **open** — MECHANICS §1.1, PHASE12 §6.9 |
+| Arcane Blast cast reduction per stack | **334 ms** (adopted 07-27) | `time.Millisecond * -334` (`sim/mage/arcane_charge.go:17`) | none | ✅ **closed** — MECHANICS §1.1 |
+| per-cast / per-GCD rounding | **round to the ms** (adopted 07-27) | `.Round(time.Millisecond)` (`sim/core/cast.go:137-138`) | none | ✅ **closed** — this was the one that actually moved the lattice |
 
 Wowhead states the reduction as "1/3 sec", which is what the model encodes literally; wowsims rounds it
 to a whole millisecond, which is what a 2.4.3 client would store. **The sim is this project's ground

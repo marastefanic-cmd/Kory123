@@ -20,7 +20,15 @@
 // test point was one cast early, so model and sim agreed and the bug was invisible. The discriminating
 // case is a press that lands ON a cast boundary — there the window is right and only the test point is
 // wrong, and the model over-credits by exactly one cast. A gate that only ran the mid-cast case would
-// have passed on the broken engine, which is the whole reason this file names its press times.
+// have passed on the broken engine, which is why the press times below are DERIVED, not chosen.
+//
+// ── ⚠⚠ AND THE PRESS TIMES ARE READ OFF THE MODEL'S OWN GRID, NOT HARDCODED ──────────────────────
+// The first version of this file hardcoded `press: 11` with `sched: 10.6`, a pair hand-calibrated to
+// the lattice of the day. When the cast-time constants were corrected the grid moved ~2 ms, `11` was
+// no longer on a boundary, and the two arms silently stopped being the same experiment — the tool
+// reported a one-cast disagreement that was entirely its own. So: the boundary is read from the model,
+// and the sim's schedule value comes from `planToSpec`, the same transcription the product uses. A
+// gate must not carry its own copy of the geometry it is checking.
 import fs from 'node:fs';
 import path from 'node:path';
 import { execFileSync } from 'node:child_process';
@@ -28,6 +36,7 @@ import { fileURLToPath } from 'node:url';
 import { loadEngine, ALL_BUFFS } from './engine-node.mjs';
 import { REF } from './reference-gear.mjs';
 import { build } from './genapl-core.mjs';
+import { planToSpec } from '../sim/planspec.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const RUNNER = process.env.RUNNER || '/tmp/wowsims-build/tbc-new/runner-ap180';
@@ -39,12 +48,18 @@ if (!fs.existsSync(RUNNER)) {
 }
 const api = loadEngine(process.env.ENGINE || path.join(REPO, 'index.html'));
 
-// model press time, and the schedule value that fires on the SAME boundary in the sim (the two grids
-// are not the same grid — sim/planspec.mjs's header).
+// The bare cast grid this engine produces, so the cases can be placed ON it rather than near it.
+function bareGrid() {
+  const en = {}; for (const k of ALL_BUFFS) en[k] = false;
+  const cfg = { T: 60, hasteRating: 0, ...REF, enabled: en, fixed: {}, warnings: [], coldSnap: false, segments: null };
+  return api.simulate({}, cfg, true).casts.map(c => c.t);
+}
+const GRID = bareGrid();
 const CASES = [
-  { key: 'isc',  spec: 'Icon', press: 11,   sched: 10.6, why: 'value (+SP) pressed ON a boundary — the discriminating case' },
-  { key: 'isc',  spec: 'Icon', press: 10.5, sched: 10.1, why: 'value (+SP) pressed mid-cast — where the old defects cancelled' },
-  { key: 'scb',  spec: 'Gem',  press: 20,   sched: 19.6, why: 'value (+SP), a shorter window' },
+  { key: 'isc', spec: 'Icon', at: 6,  off: 0,    why: 'value (+SP) pressed ON a boundary — the discriminating case' },
+  { key: 'isc', spec: 'Icon', at: 6,  off: 0.5,  why: 'value (+SP) pressed mid-cast — where the old defects cancelled' },
+  { key: 'scb', spec: 'Gem',  at: 12, off: 0,    why: 'value (+SP), a shorter window, on a boundary' },
+  { key: 'scb', spec: 'Gem',  at: 12, off: 0.5,  why: 'value (+SP), a shorter window, mid-cast' },
 ];
 
 let failures = 0;
@@ -52,12 +67,17 @@ console.log(`# credit-check — which casts does each side pay?  engine ${proces
 for (const c of CASES) {
   const en = {}; for (const k of ALL_BUFFS) en[k] = (k === c.key);
   const cfg = { T: 60, hasteRating: 0, ...REF, enabled: en, fixed: {}, warnings: [], coldSnap: false, segments: null };
-  const r = api.simulate({ [c.key]: [c.press] }, cfg, true);
+  // press = a boundary of the model's own grid, plus an offset expressed in that interval
+  const press = +(GRID[c.at] + c.off * (GRID[c.at + 1] - GRID[c.at])).toFixed(6);
+  const r = api.simulate({ [c.key]: [press] }, cfg, true);
   const base = Math.min(...r.casts.map(x => x.dmg));
   const modelOn = r.casts.filter(x => x.dmg > base + 1e-6).map(x => +x.t.toFixed(2));
+  // …and the sim runs the PRODUCT's transcription of that press, so the two arms are the same
+  // experiment by construction rather than by a hand-calibrated constant.
+  const spec = planToSpec({ cfg, best: { s: { [c.key]: [press] } }, optR: r }, api.BUFFS).spec;
 
-  const apl = `/tmp/credit-${c.spec}-${c.press}.json`, log = apl + '.log';
-  fs.writeFileSync(apl, JSON.stringify(build({ _prestack: 0, [c.spec]: [c.sched] })));
+  const apl = `/tmp/credit-${c.spec}-${c.at}-${c.off}.json`, log = apl + '.log';
+  fs.writeFileSync(apl, JSON.stringify(build(spec)));
   try {
     execFileSync(RUNNER, ['--export', path.join(REPO, 'tools/bench/export.json'), '--apl', apl,
       '--dur', '60', '--var', '0', '--iter', '1', '--seed', '11', '--mana', '100000000',
@@ -81,7 +101,7 @@ for (const c of CASES) {
   const onlyM = [...sm].filter(x => !ss.has(x)), onlyS = [...ss].filter(x => !sm.has(x));
   const ok = !onlyM.length && !onlyS.length;
   if (!ok) failures++;
-  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${c.spec}@${c.press} — ${c.why}`);
+  console.log(`  ${ok ? 'PASS' : 'FAIL'}  ${c.spec}@${press.toFixed(3)} — ${c.why}`);
   console.log(`        model paid ${String(modelOn.length).padStart(2)} casts · sim paid ${String(simOn.length).padStart(2)}`);
   if (!ok) {
     console.log(`        only the model paid: ${onlyM.join(' ') || '(none)'}`);

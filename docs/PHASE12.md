@@ -1279,3 +1279,57 @@ But three things collapse it hard:
 ⚠ **"Proven optimal" is PER-INSTANCE, not once and for all.** You prove it for a given fight/gear/kit.
 Across the whole input space you rely on the heuristic plus a certified corpus — which is exactly what
 `docs/ACCEPTANCE.md` is for, and why its re-gather is now cheap.
+
+## 6.14 ✅ THE CAST LATTICE IS CLOSED — and what is left is a FOURTH instance of the same confusion
+
+### 6.14a The fix, and the part of it that mattered
+
+Two differences from wowsims, and **both** had to go:
+
+1. `STACK_CAST_REDUCTION: 1/3` → **334 ms** (`sim/mage/arcane_charge.go:17`).
+2. **Round every cast and every GCD to the millisecond**, as `sim/core/cast.go:137-138` does.
+
+⚠ **(2) dominates, and (1) alone moved the bare lattice by exactly NOTHING.** In steady state Arcane
+Blast is **GCD-bound** — the 3-stack cast is 1.498 s, under the 1.5 s GCD at every haste — so the
+interval comes from `max(1.0, 1.5/m)` and the stack constant never enters it. It still matters for the
+**ramp** and for **cast completion times**, which is where the value-snapshot rule reads.
+
+| | before | after |
+|---|---|---|
+| bare-stream drift, 300 s, worst | 0.080 s | **0.005 s** (the log's own 2-dp printing floor) |
+| LATTICE-class press failures (of 196) | 8 | **0** |
+| worst model-vs-sim clock gap on a press | 2.887 s | 2.000 s |
+
+### 6.14b ⚠⚠ AND THE INSTRUMENT WAS BLIND — THREE TIMES
+
+`tools/lattice-drift.mjs` defaulted `--index` to the **round blob**, so it loaded the OLD engine and
+reported a byte-identical `0.080 s` across **two consecutive cast-timing fixes**. That reads as "the fix
+did nothing", and it sent me theorising twice instead of measuring. `press-headtohead.mjs` and
+`press-exposure.mjs` had the identical defect.
+
+★ **The rule this earns:** a tool that takes both a *plan source* and an *engine* must keep them
+separate, and the engine must default to the WORKING TREE. `ROUND_INDEX` is the blob the plan cache
+keys on; `ENGINE` is the code under test. All five affected tools now split them. This is the third
+distinct way an instrument has flattered or blinded itself in one phase — see also §6.9's classifier and
+§6.11c's tie rule.
+
+⚠ It also broke `credit-check`, which had **hardcoded** press times hand-calibrated to the old lattice:
+when the grid moved 2 ms, `press: 11` was no longer on a boundary and the two arms silently stopped
+being the same experiment. It now reads the boundary off the model's own grid and transcribes the sim
+side through `planToSpec` — **a gate must not carry its own copy of the geometry it is checking.**
+
+### 6.14c ▶ WHAT REMAINS: `HELD` = 18, and it is the cooldown chain
+
+`LATTICE` went to 0; `HELD` did not move. Different mechanism, and it is the **fourth** appearance of
+press-moment-vs-fire-moment:
+
+- the model chains a cooldown from `lastEff[key] = eff`, the **press moment**;
+- wowsims starts the cooldown when the spell is actually **cast**, at the fire boundary `auraAt ≥ eff`.
+
+So a press the model legalises at `eff + cd` is still on cooldown in the sim until `auraAt + cd`, and
+`APLActionSchedule.IsReady`'s `innerSpell.IsReady` gate defers it a whole cast.
+
+⇒ **The model can emit a plan the sim cannot execute.** This is a LEGALITY rule (`repair`), not a
+scoring one, so it does not touch the objective — but it is the next thing to fix, and the fix is the
+same one applied three times already: chain from the moment the ability fires, not from the moment it
+was pressed.

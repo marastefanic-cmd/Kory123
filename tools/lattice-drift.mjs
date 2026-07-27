@@ -3,24 +3,26 @@
 //   RUNNER=… node tools/lattice-drift.mjs [--dur 300] [--index /tmp/index-round.html]
 //
 // ── WHY ───────────────────────────────────────────────────────────────────────────────────────────
-// PHASE12 §6.6 step 1 measured the BARE cast stream at 60 s and called it exact (mean 0.0001 s at
-// h=0). That is true at 60 s and false as a general statement, and the difference is the whole of the
-// press-fire offset:
+// ✅ CLOSED 2026-07-27: the two grids now agree to the log's own printing floor (worst 0.005 s over
+// 300 s, down from 0.080 s). This tool is the gate that keeps them that way.
 //
-//   wowsims  sim/mage/arcane_charge.go:17   castTimeReduction := time.Millisecond * -334
-//   model    index.html                     STACK_CAST_REDUCTION: 1/3          (333.333… ms)
+// The model used to differ from wowsims in two places, and BOTH had to be fixed:
 //
-// The two disagree by 0.667 ms per Arcane Blast stack, and wowsims additionally `.Round(time.Milli-
-// second)`s every cast (sim/core/cast.go:137-138). At h=0 the ramp ends 2 ms behind the model and then
-// both run GCD-capped at exactly 1.5 s, so the offset FREEZES at 2 ms — invisible in a combat log that
-// prints 2 decimals ("11.00" is really 10.998). Off the GCD cap the per-cast difference no longer
-// cancels and the offset ACCUMULATES, once per cast, in the same direction.
+//   1. `STACK_CAST_REDUCTION: 1/3` vs wowsims' `time.Millisecond * -334`
+//      (sim/mage/arcane_charge.go:17) — 0.667 ms per Arcane Blast stack.
+//   2. wowsims `.Round(time.Millisecond)`s every cast AND every GCD (sim/core/cast.go:137-138);
+//      the model kept full precision.
 //
-// That 2 ms is the entire mechanism behind "the schedule fires a full cast late": `APLActionSchedule.
-// IsReady` is `sim.CurrentTime >= timing` — not strict — but at the boundary CurrentTime is 10.998 and
-// the schedule says 11, so it misses and waits for 12.498. §6.7's "fires at the first boundary STRICTLY
-// AFTER" is the right consequence attached to the wrong cause, and the cause is what sets the fix's
-// safety margin.
+// ⚠ **(2) is the one that dominates, and (1) alone changed the bare lattice by exactly nothing** —
+// measured, twice, before the cause was found. In steady state Arcane Blast is GCD-BOUND: the 3-stack
+// cast is 1.498 s, under the 1.5 s GCD at every haste, so the interval comes from the GCD and the
+// stack constant never enters it. The constant still matters for the RAMP and for cast COMPLETION
+// times (which is where the value-snapshot rule reads), just not for the steady interval.
+//
+// That few-ms offset was the entire mechanism behind "a scheduled press fires a full cast late":
+// `APLActionSchedule.IsReady` is `sim.CurrentTime >= timing` — not strict — but at the boundary
+// CurrentTime was 10.998 while the schedule said 11, so it missed and waited for 12.498. §6.7's
+// "fires at the first boundary STRICTLY AFTER" was the right consequence attached to the wrong cause.
 //
 // ── WHAT THIS PRINTS ──────────────────────────────────────────────────────────────────────────────
 // Per haste level: the model's and the sim's cast-start grids, the drift at the first/median/last
@@ -38,7 +40,12 @@ const RUNNER = process.env.RUNNER || '/tmp/wowsims-build/tbc-new/runner-ap180';
 const argv = process.argv.slice(2);
 const flag = (n, d) => { const i = argv.indexOf(`--${n}`); return i < 0 ? d : argv[i + 1]; };
 const DUR = +flag('dur', '300');
-const IDX = flag('index', '/tmp/index-round.html');
+// ⚠ THE ENGINE UNDER TEST IS THE WORKING TREE. This defaulted to the round blob and therefore measured
+// the OLD engine no matter what had just been changed — it reported a byte-identical 0.080 s across two
+// consecutive cast-timing fixes, which read as "the fix did nothing" and sent me theorising twice.
+// Same class as the two flattering instruments in §6.11/§6.9: a tool that cannot see the change it is
+// being pointed at. Pass --index explicitly to measure a different engine.
+const IDX = flag('index', path.join(REPO, 'index.html'));
 if (!fs.existsSync(RUNNER)) { console.error(`ERROR: no RUNNER at ${RUNNER}`); process.exit(2); }
 
 const api = loadEngine(IDX);
