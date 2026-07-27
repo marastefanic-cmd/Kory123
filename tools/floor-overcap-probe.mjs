@@ -6,9 +6,20 @@
 //  P3 FALSIFIER: if the same difference appears in columns where the model and sim AGREE, it is a
 //     property of borrowed-vs-native plans generally, not of the model's error. Control included.
 import crypto from 'node:crypto'; import fs from 'node:fs'; import path from 'node:path';
-import { loadEngine, ALL_BUFFS } from '/home/user/Kory123/tools/engine-node.mjs';
-import { REF } from '/home/user/Kory123/tools/reference-gear.mjs';
-const REPO='/home/user/Kory123', IDX='/tmp/index-round.html';
+import { fileURLToPath } from 'node:url';
+import { loadEngine, ALL_BUFFS } from './engine-node.mjs';
+import { REF } from './reference-gear.mjs';
+const REPO=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+// ⚠ ONE index.html here, deliberately and unchanged by the portability fix: `IDX` is BOTH the round
+// blob the plan cache keys on AND the engine that scores the pooled argmax (P1's "model's pick"), so
+// splitting it into ROUND_INDEX/ENGINE the way tools/self-consistency.mjs does would change what the
+// probe measures. It is only no longer pinned to `/tmp/index-round.html`, a session scratch file that
+// dies with the container and took this tool down with it in any fresh clone.
+const ROUND=process.env.ROUND_INDEX;
+const IDX=ROUND||path.join(REPO,'index.html');
+if(!fs.existsSync(IDX)){console.error(`ERROR: ROUND_INDEX=${IDX} does not exist.`);process.exit(2);}
+if(!ROUND)console.error('note: no ROUND_INDEX set — scoring with, and keying the plan cache on, the repo\'s own index.html.\n' +
+  '      Cached plans solved with a different engine will not be found, so the corpus may be smaller.');
 const api=loadEngine(IDX);
 const EID=crypto.createHash('sha1').update(fs.readFileSync(IDX)).digest('hex').slice(0,12);
 const planOf=cfg=>{const k='plan-'+crypto.createHash('sha1').update(JSON.stringify({cfg,engine:EID,restarts:14})).digest('hex').slice(0,24);
@@ -44,6 +55,13 @@ for(const f of fs.readdirSync(dir).filter(x=>x.endsWith('.txt')).sort()){
     rows.push({simH,T:+kv.T,agree:nat===sw,dGcd:gN-gB,dCtl:gC===null?null:gN-gC});
   }
 }
+// ⛔ ZERO ROWS IS NOT "NO EFFECT". With the wrong round blob every table is skipped for want of a
+// cached plan and the probe prints `(none)` on every pre-registered line — an empty set wearing the
+// costume of a null result. Refuse instead.
+if(!rows.length){console.error('ERROR: 0 columns — the plan cache holds nothing for this engine hash.\n' +
+  `       ROUND_INDEX=${IDX}\n` +
+  '       Point ROUND_INDEX at the index.html the cached plans were solved with, or re-solve.\n' +
+  '       Refusing to test P1/P2/P3 over an empty set.');process.exit(2);}
 const stat=(xs)=>{const n=xs.length,m=xs.reduce((a,b)=>a+b,0)/n;const sd=Math.sqrt(xs.reduce((a,b)=>a+(b-m)**2,0)/Math.max(1,n-1));
   return {n,m,sd,se:sd/Math.sqrt(n),t:m/(sd/Math.sqrt(n))};};
 const dis=rows.filter(r=>!r.agree), agr=rows.filter(r=>r.agree);

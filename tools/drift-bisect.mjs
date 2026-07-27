@@ -1,12 +1,30 @@
 // WHY IS THERE DRIFT? Bisect it. Start with NOTHING scheduled — no cooldowns at all — where the cast
 // stream is pure (base cast time, stacks, GCD). If model and sim agree there, the drift is in buffs
 // or press timing. If they DISAGREE there, it is in the base cast/ramp model itself.
+//
+//   RUNNER=… node tools/drift-bisect.mjs          # ENGINE=<index.html> to bisect a different engine
 import fs from 'node:fs'; import path from 'node:path'; import { execFileSync } from 'node:child_process';
-import { loadEngine, ALL_BUFFS } from '/home/user/Kory123/tools/engine-node.mjs';
-import { REF } from '/home/user/Kory123/tools/reference-gear.mjs';
-import { build } from '/home/user/Kory123/tools/genapl-core.mjs';
-const REPO='/home/user/Kory123', RUNNER='/tmp/wowsims-build/tbc-new/runner-ap180';
-const api=loadEngine('/tmp/index-round.html');
+import { fileURLToPath } from 'node:url';
+import { loadEngine, ALL_BUFFS } from './engine-node.mjs';
+import { REF } from './reference-gear.mjs';
+import { build } from './genapl-core.mjs';
+const REPO=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const RUNNER=process.env.RUNNER||'/tmp/wowsims-build/tbc-new/runner-ap180';
+if(!fs.existsSync(RUNNER)){console.error(`ERROR: no RUNNER at ${RUNNER}\n` +
+  '       Bisecting the drift needs wowsims\' own combat log, which the committed sim/sim.wasm does\n' +
+  '       not expose. Re-run with RUNNER=<path to runner-ap180> (docs/TOOLING.md "Building the runner").');
+  process.exit(2);}
+// ⚠ THE ENGINE UNDER TEST IS THE WORKING TREE — and there is no plan cache here, so `ROUND_INDEX` has
+// no role: nothing is looked up by sha1, the index is read only for its cast walk. This used to be
+// hardcoded to `/tmp/index-round.html`, which both died with the container AND made the tool blind to
+// the very cast-timing change it was pointed at (the defect tools/lattice-drift.mjs carries a warning
+// about: it reported a byte-identical number across two consecutive fixes).
+const ENGINE=process.env.ENGINE||path.join(REPO,'index.html');
+if(!fs.existsSync(ENGINE)){console.error(`ERROR: ENGINE=${ENGINE} does not exist.`);process.exit(2);}
+if(process.env.ROUND_INDEX&&!process.env.ENGINE)
+  console.error(`note: ROUND_INDEX is set but IGNORED here — this tool has no plan cache, so the index is\n` +
+    `      purely the engine under test. Using ENGINE=${ENGINE}; set ENGINE=<path> to bisect another.`);
+const api=loadEngine(ENGINE);
 const AB=30451;
 const runSim=(spec,T,haste)=>{
   const apl=`/tmp/db-${Math.abs(JSON.stringify(spec).length)}-${haste}.json`; fs.writeFileSync(apl,JSON.stringify(build(spec)));

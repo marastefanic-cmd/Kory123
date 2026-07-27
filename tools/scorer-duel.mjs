@@ -43,18 +43,36 @@ const die = m => { console.error('ERROR: ' + m); process.exit(2); };
 const argv = process.argv.slice(2);
 const arg = (k, d) => { const i = argv.indexOf('--' + k); return i >= 0 && argv[i + 1] !== undefined ? argv[i + 1] : d; };
 
-const MOVERS = arg('movers', '/tmp/movers.json');
+// The mover list defaults INSIDE the repo (`.xval-cache/` is the gitignored derivable-artifact dir the
+// plan cache already lives in), not `/tmp/movers.json` — a session scratch path that dies with the
+// container. `--movers` still wins, and `MOVERS` overrides the default without a flag.
+const MOVERS = arg('movers', process.env.MOVERS || path.join(REPO, '.xval-cache', 'movers.json'));
 if (!fs.existsSync(MOVERS)) die(`no mover list at ${MOVERS} — produce one with:\n` +
-  '  MOVERS_OUT=/tmp/movers.json node tools/blast-radius.mjs');
+  `  MOVERS_OUT=${path.join(REPO, '.xval-cache', 'movers.json')} node tools/blast-radius.mjs\n` +
+  '  (or pass --movers <path> / set MOVERS=<path> to duel a list you already have)');
 const rows = JSON.parse(fs.readFileSync(MOVERS, 'utf8'));
+// Announced on stderr (stdout stays the report): now that the default is a repo path rather than a
+// per-session `/tmp` file, a list left over from an earlier round would otherwise be duelled silently.
+console.error(`note: mover list <- ${MOVERS} (${rows.length} cell(s))`);
 const N = +arg('n', '20');
 const SEEDS = arg('seeds', '11,12,13').split(',').map(Number);
 const ITER = +arg('iter', String(BENCH.iterations));
 const FLOOR = +arg('floor', '0.25');   // DPS below which this instrument declares a tie — see below
 const VAR = arg('var') === undefined ? BENCH.variation : +arg('var');
 
-const ROUND_INDEX = process.env.ROUND_INDEX || '/tmp/index-round.html';
+// ⚠ ROUND_INDEX = the round blob the plan cache keys on (sha1), the only thing that looks the two
+// duelling plans UP. ENGINE = the code under test, defaulting to the working tree. ROUND_INDEX used to
+// default to `/tmp/index-round.html`, a session scratch file that dies with the container, so this
+// duel opened on a raw `node:fs` stack trace in any fresh clone. Falling back to the repo's own
+// index.html is announced, because it silently changes which plans are found — and a duel that skips
+// every cell for want of a plan prints a 0-0 draw, which is not a result.
+const ROUND = process.env.ROUND_INDEX;
+const ROUND_INDEX = ROUND || path.join(REPO, 'index.html');
+if (!fs.existsSync(ROUND_INDEX)) die(`ROUND_INDEX=${ROUND_INDEX} does not exist.`);
+if (!ROUND) console.error('note: no ROUND_INDEX set — keying the plan cache on the repo\'s own index.html.\n' +
+  '      Cached plans solved with a different engine will not be found, and their cells are skipped.');
 const ENGINE = process.env.ENGINE || path.join(REPO, 'index.html');
+if (!fs.existsSync(ENGINE)) die(`ENGINE=${ENGINE} does not exist.`);
 const api = loadEngine(ENGINE);
 const EID = crypto.createHash('sha1').update(fs.readFileSync(ROUND_INDEX)).digest('hex').slice(0, 12);
 const planOf = cfg => {
@@ -144,6 +162,13 @@ for (const row of rows.slice(0, N)) {
     `${(d >= 0 ? '+' : '') + d.toFixed(2)} ± ${band.toFixed(2)} DPS`.padStart(22) + `   ${verdict}`);
 }
 
+// ⛔ A DUEL WHERE EVERY CELL WAS SKIPPED IS NOT A 0-0 DRAW. The cells skip when `planOf` finds nothing,
+// which is exactly what happens when the round blob does not match the cache — so the "verdict" would
+// be an empty set printed in the shape of a tie.
+if (!bWin && !aWin && !tie) die(`every one of ${Math.min(N, rows.length)} cell(s) was skipped — no cached plans for this engine hash.\n` +
+  `  ROUND_INDEX=${ROUND_INDEX}\n` +
+  '  Point ROUND_INDEX at the index.html the cached plans were solved with, or re-solve.\n' +
+  '  Refusing to report a duel over an empty set.');
 const decided = bWin + aWin;
 console.log(`\n  cast-sum's plan wins ${bWin} · integral's plan wins ${aWin} · ties ${tie}` +
   (skipped ? ` · skipped ${skipped}` : ''));

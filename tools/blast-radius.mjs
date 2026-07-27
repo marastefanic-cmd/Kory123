@@ -16,12 +16,24 @@
 // here would have measured a blast radius against a scorer that no longer exists.
 // (This corpus is `segments: null`, so the only cut is T — see the assertion at the scoring site.)
 import crypto from 'node:crypto'; import fs from 'node:fs'; import path from 'node:path';
-import { loadEngine, ALL_BUFFS } from '/home/user/Kory123/tools/engine-node.mjs';
-import { REF } from '/home/user/Kory123/tools/reference-gear.mjs';
+import { fileURLToPath } from 'node:url';
+import { loadEngine, ALL_BUFFS } from './engine-node.mjs';
+import { REF } from './reference-gear.mjs';
 // IDX = the round blob (the plan cache keys on its sha1). ENGINE = the scorer under test, defaulting
 // to the working tree — see tools/self-consistency.mjs for why the two must be separable.
-const REPO='/home/user/Kory123', IDX=process.env.ROUND_INDEX||'/tmp/index-round.html';
+const REPO=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+// ⚠ `IDX` used to default to `/tmp/index-round.html`, a session scratch file that dies with the
+// container, so this tool crashed on a raw `node:fs` stack trace in any fresh clone. Fall back to the
+// repo's own index.html and SAY SO on stderr — a silent fallback would quietly change which cached
+// plans are found (the cache keys on this file's sha1), and "no movers" is the most reassuring
+// possible wrong answer. Same semantics and same wording as tools/self-consistency.mjs.
+const ROUND=process.env.ROUND_INDEX;
+const IDX=ROUND||path.join(REPO,'index.html');
+if(!fs.existsSync(IDX)){console.error(`ERROR: ROUND_INDEX=${IDX} does not exist.`);process.exit(2);}
+if(!ROUND)console.error('note: no ROUND_INDEX set — keying the plan cache on the repo\'s own index.html.\n' +
+  '      Cached plans from a different engine will simply not be found, so the corpus may be smaller.');
 const ENGINE=process.env.ENGINE||path.join(REPO,'index.html');
+if(!fs.existsSync(ENGINE)){console.error(`ERROR: ENGINE=${ENGINE} does not exist.`);process.exit(2);}
 const api=loadEngine(ENGINE);
 const EID=crypto.createHash('sha1').update(fs.readFileSync(IDX)).digest('hex').slice(0,12);
 // The boundary credit, re-derived from the cast's own start and duration (see the header).
@@ -62,6 +74,13 @@ for(const f of fs.readdirSync(dir).filter(x=>x.endsWith('.txt')).sort()){
       row:{kit:kv.kit,cls:kv.class,T:+kv.T,lust:+kv.lust,h:Hh,integralH:bi,castSumH:bc}});}
   }
 }
+// ⛔ ZERO CELLS IS NOT "NO BLAST RADIUS". With the wrong round blob the plan cache is keyed on a
+// different engine hash, nothing is found, every table is skipped, and the tool would print
+// `0 (NaN%)` — an empty set reported as a reassuring null result. Refuse instead.
+if(!cells){console.error('ERROR: 0 pooled-argmax cells — the plan cache holds nothing for this engine hash.\n' +
+  `       ROUND_INDEX=${IDX}\n` +
+  '       Point ROUND_INDEX at the index.html the cached plans were solved with, or re-solve.\n' +
+  '       Refusing to report a blast radius over an empty set.');process.exit(2);}
 console.log(`BLAST RADIUS of the objective being the CREDITED per-cast sum rather than the RETIRED rate integral (class stratum, no sim)\n`);
 console.log(`  plans from ${IDX}  ·  scored by ${ENGINE}`);
 console.log(`  pooled-argmax cells: ${cells}`);
@@ -70,5 +89,6 @@ for(const m of movers.slice(0,14)) console.log('   '+m.txt);
 if(movers.length>14) console.log(`   … and ${movers.length-14} more`);
 // The mover list is the WORK LIST for the sim demonstration (PHASE12 §0.4: deriving that the cast sum
 // is right is not the same as showing it), so hand it over as data rather than as prose.
-if(process.env.MOVERS_OUT){fs.writeFileSync(process.env.MOVERS_OUT,JSON.stringify(movers.map(m=>m.row),null,1));
+if(process.env.MOVERS_OUT){fs.mkdirSync(path.dirname(path.resolve(process.env.MOVERS_OUT)),{recursive:true});
+  fs.writeFileSync(process.env.MOVERS_OUT,JSON.stringify(movers.map(m=>m.row),null,1));
   console.log(`\n  wrote ${movers.length} mover(s) -> ${process.env.MOVERS_OUT}`);}

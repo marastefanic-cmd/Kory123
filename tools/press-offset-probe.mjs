@@ -1,9 +1,27 @@
+// PRESS OFFSET: where does a scheduled press actually FIRE — in the model, and in wowsims?
+//
+//   RUNNER=… node tools/press-offset-probe.mjs     # ENGINE=<index.html> to probe a different engine
 import fs from 'node:fs'; import path from 'node:path'; import { execFileSync } from 'node:child_process';
-import { loadEngine, ALL_BUFFS } from '/home/user/Kory123/tools/engine-node.mjs';
-import { REF } from '/home/user/Kory123/tools/reference-gear.mjs';
-import { build } from '/home/user/Kory123/tools/genapl-core.mjs';
-const REPO='/home/user/Kory123', RUNNER='/tmp/wowsims-build/tbc-new/runner-ap180';
-const api=loadEngine('/tmp/index-round.html');
+import { fileURLToPath } from 'node:url';
+import { loadEngine, ALL_BUFFS } from './engine-node.mjs';
+import { REF } from './reference-gear.mjs';
+import { build } from './genapl-core.mjs';
+const REPO=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+const RUNNER=process.env.RUNNER||'/tmp/wowsims-build/tbc-new/runner-ap180';
+if(!fs.existsSync(RUNNER)){console.error(`ERROR: no RUNNER at ${RUNNER}\n` +
+  '       The sim arm reads "Aura gained" out of wowsims\' combat log, which the committed\n' +
+  '       sim/sim.wasm does not expose. Re-run with RUNNER=<path to runner-ap180>\n' +
+  '       (docs/TOOLING.md "Building the runner").');process.exit(2);}
+// ⚠ THE ENGINE UNDER TEST IS THE WORKING TREE — no plan cache is involved here, so `ROUND_INDEX` has
+// no role: nothing is looked up by sha1 and the index is read only for `actEff`. Hardcoding the round
+// blob both died with the container and pointed the probe at the OLD engine after every press-timing
+// fix, which is the exact blindness tools/lattice-drift.mjs warns about.
+const ENGINE=process.env.ENGINE||path.join(REPO,'index.html');
+if(!fs.existsSync(ENGINE)){console.error(`ERROR: ENGINE=${ENGINE} does not exist.`);process.exit(2);}
+if(process.env.ROUND_INDEX&&!process.env.ENGINE)
+  console.error(`note: ROUND_INDEX is set but IGNORED here — this tool has no plan cache, so the index is\n` +
+    `      purely the engine under test. Using ENGINE=${ENGINE}; set ENGINE=<path> to probe another.`);
+const api=loadEngine(ENGINE);
 // bare cast boundaries at h=0: 0, 2.5, 4.667, 6.5, 8.0, 9.5, 11.0, 12.5 ...
 // press ON a boundary (11) vs just AFTER one (11.1) vs mid-cast (10)
 for(const press of [11, 12.5, 10, 11.1, 9.6]){

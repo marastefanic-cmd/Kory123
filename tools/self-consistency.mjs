@@ -46,8 +46,8 @@
 // so it is no longer the clean 0.2114 % measurement that opened the phase. Diagnostic, never a verdict.
 import crypto from 'node:crypto'; import fs from 'node:fs'; import path from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { loadEngine, ALL_BUFFS } from '/home/user/Kory123/tools/engine-node.mjs';
-import { REF, plainCastInPage } from '/home/user/Kory123/tools/reference-gear.mjs';
+import { loadEngine, ALL_BUFFS } from './engine-node.mjs';
+import { REF, plainCastInPage } from './reference-gear.mjs';
 // ⚠ TWO index.html's, on purpose. `IDX` is the ROUND BLOB: the plan cache keys on its sha1, so it is
 // the only file whose plans can be looked up. `ENGINE` is the engine those plans are SCORED with, and
 // it defaults to the working tree — otherwise this gate would measure the very engine it is meant to
@@ -65,6 +65,7 @@ if(!fs.existsSync(IDX)){console.error(`ERROR: ROUND_INDEX=${IDX} does not exist.
 if(!ROUND)console.error('note: no ROUND_INDEX set — keying the plan cache on the repo\'s own index.html.\n' +
   '      Cached plans from a different engine will simply not be found, so the corpus may be smaller.');
 const ENGINE=process.env.ENGINE||path.join(REPO,'index.html');
+if(!fs.existsSync(ENGINE)){console.error(`ERROR: ENGINE=${ENGINE} does not exist.`);process.exit(2);}
 const api=loadEngine(ENGINE);
 const PLAIN=new Function('GAME','R',`return (${plainCastInPage.toString()})(R);`)(api.GAME,REF);
 const EID=crypto.createHash('sha1').update(fs.readFileSync(IDX)).digest('hex').slice(0,12);

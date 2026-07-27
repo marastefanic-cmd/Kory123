@@ -23,15 +23,26 @@
 // the credit rule at once, so a difference cannot be attributed to either. Treat the numbers as a
 // retrospective sanity check on the retirement, never as a re-run of the falsified experiment.
 import crypto from 'node:crypto'; import fs from 'node:fs'; import path from 'node:path';
-import { loadEngine, ALL_BUFFS } from '/home/user/Kory123/tools/engine-node.mjs';
-import { REF } from '/home/user/Kory123/tools/reference-gear.mjs';
+import { fileURLToPath } from 'node:url';
+import { loadEngine, ALL_BUFFS } from './engine-node.mjs';
+import { REF } from './reference-gear.mjs';
 // ⚠ IDX = the ROUND BLOB, and it is ONLY a cache key (the plan cache hashes it). ENGINE = the scorer
 // under test, defaulting to the working tree. They used to be one constant here, which meant this
 // tool scored with the ROUND's engine — i.e. it could never see a scorer change at all, and would
 // have gone on printing pre-PHASE12 numbers forever. Separated to match self-consistency.mjs and
 // blast-radius.mjs, whose headers carry the same warning.
-const REPO='/home/user/Kory123', IDX=process.env.ROUND_INDEX||'/tmp/index-round.html';
+const REPO=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
+// ⚠ `IDX` used to default to `/tmp/index-round.html`, a session scratch file that dies with the
+// container — a raw `node:fs` stack trace in any fresh clone. Fall back to the repo's own index.html
+// and SAY SO on stderr: the fallback silently changes which cached plans are found (the cache keys on
+// this file's sha1), and a smaller corpus that is never announced is how a null result gets published.
+const ROUND=process.env.ROUND_INDEX;
+const IDX=ROUND||path.join(REPO,'index.html');
+if(!fs.existsSync(IDX)){console.error(`ERROR: ROUND_INDEX=${IDX} does not exist.`);process.exit(2);}
+if(!ROUND)console.error('note: no ROUND_INDEX set — keying the plan cache on the repo\'s own index.html.\n' +
+  '      Cached plans from a different engine will simply not be found, so the corpus may be smaller.');
 const ENGINE=process.env.ENGINE||path.join(REPO,'index.html');
+if(!fs.existsSync(ENGINE)){console.error(`ERROR: ENGINE=${ENGINE} does not exist.`);process.exit(2);}
 const api=loadEngine(ENGINE);
 const EID=crypto.createHash('sha1').update(fs.readFileSync(IDX)).digest('hex').slice(0,12);
 const planOf=cfg=>{const k='plan-'+crypto.createHash('sha1').update(JSON.stringify({cfg,engine:EID,restarts:14})).digest('hex').slice(0,24);
@@ -72,6 +83,13 @@ for(const f of fs.readdirSync(dir).filter(x=>x.endsWith('.txt')).sort()){
     cols.push({I,C,S});
   }
 }
+// ⛔ ZERO COLUMNS IS NOT A TIE. With the wrong round blob nothing is found in the plan cache, every
+// table is skipped, and the means below come out `NaN` — which reads as an instrument fault only if
+// someone is looking. Refuse over an empty set instead.
+if(!cols.length){console.error('ERROR: 0 class columns — the plan cache holds nothing for this engine hash.\n' +
+  `       ROUND_INDEX=${IDX}\n` +
+  '       Point ROUND_INDEX at the index.html the cached plans were solved with, or re-solve.\n' +
+  '       Refusing to correlate two accounts over an empty set.');process.exit(2);}
 const pear=(a,b)=>{const n=a.length,ma=a.reduce((x,y)=>x+y,0)/n,mb=b.reduce((x,y)=>x+y,0)/n;
   let s=0,x2=0,y2=0; for(let i=0;i<n;i++){const p=a[i]-ma,q=b[i]-mb;s+=p*q;x2+=p*p;y2+=q*q;} return (x2<=0||y2<=0)?null:s/Math.sqrt(x2*y2);};
 const rI=[],rC=[]; for(const c of cols){const a=pear(c.I,c.S),b=pear(c.C,c.S); if(a!==null&&b!==null){rI.push(a);rC.push(b);}}

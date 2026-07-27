@@ -206,12 +206,28 @@ function alignByTime(mt, st, tol = 0.75, gap = 0.5) {
 }
 
 // ── THE CAUSE CLASSIFIER ─────────────────────────────────────────────────────────────────────────
-const CLASSES = ['aoe', 'inter', 'ramp', 'window', 'none'];
+// ★ TWO REGIMES, AND CONFLATING THEM IS WHAT MADE THE OLD NUMBER UNREADABLE. The start/cast-time
+// residue splits cleanly by MAGNITUDE, and the two halves have different causes and different fixes:
+//
+//   · |Δ| < MACRO — the MILLISECOND LATTICE. wowsims takes 334 ms per Arcane Blast stack where the
+//     model takes 1/3 s, and rounds every cast with `.Round(time.Millisecond)` (MECHANICS §1.1,
+//     sim/planspec.mjs header). The two grids therefore sit a few ms apart and stay there. Measured
+//     here: a FLAT ~10 ms for a whole 135 s fight. It is a KNOWN, NAMED cause — not a mystery — and a
+//     fight whose entire residue is this is failing the audit's 11 ms tolerance, not the physics.
+//   · |Δ| ≥ MACRO — a real placement disagreement, worth a location. A cast is ≥ 1 s, so 50 ms is
+//     ~5 % of the shortest possible one: comfortably above the lattice and far below anything that
+//     could be a cast.
+//
+// ⚠ THE THRESHOLD IS NOT A TOLERANCE. Nothing is forgiven by landing under it — the headline
+// PASS/FAIL never sees it. It only decides which bucket the explanation goes in.
+const MACRO = +flag('macro', '0.05');
+const CLASSES = ['aoe', 'inter', 'ramp', 'window', 'proc', 'none'];
 const CLASS_LABEL = {
   aoe:    'AoE wall (PRICED — PHASE13 §1)',
   inter:  'intermission edge',
   ramp:   'opening ramp',
   window: 'buff-window edge',
+  proc:   'Tirisfal 4pc proc edge (tool)',
   none:   'UNEXPLAINED (no boundary near)',
 };
 
@@ -270,14 +286,15 @@ function analyse(rec) {
   const procUp = t => { let n = 0; for (const g of rec.gains) if (g <= t + 1e-9) n++; for (const f of rec.fades) if (f <= t + 1e-9) n--; return n > 0; };
   const baseSp = Math.min(...rec.dbg.map(x => x.sp - (procUp(x.tc) ? T5_PROC_SP : 0)));
 
-  const out = { events: [], carry: { t: 0, cast: 0, sp: 0, mult: 0 }, lone: [], counts: {} };
+  const out = { events: [], carry: { t: 0 }, lone: [], counts: {},
+    micro: { t: 0, cast: 0, worstT: 0, worstCast: 0 } };
   for (const c of CLASSES) out.counts[c] = { t: 0, cast: 0, sp: 0, mult: 0, carryT: 0 };
 
   // unmatched casts — one side asserts a cast the other never makes. Its own kind of finding.
-  for (const i of loneM) out.lone.push({ side: 'model', i, t: M[i].t, ...classify(M[i], bnds, wins, null, M[i].t, M[i].t + M[i].cast) });
+  for (const i of loneM) out.lone.push({ side: 'model', i, t: M[i].t, frac: M[i].frac, ...classify(M[i], bnds, wins, null, M[i].t, M[i].t + M[i].cast) });
   for (const j of loneS) out.lone.push({ side: 'sim', j, t: S[j].t, ...classify({ stacks: 3 }, bnds, wins, null, S[j].t, S[j].t + S[j].cast) });
 
-  let prevOff = null, lastEvent = { t: null };
+  let prevOff = null, lastEvent = null;
   for (const [i, j] of pairs) {
     const m = M[i], s = S[j];
     const d = rec.dbg.find(x => Math.abs(x.tc - (s.t + s.cast)) < 0.06) || rec.dbg[j];
@@ -289,27 +306,41 @@ function analyse(rec) {
     const ds = simSp === null ? 0 : Math.abs(simSp - mSp);
     const dm = simMult === null ? 0 : Math.abs(simMult - mMult);
 
-    // ★ START: an EVENT only where the offset CHANGES. Two lattices that parted once and then ran in
-    // parallel disagree on every later cast; counting each is 1 finding and N−1 echoes of it.
-    const jump = prevOff === null ? Math.abs(off) : Math.abs(off - prevOff);
+    // ★ START: an EVENT only where the offset CHANGES by a MACRO step. Two lattices that parted once
+    // and then ran in parallel disagree on every later cast; counting each is 1 finding and N−1 echoes
+    // of it. Below MACRO the offset is the millisecond lattice and gets its own bucket.
     if (Math.abs(off) > TOL.t) {
-      if (jump > TOL.t) {
+      const jump = prevOff === null ? Math.abs(off) : Math.abs(off - prevOff);
+      if (Math.abs(off) < MACRO) { out.micro.t++; out.micro.worstT = Math.max(out.micro.worstT, Math.abs(off)); }
+      else if (jump >= MACRO) {
         const c = classify(m, bnds, wins, HASTE_KINDS, m.t, m.t + m.cast);
-        lastEvent = { t: c.cls };
+        lastEvent = c.cls;
         out.events.push({ col: 'start', i, j, t: m.t, st: s.t, delta: off, jump, ...c });
         out.counts[c.cls].t++;
-      } else { out.carry.t++; if (lastEvent.t) out.counts[lastEvent.t].carryT++; }
+      } else { out.carry.t++; out.counts[lastEvent || 'none'].carryT++; }
     }
     prevOff = off;
 
     if (dc > TOL.cast) {
-      const c = classify(m, bnds, wins, HASTE_KINDS, m.t, m.t + m.cast);
-      out.events.push({ col: 'cast', i, j, t: m.t, m: m.castDn, s: s.cast, delta: s.cast - m.castDn, ...c });
-      out.counts[c.cls].cast++;
+      if (dc < MACRO) { out.micro.cast++; out.micro.worstCast = Math.max(out.micro.worstCast, dc); }
+      else {
+        const c = classify(m, bnds, wins, HASTE_KINDS, m.t, m.t + m.cast);
+        out.events.push({ col: 'cast', i, j, t: m.t, m: m.castDn, s: s.cast, delta: s.cast - m.castDn, ...c });
+        out.counts[c.cls].cast++;
+      }
     }
     // VALUE columns are read at the cast's COMPLETION (PHASE12 §6.12), so probe there.
     if (ds > TOL.sp) {
-      const c = classify(m, bnds, wins, VALUE_KINDS, m.t + m.cast, m.t + m.cast);
+      // ⚠ THE TOOL'S OWN SUBTRACTION HAS AN EDGE, and it must not be charged to the model. The header
+      // removes the Tirisfal 4pc +70 SP proc from the sim's SP by reading its gain/fade lines; a cast
+      // completing ON one of those instants can fall on the wrong side of `procUp`'s `<=`, leaving a
+      // residue of EXACTLY 70. No modelled buff is worth 70 SP, so the value is unambiguous — but the
+      // classification is still gated on a proc edge actually being nearby, so a genuine 70 elsewhere
+      // stays visible.
+      const procEdge = [...rec.gains, ...rec.fades].some(e => Math.abs(e - (m.t + m.cast)) <= HORIZON);
+      let c = Math.abs(ds - T5_PROC_SP) < 0.6 && procEdge
+        ? { cls: 'proc', d: 0, why: `Tirisfal 4pc +${T5_PROC_SP} SP proc edge — the tool's subtraction, not the model` }
+        : classify(m, bnds, wins, VALUE_KINDS, m.t + m.cast, m.t + m.cast);
       const named = Object.entries(rec.bufVal).find(([, v]) => v.kind === 'sp' && Math.abs(v.value - ds) < 0.6);
       out.events.push({ col: 'sp', i, j, t: m.t, tc: m.t + m.cast, m: mSp, s: simSp, delta: simSp - mSp,
         exact: named ? named[0] : null, ...c });
@@ -333,8 +364,9 @@ if (!fs.existsSync(RUNNER) && !(CACHE && picked.every(k => fs.existsSync(cachePa
   process.exit(0);
 }
 
-let failures = 0, audited = 0, aoeOnly = 0;
+let failures = 0, audited = 0, aoeOnly = 0, microOnly = 0;
 const TOTAL = {}; for (const c of CLASSES) TOTAL[c] = { t: 0, cast: 0, sp: 0, mult: 0, carryT: 0 };
+const MICRO = { t: 0, cast: 0, worstT: 0, worstCast: 0 };
 let totalCarry = 0, totalLone = 0;
 const perFight = [];
 
@@ -390,22 +422,34 @@ for (const kase of picked) {
   // ── the cause split ────────────────────────────────────────────────────────────────────────────
   const A = analyse(rec);
   for (const c of CLASSES) for (const k of ['t', 'cast', 'sp', 'mult', 'carryT']) TOTAL[c][k] += A.counts[c][k];
+  MICRO.t += A.micro.t; MICRO.cast += A.micro.cast;
+  MICRO.worstT = Math.max(MICRO.worstT, A.micro.worstT); MICRO.worstCast = Math.max(MICRO.worstCast, A.micro.worstCast);
   totalCarry += A.carry.t; totalLone += A.lone.length;
-  const nonAoe = CLASSES.filter(c => c !== 'aoe')
-    .reduce((a, c) => a + A.counts[c].t + A.counts[c].cast + A.counts[c].sp + A.counts[c].mult, 0)
-    + A.lone.filter(l => l.cls !== 'aoe').length;
-  const unex = A.counts.none.t + A.counts.none.cast + A.counts.none.sp + A.counts.none.mult
-    + A.lone.filter(l => l.cls === 'none').length;
-  const explainedByAoe = !ok && nonAoe === 0;
-  if (explainedByAoe) aoeOnly++;
-  perFight.push({ name: rec.name, ok, A, nonAoe, unex, explainedByAoe });
   const seg = c => { const x = A.counts[c]; return x.t + x.cast + x.sp + x.mult; };
+  // ⚠ EVERY residue item must land in exactly one of these three, or the classifier is laundering.
+  // `nonAoe` therefore counts the ms-lattice bucket, the carry and the unmatched casts too — an
+  // earlier draft summed only the located events and duly declared a fight with no AoE phase at all
+  // "AoE-wall ONLY". That is §8's self-flattering instrument, caught by its own output.
+  const aoeTot = seg('aoe') + A.lone.filter(l => l.cls === 'aoe').length;
+  const nonAoe = CLASSES.filter(c => c !== 'aoe').reduce((a, c) => a + seg(c), 0)
+    + A.lone.filter(l => l.cls !== 'aoe').length + A.micro.t + A.micro.cast + A.carry.t;
+  const unex = A.counts.none.t + A.counts.none.cast + A.counts.none.sp + A.counts.none.mult
+    + A.counts.none.carryT + A.lone.filter(l => l.cls === 'none').length;
+  const explainedByAoe = !ok && aoeTot > 0 && nonAoe === 0;
+  // the other honest corrected count: a fight whose ENTIRE residue is the ms lattice (MECHANICS §1.1)
+  const explainedByMicro = !ok && !explainedByAoe &&
+    (A.micro.t + A.micro.cast) > 0 && (nonAoe - A.micro.t - A.micro.cast) === 0 && aoeTot === 0;
+  if (explainedByAoe) aoeOnly++;
+  if (explainedByMicro) microOnly++;
+  perFight.push({ name: rec.name, ok, A, aoeTot, nonAoe, unex, explainedByAoe, explainedByMicro });
   console.log(`      by cause (events)   — ` + CLASSES.map(c => `${c} ${seg(c)}`).join(' · ') +
-    ` · unmatched ${A.lone.length} · carry ${A.carry.t}` + (explainedByAoe ? '   ← AoE-wall ONLY (priced)' : ''));
+    ` · unmatched ${A.lone.length} · carry ${A.carry.t} · ms-lattice ${A.micro.t + A.micro.cast}` +
+    (explainedByAoe ? '   ← AoE-wall ONLY (priced)' : explainedByMicro ? `   ← ms-lattice ONLY (worst ${(Math.max(A.micro.worstT, A.micro.worstCast) * 1000).toFixed(0)} ms)` : ''));
 
   if (has('by-cause') && (A.events.length || A.lone.length)) {
     for (const l of A.lone) console.log(
-      `      · UNMATCHED ${l.side === 'model' ? 'model' : 'sim  '} cast @${l.t.toFixed(3)}   [${l.cls}] ${l.why}`);
+      `      · UNMATCHED ${l.side === 'model' ? 'model' : 'sim  '} cast @${l.t.toFixed(12)}` +
+      (l.frac !== undefined ? ` credited ${(l.frac * 100).toFixed(1)}%` : '') + `   [${l.cls}] ${l.why}`);
     for (const e of A.events) {
       const head = `      · ${e.col.padEnd(5)} i=${String(e.i).padStart(3)} t=${e.t.toFixed(3).padStart(8)}`;
       const body = e.col === 'start' ? `model→sim ${e.delta >= 0 ? '+' : ''}${e.delta.toFixed(3)}s (jump ${e.jump.toFixed(3)}s)`
@@ -439,28 +483,34 @@ for (const kase of picked) {
 
 // ── the roll-up ──────────────────────────────────────────────────────────────────────────────────
 console.log('\n── RESIDUE BY CAUSE, all audited fights ────────────────────────────────────────────');
-console.log('   class                             start  cast    SP  mult   (start-carry)');
+console.log('   located events (|Δt| ≥ ' + (MACRO * 1000).toFixed(0) + ' ms)     start  cast    SP  mult   (start-carry)');
 for (const c of CLASSES) {
   const x = TOTAL[c];
   console.log(`   ${CLASS_LABEL[c].padEnd(32)} ${String(x.t).padStart(5)} ${String(x.cast).padStart(5)} ` +
     `${String(x.sp).padStart(5)} ${String(x.mult).padStart(5)}   ${String(x.carryT).padStart(6)}`);
 }
+console.log(`   ${'ms lattice (MECHANICS §1.1)'.padEnd(32)} ${String(MICRO.t).padStart(5)} ${String(MICRO.cast).padStart(5)} ` +
+  `${'—'.padStart(5)} ${'—'.padStart(5)}        —    worst ${(MICRO.worstT * 1000).toFixed(0)} ms start / ${(MICRO.worstCast * 1000).toFixed(0)} ms cast`);
 console.log(`   unmatched casts (one side only): ${totalLone}     start-carry total: ${totalCarry}`);
-const unexTotal = TOTAL.none.t + TOTAL.none.cast + TOTAL.none.sp + TOTAL.none.mult;
-console.log(`\n   ⇒ ${TOTAL.aoe.t + TOTAL.aoe.cast + TOTAL.aoe.sp + TOTAL.aoe.mult} event(s) are the PRICED AoE-wall divergence (PHASE13 §1) — not defects.`);
-console.log(`   ⇒ ${unexTotal} event(s) have no boundary within ${HORIZON.toFixed(1)}s. Those, and only those, are unattributed.`);
+const sumC = c => TOTAL[c].t + TOTAL[c].cast + TOTAL[c].sp + TOTAL[c].mult;
+console.log(`\n   ⇒ ${sumC('aoe')} event(s) are the PRICED AoE-wall divergence (PHASE13 §1) — not defects.`);
+console.log(`   ⇒ ${MICRO.t + MICRO.cast} deviation(s) are the sub-${(MACRO * 1000).toFixed(0)} ms lattice — a known, named cause, not a mystery.`);
+console.log(`   ⇒ ${sumC('none') + TOTAL.none.carryT} event(s) have no boundary within ${HORIZON.toFixed(1)}s. Those, and only those, are unattributed.`);
 if (perFight.length) {
-  console.log('\n   per fight:  fight                                verdict   non-AoE events   unexplained');
+  console.log('\n   per fight:  fight                                verdict    AoE  non-AoE  unexplained');
   for (const f of perFight) console.log(
-    `               ${f.name.padEnd(36)} ${(f.ok ? 'PASS' : f.explainedByAoe ? 'FAIL*' : 'FAIL').padEnd(7)} ` +
-    `${String(f.nonAoe).padStart(10)} ${String(f.unex).padStart(13)}`);
-  console.log('               * FAIL whose entire residue is the priced AoE-wall divergence.');
+    `               ${f.name.padEnd(36)} ${(f.ok ? 'PASS' : f.explainedByAoe ? 'FAIL*' : f.explainedByMicro ? 'FAIL†' : 'FAIL').padEnd(8)} ` +
+    `${String(f.aoeTot).padStart(4)} ${String(f.nonAoe).padStart(8)} ${String(f.unex).padStart(12)}`);
+  console.log('               * entire residue is the priced AoE-wall divergence   † entire residue is the ms lattice');
 }
 
 console.log('');
 if (failures) {
   console.log(`✗ ${failures} of ${audited} audited fight(s) disagree with the sim.`);
-  console.log(`  Of those, ${aoeOnly} are ENTIRELY the priced AoE-wall divergence (PHASE13 §1) ⇒ corrected pass count ${audited - failures + aoeOnly} of ${audited}.`);
+  console.log(`  Of those, ${aoeOnly} are ENTIRELY the priced AoE-wall divergence (PHASE13 §1)`);
+  console.log(`  ⇒ CORRECTED PASS COUNT ${audited - failures + aoeOnly} of ${audited} (was ${audited - failures} of ${audited}).`);
+  console.log(`  A further ${microOnly} fail on nothing but the sub-${(MACRO * 1000).toFixed(0)} ms lattice (${audited - failures + aoeOnly + microOnly} of ${audited} if that is also set aside);`);
+  console.log('  that is a KNOWN cause, but it is not a priced one — do not fold it into the headline.');
   console.log('  Read the column that failed: START is the cast lattice (MECHANICS §1.1), CAST TIME is');
   console.log('  the haste snapshot, SPELL POWER and DAMAGE MULT are the value snapshot read at cast');
   console.log('  COMPLETION (PHASE12 §6.12). Those are three different fixes — do not guess which.');
