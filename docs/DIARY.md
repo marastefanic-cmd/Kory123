@@ -478,6 +478,81 @@ if that fails it becomes a tool-debugging phase instead of a 36-table campaign.
 
 ---
 
+### 07-27 — PHASE 10 CLOSED: the acceptance verdict is defined again, and three debts get real prices
+
+**The problem Phase 10 existed to fix was not a failing test — it was the absence of one.** On 07-26
+the reference character was re-exported and the whole gear-A corpus archived, so every model-vs-sim
+number the project owned was denominated in a currency that no longer existed. ACCEPTANCE's status
+block honestly read **"⏳ NO READING YET"**. Round 1 on gear B removes that.
+
+**The arc.** A 36-cell campaign (30 class + 6 boss) gathered unattended over ~2 days of wall clock and
+~50 CPU-hours, through a silent 10-hour death (`nohup` from an agent shell leaves the process in the
+session's process group — fixed with `setsid` and a watchdog singleton), a corrupted-but-parseable
+table (fixed with a writer lock), and a mid-round backend switch from the committed wasm to the native
+runner for the boss half. It ends **36/36 under one protocol on one engine**, certified by a
+provenance gate that did not exist when the phase started.
+
+**The verdict: invariant A PASSES (`monoDip = 0.0000%` on all 36). B2 FAILS** — 142 borrowed-win
+columns of 345 across 33/36 tables, worst 0.380%, median 0.035%. **ACCEPTANCE NOT PASSING**, on a
+bar of zero.
+
+★ **The phase's central model result is that the low-haste basin is NOT a gear artefact.** The
+threshold-free persistence test names three of 57 kit-columns, and its first two are gear A's entire
+work list reproduced **cell for cell** — same kit, same haste column, same rival haste, same win
+count. The *denomination* changed and the *cell* did not. (No number crosses the baselines; what is
+compared is which cells a structural test names, which is unitless.)
+
+**And that target is now diagnosed rather than merely located.** It is **one terminal cast**: at the
+worst cell the native plan casts 176 Arcane Blasts and the rival 177, and the same +1 appears at the
+second-largest column (233 → 234), with the measured DPS margins at ≈⅔ of the cast fraction in both —
+exactly what a *marginal*, unbuffed tail cast should be worth. The model scores that pair **0.014%
+apart**, below its own resolution, against a sim that is emphatic at ~13σ. **So the model does not
+mis-rank these layouts; it cannot distinguish them** — which is why cross-haste pooling cannot help
+and why no search fix reaches it. The obvious repair is already falsified: discretizing the scorer
+measured *worse* across a full column (r 0.7910 vs 0.9337).
+
+**The three debts, re-priced.**
+- **B2 SURVIVES.** Its cell *is* the round's worst column, so the corpus prices it directly for the
+  first time: **+0.368 ± 0.020 pp, 5/5 seeds, REAL**, agreeing with BENCH §3e's `+0.389` and
+  `plan-walk`'s `+0.375` on the other engine. Ranking error **≈0.38–0.41 pp**; the ≈0.43 pp target
+  stands. §5's pre-registered closure test ("no residual of the same shape above the noise band")
+  fails emphatically.
+- **The low-haste basin REPRODUCES — and is misnamed twice.** A third persistent column sits at
+  **h130**, mid-grid, so "≤70" described gear A's two cells rather than the mechanism; and the family
+  is not homogeneous — two columns are the terminal-cast blindness above, the third has **equal cast
+  counts** and is a sub-resolution *value* difference.
+- **★ The KT/AoE cells DO NOT REPRODUCE, discharging a standing prediction.** ACCEPTANCE's gear-A
+  record ended that thread with *"the boss-side re-run has NOT been re-gathered under the fix — the 3
+  surviving boss cells are expected to move, but that is a prediction until a round is run."* This is
+  that round. All three survivors were `isc+scb` KT; they now read **0.07%**, **0.05%**, and **not a
+  borrowed-win column at all**, and the whole table tops out at 0.08%. PHASE7 §5.19's AoE press-snap
+  fix landed *after* those measurements and its predicted blast radius was exactly one preset. The
+  debt is **re-priced, not closed**: `mqg+skull` KT `@0`/`@100` now carry the family's magnitude.
+
+**⚠ Two instrument findings, and both were found by reading a tool's output instead of its summary.**
+
+1. **"wasm == native" never meant bit-identity.** `tests/sim-duel.mjs` asserts `delta < 0.05` DPS and
+   prints both sides at one decimal; §8.26 summarised a gated re-run as *"BIT-IDENTICAL"* and the
+   handoff doc turned that into *"the re-run changes the stamp, not the numbers."* Re-gathering all 30
+   class tables on the native runner gave **24 identical, 6 changed** — five re-rounding a derived
+   percentage by one step, and one **flipping a published verdict** (`scb-mqg-medlong` DEFICIT →
+   CLEAN) off a ~1e-6 relative difference, because the matrix prints at `toFixed(1)` while `diagWorst`
+   is computed from full-precision doubles. **Never derive a headline at finer precision than the
+   artefact you validated it against.**
+2. **`ripple-audit` fails two of its own pre-registered self-checks** (P5 monotonicity, marginally;
+   P3 KT discrimination, 3/13 against a bar of 7) and says so in words — *"this tool is suspect, stop
+   here"* — while its machine-readable footer stamps **`mono=0`**, which means FAILURE even though the
+   `vacuous=0` beside it means success. **Opposite polarity on one line**, and it had already caused
+   §8.22 to record a failing self-check as clean. ⇒ no ripple decomposition is quotable on this round.
+
+**What the round also demonstrated about its own headline metric.** The `CLEAN 3/36` figure is worth
+one table: two of the three are low-plateau (the tool emits 2–3 distinct plans across 10 haste points,
+so adaptation is barely being tested) and the third is the rounding artefact above. That is
+ACCEPTANCE's own *"the bar is right, the banner is nearly powerless"* confirmed from a new direction —
+**a verdict banner that a 1e-6 engine difference can flip is not a thing to steer work by.**
+
+---
+
 ## The corrections ledger — what we believed, and what disproved it
 
 The most valuable part of this diary. Each entry: the belief, why we held it, what overturned it, and
@@ -648,7 +723,30 @@ add a *new* entry rather than deleting the old.
 
 ---
 
+| 07-27 | **"The shipped wasm == the native runner", read as bit-identity.** PHASE10 §8.26 gated the boss-half backend switch by re-running a completed class table through the native runner and reporting it reproduced the committed matrix **"BIT-IDENTICALLY"**; the handoff doc turned that into *"the re-run changes the stamp, not the numbers"*, which is why re-gathering the other 30 tables looked like pure ceremony. | **RE-GATHERING ALL 30 MEASURED IT: 24 identical, 6 CHANGED.** `tests/sim-duel.mjs` asserts `delta < 0.05` DPS (`:87`) and prints both sides at one decimal — it never claimed more. Meanwhile `xval-bench.mjs` prints the matrix at `toFixed(1)` (`:418`) but computes `diagWorst` from the full-precision doubles (`:426-431`), so an identical *printed* matrix constrains the underlying values only to ±0.05 DPS. Five tables re-rounded a derived percentage by one step; the sixth **flipped a published verdict** — `scb-mqg-medlong` DEFICIT 0.00% → **CLEAN**, both plans printing `2914.8`, off a ~1e-6 relative difference. A Monte-Carlo sim needs only one flipped comparison in one iteration of 6000 to do that. ★ **THE RULE: never derive a headline at finer precision than the artefact you validated it against.** The gate compared at 1 dp and the conclusion was quoted at 2. Nothing was broken — the *reading* was finer than the instrument. Corollary, and it cuts at ACCEPTANCE's own metric: **a CLEAN/DEFICIT banner that a 1e-6 engine difference can flip is not a thing to steer work by** — which is the B-banner analysis arriving from a new direction. | PHASE10 §8.27; ACCEPTANCE "Current status (GEAR B, round 1)". |
+
+| 07-27 | **`ripple-audit`'s self-checks were passing.** PHASE10 §8.22 recorded the class stratum's ripple row as `priced=112 inside=86 over=16 indet=10 · rho=0.289 · self-check mono=0 · vacuous=0` and read it as clean — and on that basis the ripple decomposition kept supplying half the band's pre-registered scope. | **`mono=0` MEANS THE CHECK FAILED.** The footer is `mono=${mono ? 1 : 0}`, so `0` is failure — while the `vacuous=0` sitting beside it on the same line is the *good* outcome. **Two flags with opposite polarity on one line**, and the prose immediately above it had been saying so in words all along: *"**NOT MONOTONE — this tool is suspect, stop here**"*. On the full round it fails **two** of its five pre-registered predictions: P5 (median floor must fall with fight length — inverts at `medlong 0.103 < long 0.106`, marginally, but the check declares no tolerance) and P3 (the KT family must not be explained away — **3/13** over floor against a bar of 7). ⇒ **no ripple decomposition is quotable on this round** — no "N % is below the instrument's resolution", no family ranking. ★ Same shape as the entry above and found the same way: **by reading the tool's own output instead of its summary line.** The instrument was honest in prose and misleading in its stamp, and the stamp is what got quoted. | PHASE10 §8.30; ACCEPTANCE's gear-B block. |
+
+| 07-27 | **The KT / AoE cells were a live debt.** ACCEPTANCE carried three surviving over-floor boss cells (`isc+scb` KT @95/@195/@245, 0.21–0.38 %) as the AoE half of the acceptance gap — the only boss cells to clear the ±0.1251 pp band. | **THEY DO NOT REPRODUCE, and this was PREDICTED.** ACCEPTANCE's own text ended the thread with *"the boss-side acceptance re-run has NOT been re-gathered under the fix — the 3 surviving boss cells are expected to move, but that is a prediction until a round is run."* Gear-B round 1 is that run: the three columns read **0.07 %**, **0.05 %**, and **not a borrowed-win column at all**, and the whole `isc+scb` KT table now tops out at 0.08 %. PHASE7 §5.19's AoE press-snap fix landed *after* the gear-A measurements, with a predicted blast radius of exactly one preset (KT is the corpus's only `aoe` phase). ⚠ **Re-priced, not closed**: the KT family's magnitude has moved to the *other* kit (`mqg+skull` KT `@0` 0.304 %, `@100` 0.290 %), and the ±0.1251 pp boss-cell band cannot be re-derived from this round because the tool that would price boss cells fails its KT discrimination check (entry above). ★ **A debt that survives re-measurement and a debt that evaporates look identical until the round is run** — which is the whole argument for Phase 10 having existed. | PHASE10 §8.31; ACCEPTANCE gear-B block. |
+
 ## Open debts (recorded, to be FIXED in a later phase — not accepted)
+
+> ## ★ RE-PRICED ON GEAR B, 2026-07-27 (PHASE10 §8.31) — read this before any figure below
+>
+> Every number in this list was gear-A denominated. Round 1 on gear B re-measured the three that
+> mattered, and the entries below are **historical from here down** — their *reasoning* stands, their
+> *figures* are superseded by the gear-B block in `docs/ACCEPTANCE.md`:
+>
+> | debt | gear-B verdict |
+> |---|---|
+> | **B2** | **SURVIVES.** Its cell is the round's worst column: banded **+0.368 ± 0.020 pp, 5/5 seeds, REAL**. Ranking error **≈0.38–0.41 pp** — the ≈0.445 pp target essentially stands. **NOT closed.** |
+> | **the low-haste (≤70) micro-placement slack** | **REPRODUCES cell for cell** — so it is a property of the MODEL, not of the reference gear. ⚠ **But it is misnamed twice:** a third persistent column sits mid-grid at **h130**, and the family is not one mechanism — two columns are **one terminal cast** (176→177, 233→234), the third has **equal cast counts** and is a sub-resolution *value* difference (§8.25). Read it as **terminal-cast blindness**, not a low-haste slack. |
+> | **the KT / AoE cells** | **DO NOT REPRODUCE** — gear A's three `isc+scb` KT survivors read 0.07 %, 0.05 % and *not a borrowed win at all*, discharging PHASE7 §5.19's standing prediction. ⚠ **Re-priced, not closed**: `mqg+skull` KT @0/@100 now carry the family's magnitude, and the boss-cell noise band is owed a fresh measurement. |
+>
+> **Unchanged and still open** (structural, not baseline-dependent): the resolution-floor **criterion
+> question** (a user call), the absence of exhaustive ground truth above ~h150, and Ashtongue's
+> exclusion. **Newly inherited:** `ripple-audit`'s failing P3/P5 self-checks (PHASE10 §8.30).
+
 - **✔ CLOSED 07-25 — `5:40 lust 0:05` SEARCH-MISS.** Root-caused to a **missing seed class** and
   fixed by `groupSeeds` (RULES §4b · ARCHITECTURE · PHASE9 §5.14). Seed-robustness went **2/6 → 6/6**
   with zero regressions elsewhere and `PLAN-DIFF IDENTICAL` on all 25. The eight killed mechanisms are
