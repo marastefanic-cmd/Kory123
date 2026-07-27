@@ -23,9 +23,12 @@ project's own definition of correct and destroys the record of what the retired 
 
 Four separate commits, never combined, each with its own gate.
 
-★ **All three scoring bugs were MASKED by another defect until it was fixed** — bug 3 even *cancelled*
-against bug 2 on any mid-cast press, so model and sim agreed exactly and the pair was invisible.
-Assume the next fix uncovers the next one, and pick discriminating cases deliberately.
+★ **Each fix uncovered the next.** Bug 1 was simply never checked — nobody had asked whether the
+number that ranks is the number the docs define. Bug 2 was **inert** until bug 1 landed (the integral
+never read the walk's windows). Bug 3 **cancelled against bug 2** on any mid-cast press, so model and
+sim agreed exactly and the pair was invisible to any probe that did not deliberately choose a
+boundary-aligned press. Assume the next fix uncovers the next one, and pick discriminating cases on
+purpose rather than convenience.
 
 ## 3. ▶▶ THE NEXT ACTION, AND IT IS A PREREQUISITE — NOT A FOLLOW-UP
 
