@@ -154,6 +154,12 @@ changing the model or the passes**, and keep it updated as the living theorycraf
      the measured case. Windows run their full duration from when the ability actually FIRES;
      raid externals (Lust/PI/Drums) are the exception and start when CALLED. Gate:
      `tools/window-span.mjs` must match wowsims at every probe offset.
+  3. **One snapshot rule for both kinds of buff.** ★ **HASTE is fixed at the cast's START; VALUE
+     (+SP, damage multipliers) is read at the cast's COMPLETION**, over the window `(start, end]` —
+     open left, closed right, both edges measured (`tools/snapshot-rule.mjs`). Deciding everything at
+     the start over-paid one cast per window. Gate: `tools/credit-check.mjs`.
+     ⚠ Its discriminating case is a press landing **ON a cast boundary**; on a mid-cast press the old
+     defects cancelled and the broken engine passed.
   Full evidence: `docs/PHASE12.md` §6.10 (the objective) and §6.11 (the windows).
 - **The sim's job is to FALSIFY THE SEARCH, not to arbitrate the scorer.** With an exact objective the
   model's ranking of two plans is arithmetic and cannot be wrong — so when the sim prefers a plan the

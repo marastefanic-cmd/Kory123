@@ -19,8 +19,13 @@ project's own definition of correct and destroys the record of what the retired 
 | **step 2** — press transcription | the sim now fires every press on the cast the model scored it on | 7.14 % → **0.00 %** transcription failures on real logs; engine block byte-identical, so no plan moved |
 | **step 1** — the objective | rank on the per-cast sum, not the rate integral | `self-consistency` **0.00e+0** at 2755 scorings (control: the old engine still FAILS at 0.2114 %) |
 | **bug 2** — buff windows | mid-cast presses were given short windows | `window-span` now matches wowsims at every offset (was 15 casts vs 16) |
+| **bug 3** — snapshot rule | haste is fixed at cast START, value is read at cast COMPLETION; the walk used one rule for both | `credit-check` 3/3; the pre-fix engine pays 14 casts where the sim pays 13 |
 
-Three separate commits, never combined, each with its own gate.
+Four separate commits, never combined, each with its own gate.
+
+★ **All three scoring bugs were MASKED by another defect until it was fixed** — bug 3 even *cancelled*
+against bug 2 on any mid-cast press, so model and sim agreed exactly and the pair was invisible.
+Assume the next fix uncovers the next one, and pick discriminating cases deliberately.
 
 ## 3. ▶▶ THE NEXT ACTION, AND IT IS A PREREQUISITE — NOT A FOLLOW-UP
 
@@ -91,6 +96,8 @@ append-only record and the evidence trail — but their verdicts are not the mod
 |---|---|
 | `tools/self-consistency.mjs` | **the step-1 gate** — does the thing that RANKS equal the board the tool SHOWS? no sim |
 | `tools/window-span.mjs` | **the bug-2 gate** — model buff-window span vs wowsims |
+| `tools/snapshot-rule.mjs` | when a buff applies to a cast: haste at START, value at COMPLETION |
+| `tools/credit-check.mjs` | **the bug-3 gate** — does the model pay exactly the casts the sim pays? |
 | `tests/press-fire.mjs` | **the step-2 gate** — part A no-sim, part B skips loudly without `RUNNER` |
 | `tools/press-exposure.mjs` | corpus press-transcription exposure, pure arithmetic |
 | `tools/press-headtohead.mjs` | old vs new transcription on real logs; splits transcription / HELD / LATTICE |

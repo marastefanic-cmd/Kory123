@@ -139,7 +139,12 @@ begins already-buffed. Consequences the model must respect:
 >    random cast phase — and a given plan's phase is *determined*, so it is the wrong evaluation for
 >    ranking two concrete plans. Measured gap: **median 0.2114 % of score, max 1.4263 %**, against
 >    ranking margins of ~0.005–0.07 %. It survives only as the `integral` diagnostic.
-> 2. **Expiring a buff window at `press + duration`.** A self-press cannot fire while a cast is in
+> 2. **One snapshot rule for both kinds of buff.** ★ **Haste is fixed at the cast's START** (an
+>    in-flight cast keeps its speed) **and value — +SP, damage multipliers — is read at the cast's
+>    COMPLETION**, over `(start, end]`. Both edges measured: a cast completing exactly on the gain is
+>    not paid, one completing exactly on the fade is. Deciding both at the cast's start over-paid one
+>    cast per window (`tools/snapshot-rule.mjs`, `tools/credit-check.mjs`).
+> 3. **Expiring a buff window at `press + duration`.** A self-press cannot fire while a cast is in
 >    flight, so the window must run its full duration from when the ability actually FIRES. Expiring
 >    from the press made every mid-cast window short by the slip — a whole cast in the measured case
 >    (`tools/window-span.mjs`: Icy Veins at 9.6 covered 15 casts, wowsims 16). **Raid externals are the
