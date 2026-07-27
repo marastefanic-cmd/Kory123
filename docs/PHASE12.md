@@ -715,3 +715,60 @@ artifact, the model was right all along"*. That is **not established**, for thre
 cast-count and a sim number disagree with no blind spot in play, that is a SIM-SETUP AUDIT TRIGGER,
 not a model bug — the sim is rarely wrong, we have usually used it wrong."* Four scorer terms were
 designed and falsified this session before anyone checked whether the presses fired when asked.
+
+## 6.8 ★★★★ THE MODEL DISAGREES WITH ITSELF BY MORE THAN THE ENTIRE EFFECT WE ARE CHASING
+
+**User, and it is the correct architectural read:** *"The model's evaluation HAS to be deterministic
+and correct… For each individual Arcane blast we know the haste and stacks (i.e. the cast time), we
+know if Arcane Power is active (×1.3), we know if any spellpower buffs are active (normalize what that
+cast is worth vs unbuffed), we know the crit rate. The final number is the effective Arcane Blast
+casts. The mistakes I can see is the search not finding the global optimum of that number — but the
+math has to be solid."*
+
+**The math is not solid.** `tools/self-consistency.mjs`, **2755 plan-scorings, NO SIM anywhere** — the
+model scored against itself:
+
+| quantity | value |
+|---|---|
+| `robust` (rate integral, what RANKS) − tapered discrete cast sum | median **+0.432** eff ABs · range **−0.757 … +1.656** |
+| the same, as % of score | median **0.2114 %** · p90 **0.5646 %** · **max 1.4263 %** |
+| the corpus's ENTIRE deficit range, for scale | **0.004 % – 0.380 %** |
+| the model's OWN margins in the deficit columns | **~0.005 % – 0.07 %** |
+
+★★★ **The model's disagreement with itself is ~3× the largest deficit in the corpus and ~30× the
+margins it uses to rank plans.** And the gap is **not a constant offset** — it swings across 2.413
+effective ABs — so it does **not** cancel when two plans are compared. **It IS the near-tie.**
+
+`simulate()` computes the same fight two ways: a **discrete cast walk** (`casts`, `index.html:1086`)
+that already carries exactly the per-cast information the user enumerates, and a **continuous rate
+integral** (`:1248-1263`) that is what `robust` returns and what every ranking uses. The integral is
+the *expectation over cast phase*; the cast walk is the *realized value for this plan*. **For ranking
+two specific plans the realized value is the correct one**, and it is the one CLAUDE.md and
+MECHANICS §4 define the objective to be.
+
+### This retro-explains every negative result in §6.1–§6.5, and invalidates one of my own conclusions
+
+- **§6.1** (terminal-cast term, net −39) · **§6.3** (floor overcap, t=1.71) · the tie-break (+3 of
+  285): all were terms tuned against a quantity that is not single-valued at the scale of the effect.
+- ⛔ **§6.5a is WITHDRAWN as evidence.** It concluded *"the documented objective, implemented
+  literally, is a WORSE ranker (r 0.9279 vs 0.9721)"*. That comparison is void twice over: the two
+  accounts differ by a median 0.21 % (this section), and the sim it was scored against fires every
+  press 1.0–1.5 s late (§6.7). **Neither side of that comparison was trustworthy.** The claim that the
+  integral beats the cast sum is **unproven**, not established.
+
+### ⇒ THE ORDER OF WORK, and it is not what this session assumed
+
+1. **Make the objective ONE thing.** Score the discrete per-cast sum — deterministic, exactly as the
+   docs define it and as the user describes. The integral, if kept at all, is a search-smoothing
+   device and must never be the arbiter. **Gate: `robust` == tapered cast sum to float precision.**
+2. **Fix the harness press timing** (§6.7) so the sim is a valid reference again.
+3. **Only then hunt search bugs** — *"the search not finding the global optimum of that number"* is
+   the right bug class, and it becomes a well-posed question the moment the number is single-valued.
+   ⚠ Note `tools/deficit-fix.mjs` already found **0/4 search misses at 3× restarts** — but that was
+   the search optimising the *integral*. Against a corrected objective it must be re-run.
+
+⚠ **Expect plans to move, and treat that as the point rather than as a regression.** Changing the
+arbiter changes the argmax; `exact-match` goldens will need re-recording under the normal rule (only
+after each changed plan is shown to improve the objective, sim-verified where a blind spot is in
+play). This is the largest-blast-radius change the project has considered, and it is also the first
+one aimed at the actual defect.
