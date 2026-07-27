@@ -1,7 +1,13 @@
 // THE END-TO-END AUDIT — does the model's entire cast-by-cast account match a real combat log?
 //
 //   RUNNER=… node tools/model-audit.mjs [--preset "2:00 lust 0:05"] [--all] [--show 12]
-//                                       [--by-cause] [--cache DIR] [--horizon 2.0]
+//                                       [--by-cause] [--cache DIR] [--horizon 2.0] [--macro 0.05]
+//   node tools/model-audit.mjs --self-check      # the classifier's negative control — no runner needed
+//
+// `--cache DIR` persists each fight's solved plan + parsed log, keyed on the engine's AND the runner's
+// bytes. The gather is the whole cost (a solve plus a sim per fight); the classification is arithmetic.
+// With a warm cache the entire 23-fight split re-derives in about a second, so the attribution can be
+// re-cut — different horizon, different macro threshold, a new class — without re-running anything.
 //
 // ── WHY THIS, WHEN THERE ARE ALREADY FOUR GATES ──────────────────────────────────────────────────
 // `window-span`, `credit-check`, `press-fire` and `lattice-drift` each check ONE thing on a
@@ -28,6 +34,8 @@
 // procs are counted, never planned. Its windows are read out of the log and removed from the sim's SP
 // before comparing, so the audit tests the model's own claims rather than punishing it for a proc it
 // deliberately does not model. Anything else that differs is a real disagreement.
+// ★ …and that subtraction was itself WRONG until 2026-07-27, in the exact way the model used to be:
+// it read the proc window with the wrong edge rule and charged the model for it. See `procTools`.
 //
 // ══ ⚠⚠ A PASS COUNT IS MEANINGLESS UNTIL THE RESIDUE IS ATTRIBUTED — READ THIS ════════════════════
 // **Part of the disagreement this tool reports is EXPECTED BY DESIGN.** At an **AoE phase start** the
@@ -39,15 +47,25 @@
 // model is counting a deliberate modelling decision as a bug.
 //
 // ⇒ `--by-cause` splits the residue by LOCATION, so the pass count means something:
-//     · `aoe`        — at/after an AoE phase wall            → PRICED, not a defect (PHASE13 §1)
+//     · `aoe`        — a Blast in flight ACROSS an AoE wall  → PRICED, not a defect (PHASE13 §1)
+//     · `aoexit`     — the AoE phase's far edge (AE lattice) → a finding; §1's ruling does NOT cover it
 //     · `inter`      — at an intermission edge               → a finding, localised
 //     · `ramp`       — the opening ramp                      → a finding, localised
 //     · `window`     — at a buff-window edge, no phase near  → a finding: window membership
+//     · `proc`       — the Tirisfal subtraction's own edge   → THIS TOOL's error, not the model's
 //     · `none`       — no boundary anywhere near             → the genuinely unexplained residue
-// and the classifier reports EVENTS, not raw counts: two lattices that diverged once and then ran in
+// plus a `ms-lattice` bucket for everything under `--macro` (default 50 ms): wowsims takes 334 ms per
+// Arcane Blast stack where the model takes 1/3 s and rounds every cast to the millisecond, so the two
+// grids sit a few ms apart for a whole fight. That is a KNOWN, NAMED cause (MECHANICS §1.1), and it is
+// most of what the raw counts used to be.
+//
+// ★ And the classifier reports EVENTS, not raw counts: two lattices that diverged once and then ran in
 // parallel disagree on every later cast, and calling that "40 mismatches" is 39 double-counts. A
 // mismatch is an EVENT only where the model↔sim offset *changes*; the rest is `carry` and inherits its
-// originating event's class. See `docs/TOOLING.md`'s standing-divergence block.
+// originating event's class. Casts are matched by TIME, not by index — one extra cast on either side
+// makes index `i` name different casts and turns a single defect into a whole-fight tail of noise
+// (Lady Vashj's index-aligned "worst start deviation 15.01 s" is one phantom cast, not a 15 s error).
+// See `docs/TOOLING.md`'s standing-divergence block.
 //
 // ⛔ The classifier EXPLAINS; it must never SUPPRESS. The PASS/FAIL verdict and the four mismatch
 // counts above it are computed exactly as before and are unaffected by any of this — an instrument
@@ -221,9 +239,16 @@ function alignByTime(mt, st, tol = 0.75, gap = 0.5) {
 // ⚠ THE THRESHOLD IS NOT A TOLERANCE. Nothing is forgiven by landing under it — the headline
 // PASS/FAIL never sees it. It only decides which bucket the explanation goes in.
 const MACRO = +flag('macro', '0.05');
-const CLASSES = ['aoe', 'inter', 'ramp', 'window', 'proc', 'none'];
+// ⚠ ONLY THE AoE **START** IS THE PRICED CLASS. PHASE13 §1's ruling is about the Blast in flight
+// ACROSS THE WALL — the model cancels it, wowsims lands it. The AoE phase's **exit** is a different
+// question with no ruling behind it: both sides simply resume Arcane Blast after an Arcane Explosion
+// stream, and if they resume at different instants that is the AE lattice disagreeing, which is a
+// finding. Folding the exit into the priced bucket would forgive a defect using a ruling that does not
+// cover it — so they are two classes, and `aoexit` counts against the model.
+const CLASSES = ['aoe', 'aoexit', 'inter', 'ramp', 'window', 'proc', 'none'];
 const CLASS_LABEL = {
-  aoe:    'AoE wall (PRICED — PHASE13 §1)',
+  aoe:    'AoE wall / start (PRICED, §1)',
+  aoexit: 'AoE phase exit (AE lattice)',
   inter:  'intermission edge',
   ramp:   'opening ramp',
   window: 'buff-window edge',
@@ -234,7 +259,7 @@ const CLASS_LABEL = {
 function boundaries(rec) {
   const b = [];
   for (const s of rec.segments) {
-    if (s.type === 'aoe') { b.push({ kind: 'aoe', t: s.start, what: 'AoE start' }); b.push({ kind: 'aoe', t: s.end, what: 'AoE end' }); }
+    if (s.type === 'aoe') { b.push({ kind: 'aoe', t: s.start, what: 'AoE start' }); b.push({ kind: 'aoexit', t: s.end, what: 'AoE end' }); }
     else if (s.type === 'intermission') { b.push({ kind: 'inter', t: s.start, what: 'intermission start' }); b.push({ kind: 'inter', t: s.end, what: 'intermission end' }); }
   }
   return b;
@@ -252,6 +277,33 @@ function windowEdges(rec) {
   return w.sort((a, b) => a.t - b.t);
 }
 const distTo = (a, b, x) => x < a ? a - x : x > b ? x - b : 0;   // distance from x to the span [a,b]
+
+// ── the Tirisfal 4pc proc, subtracted correctly ──────────────────────────────────────────────────
+// ⚠⚠ THIS TOOL BROKE ITS OWN RULE AND THE BUG COST 70 SP ON EVERY CAST OF A FIGHT. The proc window is
+// `(gain, fade]` — the SAME open-left/closed-right window PHASE12 §6.12a measured for every other
+// value buff — because a cast completing exactly ON the gain does not get it. `procUp` tested
+// `gain <= tc`, so a cast completing exactly on a gain was treated as buffed and had 70 subtracted
+// from an SP that never contained it. That value then became the MINIMUM, i.e. the unbuffed baseline
+// every other cast is measured against, and the whole fight read +70 in the sim column: `4:00 lust
+// 0:05` reported 14 spell-power mismatches, every one of them the tool's.
+// ★ The control that catches it: with the window right, the baseline recovered by subtracting the proc
+// must equal the raw minimum SP — buffs and procs only ADD, so the lowest raw SP already IS unbuffed.
+// If the two disagree the subtraction is wrong, and the audit says so instead of grading with it.
+function procTools(rec) {
+  // up ⟺ some gain is strictly before `t` and its fade is not yet strictly before it — i.e. the window
+  // `(gain, fade]`. BOTH tests are strict, and that is the whole content of the rule: a cast completing
+  // exactly ON the gain misses the buff, and one completing exactly ON the fade keeps it.
+  const up = t => {
+    let n = 0;
+    for (const g of rec.gains) if (g < t - 1e-9) n++;
+    for (const f of rec.fades) if (f < t - 1e-9) n--;
+    return n > 0;
+  };
+  const baseSp = Math.min(...rec.dbg.map(x => x.sp - (up(x.tc) ? T5_PROC_SP : 0)));
+  const rawMin = Math.min(...rec.dbg.map(x => x.sp));
+  const bad = Math.abs(baseSp - rawMin) > 0.05;
+  return { up, baseSp, rawMin, bad };
+}
 
 // Which boundary, if any, owns an event on model cast `mc`? `probe` is the instant that column is
 // read at — the cast's span for a start/haste question, its completion for a value question.
@@ -283,8 +335,7 @@ function analyse(rec) {
   const { pairs, loneM, loneS } = alignByTime(M.map(c => c.t), S.map(c => c.t));
 
   const baseMult = Math.min(...rec.dbg.filter(x => x.base > 0).map(x => x.after / x.base));
-  const procUp = t => { let n = 0; for (const g of rec.gains) if (g <= t + 1e-9) n++; for (const f of rec.fades) if (f <= t + 1e-9) n--; return n > 0; };
-  const baseSp = Math.min(...rec.dbg.map(x => x.sp - (procUp(x.tc) ? T5_PROC_SP : 0)));
+  const { up: procUp, baseSp } = procTools(rec);
 
   const out = { events: [], carry: { t: 0 }, lone: [], counts: {},
     micro: { t: 0, cast: 0, worstT: 0, worstCast: 0 } };
@@ -356,6 +407,55 @@ function analyse(rec) {
   return out;
 }
 
+// ── THE NEGATIVE CONTROL (`--self-check`) ────────────────────────────────────────────────────────
+// ⚠ PHASE13 §8: "every new instrument needs a control that must fail before its green is believed",
+// and the specific failure this classifier could have is the one §1 warns about — quietly filing a
+// real defect under a priced heading. So the control feeds it synthetic fights whose right answers are
+// known by construction, INCLUDING a fight with no AoE phase at all whose whole residue is a macro
+// mismatch: if that ever comes back "explained", the classifier is laundering. It needs no runner.
+function selfCheck() {
+  const bufDur = { scb: 15, isc: 20 }, bufVal = { scb: { kind: 'sp', value: 225 }, isc: { kind: 'sp', value: 155 } };
+  // 40 casts, 1.5 s apart, model and sim identical unless `bend` moves one sim cast onward.
+  const mk = (segments, bendAt, bendBy) => {
+    const model = [], sim = [], dbg = [];
+    for (let i = 0; i < 40; i++) {
+      const t = i * 1.5, off = i >= bendAt ? bendBy : 0;
+      model.push({ t, cast: 1.5, castDn: 1.5, sp: 1000, dmgMult: 1, stacks: 3, ae: false, frac: 1 });
+      sim.push({ t: t + off, cast: 1.5 });
+      dbg.push({ tc: t + off + 1.5, sp: 1000, base: 700, after: 700 });
+    }
+    return { v: 1, key: '', name: 'self-check', T: 60, haste: 0, sp: 1000, t5two: false,
+      model, sim, simAE: [], dbg, gains: [], fades: [], segments, actEff: {}, bufDur, bufVal };
+  };
+  const seg = (a, z, type) => [{ start: 0, end: a, type: 'normal', targets: 0 },
+    { start: a, end: z, type, targets: 6 }, { start: z, end: 60, type: 'normal', targets: 0 }];
+  const probes = [
+    // name                            record                             what MUST come back
+    ['interior mismatch ⇒ none',       mk([], 20, 0.5),                   a => a.counts.none.t === 1 && a.counts.aoe.t === 0],
+    ['mismatch at an AoE start ⇒ aoe', mk(seg(30, 45, 'aoe'), 20, 0.5),   a => a.counts.aoe.t === 1],
+    ['mismatch at an AoE end ⇒ aoexit',mk(seg(15, 30, 'aoe'), 20, 0.5),   a => a.counts.aoexit.t === 1 && a.counts.aoe.t === 0],
+    ['mismatch at an intermission ⇒ inter', mk(seg(30, 45, 'intermission'), 20, 0.5), a => a.counts.inter.t === 1],
+    // 20 ms: above the audit's 11 ms resolution floor (so it IS a mismatch) but below MACRO.
+    ['20 ms offset ⇒ ms-lattice, NOT none', mk([], 20, 0.020),            a => a.micro.t === 20 && a.counts.none.t === 0],
+    ['a parallel shift is ONE event, not 20', mk([], 20, 0.5),            a => a.events.filter(e => e.col === 'start').length === 1 && a.carry.t === 19],
+    // ⛔ THE LAUNDERING CONTROL: no AoE segment exists, so nothing may be filed under `aoe`.
+    ['no AoE phase ⇒ aoe bucket empty', mk([], 20, 0.5),                  a => a.counts.aoe.t + a.counts.aoe.cast + a.counts.aoe.sp + a.counts.aoe.mult === 0],
+  ];
+  let bad = 0;
+  for (const [name, rec, want] of probes) {
+    const a = analyse(rec);
+    const okp = want(a);
+    if (!okp) bad++;
+    console.log(`  ${okp ? 'ok  ' : 'FAIL'}  ${name}` + (okp ? '' :
+      `   got: ${CLASSES.map(c => `${c}=${a.counts[c].t}`).join(' ')} micro=${a.micro.t} carry=${a.carry.t} events=${a.events.length}`));
+  }
+  console.log(bad ? `\n✗ ${bad} of ${probes.length} control(s) failed — the classifier does not mean what it prints.`
+    : `\n✓ ${probes.length} controls pass: each synthetic defect lands in the bucket it belongs in, and a`
+      + '\n  fight with no AoE phase cannot be filed under the priced AoE heading.');
+  process.exit(bad ? 2 : 0);
+}
+if (has('self-check')) selfCheck();
+
 // ═══ MAIN ════════════════════════════════════════════════════════════════════════════════════════
 if (!fs.existsSync(RUNNER) && !(CACHE && picked.every(k => fs.existsSync(cachePath(k.name))))) {
   console.log('# model-audit — SKIPPED LOUDLY: no RUNNER.');
@@ -381,9 +481,10 @@ for (const kase of picked) {
   // is a different question and drowns the one being asked. Each side is therefore referred to its own
   // unbuffed baseline, so what is graded is exactly the model's buff accounting.
   const M = rec.model.filter(c => !c.ae), casts = rec.sim, dbg = rec.dbg;
-  const procUp = t => { let n = 0; for (const g of rec.gains) if (g <= t + 1e-9) n++; for (const f of rec.fades) if (f <= t + 1e-9) n--; return n > 0; };
+  const { up: procUp, baseSp, rawMin, bad: procBad } = procTools(rec);
+  if (procBad) console.log(`  ⚠ ${rec.name}: proc-subtraction control FAILED — baseline ${baseSp.toFixed(1)} vs raw min ` +
+    `${rawMin.toFixed(1)}. The SP column below is the TOOL's error, not the model's (see procTools).`);
   const baseMult = Math.min(...dbg.filter(x => x.base > 0).map(x => x.after / x.base));
-  const baseSp = Math.min(...dbg.map(x => x.sp - (procUp(x.tc) ? T5_PROC_SP : 0)));
   const n = Math.min(M.length, casts.length);
   let badT = 0, badCast = 0, badSp = 0, badMult = 0;
   let wT = 0, wC = 0, wS = 0, wM = 0;
@@ -464,10 +565,13 @@ for (const kase of picked) {
       const mAE = rec.model.filter(c => c.ae && c.t >= s.start - 1e-9 && c.t < s.end);
       const sAE = rec.simAE.filter(c => c.t >= s.start - 1e-9 && c.t < s.end);
       const straddle = rec.model.filter(c => !c.ae && c.t < s.start && c.t + c.cast > s.start)[0];
-      console.log(`      · AoE WALL @${s.start} — model cancels the straddling Blast` +
-        (straddle ? ` (starts ${straddle.t.toFixed(3)}, credited ${(straddle.frac * 100).toFixed(1)}%)` : ' (none in flight)') +
-        `; first AE model ${mAE.length ? mAE[0].t.toFixed(3) : 'none'} vs sim ${sAE.length ? sAE[0].t.toFixed(3) : 'none'}` +
-        `; AE count model ${mAE.length} sim ${sAE.length}   [aoe — PRICED, PHASE13 §1]`);
+      console.log(`      · AoE WALL @${s.start} — ` +
+        (straddle ? `model CANCELS the straddling Blast (starts ${straddle.t.toFixed(3)}, credited ${(straddle.frac * 100).toFixed(1)}%); ` +
+          'wowsims lands it in full ⇒ the PRICED divergence (PHASE13 §1) IS in play here. '
+          : '⚠ NO Blast in flight across the wall, so the priced divergence DOES NOT ARISE here — ' +
+            'nothing at this wall may be excused by §1. ') +
+        `first AE model ${mAE.length ? mAE[0].t.toFixed(3) : 'none'} vs sim ${sAE.length ? sAE[0].t.toFixed(3) : 'none'}` +
+        `; AE count model ${mAE.length} sim ${sAE.length}`);
     }
   }
 

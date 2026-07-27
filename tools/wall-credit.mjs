@@ -151,7 +151,36 @@ if (!atWall.length)
   die(`no cast completes into an intermission on this schedule. The kill edge alone cannot show that the\n` +
       `       SAME rule runs at a wall, which is the finding this gate exists to hold. Refusing to pass.`);
 
-const fail = badFrac + badCredited + badFull + undocked;
+// ── E: THE AoE WALL, ON A CONSTRUCTED FIGHT — because NO PRESET EXERCISES ONE ────────────────────
+// ⚠ This block exists because of a near-miss. The corpus has exactly one AoE fight (Kael'thas), and
+// its Arcane Blast lattice lands on **exactly** 105.000, the phase start — so no cast straddles the
+// wall, and `exact-match` came back 25/25 UNCHANGED across the entire AoE-cut ruling. A green suite
+// there was not evidence; it was an alignment coincidence. So this builds a fight whose lattice
+// cannot align, and asserts BOTH halves of the ruling directly:
+//   · the straddling Blast is credited the fraction that FIT   (not 0, not 1)
+//   · the Arcane Explosion stream starts AT THE WALL           (CANCELLED, not run to completion)
+// The second half is the easy one to lose: crediting partially without truncating would pay less and
+// gain nothing, which is a penalty rather than a policy.
+let aoeBad = 0;
+{
+  const aoeCase = { name: 'wall-credit AoE probe', T: 120, phases: [{ from: 60, to: 80, type: 'aoe', targets: 5 }] };
+  const c2 = cfgFor(api, aoeCase);
+  const r2 = api.simulate(api.repair({ arcanePower: [5] }, c2), c2, true);
+  const strad = r2.casts.filter(c => !c.ae && c.t < 60 - 1e-9 && c.t + c.cast > 60 + 1e-9).pop();
+  const firstAE = r2.casts.find(c => c.ae);
+  if (!strad) { console.log('  ✗ AoE probe: no cast straddles the wall — it cannot test what it exists to test.'); aoeBad++; }
+  else {
+    const want = (60 - strad.t) / strad.cast;
+    if (Math.abs(strad.frac - want) > 1e-9) { console.log(`  ✗ AoE straddle: frac ${strad.frac.toFixed(6)}, expected ${want.toFixed(6)}`); aoeBad++; }
+    if (!firstAE || Math.abs(firstAE.t - 60) > 1e-9) {
+      console.log(`  ✗ AoE truncation: first Arcane Explosion at ${firstAE ? firstAE.t.toFixed(3) : '(none)'}, expected 60.000 — the Blast ran to completion instead of being cancelled.`);
+      aoeBad++;
+    }
+    if (!aoeBad) console.log(`  D  AoE wall: Blast at ${strad.t.toFixed(3)} credited ${(100 * strad.frac).toFixed(1)}%, first Arcane Explosion at ${firstAE.t.toFixed(3)} — cancelled, not finished: ✓`);
+  }
+}
+
+const fail = badFrac + badCredited + badFull + undocked + aoeBad;
 console.log('');
 if (fail) {
   console.log(`‼ ${fail} boundary-credit violation(s). The scorer is not applying`);
