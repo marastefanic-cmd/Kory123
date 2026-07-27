@@ -49,6 +49,14 @@ plan → sim/planspec.mjs → tools/genapl-core.mjs → sim/simreq.mjs → sim/s
   the tie band, the rating conversions, cold open. `tools/plan-duel.mjs` imports it too, and
   `runnerFlags()` generates the native command line from it, so `--var 0.5` is never retyped.
   ★ If you write a new sim instrument, import BENCH; do not copy its numbers.
+  ✅ **`variation` IS DERIVED FROM THE MODEL NOW (07-27) — use `killWindow(haste)` / `encounterFor(T, haste)`.**
+  The model's credit rule is a ONE-SIDED window `U[T, T+d]` (`d` = the terminal cast's duration), and
+  `encounterFor` reproduces it exactly as `duration = T + d/2, variation = d/2`. Half a 3-stack Arcane
+  Blast at zero haste is **0.749 s**, so the retired flat 0.5 was **33 % too narrow** there and never
+  moved with gear. Measured 8.79× tighter model/sim tracking across a cast boundary
+  (`tools/window-match.mjs`: ratio spread 0.0374 % vs 0.3284 %). `BENCH.variation` survives only as the
+  legacy default, and as the value every archived corpus was gathered at.
+  ⛔ *The paragraph below is the RETIRED framing, kept because it is what the flat value rested on.*
   ⛔ **`variation: 0.5` KEPT ITS VALUE AND LOST ITS OLD JUSTIFICATION (07-27, PHASE12 §9).** It used to
   be documented as mirroring *"the model's kill-window WIDTH"* (`KILL_WINDOW = 0.5`). **That constant no
   longer exists in the objective** — the model is deterministic at `T` and credits a straddling cast its

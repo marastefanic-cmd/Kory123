@@ -203,14 +203,61 @@ consecutive fixes.
 plateau, **0 regressions**, all under the new engine's own scorer). The duel is therefore no longer
 gating the goldens — it is the **independent** check that the exact objective is the better ranker.
 
-### 2.4 The model↔sim boundary reconciliation
+### 2.4 ✅ CLOSED 2026-07-27 — the sim's kill window is DERIVED from the model's
 
-**Why it is open:** `sim/benchmark.mjs`'s **`variation: 0.5` is no longer matched to anything in the
-model.** It used to be justified as *"the model's kill-window WIDTH"*; that constant is gone. It keeps
+**The user's proposal, and it was the right one:** *"wouldn't it be better to have the ± dynamic so
+it's half of a 3-stack Arcane Blast's cast time? … take a 3-stack AB's cast time, shortened by passive
+gear haste, and half of that would be the variance."*
+
+**Why it works, and why it is not a taste call.** The model's credit rule already IS a window: paying a
+straddling cast the fraction of itself that fits is algebraically **one-sided**, `U[T, T+d]`, with `d`
+the cast's own duration. So the sim's window should be *that* window. wowsims can express it, because
+`durationVariation` is symmetric about `duration`:
+
+```
+duration = T + d/2 ,  variation = d/2      ⇒      U[T, T+d]
+```
+
+`killWindow(hasteRating)` and `encounterFor(T, hasteRating)` in `sim/benchmark.mjs` are the single
+definition; both the wasm path (`simreq`) and the native path (`runnerFlags`) take it from there. An
+explicit `opts.variation` still wins, which is how an archived round gathered at the legacy flat 0.5 is
+reproduced.
+
+**The flat 0.5 was not merely unjustified — it was the wrong number.** Half a 3-stack Arcane Blast at
+zero passive haste is **0.749 s**: the flat value was **33 % too narrow** there, ~19 % too wide at 400
+rating, and it never moved with gear at all.
+
+**MEASURED, not argued** (`tools/window-match.mjs`, which sweeps `T` across one cast interval and reads
+the model/sim ratio at each step — constant means one window, wobbling means two):
+
+| window | ratio across the sweep | spread |
+|---|---|---|
+| **derived** | 91.7834 → 91.8177, monotone | **0.0374 %** |
+| flat 0.5 | 91.67 → 91.47 → 91.77, wobbling | 0.3284 % |
+
+**8.79× tighter.** `tests/sim-request.mjs` no longer pins a magic number; it asserts the *derivation* —
+positive, shrinking with haste, equal to half a 3-stack Blast at zero haste, and producing an interval
+that **starts at T** (setting `variation` without re-centring `duration` silently lengthens every
+fight, the one mistake the construction exists to prevent). Gate: 9/9 with the native runner, which
+also proves the page and the runner agree on the new values field for field.
+
+⚠ **The approximation, stated:** the terminal cast is assumed to be a 3-stack Arcane Blast at *passive*
+haste — temporary buffs ended by the kill. On a plan whose burst runs to the buzzer the real terminal
+cast is faster, so the window is slightly wide there. That is a bounded, known error, not an unknown.
+
+**What remains open is the other half, and it is smaller:** absolute model-vs-sim *identity* at the
+boundary (below), which needs `model-audit`'s cast-for-cast agreement rather than a DPS comparison.
+
+---
+
+#### The original framing, kept because the reasoning is the record
+
+**Why it was open:** `sim/benchmark.mjs`'s `variation: 0.5` was no longer matched to anything in the
+model. It used to be justified as *"the model's kill-window WIDTH"*; that constant is gone. It kept
 its value on its own measured evidence (`tools/var-decision.mjs`) as the **sim's** way of not parking
-its fight end on a discontinuity. So model and sim now smooth the same problem by different means — the
+its fight end on a discontinuity. So model and sim smoothed the same problem by different means — the
 model **analytically** (proportional partial credit), the sim **numerically** (averaging over T ± 0.5)
-— and nobody has reconciled the two answers.
+— and nobody had reconciled the two answers.
 
 ⛔ **Do not "fix" it by flipping `variation` to 0.** That reintroduces a measured failure: at var 0,
 when two arms differ in terminal cast rate, the effect swings **−32.8 → −0.9 → −31.8 DPS across 0.1 s
