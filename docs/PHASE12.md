@@ -1396,3 +1396,68 @@ quote §6.15b's Δ alongside it, or a reader will price a re-placement as a rewr
 ⚠ This is also why `exact-match` being red is not itself informative here — an exact-match diff cannot
 tell a 91 s plateau hop from a real re-decision, and neither can `plan-diff`. That is what
 `plan-rescore` and `plan-shift` are for.
+
+## 6.16 ★★★ THE END-TO-END AUDIT — the model predicts the log press by press, until a cooldown recurs
+
+**User, setting the standard:** *"you can run a sim, then check that simulation's logs and see if the
+activation and duration and everything check out … the model should be able to predict the logs press by
+press down to the milliseconds."*
+
+That is the right bar and it is now an instrument: `tools/model-audit.mjs`. It takes a plan the tool
+actually emits, runs it, and compares **everything the model claims, cast for cast** — the cast count,
+every cast's start, every cast's cast time, the spell power each cast used, and the damage multiplier
+each cast got. Only the base-damage RNG roll and crit are excluded (crit cancels out of effective ABs by
+construction; the multiplier is recovered as `AfterAttackerMods / BaseDamage`, which divides the roll
+out).
+
+### 6.16a On a single-use fight it holds exactly
+
+```
+PASS  2:00 lust 0:05  (T=120)
+      casts: model 94 · sim 94
+      per-cast mismatches — start 0 · cast time 0 · spell power 0 · damage mult 0   (of 94)
+       i   model t / sim t     model cast / sim   buff SP m/sim      buff mult m/sim
+       2     3.888     3.89     1.527   1.527       0.0      0.0     1.000   1.000
+       3     5.415     5.42     0.960   0.960     380.0    380.0     1.250   1.250
+```
+
+Cast times to the millisecond, buff SP exact (380 = Icon 155 + gem 225), buff multiplier exact.
+
+### 6.16b ⛔ And on multi-use fights it does NOT — 17 of 23
+
+Every **cast count** still matches (314/314 on the 7:20). What breaks is placement, and the magnitudes
+name the cause. `4:00 lust 0:05`:
+
+```
+      per-cast mismatches — start 25 · cast time 3 · spell power 173 · damage mult 1   (of 177)
+      worst deviation     — start 0.6650s · cast 0.2500s · SP 155.0 · mult 0.2499
+```
+
+**SP off by exactly 155 (one Icon) and the multiplier by exactly 0.25 (one Arcane Power)** — a whole
+window on the wrong casts, not rounding. The fights that pass are the short ones with a single use of
+each cooldown; the fights that fail all have a **second** use.
+
+⇒ That is §6.14c's `HELD` class, independently reproduced and now priced: the model chains a cooldown
+from the **press moment** (`lastEff = eff`), wowsims from when the spell is actually **cast**
+(`auraAt ≥ eff`). The second use therefore lands a cast later in the sim, and because some of those
+cooldowns are haste buffs the whole downstream lattice shifts with it — 0.665 s by t≈240.
+
+### 6.16c ⚠ Two harness errors this audit had to clear first, both previously recorded
+
+1. **The model must describe the character the sim runs.** Built from the preset's gear while the sim
+   ran the bench export, the model had `t5two: false` against a character wearing Tirisfal 2pc, so every
+   multiplier looked wrong and Arcane Power appeared to be **×1.25 in the sim against ×1.30 in the
+   model**. Both artefacts. Spreading `REF` fixes it — this is PHASE8 §6/§7's defect exactly, and
+   `tools/reference-gear.mjs` exists to prevent it.
+   ★ The ×1.25 was real but not a discrepancy: `SpellMod_DamageDone_Flat .3` adds into a bucket that
+   already holds the 2pc's 1.2, so `1.5 / 1.2 = 1.25` — which is precisely what the model's
+   `dmgMult + t5add` (1.30 + 0.20 = 1.50) already encodes.
+2. **Compare buff DELTAS, not absolutes.** The model's `sp` is its declared spell power and its
+   `dmgMult` is normalised to 1.0; the sim reports real SP and a multiplier containing talents and set
+   bonuses. Raw, the comparison measures gear calibration and drowns the question being asked.
+
+### 6.16d ⚠ A log-format fact for TOOLING's list
+
+Durations are Go's `Duration.String()`, so **the unit changes with the magnitude**: `Cast Time = 2.083s`
+but `Cast Time = 960ms, GCD = 1s` once the value drops below a second. A regex anchored on `([0-9.]+)s`
+matched 72 of 94 casts and dropped **exactly the fast ones** — the casts a haste audit is most about.

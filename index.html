@@ -1193,6 +1193,11 @@ function simulateRaw(schedule, cfg, collect) {
       // aligns" cap line (renderTimeline). These are display-only; the OBJECTIVE is `dmg` summed per
       // cast just below (PHASE12 §6.10) — not the rateAt integral, which no longer ranks anything.
       multNoAti: multDn, capDn: dn.capped, castDn: dn.cast, gcdDn: dn.gcd,
+      // ── what the model BELIEVES about this cast, so it can be audited against a combat log ──
+      // Display/diagnostic only; nothing scores off these. `tools/model-audit.mjs` compares them
+      // cast-for-cast against wowsims' own `[DEBUG] SP:` and `AfterAttackerMods/BaseDamage`, which is
+      // the end-to-end version of the piecemeal gates (window-span, credit-check, lattice-drift).
+      sp, dmgMult: dmgMult + (isAoe ? 0 : t5add),
     });
     if (atiOn) {
       // proc chance of THIS cast: any target's crit can trigger the 50% roll
