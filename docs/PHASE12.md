@@ -330,3 +330,150 @@ nothing about ordering.
   ⚠ Residual: they carry a **hardcoded session-scratchpad `SP=` path**, so `xval-boss-warm.sh`'s
   wait-loop polls a log that a *future* session will never create and would hang forever. Fixed
   separately; noted here because "promoted" and "reproducible" are not the same property.
+
+---
+
+# §6 — MINING THE ROUND-1 CORPUS FOR THE MODEL'S FAILURE MODE (2026-07-27)
+
+**User challenge, and it reframed the work:** *"all of this is ultimately supposed to lead to the
+model itself improving… This massive testing ground is just supposed to give you data through which
+you can browse and see where the model is failing."* Correct. A graded round is an input, not an
+output. This section is what the 285 class columns say when interrogated as a dataset about the
+scorer, rather than filed as a verdict.
+
+**Instruments:** `tools/tail-phase-probe.mjs`, `tools/floor-overcap-probe.mjs`. Both read the
+round's committed tables plus the plan cache (`.xval-cache/`, which stores the raw engine schedule
+`{s}`), so they re-score with the **model only** — no sim, no re-optimization. ⚠ Both take
+`--index` and **assert plan-cache HITS**, dying if any miss: the cache keys on `sha1(index.html)`,
+which changed when PHASE11 §1.1's UI fixes landed, so probing must be pointed at the blob the round
+used (`git show <pre-fix>:index.html`). A miss would silently probe a different engine's plans.
+
+## 6.1 ⛔ THE TERMINAL-CAST FAMILY IS CLOSED — in BOTH its forms
+
+This was the standing **#1 model target**: archive/11 §8.23 diagnosed the worst persistent cell as
+*one terminal cast the model cannot see*, §8.25 confirmed the mechanism is **shared** by the second
+big column (176→177 and 233→234 casts, margins at ≈⅔ of the cast fraction in both), and §8.23 ended
+*"design a term… that captures the terminal-cast effect **without** replacing the integral."*
+
+**The structural fact that makes it look easy.** `simulate()` already carries two accounts of the
+same fight: a **discrete board walk** (`casts`, `index.html:1086` — every cast, its start and its
+damage) that scoring never reads, and the **continuous rate integral** (`:1248-1263`) that `robust`
+is built from. In the interior the taper is 1 and cast phase is irrelevant; inside `[T−KW, T+KW]`
+the taper is *changing*, so the integral credits the **expectation over a uniformly-random cast
+phase** while a given plan's phase is **determined**. Replacing the integral **only inside that
+window** is strictly weaker than the already-falsified full discretization.
+
+**It was tested, pre-registered, on all 285 class columns. It fails.**
+
+| prediction | result |
+|---|---|
+| **P1** mechanism present (accounts differ by >0.02 %) | **PASS** — median \|tailDiscrete − tailIntegral\| = **0.1490 %** of `robust`, ~7× the CRN resolution |
+| **P2** predicts better (mean Pearson r vs sim DPS) | ⛔ **FAIL** — integral **0.9721** → tail-corrected **0.9026**; worse in **256/285** columns |
+| **P3** repairs disagreements | 36/130 (27.7 %) |
+| **P4 ★ FALSIFIER** must not break agreements | ⛔ **FIRES** — breaks **75/155 (48.4 %)**, ≈ a coin flip |
+| net argmax | **−39** (36 repaired − 75 broken) |
+
+**And the tie-break form fails too.** If the discrete tail is too noisy to *score* with, the weaker
+claim is to use it only where the integral has no opinion — ACCEPTANCE's own *"where the model's
+margin is below the ruler, the model has no opinion to be wrong about"*. Swept over ε:
+
+```
+ eps %   repaired/dis  broken/agree   net
+ 0.000      0/130         0/155       +0
+ 0.010     18/130        15/155       +3     <- best
+ 0.020     21/130        21/155       +0
+ 0.050     28/130        33/155       -5
+ 0.100     30/130        50/155      -20
+ 1.000     36/130        75/155      -39
+```
+
+Best net is **+3 over 285 columns** — indistinguishable from zero — and at that ε it still breaks
+**9.7 %** of agreements against a pre-registered bar of ≤5 %. **P6's bar is met at no ε.**
+
+⚠ **A defect in my own instrument, recorded because it is this repo's signature failure shape.** The
+first verdict line branched on `bestNet > 0` alone and printed **✅ P6**, while P6's bar was
+`net > 0 **AND** broken ≤ 5 %`. The sweep's own `✓` column was empty on every row — the tool had the
+right answer in its table and the wrong one in its summary. Fixed; the verdict now grades the whole
+bar. *(Sibling of archive/11 §8.30's `mono=0`: the summary line disagreeing with the detail above it.)*
+
+★★ **CONSEQUENCE, and it is the most useful thing this session produced: the model's tail PHASE is
+unusable at any threshold.** The phenomenon is real — P1 is emphatic, and §8.25 hand-counted the cast
+in two independent cells — but the model's *predicted* phase is not accurate enough to act on. Its
+board walk blends cast times by proc probability and cannot know the sim's realized lattice. **So the
+whole "make the objective see the terminal cast" family is closed**, and §8.23's ☞ next step should
+not be attempted again in either form. What is NOT closed: a term that makes the objective *hedge*
+against tail phase rather than *predict* it (prefer layouts whose value does not hinge on which side
+of the kill edge a cast lands). That is a different hypothesis and has not been tested.
+
+## 6.2 ★★★ THE "LOW-HASTE BASIN" DIRECTIONAL FRAMING IS WRONG — the confound inverts it
+
+The deficits are **directional**: across 112 class deficit columns the sim prefers a plan built for
+**higher** haste in 74 (66.1 %, z = 3.40). Split by haste that looked decisive — `simH≤70` gave
+33 higher vs 11 lower, **z = 3.32** — which reads as textbook confirmation of the low-haste basin.
+
+⛔ **It is an artifact of grid position, and controlling for it REVERSES the picture.** At the lowest
+haste in a kit's grid *every* rival is higher, so "borrows from higher" is partly forced. Against the
+correct null — a borrowed win comes from a uniformly random rival, so
+`E[higher] = (#higher rivals)/(#rivals)` per column:
+
+| bucket | n | observed higher | expected | z |
+|---|---|---|---|---|
+| all | 112 | 74 | 61.5 | **+2.85** (significant) |
+| `simH ≤ 70` | 44 | 33 | 36.5 | **−1.44** ← the effect *vanishes*, and if anything inverts |
+| `70 < simH ≤ 200` | 34 | 22 | 17.1 | +1.72 |
+| **`simH > 200`** | 34 | **19** | **7.9** | **+4.78 ★** |
+
+★ **The directional excess lives at HIGH haste, not low.** This does not contradict the persistence
+work list — those cells (`isc-mqg h40`, `isc-skull h20`) genuinely are low-haste. It says the docs
+have been **conflating two different facts**: *where the length-persistent cells are* (low haste) and
+*where the model's ranking is systematically biased* (high haste, `simH > 200`). Only the first has
+ever been measured before, and the debt was named after it.
+
+⇒ **The "low-haste (≤70) micro-placement slack" is now misnamed a THIRD time** (archive/11 §8.31
+already renamed it twice: a third persistent column sits mid-grid at h130, and the family splits into
+two terminal-cast columns plus one value column). Whatever the debt is, *"low-haste"* is not a
+property it reliably has.
+
+## 6.3 ⚠ GCD-FLOOR OVERCAP — a lead with the right sign, NOT established
+
+The obvious mechanism for a high-haste directional bias: at `simH > 200` the GCD floor binds, so a
+plan built for even higher haste spreads its haste buffs instead of stacking them. Hypothesis: **the
+model buys haste the floor eats and does not charge itself for it.** Measured with `gcdCappedTime`
+(which `simulate()` already returns), pre-registered, native-vs-the-sim's-pick:
+
+| | n | mean Δ`gcdCapped` (native − borrowed) | t |
+|---|---|---|---|
+| **P1** all disagreement columns | 160 | **+1.175 s** | 1.71 |
+| **P2** `simH ≤ 70` | 59 | +0.542 s | 0.60 |
+| **P2** `70 < simH ≤ 200` | 55 | +0.818 s | 0.81 |
+| **P2** `simH > 200` | 46 | **+2.413 s** | 1.41 |
+
+**The sign is right and the concentration is where §6.2 predicts — and nothing reaches significance.**
+P1 misses (1.71 < 2), P2 misses (1.41 < 2). Welch contrast against a matched control gives
+`simH > 200`: Δ = +4.210 s, **t = 1.88** — still short.
+
+⚠ **The one significant cell is unpredicted, opposite-signed, and does not survive multiplicity:**
+`simH ≤ 70` contrast Δ = −4.374 s, t = −2.21. Four buckets at α = 0.05 expect ~0.2 false positives;
+Bonferroni needs |t| > 2.5. **Do not report it as a finding.**
+
+⚠ **And the first control was VACUOUS** — the same defect as PHASE8 §21.5's F3. It compared
+`gcdCapped(native) − gcdCapped(sim's pick)` on **agreement** columns, where native *is* the sim's
+pick, so it read exactly `0.000, t=NaN` **by construction**. Replaced with native vs the sim's
+**second**-ranked plan, so both arms are "native vs a plan the sim ranked below it".
+
+⇒ **Verdict: underpowered, not falsified.** The corpus has 46 high-haste disagreement columns and the
+effect needs roughly 4× that for |t| > 2. Two ways forward, in cost order: (a) extend the haste grids
+upward on the kits that already reach 400 — cheap, and it targets exactly the bucket carrying the
+signal; (b) a targeted duel on the largest `Δ gcdCapped` cells. **Do not build a floor-charge term on
+this evidence.**
+
+## 6.4 What a future session should take from §6
+
+1. **Do not re-attempt the terminal-cast term.** Closed in both forms, on 285 columns, with the
+   falsifier firing at ~2× the repair rate (§6.1).
+2. **Do not trust "low-haste" as the debt's name.** The directional bias is at `simH > 200` (§6.2).
+3. **The next measurement is more high-haste columns, not another term** (§6.3).
+4. ★ **The general lesson, and it cost two probes in one session to learn twice:** every one of these
+   findings changed sign or died under a control — grid position inverted §6.2, a vacuous control hid
+   §6.3's real null, and my own summary line contradicted my own sweep table in §6.1. **The corpus is
+   large enough that a plausible pattern is always available; only the control decides.**
