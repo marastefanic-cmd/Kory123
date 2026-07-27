@@ -2,6 +2,36 @@
 
 ## Resuming after a context clear (start here)
 
+> # ★★★★ TOP PRIORITY, ABOVE EVERYTHING ELSE (set 2026-07-27, user-directed)
+> ## PHASE 12 — MAKE THE OBJECTIVE EXACT. `docs/PHASE12.md` §0 is the charter, §6 the evidence.
+>
+> **The model disagrees with itself by more than the entire effect the project has been chasing.**
+> Effective ABs cast is a **deterministic per-cast sum** — per cast we know haste, stacks (hence cast
+> time), AP on/off (×1.30), the SP buffs (normalizable), and crit as a constant that cancels. Nothing
+> needs approximating. `simulate()` computes exactly that in its discrete cast walk and then **ranks on
+> a continuous rate integral instead.** Over 2755 plan-scorings, no sim: the two differ by a **median
+> 0.2114 % of score, max 1.4263 %**, against a corpus whose deficits are 0.004–0.380 % and whose
+> ranking margins are ~0.005–0.07 %.
+>
+> ⇒ **Everything downstream is provisional until this is fixed** — the 142 B2 columns, the persistence
+> work list, the B2 debt, every falsified scorer term. They are measurements of a quantity that is not
+> single-valued at their own scale.
+>
+> **And the sim's role is now stated correctly: it exists to FALSIFY THE SEARCH.** With an exact
+> objective, ranking two plans is arithmetic and cannot be wrong — so when the sim prefers a plan the
+> tool did not emit, **the search failed to find it.** The cross-val corpus is a brute-force explorer of
+> regions the search never visits; each disagreement is a *pattern to generalize into a rule or a seed
+> class*, not a scorer to re-tune. Secondary: anchor the physics, cover genuine blind spots, build user
+> trust via the in-page benchmark button.
+>
+> **Order:** (1) score the per-cast sum — gate `robust == tapered cast sum` to float precision, no sim
+> needed; (2) fix the press-fire offset (§6.7 — every press fires 1.0–1.5 s late in the sim, including
+> off-GCD trinkets, so it is our transcription, not game mechanics); (3) re-gather and *then* hunt
+> search bugs. ⚠ Step 1 moves plans and re-records goldens — that is the point, not a regression.
+>
+> Demoted until this lands: PHASE11's platform work, the gear-agnostic re-gather, the boss band's
+> remaining 7 columns.
+
 ### ✅ CLOSED: PHASE 10 — re-baseline acceptance on GEAR B (`docs/archive/11-phase10-gearb-baseline.md`; 07-26 → 07-27)
 
 > ## ★ ROUND 1 IS COMPLETE AND GRADED — **ACCEPTANCE NOT PASSING (B2)**, and it is a REAL reading now

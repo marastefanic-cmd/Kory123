@@ -83,18 +83,35 @@ re-certify, not to run an experiment.
 ## Methodology — the model is the objective, the sim calibrates it
 
 The planner already knows, deterministically, every cast, every buff window, and every timing in a
-plan — so it computes **effective ABs cast** (`docs/MECHANICS.md §4`) exactly, and **that count is the
-arbiter for comparing two lines.** The tool is, by construction, a maximization function over that
-number; ranking lines is *its* job. The sim's role is **calibration**, three specific uses:
+plan — so it **can** compute **effective ABs cast** (`docs/MECHANICS.md §4`) exactly, and that count is
+the arbiter for comparing two lines. The tool is, by construction, a maximization function over that
+number; ranking lines is *its* job.
 
-1. **Anchor the physics.** Certify the formulas/constants the count is built on — the trust anchor
+> ⚠⚠ **AS OF 2026-07-27 IT DOES NOT COMPUTE IT EXACTLY** — `robust` ranks on a rate integral that
+> differs from the model's own per-cast sum by a median **0.2114 %** of score (PHASE12 §6.8). Until
+> that is fixed, "the count is the arbiter" describes the design, not HEAD, and **no sim-vs-model
+> disagreement smaller than ~0.5 % can be attributed to anything** — it is inside the model's
+> disagreement with itself.
+
+**The sim's role, in priority order — and the FIRST one is the point of the whole cross-val corpus:**
+
+1. **★★★ FALSIFY THE SEARCH'S CLAIM TO OPTIMALITY — this is what the sim is FOR.** With an exact
+   objective, the model's ranking of two plans is a matter of arithmetic and cannot be wrong. So when
+   the sim says a plan the tool did *not* emit is better, and the exact count agrees once you compute
+   it, **the search failed to find it.** The sim is the instrument that reveals search failures — it
+   brute-forces regions the search never visits, and every disagreement is a lead pointing at a
+   *pattern the search is missing*, which is then generalized into a rule or a seed class. **A
+   sim/model disagreement is a SEARCH bug report, not a scorer arbitration.**
+2. **Anchor the physics.** Certify the formulas/constants the count is built on — the trust anchor
    (runner == `wowsimcli` to the decimal, below) and any constant that changes. Get the equation right
    *once*, then trust the count.
-2. **Cover the count's blind spots.** The count is ramp-blind (steady 3 stacks), mana-blind, AoE-blind,
-   and can disagree with the sim on a *mechanic* (the AP 195-vs-180 cd, ★ below). Where a blind spot is
-   in play the sim is ground truth; where it isn't, the count is.
-3. **Verify a suspicious or novel finding** before trusting or locking it — a first-time result, a
-   counter-intuitive delta, a new *kind* of move.
+3. **Cover the count's blind spots** (ramp, mana, AoE, or a *mechanic* disagreement like the AP
+   195-vs-180 cd, ★ below). Where a blind spot is in play the sim is ground truth; where it isn't, the
+   count is. ⚠ Several historical "blind spots" were really the accounting gap in §6.8.
+4. **Build user trust** — the in-page "Check in the benchmark sim" button. A user's verification and a
+   Phase-10 measurement are the same code path by construction, which is what makes the tool's claims
+   checkable by the person relying on them.
+5. **Verify a suspicious or novel finding** before trusting or locking it.
 
 **The sim is not a routine per-golden gate.** Re-simming every plan on every change is slow and, worse,
 invites treating a raw sim delta as ground truth even when a clean cast-count already settles the line.

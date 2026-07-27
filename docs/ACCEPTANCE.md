@@ -314,6 +314,23 @@ the authoritative row-by-row ledger.
   nothing" as a real negative verdict. Now exit **2**, per the shared contract (0 = graded clean · 1 =
   graded and failing · 2 = could not grade).
 
+> ## ★★★★ READ BEFORE USING ANY NUMBER BELOW — THE OBJECTIVE IS NOT SINGLE-VALUED (07-27)
+>
+> `robust`, which decides every ranking in this document, differs from the model's **own** per-cast sum
+> of the same fight by a **median 0.2114 % of score** (p90 0.5646 %, max 1.4263 %) — measured over 2755
+> plan-scorings with **no sim involved** (PHASE12 §6.8). **Every deficit in this round is 0.004–0.380 %,
+> and the ranking margins are ~0.005–0.07 %.**
+>
+> ⇒ **The whole B2 ledger sits inside the model's disagreement with itself.** The 142 columns are a
+> real measurement of *something*, but they cannot presently be attributed to a scorer defect, a search
+> defect, or measurement structure, because the arbiter is not single-valued at that scale. Compounding
+> it: every press in the corpus fires **1.0–1.5 s later in the sim than the plan asks** (§6.7), an
+> unmeasured and plan-dependent transcription error.
+>
+> **This does not void the round** — invariant A, the protocol stamp, the persistence structure and the
+> band all stand as measurements. It voids the *attribution*. Re-run the ledger once the objective is
+> exact and the press timing is fixed; expect the columns to move.
+
 ## Current status (GEAR B, round 1, 2026-07-27) — **NOT PASSING (B2)**
 
 > **★ READ THIS AS A FIRST MEASUREMENT, NOT AS A DELTA.** BENCH §1 forbids comparing a gear-B number

@@ -99,6 +99,24 @@ begins already-buffed. Consequences the model must respect:
 
 ## 4. The driving equation: effective ABs cast
 
+> ## ★★★★ THE OBJECTIVE MUST BE EXACT, AND TODAY IT IS NOT (found 2026-07-27, PHASE12 §6.8)
+>
+> Effective ABs cast is a **deterministic per-cast sum**. For each Arcane Blast the model already knows
+> the haste and the stack count (hence the cast time), whether Arcane Power is up (×1.30), which spell
+> power buffs apply (normalizable against a plain cast), and crit as a constant factor that cancels.
+> **There is nothing to approximate.** `simulate()` computes exactly that in its discrete cast walk
+> (`index.html:1086`) — and then **ranks on something else**: a continuous rate integral (`:1248-1263`).
+>
+> **Measured, 2755 plan-scorings, no sim: the two differ by a median 0.2114 % of score, p90 0.5646 %,
+> max 1.4263 %, swinging across 2.4 effective ABs.** The corpus's entire deficit range is
+> **0.004 %–0.380 %** and the model's own ranking margins are **~0.005 %–0.07 %**. ⇒ **the model
+> disagrees with itself by ~3× the largest effect it is being asked to resolve, and because the gap is
+> not a constant offset it does not cancel between two plans — it IS the near-tie.**
+>
+> **Consequence for this document:** wherever it says the planner "computes the count exactly" or that
+> the count "is the arbiter", that is the DESIGN, not HEAD. Fixing it is the project's top priority.
+
+
 Put §1–§3 together. Instantaneous DPS at time `t` is one cast's damage divided by how long that cast
 takes:
 
@@ -113,7 +131,11 @@ integrand by a *plain* AB's damage (`base·crit`, no buffs). Crit cancels; what'
 **`effectiveABs = ∫ [cast_damage(t)/plainAB] / interval(t) dt`.**
 
 This is the **single number the planner maximizes**, and the only one it needs (raw damage is just this
-× a constant). A haste buff raises how *many* casts fit; a damage/SP buff raises what each is *worth*.
+× a constant). ⚠ **Written as an integral above for derivation only — the quantity is a SUM OVER
+CASTS and must be evaluated as one.** The integral is the continuum limit, i.e. the expectation over a
+uniformly random cast phase; a given plan's phase is *determined*, so for ranking two concrete plans
+the realized per-cast sum is the correct evaluation and the integral is an approximation to it (see the
+banner above — they currently differ by a median 0.21 % of score). A haste buff raises how *many* casts fit; a damage/SP buff raises what each is *worth*.
 `total` (`simulate`/`rateAt` in `index.html`) is this integral up to the constant. **Everything the
 planner decides is a *consequence* of maximizing this one quantity — Lust alignment, haste sequencing,
 SP-on-fast-casts are *methods* that usually maximize it, never rules in their own right.** When a

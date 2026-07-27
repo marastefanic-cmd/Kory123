@@ -136,19 +136,28 @@ changing the model or the passes**, and keep it updated as the living theorycraf
   Read the URL, never derive it; check drift with `bash tools/upstream-drift.sh`. Details: TOOLING.
 - **Determinism is a feature.** Any change must keep one-setup-⇒-one-schedule, or the exact-match
   tests become meaningless. Don't add `Date.now()`/`Math.random()` outside the seeded PRNG.
-- **The model is the objective; the sim calibrates it.** The one number to maximize is **effective
-  ABs cast** (`docs/MECHANICS.md §4`), and the planner computes it deterministically from the casts,
-  buff windows, and timing it already knows — so **that count is the arbiter for comparing two lines.**
-  The tool is, by construction, a maximization function over it. The sim's role is narrower: (1)
-  **anchor the physics** — certify the formulas/constants the count is built on (trust-anchor to
-  `wowsimcli`, ~0.4% absolute agreement); (2) cover the count's **blind spots** — mana and AoE-phase
-  weighting (the stack ramp and AP-timing were blind spots but are CLOSED: the ramp is modeled exactly
-  in the count — RULES §3 — and the harness's AP cadence is patched to real-TBC 180s — TOOLING); (3)
-  **verify a suspicious or novel finding** before it's locked. It is **not** a routine per-golden gate.
-  When a clean cast-count and a sim number disagree with **no blind spot in play**, that's a **sim-setup
-  audit trigger**, not a model bug — the sim is rarely *wrong*, we've usually *used it wrong* (the Vashj
-  drop bug, the stale unpatched runner, the AP-195 quirk, and the **prepull** cast-loss are the
-  cautionary tales). See the methodology in `docs/TOOLING.md`.
+- **★★★★ THE OBJECTIVE MUST BE EXACT — and today it is NOT. This is the project's TOP PRIORITY.**
+  Effective ABs cast is a **deterministic per-cast sum**: for each Arcane Blast the model knows the
+  haste and stacks (hence cast time), whether AP is up (×1.30), which SP buffs apply (normalized
+  against a plain cast), and crit as a constant that cancels. **Nothing needs approximating.**
+  `simulate()` computes exactly that in its discrete cast walk (`index.html:1086`) — and then **ranks
+  on a continuous rate integral instead** (`:1248-1263`). Measured over 2755 plan-scorings with no sim:
+  the two differ by a **median 0.2114 % of score, max 1.4263 %**, against a corpus whose entire deficit
+  range is 0.004–0.380 % and whose ranking margins are ~0.005–0.07 %. **The model disagrees with itself
+  by ~3× the largest effect it is asked to resolve.** Fix: score the per-cast sum; keep the integral, if
+  at all, only as a search-smoothing device, never as the arbiter. Gate needs no sim — `robust` must
+  equal the tapered cast sum to float precision. Full evidence: `docs/PHASE12.md` §6.8.
+- **The sim's job is to FALSIFY THE SEARCH, not to arbitrate the scorer.** With an exact objective the
+  model's ranking of two plans is arithmetic and cannot be wrong — so when the sim prefers a plan the
+  tool did not emit, **the search failed to find it.** That is the whole point of the cross-val corpus:
+  brute-force regions the search never visits, and generalize each disagreement into a rule or a seed
+  class. Secondary uses: **anchor the physics** (trust-anchor to `wowsimcli`, ~0.4 % absolute
+  agreement); cover genuine **blind spots** (mana, AoE weighting); **build user trust** via the in-page
+  benchmark button, which is the same code path as the internal corpus; and **verify a novel finding**
+  before locking it. It is **not** a routine per-golden gate. ⚠ And the standing caution still holds —
+  when a clean count and a sim number disagree, audit the *setup* first: the sim is rarely wrong, we've
+  usually used it wrong (the Vashj drop bug, the stale unpatched runner, the AP-195 quirk, the
+  **prepull** cast-loss, and now the **press-fire offset** of PHASE12 §6.7).
 - **★ The model opens COLD — never prepull in a model-compared sim.** `genapl _prestack:0` (default).
   A prepull's fixed −2.3s time is haste-blind and makes a sim haste sweep non-monotone (more haste
   → fewer casts), which is physically impossible and silently corrupts any haste comparison. Rule
