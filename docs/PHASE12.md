@@ -477,3 +477,100 @@ this evidence.**
    findings changed sign or died under a control — grid position inverted §6.2, a vacuous control hid
    §6.3's real null, and my own summary line contradicted my own sweep table in §6.1. **The corpus is
    large enough that a plausible pattern is always available; only the control decides.**
+
+## 6.5 ★★★ THE REAL DEFECT IS CAST-TIMING FIDELITY — the model does not know where its casts are
+
+**User challenge, and it is the one that cracked this open:** *"if a different output of the model
+squeezes in an extra cast at the same h=0, isn't that model better? Shouldn't that be the case in our
+'effective casts'?"* — plus the reminder that **wowsims offers logs** and they are a debugging tool.
+Following both produced the session's most important result and **corrected a claim of my own.**
+
+### The search is exonerated, definitively
+
+`tools/deficit-fix.mjs` separates *(A) search miss vs the true optimum* from *(B) scorer
+mis-ranking* — a distinction nobody had tested, because "B1 holds by construction" only guarantees
+the argmax over the **champion set**, not global optimality. On the 4 worst class columns, at **3×**
+the round's restart count:
+
+```
+isc+mqg  medlong @40   deep(42) gain +0.0000%   determinism OK   B: converged
+isc+skull short  @40   deep(42) gain +0.0000%   determinism OK   B: converged
+isc+skull long   @130  deep(42) gain -0.0028%   determinism OK   B: converged
+isc+scb  short   @165  deep(42) gain +0.0000%   determinism OK   B: converged
+```
+
+**0/4 search misses.** Identical to four decimals; one column is slightly *worse* with more restarts,
+which is what a converged search on a rugged landscape looks like. ⇒ **These are scorer
+mis-rankings and nothing else.** The (A) loophole is closed.
+
+### ⚠ CORRECTION TO MY OWN CLAIM, EARLIER THE SAME SESSION
+
+Answering the h=0 question I printed the **model's** board-walk cast count for
+`isc+scb long T=300 @h0` — 216 for `plan@0` vs 217 for `plan@20` — and presented it as the
+terminal-cast mechanism. **That was the wrong source.** Run against the sim's own log
+(`tools/cast-fidelity.mjs`, native runner, `SIMLOG=1`, 1 iteration, seed 11, `--var 0`; the shipped
+export already wears Icon + Serpent-Coil, and **both are SP trinkets so neither perturbs cast
+timing**):
+
+| | model board | **wowsims log** | |
+|---|---|---|---|
+| `plan@0` | 216 | **217** | the model **undercounts by one** |
+| `plan@20` | 217 | **217** | correct |
+
+**The sim casts 217 in BOTH arms — the counts are equal** — and it still prefers `plan@20` by
+0.1235 %. So this cell is **not** a terminal-cast cell at all; it is a cast-**value** difference. The
+model's "+1 for the rival" was an artifact of its own timing error.
+*(§8.25's counts are unaffected — those were taken from SIMLOG. Mine were not.)*
+
+### The measurement underneath it
+
+| plan | mean \|sim − model\| cast-start drift | max |
+|---|---|---|
+| `plan@0` | **0.362 s** | **0.963 s** |
+| `plan@20` (equal counts ⇒ cleanly aligned, no insertion skew) | **0.206 s** | 0.253 s |
+
+**The model's cast stream is offset from the sim's by ~0.2–0.36 s on average and by up to 0.963 s —
+nearly a whole GCD.** The `plan@20` row is the trustworthy one: equal counts mean index-to-index
+alignment is exact, so its 0.206 s mean is a *systematic offset*, not comparison noise.
+
+★★★ **That single number explains every negative result in §6.1–§6.3 at once:**
+
+- **§6.1** — the tail-phase correction breaks 48 % of the columns it touches because it tapers casts
+  placed at the wrong *times*. Tapering is exquisitely time-sensitive; the input is ±0.2–0.96 s.
+- **6.5a below** — the fully-discrete "counted" objective ranks worse than the integral because it is
+  counting a **drifted** stream.
+- **The dead ties themselves** — the integral is, in effect, doing *variance reduction on the model's
+  own timing error*. It scores worse than a cast sum would on a perfect stream, and better than one on
+  this stream. That is why it wins on aggregate while losing on individual cells.
+
+### 6.5a The documented objective, implemented literally, is a WORSE ranker
+
+CLAUDE.md and MECHANICS §4 define the objective as **a sum over casts** of each cast's multiplier.
+`simulate()` implements a **rate integral**. Scored apples-to-apples — same kill-window taper on both,
+so the only difference is discrete-vs-continuous — over all 285 class columns
+(`tools/counted-vs-integrated.mjs`):
+
+| account | mean Pearson r vs sim DPS | argmax |
+|---|---|---|
+| **INTEGRATED** (`robust`, what ranks today) | **0.9721** | — |
+| **COUNTED** (the documented objective) | **0.9279** | repairs 39/130, **breaks 60/155**, net **−21** |
+
+Worse in **235 of 285** columns. ⇒ **the implementation deviates from the stated objective, and the
+deviation is an improvement** — but only *because the cast stream is inaccurate*. This is not evidence
+that the documented objective is wrong; it is evidence that it cannot be computed yet.
+
+### ⇒ THE TARGET, and it is the first one today that is not already falsified
+
+**Reduce cast-timing drift against SIMLOG.** Not a new scorer term — every scorer term tried this
+session failed, and §6.5 says why: they are all built on a stream that is up to a GCD out of place.
+Get the drift under ~0.05 s and the discrete effective-ABs count becomes computable **as documented**,
+which closes the family properly instead of patching around it.
+
+It is also the first target with an **obvious, cheap, sim-free-to-iterate gate**: per-cast start drift
+vs a SIMLOG capture, which `tools/cast-fidelity.mjs` already measures. Candidate sources to bisect,
+none yet tested: press-time snapping, the discrete ramp's cast lengths, GCD/latency rounding, and how
+buff windows are anchored relative to cast boundaries.
+
+⚠ **Do not assume it is one cause.** `plan@0` drifts 0.362 s and `plan@20` 0.206 s on the *same fight
+and the same character* — so at least part of it is plan-dependent, which a single global offset
+correction would not fix.
