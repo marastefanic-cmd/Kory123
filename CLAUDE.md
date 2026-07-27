@@ -264,11 +264,17 @@ Treat maintaining them as part of the work, not an afterthought:
   integral that differs from the model's own per-cast sum by a **median 0.2114 % of score** (max
   1.4263 %) over 2755 plan-scorings, against a corpus whose deficits are 0.004–0.380 %. Order of work:
   (1) score the per-cast sum, gated by `tools/self-consistency.mjs` going to ~0 — **no sim needed**;
-  (2) fix the press-fire offset (§6.7: every press fires 1.0–1.5 s late in the sim, off-GCD trinkets
-  included, so it is our transcription); (3) re-gather, then hunt search bugs. ⚠ Steps 1 and 2 move
-  numbers in opposite directions — **never combine them in one commit**. Expect plans to move and
-  goldens to be re-recorded; that is the point. §6.1–§6.3 record four scorer terms falsified *before*
+  (2) ✅ **DONE 07-27 (§6.9)** — the press-fire offset; (3) re-gather, then hunt search bugs. ⚠ Steps 1
+  and 2 move numbers in opposite directions — **never combine them in one commit**. Expect plans to move
+  and goldens to be re-recorded; that is the point. §6.1–§6.3 record four scorer terms falsified *before*
   anyone checked the objective was single-valued — do not re-attempt them until it is.
+  ★ **§6.9 also retires §6.7's mechanism and opens the next commit.** The press offset was never "the
+  schedule fires strictly after" (`IsReady` is `>=`): **wowsims takes 334 ms per Arcane Blast stack
+  where the model takes 1/3 s**, so the boundary a combat log prints as `11.00` is really `10.998` and
+  `10.998 >= 11.000` is false. Transcription failures are **7.14 % → 0.00 %** on real logs with the
+  engine block byte-identical (no plan moved), but **26 of 196 presses still miss** on the lattice
+  mismatch alone. ▶ **Fix `STACK_CAST_REDUCTION: 1/3` → 334 ms** — a MODEL change (moves cast times,
+  plans, goldens), so it rides **alone**. See `docs/MECHANICS.md` §1.1 and `docs/SOURCES.md`.
 - `docs/PHASE11.md` — **DEMOTED behind PHASE12 (07-27). PLANNED (parallel track): the platform phase — the single-file convention is
   RETIRED (user decision 07-26).** Its §1 is the 07-26 audit's findings ledger. ✅ **Status-audited
   07-27: §1.1 is FULLY DISCHARGED, 8 of 8.** Six were fixed in passing (`bench --targets` + its

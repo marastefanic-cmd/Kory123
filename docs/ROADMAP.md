@@ -25,9 +25,23 @@
 > trust via the in-page benchmark button.
 >
 > **Order:** (1) score the per-cast sum — gate `robust == tapered cast sum` to float precision, no sim
-> needed; (2) fix the press-fire offset (§6.7 — every press fires 1.0–1.5 s late in the sim, including
-> off-GCD trinkets, so it is our transcription, not game mechanics); (3) re-gather and *then* hunt
-> search bugs. ⚠ Step 1 moves plans and re-records goldens — that is the point, not a regression.
+> needed; (2) ✅ **DONE 07-27** — the press-fire offset (§6.9); (3) re-gather and *then* hunt search
+> bugs. ⚠ Step 1 moves plans and re-records goldens — that is the point, not a regression.
+>
+> ### ✅ Step 2 landed 07-27 — and it opened a MODEL commit that must run alone
+> Transcription failures **7.14 % → 0.00 %** on real combat logs (`tools/press-headtohead.mjs`), with
+> the engine block **byte-identical** (`sha1 7c08324250500f61`) so no plan moved and no golden was
+> re-recorded. The gate PHASE12 §6.7 found missing now exists: `tests/press-fire.mjs`.
+>
+> ⛔ **§6.7's mechanism is retired by §6.9a.** It was never "the schedule fires strictly after" —
+> `APLActionSchedule.IsReady` is `>=`, and a schedule 1 ns below the boundary also fires late.
+> **wowsims takes 334 ms per Arcane Blast stack where the model takes 1/3 s**, so the boundary a combat
+> log prints as `11.00` is really `10.998`, and `10.998 >= 11.000` is false.
+>
+> ▶ **NEXT COMMIT, and it rides alone: `STACK_CAST_REDUCTION: 1/3` → 334 ms.** 26 of 196 presses still
+> miss their cast on the lattice mismatch alone (HELD + LATTICE), which no transcription can reach. It
+> is a **model** change — cast times, the lattice, plans, goldens all move — so it must not be combined
+> with step 1 or with step 2. Evidence: `docs/MECHANICS.md` §1.1, `docs/SOURCES.md`, PHASE12 §6.9d.
 >
 > Demoted until this lands: PHASE11's platform work, the gear-agnostic re-gather, the boss band's
 > remaining 7 columns.

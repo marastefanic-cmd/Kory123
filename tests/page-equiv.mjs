@@ -161,7 +161,13 @@ const PAGE_ARM = async ({ preset, row, breakIt }) => {
                  iterations: BENCH.iterations, seed: BENCH.seed,
                  // --self-test seeds B1's exact bug: drop the AoE target count on the page side.
                  targets: breakIt ? 0 : A.targets };
-  return { spec: A.spec, targets: A.targets,
+  // ★ The THIRD copy of the transcription: `planToSpecInline`, which the Debug export uses because it
+  // must work before the sim modules have loaded. It has drifted before — PHASE11 §1.1 B1, where it
+  // silently dropped `targets` and made every pasted Kael'thas reproduce-command value a 6-target AoE
+  // window at ONE target. Its own header says "if this ever disagrees with them, THIS is the copy to
+  // delete", which is only actionable if something checks. This is that something.
+  const inline = planToSpecInline({ cfg, best, optR });
+  return { spec: A.spec, targets: A.targets, inline,
            request: simreq.buildRequest(template, { ...opts, apl: genapl.build(A.spec) }) };
 };
 
@@ -184,10 +190,16 @@ for (const kase of CASES) {
 
   const specDiff = firstDiff(P.spec, T.spec);
   const reqDiff = firstDiff(P.request, T.request);
-  const ok = !specDiff && !reqDiff;
+  // The Debug export's private copy must agree with the module on the spec AND on the AoE target
+  // count — the two fields B1 got wrong. It is compared against the TERMINAL side deliberately, so
+  // a drift shared by both page copies still fails.
+  const inlineDiff = firstDiff(P.inline.spec, T.spec) ||
+                     (P.inline.targets === T.targets ? null : `targets: ${P.inline.targets} vs ${T.targets}`);
+  const ok = !specDiff && !reqDiff && !inlineDiff;
   console.log(`${ok ? 'PASS' : 'FAIL'}  ${kase.label}${T.targets ? `  (targets=${T.targets})` : ''}`);
   if (specDiff) console.log(`        spec differs at    ${specDiff}`);
   if (reqDiff) console.log(`        request differs at ${reqDiff}`);
+  if (inlineDiff) console.log(`        planToSpecInline (Debug export) differs at ${inlineDiff}`);
   if (!ok) failed++;
 
   if (WANT_DPS && ok) {

@@ -551,6 +551,69 @@ so adaptation is barely being tested) and the third is the rounding artefact abo
 ACCEPTANCE's own *"the bar is right, the banner is nearly powerless"* confirmed from a new direction —
 **a verdict banner that a 1e-6 engine difference can flip is not a thing to steer work by.**
 
+### 07-27 — PHASE 12 step 2: the presses land where the model scored them, and the sim's clock is 2 ms off
+
+Phase 12's charter puts step 1 (make the objective exact) and step 2 (fix the press-fire offset) side by
+side, with a standing rule never to combine them in one commit. **Step 2 landed today**, and the useful
+part is that its recorded diagnosis was wrong.
+
+**What §6.6/§6.7 had concluded**, from five press-position probes: *"wowsims' `schedule` action fires its
+inner action at the first cast boundary strictly after the scheduled time."* Consequence right,
+mechanism wrong. Two candidate mechanisms, both killed by direct measurement rather than argument:
+`APLActionSchedule.IsReady` turned out to be `sim.CurrentTime >= timings[i]` — not strict at all — and a
+purpose-built probe (`tools/press-ns-probe.mjs`, written to confirm a float-truncation theory) showed a
+schedule **one nanosecond below the boundary's own value also fires a full cast late**. The theory it
+was built to confirm is the theory it killed.
+
+Bisecting instead of theorising (`tools/press-threshold-probe.mjs`) gave the answer to 1e-7 s: the
+largest value that still fires on the boundary the log prints as `11.00` is **10.998**, the same 2 ms at
+every boundary, on-GCD and off-GCD alike. **The boundary is not where the log says it is.** wowsims takes
+`time.Millisecond * -334` per Arcane Blast stack (`sim/mage/arcane_charge.go:17`) where the model takes
+`1/3` s, and rounds every cast to the ms — so its ramp is `2.500/2.166/1.832/1.498`, ending 2 ms behind,
+and a log that prints two decimals hides it completely. `10.998 >= 11.000` is false, and the press waits
+a whole cast.
+
+**The exposure was large and both-signed.** `tools/press-exposure.mjs`, 32416 presses, no sim: the
+retired `Math.floor(actEff)` convention put **1.5 %** of presses a full cast EARLY (flooring moved the
+value back past a boundary) and left **25.2 %** sitting ON a boundary, where a millisecond of drift —
+not the plan — decided which cast got buffed. Its header had justified itself with *"a press at
+floor(F) ≤ F snaps to the same boundary"*, which is false whenever F is not itself a boundary.
+
+**The fix** makes the emitted number a *schedule value* rather than a press time: the model's fire time
+clamped into `[prevBoundary + SLACK, targetBoundary − SLACK]`, `SLACK = min(0.5 s, interval/2)`. Both
+edges, because the drift's sign flips with haste. Head-to-head on real combat logs, both conventions on
+the same cached plans: **14 transcription failures (7.14 %) → 0**. The engine block came out
+byte-identical (`sha1 7c08324250500f61`), so no plan moved and no golden was re-recorded — proven by
+hash rather than asserted.
+
+**Two process lessons worth more than the fix.**
+
+1. *The classifier that laundered its own defect.* Splitting the residual failures into "our bug" vs
+   "unreachable" needed a criterion. The first one asked whether the model's **fire time** was past the
+   sim's boundary — true for any press near a boundary once the grids drift — and it duly reported the
+   **retired convention's own 14 failures as unfixable**, i.e. it exonerated the bug it existed to
+   catch. Rewritten to ask about the **schedule value**, the only thing this repo controls, it separates
+   them cleanly. A classifier that can absolve the defect it was built to detect is worse than none.
+2. *Grade the cast, not the clock.* The first grading pass used a time tolerance and reported failures
+   that were nothing of the sort — the grids drift ~0.35 s by t=200 on a buffed plan, so a press can
+   land on exactly the right cast a third of a second off the model's clock. `press-verify --cast` now
+   reads the sim's **own** cast stream out of the log and grades the ordinal, which is drift-proof; the
+   clock column survives as a *measurement of the lattice*, which is worth reading on its own.
+
+**And the gate that never existed now does.** §6.7 had said it plainly — *"no gate in this repo covers
+press-fire timing, which is exactly why it survived this long"*. `tests/press-fire.mjs`: part A no-sim
+(the half CI can run), part B on real logs, skipping **loudly** without a `RUNNER`. `tests/page-equiv.mjs`
+also now checks the Debug export's private `planToSpecInline` against the module — the third copy of the
+transcription, which had drifted once before.
+
+**What it opened.** 26 of 196 presses still miss their cast, **none of them a transcription defect**:
+the sim's own cooldown gate landing on the wrong side of a drifted boundary (HELD), and grids more than
+half an interval apart, which is the entire budget any schedule value has (LATTICE). Both are the 334 ms
+mismatch. Fixing `STACK_CAST_REDUCTION: 1/3 → 334 ms` is the next commit and a **model** change — it
+moves cast times, the lattice, plans and goldens — so it rides alone. Recorded in MECHANICS §1.1 and
+SOURCES, where MECHANICS' old *"matches our sims exactly"* is now marked as a 60-second measurement
+mistaken for a general claim.
+
 ---
 
 ## The corrections ledger — what we believed, and what disproved it

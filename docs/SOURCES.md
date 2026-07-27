@@ -70,7 +70,7 @@ Cross-check these against the sources above whenever they're touched; update the
 | Haste rating → % (lvl 70) | 15.77 rating = 1% | combat-rating table (Warcraft Wiki) + wowsims stats | verified |
 | GCD | 1.5s base, floored **1.0s** | Warcraft Wiki (GCD) + wowsims `core/cast.go` | verified |
 | Direct-damage SP coefficient | `castTime / 3.5` (AB 2.5s → 2.5/3.5 ≈ 0.714) | Warcraft Wiki (spell coefficients) + wowsims mage | verified |
-| Arcane Blast | base roll **668–772** (avg 720); −1/3s cast per stack, max 3; +75% mana/stack; 8s debuff | Wowhead (AB, spell 30451) + wowsims `arcane_blast.go:36` | verified — the base damage is a **roll**, not a flat value (`CalcAndRollDamageRange`). The model never needs the absolute number (it scores in *effective ABs*, a ratio, so base damage cancels), but the roll is a per-cast RNG draw and therefore matters to sim variance — see TOOLING "RNG-consumer inventory". |
+| Arcane Blast | base roll **668–772** (avg 720); −1/3s cast per stack (⚠ **wowsims uses −334 ms**, see below), max 3; +75% mana/stack; 8s debuff | Wowhead (AB, spell 30451) + wowsims `arcane_blast.go:36`, `arcane_charge.go:17` | verified — the base damage is a **roll**, not a flat value (`CalcAndRollDamageRange`). The model never needs the absolute number (it scores in *effective ABs*, a ratio, so base damage cancels), but the roll is a per-cast RNG draw and therefore matters to sim variance — see TOOLING "RNG-consumer inventory". |
 | Bloodlust / Icy Veins / Berserking | ×1.30 40s / ×1.20 20s cd180 / ×1.10 10s cd180 | Wowhead + wowsims | verified |
 | Drums of Battle | +80 haste **rating**, 30s, 2-min Tinnitus (spell 35476) | Wowhead + wowsims `core/buffs.go` | **verified** — rating, so additive into the same `(1+rating/1577)` pool as gear/MQG/Skull (the h0 trust-anchored path); stacks with everything; Tinnitus = 120s cd. |
 | Power Infusion vs Bloodlust — **no haste stack** | PI ×1.20 15s; while BL up, **BL wins, PI = 0 haste** | wowsims `core/buffs.go` (`multiplyCastSpeedEffect` for both) + `core/exclusive_effect.go` | **verified** — BL (prio 1.3) and PI (prio 1.2) register in the **same `"MultiplyCastSpeed"` ExclusiveCategory**; within a category only the highest-priority effect is active, so PI is suppressed whenever BL is up and resumes the instant BL ends. **Icy Veins is NOT in that category** (`.AttachMultiplyCastSpeed`, a direct multiplier) so IV **does** stack with BL. Model matches: `if (piActive && !blActive) mult *= 1.20`; IV/Zerk multiply unconditionally (`simulate` ~746/821). RULES §13. |
@@ -98,3 +98,19 @@ confirm or correct a `verify` row, update its status and cite where you checked.
 Keep this file honest and current (see the "keep the docs alive" directive in `CLAUDE.md`). It's fine
 — encouraged — to spend time googling and reading the sim source to nail a fact; the point is that
 the *result* lands here with a citation so it never has to be re-litigated.
+
+
+## ⚠ Where the model and wowsims disagree (not a sourcing gap — a chosen number)
+
+| constant | model | wowsims | gap | status |
+|---|---|---|---|---|
+| Arcane Blast cast reduction per stack | `1/3` s = 333.333… ms | `time.Millisecond * -334` (`sim/mage/arcane_charge.go:17`) | 0.667 ms/stack | ⚠ **open** — MECHANICS §1.1, PHASE12 §6.9 |
+
+Wowhead states the reduction as "1/3 sec", which is what the model encodes literally; wowsims rounds it
+to a whole millisecond, which is what a 2.4.3 client would store. **The sim is this project's ground
+truth for physics** (CLAUDE.md: anchor to `wowsimcli`), so the model should adopt 334 ms — but doing so
+moves every cast boundary, hence every plan, so it is a standalone commit and not a footnote to one.
+
+Measured cost of leaving it: the two cast lattices drift up to **0.35 s by t=200** on a buffed plan,
+which still denies **26 of 196 presses** the cast the model scored them on even after the transcription
+was fixed (PHASE12 §6.9d).

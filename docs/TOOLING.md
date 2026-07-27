@@ -1297,7 +1297,8 @@ node tools/press-verify.mjs --spec '{"IV":[8,39],"AP":[8],"BL":[7],"Icon":[8]}' 
 RUNNER=…/runner-ap180 node tools/press-verify.mjs --spec '{…}' --run --dur 60 --haste 0   # runs it too
 ```
 
-Per intended press it prints **intent · fired · slip · via**, and exits `1` if any press never fired.
+Per intended press it prints **sched · fired · expected · off · via**, and exits `1` if any press never
+fired **or fired on the wrong cast** (see the `--cast` block below).
 It does **not retype a single spell id**: each key's ActionID is read back out of `tools/genapl-core.mjs`
 by building a one-key APL, so the two can never drift. Controlled in both directions before being
 believed — a healthy 8-press plan → exit 0 with every press matched; **two negatives that reproduce the
@@ -1316,6 +1317,46 @@ clone (`ade9f39` + `apl-schedule-strict-ready.patch` + `ap-cd-at-cast.patch`):
 scratchpad root and **poisoned a whole day of gates** (every drop-bug distortion re-introduced). Before
 ANY gating session: rebuild or verify the binary is the patched one (check
 `grep -c innerSpell sim/core/apl_actions_timing.go` = 3 and no `CD.Use` in `arcane_power.go`).
+
+### ★★★ AND SINCE 07-27 IT GRADES *WHEN*, NOT JUST *WHETHER* — `--fire` / `--cast`
+
+PHASE12 §6.7: *"no gate in this repo covers press-fire timing — which is exactly why it survived this
+long."* What survived was `sim/planspec.mjs` emitting `Math.floor(actEff)`, which put **7.14 % of
+presses on a cast the model never chose** (`tools/press-headtohead.mjs`, real logs). It is 0.00 % now,
+and this is the gate that keeps it there:
+
+```
+node tools/press-verify.mjs --spec '{…}' --fire '{…}' --cast '{…}' --run --dur 300 --haste 0
+node tests/press-fire.mjs                       # part A only — no sim, no browser
+RUNNER=…/runner-ap180 node tests/press-fire.mjs # + part B, graded on real logs
+```
+
+`planToSpec` returns `fire` (expected fire times) and `cast` (the cast index each press must buff)
+beside the spec; pass them straight through.
+
+**★ GRADE ON THE CAST, NOT ON THE CLOCK.** The model's cast grid and wowsims' are **not the same
+grid** — wowsims takes **334 ms** per Arcane Blast stack (`sim/mage/arcane_charge.go:17`) where the
+model takes 1/3 s, and rounds every cast to the millisecond. A bare stream drifts 0.080 s over 300 s
+(`tools/lattice-drift.mjs`); a plan with haste buffs in it reaches **~0.35 s by t=200**. So a press can
+land on exactly the right cast with its wall-clock time a third of a second off, and a clock-tolerance
+verdict calls that a failure and sends you hunting a bug that is not there. `--cast` reads the sim's
+OWN cast stream out of the log and is drift-proof; `--fire`'s `off` column becomes a *measurement of
+the lattice*, which is worth reading on its own.
+
+⚠ **The log lies to two decimal places.** The boundary it prints as `11.00` is `10.998`. That 2 ms is
+the whole of the "a scheduled press fires a full cast late" mystery: `APLActionSchedule.IsReady` is
+`>=` (not strict), and `10.998 >= 11.000` is false. Anyone reading a boundary off the log and
+scheduling that number will be bitten. Instruments: `tools/press-ns-probe.mjs` (falsifies the
+nanosecond theory), `tools/press-threshold-probe.mjs` (bisects the real threshold: `B − 0.002`),
+`tools/lattice-drift.mjs` (the drift vs haste and fight length), `tools/press-exposure.mjs` (the
+corpus exposure, no sim).
+
+**Two failure classes press-verify reports but does NOT count against you**, because no transcription
+can reach them — both are the 334 ms mismatch:
+- **HELD** — the schedule value sat inside the right interval and the sim declined anyway
+  (`IsReady` also gates on `innerSpell.IsReady`: a cooldown coming up a hair after the sim's boundary).
+- **LATTICE** — the two grids are more than half an interval apart there, which is the entire budget a
+  value derived from the model's grid can have.
 
 **Scheduled presses fire at APL decision points — during a ramp that is the NEXT SLOW-CAST BOUNDARY.**
 Sim-log-verified: with a cold opener, presses scheduled at 5 land at **6.5** (the 0→3 ramp's cast

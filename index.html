@@ -4474,24 +4474,46 @@ function statLine(label, S, r) {
 // The sim modules load lazily (only when the sim button is pressed), but Debug export must work
 // without them — so the transcription used by the export mirrors sim/planspec.mjs's contract on the
 // data already in the page. `tests/sim-request.mjs` + `tools/bench.mjs` remain the authority; if this
-// ever disagrees with them, THIS is the copy to delete.
+// ever disagrees with them, THIS is the copy to delete. `tests/page-equiv.mjs` asserts the two agree
+// field for field, so a drift is a test failure rather than a wrong paste-ready command.
+//
+// ⚠ The emitted times are SCHEDULE VALUES, not press times — a press landing on a cast boundary would
+// otherwise miss it, because wowsims' lattice sits a few ms off the model's. The rule and the evidence
+// live in sim/planspec.mjs's header; keep the two in step.
 function planToSpecInline(r) {
   const { cfg, best, optR } = r;
   const eff = (optR && optR.actEff) || {};
-  const at = k => (eff[k] || []).slice().sort((a, b) => a - b).map(Math.floor);
   const KEY = { icyVeins: "IV", arcanePower: "AP", berserking: "Zerk", bloodlust: "BL", isc: "Icon", scb: "Gem", skull: "Skull", mqg: "MQG" };
   const NOPRESS = { ati: "Ashtongue Talisman", drums: "Drums of Battle", powerInfusion: "Power Infusion" };
-  const spec = { _prestack: 0 }, skipped = [];
+  const SLACK_CAP = 0.5, EPS = 1e-9, ms = t => Math.floor(t * 1000 + EPS) / 1000;
+  const starts = (optR.casts || []).map(c => c.t), spans = (optR.casts || []).map(c => c.t + c.cast);
+  const schedFor = fire => {
+    let idx = -1;
+    for (let i = 0; i < starts.length; i++) { if (starts[i] >= fire - EPS) { idx = i; break; } }
+    if (idx < 0) return { at: ms(fire), fire, cast: -1 };
+    const hi = starts[idx], lo = idx > 0 ? starts[idx - 1] : 0;
+    const slack = Math.min(SLACK_CAP, (hi - lo) / 2);
+    const at = ms(Math.min(Math.max(fire, lo + slack), hi - slack));
+    let held = -1;
+    for (let i = 0; i < starts.length; i++) { if (starts[i] < at - EPS && at < spans[i] - EPS) { held = i; break; } }
+    return { at, cast: idx, fire: held < 0 ? at : (held + 1 < starts.length ? starts[held + 1] : spans[held]) };
+  };
+  const sched = k => (eff[k] || []).slice().sort((a, b) => a - b).map(schedFor);
+  const spec = { _prestack: 0 }, fire = {}, cast = {}, skipped = [];
+  const put = (sk, rows) => {
+    if (!rows.length) return;
+    spec[sk] = rows.map(x => x.at); fire[sk] = rows.map(x => x.fire); cast[sk] = rows.map(x => x.cast);
+  };
   for (const k of Object.keys(best.s || {})) {
     if (NOPRESS[k]) { if ((eff[k] || []).length) skipped.push(NOPRESS[k]); continue; }
     if (k === "icyVeins" || !KEY[k]) { if (!KEY[k]) skipped.push(k); continue; }
-    const t = at(k); if (t.length) spec[KEY[k]] = t;
+    put(KEY[k], sched(k));
   }
-  const ivs = at("icyVeins");
-  if (ivs.length) {
+  const ivFire = (eff.icyVeins || []).slice().sort((a, b) => a - b);
+  if (ivFire.length) {
     const ivOut = [], csOut = []; let cd = -1e9;
-    for (const t of ivs) { if (t < cd - 1e-6) csOut.push(t); ivOut.push(t); cd = t + BUFFS.icyVeins.cd; }
-    spec.IV = ivOut; if (csOut.length) spec.CS = csOut;
+    for (const t of ivFire) { const row = schedFor(t); if (t < cd - 1e-6) csOut.push(row); ivOut.push(row); cd = t + BUFFS.icyVeins.cd; }
+    put("IV", ivOut); put("CS", csOut);
   }
   // ⚠ `targets` is NOT optional bookkeeping — it is the AoE window's whole value. The module twin
   // returns it (sim/planspec.mjs) and the sim button passes it; this copy used to drop it, so the
@@ -4506,7 +4528,7 @@ function planToSpecInline(r) {
   }
   if (down.length) spec._intermissions = down;
   if (aoe.length) spec._aoe = aoe;
-  return { spec, targets, skipped, burn: (cfg.segments || []).some(s => s.type === "burn") };
+  return { spec, fire, cast, targets, skipped, burn: (cfg.segments || []).some(s => s.type === "burn") };
 }
 function debugExportText() {
   const run = lastRun, cfg = run.cfg;

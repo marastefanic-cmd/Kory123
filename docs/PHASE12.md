@@ -865,3 +865,117 @@ arbiter changes the argmax; `exact-match` goldens will need re-recording under t
 after each changed plan is shown to improve the objective, sim-verified where a blind spot is in
 play). This is the largest-blast-radius change the project has considered, and it is also the first
 one aimed at the actual defect.
+
+## 6.9 ✅ STEP 2 IS DONE — and the cause was NOT what §6.6/§6.7 recorded
+
+**Landed 2026-07-27.** §0.3 step 2 ("fix the press-fire offset, add the missing gate") is closed. The
+transcription defect it names is **measured at 7.14 % of presses and eliminated to 0.00 %**, gated, and
+the *actual* mechanism is now known — it is not the one §6.6/§6.7 wrote down, and the difference is
+load-bearing.
+
+### 6.9a ⛔ "It fires at the first boundary STRICTLY AFTER" is the right consequence, wrong cause
+
+§6.7 inferred a semantic rule from five press-position probes. Two mechanisms could produce it, and
+**both are falsified by direct measurement**:
+
+| candidate | verdict |
+|---|---|
+| the schedule action is genuinely strict | ⛔ **no** — `APLActionSchedule.IsReady` is `sim.CurrentTime >= timings[i]` (`sim/core/apl_actions_timing.go:155`) |
+| a 1 ns float-truncation shortfall in `DurationFromSeconds` | ⛔ **no** — `tools/press-ns-probe.mjs`: a schedule 1 ns *below* the boundary's own truncated value **also** fires a full cast late |
+
+**The real cause, bisected to 1e-7 s (`tools/press-threshold-probe.mjs`): the sim's cast boundary is
+not where the combat log says it is.** The largest schedule value that still fires on the boundary the
+log prints as `11.00` is **10.998** — the same 2 ms at every boundary, on-GCD and off-GCD alike:
+
+```
+  Zerk (on-GCD)   B=11.00   largest S firing on B = 10.998000   B-S = 0.002000
+  Icon (off-GCD)  B=12.50   largest S firing on B = 12.498000   B-S = 0.002000
+```
+
+And 2 ms is exactly what the two cast-time models differ by:
+
+```
+  wowsims  sim/mage/arcane_charge.go:17   castTimeReduction := time.Millisecond * -334
+  model    index.html GAME.AB             STACK_CAST_REDUCTION: 1/3        (333.333… ms)
+```
+
+wowsims also `.Round(time.Millisecond)`s every cast (`sim/core/cast.go:137-138`). The log confirms it
+directly — `Cast Time = 2.166s / 1.832s / 1.498s`, never 2.167/1.833/1.5 — so the ramp ends
+`2.500+2.166+1.832 = 6.498`, and every boundary after it carries that −2 ms forward. **The log prints
+2 decimals, so `10.998` reads as `11.00` and the whole thing is invisible to a reader.** `IsReady` then
+compares `10.998 >= 11.000`, fails honestly, and defers the press a full cast.
+
+⇒ **It is a LATTICE MISMATCH, not a scheduling rule.** That matters because a fix built on "strictly
+after" (shave an epsilon, or subtract a nanosecond) would be betting on the sign of a rounding error —
+and the sign **flips with haste** (`tools/lattice-drift.mjs`: +0.080 s at h=80, −0.061 s at h=300).
+
+### 6.9b The exposure, and it is not small
+
+`tools/press-exposure.mjs` — 30 tables, 2755 plan-scorings, **32416 presses, no sim**:
+
+| | |
+|---|---|
+| fired at the cast the model intended | 23761 · 73.3 % |
+| fired at a **different** cast (floor overshot a boundary) | 496 · **1.5 %** |
+| landed **on** a boundary — which cast got buffed decided by ~ms of drift | 8159 · **25.2 %** (FRAGILE) |
+
+The retired convention was `Math.floor(actEff)`, justified in `planspec.mjs`'s own header as *"a press
+at floor(F) ≤ F snaps to the same boundary"*. **That is false whenever F is not itself a boundary**,
+and it lost casts in *both* directions: flooring `actEff 9.7` to `9` fires the press at the 9.5
+boundary the model never buffed, a full cast early.
+
+### 6.9c The fix, and the head-to-head that settles it
+
+`sim/planspec.mjs` now emits a **schedule value**, not a press time: the model's fire time **clamped
+into `[prevBoundary + SLACK, targetBoundary − SLACK]`**, with `SLACK = min(0.5 s, interval/2)`. Both
+edges matter — the drift's sign flips with haste — and a press in a downtime gap sits near neither, so
+it is still emitted verbatim. `planToSpec` now also returns `fire` (expected fire times) and `cast`
+(the cast index each press must buff).
+
+**`tools/press-headtohead.mjs`, 14 plans, 196 presses, real combat logs, both conventions on the same
+cached plans:**
+
+| convention | transcription failures | held | lattice |
+|---|---|---|---|
+| retired `floor(actEff)` | **14 · 7.14 %** | 12 | 4 |
+| current schedule value | **0 · 0.00 %** | 18 | 8 |
+
+★ **The engine block is byte-identical across this commit (`sha1 7c08324250500f61`), so no plan moved
+and no golden was re-recorded.** Proven by hash, not asserted.
+
+### 6.9d ⚠ THE RESIDUAL IS REAL, AND IT IS THE CAST-TIME CONSTANT
+
+26 of 196 presses still do not land where the model scored them, and **none of them is a transcription
+defect**. `tools/press-verify.mjs` splits them on a criterion it can check:
+
+- **HELD** (18) — the schedule value *did* sit inside the right interval and the sim declined anyway.
+  `APLActionSchedule.IsReady` also gates on `innerSpell.IsReady`, so a cooldown coming up just after
+  the sim's boundary — while the model's grid puts that boundary on the *other* side of the expiry —
+  defers the press a whole cast. Every one observed is a second, cooldown-chained use.
+- **LATTICE** (8) — the two grids are more than **half an interval** apart at that press (measured
+  0.626 s at `T=300 h=165 t≈245`, against a 1.09 s interval). Half an interval is the entire budget any
+  schedule value has, because the value is derived from the model's grid. Past that line no rule works.
+
+⇒ **Fixing `STACK_CAST_REDUCTION: 1/3` → 334 ms is the next commit**, and it is a MODEL change: it
+moves cast times, so it moves the lattice, so it moves plans and goldens. It must not ride along with
+either step 1 or step 2.
+
+⚠ **A classifier warning worth keeping.** The first version of this split asked whether the model's
+*fire time* was past the sim's boundary — true for any press near a boundary once the grids drift — and
+it duly reported the retired convention's own 14 failures as unfixable. **A classifier that launders
+the defect it was built to catch is worse than no classifier.** The criterion has to be about the
+schedule value, which is the only thing this repo controls.
+
+### 6.9e The gate that did not exist
+
+`tests/press-fire.mjs`. **Part A** (no sim, no browser) asserts, per press on every shipped preset,
+that the schedule value survives 0.30 s of lattice drift in either direction — a floor set by
+measurement, deliberately below the 0.5 s planspec budgets so it is a contract and not a restatement.
+**Part B** (needs `RUNNER`) grades real combat logs through `press-verify --cast` and **skips loudly**
+without a runner, the `sim-request.mjs` contract. `tests/page-equiv.mjs` additionally now checks the
+Debug export's private `planToSpecInline` against the module — the third copy of the transcription,
+which drifted once before (PHASE11 §1.1 B1).
+
+★ **`--cast` grades the CAST, not the clock.** The grids drift ~0.35 s by t=200 on a buffed plan, so a
+press can land on exactly the right cast with its wall-clock time a third of a second off. A
+clock-tolerance verdict calls that a failure and sends the next reader hunting a bug that is not there.

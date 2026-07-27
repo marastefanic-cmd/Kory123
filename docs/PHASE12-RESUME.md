@@ -43,17 +43,20 @@ they read the round's plan cache, which keys on `sha1(index.html)`. Regenerate t
 `git show <a commit before the 07-27 UI fixes>:index.html > /tmp/index-round.html`, or they will die
 naming the cache miss (they refuse to probe a different engine's plans).
 
-### Step 2 — fix the press-fire offset  (§6.7)
-Every press fires **1.0–1.5 s later in the sim than the plan asks**, *including off-GCD trinkets* —
-so it is our transcription, not game mechanics. wowsims' `schedule` action fires at the first cast
-boundary **strictly after** the scheduled time; `planspec` transcribes `Math.floor(actEff)`, so a press
-landing exactly on a boundary overshoots by a full cast.
-```
-node tools/press-offset-probe.mjs      # the sweep that shows the rule
-node tools/drift-bisect.mjs            # controls: the BARE cast stream is exact (0.0001s)
-```
-Then **add the missing gate**: extend `tools/press-verify.mjs` to assert *fire time == intended time*
-and wire it into `tests/`. No gate in this repo covers press-fire timing — that is why it survived.
+### Step 2 — fix the press-fire offset  ✅ **DONE 2026-07-27 — see §6.9**
+Transcription failures **7.14 % → 0.00 %** on real combat logs (`tools/press-headtohead.mjs`), engine
+block byte-identical (`sha1 7c08324250500f61`) so no plan moved and no golden was re-recorded. The gate
+that never existed is `tests/press-fire.mjs` (part A no-sim, part B skips loudly without `RUNNER`).
+
+⛔ **§6.7's mechanism was WRONG and §6.9a retires it.** It is not "the schedule fires strictly after" —
+`APLActionSchedule.IsReady` is `>=`, and a schedule 1 ns below the boundary also fires late. The sim's
+boundary simply **is not where the log says**: wowsims takes **334 ms** per Arcane Blast stack where the
+model takes 1/3 s, so the boundary printed as `11.00` is `10.998`, and `10.998 >= 11.000` is false.
+
+▶ **The residual, and it is the next commit:** 26 of 196 presses still miss, none of them a
+transcription defect (`HELD` = the sim's own cooldown gate on a drifted boundary; `LATTICE` = the grids
+>½ interval apart). **Fix `STACK_CAST_REDUCTION: 1/3` → 334 ms.** That is a MODEL change — it moves
+cast times, the lattice, plans and goldens — so it rides alone, with neither step 1 nor step 2.
 
 ### Step 3 — re-gather, then hunt search bugs
 Only now is *"the search did not find the optimum"* well-posed. ⚠ `tools/deficit-fix.mjs` found

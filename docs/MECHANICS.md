@@ -21,7 +21,33 @@ Notation: `m` = total haste multiplier; `SP` = spell power; a "cast" below means
   **`interval(m) = max(cast_base/m, max(1.0, 1.5/m))`.**  At 3 stacks (`cast_base = 1.5`) this is
   **`interval = max(1.5/m, 1.0)`.**
 
-*Verified:* wowsims mage/cast code; matches our sims exactly.
+*Verified:* wowsims mage/cast code.
+
+### ⚠ 1.1 The model and wowsims DISAGREE about the stack reduction, by 0.667 ms per stack
+
+*"Matches our sims exactly" was measured at 60 s and is false as a general statement.* Found 2026-07-27
+(PHASE12 §6.9a) while diagnosing the press-fire offset:
+
+```
+  wowsims  sim/mage/arcane_charge.go:17   castTimeReduction := time.Millisecond * -334
+  model    index.html GAME.AB             STACK_CAST_REDUCTION: 1/3        (333.333… ms)
+```
+
+wowsims also rounds every cast to the millisecond (`sim/core/cast.go:137-138`), so its ramp is
+`2.500 / 2.166 / 1.832 / 1.498` — read straight off a combat log's `Cast Time =` field, never
+`2.167 / 1.833 / 1.5`. The ramp therefore ends **2 ms** behind the model, and:
+
+- **at h=0 the offset freezes there**, because both then run GCD-capped at exactly 1.5 s. This is why a
+  60 s bare-stream check reported "exact" — and why the combat log, which prints 2 decimals, shows the
+  boundary as `11.00` when `sim.CurrentTime` is `10.998`.
+- **off the GCD cap it accumulates**, once per cast, one-signed, sign varying with haste:
+  **0.080 s over 300 s bare** (`tools/lattice-drift.mjs`), and **~0.35 s by t=200 on a plan with haste
+  buffs in it**, because every buff re-quantizes the interval.
+
+Consequences already measured: it is the entire mechanism behind "a scheduled press fires a full cast
+late" (`10.998 >= 11.000` is false), and it still costs **26 of 196 presses** their intended cast after
+the transcription fix (PHASE12 §6.9d). **The correction — take 334 ms — is a MODEL change: it moves
+cast times, so the lattice, so plans and goldens.** Not yet made; it must land alone.
 
 ## 2. Haste
 
