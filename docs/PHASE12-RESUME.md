@@ -19,9 +19,10 @@ project's own definition of correct and destroys the record of what the retired 
 | **step 2** — press transcription | the sim now fires every press on the cast the model scored it on | 7.14 % → **0.00 %** transcription failures on real logs; engine block byte-identical, so no plan moved |
 | **step 1** — the objective | rank on the per-cast sum, not the rate integral | `self-consistency` **0.00e+0** at 2755 scorings (control: the old engine still FAILS at 0.2114 %) |
 | **bug 2** — buff windows | mid-cast presses were given short windows | `window-span` now matches wowsims at every offset (was 15 casts vs 16) |
-| **bug 3** — snapshot rule | haste is fixed at cast START, value is read at cast COMPLETION; the walk used one rule for both | `credit-check` 3/3; the pre-fix engine pays 14 casts where the sim pays 13 |
+| **bug 3** — snapshot rule | haste is fixed at cast START, value is read at cast COMPLETION; the walk used one rule for both | `credit-check` 4/4; the pre-fix engine pays 14 casts where the sim pays 13 |
+| **the lattice** | 334 ms per stack **and** ms-rounding of every cast/GCD | drift 0.080 s → **0.005 s**; LATTICE press failures **8 → 0** |
 
-Four separate commits, never combined, each with its own gate.
+Five separate commits, never combined, each with its own gate.
 
 ★ **Each fix uncovered the next.** Bug 1 was simply never checked — nobody had asked whether the
 number that ranks is the number the docs define. Bug 2 was **inert** until bug 1 landed (the integral
@@ -30,20 +31,22 @@ sim agreed exactly and the pair was invisible to any probe that did not delibera
 boundary-aligned press. Assume the next fix uncovers the next one, and pick discriminating cases on
 purpose rather than convenience.
 
-## 3. ▶▶ THE NEXT ACTION, AND IT IS A PREREQUISITE — NOT A FOLLOW-UP
+## 3. ▶▶ THE NEXT ACTION — the cooldown chain (§6.14c)
 
-**Fix `STACK_CAST_REDUCTION: 1/3` → 334 ms** (`index.html`, `GAME.AB`).
+✅ The cast lattice is CLOSED (§6.14): 334 ms per stack **and** millisecond rounding of every cast and
+GCD. Bare-stream drift 0.080 s → **0.005 s**, and LATTICE-class press failures **8 → 0** of 196.
 
-wowsims uses `time.Millisecond * -334` per Arcane Blast stack (`sim/mage/arcane_charge.go:17`) and
-rounds every cast to the ms. The model uses 1/3 s. The lattices drift up to **~0.35 s by t=200** on a
-buffed plan, which still denies **26 of 196 presses** the cast the model scored them on (§6.9d) — and
-no transcription can reach those.
+What did not move is `HELD` = 18, and it is a different mechanism — **the fourth appearance of
+press-moment-vs-fire-moment**:
 
-⇒ **A referee that mis-executes ~13 % of presses cannot resolve a ~0.01 % margin**, which is exactly
-why §4's demonstration is stuck. Land the constant, re-run the demonstration, *then* consider goldens.
+- the model chains a cooldown from `lastEff[key] = eff`, the **press moment**;
+- wowsims starts it when the spell is actually **cast**, at the fire boundary `auraAt ≥ eff`.
 
-⚠ It is a **MODEL** change — cast times, the lattice, plans and goldens all move — so it rides alone.
-Evidence: `docs/MECHANICS.md` §1.1, `docs/SOURCES.md`, PHASE12 §6.9d.
+So the model legalises a use at `eff + cd` that the sim still has on cooldown until `auraAt + cd`, and
+`innerSpell.IsReady` defers it a whole cast. **The model can emit a plan the sim cannot execute.**
+
+⇒ Fix `repair()`/`lastEff` to chain from the FIRE, not the press. It is a **legality** rule, so the
+objective is untouched — but plans move, so it rides alone. Then re-run §4's demonstration.
 
 ## 4. The demonstration that is still owed (§0.4)
 
@@ -128,6 +131,15 @@ conclusion:
 - a tie rule with no resolution floor turned `+0.00` against `−0.00` into a verdict and moved a
   headline from 6–8 to **14–10**.
 
-★ **Any instrument that can absolve the defect it was built to catch is worse than no instrument.**
+- **three tools loaded the ROUND BLOB as the engine**, so they measured the old code no matter what had
+  just changed — `lattice-drift` printed a byte-identical `0.080 s` across two consecutive cast-timing
+  fixes, which reads as "the fix did nothing". Keep `ROUND_INDEX` (the plan source) and `ENGINE` (the
+  code under test, defaulting to the working tree) separate, always;
+- **`credit-check` hardcoded press times** calibrated to the lattice of the day, so when the grid moved
+  2 ms its two arms silently stopped being the same experiment. A gate must not carry its own copy of
+  the geometry it is checking — derive it.
+
+★ **Any instrument that can absolve, or fail to see, the defect it was built to catch is worse than no
+instrument.**
 Control a new one in the negative direction — seed the failure and check it fails — before believing a
 green run. `tests/page-equiv.mjs` was controlled that way this session; so was `self-consistency`.
