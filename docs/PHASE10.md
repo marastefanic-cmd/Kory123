@@ -806,3 +806,63 @@ were complete and committed before the stall; only the 6 boss cells remain.
 
 ☞ **Operational rule now standing: launch a long round with `setsid`, and start the watchdog with it.**
 A round is hours of compute whose failure mode is silence.
+
+## 8.22 ★★★ THE CLASS STRATUM IS COMPLETE — and the persistence work list REPRODUCES gear A's, cell for cell
+
+All **30 class tables** are gathered. The boss half is still running, so **this is not the round's
+verdict** (§3: 36 tables or none). But two things here are *not* partial:
+
+- the class stratum is a complete instrument in its own right — ACCEPTANCE ★★ is explicit that boss
+  and class cells are **two instruments with different noise** and must never be pooled; and
+- **`xval-persist.mjs` excludes boss tables by construction** ("boss tables are one length each"), so
+  with all 30 class tables in, **the persistence test is FINAL, not a preview.** It reports over all
+  57 kit-columns (6 kits × their haste grids).
+
+### The class-stratum readings
+
+| | |
+|---|---|
+| **Invariant A** | **PASSES — `monoDip = 0.0000%` on all 30 tables**, and `xval-verify` cross-checks every table's own stamp ("all match") |
+| **Invariant B** | **FAILS** — **112** borrowed-win columns across **27/30** tables (bar = zero). CLEAN 3/30 |
+| width distribution | median **0.038 %** · mean **0.069 %** · max **0.38 %** · ≥0.3 %: 2 · ≥0.2 %: 9 · ≥0.1 %: 26 |
+| plateau breadth | median **90 %** of a table's haste points carry a distinct plan · 3/30 are ≤50 % · ⚠ **2 of those are CLEAN**, so that CLEAN is partly vacuous (`isc+scb medlong` 2/10, `isc+scb xl` 3/10) |
+| ripple floor | `priced=112 inside=86 over=16 indet=10` · `rho=0.289` · self-check `mono=0` · `vacuous=0` |
+
+### ★ The finding: the persistence list is the SAME LIST
+
+```
+isc-mqg   h40  ← rival plan@h70   wins 5/5   margins% [0.070, 0.008, 0.380, 0.094, 0.071]
+isc-skull h20  ← rival plan@h100  wins 4/5   margins% [0.075, 0.004, 0.059, 0.008]
+isc-skull h130 ← rival plan@h230  wins 4/5   margins% [0.213, 0.018, 0.013, 0.007]
+```
+
+**The first two are gear A's entire work list, reproduced exactly** — same kit, same haste column,
+same rival haste, same win count (5/5 and 4/5).
+
+⚠ **This is NOT a violation of BENCH §1, and the distinction matters.** §1 forbids comparing a gear-B
+**number** to a gear-A number, and nothing above does: the margins differ, as they must on a different
+character, and no arithmetic crosses the baselines. What is being compared is **which cells a
+threshold-free structural test names** — a *structural* fact with no units. That test has no magnitude
+filter, no borrower-distance filter and nothing tuned after seeing the data (the post-hoc sieve that
+disagreed with it is a recorded mistake, ACCEPTANCE §6), so the cells it names are not free parameters.
+
+★★ **Consequence, and it is the phase's first real model result: the low-haste basin debt is NOT a
+gear-A artifact.** It survived a character change intact. PHASE10 §1's premise was that every open
+debt was "denominated in a currency that no longer exists" — for this one, the *denomination* changed
+and the *cell* did not. It is a property of the model, not of the reference gear.
+
+### ⚠ The third column, reported honestly because it cuts the other way
+
+`isc-skull h130` is **new**, and it has history: on gear A it was one of the four survivors of the
+**post-hoc sieve** that ACCEPTANCE §6 records as a methodological error, and the unrigged test
+correctly **rejected** it there (best 3/5, rival `h185`). On gear B it passes at **4/5 — with a
+different rival (`h230`, not `h185`)**. Two readings are open and this stratum cannot separate them:
+a genuine cell that gear A's noise hid, or the 1-in-57 that a "loses ≤1 of 5 lengths" criterion admits
+by chance. **It goes on the work list and is graded by `xval-band.mjs` like the other two** — it is
+not promoted on the strength of having once been named by a discredited sieve.
+
+### What is still owed before any of this is a verdict
+
+The 6 boss tables (invariant A on them, and their contribution to B's column count and distribution),
+then the band grading of the three persistence columns ∪ the over-floor cells per §8.18's
+pre-registered scope.
