@@ -1,5 +1,30 @@
 # PHASE 9 — Optimizer performance (CPU / latency) with ZERO plan drift
 
+> ## ✔ CLOSED 2026-07-27 — archived. The unfinished ladder rungs have an owner: **PHASE11 §3.1**.
+>
+> **Why it closes rather than continues.** The phase's own mandate — *measure first, hypothesise,
+> land only under a byte-identical-plans gate* — is discharged: §1 has the baseline profile, §3 the
+> call census and hypothesis verdicts, §4 the refactor catalogue, and four changes landed (§5.12 groom
+> early exit, §5.14/§5.16 `groupSeeds`, §5.17 `finishLine`, §5.21 the `JSON.stringify` memo key at
+> **−14 % CPU**, §5.22 the `admit` helper). What is left of §4 is a **ladder of rungs**, not a phase,
+> and `docs/PHASE11.md` §3.1 already claims it by name — *"The reclaim ladder (PHASE9 §4, already
+> argued — finish it in order)"*. Two docs listing the same next step is the drift this archiving
+> removes; §5.23's *"Next: (0b) the `counts`/`clipOf` hoists, then the §4.1 five-walk fusion"* is
+> **PHASE11's next step now**, unchanged in content.
+>
+> ⚠ **Every rung is blocked on the `index.html` freeze** while a cross-val round is gathering (the
+> plan cache keys on its bytes — PHASE10, PHASE12 §1.1e). That is a *scheduling* block, not a design
+> one; PHASE11 §2's module split touches the same file, so **whichever lands first re-baselines the
+> other's wall-clock numbers** (§5.14: perf figures compare only within a same-session pair).
+>
+> **What stays live and is cited from the living docs — do not read this banner as "superseded":**
+> **§5 is the phase's larger contribution** — the fast iteration gate (`plan-sweep` + `plan-diff` +
+> `plan-duel`) that replaced "re-run everything after every edit", cited by CLAUDE.md, `tests/`, and
+> `tools/plan-sweep.mjs` / `plan-duel.mjs` themselves. Also permanently valid: §5.15/§5.16's lesson
+> that a gate certifying plan-identity on one corpus certifies nothing where plans move, and §5.11's
+> entrant-plateau diagnosis. Cited across the docs as **"PHASE9 §x"**; section numbers are unchanged
+> by the move, so those citations still resolve.
+
 **Trigger (user, 2026-07-24):** *"the tool has gotten a bit slow again and takes a lot of CPU, see any
 performance improvements without regressions? perhaps a refactor in the future?"*
 

@@ -1,4 +1,4 @@
-// THE DUEL — verification scoped to what actually changed (docs/PHASE9.md §5.4).
+// THE DUEL — verification scoped to what actually changed (docs/archive/10-phase9-performance.md §5.4).
 //
 // The user's rule, which this implements: *"if you implement a rule, you only need to test the
 // things it affected. If the model's output is exactly the same for a setup there's no reason to

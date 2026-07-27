@@ -24,7 +24,7 @@
 //
 // For the every-edit loop use tools/plan-sweep.mjs + tools/plan-diff.mjs instead
 // (bare node, no browser, ~16x faster). This stays the golden gate before a commit,
-// and it is the only one that covers the render path. See docs/PHASE9.md §5.
+// and it is the only one that covers the render path. See docs/archive/10-phase9-performance.md §5.
 //
 // Requires: playwright-core + a Chromium (set CHROMIUM=/path/to/chromium, or rely on
 // the PLAYWRIGHT default). See tests/README.md.
@@ -109,7 +109,7 @@ spec = await first.pg.evaluate(() => {
 const JOBS = Math.max(1, Math.min(+(process.env.JOBS || 0) || Math.max(1, os.cpus().length - 1), spec.cases.length));
 // Round-robin, not contiguous blocks: solve cost grows with the number of presses a fight
 // admits and the presets are T-ordered, so contiguous slices hand one page every long fight
-// and leave the rest idle. See docs/PHASE9.md §5.6.
+// and leave the rest idle. See docs/archive/10-phase9-performance.md §5.6.
 const slices = Array.from({ length: JOBS }, (_, j) => spec.cases.map((_, i) => i).filter((_, k) => k % JOBS === j)).filter(s => s.length);
 
 const results = {};

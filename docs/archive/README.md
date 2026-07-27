@@ -53,4 +53,19 @@ LAW (§11–§13), the two harness input errors it found (`t5two`, effective SP 
 ⚠ **Gear-A denominated, and B2 itself is NOT solved.** Its target moved ~0.39 pp and changed sign on
 gear B (BENCH §3e) before any of it was re-measured.
 
-_(Phase 9 is still in flight at `docs/PHASE9.md`; archive it here when it closes.)_
+## `10-phase9-performance.md` — Phase 9: optimizer CPU/latency under a byte-identical-plans gate (closed 2026-07-27)
+
+Triggered by *"the tool has gotten a bit slow again"*. Measure-first throughout: a baseline CPU
+profile, a call census, a hypothesis table with verdicts, and a refactor catalogue landed
+cheapest-and-safest-first. **Four changes landed** (groom early exit, `groupSeeds`, `finishLine`, the
+`JSON.stringify` memo key at −14 % CPU) and one was **reverted on a pre-registered rule after measuring
+null** — the rung's most useful result. **§5 is the larger contribution and is still live guidance:**
+the fast iteration gate (`plan-sweep` + `plan-diff` + `plan-duel`) that replaced "re-run everything
+after every edit", cited from CLAUDE.md, `tests/`, and the tools themselves. Cited as **"PHASE9 §x"**;
+section numbers unchanged, so those citations still resolve.
+⚠ **Closed, not finished.** The unfinished §4 reclaim rungs are inherited by `docs/PHASE11.md` §3.1,
+which already claimed them by name — two docs listing the same next step was the drift the archiving
+removes. Every rung is blocked on the `index.html` freeze while a cross-val round gathers.
+
+_(In flight: `docs/PHASE10.md` — the gear-B baseline; `docs/PHASE11.md` — the platform phase;
+`docs/PHASE12.md` — the next phase's raw material. Archive each here when it closes.)_

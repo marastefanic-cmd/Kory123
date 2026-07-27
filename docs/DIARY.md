@@ -158,11 +158,11 @@ is the gate). Baseline CDP profile + a call census established the shape before 
 long solve does ~2.0M `repair`s and ~2.0M signature builds against only ~0.6M real simulations, and
 ~19% of all CPU is **memo bookkeeping rather than simulation**. The structural finding is that the
 inner loop walks the same small schedule **five times** (repair · counts · clip · sigOf · simulate)
-where one fused walk would do. Notes, hypotheses and landing order in `docs/PHASE9.md`; nothing landed
+where one fused walk would do. Notes, hypotheses and landing order in `docs/archive/10-phase9-performance.md`; nothing landed
 yet. (07-25: writing the ladder's **first** item up as a landable patch instead **corrected** it —
 §4.3's sig-swap is 2.9× *slower*, not 20× cheaper, and is rejected; only its hoist half survives. The
 bench that killed it found the bigger win: the **native `JSON.stringify` is a cheaper memo key than the
-hand-rolled `sigOf`**, ≈1.8 s CPU/solve, now ladder item 1. `docs/PHASE9.md` §4.12–§4.13.)
+hand-rolled `sigOf`**, ≈1.8 s CPU/solve, now ladder item 1. `docs/archive/10-phase9-performance.md` §4.12–§4.13.)
 The phase's larger contribution turned out to be the **iteration gate** (§5): a bare-node plan sweep +
 A/B differ + a sim-free DUEL, replacing "exact-match or the hours-long acceptance round, nothing in
 between." That instrument is what made the rest tractable — and it is also what localised the phase's

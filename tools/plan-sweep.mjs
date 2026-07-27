@@ -7,7 +7,7 @@
 // (PHASE11 §1.3 I7). Either way it is a browser tax. This sweeps the same corpus in BARE NODE across
 // processes (the engine is DOM-free by construction — it already runs in a Web Worker), emits
 // best.s (the schedule the optimizer CHOSE) at float precision, needs no golden to maintain
-// (plan-diff.mjs diffs A vs B), and admits a QUICK tier. See docs/PHASE9.md §5.
+// (plan-diff.mjs diffs A vs B), and admits a QUICK tier. See docs/archive/10-phase9-performance.md §5.
 //
 // ⚠ It does NOT replace exact-match, and the reason is NOT "exact-match floors to seconds and
 // so misses sub-second shifts" — that claim was MEASURED FALSE (all 273 press times across all

@@ -509,7 +509,7 @@ Lesson 7 above is the instrument for the second axis; lessons 1–4 are the firs
   convergence** of the wash (the variants are **nested** — `mulb(9000+v)` — so the corpus's 5 are a prefix of
   any deeper set, and one deep run yields the whole curve); `--dump` writes the raw per-variant cell.
   ```
-  RUNNER=$SP/wowsims/runner-ap180 EXPORT=$SP/seedband/export.json node tools/cell-band.mjs \
+  RUNNER=/path/to/runner-ap180 EXPORT=tools/bench/export.json node tools/cell-band.mjs \
     --a "$(cat A.spec.json)" --labelA native --b "$(cat B.spec.json)" --labelB borrowd \
     --walls 15,42,69,94,105,160,306 --dur 420 --haste 195 --targets 6 \
     --iter 6000 --seeds 11,100011,200011,300011,400011 --variants 33 --prefix 1,3,5,9,17,25,33

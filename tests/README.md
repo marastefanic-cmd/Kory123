@@ -59,7 +59,7 @@ node ../tools/plan-diff.mjs A.json B.json
 
 ~33s for 16 of 25 cases (~16× faster), and it prints the changed-cell work list.
 Exact-match still runs before a commit — it is the only gate that covers the **render
-path**, which the sweep never touches. See `docs/PHASE9.md §5`.
+path**, which the sweep never touches. See `docs/archive/10-phase9-performance.md §5`.
 
 ## When a case legitimately changes
 

@@ -88,7 +88,7 @@ node tools/plan-diff.mjs A.json B.json
 ```
 It needs no golden to maintain and prints the **changed-cell work list**. Then run exact-match before
 committing an engine change (it also covers the render path, which the sweep never touches). Full
-rationale, measurements, and both instrument controls: `docs/PHASE9.md §5`.
+rationale, measurements, and both instrument controls: `docs/archive/10-phase9-performance.md §5`.
 
 **And when a changed cell needs the SIM, that is one command and no setup:**
 ```
@@ -254,13 +254,15 @@ Treat maintaining them as part of the work, not an afterthought:
   then CI bring-up (none exists), the module split under a plan-sweep-IDENTICAL gate, the PHASE9 §4
   reclaim ladder, and lazily-loaded product routes (URL-shareable setups first). §8 lists the user
   calls it needs. No scorer/search change is in scope; PHASE10 stays the next MODEL phase.
-- `docs/PHASE9.md` — **performance / refactor notes** (CPU + latency, under a byte-identical-plans
-  constraint). Measure-first: baseline profile, call census, hypothesis table with verdicts, and the
-  refactor catalogue (redundant walks, fusable steps) with a cheapest-and-safest-first landing order.
-  **§5 is the phase's larger contribution: the FAST ITERATION GATE** (`plan-sweep` + `plan-diff` +
-  `plan-duel`) that replaced "re-run everything after every edit" — read it before designing any
-  verification. Two changes LANDED 07-25: the groom early exit and the `groupSeeds` class (§5.12–§5.14),
-  together −8.5% CPU with all 25 plans bit-identical.
+- `docs/archive/10-phase9-performance.md` — **Phase 9, CLOSED 07-27** (performance / refactor, under a
+  byte-identical-plans constraint). Measure-first: baseline profile, call census, hypothesis table with
+  verdicts, refactor catalogue landed cheapest-first. Four changes landed (groom exit, `groupSeeds`,
+  `finishLine`, the `JSON.stringify` memo key at −14% CPU) and one was **reverted on a pre-registered
+  rule after measuring null**. **§5 is the phase's larger contribution and is STILL LIVE GUIDANCE: the
+  FAST ITERATION GATE** (`plan-sweep` + `plan-diff` + `plan-duel`) that replaced "re-run everything after
+  every edit" — read it before designing any verification.
+  ⚠ **Closed, not finished:** the unfinished §4 reclaim rungs are PHASE11 §3.1's, and every one of them
+  is blocked while a cross-val round has `index.html` frozen.
 - `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
   into ROADMAP). **No plan in flight. Phase 5 (AoE phases) is COMPLETE** — verdict: an AoE phase is a

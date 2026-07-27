@@ -635,9 +635,12 @@ near-tie tail — now merged with the criterion question above, since both say t
 is left. **Second repricing (07-25):** the boss half of the over-floor list is down from 9 cells to 3, and
 those 3 are one mechanism — **within-AoE-window placement** (above). So what is left of Phase 7 is *one named
 term at one kit*, plus 15 class cells whose floor is complete and whose top excess is 0.1653 pp. **The ramp-credit patch is CANCELLED** (there was no defect). Re-run this in full after each.
-A performance phase is also open (`docs/PHASE9.md`); by construction it must leave every plan
-byte-identical, so it cannot invalidate a round — but re-run the exact-match suite after each of its
-steps, and if any plan ever *does* move, the round is void.
+Performance work also touches this test. Phase 9 **closed 07-27**
+(`docs/archive/10-phase9-performance.md`); its unfinished reclaim rungs are PHASE11 §3.1's. By
+construction that work must leave every plan byte-identical, so it cannot invalidate a round — but
+re-run the exact-match suite after each of its steps, and if any plan ever *does* move, the round is
+void. ⚠ **And it must not run WHILE a round gathers**: the plan cache keys on `index.html`'s bytes, so
+an edit mid-round assembles the matrix from two different instruments (PHASE12 §1.1e).
 
 ## Known coverage gaps in the test itself (make the test stronger over time)
 - **~~Single-worst-cell reporting hides structure.~~ CLOSED (P7.1 + 07-25).** The collector now publishes
@@ -709,7 +712,7 @@ and the repricing trap that stops you doing it by subtracting two rounds' tables
 **Consequence for how this doc is used:** this test is the *"are we done yet"* measurement — run once
 per campaign, not per change. It is **not** the per-change gate, and it never was one; using it that way
 is what made the iteration loop slow. The per-change gate is the fast plan-diff instrument
-(`docs/PHASE9.md §5`), and the duel is what sits between them.
+(`docs/archive/10-phase9-performance.md §5`), and the duel is what sits between them.
 
 ### ★★★ What the B BANNER can and cannot tell you (07-25, round 5) — the bar is right, the banner is nearly powerless
 
