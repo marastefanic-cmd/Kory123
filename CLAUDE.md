@@ -232,33 +232,34 @@ Treat maintaining them as part of the work, not an afterthought:
   ⚠ **B2 itself is unsolved.** Its target was thought to have moved ~0.39 pp and changed sign on gear
   B; that was **retracted 07-27** (BENCH §3e) — re-measured on protocol it reads ≈0.43 pp, so the
   gear-A target essentially **stands**.
-- `docs/PHASE10.md` — ▶ **IN EXECUTION. Round 1 is GATHERING — read `docs/PHASE10-RESUME.md` first**
-  (60-second state + exact next actions). Re-establishes the acceptance baseline on gear B; every
-  gear-A number is archived, so ACCEPTANCE still has **no reading** until 36/36.
-  ⚠⚠ **While it gathers, `tools/xval-bench.mjs` AND ITS WHOLE IMPORT CLOSURE ARE FROZEN**
-  (GEAR-AGNOSTIC §6.2; closure found 07-27, PHASE12 §1.1e) — the campaign spawns a fresh
-  `xval-bench.mjs` per cell, and the plan cache keys on **`index.html`'s bytes alone**, so an edit to
-  any other imported file changes plans while the key stays put. That is: `index.html`,
-  `tools/engine-node.mjs`, `tools/genapl-core.mjs`, `tools/reference-gear.mjs`, `sim/planspec.mjs`,
-  `sim/simreq.mjs`, `sim/benchmark.mjs`. "Provably behaviour-neutral" is **not** the test — *in the
-  closure* is. Everything outside it (`tools/bench.mjs`, `tests/`, `docs/`) stays editable.
-  Its §8 is the execution log. Landed so far: the shakedown PASSED; the instrument is certified
-  (wasm == native runner · anti-drift 9/9 · anchor ≡ `wowsimcli` · exact-match 25/25); **§4.2 had no
-  executable path** (`bench.mjs` is a duel, the test is a matrix) so `tools/xval-bench.mjs` was built
-  and *proven* equivalent to `xval.mjs`; and the audit found the **shipped in-page sim was blind to
-  Bloodlust and every trinket** (§8.7, half-fixed in §8.12 — Bloodlust `0.000 → +165.5 DPS`).
-  ★ The 30 class tables are in: invariant A **passes** (`monoDip = 0.0000%`), and the persistence work
-  list **reproduces gear A's cell for cell** (§8.22) — so the low-haste basin is *not* a gear artifact.
-  §8.23 diagnoses its worst cell: **two local optima and one terminal cast**, which the model scores as
-  a 0.014 % tie while the sim is emphatic at ~13σ. ⚠ Discretizing the scorer is already falsified.
+- `docs/archive/11-phase10-gearb-baseline.md` — ✅ **PHASE 10, CLOSED 07-27. The acceptance verdict is
+  DEFINED again**, and `docs/ACCEPTANCE.md` → *"Current status (GEAR B, round 1)"* is the reading.
+  Round 1 is **36/36 under one protocol on one engine** (`char=bench-gearB ·
+  engine=native:runner-ap180 · var 0.5 · emit=fire · iter 6000 · pool=1`), certified by
+  `tools/xval-stamp-audit.mjs`. **Invariant A PASSES** (`monoDip = 0.0000%` on all 36); **B2 FAILS** —
+  142 borrowed-win columns of 345 across 33/36 tables, worst **0.380 %**, median 0.035 %.
+  ★ **The persistence list (3 of 57 kit-columns) reproduces gear A's first two CELL FOR CELL**, so the
+  low-haste basin is a property of the **model**, not the gear — and §8.23/§8.25 diagnose it as **one
+  terminal cast** the objective scores as a 0.014 % tie while the sim is emphatic at ~13σ.
+  ⚠ Discretizing the scorer is already falsified. **Debts re-priced (§8.31): B2 survives**
+  (banded **+0.368 ± 0.020 pp, 5/5 seeds, REAL** ⇒ ≈0.38–0.41 pp, target stands); the **basin
+  reproduces but is misnamed** (a third column sits at h130; the family is 2 terminal-cast columns + 1
+  sub-resolution value column); the **KT/AoE cells do NOT reproduce**, discharging PHASE7 §5.19's
+  standing prediction. **Two instrument findings inherited:** `ripple-audit` fails its own P3/P5
+  self-checks (so no ripple decomposition is quotable on that round, and its `mono=0` stamp means
+  FAILURE while the neighbouring `vacuous=0` means success), and *"wasm == native"* has always meant
+  **within 0.05 DPS**, not bit-identity — the re-gather moved six published figures, one a **verdict
+  flip** off a ~1e-6 relative difference (§8.27). **The import-closure freeze is LIFTED.**
 - `docs/PHASE11.md` — **PLANNED (parallel track): the platform phase — the single-file convention is
   RETIRED (user decision 07-26).** Its §1 is the 07-26 audit's findings ledger. ✅ **Status-audited
-  07-27: 6 of the 8 confirmed bugs are FIXED** (`bench --targets` + its refusal, the cached-rejection
-  boot, `immutable` on the unhashed wasm, `plan-duel`'s retired intent transcription, `census-build`'s
-  line anchors, `evalsched`'s missing `t5two`). **The two open halves are both in `index.html`** —
-  the Debug-export "reproduce" command still drops `targets` on AoE duels, and `simRun` still leaks a
-  listener per duel and never evicts a failed worker — i.e. exactly the file the split exists to break
-  up, and the file that is frozen while a round gathers. Then: CI bring-up (none exists), the module
+  07-27: §1.1 is FULLY DISCHARGED, 8 of 8.** Six were fixed in passing (`bench --targets` + its
+  refusal, the cached-rejection boot, `immutable` on the unhashed wasm, `plan-duel`'s retired intent
+  transcription, `census-build`'s line anchors, `evalsched`'s missing `t5two`); the **last two both
+  lived in `index.html`** — exactly the file the split exists to break up, and the file frozen while a
+  round gathers — and landed the day Phase 10's freeze lifted: the Debug-export "reproduce" command
+  now carries `--targets N` on AoE duels, and `simRun` has symmetric single-shot teardown plus
+  worker eviction. Both proved plan-neutral by the engine block being **byte-identical**
+  (`sha1 7c08324250500f61`), not by assertion. Then: CI bring-up (none exists), the module
   split under a plan-sweep-IDENTICAL gate, the PHASE9 §4 reclaim ladder (inherited at §3.1 when Phase 9
   closed), and lazily-loaded product routes (URL-shareable setups first). §8 lists the user calls it
   needs. No scorer/search change is in scope; PHASE10 stays the next MODEL phase.

@@ -1324,3 +1324,82 @@ pair is queued for grading, and the boss-cell noise band is owed a fresh measure
 The resolution-floor criterion question (a **user call**, PHASE12 §1.3), the absence of exhaustive
 ground truth above ~h150, and Ashtongue's exclusion from the kits. None of these is a number that
 re-measurement could move.
+
+---
+
+# §9 — CLOSING APPENDIX: what this phase built, and the handoff doc it absorbed
+
+**Phase 10 is CLOSED (2026-07-27).** Exit criteria from §6, checked:
+
+| §6 requirement | state |
+|---|---|
+| `tools/xval-results/` holds a complete, stamped gear-B round | ✅ 36/36, one protocol, one engine, `xval-stamp-audit` exit 0 |
+| ACCEPTANCE carries a gear-B status block as a **first measurement** | ✅ *"Current status (GEAR B, round 1)"* — no arithmetic crosses baselines |
+| every open debt re-priced in gear-B terms or closed as not-reproducing | ✅ §8.31 — B2 survives · the basin reproduces (and is renamed) · KT/AoE does **not** reproduce |
+| DIARY records the arc plus any belief the re-measurement overturned | ✅ arc entry + **three** corrections-ledger rows |
+
+## 9.1 Instruments this phase built (do not re-derive)
+
+- **`tools/xval-bench.mjs` + `tools/xval-bench-campaign.sh`** — the matrix driver §4.2 needed and did
+  not have (`bench.mjs` is a two-arm duel; the acceptance test *is* an N×N matrix), **proven**
+  equivalent to the retired `tools/xval.mjs` (§8.9), plus a `SOLVE_ONLY` pre-pass and sharding.
+- **`tools/xval-watchdog.sh`** (singleton `noclobber` PID lock) + **`tools/xval-checkpoint.sh`** — the
+  keep-alive and the loop that commits completed tables mid-round, so hours of compute survive a
+  container reclaim.
+- **`tools/xval-grade.sh`** — §3.1's six-tool chain as one command, gate-first, `rc`-graded, refusing
+  to run anything downstream of a nonzero provenance audit (§8.20).
+- **`tools/xval-stamp-audit.mjs`** — the round's **provenance** gate; everything it checks was a
+  written rule with no instrument behind it (§8.19).
+- **`tools/xval-band.mjs`** — §5's ≥3-seed rule, config validated before the data is looked at.
+- **`tools/xval-band-scope.mjs`** — §8.18's pre-registered band **scope**, executed rather than
+  remembered: the union is derived from `ripple-audit --json` and `xval-persist`'s own output, and
+  excluded columns are written out and counted rather than absorbed.
+- **`tools/xval-collect.mjs`** gained **plateau breadth**, which immediately showed that two of the
+  three CLEAN tables emit 2–3 distinct plans across 10 haste points — i.e. partly vacuous CLEANs.
+- **`sim/planspec.mjs` `REQUIRES_EQUIPPED` + `tools/bench.mjs --kit/--targets`** — a press of an
+  unworn trinket is a bit-identical **no-op** in wowsims, now refused rather than silently simmed.
+- **`sim/model-ref.json`** — the website's benchmark mage wears its trinkets and can be Lusted;
+  Bloodlust went from **exactly 0.000** to **+165.5 DPS** (§8.12).
+
+## 9.2 Operational lessons, banked
+
+- **★ Relaunch anything with `setsid`.** `nohup … &` from an agent shell leaves the process in the
+  session's process group, so it dies with that shell — and it took the *checkpoint loop* with it, so
+  durability stopped at the same instant as the thing it protected. **The round died silently for ~10
+  hours** and nothing noticed, because the only liveness signal was "tables are appearing" and a boss
+  cell legitimately takes ~an hour: **slow and stopped are the same observation from outside** (§8.21).
+  ⚠ It happened **twice**: the chained `xval-finish-round.sh` watcher also died before it ever saw
+  36/36, so the class re-gather had to be relaunched by hand at the close.
+- **★ Never `pkill -f` from an interactive shell** — the pattern is in the issuing shell's own argv,
+  so it kills the shell while the target survives (§8.17, §8.26).
+- **A native rig builds here in ~4 minutes** (`apt-get install protobuf-compiler`, then BENCH §3d).
+  §1.3's "the ceremony is gone" is true as *convenience*, not as *availability* — the rig is still the
+  only way to run the anti-drift gate or regenerate a `--dumpreq` template. It is ~7.6× faster than
+  the wasm on the sim half, which is what made the boss stratum tractable.
+- **The freeze is an IMPORT CLOSURE, not a file.** `ENGINE_ID` hashes `index.html` alone, so editing
+  anything else the driver imports changes plans while the cache key stays put. "Provably
+  behaviour-neutral" is not the test; *in the closure* is (§8.24, and the check is two commands —
+  §8.28 runs it at the close and finds `index.html` untouched for the whole round).
+
+## 9.3 The TRINKETS-reorder question, resolved by reading (absorbed from the handoff doc)
+
+`origin/claude/webapp-optimization-brainstorm-unpipp` carries two unmerged commits that rewrite
+`index.html` by **+147/−52** and **reorder the flat `TRINKETS` array**
+(`["skull","ati","scb","mqg","isc"] → ["mqg","isc","scb","skull","ati"]`). The worry was that
+iteration order could move a search tie-break.
+
+**It cannot: the search never reads `TRINKETS`.** All three ordering-sensitive engine uses go through
+**`OFF_TRINKETS`**, whose order the incoming diff does not touch. ★ **And the gate that was prescribed
+for it would not have seen it either** — `tests/exact-match.mjs` declares its **own** hardcoded
+`ALL_BUFFS` and builds `enabled` from `kit.includes(k)`; it never calls `applyState`. So 25/25 is a
+true statement about the engine and **no statement at all** about the reorder.
+
+⚠ **What the reorder *does* change:** `applyState` caps a setup at wowsims' two trinket slots, and
+which two survive is **first-two-in-`TRINKETS`-order** — so a saved setup naming ≥3 trinkets silently
+plans differently. Reachability is narrow today (no shipped preset names three), **but PHASE11 §2's
+URL-shareable setups would promote this to a routine path taking third-party input.** Decide the
+clamp's priority order deliberately there rather than inheriting it from a presentational regroup.
+
+**Merge order, now that the round is graded and archived:** merge → `exact-match` (25/25 expected, and
+*not* evidence about the ordering) → `node tools/census-build.mjs` (a UI diff this size is exactly
+what moves a probe's subject).

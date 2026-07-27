@@ -67,5 +67,31 @@ section numbers unchanged, so those citations still resolve.
 which already claimed them by name — two docs listing the same next step was the drift the archiving
 removes. Every rung is blocked on the `index.html` freeze while a cross-val round gathers.
 
-_(In flight: `docs/PHASE10.md` — the gear-B baseline; `docs/PHASE11.md` — the platform phase;
+## `11-phase10-gearb-baseline.md` — Phase 10: re-establish the acceptance baseline on GEAR B (closed 2026-07-27)
+
+The phase that existed because the project had **no acceptance reading at all**: the reference
+character was re-exported on 07-26 and the whole gear-A corpus archived, so every model-vs-sim number
+was denominated in a currency that no longer existed. Round 1 gathered **36 cells (30 class + 6 boss)**
+over ~50 CPU-hours and closes **36/36 under one protocol on one engine**, certified by a provenance
+gate (`xval-stamp-audit.mjs`) that did not exist when the phase began.
+
+**Verdict: invariant A PASSES (`monoDip = 0.0000%` on all 36); B2 FAILS** — 142 borrowed-win columns
+of 345 across 33/36 tables, worst 0.380 %. **ACCEPTANCE NOT PASSING**, on a bar of zero.
+★ **The central model result:** the threshold-free persistence test names 3 of 57 kit-columns and its
+first two are gear A's entire work list **cell for cell** — so the low-haste basin is a property of
+the **model**, not the reference gear — and §8.23/§8.25 diagnose it as **one terminal cast** that the
+objective scores as a 0.014 % tie against a sim emphatic at ~13σ (discretizing the scorer is already
+falsified). **Debts re-priced (§8.31):** B2 **survives** (banded +0.368 ± 0.020 pp, 5/5 seeds, REAL);
+the basin **reproduces** but is misnamed twice over; the KT/AoE cells **do not reproduce**, which
+discharges PHASE7 §5.19's standing prediction. Cited as **"PHASE10 §x"**; section numbers unchanged.
+
+⚠ **Two instrument findings it hands on, both found by reading a tool's output rather than its summary
+line.** `ripple-audit` **fails two of its own pre-registered self-checks** (P3, P5) — so no ripple
+decomposition is quotable on that round — and stamps `mono=0` for FAILURE beside a `vacuous=0` that
+means success. And *"the shipped wasm == the native runner"* has always meant **within 0.05 DPS**, not
+bit-identity: re-gathering 30 tables on the runner moved six published figures, one of them a
+**verdict flip** off a ~1e-6 relative difference. Its §9 absorbs the `PHASE10-RESUME.md` handoff doc,
+including the resolved TRINKETS-reorder question and the merge order for the unmerged UI branch.
+
+_(In flight: `docs/PHASE11.md` — the platform phase, its §1.1 findings ledger now fully discharged;
 `docs/PHASE12.md` — the next phase's raw material. Archive each here when it closes.)_

@@ -6,7 +6,7 @@
 coarse**, or **something gear B revealed that gear A hid**.
 
 Status when this file was opened: **round 1 gathering at 30/36**, `index.html` frozen until 36/36
-(the plan cache keys on its bytes). Written against `docs/PHASE10.md` §8 and `docs/PHASE11.md` §1/§8.
+(the plan cache keys on its bytes). Written against `docs/archive/11-phase10-gearb-baseline.md` §8 and `docs/PHASE11.md` §1/§8.
 
 ---
 
@@ -313,7 +313,7 @@ natural first CI gate (goal step 7): it needs no Go toolchain, runs in ~10 s, an
 gate that covers the page's *own* `opts` assembly at `index.html:4666`, which is not shared code.
 
 ### 4.2 `exact-match` is blind to the TRINKETS reorder by construction
-Already recorded in PHASE10-RESUME §3b and **not re-derived here** — but it belongs on this list
+Already recorded in `docs/archive/11-phase10-gearb-baseline.md` §9.3 and **not re-derived here** — but it belongs on this list
 because it is the cleanest example of a green gate that is *not evidence*: `tests/exact-match.mjs:47`
 declares its own `ALL_BUFFS` and never calls `applyState`, so the reorder's real blast radius
 (`applyState`'s two-slot clamp at `index.html:5114`) is invisible to it. 25/25 is expected and proves

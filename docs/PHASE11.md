@@ -49,8 +49,8 @@ hardcoded line-number patcher in `tools/census-build.mjs`), feeding ~30 consumer
 >
 > | # | what | status | where |
 > |---|---|---|---|
-> | **B1** | AoE duel mis-reproduced (no `targets`) | **half fixed** — `tools/bench.mjs` has `--targets`, *and refuses* an `_aoe` spec that omits it (the flag alone would have left the failure silent). **The page half is open**: `planToSpecInline` still drops `targets` and the emitted command still carries none | `bench.mjs` ✔ · `index.html` ✗ |
-> | **B2** | one transient failure bricks the sim button | **half fixed** — `sim/duel-worker.js` un-memoizes a rejected boot, with per-step guards so a retry does not start a second Go runtime. **Open**: `simRun`'s listener leak (a `{once:true}` error listener accumulates per success; the error path leaves `onMsg` attached) and no worker eviction | `duel-worker.js` ✔ · `index.html` ✗ |
+> | **B1** | AoE duel mis-reproduced (no `targets`) | ✔ **FIXED 07-27** — `tools/bench.mjs` has `--targets` *and refuses* an `_aoe` spec that omits it (the flag alone would have left the failure silent); and the page half landed the moment the round's freeze lifted — `planToSpecInline` now computes `targets` as the max across AoE windows (matching its module twin) and the emitted command carries `--targets N` whenever `N > 1` | `bench.mjs` ✔ · `index.html` ✔ |
+> | **B2** | one transient failure bricks the sim button | ✔ **FIXED 07-27** — `sim/duel-worker.js` un-memoizes a rejected boot, with per-step guards so a retry does not start a second Go runtime; and `simRun` now has symmetric teardown via a single-shot `settle()` (both listeners removed on **every** exit path, fixing the `{once:true}` error listener that only self-removed when it fired and the error path that left `onMsg` attached) plus **worker eviction** on failure, identity-guarded so a slow failure cannot evict a worker a later duel already replaced | `duel-worker.js` ✔ · `index.html` ✔ |
 > | **B3** | `immutable` on the unhashed wasm | ✔ **FIXED** — `netlify.toml` records both the fix and the false premise it rested on (`immutable` is a promise about a *URL*, and a bundle whose members expire on different schedules can serve a mismatched set) | `netlify.toml` |
 > | **B4** | `plan-duel.mjs` transcribed the retired INTENT convention | ✔ **FIXED** — `toSpec` now reads `actEff` (fire times), and the flag *shape* comes from `runnerFlags()` rather than being hand-assembled | `plan-duel.mjs` |
 > | **B5** | `census-build.mjs` dead against HEAD | ✔ **FIXED** — probes are **content-anchored** (`find` + optional `after`) instead of line-numbered. Note the reasoning: the answer to "one anchor is ambiguous" is to disambiguate that one, not to make all eight fragile | `census-build.mjs` |
@@ -58,9 +58,16 @@ hardcoded line-number patcher in `tools/census-build.mjs`), feeding ~30 consumer
 > | **B7** | `sim-duel.mjs`'s main-guard failed as a pass | ✔ **FIXED** — `pathToFileURL` on both sides | `tests/sim-duel.mjs` |
 > | **B8** | `sim-request.mjs` skipped its runner-free checks | ✔ **FIXED** — §0 hoisted above the `RUNNER` gate, so the protocol invariants run everywhere including CI | `tests/sim-request.mjs` |
 >
-> **Both remaining halves live in `index.html`**, which is frozen while a cross-val round gathers
-> (PHASE12 §1.1e). That is the whole residue of §1.1, and it is not a coincidence: the two open items
-> are precisely the ones in the file the split exists to break up.
+> ## ✅ **§1.1 IS NOW FULLY DISCHARGED — 8 of 8 (07-27).**
+> The two remaining halves both lived in `index.html`, which was frozen while the gear-B cross-val
+> round gathered (PHASE12 §1.1e) — *"not a coincidence: the two open items are precisely the ones in
+> the file the split exists to break up."* **PHASE10 round 1 reached 36/36 and was graded on 07-27, so
+> the freeze lifted and both landed the same day.**
+>
+> **Both are provably plan-neutral, and it was proved rather than argued.** Each edit sits in the UI
+> script block (line > 3357); the `<script id="engine-src">` block is **byte-identical** across the
+> change — `sha1 7c08324250500f61`, 158 771 bytes on both sides — so no plan can move. `exact-match`
+> was still run, because it is the only gate that covers the *render* path.
 >
 > ⚠ **B6 surfaced a hole in the freeze rule that is worth more than B6.** Its "proper" fix is the one
 > exported `cfgFor()` (§2), and `tools/engine-node.mjs:cfgFor` has the identical gap — but that file is

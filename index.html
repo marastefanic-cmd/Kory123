@@ -4493,14 +4493,20 @@ function planToSpecInline(r) {
     for (const t of ivs) { if (t < cd - 1e-6) csOut.push(t); ivOut.push(t); cd = t + BUFFS.icyVeins.cd; }
     spec.IV = ivOut; if (csOut.length) spec.CS = csOut;
   }
+  // ⚠ `targets` is NOT optional bookkeeping — it is the AoE window's whole value. The module twin
+  // returns it (sim/planspec.mjs) and the sim button passes it; this copy used to drop it, so the
+  // paste-ready command below reproduced a Kael'thas duel with Arcane Explosion valued at ONE target
+  // instead of six. Max across windows: the sim has one target list for the whole pull, and extra
+  // dummies are inert outside the AE windows because Arcane Blast is single-target.
   const down = [], aoe = [];
+  let targets = 0;
   for (const s of cfg.segments || []) {
     if (s.type === "intermission") down.push([Math.round(s.start), Math.round(s.end)]);
-    else if (s.type === "aoe") aoe.push([Math.round(s.start), Math.round(s.end)]);
+    else if (s.type === "aoe") { aoe.push([Math.round(s.start), Math.round(s.end)]); targets = Math.max(targets, s.targets | 0); }
   }
   if (down.length) spec._intermissions = down;
   if (aoe.length) spec._aoe = aoe;
-  return { spec, skipped, burn: (cfg.segments || []).some(s => s.type === "burn") };
+  return { spec, targets, skipped, burn: (cfg.segments || []).some(s => s.type === "burn") };
 }
 function debugExportText() {
   const run = lastRun, cfg = run.cfg;
@@ -4567,7 +4573,7 @@ function debugExportText() {
     if (customR) L.push(`custom spec:      ${JSON.stringify(planToSpecInline(CUSTOM.run || { cfg, best: { s: CUSTOM.s }, optR: customR }).spec)}`);
     if (A.skipped.length) L.push(`⚠ not transcribable (absent from BOTH arms): ${A.skipped.join(", ")}`);
     if (A.burn) L.push(`⚠ this fight has a Burn phase — wowsims has no "AB damage xN" knob, so it cannot be simmed at all.`);
-    else L.push(`reproduce:        node tools/bench.mjs --char model-ref --spec-a '${JSON.stringify(A.spec)}' --T ${cfg.T} --haste ${cfg.hasteRating} --sp ${cfg.sp} --crit ${cfg.critPct}`);
+    else L.push(`reproduce:        node tools/bench.mjs --char model-ref --spec-a '${JSON.stringify(A.spec)}' --T ${cfg.T} --haste ${cfg.hasteRating} --sp ${cfg.sp} --crit ${cfg.critPct}${A.targets > 1 ? ` --targets ${A.targets}` : ""}`);
   } catch (e) {
     L.push(`(transcription unavailable: ${String(e && e.message || e)})`);
   }
@@ -4619,18 +4625,39 @@ async function simModules() {
   return SIM.mods;
 }
 // One worker per arm: the two arms then run concurrently instead of back to back.
+// ⚠ TEARDOWN IS SYMMETRIC AND A FAILED WORKER IS EVICTED — both halves were bugs (PHASE11 §1.1 B2).
+// The `{once:true}` error listener only self-removes when it FIRES, so a successful duel left one
+// behind and they accumulated one per press of the button; and the error path returned without
+// removing `onMsg`, so the message listener leaked too. Worse than the leak: the worker was kept in
+// `SIM.workers[idx]` after it had failed, and `duel-worker.js` caches its Go-runtime boot — so one
+// transient fault (a flaky `sim.wasm` fetch on raid-night wifi) bricked the button until reload.
+// `settle()` runs exactly once on every exit path; a failure drops the worker so the next press
+// builds a fresh one.
 function simRun(request, idx) {
   return new Promise((resolve, reject) => {
     let w = SIM.workers[idx];
     if (!w) { w = new Worker(SIM.base + "duel-worker.js"); SIM.workers[idx] = w; }
     const id = Math.random().toString(36).slice(2);   // message correlation only — never model input
+    let done = false;
+    const cleanup = () => {
+      w.removeEventListener("message", onMsg);
+      w.removeEventListener("error", onErr);
+    };
+    // `evict` tears the worker down so a later duel cannot inherit a poisoned Go runtime. Guarded on
+    // identity: a slow failure must not evict a worker that a later duel has already replaced.
+    const evict = () => { cleanup(); try { w.terminate(); } catch { /* already gone */ } if (SIM.workers[idx] === w) SIM.workers[idx] = null; };
+    const settle = (err, data) => {
+      if (done) return;                               // one resolution per call, whichever path wins
+      done = true;
+      if (err) { evict(); reject(err); } else { cleanup(); resolve(data); }
+    };
     const onMsg = e => {
       if (e.data.id !== id) return;
-      w.removeEventListener("message", onMsg);
-      e.data.ok ? resolve(e.data) : reject(new Error(e.data.error));
+      settle(e.data.ok ? null : new Error(e.data.error), e.data);
     };
+    const onErr = ev => settle(new Error(ev.message || "sim worker failed"));
     w.addEventListener("message", onMsg);
-    w.addEventListener("error", ev => reject(new Error(ev.message || "sim worker failed")), { once: true });
+    w.addEventListener("error", onErr);
     w.postMessage({ id, base: SIM.base, request });
   });
 }

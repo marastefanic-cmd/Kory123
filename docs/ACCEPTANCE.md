@@ -28,8 +28,9 @@
 > valid — and still exactly true *about gear A under the old protocol*. **What does not survive:** any
 > verdict, target figure, deficit size or open-debt number, until it is re-measured.
 >
-> **That re-measurement is `docs/PHASE10.md`.** Do not resume work against a number in this file
-> without checking whether Phase 10 has restated it.
+> **That re-measurement is DONE** — Phase 10 closed 07-27 (`docs/archive/11-phase10-gearb-baseline.md`)
+> and its result is the gear-B block above. Do not resume work against a number in this archived
+> section without checking whether that block has restated it.
 
 
 **The planner is NOT complete until it survives this test fully.** This is not a Phase-6 artifact — it

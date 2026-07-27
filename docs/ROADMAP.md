@@ -45,11 +45,10 @@
 > Implementation is gated on 36/36 — `sim/simreq.mjs` and `tools/xval-bench.mjs` are frozen exactly as
 > `index.html` is (the campaign spawns `xval-bench` per cell and it imports `simreq`).
 >
-> ## ☞ RESUMING? READ `docs/PHASE10-RESUME.md` FIRST — the 60-second state + the exact next actions.
-> Round 1 is **gathering unattended** under `tools/xval-watchdog.sh` (singleton; relaunches both the
-> campaign and the checkpoint loop, which commit completed tables to git). **`bash tools/xval-status.sh`
-> is the only current statement of where it is** — do not trust a hours-remaining figure written into
-> a doc; the boss half is sim-bound and its rate depends on the backend and the box.
+> ## ✅ SUPERSEDED — the round is COMPLETE and the handoff doc is gone.
+> `docs/PHASE10-RESUME.md` was absorbed into `docs/archive/11-phase10-gearb-baseline.md` §9 when the
+> phase closed; the paragraph below described the round while it gathered and is kept only for its
+> operational reasoning. **The freeze it describes is LIFTED.**
 > ⚠ **THE FREEZE IS THE WHOLE IMPORT CLOSURE, not just `index.html`** (found 07-27, PHASE12 §1.1e):
 > the plan cache keys on `index.html`'s bytes **alone**, so editing anything else `xval-bench.mjs`
 > imports changes plans while the key stays put. Also frozen: `tools/engine-node.mjs`,
@@ -65,7 +64,7 @@ RETRACTED 07-27** (BENCH §3e) — it does not reproduce, and B2's cell reads `+
 unaffected: the other debts are still un-denominated, because *nobody has re-measured them*, which is
 a different claim from *they moved*.
 
-**Where it stands (execution log: `docs/PHASE10.md` §8).**
+**Where it stands (execution log: `docs/archive/11-phase10-gearb-baseline.md` §8).**
 - ✅ **The §4.1 shakedown PASSED** 4/4 cells on all four gate conditions (§8.1).
 - ✅ **The instrument is fully certified** (§8.8): shipped wasm **==** native runner; `sim-request`
   anti-drift gate **9/9**; gear-B trust anchor **runner ≡ wowsimcli to every printed digit**,
@@ -272,7 +271,7 @@ boundary is a wasm rebuild (new baseline, BENCH §1).
 ### 0b. Rounds 5–7 (gear A) — SUPERSEDED, and the detail lives in the append-only record
 
 > **⚠ PRUNED 2026-07-27.** This section carried ~490 lines of round-5/6/7 narrative. Every number in
-> it was **gear A**, which `docs/BENCH.md` §1 archived and `docs/PHASE10.md` is re-measuring — so as a
+> it was **gear A**, which `docs/BENCH.md` §1 archived and gear-B round 1 has now re-measured — so as a
 > *living* doc it described a state that no longer exists, which is the failure CLAUDE.md's
 > prune-the-living-docs rule names. **Nothing was lost:** the full record is append-only in
 > `docs/archive/08-phase7-xval-fixes.md` §5.15–§5.24, `docs/archive/09-phase8-b2.md`, and `docs/DIARY.md`.
@@ -295,9 +294,13 @@ objective integrates away, which the model scores as a 0.014 % tie against the s
 
 1. Read `CLAUDE.md` → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then `docs/ARCHITECTURE.md`
    (line ranges drift) and `docs/TOOLING.md` before touching code.
-2. **The live phase is `docs/PHASE10.md` — start at `docs/PHASE10-RESUME.md`.** ⚠ While its round is
-   gathering, `index.html`, `sim/simreq.mjs` and `tools/xval-bench.mjs` are FROZEN (GEAR-AGNOSTIC §6.2).
-3. `docs/PHASE11.md` (platform) and `docs/PHASE12.md` (next phase's raw material) are the queue behind it.
+2. **Phase 10 is CLOSED** (`docs/archive/11-phase10-gearb-baseline.md`) and **no import-closure freeze
+   is in effect** — `index.html` is editable. The acceptance reading is `docs/ACCEPTANCE.md` →
+   *"Current status (GEAR B, round 1)"*: invariant A passes, **B2 fails**, NOT PASSING.
+3. **`docs/PHASE11.md` (platform) is the live queue** — its §1.1 findings ledger is now fully
+   discharged (8/8), so what remains there is CI bring-up, the module split, the PHASE9 §4 reclaim
+   ladder and lazily-loaded product routes. `docs/PHASE12.md` holds the next MODEL phase's raw
+   material: the terminal-cast term, and `ripple-audit`'s failing P3/P5 self-checks.
 ## The goal, and the payoffs it unlocks
 
 **The planner is the goal** (see `CLAUDE.md`): a trustworthy, *generalisable* tool that maximizes the
