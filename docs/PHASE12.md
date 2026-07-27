@@ -574,3 +574,82 @@ buff windows are anchored relative to cast boundaries.
 ⚠ **Do not assume it is one cause.** `plan@0` drifts 0.362 s and `plan@20` 0.206 s on the *same fight
 and the same character* — so at least part of it is plan-dependent, which a single global offset
 correction would not fix.
+
+## 6.6 ★★★ THE DRIFT IS DIAGNOSED — every press is scored ~1.0–1.5 s EARLIER than it can happen
+
+**User challenge:** *"why is there a drift? Isn't it just deterministic math and additions of cast
+times? We can calculate the cast time at any haste level, deterministically, based on stacks and
+haste."* **Exactly right — and that is what made the bisect possible.** The answer is that the
+arithmetic is correct and is being evaluated at **a time the press can never occur**.
+
+### Step 1 — the bare cast stream is EXACT (so the ramp/GCD/stack model is not the problem)
+
+`tools/drift-bisect.mjs`, no cooldowns at all, 60 s:
+
+| | model | sim | drift |
+|---|---|---|---|
+| h=0 | 39 casts, intervals `2.500 2.167 1.833 1.500 1.500…` | 39 casts, `2.500 2.170 1.830 1.500…` | mean **0.0001 s** |
+| h=200 | 44 casts | 44 casts | mean **0.0050 s** |
+
+Residual is the log's own 2–3 dp printing. **The opening ramp and the steady interval are exact.**
+
+### Step 2 — three cooldowns are exact, two drift, and both diverge at EXPIRY
+
+One cooldown at a time, pressed at t=10, h=0:
+
+| cooldown | mean drift | max | first divergence |
+|---|---|---|---|
+| Icy Veins · Arcane Power · Icon | **0.0001 s** | 0.0033 s | none |
+| **Bloodlust** (40 s) | 0.0455 s | **0.3408 s** | cast 41, `t≈51.7` — i.e. at the buff's END |
+| **Berserking** (10 s) | 0.0886 s | 0.1355 s | cast 14, `t≈21.9` — likewise |
+
+### Step 3 — the cause: a UNIFORM +1 s window offset
+
+| | model window | sim window | offset |
+|---|---|---|---|
+| Berserking (10 s) | [10.000, 20.000] | [11.000, 21.000] | **+1.000 s** on BOTH edges |
+| Bloodlust (40 s) | [10.000, 50.000] | [11.000, 51.000] | **+1.000 s** |
+| Icy Veins (20 s) | [10.000, 30.000] | [11.000, 31.000] | **+1.000 s** |
+
+Durations match exactly; the whole window is translated. IV/AP/Icon show no *cast* drift only because
+their shifted window happened to contain the same casts — the offset is there for them too.
+
+### Step 4 — the rule, from a press-position sweep (`tools/press-offset-probe.mjs`)
+
+Boundaries at h=0 are `… 9.5, 11.0, 12.5, 14.0`:
+
+```
+press 9.6  -> model actEff 9.600   sim aura 11.000   offset 1.400s
+press 10   -> model actEff 10.000  sim aura 11.000   offset 1.000s
+press 11.0 -> model actEff 11.000  sim aura 12.500   offset 1.500s   <- ON a boundary, still a full cast late
+press 11.1 -> model actEff 11.100  sim aura 12.500   offset 1.400s
+press 12.5 -> model actEff 12.500  sim aura 14.000   offset 1.500s
+```
+
+⇒ **the sim's buff starts at the first cast boundary STRICTLY AFTER the press; the model uses the raw
+press time verbatim.** Every cooldown window the model scores therefore begins **1.0–1.5 s earlier
+than achievable at h=0**, and the size of the error depends on where the press falls in the cast
+lattice — which is precisely why the drift is **plan-dependent** (§6.5: 0.362 s vs 0.206 s on the same
+fight and character).
+
+★★ **This subsumes §6.5 and probably §6.1–§6.3.** It is not noise and not a modelling approximation —
+it is a systematic, deterministic, per-press bias in the direction of *optimism*, inherited by every
+score, every comparison and every deficit column in the corpus.
+
+### ⚠ WHAT IS NOT YET SETTLED, AND IT HAS TWO OPPOSITE FIXES
+
+Press at **exactly** 11.0 → aura at 12.5 is a **full extra cast**, not merely "finish the cast in
+progress". Two readings, not separated:
+
+- **(i) MODEL DEFECT.** Real presses cannot land mid-cast for GCD abilities, so the model should
+  **snap press fire times to the cast lattice**. Fix lives in `simulate()`/`actEff`, and it would
+  change plans (so: `exact-match`, `plan-diff`, and a duel at every moved cell).
+- **(ii) TRANSCRIPTION ARTIFACT.** On-use trinkets are **off-GCD** and usable mid-cast in real play;
+  if `genapl`'s APL structure defers a press by a whole cast that the game would not, the *sim* is
+  the pessimistic one and the fix is in the APL, not the model.
+
+**Separating them is the next measurement**, and it is cheap: compare a GCD ability (Berserking, Icy
+Veins) against an off-GCD on-use trinket (Icon, MQG) in the same sweep. If the trinket also waits a
+full cast, that is an APL artifact; if it fires mid-cast, the model is wrong for GCD abilities only.
+⛔ **Do not "fix" either side before that test** — a snap applied on top of an APL artifact would
+double-count the delay.
