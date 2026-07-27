@@ -147,9 +147,16 @@ begins already-buffed. Consequences the model must respect:
 > ```
 > credit = min(1, (nextCut − castStart) / castDuration)
 > ```
-> where a **cut** is the fight end `T`, an **intermission start**, or **either edge of an AoE phase**
-> (the spell changes). A **burn edge is NOT a cut** — same spell, targetable boss, so a burn multiplier
-> is a *value* question under the snapshot rule below. A cast completing exactly at `T` earns a **FULL**
+> where a **cut** is a moment the cast **stops LANDING**: the fight end `T` and an **intermission
+> start** (boss untargetable) — **and nothing else**. ⛔ **Neither a burn edge nor an AoE edge is a
+> cut**: the boss is targetable at both, and the spell a cast uses is chosen at its **START**, so a
+> cast in flight is unaffected by the phase it completes in. Both are *value* questions under the
+> snapshot rule below. ⚠ The AoE edge shipped briefly **as** a cut (the spell changes there) and the
+> sim falsified it the same day: an AB started at 59.000 with an AoE phase opening at 60.000 completes
+> at 60.498 and **lands for full AB damage** — docking it paid *less* than the game pays.
+> ⚠⚠ An **instant** cast (Arcane Explosion, `cast = 0`) takes credit **1**, not 0 — `min(1, (cut−t)/dur)
+> → 1` as `dur → 0`; the first divide-by-zero guard returned 0 and credited every AE at nothing (42 %
+> error on Kael'thas). A cast completing exactly at `T` earns a **FULL**
 > cast; one that straddles a cut earns the fraction that fits. Algebraically this is a **one-sided**
 > window whose width is the cast's own duration: for a cut `~ U[C, C+W]`, credit `= (C+W−completion)/W`,
 > and `W = duration` gives exactly `(C − start)/duration` — i.e. *"the fight lasts at least T, and at
@@ -207,9 +214,17 @@ boundary credit of the banner above, which is also the *only* place a fight boun
 until 07-27; `rateAt` now feeds only the `integral` diagnostic. **Everything the
 planner decides is a *consequence* of maximizing this one quantity — Lust alignment, haste sequencing,
 SP-on-fast-casts are *methods* that usually maximize it, never rules in their own right.** When a
-heuristic and the effective-AB count (or the sim, its ground truth) disagree, the count wins. This is
-also the output to compare **setups** on: plan each with its own ideal cooldown usage, then read off
-whose effective-AB total is higher to decide which trinkets/gear to bring.
+heuristic and the effective-AB count (or the sim, its ground truth) disagree, the count wins.
+
+⛔ **BUT IT IS NOT THE CURRENCY TO COMPARE *SETUPS* ON — this paragraph used to say it was, and that
+was wrong.** The user-directed ruling (ROADMAP payoff 2, `docs/EP.md`, CLAUDE.md) is: plan each setup
+with its **own** ideal cooldown usage, then compare them on **absolute at-kill damage** — or on each
+setup's optimal-APL sim DPS — **never** on the effective-AB count. The reason is the definition three
+paragraphs up: effective ABs is normalized to **each setup's own plain AB**, so it divides out flat
+spell power and crit *by construction*. That is exactly what makes it the right objective **within** a
+setup (it isolates scheduling) and a blind one **across** setups, where raw SP/crit throughput is most
+of what you are trying to measure. A setup with +200 SP and no scheduling change scores an identical
+effective-AB total and hits far harder. **Do not collapse the two currencies.**
 
 ## 5. What the formulas force (the decisions they drive)
 

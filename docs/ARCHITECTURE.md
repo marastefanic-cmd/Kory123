@@ -29,7 +29,9 @@ numbers drift as the file is edited — treat them as signposts, re-grep if they
 below is in `index.html` unless noted.
 
 ## Constants (~839–892; re-grepped 07-27)
-`GAME`: `AB {BASE_CAST 2.5, STACK_CAST_REDUCTION 1/3, MAX_STACKS 3, AVG_BASE_DMG 720, COEF 2.5/3.5}`,
+`GAME`: `AB {BASE_CAST 2.5, STACK_CAST_REDUCTION 0.334, MAX_STACKS 3, AVG_BASE_DMG 720, COEF 2.5/3.5}`
+(⚠ **0.334, not `1/3`** — it was `1/3` until 07-27; wowsims uses `time.Millisecond * -334` and rounds
+every cast to the millisecond, so the model does both now — MECHANICS §1.1, PHASE12 §6.14),
 `AE {AVG_BASE_DMG 392, COEF 0.214}` (Arcane Explosion, AoE), `GCD_BASE 1.5`, `GCD_FLOOR 1.0`,
 `HASTE_RATING_PER_PCT 15.77`, `CRIT_MULT 1.8175`, `COLD_SNAP_CD 480`. `TALENTS {arcaneConcentration 5,
 arcanePotency 3}` + `aoeCritAmp(N, crit)` (just after `GAME`): the AoE-only Clearcasting→Arcane Potency
@@ -65,12 +67,20 @@ reading a field that still exists; do not "simplify" one of them away without au
 > ```
 > credit = min(1, (nextCut − castStart) / castDuration)      ← multiplies that cast's own value
 > ```
-> A **cut** is any moment where the cast stops landing or the spell changes: the fight end `T`, an
-> **intermission start** (boss untargetable), and **either edge of an AoE phase** (Arcane Blast ↔ Arcane
-> Explosion). ⚠ A **BURN edge is deliberately NOT a cut** — the boss is targetable and the spell is
-> unchanged, so a burn multiplier is a **value** question under the snapshot rule, not a landing
-> question. The cut lattice (`CUTS` / `nextCut`) is precomputed once by merging adjacent segments that
-> call for the same thing.
+> A **cut** is any moment where the cast stops **LANDING** — the fight end `T` and an **intermission
+> start** (boss untargetable), **and nothing else**. The predicate is `lands(sg)`, deliberately the only
+> thing that builds the lattice, and the lattice is a **landing → not-landing transition**: the *far*
+> edge of an intermission is not a cut either, because no cast can start inside one so nothing is ever
+> in flight across it.
+> ⛔ ~~and **either edge of an AoE phase** (Arcane Blast ↔ Arcane Explosion)~~ — **corrected 07-27,
+> hours after it shipped.** The boss is targetable throughout an AoE phase and the spell a cast uses is
+> chosen at its **START**, so a cast in flight is unaffected by the phase it finishes in; measured, an
+> AB started at 59.000 against an AoE opening at 60.000 completes at 60.498 and lands for full AB
+> damage. ⚠ A **BURN edge is likewise NOT a cut** — the boss is targetable and the spell is
+> unchanged. Both are **value** questions under the snapshot rule, not landing questions.
+> ⚠⚠ **`dur === 0` ⇒ frac = 1, not 0.** Arcane Explosion is instant; a divide-by-zero guard returning 0
+> credited every AE at nothing (Kael'thas 368,018 vs 524,173, a 42 % error). `min(1, (cut−t)/dur) → 1`
+> as `dur → 0`. Guard against NaN, not against the answer.
 >
 > ★ **It is not a smoothing heuristic.** It is algebraically a **one-sided** window whose width is the
 > cast's own duration: for a cut `~ U[C, C+W]`, credit `= (C + W − completion)/W`, and `W = duration`
@@ -109,7 +119,7 @@ bit-equal to recomputation; collect=true always computes fresh.
   moment the ability truly fires (`max(eff, prevCastEnd)` for a self-press, `eff` for a raid external)
   — and the window runs its FULL duration from there. Expiring from the press instead made every
   mid-cast window short by the slip (PHASE12 §6.11); `tools/window-span.mjs` is the gate.
-  ★ **The cooldown CHAIN anchors on the FIRE moment too (PHASE12 §3, 07-27).** `lastFire[key]` (was
+  ★ **The cooldown CHAIN anchors on the FIRE moment too (PHASE12 §6.14c, 07-27).** `lastFire[key]` (was
   `lastEff`) holds `auraAt` — where the previous use of that cooldown actually went off, i.e. the cast
   boundary the press snapped forward to — because that is when wowsims starts the cooldown. Chaining
   from the *press* let a second use be scheduled earlier than the sim could ever execute it. Measured:

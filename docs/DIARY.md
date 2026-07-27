@@ -61,7 +61,7 @@ The single-file app was crashing the browser on long fights. Moved the engine in
 then a **worker pool** (byte-identical plans), added a **polish cache** + **simulate() memo** (KT 285s →
 84s), an **honest labeled progress bar**, and switched displayed times to **actual fire times**.
 
-### Phase 6 — haste-adaptation cross-validation (2026-07-23 → in flight)
+### Phase 6 — haste-adaptation cross-validation (2026-07-23 → 07-24, CLOSED; archived `docs/archive/07-phase6-xval-run.md`)
 The question: does the planner's *re-optimization as gear-haste changes* hold up in the real sim, end to
 end, on random fights it's never seen? Instrument: a **holdout cross-validation matrix** (`xval.mjs`) —
 optimize a plan at each haste, sim every plan at every haste, check (a) **haste-monotonicity** (a fixed
@@ -70,7 +70,7 @@ own column). This became a **standing acceptance test** — see `docs/ACCEPTANCE
 fixed (cold open), campaign gathering, one open debt (a low-haste micro-placement slack) recorded for the
 next (fix) phase. Full detail in `docs/archive/07-phase6-xval-run.md`.
 
-### Phase 7 — FIX the cross-val deficits (2026-07-24 → in flight)
+### Phase 7 — FIX the cross-val deficits (2026-07-24 → 07-27, CLOSED; archived `docs/archive/08-phase7-xval-fixes.md`)
 Phase 6 measured; Phase 7 fixes. Each length-robust deficit was first **partitioned** (SEARCH-MISS vs
 SCORER-GAP, `tools/diagnose-deficit.mjs`) and then fixed at its root rather than tuned away. The search
 misses closed via polished Cold-Snap chain candidates, a drop-one escape pass, and — the structural
@@ -115,7 +115,7 @@ the model ranks the pair exactly right, so this is not a burn-model, search, or 
 it ~10 s earlier. Filed as the RULES §9 **Correction-3 candidate**, deliberately *not* patched — one cell
 family, cause not yet named. Phase 7's remainder is that one term.
 
-### Phase 8 — the B2 scorer-gap family (2026-07-24 → in flight)
+### Phase 8 — the B2 scorer-gap family (2026-07-24 → 07-26, CLOSED; archived `docs/archive/09-phase8-b2.md`)
 Inherited from Phase 7 as *"an emergent joint haste×damage×kill interaction."* **Round 1 demolished its own
 premise**: the decomposition that produced it never placed MQG where it claimed — wowsims silently RETIMED
 the press onto a shared trinket lockout and printed a plausible number for a plan never run. The joint
@@ -151,7 +151,7 @@ the floor** (it clamps correctly); the remaining hypothesis is a banked *fractio
 `AP`-packing credit, and — per the project's own methodology — that is a **sim-setup audit trigger** to
 discharge before the model is blamed. Detail in `docs/archive/09-phase8-b2.md`.
 
-### Phase 9 — performance, with zero plan drift (2026-07-24 → notes)
+### Phase 9 — performance, with zero plan drift (2026-07-24 → CLOSED 07-27, `docs/archive/10-phase9-performance.md`)
 User: *"the tool has gotten a bit slow again and takes a lot of CPU."* Opened as a **measure-first**
 phase under a hard determinism constraint (every emitted plan must stay byte-identical; exact-match 25
 is the gate). Baseline CDP profile + a call census established the shape before any code moved: one

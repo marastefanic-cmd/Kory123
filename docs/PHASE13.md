@@ -18,17 +18,23 @@ every cut**:
 credit = min(1, (nextCut − castStart) / castDuration)      × that cast's own value
 ```
 
-A **cut** is the fight end, an intermission start, or either edge of an AoE phase. A **burn** edge is
-not — the boss is targetable and the spell is the same, so a burn multiplier is a *value* question
-under the snapshot rule, not a *landing* question. `total`, `robust` and `totalEarly` are **one
+A **cut** is a moment where a cast **stops LANDING** — the fight end and an **intermission start**.
+**Nothing else.** Neither a **burn** edge nor an **AoE** edge is a cut: the boss is targetable at both,
+and the spell a cast uses is chosen at its **START**, so a cast already in flight is unaffected by the
+phase it finishes in. Both are *value* questions under the snapshot rule. An **instant** cast (Arcane
+Explosion) takes credit **1**, not 0. `total`, `robust` and `totalEarly` are **one
 number**; the board carries `frac` and `credited`. Cooldowns chain from the **fire** moment (`auraAt`),
 not the press, so the model can no longer emit a plan the sim declines to execute.
 
 ```
 exact-match          25 passed, 0 failed          self-consistency   0.00e+0 / 2755 scorings
+   (goldens re-recorded on the corrected engine;      board-agreement counters 0
+    a failure now reports the TIMELINE change
+    before the line diff)
 window-span  pass    credit-check  pass           snapshot-rule      pass
 wall-credit  pass    sim-duel      pass           sim-request        9/9 (native runner)
 press-headtohead     HELD 18 → 1 of 196 presses
+search-witnesses     1 known miss, reported (§3.1) — the gate refuses an empty witness list
 ```
 
 **No freeze is in effect.** `index.html` and the whole import closure are editable; the closure freeze
@@ -36,27 +42,35 @@ applies only *while a cross-val round gathers* (§4.1).
 
 ---
 
-## §1 ▶ THE AoE EDGE — the one open item that changes numbers the tool prints
+## §1 ✅ THE AoE EDGE — DECIDED AND LANDED (commit `6cfaeec`, 07-27). Not open.
 
-> ## ⏳ DECISION IN FLIGHT WITH THE USER — leave this section for them to fill.
->
-> **Do not decide it, and do not implement either answer, until this section says otherwise.**
+> **This section was written as a placeholder for a decision in flight. It landed while it was being
+> written, so it is recorded here rather than deleted, and then this section goes away.**
 
-**Why it is open:** an Arcane Blast completing inside an AoE phase is currently **docked as if the boss
-were untargetable** — the AoE edge inherited the intermission's treatment when the boundary credit
-landed, and that inheritance was never argued for. The boss **is** targetable during an AoE phase: the
-cast lands, for full Arcane Blast damage. You would simply rather have been casting Arcane Explosion.
-So the question is not *"does it land"* but *"what should you have been casting"* — a different
-question with a different answer.
+**The ruling: an AoE edge is NOT a cut. A cut is where a cast stops LANDING — the fight end and an
+intermission start, nothing else.** The boss is **targetable** throughout an AoE phase, and the spell a
+cast will use is chosen at its **START**, so a cast already in flight is unaffected by the phase it
+completes in. Measured: an Arcane Blast started at **59.000** with an AoE phase opening at **60.000**
+completes at **60.498** and **lands, for full Arcane Blast damage** — 1886.4, a 25 %-resist roll off a
+~2577 typical hit. The brief version that docked it paid **less than the game pays**. Burn and AoE
+edges are **value** boundaries; `lands()` is now deliberately the only predicate that builds the cut
+lattice.
 
-Framing and prior art: archived PHASE12 §9.5 sub-decision 2, and §8.3's closing ⚠. The engine site is
-`dmgOf`'s `nonAB`, which covers `aoe` as well as `intermission`. `tools/wall-credit.mjs` is the gate to
-extend once it is decided.
+⚠ **Two things it exposed that are worth more than the ruling itself, both already fixed:**
+1. **Arcane Explosion is INSTANT (`cast = 0`), and the divide-by-zero guard credited every AE at
+   nothing.** Kael'thas scored **368,018 instead of 524,173 — a 42 % error on the corpus's only AoE
+   fight.** As `dur → 0`, `min(1, (cut − t)/dur) → 1`: an instant cast cannot be *partially*
+   interrupted. **Guard against NaN, not against the answer.**
+2. ⛔ **Neither defect was reachable by any existing gate.** `self-consistency` compares the objective
+   against itself and read `0.00e+0` throughout; `exact-match` locks in whatever the search emits, so
+   both would simply have **become the goldens**. That is a standing hole in the gate set, not a
+   one-off — see §2 and §8.
 
-★ **This is the only item in this file that moves numbers the tool prints to a user.** Everything else
-is measurement, enforcement, platform or research.
+★ **And the probe that first said the cast did NOT land was wrong**: its regex required `Crit|Hit for`
+while the log reads `Hit (25% Resist) for` — the **third** parse bug of that family in one session.
 
-*(User: your ruling goes here.)*
+⇒ **There is now no open item that changes numbers the tool prints.** Everything below is measurement,
+enforcement, platform or research.
 
 ---
 
@@ -84,10 +98,24 @@ bar carries information only if it is reachable, and a tolerance is what Phase 7
 
 ### 2.2 Re-run `tools/model-audit.mjs` at scale
 
-**Why it is open:** it read **17 of 23 failing** on multi-use fights, and it was **not re-run after the
-fix it had itself diagnosed**. The cause it named — cooldowns chained from the press rather than the
-fire — landed, and `press-headtohead` measured HELD **18 → 1 of 196**. So the standing figure is a
-measurement of a superseded engine, and its own diagnosis predicts it should now be much smaller.
+**✅ RE-RUN 2026-07-27 — 12 of 23 PASS, up from 6.** The fix it had itself diagnosed (cooldowns chained
+from the press rather than the fire) landed; `press-headtohead` measured HELD **18 → 1 of 196**; and the
+audit's own pass rate **doubled**. That is a real, measured improvement and it is not the whole story.
+
+**Why it is still open — and the residue is now sharply characterised, which it was not before:**
+
+- **Cast COUNTS match everywhere.** e.g. `3:20 lust 0:05`: model 147 casts · sim 147. The model is not
+  losing or inventing casts; the lattice is right.
+- **What is left is per-cast placement**, and it is small and specific: on `3:20 lust 0:05`, **9 of 147**
+  casts differ in start, **2** in cast time, **2** in spell power, **0** in damage multiplier. Worst
+  deviations: start **0.118 s**, cast **0.113 s**, SP **225.0** (exactly one Serpent-Coil window's
+  worth — a buff credited to a different cast, not a wrong buff).
+- **The passing half is exact**, so this is not a tolerance question: single-use fights match 244/244
+  and 94/94 casts with **zero** mismatches in start, cast time, SP or multiplier.
+
+★ The SP deviation being *exactly one trinket window's value* is the thread to pull: it says a window
+edge lands on a different cast in the model than in the sim, which is the same family as the three
+window/snapshot defects Phase 12 already fixed — not a new kind of error.
 
 This is the bar the user set: *"the model should be able to predict the logs press by press down to the
 milliseconds."* It holds **exactly** on single-use fights (94/94 casts, cast times to the millisecond,
@@ -170,6 +198,27 @@ across the input space you rely on the heuristic plus a certified corpus — whi
 
 ⚠ Re-run `tools/deficit-fix.mjs` before concluding anything about search misses: its **0/4 misses at 3×
 restarts** was the search optimising the **integral**.
+
+### 3.1 ▶ ONE KNOWN SEARCH MISS IS ALREADY ON THE BOARD — start here
+
+**Why it is open:** `tools/search-miss.mjs` (new, 07-27) asks the one question a repricing does not
+confound — **score BOTH engines' plans with the SAME current scorer.** If the new plan wins, the
+timeline moved because the optimum moved; if the old one wins, **a better plan demonstrably exists and
+the search stopped finding it.** It found one: **`1:40 lust 0:05` emits a plan 0.065 % worse than a
+legal schedule the current scorer ranks higher.**
+
+★ **It is not a restart-depth problem.** 3, 8, 14 and 24 restarts all return the same plan — **the
+basin is not being entered at all**, which makes it a seed-class or operator-reachability question,
+exactly the shape §3's programme is for. The objective ranks the better plan correctly, which is *how
+it was found*: this is **search** work, and the exact objective is what made it visible.
+
+It is recorded rather than papered over, in `tests/search-witnesses.json` with
+`tools/search-witnesses.mjs` as its gate. ⚠ The gate **refuses to pass on an empty witness list**, and
+says plainly that reaching a witness closes a **known hole** and is *not* a claim of optimality.
+
+⚠ Related: `tests/exact-match.mjs` now reports a failure as a **timeline change** (`Icy Veins 0:06 →
+0:00`) before the line diff — *"a failure that reads as a string mismatch invites 'just re-record it';
+one that reads as a moved press invites the right question."*
 
 ---
 

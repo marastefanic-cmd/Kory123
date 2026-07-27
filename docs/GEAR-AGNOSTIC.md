@@ -1,7 +1,15 @@
 # GEAR-AGNOSTIC.md — the definitive simming and verification baseline
 
-> **Status: DESIGN AGREED (user decision, 2026-07-26). Implementation is GATED on the in-flight round
-> reaching 36/36** — see §6. This file is the single source of truth for how the project sims; where
+> **Status: DESIGN AGREED (user decision, 2026-07-26). ✅ THE GATE IS CLEARED — implementation is
+> UNBLOCKED.** ⛔ This line used to read *"Implementation is GATED on the in-flight round reaching
+> 36/36"*; **that round reached 36/36 on 07-27, was graded, and is archived**
+> (`docs/archive/11-phase10-gearb-baseline.md`), which §6's own step list already recorded while this
+> banner did not — the two contradicted each other for a day. **No import-closure freeze is in
+> effect.** The remaining work is enforcement, not permission: `docs/PHASE13.md` §4 (fold the closure
+> into `ENGINE_ID`, make the geared path opt-in, refuse to pool across `char=` stamps, archive round 1
+> under a name that says what it is) and §7's stat-distribution transfer test, which is the **first**
+> piece of gear-agnostic work and has never been run.
+> This file is the single source of truth for how the project sims; where
 > it disagrees with an older doc, this file wins and the older doc is the remnant.
 
 ## 1. The decision, and the reason for it

@@ -10,7 +10,7 @@
 > 3. a discrete walk that gave **every mid-cast press a buff window short by the press slip** (§6.11),
 >    and a per-cooldown chain anchored on the **press** rather than the fire, so a chained second use
 >    could be scheduled earlier than the sim could execute it (**HELD press failures 18 → 1 of 196**
->    once fixed — PHASE12 §3), and
+>    once fixed — PHASE12 §6.14c), and
 > 4. a **symmetric kill taper** (`KILL_WINDOW = 0.5`) that paid a cast completing exactly at `T` only
 >    **half** a cast, and paid a cast completing **inside an intermission in FULL** (PHASE12 §9,
 >    retired by user ruling 07-27 in favour of one boundary credit at every cut — RULES §8).

@@ -1,16 +1,36 @@
 # PHASE11.md — the platform phase: the single-file convention is retired
 
-**Status: PLANNED (written 07-26), not started.** Nothing in `index.html`, `sim/`, `tools/` or
-`tests/` has changed for this phase yet — this doc is the record of the 07-26 brainstorm +
-repo-wide audit that scoped it, and the charter for executing it. All `file:line` anchors are
-against the 07-26 HEAD and **will drift** (that rot is itself finding F14 below).
+**Status: CLOSED 2026-07-27, archived.** The **findings ledger is DISCHARGED 8 of 8** (§1.1's own
+status block, plus §10's execution log), the **§1.4 doc sweep LANDED** (§10.5, all six items), and
+**CI bring-up LANDED** — `.github/workflows/ci.yml` exists with three jobs (`fast` = sim-request §0
+protocol invariants + a negative control, sim-duel wasm smoke, bench smoke; `page` = page-vs-terminal
+request equality in Chromium with a seeded-break negative control; `plans` = `exact-match`, 25 cases).
+**The module split itself (§2) NEVER STARTED**, and neither did the §3 perf ladder or the §4 product
+routes. Those carry forward to `docs/PHASE13.md`; the eight §8 user calls carry forward **verbatim**,
+still undecided. Cited across the living docs as **"PHASE11 §x"**; section numbers are unchanged, so
+those citations still resolve.
 
-**Relationship to Phase 10:** parallel track, not a successor. PHASE10 (re-baseline acceptance on
+> ## ⛔ READ FIRST — THE HEADER THIS DOC SHIPPED WITH WAS FALSE ON ALL FOUR COUNTS
+>
+> The original status line — kept below, because the archive is append-only — read *"**PLANNED
+> (written 07-26), not started.** Nothing in `index.html`, `sim/`, `tools/` or `tests/` has changed
+> for this phase yet."* By the time the phase closed **every one of those four files had changed for
+> it**: `index.html` (B1's `planToSpecInline` targets + B2's `simRun` teardown/eviction, §1.1's
+> status block), `sim/` (`duel-worker.js` un-memoizing a rejected boot, §10.4), `tools/`
+> (`bench.mjs --targets` + its refusal, `plan-duel.mjs`, `census-build.mjs`, §10.1) and `tests/`
+> (`sim-duel.mjs`, `sim-request.mjs`, `evalsched.mjs`, the new `cfg-contract.mjs`, §10.1/§10.3).
+> ⚠ **Do not re-do the ledger on the strength of that line.** It is the ledger's own disease — a
+> status that stopped tracking the work — and it is why this banner exists.
+
+*Historical relationship line, kept because the archive is append-only:* **Relationship to Phase 10:**
+parallel track, not a successor. PHASE10 (re-baseline acceptance on
 gear B) remains **the next model phase**; Phase 11 touches no scorer term, no search pass, no
 protocol constant, and must leave every plan **byte-identical** except where a §1 bug fix is
 itself the change (each such fix is plan-neutral by construction — they live in tools/UI/deploy,
 not in the engine). The two phases can interleave; §7 sequencing says how without tripping the
 freeze-window rule (never edit `index.html` while a campaign reads it — PHASE9 §4.20's lesson).
+⚠ All `file:line` anchors below are against the **07-26 HEAD** and have drifted (that rot is itself
+finding F14); `index.html` alone went 5,316 → 5,654 lines over the phase's life.
 
 ## §0 The mandate
 
@@ -147,7 +167,7 @@ hardcoded line-number patcher in `tools/census-build.mjs`), feeding ~30 consumer
 | F6 | Trinket item IDs retyped: `TMETA` in plan-duel + xval vs `IDS` in genapl-core; SCB's wear-item 30720 exists **only** in the copies | `plan-duel.mjs:137-138`; `genapl-core.mjs:24-34` | an ID fix lands in one place |
 | F7 | wasm boot ritual ×3, unequal: bench's copy checks `out.errorResult`, sim-duel's doesn't | `duel-worker.js:13-32`; `bench.mjs:95-109`; `sim-duel.mjs:33-41` | a bootstrap fix lands in one of three |
 | F8 | Upstream pin `ade9f39cc` in two executable places | `build-wasm.sh:15`; `upstream-drift.sh:29` | a pin move can half-land |
-| F9 | Cross-boundary constants aligned by prose only: model `KILL_WINDOW = 0.5` vs `BENCH.variation: 0.5` ("the model's kill-window WIDTH"); `GAME.HASTE_RATING_PER_PCT: 15.77` vs `hasteRatingPerPct: 15.76923` (same number, documented — `benchmark.mjs:74`) | `index.html:1006`; `benchmark.mjs:33-39,76` | a deliberate change to one silently strands the other |
+| F9 | Cross-boundary constants aligned by prose only: ~~model `KILL_WINDOW = 0.5` vs `BENCH.variation: 0.5` ("the model's kill-window WIDTH")~~ ⛔ **FALSE since 07-27 — the MODEL SIDE OF THIS PAIRING NO LONGER EXISTS.** PHASE12 §9 retired `KILL_WINDOW` from the objective, so `variation: 0.5` has nothing to be "aligned by prose" with; it rests solely on `tools/var-decision.mjs` now, and reconciling the model's analytic partial credit with the sim's numerical averaging is an OPEN question, not a constants pairing. See the ⛔ block under this table. The surviving half of the row: `GAME.HASTE_RATING_PER_PCT: 15.77` vs `hasteRatingPerPct: 15.76923` (same number, documented — `benchmark.mjs:74`) | `index.html:1006` *(dead anchor)*; `benchmark.mjs:33-39,76` | a deliberate change to one silently strands the other |
 | F10 | Pool workers have no `onerror` and `poolMap`'s `Promise.all` has no timeout — a pool worker dying mid-`polish` freezes the run at the progress bar with no console evidence | `index.html:3814-3828` (only the main orchestrator gets handlers, `:3837-3843`); engine `poolMap` `:1673-1677` | silent hang |
 | F11 | **The shipped pooled path is un-gated**: exact-match runs the sequential path (POOL=null headless), node tools too — the "byte-identical pooled ≡ sequential" claim (`index.html:1656` "(verified)") rests on a one-time manual check while the pool is what every real user runs | CLAUDE.md test section; `exact-match.mjs` | a pooled-only divergence would ship invisibly |
 | F12 | `plan-sweep`'s engine access is the F1/F2 extraction — the fast gate itself stands on the string slice | `plan-sweep.mjs:27,55` | the every-edit loop inherits every extraction failure mode |
@@ -166,6 +186,21 @@ hardcoded line-number patcher in `tools/census-build.mjs`), feeding ~30 consumer
 > stranding was the prose. Rows are kept verbatim; the ledger is the record of the 07-26 audit.
 
 ### §1.3 Inefficiencies
+
+> ⚠ **EVERY FIGURE BELOW IS PRE-REWRITE (07-26) AND MUST BE RE-MEASURED BEFORE IT IS QUOTED.** PHASE12
+> rewrote the scoring walk between this audit and the phase's close: the rate integral stopped being
+> the arbiter, the per-cast sum became it, the buff-window and snapshot rules changed, and the boundary
+> credit landed. **The mechanisms in this list are all still real; the numbers attached to them are
+> not.** Specifically:
+> - ~~**I1**'s "160,540-byte copy" / "~1.4 MB of duplicated source on an 8-core box"~~ — the engine
+>   block is a different size now (`sha1 7c08324250500f61`, 158 771 bytes at the 07-27 UI-fix commit,
+>   and it moved again with the scorer). Multiply by the pool, don't quote the total.
+> - ~~**I7**'s "270–337 s (parallelized; 9m07s sequential)"~~ — measured on the pre-rewrite scorer, on
+>   a different box, before the goldens were re-recorded. The *attribution* it carries (the 9m07s is
+>   `exact-match`'s, not `sim-request`'s) is the durable part and has since been swept into CLAUDE.md
+>   (§10.5 item 4).
+> ⇒ Treat §1.3 as a **catalogue of mechanisms**, and re-baseline before pricing any of them. That is
+> also PHASE9 §5.14's standing rule: wall-clock numbers compare only within a same-session pair.
 
 - **I1 · The engine is parsed (2+n)× per session, uncacheable.** Page copy + main Blob worker +
   ≤8 pool workers each parse their own 160,540-byte copy from a unique `blob:` URL — no HTTP
@@ -266,6 +301,18 @@ COOP/COEP is **not** part of this batch — see §3.4.
 
 ### §3.1 The reclaim ladder (PHASE9 §4, already argued — finish it in order)
 
+> ⛔ **EVERY `index.html` LINE ANCHOR IN THIS SUBSECTION IS DEAD, AND SO IS THE CPU BASELINE IT
+> ASSUMES.** PHASE12 rewrote the scoring walk: `simulate()` no longer ranks on the rate integral, the
+> buff scan splits haste-at-start from value-at-completion, windows run from the fire moment, and every
+> cast carries a boundary credit. **`:2044-2049`, `:943,947`, `:1130-1135`, `:1196-1217`, `:1303-1314`
+> no longer name what this text says they name**, and the file went 5,316 → **5,654** lines. The rungs
+> themselves — hoist `counts`/`clipOf` out of the candidate loops, the per-cfg memo with two-generation
+> eviction, the stringify hoists, hot-loop allocation, the five-walk fusion — are **still the right
+> ladder and still un-landed**; they are inherited by `docs/PHASE13.md`. ⚠ **Re-anchor by content and
+> take a FRESH CPU baseline before pricing any rung**: the "≈ pre-§5.12 +2–4 %" starting point and the
+> "plausibly −20–30 % combined" estimate were both measured against a scorer that no longer exists, and
+> the walk that dominates the profile is precisely the code that changed.
+
 Post-§5.21/§5.22 the engine sits ≈ pre-§5.12 CPU +2–4% with the correctness wins banked. The
 catalogued remainder, cheapest-and-safest first: **(0b)** hoist `counts(base)`/`clipOf(base)` out
 of candidate loops via `admit`'s signature (`index.html:2044-2049`) → **per-cfg memo + two-
@@ -307,14 +354,23 @@ verdicts.
   are identical in typed arrays; the hazards are operation order (keep every expression and the
   for-in R-order walk identical) and hole semantics. This is where the 41.5% self-time + 5.3% GC
   live; **10–25%** plausible. Land function-by-function under the sweep gate.
-- **★ The structural lever — prefix/span reuse in the scorer.** PHASE9 §5.6 left the phase's
+- ~~**★ The structural lever — prefix/span reuse in the scorer.**~~ ⛔ **WRITTEN AGAINST A SCORER THAT
+  NO LONGER EXISTS — re-derive before attempting.** This item was designed for the **rate integral**:
+  "span-contribution reuse keyed on active-window state" is a statement about integrating a rate over
+  spans between breakpoints, and that is not what `simulate()` computes since PHASE12 §6.10. The
+  arbiter is now a **per-cast sum**, and each cast's value additionally depends on its *completion*
+  (the value snapshot, §6.12) and on a **boundary credit** that couples the tail of the walk to `T`
+  and to every cut (§9). The *question* PHASE9 §5.6 left open is still open and still the only
+  multiplicative candidate; the *shapes* proposed here are not the shapes a per-cast sum admits.
+  Its one durable line survives unchanged and is the real constraint: **only same-values-in-same-order
+  summation qualifies** — any re-partition flips 1e-7 accepts and is the falsified-by-construction
+  branch. Gate, likewise unchanged: full sweep + SCORE-AUDIT + duels; `changed>0` = fail.
+  *Original text, kept because the archive is append-only:* PHASE9 §5.6 left the phase's
   biggest question deliberately open: solve cost is ~exponential in press count (×1.35–2 per
   slot; 5 cases = 73% of corpus CPU) — "is that factor irreducible or an artifact of re-exploring
   settled prefixes?" Two shapes *can* be bit-identical: board-state snapshots keyed on the event
   prefix up to the first differing press, and span-contribution reuse keyed on active-window
-  state — **only** same-values-in-same-order summation qualifies (any re-partition flips 1e-7
-  accepts and is the falsified-by-construction branch). High effort, research-grade, the only
-  multiplicative candidate on the table. Gate: full sweep + SCORE-AUDIT + duels; `changed>0` = fail.
+  state. High effort, research-grade.
 - **Planner-to-WASM: rejected for this phase.** Non-correctly-rounded `Math.pow`/libm means no
   bit-identical promise; it would be a deliberate re-golden major version (new goldens, full sim
   re-anchor) — a project decision, not a perf item. C4+C5 above deliver most of the win inside V8.
@@ -328,7 +384,17 @@ burning n×~1 s behind the next run. Determinism: zero — the flag only affects
 are already discarded. Needs COOP/COEP headers (+`CORP` on the lazy sim assets), feature-detect
 `crossOriginIsolated`, fall back to today's behavior. Do it after §2.4, as its own measured step.
 
-### §3.5 Test & CI speed (there is no CI today — verified, no `.github/` exists)
+### §3.5 Test & CI speed ~~(there is no CI today — verified, no `.github/` exists)~~
+
+> ⛔ **THE PARENTHETICAL IS FALSE — CI LANDED (07-26/27).** `.github/workflows/ci.yml` exists and runs
+> three jobs: **`fast`** (sim-request §0 protocol invariants *with* a negative control, the sim-duel
+> wasm smoke, the end-to-end bench smoke — all runner-free), **`page`** (page-vs-terminal request
+> equality in headless Chromium, with a seeded-break negative control), and **`plans`**
+> (`exact-match`, 25 cases). So this section's *recommendations* are partly **implemented**, not
+> pending. What is still owed from it: the `plan-sweep` A/B-vs-merge-base job, the cached native-runner
+> build for the full anti-drift matrix, and the pooled-vs-sequential assertion that would close F11.
+> ⚠ Every job here already honours §9's *"every new CI job needs a negative control"* trap — two of
+> the three carry one, which is why they are believable.
 
 Runner-less GitHub Actions, all viable from the repo alone: **exact-match** on PR (install
 Chromium, pin it; ~5–7 min), **sim-duel** wasm smoke (~1 min) — after B7's fix actually asserts,
@@ -392,7 +458,14 @@ explicitly **not** here (§5).
 
 No scorer term, no search pass, no golden regeneration (outside a §1-bug's own gate), no
 protocol change. B2's crossing-location error, the low-haste columns, the acceptance-criterion
-restatement — all stay PHASE10-gated model work. And the standing rejections hold: no leeway
+restatement — ~~all stay PHASE10-gated model work~~ ⛔ **stale routing: PHASE 10 IS CLOSED AND ARCHIVED**
+(`docs/archive/11-phase10-gearb-baseline.md`), and the three items it hands off did not survive its
+successor intact. **PHASE 12 voided all three as measurements** — they were graded against a scorer
+that disagreed with itself by ~30× its own ranking margins — so they are not "gated on Phase 10", they
+are **un-measured**. The acceptance-criterion restatement in particular (PHASE12 §1.3) rested on a
+ripple floor whose premises are gone. The live routing is `docs/PHASE13.md`. **The scope statement
+itself stands unchanged:** platform work touches no scorer term, no search pass, no protocol constant.
+And the standing rejections hold: no leeway
 bands, no in-tool exact mode, no finite-mana model, no boundary-charge ON, no computation after
 render, no prepull, no legend/Pressboard resurrections.
 
@@ -592,9 +665,46 @@ not two with a divergence.
 comment is in the frozen set, and `docs/archive/00`'s "still hold today" is append-only history that
 §1.4 itself says to **annotate, not prune**. Both carry over to §7.0 proper.
 
-### 10.6 What is still blocked, and on what
+⚠ **AND ITEM 3 WAS ONLY HALF SWEPT — found 07-27 at the phase's close.** The table above records
+CLAUDE.md being corrected to *absolute at-kill damage*, but §1.4 item 3 names **two** sites and the
+other one was left as written: `docs/MECHANICS.md` §4 still ended *"This is also the output to compare
+setups on… read off whose effective-AB total is higher"* — the exact sentence the ruling overturns, in
+the file CLAUDE.md tells every reader to **read first**. Corrected 07-27 when this doc was archived.
+★ The pattern is §1's own: fixing a duplicated statement in one copy and calling the finding closed.
+
+### 10.6 ~~What is still blocked, and on what~~ → ✅ NOTHING IS BLOCKED; THE PHASE CLOSED HERE
+
+*(The list as written, kept because the archive is append-only, each row annotated with what happened.)*
 
 - **B1's page half** — `planToSpecInline` must emit `targets` and the reproduce command must carry
   `--targets`; both in `index.html`. The tool no longer prints a wrong number in the meantime.
+  → ✅ **LANDED 07-27** the day PHASE10's freeze lifted; `planToSpecInline` computes `targets` as the
+  max across AoE windows and the emitted command carries `--targets N` when `N > 1`.
 - **B2's page half** — worker eviction on failure + symmetric listener cleanup, `index.html`.
+  → ✅ **LANDED 07-27**: `simRun` has a single-shot `settle()` removing both listeners on every exit
+  path, plus identity-guarded worker eviction on failure.
+  Both proved plan-neutral by the engine block being **byte-identical** (`sha1 7c08324250500f61`),
+  not by assertion — and `exact-match` was still run, because it is the only gate covering the render
+  path. ⇒ **§1.1 is 8 of 8.**
 - **Everything in §2, §3.1, §3.3** — the frozen set, until PHASE10's round completes.
+  → **The freeze is LIFTED** (round 1 reached 36/36 and was graded 07-27), so nothing is blocked on it
+  any more. But **none of §2/§3.1/§3.3 was started**: the module split, the reclaim ladder and the
+  typed-array/prefix-reuse interior all carry forward to `docs/PHASE13.md`, where §3.1 additionally
+  carries the ⛔ re-anchor/re-baseline warning added at archive time and §3.3's ★ item needs
+  re-deriving against the per-cast-sum scorer.
+
+### 10.7 ✅ CI IS UP — §3.5's first rungs landed (07-26/27)
+
+`.github/workflows/ci.yml`, three jobs, all runner-free except where noted:
+
+| job | what it runs | negative control? |
+|---|---|---|
+| **`fast`** | `sim-request` §0 protocol invariants · `sim-duel` wasm smoke · `bench` end-to-end smoke | ✔ a banned protocol value must FAIL |
+| **`page`** | page == terminal request, headless Chromium | ✔ a seeded break must be CAUGHT |
+| **`plans`** | `exact-match`, 25 cases | — |
+
+★ **Two of the three carry the negative control §9 demands**, which is the only reason their green is
+evidence: B7 and B8 were both gates whose failure mode was a pass, and they are in this workflow.
+**Still owed from §3.5:** the `plan-sweep` A/B-vs-merge-base job (the one that catches unintended plan
+movement), the cached native-runner build that would make the full anti-drift matrix CI-able, and the
+pooled-vs-sequential byte-equality assertion that would close F11 — all carried to `docs/PHASE13.md`.

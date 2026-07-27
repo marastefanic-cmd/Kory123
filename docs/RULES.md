@@ -32,11 +32,13 @@ Living record of the TBC Arcane cooldown rules, each with the **evidence** it wa
 one quantity to maximize is **effective ABs cast** (§1 / `MECHANICS §4`) — a **deterministic per-cast
 sum** the planner has everything it needs to compute exactly.
 
-> ## ✅ AND SINCE 07-27 EVENING HEAD **DOES** COMPUTE IT EXACTLY (`docs/PHASE12.md` §6.10 + §9)
+> ## ✅ AND SINCE 07-27 EVENING HEAD **DOES** COMPUTE IT EXACTLY (`docs/archive/13-phase12-exact-objective.md` §6.10 + §9)
 > `simulate()` accumulates the per-cast sum and returns it as `total`/`totalEarly`/`robust` — now one
 > and the same number. Each cast is credited `dmg × min(1, (nextCut − start)/duration)`: the
-> **boundary credit** (§8), one rule at the fight end, at an intermission start, and at either AoE
-> edge. Standing gate, no sim: `node tools/self-consistency.mjs` reads `0.00e+0` over 2755 scorings.
+> **boundary credit** (§8), one rule at the fight end and at an intermission start — the two places a
+> cast **stops landing** (⛔ **not** at an AoE edge, and not at a burn edge; both are *value*
+> boundaries — §9). Standing gate, no sim: `node tools/self-consistency.mjs` reads `0.00e+0` over 2755
+> scorings.
 >
 > ⛔ **This banner used to say the opposite, and the warning it carried still applies to the EVIDENCE
 > below.** Until 07-27 `simulate()` computed the sum in its walk and then **ranked on a continuous rate
@@ -75,7 +77,8 @@ determined, and the two differ by a **median 0.2114 % of score** against ranking
 
 `credit_i = min(1, (nextCut − start_i)/duration_i)` is the **boundary credit** (PHASE12 §9, user ruling
 07-27): full value for a cast that lands, the fitting fraction for one that straddles a **cut** — the
-fight end, an intermission start, or either edge of an AoE phase. See §8 for what it replaced.
+fight end or an intermission start, i.e. the two places a cast stops **landing**. ⛔ An AoE edge is
+**not** a cut (corrected 07-27 by sim — §9), nor is a burn edge. See §8 for what it replaced.
 
 A cast's *damage* is (for Arcane Blast)
 independent of AB stacks — only cast **time** and mana scale with stacks. Haste enters only through
@@ -221,7 +224,7 @@ casts**, so it should sit on the fastest part of the window.
 > A window runs its full length from the fire; **raid externals are the exception and start when
 > CALLED** (item 2 below), because someone else presses them.
 >
-> ★ **AND THE COOLDOWN CHAIN ANCHORS ON THE FIRE TOO (PHASE12 §3, 07-27).** The same "a self-press
+> ★ **AND THE COOLDOWN CHAIN ANCHORS ON THE FIRE TOO (PHASE12 §6.14c, 07-27).** The same "a self-press
 > cannot fire while a cast is in flight" law governs *when the next use becomes legal*: wowsims starts
 > a cooldown when the ability goes off, not when the schedule asked for it. The scorer's per-cooldown
 > chain now records `auraAt` — the boundary the press snapped forward to — in `lastFire` (it was
@@ -552,9 +555,11 @@ on the patched runner.
 > ```
 > credit = min(1, (nextCut − castStart) / castDuration)     ← multiplies that cast's own value
 > ```
-> A **cut** is the fight end `T`, an **intermission start**, or **either edge of an AoE phase**. A
-> **BURN edge is deliberately NOT a cut**: the boss is targetable and the spell is unchanged, so a burn
-> multiplier is a *value* question under the snapshot rule, not a landing question.
+> A **cut** is the fight end `T` or an **intermission start** — the two moments a cast stops
+> **landing**. ⛔ **Neither a BURN edge nor an AoE edge is a cut**: the boss is targetable at both and a
+> cast already in flight is unaffected by the phase it finishes in, so both are *value* questions under
+> the snapshot rule, not landing questions. (The AoE edge shipped as a cut for a few hours on 07-27 and
+> the sim falsified it — §9.) ⚠ An **instant** cast takes credit **1**, not 0.
 >
 > ★ **It is still a hedge — the overrun it assumes still averages half a cast; it is just drawn
 > ONE-SIDED (the fight never ends early) instead of symmetrically.**
@@ -807,10 +812,28 @@ durations the contained region shrinks to the **intersection** of the constraint
 
 - Intermissions score **zero** (boss untargetable — no casts, no damage), but cooldowns and buff
   durations keep ticking, so the planner holds cooldowns to recover across downtime.
-- **★ A WALL IS A CUT, AND SO IS EITHER EDGE OF AN AoE PHASE (07-27, PHASE12 §9; §8's banner).** The
-  boundary credit `min(1, (nextCut − castStart)/castDuration)` applies at an intermission start and at
-  both AoE edges (Arcane Blast ↔ Arcane Explosion — the spell changes, so the cast in flight does not
-  land as what it started as), exactly as it applies at the fight end. ⛔ **This fixes a real defect:**
+- **★ A WALL IS A CUT. ⛔ AN AoE EDGE IS NOT — corrected 07-27 by measurement, hours after it shipped
+  as one.** The boundary credit `min(1, (nextCut − castStart)/castDuration)` applies at an
+  **intermission start** exactly as it applies at the fight end, and **nowhere else**.
+  ~~and at both AoE edges (Arcane Blast ↔ Arcane Explosion — the spell changes, so the cast in flight
+  does not land as what it started as)~~ — **that reasoning was wrong and the sim says so**: the boss is
+  **targetable** throughout an AoE phase, and the spell a cast uses is chosen at its **START**, so a
+  cast already in flight is unaffected by the phase it completes in. Measured: an Arcane Blast started
+  at **59.000** with an AoE phase opening at **60.000** completes at **60.498** and **LANDS, for full
+  Arcane Blast damage** (1886.4 — a 25 %-resist roll off a ~2577 typical hit). Docking it paid **less
+  than the game pays**. A cut is where a cast stops **landing**; an AoE edge is a **value** boundary,
+  like a burn edge.
+  ⚠ *(The probe that first said the cast did **not** land had a regex requiring `Crit|Hit for` while
+  the log read `Hit (25% Resist) for` — the third parse bug of that family in one session. TOOLING's
+  log-format list carries it.)*
+  ⚠⚠ **And Arcane Explosion is INSTANT (`cast = 0`), so its credit is 1, not 0.** A divide-by-zero
+  guard returning 0 credited **all 27 AE casts of a Kael'thas plan at exactly nothing** — 368,018
+  against 524,173, a **42 % error on the corpus's only AoE fight**. As `dur → 0`,
+  `min(1, (cut − t)/dur) → 1`: an instant cast cannot be *partially* interrupted. **Guard against NaN,
+  not against the answer.** ⚠ Neither defect was reachable by any existing gate — `self-consistency`
+  compares the objective against itself and read `0.00e+0` throughout, and `exact-match` locks in
+  whatever the search emits, so both would have become the goldens.
+  ⛔ **This fixes a real defect:**
   the old credit test only ever asked `completion <= T`, so a cast completing *inside* an intermission
   was paid in **FULL**. Measured: starts `89.616`, wall at `90`, completes `91.114` — was `2242.1`, now
   `frac 0.2563` / `credited 574.8`. The user's ruling behind it: an intermission does not land on the

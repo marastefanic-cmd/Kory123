@@ -27,8 +27,21 @@ plan → sim/planspec.mjs → tools/genapl-core.mjs → sim/simreq.mjs → sim/s
 
 - `genapl-core.mjs` is `genapl.mjs`'s pure core, split out so the CLI and the page import the SAME
   builder (the split is proven output-identical).
-- `planspec.mjs` is the **transcription convention** — FIRE times, floored, Cold-Snap split,
-  `_intermissions`/`_aoe`, `_prestack: 0` — i.e. `xval.mjs`'s `toSpec`, in a file both can use.
+- `planspec.mjs` is the **transcription convention** — ⛔ **NOT "fire times, floored" any more (retired
+  07-27, PHASE12 §6.9c).** It emits a **schedule value**, not a press time: the model's fire time
+  **clamped into `[prevBoundary + SLACK, targetBoundary − SLACK]`**, `SLACK = min(0.5 s, interval/2)`.
+  Both edges matter, because the model↔sim lattice drift **flips sign with haste**; a press sitting in
+  a downtime gap is near neither edge and is still emitted verbatim. `planToSpec` additionally returns
+  `fire` (expected fire times) and `cast` (the cast index each press must buff).
+  ★ **Why `floor(actEff)` had to go:** it was justified as *"a press at floor(F) ≤ F snaps to the same
+  boundary"*, which is false whenever `F` is not itself a boundary — and it lost casts in **both**
+  directions. Measured over 2755 plan-scorings / 32 416 presses: **1.5 % fired on the wrong cast** and
+  a further **25.2 % landed ON a boundary**, where milliseconds of drift decided which cast got
+  buffed. Head to head on real combat logs: `floor(actEff)` **7.14 %** transcription failures →
+  schedule value **0.00 %**. Gate: `tests/press-fire.mjs`.
+  The rest of the convention is unchanged — Cold-Snap split, `_intermissions`/`_aoe`, `_prestack: 0` —
+  and `tools/xval.mjs` keeps a private twin that also supports `EMIT=intent`, to reproduce archived
+  gear-A rounds.
 - `simreq.mjs` patches `sim/model-ref-request.json`, which **is the runner's own `--dumpreq` output**,
   so the page's request is the runner's request minus the fields a duel varies.
 - `sim.wasm` is the patched build at `ade9f39` (both patches; `bash sim/build-wasm.sh` rebuilds it).
@@ -103,8 +116,10 @@ number; ranking lines is *its* job.
 > that differed by a median **0.2114 %** of score until then — do not restore that, and do not tune a
 > scorer term against the integral (§6.1–§6.3 record four terms falsified that way).
 > ★ **`total`, `totalEarly` and `robust` are now the same number**, each cast credited
-> `dmg × min(1, (nextCut − start)/duration)` — the **boundary credit** at every cut (fight end,
-> intermission start, either AoE edge; a burn edge is not a cut). PHASE12 §9 / RULES §8.
+> `dmg × min(1, (nextCut − start)/duration)` — the **boundary credit** at every cut, and a **cut** is
+> where a cast stops **landing**: the fight end and an intermission start, **nothing else** (⛔ an AoE
+> edge is *not* a cut — corrected 07-27 by sim, hours after it shipped as one; nor is a burn edge; and
+> an **instant** cast takes credit **1**, not 0). PHASE12 §9 / RULES §8/§9.
 >
 > ⚠ **Two calibration debts are still open and they bound what the SIM can settle.** (a) wowsims takes 334 ms
 > per Arcane Blast stack where the model takes 1/3 s, so **26 of 196 presses** still miss the cast the

@@ -1,6 +1,44 @@
 # PHASE 10 — re-establish the acceptance baseline on gear B, with the new instrument
 
-**Status: IN EXECUTION (2026-07-26). §4.1 shakedown PASSED; round 1 gathering. Execution log: §8.**
+**Status: CLOSED 2026-07-27, archived.** The charter — *re-measure ACCEPTANCE from scratch on gear B
+and restate every open debt in the new currency* — is **DISCHARGED**. **Round 1 is 36/36 under one
+protocol on one engine** (`char=bench-gearB · engine=native:runner-ap180 · var 0.5 · emit=fire ·
+iter 6000 · pool=1`), ~50 CPU-hours, certified by `tools/xval-stamp-audit.mjs` — a provenance gate that
+did not exist when the phase began. **Verdict: invariant A PASSES** (`monoDip = 0.0000 %` on all 36),
+**B2 FAILS** (142 borrowed-win columns of 345 across 33/36 tables, worst 0.380 %, median 0.035 %),
+**ACCEPTANCE NOT PASSING** on a bar of zero. The debts were re-priced (§8.31): **B2 survives** (banded
++0.368 ± 0.020 pp, 5/5 seeds, REAL), the low-haste **basin reproduces but is misnamed twice over**, and
+the **KT/AoE cells do NOT reproduce**, discharging PHASE7 §5.19's standing prediction. **The
+import-closure freeze is LIFTED.** Cited across the living docs as **"PHASE10 §x"**; section numbers
+are unchanged, so those citations still resolve.
+
+> ## ⛔ READ FIRST — THE VERDICT ABOVE IS **VOID AS A MEASUREMENT OF THE MODEL** (PHASE 12, 07-27)
+>
+> Round 1 was gathered against the **pre-PHASE12 scorer**, and PHASE 12 replaced four things it rested
+> on, the same day this phase closed: the **rate integral** as arbiter, **press-anchored** buff
+> windows, **one snapshot rule** for both kinds of buff, and the **symmetric kill taper** (plus a
+> press-anchored cooldown chain and a press transcription that mis-fired 7.14 % of presses). The
+> boundary-credit change alone moved plans in **11 of 16** `plan-sweep` cases and **102 of 285**
+> `blast-radius` cells. **So this round graded plans the current engine may no longer emit.**
+>
+> **What survives:** the *instrument* (`tools/xval-bench.mjs`, the campaign scripts, the stamp audit),
+> every mechanism and trap, the certification chain, and the **tables themselves** as the append-only
+> record and evidence trail. **What does not:** every verdict, deficit size and debt price in this
+> file, until re-gathered — `docs/PHASE13.md` §2.1, and it is now mostly **arithmetic**
+> (`tools/xval-model.mjs`, no sim).
+>
+> ★ **The central model result is the one worth carrying forward regardless:** the threshold-free
+> persistence test names 3 of 57 kit-columns and its first two are gear A's entire work list **cell for
+> cell** — so the low-haste basin is a property of the **model**, not the reference gear.
+>
+> ⚠ **Two instrument findings it hands on, both found by reading a tool's output rather than its
+> summary line.** `ripple-audit` **fails two of its own pre-registered self-checks** (P3, P5), so no
+> ripple decomposition is quotable on this round — and it stamps `mono=0` for **FAILURE** beside a
+> `vacuous=0` that means success. And *"the shipped wasm == the native runner"* has always meant
+> **within 0.05 DPS**, not bit-identity: re-gathering 30 tables on the runner moved six published
+> figures, one of them a **verdict flip** off a ~1e-6 relative difference (§8.27).
+
+*Historical status line, kept because the archive is append-only:* **IN EXECUTION (2026-07-26). §4.1 shakedown PASSED; round 1 gathering. Execution log: §8.**
 
 ## 0. The one-sentence charter
 

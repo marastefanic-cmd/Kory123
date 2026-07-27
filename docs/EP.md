@@ -10,8 +10,9 @@ power) for a given setup, planned by *its own* ideal cooldown usage. We get it t
 >
 > `simulate()` no longer ranks on `∫ cast_damage/interval dt`. The objective is the **per-cast sum**
 > `D = Σ_i cast_damage_i × credit_i`, with the **boundary credit**
-> `credit_i = min(1, (nextCut − start_i)/duration_i)` (fight end, intermission start, or either AoE
-> edge). Two consequences for this section:
+> `credit_i = min(1, (nextCut − start_i)/duration_i)`, where a **cut** is where a cast stops landing —
+> the fight end or an intermission start, **not** an AoE or burn edge (corrected 07-27; RULES §9).
+> Two consequences for this section:
 >
 > - **The partials below still hold as the continuum form** — each `∫ … /interval dt` is the limit of
 >   the corresponding `Σ_i …` over casts, and the shapes (SP ∝ cast count, crit ∝ damage, haste ∝ the

@@ -5,7 +5,12 @@
 > The user has decided that **all** simming and verification moves to a character defined solely by
 > the planner's declared inputs (SP, crit, passive haste, hit-at-cap, the T5-2pc checkbox). The frozen
 > gear-B export this file is built around — `tools/bench/export.json` — is therefore **retired as the
-> baseline**, and the in-flight round is the last one gathered on it.
+> baseline**. ~~the in-flight round is the last one gathered on it~~ ⇒ **that round is COMPLETE
+> (36/36, graded 07-27, archived as `docs/archive/11-phase10-gearb-baseline.md`) and it WAS the last
+> one gathered on it.** Every gather from here is gear-agnostic; the enforcement that makes that a
+> guarantee rather than an intention is `docs/PHASE13.md` §4. ⚠ Round 1 was subsequently **voided as a
+> model verdict** by PHASE 12 (it graded the pre-exact-objective scorer) — it stands as the
+> append-only record and as the *control* for the stat-distribution transfer test.
 >
 > **What still stands here, unchanged and load-bearing:** §0's statement of the problem, §2.1's
 > difference-in-differences, §3's RNG/`--var 0.5` work, §5's "a fresh container must produce a number
@@ -160,7 +165,9 @@ WIDTH"** — the scorer's `KILL_WINDOW = 0.5` symmetric taper (TOOLING's "MODEL-
 ACCEPTANCE's protocol line; PHASE11 §1.2 F9 flagged the pairing as "aligned by prose only"). **That
 constant is retired from the objective.** The model is now deterministic at `T` and credits a
 straddling cast `min(1, (T − start)/duration)` — a **one-sided** window whose width is the *cast's own
-duration* — under one uniform rule at every cut (fight end, intermission start, either AoE edge).
+duration* — under one uniform rule at every cut (the fight end and an intermission start: the two
+places a cast stops **landing**. ⛔ Not an AoE edge — that shipped as a cut for a few hours on 07-27
+and the sim falsified it; RULES §9).
 There is no model window left to mirror.
 
 **Nothing in §3 above depended on that.** The experiment measured the SIM: the staircase, the

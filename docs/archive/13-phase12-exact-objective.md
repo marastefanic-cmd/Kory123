@@ -1,5 +1,66 @@
 # PHASE 12 — MAKE THE OBJECTIVE EXACT (▶ TOP PRIORITY, user-directed 2026-07-27)
 
+**Status: CLOSED 2026-07-27, archived.** The charter is **DISCHARGED**: `simulate()` ranks on the
+deterministic per-cast sum of effective Arcane Blasts. **Four scoring defects and one transcription
+defect** were found and fixed, and the cast lattice was closed:
+
+| # | defect | where | gate that now holds it |
+|---|---|---|---|
+| 1 | ranking on the **rate integral** instead of the model's own per-cast sum (median 0.2114 % of score, max 1.4263 %, against ranking margins of ~0.005–0.07 %) | §6.8 → §6.10 | `tools/self-consistency.mjs` **0.00e+0** / 2755 scorings |
+| 2 | buff windows **expired from the PRESS**, so every mid-cast press got a short window | §6.11 | `tools/window-span.mjs` |
+| 3 | **one snapshot rule** where the game uses two — haste at cast START, value at cast COMPLETION, over `(start, end]` | §6.12 | `tools/snapshot-rule.mjs` · `tools/credit-check.mjs` |
+| 4 | a **symmetric kill taper** and a wall paid in FULL — replaced by one boundary credit at every cut, `min(1, (nextCut − start)/duration)` (user ruling) | §8 → §9 | `tools/wall-credit.mjs` |
+| T | the press **transcription**: `floor(actEff)` put 7.14 % of presses on a cast the model never chose | §6.9 | `tests/press-fire.mjs` |
+| L | the **cast lattice**: `STACK_CAST_REDUCTION 1/3 → 334 ms` **and** millisecond rounding of every cast/GCD, as wowsims does | §6.14 | `tools/lattice-drift.mjs`, LATTICE press failures 8 → **0** |
+| C | cooldowns **chained from the press** rather than the fire, so the model could emit a plan the sim declined to execute | §6.14c | `tools/press-headtohead.mjs`, HELD **18 → 1** of 196 |
+
+**The tree is green:** `exact-match` **25 passed, 0 failed** (goldens re-recorded), `self-consistency`
+**0.00e+0**, `window-span` · `credit-check` · `snapshot-rule` · `wall-credit` · `sim-duel` pass,
+`sim-request` **9/9** on the native runner.
+
+⚠ **CLOSED, NOT FINISHED — two things it opened and did not do.** (a) **§7's proof programme** — the
+objective is now an exact sum and the decision variable per press is an *integer* (which cast it fires
+on), which makes exact enumeration and branch-and-bound well-posed for the first time; none of it is
+built. (b) **The acceptance re-gather** — every verdict in `docs/ACCEPTANCE.md` was gathered against
+the scorer this phase replaced and is void as a model reading; re-gathering is now mostly arithmetic
+(`tools/xval-model.mjs`, no sim). Both carry forward to **`docs/PHASE13.md`**, together with the AoE
+edge decision this phase deliberately left open (§9.5 sub-decision 2) — ✅ **which was itself decided
+hours after this doc was archived, and AGAINST the way this phase shipped it: an AoE edge is NOT a cut.
+Chasing it also exposed a 42 % error this phase had shipped (instant casts credited at zero), reachable
+by none of its gates.** Both are annotated at §9's landing block.
+
+Cited across the living docs as **"PHASE12 §x"**; section numbers are unchanged, so those citations
+still resolve. ⚠ **One citation was always wrong and is being corrected as this doc lands:** several
+places cite *"PHASE12 §3"* for the **cooldown-chain fix**. §3 is the **debts table**; the chain fix is
+**§6.14c**. (§3.6/§3.7/§3.8 *are* debts-table rows and those citations are correct.)
+
+> ## ⛔ READ FIRST — SIX BLOCKS IN THIS DOC WERE LIVE INSTRUCTIONS AND ARE NOW FALSE
+>
+> This doc was written **during** the work, so its early sections instruct against a repo state that
+> the later sections destroyed. Each is bannered in place; the index is here so a reader who lands
+> mid-document is warned before acting:
+>
+> | § | what it says | why it is false now |
+> |---|---|---|
+> | **§6.11e** | *"`exact-match` WILL FAIL on every case … ⛔ Do NOT run `--update`"* | ⛔ **the most dangerous stale line in the repo** — the suite is **25/0 green** and the goldens were re-recorded under §9 |
+> | **§8.1** | a cast completing exactly at `T` is paid **0.5** | it is paid a **FULL** cast (§9) |
+> | **§8.3** | the fix is *"`dmg = 0` … Not partial credit"* | superseded by §9's fraction; **as written it would re-introduce the defect** |
+> | **§1.3** | the ripple-floor framing (continuum limit, `1 − W/c` sawtooth, "`KILL_WINDOW` is part of the objective") | every premise is gone; debt **§3.7** depends on it |
+> | **§6.1 / §6.4 1–3** | the terminal-cast family is closed; *"do not re-attempt"* | measured with the **retired rate integral** as arbiter |
+> | **§6.6 / §6.7** | *"the sim's buff starts at the first cast boundary strictly after the press"* | falsified by **§6.9a** — `IsReady` is `>=`; it was a lattice mismatch |
+>
+> Also stale and bannered in place: **§0.3 step 1**'s *"`robust` == the tapered cast sum"* (no taper
+> exists), **§6.11d**'s *"334 ms is a PREREQUISITE"* (it landed, §6.14), **§6.14c**'s
+> *"WHAT REMAINS: HELD = 18"* (landed, 18 → 1), and **§6.16b**'s *"model-audit 17 of 23"* (measured
+> before the chain fix that was its own diagnosed cause).
+>
+> ★ **What survives, and it is most of the document:** every mechanism, every measurement of a defect
+> *as it existed*, every falsified candidate, and — above all — §6's four recorded instances of an
+> **instrument flattering or blinding itself** (§6.1's summary line contradicting its own sweep table,
+> §6.9's classifier laundering the defect it was built to catch, §6.11c's tie rule turning `+0.00` vs
+> `−0.00` into a verdict, §6.14b's three tools defaulting `--index` to the round blob and reporting a
+> byte-identical "no change" across two consecutive fixes). Those are the phase's durable lesson.
+
 ## §0 THE CHARTER
 
 **Make `simulate()` rank on the quantity the project is defined around: the deterministic per-cast sum
@@ -45,9 +106,14 @@ internal corpus, which is what makes the tool's claims checkable by the person r
 
 1. **Score the per-cast sum.** Keep the integral only if it earns its place as a *search-smoothing*
    device — never as the arbiter.
-   **Gate, and it needs no sim:** `robust` == the tapered cast sum to float precision, on every plan in
-   the corpus. `tools/self-consistency.mjs` already measures exactly this and currently reports the
-   0.2114 % median; it must go to ~0.
+   **Gate, and it needs no sim:** ~~`robust` == the **tapered** cast sum~~ ⛔ **the word "tapered" is
+   stale — THERE IS NO TAPER.** The symmetric kill taper it names (`KILL_WINDOW = 0.5`) was retired by
+   user ruling later the same day (§9); each cast now carries a **boundary credit**
+   `min(1, (nextCut − castStart)/castDuration)` at every cut, which is a one-sided window of the cast's
+   own width, not a taper. The gate as it actually stands: **`robust` == the per-cast sum, recomputed
+   independently from the `casts` board, to float precision, on every plan in the corpus.**
+   `tools/self-consistency.mjs` measures exactly this; it reported the 0.2114 % median when this was
+   written and reads **`0.00e+0`** now.
 2. **Fix the press-fire offset** (§6.7). Every press fires **1.0–1.5 s later in the sim than the plan
    asks**, off-GCD trinkets included — so it is our transcription, not game mechanics. Until fixed, no
    sim number is a valid reference. Add the missing gate: `press-verify.mjs` extended to assert
@@ -99,14 +165,14 @@ change cannot be attributed.
 coarse**, or **something gear B revealed that gear A hid**.
 
 Status when this file was opened: **round 1 gathering at 30/36**, `index.html` frozen until 36/36
-(the plan cache keys on its bytes). Written against `docs/archive/11-phase10-gearb-baseline.md` §8 and `docs/PHASE11.md` §1/§8.
+(the plan cache keys on its bytes). Written against `docs/archive/11-phase10-gearb-baseline.md` §8 and `docs/archive/12-phase11-platform.md` §1/§8.
 
 ---
 
 ## 1. USER CALLS — each with the evidence to answer it in one minute
 
 > Rule for this section: state the question, the measurement that bears on it, and the cost of each
-> answer. **Do not answer them here.** (`docs/PHASE11.md` §8 is the other list; these are additive.)
+> answer. **Do not answer them here.** (`docs/archive/12-phase11-platform.md` §8 is the other list; these are additive.)
 
 ### 1.1 ✅ DECIDED BY THE USER, 2026-07-26 — the corpus MOVES to the gear-agnostic character
 
@@ -233,10 +299,41 @@ The user asked for a guarantee, not an intention. A note in a doc is not one. Wh
 
 ### 1.2 Inherited from PHASE11 §8 — not restated here
 
-`docs/PHASE11.md` §8 lists the platform-phase user calls (module split boundaries, product routes).
+`docs/archive/12-phase11-platform.md` §8 lists the platform-phase user calls (module split boundaries, product routes).
 They are unchanged by tonight's work; **do not decide them here**. §1.1 above is additive to them.
 
-### 1.3 ⚖ Does the PASS criterion get restated in terms of the ripple floor?
+### 1.3 ~~⚖ Does the PASS criterion get restated in terms of the ripple floor?~~ ⛔ THE WHOLE QUESTION IS VOID
+
+> # ⛔ EVERY PREMISE OF THIS SECTION WAS DESTROYED BY §6.10 AND §9 — DO NOT DECIDE IT AS POSED
+>
+> The question below is *"should the acceptance bar be relaxed to the ripple floor?"*, and it is built
+> on three claims that were all true when it was written and are all false now:
+>
+> | premise as written | status |
+> |---|---|
+> | *"the model **integrates the continuum limit**"* | ⛔ **gone.** `simulate()` ranks on a discrete per-cast sum (§6.10). There is no continuum limit left to be offset from the sim's integer casts. |
+> | *"leaving a `1 − W/c` **sawtooth**"* | ⛔ **gone.** The sawtooth *was* the mismatch between a continuous taper of width `W` and integer casts of period `c`. Both terms of it were retired. |
+> | *"`KILL_WINDOW` **is** the half-cast hedge of RULES §8 — it is part of the objective"* | ⛔ **gone.** `KILL_WINDOW` was retired from the objective entirely (§9); a local `KW = 0.5` survives feeding only the `integral` diagnostic. |
+>
+> ⇒ **The "positive-biased resolution floor" this section asks the bar to be relaxed to is not a
+> quantity the current model produces.** `diagWorst`'s expectation for a flawless model may still be
+> positive for other reasons — a `max` over ~10 rival rows of a two-signed quantity is biased upward on
+> its own — but that is a *different* argument and it has not been made. **Do not restate the criterion
+> on this section's evidence; do not quote its `+0.094…+0.165 %` floor or its 80.2 % figure.**
+>
+> ⚠ **The decision itself is still un-made and is inherited by `docs/PHASE13.md`** — but it must be
+> **re-posed** against the exact objective before it is answered, not answered as written. And the
+> instrument it names is doubly unusable: `tools/ripple-audit.mjs` **fails two of its own
+> pre-registered self-checks** (P3, P5 — archive/11 §8.30), so no ripple decomposition was quotable
+> even on the round this section was written about.
+>
+> ⚠ **Debt §3.7 depends on this section and inherits the same void** — see its row in §3.
+>
+> ★ **What survives:** the *trade-off framing* in the table below — a hard-zero bar carries information
+> only if it is reachable, and a tolerance in the criterion is what Phase 7 deliberately removed. That
+> tension is real and is what a future ruling has to resolve. Only the physics under it changed.
+>
+> *The section as written, kept because the archive is append-only:*
 
 **Moved here 07-27 from `docs/ACCEPTANCE.md`'s "Known coverage gaps" list, where it had sat as an
 un-owned "user call and is NOT being made unilaterally" — a decision with nobody's name on it.** The
@@ -381,7 +478,7 @@ closes that gap using only the committed wasm.
 | 3.4 | `RULES.md` figures are gear-A; banner added, **none re-measured** | banner landed 07-26 |
 | 3.5 | §12 crossover thresholds (`~264`, `~139`, `~77`) are haste/SP functions | most likely to have moved; re-derive first |
 | 3.6 | The two SIMLOG log-walking instruments exist only as prose + dead scratchpad paths | **CLOSED 07-27** — promoted to `tools/press-verify.mjs` and `tools/duel-walk.mjs`; see §3.6 note |
-| 3.7 | Interior-wall contribution to the ripple floor is unpriced at any boss length/kit but the one measured | open — ACCEPTANCE "coverage gaps"; boss cells priced at ±0.1251, interiors not |
+| 3.7 | ~~Interior-wall contribution to the ripple floor is unpriced at any boss length/kit but the one measured~~ ⛔ **VOID AS POSED — it inherits §1.3's dead premises.** There is no `1 − W/c` sawtooth to price the interior walls' contribution *to*: the model no longer integrates a continuum limit and `KILL_WINDOW` is gone (§6.10, §9). What is *not* void is the underlying observation — a boss fight has **seven** walls where the ripple floor priced only the tail one — but under the exact objective every wall is now a **cut** carrying its own deterministic boundary credit (§9), so the question is no longer "how much floor do interior walls add" but "does the credit at each cut match the sim, cast for cast". Re-pose before re-opening | ~~open~~ **void as posed**; re-pose in `docs/PHASE13.md` |
 | 3.8 | **Ashtongue** (random on-crit proc) is outside every kit — needs a stochastic treatment | open, and **un-owned since Phase 7 closed without it**; RULES §14 folds it into passive haste, which is the *modelling* answer, not the *cross-val* one |
 
 **§3.6 note.** `docs/TOOLING.md`'s "★★ DECOMPOSE A DUEL BY WALKING THE LOG" calls log-walking *the
@@ -441,7 +538,42 @@ round's committed tables plus the plan cache (`.xval-cache/`, which stores the r
 which changed when PHASE11 §1.1's UI fixes landed, so probing must be pointed at the blob the round
 used (`git show <pre-fix>:index.html`). A miss would silently probe a different engine's plans.
 
-## 6.1 ⛔ THE TERMINAL-CAST FAMILY IS CLOSED — in BOTH its forms
+## 6.1 ~~⛔ THE TERMINAL-CAST FAMILY IS CLOSED — in BOTH its forms~~ ⚠ THE VERDICT IS WITHDRAWN
+
+> # ⚠ THE CLOSURE VERDICT DOES NOT SURVIVE — IT WAS MEASURED WITH THE RETIRED ARBITER
+>
+> Everything in this section is scored against **`robust` as the rate integral**: the "tail-corrected"
+> arm replaces the integral *only inside the kill window*, and P2/P3/P4 grade both arms by correlation
+> with sim DPS. §6.8, written later the same day, established that **the integral disagreed with the
+> model's own per-cast sum by a median 0.2114 % of score against ranking margins of ~0.005–0.07 %** —
+> so the baseline this experiment measured its candidate against was **not single-valued at the scale
+> of the effect**. §6.8's own summary says so explicitly: *"§6.1 (terminal-cast term, net −39) … all
+> were terms tuned against a quantity that is not single-valued at the scale of the effect."*
+>
+> ⛔ **And the ground truth was equally compromised:** §6.9 measured that the referee fired **7.14 % of
+> presses on a cast the model never chose**, with a further 25.2 % on a boundary decided by
+> milliseconds of lattice drift. §6.11d states the consequence in as many words — *"a referee that
+> mis-executes ~13 % of presses cannot resolve a margin of ~0.01 %."*
+>
+> ⇒ **Neither side of the P2/P4 comparison was trustworthy.** *"The terminal-cast family is closed"* is
+> **unproven**, not established — the identical retraction §6.8 issued against §6.5a.
+>
+> ★ **The mechanism finding survives and is worth more than the verdict:** **P1 is emphatic** — the two
+> accounts of the tail differ by a median **0.1490 %** of `robust`, ~7× the CRN resolution — and
+> archive/11 §8.25 hand-counted the cast in two independent cells from SIMLOG. The phenomenon is real.
+> What is unproven is whether the model's *predicted* tail phase is accurate enough to act on, because
+> the timing errors that would have decided it were only found afterwards (§6.9, §6.14).
+>
+> ⚠ **Note the term is also partly MOOT, not merely unproven.** The whole construction was *"replace
+> the integral inside `[T−KW, T+KW]`"*, and both the integral and `KILL_WINDOW` are retired (§6.10,
+> §9). Under the exact objective the terminal cast is **already** priced deterministically, by the
+> boundary credit. Re-opening this means re-posing it, not re-running it.
+>
+> ★ **The instrument defect recorded at the end of this section is DURABLE and is one of the phase's
+> four self-blinding instruments** — the verdict line branched on `bestNet > 0` alone and printed ✅
+> while the bar was `net > 0 AND broken ≤ 5 %`. Keep that lesson whatever happens to the verdict.
+>
+> *The section as written, kept because the archive is append-only:*
 
 This was the standing **#1 model target**: archive/11 §8.23 diagnosed the worst persistent cell as
 *one terminal cast the model cannot see*, §8.25 confirmed the mechanism is **shared** by the second
@@ -562,10 +694,25 @@ this evidence.**
 
 ## 6.4 What a future session should take from §6
 
-1. **Do not re-attempt the terminal-cast term.** Closed in both forms, on 285 columns, with the
-   falsifier firing at ~2× the repair rate (§6.1).
-2. **Do not trust "low-haste" as the debt's name.** The directional bias is at `simH > 200` (§6.2).
-3. **The next measurement is more high-haste columns, not another term** (§6.3).
+> ⛔ **ITEMS 1–3 ARE WITHDRAWN — every one of them is a measurement taken through the retired arbiter.**
+> All three were computed with `robust` = the rate integral, against a sim referee that mis-fired ~13 %
+> of its presses (§6.8, §6.9, §6.11d). ⚠ **Item 1 is the one that matters, because it is an
+> INSTRUCTION**: *"do not re-attempt the terminal-cast term"* now rests on a falsified premise, and a
+> future session must not treat it as a standing prohibition. The honest statement is *"untested against
+> the exact objective, and probably moot — the boundary credit already prices the terminal cast
+> deterministically (§9)."* Item 2's directional finding and item 3's power calculation are likewise
+> un-replicated: they would have to be re-derived from a re-gathered corpus, which does not exist.
+> **Item 4 stands, unqualified, and is the section's real payload.**
+>
+> *The list as written, kept because the archive is append-only:*
+
+1. ~~**Do not re-attempt the terminal-cast term.** Closed in both forms, on 285 columns, with the
+   falsifier firing at ~2× the repair rate (§6.1).~~ ⛔ withdrawn — see §6.1's banner.
+2. ~~**Do not trust "low-haste" as the debt's name.** The directional bias is at `simH > 200` (§6.2).~~
+   ⛔ withdrawn as a *measurement*; the naming caution itself is harmless and archive/11 §8.31 reached
+   it independently.
+3. ~~**The next measurement is more high-haste columns, not another term** (§6.3).~~ ⛔ withdrawn — the
+   underpowered effect it would extend was measured against the retired arbiter.
 4. ★ **The general lesson, and it cost two probes in one session to learn twice:** every one of these
    findings changed sign or died under a control — grid position inverted §6.2, a vacuous control hid
    §6.3's real null, and my own summary line contradicted my own sweep table in §6.1. **The corpus is
@@ -670,6 +817,32 @@ correction would not fix.
 
 ## 6.6 ★★★ THE DRIFT IS DIAGNOSED — every press is scored ~1.0–1.5 s EARLIER than it can happen
 
+> ## ⛔ THE MECHANISM §6.6 AND §6.7 INFER IS FALSIFIED — read §6.9a before acting on either
+> Both sections conclude with the same empirical rule: *"the sim's buff starts at the first cast
+> boundary **strictly after** the press."* **The observations are correct and the rule is the right
+> consequence; the cause is wrong**, and §6.9a falsified it by direct measurement:
+> - `APLActionSchedule.IsReady` is **`sim.CurrentTime >= timings[i]`** — a `>=`, not a `>`
+>   (`sim/core/apl_actions_timing.go:155`). There is no strictness to exploit.
+> - A schedule value **1 ns below** the boundary's own truncated value *also* fires a full cast late
+>   (`tools/press-ns-probe.mjs`), which no float-truncation story explains either.
+>
+> **The real cause is a LATTICE MISMATCH:** wowsims takes **334 ms** per Arcane Blast stack where the
+> model took **1/3 s**, and rounds every cast to the millisecond — so the boundary a combat log prints
+> as `11.00` is really **`10.998`**, and `10.998 >= 11.000` is honestly false. The log prints two
+> decimals, which is why the 2 ms was invisible to every reader of these two sections.
+>
+> ⚠ **Why the distinction is load-bearing rather than pedantic:** a fix built on "strictly after" —
+> shave an epsilon, subtract a nanosecond — bets on the **sign of a rounding error**, and that sign
+> **flips with haste** (`tools/lattice-drift.mjs`: +0.080 s at h=80, −0.061 s at h=300). It would have
+> worked at one haste and silently failed at another. The fix that shipped instead clamps the schedule
+> value into `[prevBoundary + SLACK, targetBoundary − SLACK]` (§6.9c), and the constant itself was
+> corrected in §6.14.
+>
+> ★ **Everything measured in these two sections stands** — the bare cast stream being exact, the
+> per-cooldown drift table, the uniform +1 s window translation, the off-GCD-behaves-like-on-GCD test
+> that correctly picked "transcription artifact" over "model defect", and §6.7's ☞ three next
+> measurements (all three were done). Only the *why* changed.
+
 **User challenge:** *"why is there a drift? Isn't it just deterministic math and additions of cast
 times? We can calculate the cast time at any haste level, deterministically, based on stacks and
 haste."* **Exactly right — and that is what made the bisect possible.** The answer is that the
@@ -719,7 +892,8 @@ press 11.1 -> model actEff 11.100  sim aura 12.500   offset 1.400s
 press 12.5 -> model actEff 12.500  sim aura 14.000   offset 1.500s
 ```
 
-⇒ **the sim's buff starts at the first cast boundary STRICTLY AFTER the press; the model uses the raw
+⇒ ~~**the sim's buff starts at the first cast boundary STRICTLY AFTER the press**~~ ⛔ **wrong cause —
+`IsReady` is `>=`; it is a 2 ms lattice mismatch, §6.9a**; **the model uses the raw
 press time verbatim.** Every cooldown window the model scores therefore begins **1.0–1.5 s earlier
 than achievable at h=0**, and the size of the error depends on where the press falls in the cast
 lattice — which is precisely why the drift is **plan-dependent** (§6.5: 0.362 s vs 0.206 s on the same
@@ -749,6 +923,21 @@ double-count the delay.
 
 ## 6.7 ⚠⚠ THE OFFSET IS A HARNESS ARTIFACT, NOT A MODEL DEFECT — and it may implicate the whole corpus
 
+> ⛔ **VERDICT RIGHT, MECHANISM WRONG — see §6.6's banner and §6.9a.** "Transcription artifact, not
+> model defect" is **correct** and the separating test that establishes it is sound. But the *"wowsims'
+> `schedule` action fires at the first evaluation **strictly after** the scheduled time"* rule below is
+> falsified: `IsReady` is `>=`, and the real cause is that the sim's boundary sits **2 ms earlier than
+> the log prints it**, because wowsims takes 334 ms per Arcane Blast stack where the model took 1/3 s.
+> ⚠ **The derived instruction is therefore also wrong:** *"to land a press ON boundary `B`, the
+> schedule value must lie in `[prevBoundary(B), B)`"* would have you shave an epsilon — and the sign of
+> the error it is compensating **flips with haste**. What shipped clamps into
+> `[prevBoundary + SLACK, targetBoundary − SLACK]`, both edges (§6.9c).
+> ★ **§6.7's ☞ three next measurements were all carried out**: (1) the exposure count → §6.9b, 7.14 %
+> mis-fired plus 25.2 % fragile; (2) the transcription fix + re-duel → §6.9c, 7.14 % → 0.00 %;
+> (3) the missing gate → `tests/press-fire.mjs`, §6.9e. And §6.7's ★ closing lesson — *four scorer
+> terms were designed and falsified before anyone checked whether the presses fired when asked* — is
+> the phase's most reusable sentence.
+
 §6.6 left two readings with opposite fixes. **The separating test is done and it picks the second.**
 
 **The test:** compare an ON-GCD ability against an OFF-GCD on-use trinket. An on-use trinket is
@@ -765,16 +954,19 @@ Icon  OFF-GCD   press 10 -> aura 11.000 (+1.000)   |   press 11 -> aura 12.500 (
 **And it is not a priority-list bug.** Every press is pushed *ahead* of the Arcane Blast action
 (`tools/genapl-core.mjs:68-76`), Cold Snap first. The presses have top priority and still land late.
 
-**The empirical rule:** wowsims' `schedule` action fires its inner action at the first APL evaluation
-— i.e. the first cast boundary — **strictly after** the scheduled time. Boundaries at h=0 are
-`… 9.5, 11.0, 12.5`:
+~~**The empirical rule:** wowsims' `schedule` action fires its inner action at the first APL evaluation
+— i.e. the first cast boundary — **strictly after** the scheduled time.~~ ⛔ **FALSIFIED, §6.9a** — the
+observations are right, the rule is not: `IsReady` is `>=` and the sim's boundary is 2 ms earlier than
+the log prints. Boundaries at h=0 are `… 9.5, 11.0, 12.5` *as printed*:
 
 ```
 schedule 9.6  -> fires 11.000     schedule 10 -> fires 11.000     schedule 11.0 -> fires 12.500
 ```
 
-So to land a press ON boundary `B`, the schedule value must lie in `[prevBoundary(B), B)` — **a value
-exactly equal to `B` overshoots by a full cast.**
+~~So to land a press ON boundary `B`, the schedule value must lie in `[prevBoundary(B), B)`~~ ⛔ **do
+not implement this** — it compensates a rounding error whose sign flips with haste. The shipped rule
+clamps into `[prevBoundary + SLACK, targetBoundary − SLACK]`, `SLACK = min(0.5 s, interval/2)`, both
+edges (§6.9c). It remains true that **a value exactly equal to `B` overshoots by a full cast.**
 
 ### ⚠ Why this may implicate the corpus, and why that is NOT yet a claim
 
@@ -1100,16 +1292,38 @@ model scored them on, purely from the 334 ms / (1/3) s Arcane Blast cast-time mi
 — and no transcription can reach those. A referee that mis-executes ~13 % of presses cannot resolve a
 margin of ~0.01 %.
 
-⇒ **Fixing `STACK_CAST_REDUCTION: 1/3 → 334 ms` is now a PREREQUISITE for the demonstration, not an
-optional follow-up.** Order: land the constant, re-run `scorer-duel`, and only then consider goldens.
+⇒ ~~**Fixing `STACK_CAST_REDUCTION: 1/3 → 334 ms` is now a PREREQUISITE for the demonstration**~~
+✅ **IT LANDED — §6.14.** And the fix was **two** changes, not one: the constant *and* millisecond
+rounding of every cast and GCD (`sim/core/cast.go:137-138`), of which **(2) dominates and (1) alone
+moved the bare lattice by exactly nothing** (Arcane Blast is GCD-bound in steady state). Bare-stream
+drift went 0.080 s → **0.005 s**, the log's own printing floor, and LATTICE-class press failures went
+8 → **0**. ⇒ **The prerequisite is discharged; `scorer-duel` has not been re-run against it.** That
+re-run is inherited by `docs/PHASE13.md` — it is the demonstration §0.4 asked for and it is still not
+in. Order as stated: land the constant *(done)*, re-run `scorer-duel`, and only then consider goldens
+— noting the goldens were subsequently re-recorded under §9 on `plan-rescore` evidence instead
+(15 of 16 better, 0 regressions).
 
-### 6.11e ⛔ WHAT IS TRUE OF THE REPO RIGHT NOW — read this before running exact-match
+### 6.11e ~~⛔ WHAT IS TRUE OF THE REPO RIGHT NOW — read this before running exact-match~~
 
-- `tests/exact-match.mjs` **WILL FAIL**, on every case. Plans moved by design (41.1 % of pooled-argmax
+> # ⛔⛔ THIS SECTION IS FALSE AND IS THE MOST DANGEROUS STALE LINE THE REPO HAS CARRIED
+> **`exact-match` reads 25 passed, 0 failed.** The goldens **were** re-recorded, later the same day,
+> when §9's boundary-credit ruling landed together with §6.14c's cooldown-chain fix — see §9's landing
+> block for the gate table. The red state described below lasted a few hours and is **over**.
+>
+> ⚠ **Read the instruction, not the reasoning.** *"`exact-match` is red on purpose, do not `--update`
+> it"* was correct **only while §0.4's demonstration was outstanding**. A future session that finds a
+> red suite must not cite this block as licence to leave it red, and must not cite it as licence to
+> `--update` either: **the standing rule is unchanged** — goldens are re-recorded only after each
+> changed plan is shown to improve the objective (`tools/plan-rescore.mjs` did that here: 15 of 16
+> better, 1 plateau, **0 regressions**).
+>
+> *The block as written, kept because the archive is append-only:*
+
+- ~~`tests/exact-match.mjs` **WILL FAIL**, on every case.~~ Plans moved by design (41.1 % of pooled-argmax
   cells; 16 of 16 QUICK sweep cases) and **the goldens were deliberately NOT re-recorded**, because
   §0.4 licenses that only on a demonstration that has not been obtained. This is a known, intended,
   documented state — not a regression, and not something to fix with `--update`.
-- ⛔ **Do NOT run `exact-match --update` to make it green.** That would freeze an objective whose
+- ~~⛔ **Do NOT run `exact-match --update` to make it green.**~~ That would freeze an objective whose
   superiority is unproven into the project's own definition of correct, and destroy the only record of
   what the retired scorer emitted.
 
@@ -1318,7 +1532,18 @@ when the grid moved 2 ms, `press: 11` was no longer on a boundary and the two ar
 being the same experiment. It now reads the boundary off the model's own grid and transcribes the sim
 side through `planToSpec` — **a gate must not carry its own copy of the geometry it is checking.**
 
-### 6.14c ▶ WHAT REMAINS: `HELD` = 18, and it is the cooldown chain
+### 6.14c ~~▶ WHAT REMAINS: `HELD` = 18~~ → ✅ LANDED — the cooldown chain now anchors on the FIRE
+
+> ✅ **FIXED 07-27, and this section is the canonical write-up of that fix** — `lastFire[key] = auraAt`
+> replaces `lastEff[key] = eff`, so a cooldown's next legal use is measured from the moment the ability
+> actually fired, exactly as wowsims does. **Measured: `HELD` 18 → 1 of 196 presses**
+> (`tools/press-headtohead.mjs`). It landed together with §9's boundary credit, on explicit user
+> direction that the two are one coherent statement about what the objective evaluates and where.
+>
+> ⚠ **CITATION NOTE — this section is the target of a repo-wide broken anchor.** Several places cite
+> *"PHASE12 §3"* for the cooldown-chain fix. **§3 is the debts table; the fix is §6.14c** (here).
+> `docs/RULES.md`, `docs/ARCHITECTURE.md` and `docs/ACCEPTANCE.md` were corrected when this doc was
+> archived; the two occurrences in `index.html` are the file owner's to fix.
 
 `LATTICE` went to 0; `HELD` did not move. Different mechanism, and it is the **fourth** appearance of
 press-moment-vs-fire-moment:
@@ -1423,7 +1648,24 @@ PASS  2:00 lust 0:05  (T=120)
 
 Cast times to the millisecond, buff SP exact (380 = Icon 155 + gem 225), buff multiplier exact.
 
-### 6.16b ⛔ And on multi-use fights it does NOT — 17 of 23
+### 6.16b ~~⛔ And on multi-use fights it does NOT — 17 of 23~~ ⚠ MEASURED BEFORE ITS OWN DIAGNOSED CAUSE WAS FIXED
+
+> ⚠ **THE 17-of-23 FIGURE IS STALE — DO NOT QUOTE IT AS THE MODEL'S CURRENT STANDING.** This section
+> ends by naming its own cause: the cooldown chain anchored on the **press** rather than the **fire**,
+> §6.14c's `HELD` class, *"independently reproduced and now priced"*. **That fix landed** (`lastFire`),
+> and `press-headtohead` measured its direct effect as **HELD 18 → 1 of 196 presses**. The audit was
+> **not re-run at scale afterwards**, so the failure count is a measurement of an engine that no longer
+> exists — and its diagnosis predicts it should now be much smaller.
+>
+> ⇒ **Re-running `tools/model-audit.mjs` at scale is inherited by `docs/PHASE13.md`.** It is the
+> standing bar the user set (*"the model should be able to predict the logs press by press down to the
+> milliseconds"*), and the chain fix is exactly what it was measuring.
+>
+> ★ **What survives unchanged and is the section's value:** the *diagnostic method* — the magnitudes
+> name the cause. SP off by exactly **155** (one Icon) and the multiplier by exactly **0.25** (one
+> Arcane Power) is a whole window on the wrong casts, not rounding; and the fights that fail are
+> precisely the ones with a **second** use of a cooldown. §6.16c's two harness errors and §6.16d's
+> Go-`Duration.String()` unit trap are likewise durable.
 
 Every **cast count** still matches (314/314 on the 7:20). What breaks is placement, and the magnitudes
 name the cause. `4:00 lust 0:05`:
@@ -1472,13 +1714,29 @@ the intermission/fight end we'd count 1.3 × 0.5."* Probing it (`tools/wall-cred
 is wrong at one of those two boundaries and already right at the other — and wrong in the direction
 nobody would guess.
 
-### 8.1 The two boundaries are different problems
+### 8.1 ~~The two boundaries are different problems~~ ⛔ THE PREMISE WAS OVERTURNED HOURS LATER (§9)
+
+> ⛔ **THE TABLE BELOW IS SUPERSEDED IN EVERY COLUMN — read §9 first.** The user's ruling (§9.0) and
+> then their correction (§9.5) collapsed this two-problem framing into **one rule at every cut**:
+> - *"is the time known?"* — **no, at either boundary.** *"even the intermissions can happen a little
+>   sooner or later"* — assuming the wall is exact is the identical mistake §8 correctly identified
+>   about `T`, made one boundary over.
+> - *"correct credit"* — **the same fraction at both**: `min(1, (nextCut − castStart) / castDuration)`.
+> - ⛔ **"a cast completing exactly at T is paid 0.5" is FALSE.** That was the **symmetric** taper
+>   `U[T−W, T+W]`, which is retired. The rule is a **one-sided** window whose width is the cast's own
+>   duration, so a cast completing exactly at `T` is paid a **FULL** cast.
+>
+> ★ **What survives from §8, and it is the reason the section exists:** the *measured defect* in §8.2
+> (the model paid FULL price for a cast completing inside an intermission) is real and was the trigger
+> for the whole ruling. Only the prescribed correction changed.
+>
+> *The table as written, kept because the archive is append-only:*
 
 | | the KILL | an INTERMISSION wall |
 |---|---|---|
-| is the time known? | **no** — nobody knows the second the boss dies | **yes** — a scheduled second |
-| correct credit | `dmg × P(alive at completion)` — fractional | **zero** — the boss cannot be hit |
-| status | ✅ already implemented: `robust`'s kill taper (`index.html:1183`), uniform over `T ± KILL_WINDOW`, so a cast completing exactly at T is paid 0.5 | ⛔ **the model pays FULL price** |
+| ~~is the time known?~~ | **no** — nobody knows the second the boss dies | ~~**yes** — a scheduled second~~ ⛔ no |
+| ~~correct credit~~ | `dmg × P(alive at completion)` — fractional | ~~**zero** — the boss cannot be hit~~ ⛔ the same fraction |
+| ~~status~~ | ~~✅ already implemented: `robust`'s kill taper (`index.html:1183`), uniform over `T ± KILL_WINDOW`, so a cast completing exactly at T is paid 0.5~~ ⛔ retired — it is paid a FULL cast | ⛔ **the model pays FULL price** — the real, measured defect (§8.2) |
 
 ★ **At the kill, the fraction depends on WHEN THE CAST COMPLETES — never on how far through it the
 boundary cut.** A 0.75 s cast and a 2.5 s cast that both complete at `T + 0.3` are worth exactly the
@@ -1506,10 +1764,32 @@ that RANKS does not take it.** (§6.10's integral, §6.11's press-time windows, 
 rule, and now this.) The lesson has been paid for four times: when a scoring question has an answer
 somewhere in the engine, check that the *scorer* is the code asking it.
 
-### 8.3 The fix, and what it is not
+### 8.3 ~~The fix, and what it is not~~ ⛔ THIS PRESCRIPTION WAS NOT THE FIX — DO NOT IMPLEMENT IT
 
-`dmg = 0` when the completion lands in an intermission. **Not partial credit** — a wall is known
-exactly, so there is no distribution to integrate and nothing to smear. It is a scoring change, so
+> ⛔ **IMPLEMENTING THE LINE BELOW WOULD RE-INTRODUCE THE DEFECT IT IS AIMED AT, WEARING THE OTHER
+> SIGN.** `dmg = 0` for a cast completing into an intermission is a **hard staircase**, and it is
+> exactly what §9 rejected: the wall is *not* known exactly (*"even the intermissions can happen a
+> little sooner or later"*), so a cast that completes before the wall actually falls **does** land.
+> What shipped is the fraction — `min(1, (nextCut − castStart) / castDuration)` — applied uniformly at
+> the fight end, at an intermission start, ~~and at either edge of an AoE phase~~ (⛔ **the AoE edge was
+> removed from the cut lattice hours later — see §9's landing block**). Measured on the exhibit
+> cast (`2:40 lust 0:07 intermission 1:30-2:10`, starts 89.616 against a wall at 90.000, worth 2242.1):
+> full price **before**, `frac 0.2563 → 574.8` **now**, and `dmg = 0` would have paid **zero**.
+>
+> ★ **Its own §8.2 already contained the refutation** — it named the reason this section rejected
+> partial credit (*"a wall is known exactly, so there is no distribution to integrate"*) as the single
+> assumption, and that assumption is the one the user overturned.
+>
+> ⚠ **The paragraph immediately below it, however, is DURABLE and still binding:** *"do not fold in the
+> smoothing argument"* — a scoring term is never priced at something other than the cast's damage in
+> order to smooth the search. §9's fraction is admissible precisely because it is a **probability**
+> (`P(the cut has not happened at completion)`), not a smoothing fudge; §6.1–§6.3 record four terms
+> falsified for taking the other route.
+>
+> *The prescription as written, kept because the archive is append-only:*
+
+~~`dmg = 0` when the completion lands in an intermission. **Not partial credit** — a wall is known
+exactly, so there is no distribution to integrate and nothing to smear.~~ It is a scoring change, so
 plans move and it **rides alone** (§0.3).
 
 ⚠ **Do not fold in the smoothing argument.** Fractional credit *would* smooth the objective, and
@@ -1552,11 +1832,25 @@ during AoE. Decide that deliberately rather than inheriting it from this fix.
 > from the new `frac` field.** Reading `frac` would grade the accumulator against the statement that
 > writes it — the gate's entire value is that it is a second, independent account.
 >
-> ⚠ **What did NOT land, and is the next thing to decide:** the AoE edge is treated as a cut, so an
-> Arcane Blast completing inside an AoE phase is now docked. The boss **is** targetable there — the
-> cast lands for full damage; you would simply rather have been casting Arcane Explosion. That was
-> flagged before the ruling and is still not decided on its own merits; it currently inherits the
-> intermission's treatment. Decide it deliberately (§9.5 sub-decision 2).
+> ⚠ ~~**What did NOT land, and is the next thing to decide:**~~ ✅ **DECIDED AND LANDED HOURS LATER —
+> commit `6cfaeec`, 07-27 — and it went AGAINST the way this phase shipped it.**
+> As shipped here, the AoE edge was treated as a cut and an Arcane Blast completing inside an AoE phase
+> was **docked**. **That is now reversed: an AoE edge is NOT a cut.** A cut is where a cast stops
+> **LANDING** — the fight end and an intermission start, nothing else. The boss is targetable
+> throughout an AoE phase and the spell a cast uses is chosen at its **START**, so a cast in flight is
+> unaffected by the phase it finishes in. Measured: an AB started at **59.000** against an AoE phase
+> opening at **60.000** completes at **60.498** and **lands for full Arcane Blast damage** (1886.4).
+> Docking it paid **less than the game pays**. Burn and AoE edges are **value** boundaries.
+>
+> ⚠⚠ **And chasing it found a 42 % error this phase had shipped:** Arcane Explosion is **INSTANT**
+> (`cast = 0`), so the boundary credit's divide-by-zero guard — written to avoid a NaN — returned
+> `frac = 0` and credited **every AE cast at exactly nothing**. Kael'thas scored **368,018 instead of
+> 524,173**. The limit is not a matter of taste: as `dur → 0`, `min(1, (cut − t)/dur) → 1`. **Guard
+> against NaN, not against the answer.**
+> ⛔ **Neither defect was reachable by any gate this phase built.** `self-consistency` compares the
+> objective against itself and read `0.00e+0` throughout; `exact-match` locks in whatever the search
+> emits, so both would simply have **become the goldens**. That is this phase's real unfinished
+> business, and it is `docs/PHASE13.md` §1/§8's.
 
 ---
 
@@ -1650,7 +1944,9 @@ one-sided window applies verbatim with the wall in place of T. Nothing distingui
 ★ **So the rule is ONE rule, and the implementation is one helper**: for every cast,
 
 ```
-credit = min(1, (nextBoundary − ts) / d) × value ,   nextBoundary = min(T, next intermission start, next AoE start)
+credit = min(1, (nextBoundary − ts) / d) × value ,   nextBoundary = min(T, next intermission start)
+                              ⛔ this line originally also read ", next AoE start" — removed 07-27,
+                                 commit 6cfaeec: an AoE edge is NOT a cut (see §9's landing block)
 ```
 
 That is simpler than what ships today, and it **subsumes §8's defect for free** — today a cast
@@ -1665,7 +1961,16 @@ credited 2242.1). The fix is not `dmg = 0`; it is the fraction, like everywhere 
    one-sided form. Recommend following the kill's convention (one-sided, full credit at the nominal
    boundary) so there is a single rule; note it as a stated choice rather than letting the helper
    decide it silently.
-2. **AoE walls are still a third case, for a reason that is not about timing.** The boss is
+2. ~~**AoE walls are still a third case, for a reason that is not about timing.**~~ ✅ **DECIDED
+   07-27 (commit `6cfaeec`) — and the answer is that they are NOT a case at all: an AoE edge is not a
+   cut.** The reasoning below is *right* and this section drew the wrong conclusion from it — it
+   correctly observes that the boss is targetable, then still leaves the AoE edge in the cut lattice.
+   Measured afterwards: an AB started at 59.000 with an AoE phase opening at 60.000 completes at 60.498
+   and **lands for full AB damage**; the spell a cast uses is chosen at its **START**, so a cast in
+   flight is unaffected by the phase it finishes in. `dmgOf`'s `nonAB` zeroing it *was* wrong
+   independently of the ruling, exactly as this item suspected. See §9's landing block for the full
+   correction, and for the 42 % instant-cast defect the same investigation exposed.
+   *The item as written, kept because the archive is append-only:* The boss is
    **targetable** during an AoE phase, so an Arcane Blast completing inside one is not lost at all — it
    lands, for full AB damage; you would simply rather have been casting Arcane Explosion. ⚠ Today
    `dmgOf` (`index.html:1327`) zeroes it via `nonAB`, which covers `aoe` as well as `intermission`, and
@@ -1674,6 +1979,10 @@ credited 2242.1). The fix is not `dmg = 0`; it is the fraction, like everywhere 
 ### 9.6 Landing order
 
 Scoring change ⇒ plans move ⇒ **it rides alone** (§0.3), and it queues **behind the cooldown chain**
-(§3), because a legality bug and a scoring change must not move plans in the same commit. Gates:
+(~~§3~~ → **§6.14c**; §3 is the debts table — this is the origin of the repo-wide broken anchor),
+because a legality bug and a scoring change must not move plans in the same commit — ⚠ **and in the
+event they LANDED TOGETHER**, on explicit user direction (see §9's landing block: the two are one
+coherent statement about what the objective evaluates and where, and splitting them would have
+re-recorded the goldens twice for no added attribution). Gates:
 `self-consistency` back to `0.00e+0` (the board must carry the same partial credit the ranking number
 does), `model-audit` unchanged, and goldens re-recorded only per §0.4.

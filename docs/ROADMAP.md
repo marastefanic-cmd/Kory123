@@ -2,21 +2,35 @@
 
 ## Resuming after a context clear (start here)
 
-> # ★★★★ TOP PRIORITY, ABOVE EVERYTHING ELSE (set 2026-07-27, user-directed)
-> ## PHASE 12 — MAKE THE OBJECTIVE EXACT. `docs/PHASE12.md` §0 is the charter, §6 the evidence.
+> # ▶ THE LIVE PLAN IS `docs/PHASE13.md` — start there
+> ## ✅ PHASE 12 — MAKE THE OBJECTIVE EXACT — is **CLOSED 2026-07-27** and archived at `docs/archive/13-phase12-exact-objective.md`.
 >
-> ## ✅ THE OBJECTIVE IS EXACT AS OF 07-27 EVENING — read `docs/PHASE12-RESUME.md` first
+> ## ✅ THE OBJECTIVE IS EXACT, AND THE TREE IS GREEN
 > `simulate()` ranks on the deterministic per-cast sum; gate `tools/self-consistency.mjs` reads
-> `0.00e+0` over 2755 scorings. Two scoring bugs and one transcription bug were fixed today (PHASE12
-> §6.9/§6.10/§6.11). ⛔ **`exact-match` is RED on purpose** — plans moved and goldens were deliberately
-> not re-recorded, because §0.4's demonstration is not in. **Do not `--update` it.**
+> `0.00e+0` over 2755 scorings. **Four scoring defects and one transcription defect** were fixed
+> (PHASE12 §6.9 transcription · §6.10 the integral · §6.11 press-anchored windows · §6.12 the single
+> snapshot rule · §8→§9 the boundary), the **cast lattice was closed** (§6.14: `STACK_CAST_REDUCTION
+> 1/3 → 334 ms` **plus** millisecond rounding), and the cooldown chain now anchors on the **fire**
+> (§6.14c). ✅ **`exact-match` reads 25 passed, 0 failed** — the goldens were re-recorded under §9 on
+> `plan-rescore` evidence (15 of 16 better, 1 plateau, **0 regressions**).
+> ⛔ **A stale line to recognise if you meet it in an archived doc:** *"`exact-match` is RED on purpose
+> — do not `--update` it"* was true for a few hours on 07-27 and is **false now**. The standing rule is
+> unchanged: goldens are re-recorded only after each changed plan is shown to improve the objective.
 >
 > ### ✅ ALSO LANDED 07-27 — THE BOUNDARY MODEL WENT DETERMINISTIC (PHASE12 §9, **user ruling**)
 > `KILL_WINDOW = 0.5` and the symmetric kill taper are **RETIRED FROM THE OBJECTIVE** (a local
 > `KW = 0.5` survives feeding only the `integral` diagnostic). One uniform rule now applies at every
 > boundary: **`credit = min(1, (nextCut − castStart) / castDuration)`**, multiplying that cast's own
-> value, where a **cut** is the fight end, an intermission start, or either edge of an AoE phase — a
-> **burn edge is deliberately not a cut**. A cast completing exactly at `T` now earns a **full** cast
+> value, where a **cut** is where a cast stops **LANDING** — the fight end and an intermission start,
+> and **nothing else**. ⛔ **Neither a burn edge nor an AoE edge is a cut.** The AoE edge shipped as one
+> for a few hours on 07-27 and **the sim falsified it** (commit `6cfaeec`): the boss is targetable
+> throughout an AoE phase and the spell a cast uses is chosen at its START, so an AB started at 59.000
+> against an AoE opening at 60.000 completes at 60.498 and **lands for full AB damage**. Docking it paid
+> *less* than the game pays; both are **value** boundaries. ⚠⚠ The same commit fixed a 42 % error on
+> Kael'thas: Arcane Explosion is **instant**, so `dur = 0`, and a divide-by-zero guard returning `0`
+> credited **every AE at nothing** — the limit is `1`. **Guard against NaN, not against the answer**, and
+> note that **no existing gate could reach either defect** (`self-consistency` compares the objective
+> against itself; `exact-match` locks in whatever the search emits). A cast completing exactly at `T` now earns a **full** cast
 > (it earned 0.5 under the taper), and a cast completing inside an intermission is no longer paid in
 > full (measured: starts 89.616, wall 90 — was `2242.1`, now `frac 0.2563` / `credited 574.8`).
 > `total`, `robust` and `totalEarly` are now the **same number**; the per-cast board gains `frac` and
@@ -28,9 +42,14 @@
 > ⚠ **`sim/benchmark.mjs` keeps `variation: 0.5`, but its justification changed**: it is no longer "the
 > model's kill-window width" (that constant is gone) — it is the **sim's own** smoothing, resting
 > entirely on `tools/var-decision.mjs`. Reconciling the model's analytic partial credit with the sim's
-> numerical averaging is an **OPEN question** (PHASE12 §9.4).
+> numerical averaging is an **OPEN question** — `docs/PHASE13.md` §2.4, and ⛔ **not** to be "fixed" by
+> setting `--var 0`.
 >
-> ▶ **Next, and it is a prerequisite:** `STACK_CAST_REDUCTION: 1/3 → 334 ms`.
+> ▶ **NEXT: `docs/PHASE13.md`.** Its §1 — the **AoE edge** — is ✅ **decided and landed**, so **no open
+> item changes numbers the tool prints**. §2 re-measures what Phase 12 voided
+> (ACCEPTANCE, `model-audit` at scale, `scorer-duel` now that its prerequisite landed), §3 is the
+> search-optimality programme, §4 the gear-agnostic enforcement, §5 the inherited platform track.
+> ~~`STACK_CAST_REDUCTION: 1/3 → 334 ms`~~ ✅ **landed** (PHASE12 §6.14).
 >
 > *The original charter text is kept below for its reasoning.*
 >
@@ -69,13 +88,18 @@
 > **wowsims takes 334 ms per Arcane Blast stack where the model takes 1/3 s**, so the boundary a combat
 > log prints as `11.00` is really `10.998`, and `10.998 >= 11.000` is false.
 >
-> ▶ **NEXT COMMIT, and it rides alone: `STACK_CAST_REDUCTION: 1/3` → 334 ms.** 26 of 196 presses still
-> miss their cast on the lattice mismatch alone (HELD + LATTICE), which no transcription can reach. It
-> is a **model** change — cast times, the lattice, plans, goldens all move — so it must not be combined
-> with step 1 or with step 2. Evidence: `docs/MECHANICS.md` §1.1, `docs/SOURCES.md`, PHASE12 §6.9d.
+> ~~▶ **NEXT COMMIT, and it rides alone: `STACK_CAST_REDUCTION: 1/3` → 334 ms.**~~ ✅ **LANDED —
+> PHASE12 §6.14**, and it was **two** changes, not one: the constant *and* millisecond rounding of every
+> cast and GCD, of which the rounding dominates (Arcane Blast is GCD-bound in steady state, so the stack
+> constant never enters the interval — it matters for the **ramp** and for **completion** times, which
+> is where the value snapshot reads). Bare-stream drift 0.080 s → **0.005 s**; LATTICE-class press
+> failures 8 → **0**; then the cooldown-chain fix took HELD 18 → **1** (§6.14c).
+> Evidence: `docs/MECHANICS.md` §1.1, `docs/SOURCES.md`, PHASE12 §6.9d/§6.14.
 >
-> Demoted until this lands: PHASE11's platform work, the gear-agnostic re-gather, the boss band's
-> remaining 7 columns.
+> ~~Demoted until this lands: PHASE11's platform work, the gear-agnostic re-gather, the boss band's
+> remaining 7 columns.~~ **All three are now live work in `docs/PHASE13.md`** — the platform track at
+> §5 (PHASE 11 closed without starting it), the re-gather at §2.1 (and it is mostly arithmetic now,
+> `tools/xval-model.mjs`, no sim).
 
 ### ✅ CLOSED: PHASE 10 — re-baseline acceptance on GEAR B (`docs/archive/11-phase10-gearb-baseline.md`; 07-26 → 07-27)
 
@@ -159,39 +183,52 @@ a different claim from *they moved*.
   on a shared cell, driven by **`tools/xval-bench-campaign.sh`** (+ `tools/xval-checkpoint.sh`, which
   commits and pushes completed tables so hours of compute survive a container reclaim). All 36 seeds
   redraw the **gear-A fights exactly**, so the holdout sample is unchanged and only the baseline is new.
-- 🔄 **Round 1 is gathering** into `tools/xval-results/` at `ITER=6000 · var 0.5 · seed 11 · mana 1e8 ·
-  cold open · emit=fire · pooling ON · WJITTER=2 on boss tables`, all stamped (§8.6).
+- ✅ ~~🔄 **Round 1 is gathering**~~ **ROUND 1 IS COMPLETE — 36/36, gathered and graded 07-27** into
+  `tools/xval-results/` at `ITER=6000 · var 0.5 · seed 11 · mana 1e8 · cold open · emit=fire ·
+  pooling ON · WJITTER=2 on boss tables`, all stamped (§8.6) and certified by
+  `tools/xval-stamp-audit.mjs`. ⚠ **And then voided as a MODEL verdict by PHASE 12** — it graded the
+  pre-exact-objective scorer. It stands as the append-only record; the re-gather is
+  `docs/PHASE13.md` §2.1.
 - ★★★ **The audit's biggest finding is NOT about acceptance (§8.7): the SHIPPED in-page sim is blind
   to Bloodlust and every trinket.** `sim/model-ref.json` wears nothing and sets
   `raidBuffs.bloodlust: false`, and wowsims treats a press of an unworn on-use as a **bit-identical
   no-op**. Two plans differing *only* in where the Icon goes (74 s apart) read **exactly 0.000 DPS**;
   Lust moved 55 s, likewise **0.000**. Fixed-character controls read **+0.756 %** and **+1.290 %**. So
   the button answers *"too close to call"* to the two most consequential questions the tool answers.
-  Guard landed (`bench.mjs` refuses such a duel; `--kit a,b` equips a pair); **the fix needs
-  `index.html` and waits for the round** (§8.5 — the plan cache keys on its bytes, so an edit mid-round
-  would assemble a matrix from two engines). ⚠ It must also confront a structural limit: wowsims has
+  Guard landed (`bench.mjs` refuses such a duel; `--kit a,b` equips a pair); ~~**the fix needs
+  `index.html` and waits for the round**~~ — **the round is done and the freeze is LIFTED**, so the
+  `index.html` half is unblocked (§8.5's mechanism, kept because the next round needs it again: the
+  plan cache keys on `index.html`'s bytes, so an edit mid-round assembles a matrix from two engines —
+  and the freeze is really the whole **import closure**, which `docs/PHASE13.md` §4.1 makes
+  tool-enforced). ⚠ It must also confront a structural limit: wowsims has
   **two** trinket slots and the planner offers **four** on-use trinkets, so a kit naming three can
   never be fully equipped and the UI has to *say so*.
 
-### 🧭 PLANNED (parallel track): PHASE 11 — the platform phase (`docs/PHASE11.md`, written 07-26)
+### ✅ CLOSED: PHASE 11 — the platform phase (`docs/archive/12-phase11-platform.md`; 07-26 → 07-27)
 
-**The single-file convention is retired (user decision, 07-26).** Phase 11 is the platform / perf /
-product track: it touches no scorer term, search pass, or protocol constant — plans stay
-byte-identical except where one of its §1 bug fixes is itself the change (all plan-neutral:
-tools/UI/deploy). It opens with the 07-26 audit's findings ledger — 8 confirmed bugs, of which
-✅ **6 are FIXED as of the 07-27 status audit** (`bench --targets` and its refusal to sim an `_aoe`
-spec without one; `duel-worker.js` un-memoizing a rejected boot; `immutable` dropped from the
-unhashed wasm; `plan-duel`'s retired intent transcription; `census-build`'s line anchors →
-content anchors; `evalsched`'s missing `t5two`). **Both remaining halves are in `index.html`** — the
-Debug export's "reproduce" command still drops `targets` on AoE duels, and `simRun` still leaks a
-listener per duel and never evicts a failed worker. Not a coincidence: they are in the one file the
-split exists to break up, and the one file frozen while a round gathers.
-Then: CI bring-up (verified: no `.github/` exists), the module split under a
-plan-sweep-IDENTICAL + exact-match gate, the PHASE9 §4 reclaim ladder, and lazily-loaded product
-routes (URL-shareable setups first — today a mid-raid refresh loses the fight being planned).
-PHASE11 §8 lists the user calls it needs (file:// fate, build-or-no-build, precomputed preset plans,
-comparison/EP features, wasm-in-git). It interleaves with Phase 10 freely — the only declared
-boundary is a wasm rebuild (new baseline, BENCH §1).
+**The single-file convention is retired (user decision, 07-26)** and that stands. Phase 11 closed
+having delivered **two of its three tracks**, and never started the third:
+
+- ✅ **The findings ledger is DISCHARGED, 8 of 8.** Six were fixed in passing (`bench --targets` *and*
+  its refusal to sim an `_aoe` spec without one; `duel-worker.js` un-memoizing a rejected boot;
+  `immutable` dropped from the unhashed wasm; `plan-duel`'s retired intent transcription;
+  `census-build`'s line anchors → **content** anchors; `evalsched`'s missing `t5two`). The last two
+  both lived in `index.html` — *"not a coincidence: they are in the one file the split exists to break
+  up"* — and landed the day PHASE 10's freeze lifted, proved plan-neutral by the engine block being
+  **byte-identical** (`sha1 7c08324250500f61`), not by assertion.
+- ✅ **The §1.4 doc sweep landed** (all six items).
+- ✅ **CI bring-up LANDED.** ⛔ The old line here — *"verified: no `.github/` exists"* — is **false**:
+  `.github/workflows/ci.yml` runs three jobs (`fast` = sim-request §0 invariants + a negative control,
+  sim-duel wasm smoke, bench smoke; `page` = page-vs-terminal request equality in Chromium with a
+  seeded-break negative control; `plans` = `exact-match`, 25 cases).
+- ⛔ **The module split itself NEVER STARTED**, and neither did the perf ladder or the product routes.
+
+⇒ **All of that carries forward to `docs/PHASE13.md` §5**, and the **eight user calls carry forward
+verbatim** at §6 (file:// fate, build-or-no-build, precomputed preset plans, comparison/EP features,
+wasm-in-git, research mode, COOP/COEP). ⚠ The reclaim ladder needs a **fresh CPU baseline and
+content re-anchoring** before any rung is priced — its numbers and its `index.html` line anchors were
+both taken against the pre-PHASE12 scorer, and the walk that dominates the profile is exactly the code
+that changed.
 
 ### 0. THE 07-26 SESSION'S RECORD (historical — read §▶ above for what is live)
 
@@ -403,13 +440,17 @@ objective integrates away, which the model scores as a 0.014 % tie against the s
 
 1. Read `CLAUDE.md` → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then `docs/ARCHITECTURE.md`
    (line ranges drift) and `docs/TOOLING.md` before touching code.
-2. **Phase 10 is CLOSED** (`docs/archive/11-phase10-gearb-baseline.md`) and **no import-closure freeze
-   is in effect** — `index.html` is editable. The acceptance reading is `docs/ACCEPTANCE.md` →
-   *"Current status (GEAR B, round 1)"*: invariant A passes, **B2 fails**, NOT PASSING.
-3. **`docs/PHASE11.md` (platform) is the live queue** — its §1.1 findings ledger is now fully
-   discharged (8/8), so what remains there is CI bring-up, the module split, the PHASE9 §4 reclaim
-   ladder and lazily-loaded product routes. `docs/PHASE12.md` holds the next MODEL phase's raw
-   material: the terminal-cast term, and `ripple-audit`'s failing P3/P5 self-checks.
+2. **Phases 10, 11 and 12 are all CLOSED and archived** (`docs/archive/11-…`, `12-…`, `13-…`) and
+   **no import-closure freeze is in effect** — `index.html` is editable. ⛔ **`docs/ACCEPTANCE.md` has
+   NO CURRENT READING**: its gear-B round 1 verdict (invariant A passes, B2 fails, NOT PASSING) was
+   gathered against the scorer PHASE 12 replaced and is void as a model reading. The tables stand as
+   the evidence trail.
+3. **`docs/PHASE13.md` is the live plan and the only one.** §1 (the AoE edge) is **decided and
+   landed**, so nothing open changes the tool's printed numbers; §2 re-measures what Phase 12 voided;
+   §3 is the search-optimality programme — and **§3.1 has one concrete known search miss already on the
+   board** (`1:40 lust 0:05`, 0.065 %, the basin not entered at any restart depth,
+   `tests/search-witnesses.json`); §4 the gear-agnostic enforcement; §5 the platform track inherited
+   from Phase 11.
 ## The goal, and the payoffs it unlocks
 
 **The planner is the goal** (see `CLAUDE.md`): a trustworthy, *generalisable* tool that maximizes the
@@ -961,13 +1002,24 @@ exact-match suite; new fights are added by editing that one array.
 ## Open questions / known limitations
 
 - **SETTLED (user call, 07-24) — plan rows print the FIRE time, and that stays.** The row second is the
-  cast boundary where the buff starts paying, not the press *intent* (`index.html` ~3599). Worth knowing
+  cast boundary where the buff starts paying, not the press *intent*. Worth knowing
   when reading a plan: on `2:00 lust 0:05` the whole cluster has **intent 5.00, identical to the Lust
   pin**, but fires at **6.50** (the AB that began at 4.67 ends there; a buff pressed mid-cast cannot
   affect the cast in flight), so it prints `0:05 Bloodlust / 0:06 Icy Veins…`. That is **one macro at
   0:05**, not a deliberate stack-building delay — the gap is the in-flight cast, and it is exactly the
   information the fire time is meant to convey. Asked and answered: **do not** add a "(press 0:05)" tag
   or flip the rows to intents.
+  > ⚠ **AND THE ROWS DO NOT ACTUALLY PRINT THE FIRE TIME — 1.8 % of the time they print the wrong
+  > second (PHASE12 §6.13, measured over 285 plans / 3060 presses).** What is printed is
+  > `floor(actEff)` — the floor of the **press** moment — while the fire moment is `auraAt`, the
+  > boundary *after* it. When flooring walks back **past a cast boundary** the two disagree and
+  > pressing the printed second fires a whole cast early, buffing a window the model never costed
+  > (`isc+mqg T=281 h=230`: model fires 26.58, the plan prints **25**, pressing 25 fires 25.49 —
+  > correct answer **26**). ⇒ **The ruling above is right and the implementation does not yet meet it.**
+  > The fix is to print **`floor(auraAt)`**, as its **own field** rather than by redefining `actEff`
+  > under its other callers; a correct whole second always exists (cast intervals are ≥ the 1 s GCD
+  > floor, so **0** presses are unfixable). Deliberately queued **after** the model per user ruling —
+  > `docs/PHASE13.md` §7.
 - **Model mis-valuation (documented, not patched):** the scorer ranks the *partial* pack
   (IV-in-lust-alone) above "IV out" (+935 model) though the sim calls it a −0.7 wash — it over-credits
   the damage flux through the floored IV window. It does NOT block the full pack (model ranks full >
