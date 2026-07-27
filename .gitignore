@@ -12,3 +12,6 @@ node_modules/
 tools/xval-results/*.err
 tools/xval-results/*.part
 tools/xval-results/*.lock
+
+# Transient boss pre-pass logs (solve/shard phases; not a record)
+tools/xval-results/*.pre.log
