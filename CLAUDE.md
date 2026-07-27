@@ -221,14 +221,15 @@ Treat maintaining them as part of the work, not an afterthought:
   plans recovered from the deleted `PLAN.md`; `07-phase6-xval-run.md` = the Phase-6 cross-val run doc,
   cited throughout as *PHASE6 §x*). Historical snapshots; **archive a phase doc the moment its phase
   closes** so the living `docs/` folder only ever shows work that is actually in flight.
-- `docs/PHASE7.md` — ⚠ **gear-A denominated (see its banner)** — **the plan to FIX the cross-val deficits so the acceptance test
-  passes.** Diagnose each length-robust deficit as SEARCH-MISS vs SCORER-GAP, then fix at the root.
-  (§5.11 legibility canonicalization is DONE; §5.12 round-3 gathered; the residual B2 family → PHASE8.)
-- `docs/PHASE8.md` — ⚠ **gear-A denominated (see its banner)** — the B2 model-vs-sim ranking error (the old "emergent joint interaction" framing is
-  **withdrawn** — it rested on a press the sim silently retimed). Round 2 established **THE FLOOR LAW**
-  (a value window covers exactly `floor(D/Δ)` casts in the sim; haste buffs exempt) and two harness input
-  errors (`t5two`, effective SP ≈1450), which together zero the mean bias — and **falsified** the
-  SP-under-haste candidate on sign. Reserved as the highest-effort model work.
+- `docs/archive/08-phase7-xval-fixes.md` — **Phase 7, CLOSED 07-27.** ⚠ gear-A denominated. Fixed the
+  cross-val deficits: diagnostic discharged, the AoE press-snap fix landed, `emit=fire` landed, rounds
+  6–7 certified. Its residual (the two length-persistent kit-columns) passed to Phase 10, which
+  reproduced it **cell for cell** on gear B — so it is a model property, not a gear artifact.
+- `docs/archive/09-phase8-b2.md` — **Phase 8, CLOSED 07-26.** ⚠ gear-A denominated. The B2
+  model-vs-sim ranking error, closed with a **negative** result: the boundary charge failed its sign
+  gate and ships OFF, changing no plan. Lasting: **THE FLOOR LAW**, the two harness input errors it
+  found (now `tools/reference-gear.mjs`), and §26.1's eight settled findings — do not re-open those.
+  ⚠ **B2 itself is unsolved** and its target moved ~0.39 pp *and changed sign* on gear B.
 - `docs/PHASE10.md` — ▶ **IN EXECUTION. Round 1 is GATHERING — read `docs/PHASE10-RESUME.md` first**
   (60-second state + exact next actions). Re-establishes the acceptance baseline on gear B; every
   gear-A number is archived, so ACCEPTANCE still has **no reading** until 36/36.

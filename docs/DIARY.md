@@ -81,7 +81,7 @@ lattice snap, ramp-cast state sampled at cast START). What remains is the B2 fam
 Phase 8. Closing item **§5.11** was a *product* regression, not a DPS one: after the scorer
 recalibration some fights rendered equal-score layouts in an order other fights don't use. Fixed with a
 resolve-time exact-tie canonicalizer (`canonicalWindowOrder`) — see the ledger row below for what that
-cost to learn. Full detail in `docs/PHASE7.md`.
+cost to learn. Full detail in `docs/archive/08-phase7-xval-fixes.md`.
 
 **Round 5 (07-25) reframed what is left.** The campaign was re-gathered on the corrected reference gear;
 it moved **35.9% of the plans and none of the verdict**, which killed "wrong harness gear" as the
@@ -149,7 +149,7 @@ casts stacked, 230 = 230), and `AP`'s value window covers the same 15 cast start
 holding even when Δ itself is manipulated. The model books +1 net cast instead. **The scorer is not missing
 the floor** (it clamps correctly); the remaining hypothesis is a banked *fractional* cast plus an
 `AP`-packing credit, and — per the project's own methodology — that is a **sim-setup audit trigger** to
-discharge before the model is blamed. Detail in `docs/PHASE8.md`.
+discharge before the model is blamed. Detail in `docs/archive/09-phase8-b2.md`.
 
 ### Phase 9 — performance, with zero plan drift (2026-07-24 → notes)
 User: *"the tool has gotten a bit slow again and takes a lot of CPU."* Opened as a **measure-first**
@@ -198,7 +198,7 @@ profile** for the bias (§23) that constrains every future candidate; F3's resid
 artifact of an ill-posed additive test (§24); and three "the failure mode looks like a clean result"
 instrument traps in the ledger. **B2 stands at ≈0.445 pp, unexplained**, with 0.16–0.91 pp of
 quantization headwind against any successor mechanism — and that hunt is **new, sim-gated work**, not
-Phase 8's remainder. Full closing statement and the eight settled findings: `docs/PHASE8.md` §26.
+Phase 8's remainder. Full closing statement and the eight settled findings: `docs/archive/09-phase8-b2.md` §26.
 
 ★ The phase's transferable lesson: **a term dominating an ASYMMETRY implies nothing about its sign in
 the LEVELS.** §21.4 wrote that implication into a pre-registration, and pre-registration protects

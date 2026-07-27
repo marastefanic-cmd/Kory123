@@ -314,7 +314,7 @@ boundary is a wasm rebuild (new baseline, BENCH §1).
 
 1. Read `CLAUDE.md` (auto-loaded) → `docs/MECHANICS.md` → `docs/RULES.md` → this file, then
    `docs/ARCHITECTURE.md` (line ranges) and `docs/TOOLING.md` (how to sim-verify) before touching code.
-2. **Plan in flight: `docs/PHASE7.md` — FIX the cross-val deficits so the acceptance test passes.
+2. **Plan in flight: `docs/archive/08-phase7-xval-fixes.md` — FIX the cross-val deficits so the acceptance test passes.
    Status 2026-07-25: the FIXES ARE LANDED and **round 5 is gathered and read (PHASE7 §5.15)**.
    ★★★ **The work list is TWO kit-columns, not 34 failing tables** — `isc-mqg h40` (rival `plan@h70`
    beats native at **5/5** fight lengths) and `isc-skull h20` (rival `plan@h100`, 4/5), found by the
@@ -471,7 +471,7 @@ boundary is a wasm rebuild (new baseline, BENCH §1).
    **§5.11 (legibility) is now LANDED** — `canonicalWindowOrder` at the three `resolve(...)` sites plus
    a second anchor base in the packing pass; two goldens moved (Hydross = bit-exact tie, now
    cluster-first; `4:00 lust 0:05` = strict +0.0067 eff casts), 23 byte-identical, suite 25/25.
-   **Two phases now stand open behind Phase 7:** `docs/PHASE8.md` (the B2 model-vs-sim ranking error — the
+   **Two phases now stand open behind Phase 7:** `docs/archive/09-phase8-b2.md` (the B2 model-vs-sim ranking error — the
    "joint interaction" framing is **withdrawn**, round 1 traced it to a retimed trinket press and round 2
    established **THE FLOOR LAW** + two harness input errors; §8 falsifies the SP-under-haste candidate.
    **Round 3 ran and closed** (§11–§13): the law generalizes to **one window, two sampling rules** —

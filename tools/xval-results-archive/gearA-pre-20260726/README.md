@@ -24,9 +24,9 @@ between the two (BENCH §3e), which is larger than most of the effects the corpu
 - **`docs/ACCEPTANCE.md`'s "NOT PASSING (B)"** — 135 borrowed-win columns across 34/36 tables, median
   0.035 %, worst 0.38 %. That is the project's own "are we done" verdict, and it is a **gear-A**
   verdict.
-- **`docs/PHASE8.md`'s B2 ≈ 0.445 pp** residual, its U-shaped length profile, and every candidate
+- **`docs/archive/09-phase8-b2.md`'s B2 ≈ 0.445 pp** residual, its U-shaped length profile, and every candidate
   mechanism scored against it.
-- **`docs/PHASE7.md`'s** deficit diagnoses and the low-haste basin debt.
+- **`docs/archive/08-phase7-xval-fixes.md`'s** deficit diagnoses and the low-haste basin debt.
 
 None of those are withdrawn — they are **un-denominated**: true of gear A, unknown on gear B until
 Phase 10 restates them.

@@ -29,7 +29,7 @@ Phase 7 took over the *fixing*. The status line below was written mid-run and is
 - The **standing test** and its pass criterion now live in `docs/ACCEPTANCE.md` (which also carries the
   instrument inventory that was §5 here); the **rig rebuild** that was §6 lives in `docs/TOOLING.md`.
 - The §2.1 results ledger is the **round-1** data. Round 2 and round 3 (the current record) are in
-  `docs/PHASE7.md` §5.8/§5.12, with raw matrices in `tools/xval-results/` (current) and
+  `docs/archive/08-phase7-xval-fixes.md` §5.8/§5.12, with raw matrices in `tools/xval-results/` (current) and
   `tools/xval-results-archive/` (superseded rounds).
 - §4.7 (never prepull) and §4.6 (the scb trinket bug) were promoted to permanent rules in
   `CLAUDE.md`/`docs/TOOLING.md`/`docs/RULES.md`; §4.5's deficits became Phase 7's target list.

@@ -33,5 +33,24 @@ numbers are unchanged, so those citations still resolve. Its still-live content 
 move: the instrument inventory → `docs/ACCEPTANCE.md`, the rig rebuild → `docs/TOOLING.md`, the
 never-prepull rule → `CLAUDE.md`/`TOOLING`/`RULES`.
 
-_(Phases 7–9 are still in flight, so they live at `docs/PHASE7.md`, `docs/PHASE8.md`, `docs/PHASE9.md`;
-archive each here when it closes.)_
+## `08-phase7-xval-fixes.md` — Phase 7: fix the cross-val deficits (closed 2026-07-27)
+
+The "fix" phase behind Phase 6's measurement. Diagnostic mandate **discharged** (§5.16–§5.18), the
+AoE-window press-snap fix **landed** (§5.19–§5.20), the `emit=fire` transcription convention landed
+(§5.22), and rounds 6–7 gathered and certified (§5.23–§5.24). Cited across the living docs as
+**"PHASE7 §x"**; section numbers unchanged, so those citations still resolve.
+⚠ **Gear-A denominated.** Its residual — the two length-persistent kit-columns — was inherited by
+Phase 10, which re-measured it on gear B and found the persistence list reproduces **cell for cell**
+(PHASE10 §8.22). The reasoning is durable; the numbers are not.
+
+## `09-phase8-b2.md` — Phase 8: the B2 model-vs-sim ranking error (closed 2026-07-26)
+
+Reserved as the highest-effort model work and closed with a **negative result**: the per-window
+boundary charge was implemented, audited, gated, **failed its sign gate on 6 of 7 fight lengths**, and
+ships **OFF** — changing no plan the tool has ever produced. Its lasting contributions are THE FLOOR
+LAW (§11–§13), the two harness input errors it found (`t5two`, effective SP ≈1450 — now
+`tools/reference-gear.mjs`), and eight settled findings in §26.1 that must not be re-opened.
+⚠ **Gear-A denominated, and B2 itself is NOT solved.** Its target moved ~0.39 pp and changed sign on
+gear B (BENCH §3e) before any of it was re-measured.
+
+_(Phase 9 is still in flight at `docs/PHASE9.md`; archive it here when it closes.)_
