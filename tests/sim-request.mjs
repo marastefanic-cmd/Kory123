@@ -22,7 +22,7 @@ import { fileURLToPath } from 'url';
 import { execFileSync } from 'child_process';
 import { build } from '../tools/genapl-core.mjs';
 import { buildRequest } from '../sim/simreq.mjs';
-import { BENCH, runnerFlags } from '../sim/benchmark.mjs';
+import { BENCH, runnerFlags, killWindow, encounterFor } from '../sim/benchmark.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const EXPORT = path.join(REPO, 'sim/model-ref.json');
@@ -82,12 +82,26 @@ const diff = (a, b, p = '', out = []) => {
 {
   const bad = [];
   if (BENCH.variation === 0) bad.push('variation must NOT be 0 — `--var 0` makes every iteration the same fight, turning DPS into a staircase of whole casts. It has faked a result twice (TOOLING ★★).');
-  // ⚠ The "model's kill-window WIDTH" half of this rationale is DEAD (PHASE12 §9 retired the kill
-  // taper; the model is deterministic at T now). The assertion stays because the OTHER half never
-  // depended on the model: `tools/var-decision.mjs` measured var 0 directly. Keeping a true reason
-  // behind a gate matters more than keeping the gate — a gate defended by a false premise is one
-  // rewrite away from being deleted for the right reason and the wrong outcome.
-  if (BENCH.variation !== 0.5) bad.push(`variation is ${BENCH.variation}, expected 0.5 — the value tools/var-decision.mjs measured as correct (var 0 swings a real effect by a whole cast for a 0.1s change in the kill second, and is not even quieter). It is the SIM's smoothing, not a mirror of a model constant. Changing it re-prices every duel; do it deliberately, re-run that experiment, and update BENCH §3 + TOOLING.`);
+  // ★ THE WINDOW IS DERIVED NOW, NOT PINNED (2026-07-27). `BENCH.variation` survives only as the
+  // legacy flat default; the live protocol is `killWindow(haste)` + `encounterFor(T, haste)`, which
+  // reproduce the MODEL's one-sided window `U[T, T+d]` with `d` the terminal cast's own duration.
+  // So the thing worth asserting is no longer a magic number — it is the DERIVATION:
+  //   · the width must be positive and must SHRINK with haste (a faster terminal cast = a narrower
+  //     window). A width that ignores haste is the bug the flat 0.5 was.
+  //   · `encounterFor` must produce exactly `U[T, T+2w]`, i.e. the interval must START at T. Setting
+  //     `variation` without re-centring `duration` silently lengthens the average fight, which is the
+  //     one mistake this construction exists to prevent.
+  // Measured: the derived window tracks the model across a cast boundary 8.79x more tightly than the
+  // flat one (ratio spread 0.0374 % vs 0.3284 %, tools/window-match.mjs).
+  { const w0 = killWindow(0), w250 = killWindow(250);
+    if (!(w0 > 0)) bad.push(`killWindow(0) must be positive, got ${w0}`);
+    if (!(w250 < w0)) bad.push(`killWindow must SHRINK with haste: killWindow(250)=${w250} is not < killWindow(0)=${w0} — a width that ignores gear is exactly the flat-0.5 defect.`);
+    if (Math.abs(w0 - 0.749) > 5e-4) bad.push(`killWindow(0) is ${w0}, expected ~0.749 = half a 3-stack Arcane Blast (2.5 - 3x0.334) at zero haste.`);
+    const e = encounterFor(200, 150);
+    if (Math.abs((e.duration - e.durationVariation) - 200) > 1e-9)
+      bad.push(`encounterFor must yield U[T, T+2w]: the interval starts at ${(e.duration - e.durationVariation)}, not at T=200. Setting variation without re-centring duration lengthens every fight.`);
+  }
+  if (BENCH.variation === 0) bad.push('BENCH.variation must NOT be 0 — `--var 0` makes every iteration the same fight, turning DPS into a staircase of whole casts. It has faked a result twice (TOOLING ★★). It is the legacy default now, but it must stay non-zero for the callers that still pass it.');
   if (BENCH.prestack !== 0) bad.push('prestack must be 0 — the model opens COLD, and a prepull sits at a fixed −2.3s that does not scale with haste, making any haste comparison non-monotone (TOOLING ★★★).');
   if (!(BENCH.manaInject >= 1e7)) bad.push('manaInject is too small to be "infinite" — the duel must isolate the LAYOUT, not mana.');
   if (BENCH.iterations < 10000) bad.push(`iterations is ${BENCH.iterations} — the mean settles to ~0.02% at 10k; below that a duel cannot resolve the differences this project argues about (TOOLING).`);

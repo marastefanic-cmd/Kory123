@@ -35,7 +35,7 @@
 
 // ★ Every protocol constant comes from sim/benchmark.mjs — the ONE definition the terminal harness
 // uses too. Nothing numeric about the protocol may be typed into this file (see that file's header).
-import { BENCH } from "./benchmark.mjs";
+import { BENCH, encounterFor } from "./benchmark.mjs";
 export { BENCH };
 
 export const STAT = { intellect: 3, spellDamage: 5, spellHit: 12, spellCrit: 13, spellHaste: 14, spirit: 16, mana: 34, mp5: 35 };
@@ -65,8 +65,22 @@ export function buildRequest(template, opts) {
     player.rotation.priorityList = opts.apl.priorityList || [];
   }
 
-  req.encounter.duration = opts.T;
-  req.encounter.durationVariation = opts.variation === undefined ? BENCH.variation : opts.variation;
+  // ★ THE KILL WINDOW IS THE MODEL'S, DERIVED — not a round number (BENCH.variation's note).
+  // The model credits a straddling cast the fraction of itself that fits, which is a ONE-SIDED window
+  // `U[T, T+d]` with `d` the cast's own duration. `durationVariation` is symmetric about `duration`,
+  // so `encounterFor` shifts the centre forward by the half-width to produce exactly that interval.
+  // ⚠ Setting `variation` WITHOUT re-centring `duration` would silently make the fight longer on
+  // average than the model plans for, which is why these two are set together from one helper.
+  // An explicit `opts.variation` still wins — that is how an archived round gathered at the legacy
+  // flat 0.5 is reproduced — and it then keeps the old symmetric shape on purpose.
+  if (opts.variation === undefined) {
+    const enc = encounterFor(opts.T, opts.hasteRating || 0);
+    req.encounter.duration = enc.duration;
+    req.encounter.durationVariation = enc.durationVariation;
+  } else {
+    req.encounter.duration = opts.T;
+    req.encounter.durationVariation = opts.variation;
+  }
   // AoE: duplicate target[0] to N (runner-main.go --targets). Arcane Blast is single-target, so the
   // extra dummies are inert outside the Arcane Explosion windows.
   if (opts.targets > 1) {
