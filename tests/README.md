@@ -1,7 +1,7 @@
 # Exact-match regression suite
 
 The planner is **deterministic**: the optimizer seeds from a fixed PRNG, the
-cast-rate integral scores damage without cast-boundary jitter, and leftover haste
+objective is a deterministic per-cast sum, and leftover haste
 snaps to the earliest efficient spot. So one setup produces **exactly one**
 schedule — which means regressions can be caught as exact diffs, not "within
 tolerance" (a tolerance test silently passes when a placement drifts to an
@@ -59,7 +59,31 @@ node ../tools/plan-diff.mjs A.json B.json
 
 ~33s for 16 of 25 cases (~16× faster), and it prints the changed-cell work list.
 Exact-match still runs before a commit — it is the only gate that covers the **render
-path**, which the sweep never touches. See `docs/PHASE9.md §5`.
+path**, which the sweep never touches. See `docs/archive/10-phase9-performance.md §5`.
+
+## Press-fire timing — `press-fire.mjs`
+
+```
+node press-fire.mjs                                    # part A: no sim, no browser
+RUNNER=/path/to/runner-ap180 node press-fire.mjs       # + part B: graded on real combat logs
+```
+
+The gate PHASE12 §6.7 found missing: *"no gate in this repo covers press-fire timing — which is exactly
+why it survived this long."* What survived was a transcription that put **7.14 % of presses on a cast
+the model never chose**.
+
+- **Part A** (always runs) asserts, per press on every shipped preset, that the schedule value
+  `sim/planspec.mjs` emits still reaches the intended cast after 0.30 s of model-vs-sim cast-lattice
+  drift **in either direction** — the drift's sign flips with haste, so one-sided margin is not enough.
+  Pure arithmetic; this is the half CI can run.
+- **Part B** needs a native `RUNNER` (the committed `sim/sim.wasm` exposes no combat log) and **skips
+  loudly** without one — the `sim-request.mjs` contract, because a gate that silently no-ops is worse
+  than no gate: it reports success.
+
+It grades on **which cast each press buffed**, not on the clock — the two lattices drift ~0.35 s by
+t=200, so a correct press can be a third of a second off the model's clock. `HELD` and `LATTICE` rows
+are printed but do not fail: they are the 334 ms / (1/3) s Arcane Blast cast-time mismatch showing
+through (docs/MECHANICS.md §1.1), which no transcription can reach.
 
 ## When a case legitimately changes
 

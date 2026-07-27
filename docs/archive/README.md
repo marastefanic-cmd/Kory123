@@ -5,7 +5,8 @@ each phase close** (the old "delete PLAN.md once the change lands" workflow). Th
 the working tree but live in git history; they're recovered here so the road taken stays **findable**
 without spelunking git. Each file is the plan **as written** (intent + rationale at the time) — a
 historical snapshot, possibly later revised or reversed. For *outcomes* and *what we got wrong*, read
-`docs/DIARY.md`; for the phases still in flight, the top-level `docs/PHASE*.md`.
+`docs/DIARY.md`; for the work still in flight, the top-level **`docs/PHASE13.md`** — the only live plan
+doc.
 
 **Append-only. Do not prune.** When a phase closes, archive its plan doc here (see the policy in
 `CLAUDE.md`) rather than deleting it.
@@ -33,5 +34,142 @@ numbers are unchanged, so those citations still resolve. Its still-live content 
 move: the instrument inventory → `docs/ACCEPTANCE.md`, the rig rebuild → `docs/TOOLING.md`, the
 never-prepull rule → `CLAUDE.md`/`TOOLING`/`RULES`.
 
-_(Phases 7–9 are still in flight, so they live at `docs/PHASE7.md`, `docs/PHASE8.md`, `docs/PHASE9.md`;
-archive each here when it closes.)_
+## `08-phase7-xval-fixes.md` — Phase 7: fix the cross-val deficits (closed 2026-07-27)
+
+The "fix" phase behind Phase 6's measurement. Diagnostic mandate **discharged** (§5.16–§5.18), the
+AoE-window press-snap fix **landed** (§5.19–§5.20), the `emit=fire` transcription convention landed
+(§5.22), and rounds 6–7 gathered and certified (§5.23–§5.24). Cited across the living docs as
+**"PHASE7 §x"**; section numbers unchanged, so those citations still resolve.
+⚠ **Gear-A denominated.** Its residual — the two length-persistent kit-columns — was inherited by
+Phase 10, which re-measured it on gear B and found the persistence list reproduces **cell for cell**
+(PHASE10 §8.22). The reasoning is durable; the numbers are not.
+
+## `09-phase8-b2.md` — Phase 8: the B2 model-vs-sim ranking error (closed 2026-07-26)
+
+Reserved as the highest-effort model work and closed with a **negative result**: the per-window
+boundary charge was implemented, audited, gated, **failed its sign gate on 6 of 7 fight lengths**, and
+ships **OFF** — changing no plan the tool has ever produced. Its lasting contributions are THE FLOOR
+LAW (§11–§13), the two harness input errors it found (`t5two`, effective SP ≈1450 — now
+`tools/reference-gear.mjs`), and eight settled findings in §26.1 that must not be re-opened.
+⚠ **Gear-A denominated, and B2 itself is NOT solved.** Its target moved ~0.39 pp and changed sign on
+gear B (BENCH §3e) before any of it was re-measured.
+
+## `10-phase9-performance.md` — Phase 9: optimizer CPU/latency under a byte-identical-plans gate (closed 2026-07-27)
+
+Triggered by *"the tool has gotten a bit slow again"*. Measure-first throughout: a baseline CPU
+profile, a call census, a hypothesis table with verdicts, and a refactor catalogue landed
+cheapest-and-safest-first. **Four changes landed** (groom early exit, `groupSeeds`, `finishLine`, the
+`JSON.stringify` memo key at −14 % CPU) and one was **reverted on a pre-registered rule after measuring
+null** — the rung's most useful result. **§5 is the larger contribution and is still live guidance:**
+the fast iteration gate (`plan-sweep` + `plan-diff` + `plan-duel`) that replaced "re-run everything
+after every edit", cited from CLAUDE.md, `tests/`, and the tools themselves. Cited as **"PHASE9 §x"**;
+section numbers unchanged, so those citations still resolve.
+⚠ **Closed, not finished.** The unfinished §4 reclaim rungs passed to `12-phase11-platform.md` §3.1,
+which closed without starting them either — they are **`docs/PHASE13.md` §5.3's now**. ⛔ And they need
+a **fresh CPU baseline and content re-anchoring** before any rung is priced: Phase 12 rewrote the very
+scoring walk that dominates this phase's profile, so the rungs and the method are intact and the prices
+are not.
+
+## `11-phase10-gearb-baseline.md` — Phase 10: re-establish the acceptance baseline on GEAR B (closed 2026-07-27)
+
+The phase that existed because the project had **no acceptance reading at all**: the reference
+character was re-exported on 07-26 and the whole gear-A corpus archived, so every model-vs-sim number
+was denominated in a currency that no longer existed. Round 1 gathered **36 cells (30 class + 6 boss)**
+over ~50 CPU-hours and closes **36/36 under one protocol on one engine**, certified by a provenance
+gate (`xval-stamp-audit.mjs`) that did not exist when the phase began.
+
+**Verdict: invariant A PASSES (`monoDip = 0.0000%` on all 36); B2 FAILS** — 142 borrowed-win columns
+of 345 across 33/36 tables, worst 0.380 %. **ACCEPTANCE NOT PASSING**, on a bar of zero.
+★ **The central model result:** the threshold-free persistence test names 3 of 57 kit-columns and its
+first two are gear A's entire work list **cell for cell** — so the low-haste basin is a property of
+the **model**, not the reference gear — and §8.23/§8.25 diagnose it as **one terminal cast** that the
+objective scores as a 0.014 % tie against a sim emphatic at ~13σ (discretizing the scorer is already
+falsified). **Debts re-priced (§8.31):** B2 **survives** (banded +0.368 ± 0.020 pp, 5/5 seeds, REAL);
+the basin **reproduces** but is misnamed twice over; the KT/AoE cells **do not reproduce**, which
+discharges PHASE7 §5.19's standing prediction. Cited as **"PHASE10 §x"**; section numbers unchanged.
+
+⚠ **Two instrument findings it hands on, both found by reading a tool's output rather than its summary
+line.** `ripple-audit` **fails two of its own pre-registered self-checks** (P3, P5) — so no ripple
+decomposition is quotable on that round — and stamps `mono=0` for FAILURE beside a `vacuous=0` that
+means success. And *"the shipped wasm == the native runner"* has always meant **within 0.05 DPS**, not
+bit-identity: re-gathering 30 tables on the runner moved six published figures, one of them a
+**verdict flip** off a ~1e-6 relative difference. Its §9 absorbs the `PHASE10-RESUME.md` handoff doc,
+including the resolved TRINKETS-reorder question and the merge order for the unmerged UI branch.
+
+⛔ **And its verdict is VOID as a measurement of the model** (Phase 12, the same day): round 1 was
+gathered against the rate-integral scorer, press-anchored windows, one snapshot rule and the symmetric
+kill taper — all four replaced hours later. The **tables stand** as the evidence trail; the **verdict
+does not**. `docs/ACCEPTANCE.md` has no current reading, and re-gathering is now mostly arithmetic.
+
+## `12-phase11-platform.md` — Phase 11: the platform phase, the single-file convention retired (closed 2026-07-27)
+
+Opened by a user directive — *"the 'it's just a single html file' convention is retired; brainstorm
+better/faster/both, and mark any bugs caused by single-html-doing-everything"* — and its §1 is that
+audit's findings ledger, with one root cause stated once: **code that cannot be imported gets copied,
+and copies drift.** Four mechanisms currently re-extract the engine from `index.html`, feeding ~30
+consumer files.
+
+**Two of its three tracks landed and the third never started.** ✅ **The §1.1 ledger is DISCHARGED,
+8 of 8** — six fixed in passing (including two gates whose failure mode was a *pass*, and a `bench`
+flag that had to become a **refusal** because adding the flag alone would have left the failure
+silent), and the last two the day PHASE 10's freeze lifted, proved plan-neutral by the engine block
+being **byte-identical** rather than by assertion. ✅ **The §1.4 doc sweep landed**, all six items.
+✅ **CI came up** — three jobs, two of them carrying the negative control §9 demands.
+⛔ **The module split itself (§2), the perf ladder (§3) and the product routes (§4) were never
+started**, and neither were the eight §8 user calls, which are still unanswered. All of it, and the
+calls verbatim, is inherited by `docs/PHASE13.md` §5/§6.
+
+⚠ **Its own header lied about it for the whole of its life** — *"PLANNED, not started; nothing in
+`index.html`, `sim/`, `tools/` or `tests/` has changed"* — while all four had. That is the ledger's own
+disease, and the archived doc opens with a banner saying so, so no reader re-does the work.
+Cited as **"PHASE11 §x"**; section numbers unchanged. ⚠ Six blocks inside it are bannered false in
+place (§3.5's "no CI exists", F9's retired constant pairing, §3.3's rate-integral-era prefix-reuse
+design, §3.1's dead line anchors, §5's PHASE10 routing, §1.3's pre-rewrite figures).
+
+## `13-phase12-exact-objective.md` — Phase 12: make the objective EXACT (closed 2026-07-27)
+
+The phase that began when the user read the architecture correctly — *"the model's evaluation HAS to be
+deterministic and correct… the mistakes I can see is the search not finding the global optimum of that
+number — but the math has to be solid"* — and the math was not. `simulate()` computed the per-cast sum
+in its discrete walk and then **ranked on a continuous rate integral instead**, disagreeing with itself
+by a **median 0.2114 % of score** against ranking margins of ~0.005–0.07 %: ~30× the effect it was
+being asked to resolve, and plan-dependent, so it did not cancel. **It *was* the near-tie.**
+
+**Four scoring defects, one transcription defect, and the cast lattice — all closed.** The integral
+retired to a diagnostic; buff windows re-anchored from the **fire** rather than the press; **two**
+snapshot rules where the engine had one (haste at cast START, value at cast COMPLETION, over
+`(start, end]`, both edges measured); and — on a user ruling — the symmetric kill taper replaced by
+**one boundary credit at every cut**, `min(1, (nextCut − start)/duration)`, which subsumed the
+"intermission wall paid in full" defect for free. Transcription went from `floor(actEff)` to a clamped
+schedule value (**7.14 % → 0.00 %** failures on real logs), the lattice closed
+(`STACK_CAST_REDUCTION 1/3 → 334 ms` **plus** millisecond rounding), and cooldowns began chaining from
+the fire (**HELD 18 → 1 of 196**). `exact-match` **25/25**, `self-consistency` **0.00e+0**.
+
+⚠ **Closed, not finished:** §7's search-optimality proof programme (the objective being exact makes the
+per-press decision variable an **integer**, so enumeration and branch-and-bound are well-posed for the
+first time) and the acceptance re-gather — both `docs/PHASE13.md`'s. ⚠ The **AoE edge** it left open was
+decided immediately afterwards — and then decided **again, the other way, the same day**. It was first
+removed from the cut lattice **on physics** (the boss stays targetable and the Blast measurably lands),
+then **restored on POLICY** by user ruling: an AoE phase **start IS a cut** because the player *cancels*
+the Blast to spam Arcane Explosion, which also truncates the AE lattice to the wall — something this
+phase's version never did. ⚠ So the verdict word matches what this phase shipped while the **reason and
+the behaviour do not**; read `docs/RULES.md` §9 / `docs/PHASE13.md` §1, not this doc, for what holds.
+The same correction found that **Arcane Explosion is instant**, so the boundary credit's divide-by-zero
+guard had been paying every AE **nothing** — a 42 % error on the only AoE fight in the corpus, reachable
+by **no existing gate**.
+
+⚠ **Six of its blocks were live instructions that later sections falsified, and they are bannered in
+place** — most dangerously §6.11e's *"`exact-match` WILL FAIL on every case; do NOT `--update`"*, true
+for a few hours and false since. Its §6.6/§6.7 mechanism (*"the schedule fires strictly after"*) is
+falsified by §6.9a — `IsReady` is `>=`; the sim's boundary was simply 2 ms earlier than its own log
+printed it. Cited as **"PHASE12 §x"**; section numbers unchanged. ⚠ **One citation was always wrong:**
+the cooldown-chain fix is **§6.14c**, not §3 (§3 is the debts table).
+
+★ **Its durable methodological payload is §6's four instruments that flattered or blinded themselves in
+a single phase:** a verdict line branching on half its own pre-registered bar while the table beside it
+said otherwise; a classifier that laundered the very defect it was built to catch; a tie rule with a
+noise band but no **resolution floor**, turning `+0.00` vs `−0.00` into a winner; and three tools whose
+engine defaulted to a stale blob, reporting a byte-identical "no change" across two consecutive fixes.
+**Read a tool's output, not its verdict line.**
+
+_(In flight: **`docs/PHASE13.md`** — the only live plan doc. Archive it here when it closes.)_

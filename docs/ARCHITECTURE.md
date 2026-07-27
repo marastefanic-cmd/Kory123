@@ -1,6 +1,7 @@
 # ARCHITECTURE.md — `index.html` internals
 
-One self-contained file (~3600 lines), now in **two script blocks**:
+One self-contained file (**5,726 lines** — re-grepped 07-27 after the EPS landing; the long-standing "~3600" was 38 % low,
+and PHASE11 §1.2 F14 records line-number rot as a project-wide class), in **two script blocks**:
 `<script id="engine-src">` — the pure, DOM-free **engine + optimizer** (constants →
 `optimizeAsync`) — and a second `<script>` with the **DOM/UI**. The engine runs **twice**: on the
 page (cheap one-off `simulate()`/`scheduleRows()` for rendering, and the headless test suites
@@ -27,18 +28,114 @@ re-optimization (aux worker) is REMOVED (user decision: not worth the background
 numbers drift as the file is edited — treat them as signposts, re-grep if they're off. Everything
 below is in `index.html` unless noted.
 
-## Constants (~547–583)
-`GAME`: `AB {BASE_CAST 2.5, STACK_CAST_REDUCTION 1/3, MAX_STACKS 3, AVG_BASE_DMG 720, COEF 2.5/3.5}`,
+> ⚠ **THE LINE NUMBERS IN THIS FILE ARE `~APPROXIMATE` AND THEY DRIFT.** Re-grepped in one pass on
+> 2026-07-27; before that pass the optimizer/render half was off by **600–1600 lines** while still
+> carrying a "re-grepped" stamp, which is worse than carrying no number. **Search for the SYMBOL, not
+> the line** — every anchor below names one. If you re-grep, do the whole file or drop the stamp.
+
+## Constants (`EPS` ~857, `GAME` ~859–877; re-grepped 07-27 after the EPS landing)
+`GAME`: `AB {BASE_CAST 2.5, STACK_CAST_REDUCTION 0.334, MAX_STACKS 3, AVG_BASE_DMG 720, COEF 2.5/3.5}`
+(⚠ **0.334, not `1/3`** — it was `1/3` until 07-27; wowsims uses `time.Millisecond * -334` and rounds
+every cast to the millisecond, so the model does both now — MECHANICS §1.1, PHASE12 §6.14),
 `AE {AVG_BASE_DMG 392, COEF 0.214}` (Arcane Explosion, AoE), `GCD_BASE 1.5`, `GCD_FLOOR 1.0`,
 `HASTE_RATING_PER_PCT 15.77`, `CRIT_MULT 1.8175`, `COLD_SNAP_CD 480`. `TALENTS {arcaneConcentration 5,
 arcanePotency 3}` + `aoeCritAmp(N, crit)` (just after `GAME`): the AoE-only Clearcasting→Arcane Potency
 crit amplification (per-hit Arcane Concentration ⇒ target-scaled Potency crit; applied only to AoE
-damage in `simulate`, single-target returns 1 — sim-validated, RULES §9). `BUFFS` (~560–572): each buff's
+damage in `simulate`, single-target returns 1 — sim-validated, RULES §9). `BUFFS` (~880–892): each buff's
 `kind` (`mult` haste-multiplier, `rating` haste-rating, `dmg` damage-mult, `sp` spellpower, `proc`),
-`value`, `dur`, `cd`. `KILL_WINDOW = 0.5` (inside `simulate`, ~631) — half-cast kill smoothing.
+`value`, `dur`, `cd`.
+⛔ **`KILL_WINDOW = 0.5` is RETIRED FROM THE OBJECTIVE (07-27, PHASE12 §9).** It used to be a module-ish
+constant inside `simulate` described here as "half-cast kill smoothing"; the symmetric taper it drove is
+gone. A **local `const KW = 0.5`** survives (`~1436`) feeding **only** the `integral` diagnostic's
+breakpoints and weights. Nothing that ranks reads it. See the boundary-credit block below.
 
-## `simulate(schedule, cfg, collect)` — the scorer (~660–990)
-Returns `{total, totalEarly, robust, castCount, gcdCappedTime, casts, actEff, dps}`.
+## `simulate(schedule, cfg, collect)` — the scorer (`simulate` ~960, `simulateRaw` ~978–1650)
+Returns `{total, totalEarly, robust, integral, integralTotal, castCount, gcdCappedTime, casts, actEff, dps}`.
+⚠ **`total`, `totalEarly` and `robust` are now the SAME NUMBER** — all three accumulate `dmg × frac`
+(below). They are kept as three fields, and three accumulators, purely so every existing consumer keeps
+reading a field that still exists; do not "simplify" one of them away without auditing the callers.
+
+> ### ★★★★ THE OBJECTIVE IS THE PER-CAST SUM (PHASE12 §6.10, 07-27) — read before editing this section
+> `total`/`totalEarly`/`robust` are accumulated **in the board walk**, one term per Arcane Blast:
+> `dmg × frac`, where `frac` is the boundary credit (next block). That accumulation runs on **every**
+> call, not only when `collect` is set — the optimizer scores with `collect` off, and an objective
+> cannot depend on whether a caller asked for a board. `integral`/`integralTotal` carry the retired
+> rate integral so the gap stays measurable.
+> **Standing gate, no sim:** `node tools/self-consistency.mjs` must read `0.00e+0` **and 0 structural
+> violations** — 3000 generated scorings over 460 699 casts in 0.78 s, no cache, from a bare clone.
+>
+> ⛔ Three retired approaches — see CLAUDE.md's ★★★★ block before touching any of them: **ranking on the
+> rate integral** (median 0.2114 % off the sum, vs ~0.005–0.07 % margins), **expiring a buff window at
+> `press + duration`** (short by the press slip — one whole cast in the measured case), and **the
+> symmetric kill taper** (below).
+
+> ### ★★★★ BOUNDARY CREDIT — ONE RULE AT EVERY CUT (PHASE12 §9, user rulings 07-27; `~1019–1087` the rule + lattice, `~1320–1362` the credit, `~1391–1400` the AoE truncation; `~839–857` the shared `EPS`)
+> ```
+> credit = min(1, (nextCut − castStart) / castDuration)      ← multiplies that cast's own value
+> ```
+> A **cut** is a boundary a cast is not carried across — the fight end `T`, an **intermission start**
+> (boss untargetable: the cast **cannot land**) and an **AoE phase start** (it lands, but the player
+> **cancels** it to spam Arcane Explosion). **Three boundaries, two cuts, two different reasons: the
+> intermission is PHYSICS, the AoE start is POLICY.** ⛔ A **BURN edge is NOT a cut** — the cast lands
+> *and you would not cancel it*, so it is a **value** question under the snapshot rule. The predicate is
+> `cutsAt(sg)` (`sg.type === "intermission" || sg.type === "aoe"`), deliberately the only thing that
+> builds the lattice, and only segment **STARTS** enter it: the *far* edge of an intermission is not a
+> cut (no cast can start inside one, so nothing is in flight across it) and neither is an AoE exit (you
+> simply resume Arcane Blast, with nothing to cancel).
+> ★ **The AoE start truncates as well as credits** (`AOE_CUTS`, `~1400`): because the cast is
+> **cancelled** rather than re-priced, the Arcane Explosion lattice restarts **at the wall**, not at the
+> Blast's natural end — `prevCastEnd = min(prevCastEnd, cutT); t = cutT`. Verified: a Blast starting
+> `58.998` against a wall at `60.000` is credited **66.9 %** = `(60 − 58.998)/1.498` and the first AE
+> fires at exactly `60.000`. Crediting partially without truncating would pay less and gain nothing.
+> An intermission needs no such branch — the walk jumps over it at the top of the loop.
+> ⚠ **The AoE edge flipped TWICE on 07-27** — shipped as a cut, **removed on physics** (the sim showed an
+> AB started at 59.000 against an AoE opening at 60.000 completes at 60.498 and **lands** for full AB
+> damage), then **restored on policy** by user ruling. The physics measurement is still true and it is
+> not what decides it; RULES §9 carries the full reasoning.
+> ⚠⚠ **Expected consequence:** wowsims' APL cannot cancel a cast, so `model-audit` **will** show a gap at
+> an AoE wall. That is a priced divergence, not a bug.
+> ⚠⚠ **`dur === 0` ⇒ frac = 1, not 0.** Arcane Explosion is instant; a divide-by-zero guard returning 0
+> credited every AE at nothing (Kael'thas 368,018 vs 524,173, a 42 % error). `min(1, (cut−t)/dur) → 1`
+> as `dur → 0`. Guard against NaN, not against the answer.
+>
+> ★ **It is not a smoothing heuristic.** It is algebraically a **one-sided** window whose width is the
+> cast's own duration: for a cut `~ U[C, C+W]`, credit `= (C + W − completion)/W`, and `W = duration`
+> gives exactly `(C − start)/duration`. It reads *"the fight lasts at least `T`, and at most one more
+> cast."* Both forms verified to give `0.730702` on the same cast (PHASE12 §9.2).
+>
+> ⛔ **What it retired.** The symmetric taper over `[T−KW, T+KW]` paid a cast completing **exactly at T**
+> only **0.5**, because a symmetric window says the boss is already dead half the time. Under the ruling
+> such a cast earns a **FULL** cast. `total` (hard cut at T — a staircase measured jumping a whole
+> ~1.5-cast step as T crossed a completion boundary), `robust` (the taper) and `totalEarly` (banked at
+> `T−KW`) collapse into one number because there is nothing left for them to disagree about.
+>
+> ⛔ **And it subsumed a real defect:** the old credit test only asked `tcC <= cfg.T`, so a cast
+> completing *inside an intermission* was paid in **FULL**. Measured case: starts `89.616`, wall at
+> `90`, completes `91.114` — was fully credited `2242.1`, now reads `frac 0.2563`, `credited 574.8`.
+>
+> ### ★★★★ ONE EPSILON, AND EVERY CLOCK COMPARISON IN THE WALK USES IT (`const EPS = 1e-9`, PHASE13 §2.5)
+> The walk's clock is a **running float sum** of millisecond-quantized cast intervals, so a boundary the
+> fight geometry puts at `90.000` arrives as `89.999999999999972`. Whether a comparison against that
+> clock carries an epsilon is therefore **behaviour, not style** — and for a while only some of them did:
+> `nextCut` had one and the segment advance did not, so at an intermission wall the walk failed to jump
+> while the lattice skipped past — **a whole Arcane Blast banked at `frac = 1.0` completing 1.5 s inside
+> an intermission** (0.99 % Lurker / 1.47 % Solarian of fight score). Separately the press loop's
+> `e.ts > t` had none, so a press at `184.00` missed the boundary stored as `183.99999999999994` and
+> slipped a whole cast — while `sim/planspec.mjs` (`starts[i] >= fire - EPS`) transcribed it to the
+> *other* cast, i.e. **the model and its own transcriber disagreed about which cast a buff covered.**
+> `EPS` is not a tuned tolerance: wowsims rounds every cast and GCD to the **millisecond**, so nothing
+> real hides below ~1e-6 s. The search passes further down keep bare `1e-9` literals on purpose — they
+> compare *scores* and *plan times*, not this clock.
+>
+> **Blast radius when boundary credit landed:** `plan-sweep` moved **11 of 16** cases;
+> `tools/blast-radius.mjs` **102 of 285** cells (35.8 %). **When `EPS` landed:** 4 of 16 cases,
+> all 4 better under the current scorer, 0 regressions (`search-miss`).
+> ⚠ `tools/self-consistency.mjs` read `0.00e+0` through **both** of the epsilon defects — its two checks
+> both derive from the same `c.t`, so a defect in *which casts exist* makes them agree. It now carries a
+> third, **structural** check (no cast may begin inside an intermission; the credit must not change when
+> re-derived at millisecond resolution) plus a wall-on-lattice corpus arm that constructs the
+> coincidence rather than waiting for it. That check reads **167 violations** on the pre-fix engine and
+> **0** after.
 `simulate` is now a **memo wrapper** over `simulateRaw` (the actual scorer): collect=false results
 (plain number bags; no caller mutates them — verified) are cached keyed by
 `cfgSigOf(cfg) + sigOf(schedule)` (string key, so pool workers hit despite receiving cfg as a
@@ -55,21 +152,51 @@ bit-equal to recomputation; collect=true always computes fresh.
   aura lands at the call, someone else presses) snaps its scored window to the next board-lattice
   boundary (the in-flight cast keeps its speed). `scanAt`/`bpS`/`rampCastDmg` read `scoreStart`;
   legality/cadence/display keep the fire time.
-- **Damage = cast-rate integral + discrete ramp casts** (~853–934): `rateAt(t)` = `dmg2 /
+  ⚠ **`scoreStart` now feeds ONLY the retired integral.** The objective uses `start = auraAt` — the
+  moment the ability truly fires (`max(eff, prevCastEnd)` for a self-press, `eff` for a raid external)
+  — and the window runs its FULL duration from there. Expiring from the press instead made every
+  mid-cast window short by the slip (PHASE12 §6.11); `tools/window-span.mjs` is the gate.
+  ★ **The cooldown CHAIN anchors on the FIRE moment too (PHASE12 §6.14c, 07-27).** `lastFire[key]` (was
+  `lastEff`) holds `auraAt` — where the previous use of that cooldown actually went off, i.e. the cast
+  boundary the press snapped forward to — because that is when wowsims starts the cooldown. Chaining
+  from the *press* let a second use be scheduled earlier than the sim could ever execute it. Measured:
+  **HELD press failures 18 → 1 of 196.** For a raid external `auraAt === eff` by construction, so the
+  "starts when CALLED" convention is preserved by the same line rather than by a special case.
+- **THE OBJECTIVE = the per-cast sum** (in the board walk, above): each cast contributes
+  `dmg × frac`, with `frac = min(1, (nextCut(t) − t)/dur)` — the boundary credit block above —
+  and `total`/`totalEarly`/`robust` all return exactly that same number.
+  ⚠ `frac` is computed **outside** the accumulate guard and recorded on the board **on purpose**: the
+  standing gate recomputes the objective independently from `casts[]`, so if the board carried full
+  `dmg` while the accumulator applied `frac`, the two accounts would differ by exactly the boundary
+  credit and the gate would report a gap that is not a bug. The `dur > 1e-9` guard refuses a degenerate
+  zero-length cast rather than emitting `NaN` (a `NaN` reads as "not a regression" in every ranking
+  comparison — this repo's worst failure mode).
+- **The `casts` board** (`collect` only) carries, per cast: `t, interval, cast, gcd, mult, dmg, stacks,`
+  **`frac`, `credited`** `, capped, pUp, ae, multNoAti, capDn, castDn, gcdDn, sp, dmgMult`.
+  ★ `dmg` stays the cast's **FULL** damage — it is what the cast is worth, and `tools/model-audit.mjs`
+  compares it against the sim's own damage line. `frac` is the boundary credit it earned and
+  `credited = dmg × frac` is the product the objective summed. **Anything recomputing the objective
+  from this board must use `credited`, not `dmg`.**
+- **⛔ RETIRED, kept only as the `integral` diagnostic — cast-rate integral + discrete ramp casts**
+  (~1436–1650; re-grepped 07-27). Nothing ranks on any of it, and `cfg.boundaryCharge` (which is defined against it) now
+  THROWS rather than silently doing nothing. It reads: `rateAt(t)` = `dmg2 /
   intervalAt(multDn2)` integrated over piecewise-constant breakpoints (buff-window edges, phase edges,
   T±KW, ramp-span edges) — but each `boardRamp` span is EXCLUDED from the integral and scored as its
   discrete cast instead: `rampCastDmg(ts, tc)` — buff/SP **state** jitter-averaged ±½ GCD around the
   cast **START** `ts` (RULES §3b.3; ⚠ the *fix* is right, its old *mechanism* is not — wowsims reads a
   value buff at cast **completion**, so start-sampling is exact at a window's front edge and
   over-credits its back edge by `frac(D/Δ)×premium`, the known unimplemented PHASE8 term), damage
-  **time** (kill taper, wall/AoE gating) at the completion `tc` (Phase 4's rule). `scanAt` (~817) is the shared deterministic buff-state scan; `intervalAt` applies
-  the **GCD floor** `max(cast/m, 1.0)` statelessly. `total` counts ≤ T; `robust` tapers the last
-  half-cast — the optimizer maximizes `robust`.
+  **time** (the local `KW` taper, wall/AoE gating) at the completion `tc` (Phase 4's rule). `scanAt` is the shared deterministic buff-state scan; `intervalAt` applies
+  the **GCD floor** `max(cast/m, 1.0)` statelessly. ⛔ This bullet used to end *"`total` counts casts
+  COMPLETING ≤ T; `robust` tapers the last half-cast — the optimizer maximizes `robust`"*. **Retired
+  twice over:** the taper is gone (PHASE12 §9) and the integral stopped ranking anything (§6.10). What
+  the two locals still compute here is only ever published as `integralTotal` / `integral`; the
+  returned `total`/`robust` are overwritten by the per-cast sum.
 - AoE segments: `dmg` uses AE base × `targets` × `aoeCritAmp`, interval = GCD only.
 
-## `repair(schedule, cfg)` — feasibility projector (~949–1027)
+## `repair(schedule, cfg)` — feasibility projector (~1661–1740; re-grepped 07-27)
 Legalizes any raw schedule: per-track cooldown spacing (`trackRule`), `maxUses` cap, `lastFor = T−1`
-cutoff, **Icy Veins + Cold Snap chaining** (~888–901 — the only way two IVs sit <180s apart; a use
+cutoff, **Icy Veins + Cold Snap chaining** (~1700–1720 — the only way two IVs sit <180s apart; a use
 inside cd is allowed only if Cold Snap is ready, then burns it), and the OFF_TRINKETS shared lockout
 (skull/mqg/isc). Called after **every** candidate move — this is what makes "packing would cost a 2nd
 use" fail automatically (via `sameCounts`).
@@ -92,7 +219,7 @@ picks the grid. The cross-val (`tools/xval.mjs`) computes each `champ(h)` **once
 per column (identical result, deduplicated — `POOL=0` env restores the raw per-haste search to measure
 what pooling fixed). Design validated on committed round-2 data: pooling closes model-side B1 **22→0**.
 
-### `optimizeCore(cfg, starts, onProgress)` — the search (~1224+)
+### `optimizeCore(cfg, starts, onProgress)` — the search (~2016+; re-grepped 07-27)
 Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ deterministic.
 - **The whole finishing stage runs inside an `async` IIFE with throttled yields** (crash fix — on long
   fights it used to block the browser main thread for minutes, tripping the "Page Unresponsive" kill).
@@ -103,7 +230,7 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   yields — no computed value reads it, so one-setup-⇒-one-schedule is untouched. `basinHop`,
   `challengePass`, `coPressAlign`, `spreadLoneHaste`, `slideEarliest`, `dodgeDowntime` are `async` for
   this reason alone; their logic is unchanged.
-- **Seeds** (~1446–1491, in this order): all-at-0 (`naiveSchedule`), backward-packed
+- **Seeds** (`optimizeAsync` ~2065, seed list ~2089, in this order): all-at-0 (`naiveSchedule`), backward-packed
   (`packedSchedule`), phase-anchored (`seg.start` / intermission `seg.end`, capped at `starts + 8`),
   **pinned-raid-call anchored** (stacks every track on each Lust/Drums/PI second, first 4), a
   **kill-anchored seed** (each track's last use as late as it fully runs, siblings packed backward by
@@ -125,10 +252,10 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   class places a track on *its own* cadence, so a stacked chain that declines an available use is
   unreachable from all of them — from a non-chain entrant `basinHop` gains **+0.000** even with every
   anchor `0..T−1`.
-- **`polish`** hill-climb (~1068): `SHIFTS` ±1..±90 incl. ±3/±6 (ramp-boundary hops) and ±30/±60,
+- **`polish`** hill-climb (~1826, `SHIFTS` ~1825): `SHIFTS` ±1..±90 incl. ±3/±6 (ramp-boundary hops) and ±30/±60,
   per-index + suffix-shift + add-a-use + a **joint window move** (all uses sharing a press second shift
   as one block — co-pressed clusters cross valleys together) + a drop-one/relocate escape.
-- **`basinHop`** (~1170, runs after the integer snaps — which snap the top-6 **non-group** results
+- **`basinHop`** (~1974, runs after the integer snaps — which snap the top-6 **non-group** results
   exactly as pre-groupSeeds, PLUS any group entrant above that bar, tracked separately as `bestGrp`):
   window-teleport self-consistency guard — re-bases each press-window block on every other window's
   anchor, each track's natural next cd-tick, every **ramp-exit boundary** (the first full-stack cast
@@ -141,10 +268,10 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   (hop-exit selection measurably loses tails in both directions; a +5.85 hop win's tail lost −14).
   Primary = the old-rule carry, ties keep it; the no-Cold-Snap comparison solve inside the tail is
   arm-independent and memoized (`bestNMemo`), so the second arm costs groom passes, not a full solve.
-- Tie-break helpers (local closures): `anchored` ~1087, `overlapOf` ~1103, `joinsRow` ~1116,
-  `counts`/`sameCounts` ~1122/1123, `clipOf` ~1126. `castVal`/`QTOL` ~1077/1078 (tie tolerance = one
+- Tie-break helpers (local closures): `anchored` ~2266, `overlapOf` ~2282, `joinsRow` ~2295,
+  `counts`/`sameCounts` ~2305/2310, `clipOf` ~2317. `castVal`/`QTOL` ~2256/2257 (tie tolerance = one
   cast).
-- **`challengePass`** (~1132, called 3×): re-anchors each track's cadence at pull / raid calls /
+- **`challengePass`** (~2323, called 3×): re-anchors each track's cadence at pull / raid calls /
   phase edges; offers the last use onto other buffs' seconds; IV/Cold-Snap end-chains. Guards robust.
 - **Groom loop** ×3 (~1714, with an **early exit** — Phase 9 §5.12: rounds ≥1 are the same
   deterministic function of `s` (each opens with `challengePass()`; only round 0 skips it) and `val` is
@@ -173,7 +300,7 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   rejected the split). · earliest-on-ties (~1786, hard
   `nulled` veto ~1816) · snap-to-pinned (~1832) · **overlap-alignment for damage/SP** (~1861–1904,
   slides a spellpower/damage press forward onto a staggered damage cluster) · **sequential window-
-  packing** (~1913, see below) · **`coPressAlign`** → **`spreadLoneHaste`** → **`dodgeDowntime`** (final
+  packing** (~1913, see below) · **`coPressAlign`** (~3296) → **`spreadLoneHaste`** (~3338) → **`dodgeDowntime`** (~3386) (final
   normalizers, applied in that order) · squeak note · Cold-Snap materiality recursion (~2150).
 - **`coPressAlign(s0)`** (~2028, applied at the main resolve AND both Cold-Snap resolves so the plan is
   aligned whichever path built it). Snaps a damage/SP press onto its nearest **earlier haste** second
@@ -306,9 +433,9 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   header's job now, so don't reintroduce "Phase N" into `src`.
 
 ## Phases & rendering
-- `buildSegments(rows, T)` (~2191): turns phase rows into `{start,end,type,mult,targets}` segments;
+- `buildSegments(rows, T)` (~3702): turns phase rows into `{start,end,type,mult,targets}` segments;
   types `normal | intermission | burn | aoe`. Consumed by `simulate` and the renderer.
-- `renderTimeline(run)` (~2573): one inline SVG (fluid `width:100%`, no page horizontal scroll) —
+- `renderTimeline(run)` (~4199): one inline SVG (fluid `width:100%`, no page horizontal scroll) —
   **deterministic** haste step-curve (`multNoAti` — no averaged Ashtongue proc, RULES §14) + area fill,
   three reference lines (**+50% GCD cap**, **"cap if Ashtongue" ≈ +40.8%** when ATI on, **+25% "4× FB"**
   filler soft cap — RULES §15), phase bands (intermission hatched, AoE/burn tinted with ×N badges),
@@ -326,11 +453,11 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   and group by the **fire-time second** `a.sec` (see the display bullet in the optimizer section); `btn-copy` emits the
   canonical copy-as-text plan the tests compare (`exact-match.mjs` mirrors the same `a.sec` convention). (The dashed leeway bands that used to overlay the lanes
   are **permanently rejected** — user decision, RULES §14; `leewayZones()` is deleted.)
-- **Per-window target mana** (`scheduleRows`, ~2939): each window carries `w.mana` = the AB-spam spend
+- **Per-window target mana** (`scheduleRows`, ~4394): each window carries `w.mana` = the AB-spam spend
   over its burst span (`GAME.AB.MANA_FLAT 195 × (1 + 0.75·stacks) + 30% under AP`, per-cast real stacks,
   AoE casts excluded — SOURCES). Shown as the blue `.manatag` chip with a net-of-regen tooltip. Pure
   read over the existing cast list; **mana never feeds the optimizer** (layout-first). Display-only.
-- **`renderSchedule(run)`** (~3970): the activation schedule is a **press board**, not a table — inside
+- **`renderSchedule(run)`** (~4467): the activation schedule is a **press board**, not a table — inside
   each window card (header = window index, first press second, peak haste / AB cast / at-GCD-floor, mana
   chip) it emits **one `.prow` per press SECOND**, with every co-pressed activation clustered as
   icon+code `.ptile`s plus a names line (`buffEffect` renders the old third column, "+30% haste for 40s").
@@ -340,14 +467,14 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   layout. Placement-reasoning tags and leeway bands stay **permanently rejected** (user decision — a plateau
   tie for one press is conditional on every other press staying put; RULES §14); the old inference logic
   lives only in git history. Do not restore.
-- **`renderAssumptions()`** (~4390): the "Model assumptions" footer — **static** (no `run` argument), so it
+- **`renderAssumptions()`** (~5256): the "Model assumptions" footer — **static** (no `run` argument), so it
   renders at page load and the masthead's `#btn-assump` link always has a scroll target. Sectioned by
   subject with per-claim `sim-verified` / `beta` / `not modeled` verdict chips; the `beta` chips match
   `BETA_KEYS` (Ashtongue, Drums, Power Infusion) in the setup UI. Keep it in sync with RULES/MECHANICS —
   it is the user-facing statement of the model.
 
 ## Timeline customization — unlock → drag → lock → validate (+ debug export)
-UI-only module (after the copy handler, ~3990); the engine block is untouched and the model's run is
+UI-only module (after the copy handler, ~4843 `planToSpecInline`); the engine block is untouched and the model's run is
 never mutated — `lastRun` stays the optimizer's output, the hand-edited intent schedule lives in
 `CUSTOM.s`, and `activeRun()` = the locked custom run if one exists, else `lastRun` (what `btn-copy`
 reads). A fresh "Find optimal overlay" run calls `customReset()`.

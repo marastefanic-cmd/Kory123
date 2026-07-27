@@ -6,6 +6,30 @@ power) for a given setup, planned by *its own* ideal cooldown usage. We get it t
 
 ## The model route — EP in closed form from the effective-damage integral
 
+> ## ⚠ THE INTEGRAL BELOW IS THE **DERIVATION**, NOT THE OBJECTIVE (07-27, PHASE12 §6.10 + §9)
+>
+> `simulate()` no longer ranks on `∫ cast_damage/interval dt`. The objective is the **per-cast sum**
+> `D = Σ_i cast_damage_i × credit_i`, with the **boundary credit**
+> `credit_i = min(1, (nextCut − start_i)/duration_i)`, where a **cut** is a boundary a cast is not
+> carried across — the fight end, an **intermission start** (the cast cannot land) and an **AoE phase
+> start** (it lands, but the player cancels it for Arcane Explosion). ⛔ **Not** a burn edge: the cast
+> lands and you would not cancel it. Three boundaries, two cuts, two reasons — RULES §9, and ⚠ the AoE
+> one flipped twice on 07-27 (shipped as a cut → removed on physics → restored on policy).
+> Two consequences for this section:
+>
+> - **The partials below still hold as the continuum form** — each `∫ … /interval dt` is the limit of
+>   the corresponding `Σ_i …` over casts, and the shapes (SP ∝ cast count, crit ∝ damage, haste ∝ the
+>   *unfloored* portion) are exactly why the weights come out clean. Read them as the derivation.
+> - **They now omit a boundary term.** Haste changes a cast's `duration`, which changes the *denominator*
+>   of the straddling cast's credit as well as how many casts fit; SP/crit do not. That term is small
+>   (one cast per cut) and is **not** in the closed forms below. It **is** in the finite-difference
+>   route, which is what actually runs — `tests/ep-model.mjs` differences `simulate().total`, and
+>   `total`/`totalEarly`/`robust` are all the credited sum now. ⇒ **When the two disagree on haste on a
+>   short, wall-heavy or AoE-phase-heavy fight, the finite difference is the one to trust** — an AoE
+>   phase start is a cut too, so it carries its own boundary term.
+> - ⛔ The retired symmetric kill taper (`KILL_WINDOW = 0.5`) is **not** in any formula here and never
+>   was; nothing in this file needs unwinding for it.
+
 The scorer's objective is `D = ∫ cast_damage(t) / interval(t) dt` (`MECHANICS §4`;
 `cast_damage = (base + SP·coef)·crit_factor·dmg_mult`, `interval = max(cast_base/m, GCD_floor)`,
 `m = (1+rating/1577)·∏ haste buffs`). EP is just its partials, and they come out clean:

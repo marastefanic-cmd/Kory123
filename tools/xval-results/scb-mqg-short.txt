@@ -1,0 +1,23 @@
+seed=5792  class=short  fight=1:20 (80s)  Lust@0:17  trinkets=scb+mqg  haste=[0,20,75,105,235,265,400]  emit=fire
+  plan@h0: eff=75.014  {"_prestack":0,"BL":[17],"AP":[17],"Zerk":[33],"Gem":[17],"MQG":[57],"IV":[12,57],"CS":[57]}
+  plan@h20: eff=75.719  {"_prestack":0,"BL":[17],"AP":[58],"Zerk":[20],"Gem":[58],"MQG":[58],"IV":[0,58],"CS":[58]}
+  plan@h75: eff=77.979  {"_prestack":0,"BL":[17],"AP":[57],"Zerk":[20],"Gem":[57],"MQG":[57],"IV":[0,57],"CS":[57]}
+  plan@h105: eff=78.901  {"_prestack":0,"BL":[17],"AP":[58],"Zerk":[1],"Gem":[58],"MQG":[58],"IV":[0,58],"CS":[58]}
+  plan@h235: eff=83.022  {"_prestack":0,"BL":[17],"AP":[3],"Zerk":[58],"Gem":[3],"MQG":[0],"IV":[0,58],"CS":[58]}
+  plan@h265: eff=83.411  {"_prestack":0,"BL":[17],"AP":[3],"Zerk":[69],"Gem":[3],"MQG":[0],"IV":[0,58],"CS":[58]}
+  plan@h400: eff=84.601  {"_prestack":0,"BL":[17],"AP":[4],"Zerk":[0],"Gem":[4],"MQG":[0],"IV":[0,57],"CS":[57]}
+unique plans: 7/7
+
+DPS matrix (row = plan optimized @haste, col = simmed @haste):
+plan\sim        0      20      75     105     235     265     400
+0          3011.4  3038.7  3086.4  3119.7  3210.2  3218.0  3272.3
+20         2999.2  3032.0  3122.5  3162.9  3284.3  3303.5  3359.5
+75         2998.8  3024.8  3122.1  3162.8  3285.2  3303.7  3359.7
+105        2991.4  3030.9  3121.6  3163.5  3326.7  3336.0  3368.2
+235        2983.7  3023.0  3118.5  3159.3  3330.1  3347.4  3381.1
+265        2984.0  3014.3  3114.2  3155.9  3330.1  3348.4  3385.8
+400        2974.1  3008.9  3092.1  3142.2  3312.3  3324.9  3392.2
+
+(a) haste-monotonicity [OBSERVED, not interpreted]: worst downward dip = 0.00%
+(b) DIAGONAL DOMINANCE: DEFICIT 0.22%  [@sim20: plan@0 (3038.7) > native@20 (3032.0)]
+XVAL-DONE seed=5792 kit=scb+mqg class=short T=80 lust=17 var=0.5 wj=0 emit=fire artifact=0 iter=6000 simseed=11 mana=100000000 targets=0 char=bench-gearB engine=native:runner-ap180:18102540 tool=xval-bench pool=1 cache=0/49 monoDip=0.00% diag=DEFICIT diagWorst=0.22%

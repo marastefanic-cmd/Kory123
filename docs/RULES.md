@@ -1,13 +1,63 @@
 # RULES.md — the theorycraft the planner encodes
 
+> ## ⚠ BASELINE NOTICE — every sim MAGNITUDE below is **gear-A** denominated
+>
+> Read this doc on two levels, because the 2026-07-26 gear A → gear B re-export
+> (`docs/BENCH.md` §1) hits exactly one of them.
+>
+> - **The MECHANISM of every rule survives, unconditionally.** The GCD floor, the discrete ramp,
+>   buff-into-Lust packing, SP-on-fast-casts, the AoE modifier — these are statements about TBC's
+>   physics and about the scoring law in §1. Gear does not change them, and none of them is on trial.
+> - **Every sim FIGURE attached to a rule is a gear-A measurement** (`+0.39%`, `+61 DPS var0`,
+>   `−0.66%`, `0.0439 pp`, the §12 crossover brackets, the §-ACCEPTANCE floor statistics …). They were
+>   all gathered before 07-26, on the archived character
+>   (`tools/xval-results-archive/gearA-pre-20260726/`), most of them with `--var 0`/`var10` on the
+>   native rig rather than today's measured `--var 0.5` + never-press control. **BENCH §1's rule is
+>   absolute: do not compare a gear-B number to one of these.** They are not wrong; they are about a
+>   character that is no longer the reference.
+>
+> **What this does and does not license.** A rule stays in force — it is the theorycraft the planner
+> encodes, and re-measuring 40-odd deltas is not a prerequisite for believing the GCD floor. What is
+> *not* licensed is quoting one of these figures as a current target, a current tolerance, or the
+> other side of a gear-B comparison. When a rule's magnitude actually matters to a decision,
+> **re-measure it** — `node tools/bench.mjs --preset X --vs naive` is ~10 s from the repo alone — and
+> record the gear-B figure beside the gear-A one rather than overwriting it.
+>
+> Crossover *thresholds* (§12's `~264`, `~139`, `~77`) deserve their own caution: they are functions of
+> the character's haste and SP, so they are the figures **most** likely to have moved, and the ones a
+> future phase should re-derive first. The §-ACCEPTANCE resolution-floor statistics are superseded
+> wholesale by the gear-B round (`docs/ACCEPTANCE.md`).
+
 Living record of the TBC Arcane cooldown rules, each with the **evidence** it was checked against. The
-one quantity to maximize is **effective ABs cast** (§1 / `MECHANICS §4`), which the planner computes
-deterministically — so the **cast-count is the arbiter** when comparing two lines. The **sim
-calibrates** that count (anchors the physics — the model is a ~0.4%-accurate proxy — covers its blind
-spots: ramp / mana / AoE / multi-AP timing, and verifies novel findings); the sim evidence cited under
-each rule is exactly that calibration, not a routine per-line referee. When a clean cast-count and a
-sim number disagree with **no blind spot in play**, audit the sim *setup* before either — see
-`docs/TOOLING.md`. Update this file when a rule is added, refined, or overturned.
+one quantity to maximize is **effective ABs cast** (§1 / `MECHANICS §4`) — a **deterministic per-cast
+sum** the planner has everything it needs to compute exactly.
+
+> ## ✅ AND SINCE 07-27 EVENING HEAD **DOES** COMPUTE IT EXACTLY (`docs/archive/13-phase12-exact-objective.md` §6.10 + §9)
+> `simulate()` accumulates the per-cast sum and returns it as `total`/`totalEarly`/`robust` — now one
+> and the same number. Each cast is credited `dmg × min(1, (nextCut − start)/duration)`: the
+> **boundary credit** (§8), one rule at every **cut**: the fight end, an intermission start (the cast
+> **cannot land**) and an **AoE phase start** (the cast lands, but you would **cancel** it for Arcane
+> Explosion — a policy cut, §9). ⛔ **A burn edge is not a cut** — you would not cancel there; it is a
+> *value* boundary. Standing gate, no sim: `node tools/self-consistency.mjs` reads `0.00e+0` over 3000
+> scorings.
+>
+> ⛔ **This banner used to say the opposite, and the warning it carried still applies to the EVIDENCE
+> below.** Until 07-27 `simulate()` computed the sum in its walk and then **ranked on a continuous rate
+> integral instead**, differing by a **median 0.2114 % of score** (max 1.4263 %). ⇒ **any rule below
+> resting on a model margin under ~0.5 % was decided by a number that was not single-valued, and the
+> boundary-credit landing then moved plans on top of that** (`plan-sweep` 11/16 cases,
+> `tools/blast-radius.mjs` 102/285 cells = 35.8 %). The rules' *mechanisms* stand; their thin model
+> margins are due a re-check, and none has had one yet.
+
+The **sim's primary job is to FALSIFY THE SEARCH**: with an exact objective, ranking two plans is
+arithmetic and cannot be wrong, so a sim preferring a plan the tool did not emit means **the search
+missed it** — and each such disagreement is a *pattern to generalize into a rule*, which is how this
+file grows. Secondarily the sim **anchors the physics** (~0.4 % absolute agreement), **covers genuine
+blind spots** (mana, AoE weighting) and **builds user trust** via the in-page benchmark. The sim
+evidence cited under each rule is that calibration, not a routine per-line referee. When a clean
+cast-count and a sim number disagree with **no blind spot in play**, audit the sim *setup* before
+either — the press-fire offset of PHASE12 §6.7 is the newest cautionary tale. Update this file when a
+rule is added, refined, or overturned.
 
 **Read every rule below as a *method*, not a law.** There is exactly one thing to maximize — the
 **effective ABs cast** (`docs/MECHANICS.md §4`: each cast scored by its multiplier vs a plain AB,
@@ -19,7 +69,20 @@ the planner **generalisable** to future gear/haste/trinkets rather than tuned to
 
 ## 1. The scoring law: effective ABs cast
 
-`effectiveABs = ∫ [castDamage(t)/plainAB] / interval(t) dt`. A cast's *damage* is (for Arcane Blast)
+`effectiveABs = Σ_casts [castDamage_i / plainAB] × credit_i`, over the casts the plan actually makes.
+⛔ **This line used to read `= ∫ [castDamage(t)/plainAB] / interval(t) dt`** — the rate integral. That
+form is kept in MECHANICS §4 **for the derivation**, but it is retired as the *evaluation*: it is the
+continuum limit (the expectation over a uniformly random cast phase) while a given plan's phase is
+determined, and the two differ by a **median 0.2114 % of score** against ranking margins of ~0.005–0.07 %
+(PHASE12 §6.10). Ranking is a **sum over casts**, and `simulate()` has computed exactly that since 07-27.
+
+`credit_i = min(1, (nextCut − start_i)/duration_i)` is the **boundary credit** (PHASE12 §9, user ruling
+07-27): full value for a cast the plan keeps, the fitting fraction for one that straddles a **cut** —
+the fight end, an intermission start (**cannot land**) or an **AoE phase start** (lands, but you
+**cancel** it to spam Arcane Explosion). ⛔ A **burn** edge is **not** a cut: the cast lands and you
+would not cancel it. Three boundaries, two cuts, two different reasons — §9. See §8 for what it replaced.
+
+A cast's *damage* is (for Arcane Blast)
 independent of AB stacks — only cast **time** and mana scale with stacks. Haste enters only through
 `interval` (how many casts fit); a damage/spellpower buff raises what each cast is worth. A damage/SP
 buff earns its multiplier against the base-damage **flux** flowing through its window, and flux is
@@ -64,8 +127,9 @@ casts**, so it should sit on the fastest part of the window.
   every AB gap ≥ 8s. **★ Because the model opens cold, EVERY sim compared to it must open cold too — never
   prepull (`genapl _prestack:0`). A prepull's fixed −2.3s time is haste-blind and makes a sim haste sweep
   non-monotone (TOOLING ★★★, PHASE6 §4.7).** The first 3 casts run at their true lengths and are scored **discretely** — each cast's
-  damage lands around its **completion** (jitter-smoothed ±½ GCD so no knife-edge enters the score); the
-  cast-rate integral covers everything else. Haste placement-independence is preserved *exactly* (verified
+  damage lands around its **completion**; since PHASE12 §6.10 EVERY cast is scored that way, ramp or
+  steady, by the per-cast sum. (The ±½ GCD jitter smoothing and "the integral covers everything else"
+  describe the RETIRED integral, which now feeds only the `integral` diagnostic.) Haste placement-independence is preserved *exactly* (verified
   0.0000% pre-vs-post-Lust, h0–200): haste shortens the ramp but never changes its cast count.
 - **Press-snap during ramps (sim-log-verified).** A press landing mid-ramp-cast fires at that cast's real
   END — the "/cast Buff /cast AB" macro can only land on a boundary, and during a ramp the boundaries are
@@ -139,12 +203,36 @@ casts**, so it should sit on the fastest part of the window.
 - **Sim-setup caveat (a trap, not a model gap).** In a *fixed-duration* sim, a haste buff jammed against
   the fight **end** (e.g. IV@1:00 in a strict 1:20 fight) shows a spurious ~1.4% loss vs pull, because the
   sim doesn't credit the truncated tail casts proportionally. The **model is right** to score pre≈post as
-  a tie (its kill-window integral *does* credit the tail proportionally); the gap is a sim-setup artifact
+  a tie (it *does* credit the tail proportionally — via the boundary credit since 07-27, via the
+  kill-window integral before that; the conclusion is unchanged and now exact); the gap is a sim-setup artifact
   (cf. the Vashj drop bug, `docs/TOOLING.md`). Verified: extend the fight so the buff is interior → the gap
   vanishes to 0.00%. (AB damage is **stack-independent** — re-confirmed at source, `arcane_blast.go:55/58`
   — so this is pure cast-count, not a stack-damage effect.)
 
 ### 3b. Press-execution physics in the SCORER *(Phase 7 — the cross-val's scorer-gap fixes, each sim-gated by a minimal pair)*
+
+> ## ⚠ SUPERSEDED IN ITS MECHANISM BY PHASE12 §6.11 (2026-07-27) — the LAW is unchanged, the term is
+>
+> The law below — *a buff affects the cast stream only from a cast boundary* — is right and still
+> governs. What changed is that the model no longer has to **price** it as an expected slip: since the
+> objective became the per-cast sum, the walk applies each buff from the boundary it truly fires on and
+> runs it for its **full duration** from there, so a window ending flush against a hard edge loses its
+> clamped tail *exactly* rather than in expectation. `scoreStart = press + ½·interval` survives only in
+> the retired `integral` diagnostic.
+>
+> ⛔ **AND THE WALK USED TO GET THE OTHER END WRONG.** It applied the buff from the boundary but expired
+> it at `press + duration`, so every mid-cast window was SHORT by the slip — one whole cast in the
+> measured case (`tools/window-span.mjs`: Icy Veins at 9.6 covered 15 casts, wowsims 16). Fixed 07-27.
+> A window runs its full length from the fire; **raid externals are the exception and start when
+> CALLED** (item 2 below), because someone else presses them.
+>
+> ★ **AND THE COOLDOWN CHAIN ANCHORS ON THE FIRE TOO (PHASE12 §6.14c, 07-27).** The same "a self-press
+> cannot fire while a cast is in flight" law governs *when the next use becomes legal*: wowsims starts
+> a cooldown when the ability goes off, not when the schedule asked for it. The scorer's per-cooldown
+> chain now records `auraAt` — the boundary the press snapped forward to — in `lastFire` (it was
+> `lastEff`, the press moment), so a chained second use can no longer be scheduled earlier than the sim
+> could ever execute it. Measured: **HELD press failures 18 → 1 of 196.** For a raid external
+> `auraAt === eff`, so the "starts when CALLED" convention falls out of the same line.
 
 Three terms landed together, all expressing one law: **a buff affects the cast STREAM only from a cast
 boundary, and the model must price that wherever it is not phase-averageable.**
@@ -191,19 +279,37 @@ draws from the whole phase distribution. It is **false for the sim**, which can 
 boundary and therefore always realises φ=0 — the *minimum* of that distribution, covering exactly
 `floor(D_eff/Δ_inside)` casts (**THE FLOOR LAW**; PHASE8 §5 established it, §11/§13 pre-registered and
 confirmed it to one rating point with a mechanism proof; TOOLING ★).
-So the model is written for the player and the sim samples one corner of the player's options: **expect the
+So the model was written for the player and the sim samples one corner of the player's options: **expect the
 model to read `frac(D/Δ) × premium` high against any sim A/B of a damage/SP window** (≈+0.036pp measured on
 a clean single-buff marginal) before calling that gap a model bug.
+
+> ⛔ **THAT EXPECTATION IS RETIRED FOR SELF-PRESSED WINDOWS (07-27, PHASE12 §6.11).** The objective is a
+> per-cast sum that reads a **value** buff at the cast's **COMPLETION**, over `(start, end]` — the sim's
+> own rule (`tools/credit-check.mjs` is the gate). A self-press fires on a cast boundary, so the model
+> now covers exactly `floor(D_eff/Δ)` casts too: **there is no `frac(D/Δ)` over-credit left in the
+> number that ranks.** It survives only in the retired `integral` diagnostic.
+> ⚠ **Two things still stand.** (a) The FLOOR LAW itself — the *sim's* behaviour, and the whole reason
+> the completion rule is right — is untouched and is still how you read a sim number (TOOLING ★).
+> (b) The residue applies to windows that open **mid-cast**, i.e. raid externals, where `start` is the
+> call rather than a boundary. Power Infusion is a **damage multiplier** pressed by someone else, so it
+> is exactly that case; Lust/Drums are haste and take the START rule instead.
 
 **The law's general form — ONE WINDOW, TWO SAMPLING RULES (PHASE8 §13; this CORRECTS the earlier "haste
 buffs are exempt" wording).** `D_eff` is the window's true aura duration and `Δ_inside` the cast interval
 **in force inside it**; which way the partial cast at the back edge rounds depends on **when wowsims reads
 the buff**:
 
-| class | read at | casts covered | model's bias |
+| class | read at | casts covered | model's bias — ⛔ **as of 07-27, HISTORICAL** |
 |---|---|---|---|
-| **value** (`+SP`, `×dmg`) | cast **COMPLETION** — a cast in flight at fade is unbuffed | `floor(D_eff / Δ)` | **over**-credits `frac(n)` |
-| **haste** (`×speed`, `+rating`) | cast **START**, then frozen — a cast begun a tick before fade runs fast throughout | `ceil (D_eff / Δ_buffed)` | **under**-credits `ceil(n) − n` |
+| **value** (`+SP`, `×dmg`) | cast **COMPLETION** — a cast in flight at fade is unbuffed | `floor(D_eff / Δ)` | ~~**over**-credits `frac(n)`~~ → **0** for a self-press |
+| **haste** (`×speed`, `+rating`) | cast **START**, then frozen — a cast begun a tick before fade runs fast throughout | `ceil (D_eff / Δ_buffed)` | ~~**under**-credits `ceil(n) − n`~~ → **0** for a self-press |
+
+⛔ **The "model's bias" column is the bias of the RETIRED integral, not of HEAD.** Since PHASE12 §6.11
+the per-cast walk implements **both** rules of this table directly — haste frozen at the cast's start,
+value read at its completion over `(start, end]` — so for a boundary-snapped self-press the model covers
+the same casts wowsims does and the bias is zero. **The two read-at rules themselves are the crown jewel
+here and are unchanged**; what is retired is the idea that the model *approximates* them. Residual bias
+survives only where a window opens mid-cast (raid externals — Power Infusion is the value case).
 
 Both step at the same integer crossings, so step *locations* never distinguish them; the *level* does
 (PHASE8 §13.7: per-sampling-rule fits the sim to 0.0439 pp mean, against 0.1114 raw and 0.0946/0.1373 for
@@ -353,8 +459,12 @@ Stacking position is otherwise free (pull-stack ≡ interior-stack to 0.0000, §
   buff window (Zerk@45 on a 60s fight, draws 50–70) is CLIPPED on short draws while an early one never
   is. Re-run at T=80 var10 where the @45 slot can't clip: sim = **+0.3%** = the model's fixed-kill
   number exactly (+0.2 casts / ~63; SE ≈ 0.008%, noise ruled out). So model = fixed-kill effect;
-  sim-var10 adds a real "late windows carry kill-variance risk" premium the model prices only inside
-  its half-cast kill window BY DESIGN (§8 — hedging a wobbly kill is the player's live call). When
+  sim-var10 adds a real "late windows carry kill-variance risk" premium the model does **not** price
+  BY DESIGN — a broad kill hedge is the player's live call (§8). ⛔ This line used to say the model
+  prices it "inside its half-cast kill window"; that window is **retired** (PHASE12 §9). The model's
+  only boundary hedge is now the **one-sided credit on the straddling cast itself**, which is narrower
+  still (one cast duration, not ±0.5 s of plan-wide taper), so the caveat below is *more* binding, not
+  less. When
   sim-gating, match the question: use fights long enough that no window clips, or expect the late-slot
   penalty on top of the model's number.
 
@@ -433,19 +543,87 @@ on the patched runner.
 
 ## 8. Known-kill planning + Cold Snap
 
-- **Plan for the known kill; react live.** The continuous integral credits the final partial cast by
-  its fraction, so the model accounts for the kill honestly on its own. A broad kill-time-variance
-  hedge only drags the tail off its clean spot for a sub-cast gain you'd never execute, so the kill
-  window is kept to a **half-cast** (smooths the exact-second boundary, doesn't distort placement).
+> ## ★★★★ THE MECHANISM OF THIS SECTION WAS REPLACED 2026-07-27 (PHASE12 §9, user ruling)
+>
+> **What this section used to say, and it is RETIRED:** the model hedged a wobbly kill with a
+> **symmetric half-cast kill window** — `KILL_WINDOW = 0.5`, a linear taper over `[T−0.5, T+0.5]` — and
+> `robust` (the ranking currency) was the rate integral weighted by it. Two things were wrong with it.
+> A cast completing **exactly at T** was paid only **0.5**, because a symmetric window says the boss is
+> already dead half the time; and the window was **only about the kill**, so a cast completing inside an
+> **intermission** was paid in full (measured: starts `89.616`, wall at `90`, completes `91.114`,
+> credited `2242.1` — now `frac 0.2563`, `credited 574.8`).
+>
+> **What replaces it — one uniform rule at every boundary:**
+> ```
+> credit = min(1, (nextCut − castStart) / castDuration)     ← multiplies that cast's own value
+> ```
+> A **cut** is a boundary you would not carry a cast across: the fight end `T`, an **intermission start**
+> (the cast **cannot land**) and an **AoE phase start** (it lands, but you **cancel** it for Arcane
+> Explosion — §9). ⛔ **A BURN edge is not a cut**: the cast lands and you would not cancel it, so it is
+> a *value* question under the snapshot rule. (The AoE edge has flipped **twice** — shipped as a cut,
+> removed on physics, restored on policy — §9 carries the reasoning.) ⚠ An **instant** cast takes credit
+> **1**, not 0.
+>
+> ★ **It is still a hedge — the overrun it assumes still averages half a cast; it is just drawn
+> ONE-SIDED (the fight never ends early) instead of symmetrically.**
+> Algebraically it is a window whose width is the cast's own duration: for a cut `~ U[C, C+W]`,
+> credit `= (C + W − completion)/W`, and `W = duration` gives exactly `(C − start)/duration`. It reads
+> *"the fight lasts at least T, and at most one more cast"* — which is where the retired `0.5` came
+> from in the first place, a **symmetric** window where a one-sided one belongs. Both forms verified to
+> give `0.730702` on the same cast (PHASE12 §9.2). And the second ruling generalized it: an intermission
+> does not land on the same second every pull either, so modelling *it* as exact is the identical
+> mistake.
+>
+> **The reasoning below that SURVIVES unchanged:** plan for the known kill and react live; a *broad*
+> kill-variance hedge (var10-style, ±10 s) is still deliberately not priced, because it drags the tail
+> off its clean spot for a sub-cast gain you would never execute. **What does not survive:** anything
+> keyed to `KILL_WINDOW`, to the symmetric taper, or to "the model integrates the continuum limit" —
+> including the tail-lattice-ripple derivation below, which is now a **historical** result (see its own
+> banner).
+>
+> **Blast radius when it landed:** `plan-sweep` moved **11 of 16** cases; `tools/blast-radius.mjs`
+> **102 of 285** cells (35.8 %); `tools/self-consistency.mjs` still reads `0.00e+0` over 3000 scorings
+> — ⚠ and that zero is *not* proof of a correct lattice: see PHASE13 §2.5, where it held through a
+> whole Arcane Blast being banked inside an intermission. The tool's **structural** check is the one
+> that catches that class, and it reads 0 violations.
+
+- **Plan for the known kill; react live.** The scorer credits the final partial cast by exactly the
+  fraction of it that fits before the kill, so the model accounts for the kill honestly on its own —
+  and a cast that *completes* at `T` is paid in **full** (it used to be paid `0.5`). A broad
+  kill-time-variance hedge is still not priced: it only drags the tail off its clean spot for a
+  sub-cast gain you'd never execute.
   Reacting to an early death (pop cooldowns sooner) is the player's live job. Result: terminal bursts
   align to end **at** the kill (e.g. KT: last IV+Icon at 6:40, ending at 7:00).
+> ### ⛔⛔ EVERYTHING FROM HERE TO THE END OF §8 IS **HISTORICAL** (voided 2026-07-27, PHASE12 §9)
+>
+> The tail-lattice-ripple derivation below rests on **two premises that are both gone**: that the model
+> computes the **continuum limit** of the sim's tapered cast sum (it now sums per cast — §6.10), and
+> that the model's taper and `--var 0.5` share a **width** `W = 2·KW = 1.0 s` (there is no `KILL_WINDOW`
+> in the objective any more — the one-sided credit window is the *cast's own duration*, which varies
+> with haste and stacks). ⇒ **`ripple = 1 − W/c` is no longer the model-vs-sim residual**, and no number
+> below may be quoted as the current instrument's resolution floor. `tools/ripple-audit.mjs` prices the
+> **old** scorer; it is a reader of the archived corpus, not of the shipping model.
+>
+> **What is kept and why:** every measurement, family split, currency retraction and bootstrap here is
+> the append-only record of a closed investigation, and its *lessons* are permanently valid — most of
+> all consequences 4/5 ("the deficit hides half the disagreement"; "three currencies gave three
+> orderings, so do not target a family") and the ★★★ lesson at the very end (*matching an objective's
+> width is not matching the objective — derive the residual*). That lesson now applies to a **new** open
+> question — ~~the model hedges the boundary **analytically** (partial credit) while the sim hedges it
+> **numerically** (averaging over `T ± 0.5`), and reconciling those two smoothings is open~~
+> ✅ **CLOSED 07-27, PHASE13 §2.4:** the sim's window is now DERIVED from the model's
+> (`duration = T + d/2, variation = d/2` ⇒ `U[T, T+d]`, the same one-sided window the credit rule is),
+> measured 7.8x tighter across a cast boundary. Whatever replaces the floor must still be re-derived
+> against the credit rule, not inherited from here.
+
 - **★★★ THE TAIL-LATTICE RIPPLE — the model's integral and the sim's cast count differ by a bounded
   sawtooth, and that difference is a RESOLUTION FLOOR on every cross-val cell** (`tools/lattice-ripple.mjs`).
+  ⚠ *Historical — see the banner immediately above; the derivation's premises no longer hold.*
   The sim's expected damage under a uniform kill in `[T−KW, T+KW]` is *exactly*
-  `Σ_i dmg_i · clamp((T + KW − tc_i)/W, 0, 1)` with `W = 2·KW = 1.0 s`; the model computes its
-  **continuum limit** (the rate integral, `index.html:990`). The taper **width** matches
-  (`KILL_WINDOW = 0.5`, `index.html:717` ≡ xval's `--var 0.5`); the **kind** does not — and sum-vs-integral
-  is the *entire* residual. Its peak-to-peak, derived and verified numerically to 4 decimals, is
+  `Σ_i dmg_i · clamp((T + KW − tc_i)/W, 0, 1)` with `W = 2·KW = 1.0 s`; the model computed its
+  **continuum limit** (the rate integral). The taper **width** matched
+  (the then-current `KILL_WINDOW = 0.5` ≡ xval's `--var 0.5`); the **kind** did not — and sum-vs-integral
+  was the *entire* residual. Its peak-to-peak, derived and verified numerically to 4 decimals, is
   > **`ripple = 1 − W/c` casts**, where `c` = the **tail** cast period.
   **Exactly 0 at the GCD floor** (`c = W = 1.0 s`, where the taper spans a whole cast period and smears the
   lattice perfectly) and growing as the tail slows: `c=1.023 → 0.0225` · `1.219 → 0.1796` ·
@@ -614,7 +792,9 @@ on the patched runner.
 Two buffs fully overlap whenever the shorter's window is **contained** in the longer's — which holds for
 a whole **range** of start-seconds, not one. So many placements are **DPS-equivalent**, and the planner
 must pick the **consistent** member of that equivalence class, not an arbitrary one (a consequence of the
-cast-rate integral: joint value depends on window **intersection**, MECHANICS §5 pt 5). Two concrete
+scoring law §1 — joint value depends on window **intersection**, MECHANICS §5 pt 5; this used to be
+attributed to "the cast-rate integral", which is retired, but the consequence is identical under the
+per-cast sum). Two concrete
 forms, both sim-verified:
 - **Position-independent haste spreads to natural cd ticks.** A haste buff whose window overlaps **no**
   damage/SP buff is position-independent (§3): it banks the same fractional casts wherever it sits, so
@@ -639,6 +819,74 @@ durations the contained region shrinks to the **intersection** of the constraint
 
 - Intermissions score **zero** (boss untargetable — no casts, no damage), but cooldowns and buff
   durations keep ticking, so the planner holds cooldowns to recover across downtime.
+- **★★★ A WALL IS A CUT, AND SO IS AN AoE PHASE START — BUT NOT FOR THE SAME REASON. A BURN EDGE IS
+  NOT A CUT AT ALL.** The boundary credit `min(1, (nextCut − castStart)/castDuration)` applies at an
+  **intermission start** and at an **AoE phase start** exactly as it applies at the fight end, and
+  nowhere else. There are **three** kinds of boundary, **two** of them cuts, for **two different
+  reasons**, and keeping the reasons apart is the whole rule:
+
+  | boundary | does the cast LAND? | would you CANCEL it? | cut? | the reason |
+  |---|---|---|---|---|
+  | **intermission start** | **NO** — the boss is untargetable | n/a | ✅ **cut** | **physics** |
+  | **AoE phase start** | **YES**, for full Arcane Blast damage | **YES** — adds are up, AE is worth several ABs | ✅ **cut** | **policy** |
+  | **burn edge** | yes | **NO** — you keep casting Arcane Blast | ⛔ **not a cut** | a *value* boundary (snapshot rule) |
+
+  **Why the AoE start is a cut, in full (user ruling, 07-27).** The physics first, and it **stands**:
+  the boss is **targetable** throughout an AoE phase, and an Arcane Blast started at **59.000** with the
+  phase opening at **60.000** completes at **60.498** and **LANDS, for full Arcane Blast damage** —
+  1886.4 in the sim, a 25 %-resist roll off a ~2577 typical hit. **This is NOT the intermission case.**
+  What makes it a cut is what the **player** does: adds are up, Arcane Explosion is worth several times
+  an Arcane Blast, so you **CANCEL** the Blast and start spamming AE. A cancelled cast is worth **zero**.
+  And the phase does not arrive on the same second every pull, so with the wall at `W ~ U[W, W+d]` the
+  credit `frac` is exactly `P(the wall has not arrived by completion)`: the branch where it arrives first
+  is the cancelled cast, and the expectation is `frac × dmg`. **Same one-sided window as the kill and
+  the intermission** — one rule, three cuts.
+  ⇒ **Because the cast is CANCELLED and not merely re-priced, the AE lattice starts AT THE WALL**, not at
+  the Blast's natural end. Verified: a Blast starting **58.998** against a wall at **60.000** is credited
+  **66.9 %** = `(60 − 58.998)/1.498`, and the first Arcane Explosion fires at exactly **60.000**.
+  Crediting partially *without* truncating would be the worst of both — **paying less and gaining
+  nothing**.
+  **Contrast, and it is the cleanest way to remember the rule:** at a **burn** edge you keep casting
+  Arcane Blast anyway, so **there is nothing to cancel**.
+
+  ⚠ **THIS QUESTION HAS FLIPPED TWICE IN ONE DAY. Do not read the history as noise — the reasoning is
+  the payload.**
+  1. **Shipped as a cut** (07-27, PHASE12 §9), on the reasoning that *the spell changes there, so the
+     cast in flight does not land as what it started as*.
+  2. **Removed on PHYSICS**, hours later: the sim measurement above showed the Blast **does** land, so
+     that stated reasoning was false and docking the cast looked like paying less than the game pays.
+  3. **Restored on POLICY**, same day, by user ruling — with a **different** argument. The cast landing
+     was never the question; *what the player would do with it* was.
+  ★ **The measurement in step 2 is still TRUE. It is simply not what decides the question.** Physics
+  answers *"does the cast land"*; this boundary is settled by *"would you cancel it"*, and **no sim
+  measurement can answer that**.
+
+  ⚠⚠ **A DELIBERATE, PRICED DIVERGENCE FROM THE SIM — STANDING AND EXPECTED, NOT A BUG.** wowsims' APL
+  has no way to cancel a cast: it will finish the Blast and land it. So `tools/model-audit.mjs` **WILL**
+  report a gap at an AoE wall, and any duel across one carries it. **Do not "fix" it back.** It is the
+  one place the model deliberately models a **player decision the harness cannot express** — see
+  `docs/TOOLING.md` (model-audit) and `docs/PHASE13.md` §1/§2.2.
+
+  ⚠ *(A footnote worth keeping from step 2: the probe that first said the cast did **not** land had a
+  regex requiring `Crit|Hit for` while the log read `Hit (25% Resist) for` — the third parse bug of that
+  family in one session. TOOLING's log-format list carries it. The corrected probe is what produced the
+  1886.4 above.)*
+  ⚠⚠ **And Arcane Explosion is INSTANT (`cast = 0`), so its credit is 1, not 0.** A divide-by-zero
+  guard returning 0 credited **all 27 AE casts of a Kael'thas plan at exactly nothing** — 368,018
+  against 524,173, a **42 % error on the corpus's only AoE fight**. As `dur → 0`,
+  `min(1, (cut − t)/dur) → 1`: an instant cast cannot be *partially* interrupted. **Guard against NaN,
+  not against the answer.** ⚠ Neither defect was reachable by any existing gate — `self-consistency`
+  compares the objective against itself and read `0.00e+0` throughout, and `exact-match` locks in
+  whatever the search emits, so both would have become the goldens.
+  ⛔ **This fixes a real defect:**
+  the old credit test only ever asked `completion <= T`, so a cast completing *inside* an intermission
+  was paid in **FULL**. Measured: starts `89.616`, wall at `90`, completes `91.114` — was `2242.1`, now
+  `frac 0.2563` / `credited 574.8`. The user's ruling behind it: an intermission does not land on the
+  same second every pull, so treating it as exact is the same mistake the symmetric kill window made.
+  ⚠ A **BURN edge is NOT a cut** — the cast lands *and you would not cancel it*, so a burn multiplier is
+  a **value** question governed by the snapshot rule (haste at cast start, value at cast completion).
+  Do not "fix" that by adding burn edges to the cut lattice — and note that the *landing* argument is
+  not what excludes it (the AoE start lands too, and is a cut); **"nothing to cancel"** is.
 - **Strong default (not an invariant):** a buff window that *begins* inside an intermission usually
   wastes its early seconds, so a press whose window would start in the dead zone *usually* belongs at
   the exit or held to the next real burst — and placement/tie-break passes should be downtime-aware (a
@@ -706,7 +954,9 @@ durations the contained region shrinks to the **intersection** of the constraint
   - **Correction 3 — CONFIRMED (07-25): a press inside an AoE phase FIRES LATE, and a window that ends
     flush with the phase wall LOSES ITS LAST CAST. Never place a value window so that `press + dur`
     lands within ~1 cast-interval of the AoE phase end — sit it a second earlier and it is free.**
-    (PHASE7 §5.18; ledger `$SP/aoewin/walk.mjs`, predictive sweep `tools/cell-band.mjs`. This was §5.17's
+    (PHASE7 §5.18; ledger `tools/duel-walk.mjs` — the instrument that produced the 102.6 % closure below,
+    rebuilt and committed 07-27 after its scratchpad original was lost; predictive sweep
+    `tools/cell-band.mjs`. This was §5.17's
     Correction-3 *candidate*; the "model packs against the window END, sim wants it 10 s earlier" framing
     is **RETIRED** — the model's press-time curve is *flat* across the window interior and spikes only at
     the wall.) The mechanism, on `isc+scb / KT / T=420 / sim@195`, model champion P=130 vs rival P=120:
@@ -714,6 +964,13 @@ durations the contained region shrinks to the **intersection** of the constraint
       `phaseStart`, then `+Δ`, Δ = `max(1.0, 1.5/m)`), and the APL stops casting AE at the phase end.
       A window therefore covers `floor(·)` **lattice points**, not seconds — PHASE8's FLOOR LAW on an
       AoE phase.
+      ★ **This is also what the model now does** — the AoE-start cut truncates the straddling Blast and
+      restarts the AE lattice **at the wall** (verified: Blast at 58.998, wall at 60.000 → first AE at
+      exactly 60.000; see the cut block above). ⚠ **But do not read it as agreement on the straddling
+      cast**: the sim has no cancel action, so when a Blast is genuinely in flight across the wall it
+      **finishes and lands** before the AE stream begins, while the model pays that Blast only `frac` and
+      starts AE at the wall regardless. This measurement was taken where that case did not arise. The
+      lattice anchors agree; the **straddling cast is the priced divergence** — PHASE13 §2.2.
     - **A press fires ~0.5–0.6 s after its intent** (cast latency / GCD boundary). Interior slip is
       **self-cancelling** — what the start loses the end regains — but slip at a **hard edge is clamped**.
       Native's AP intent 130 fires **130.58** and runs to **145.58**; the phase ends at **145.00**; the

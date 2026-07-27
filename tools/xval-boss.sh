@@ -1,4 +1,30 @@
 #!/bin/bash
+# ╔══════════════════════════════════════════════════════════════════════════════════════════════╗
+# ║ ⚠ REPRODUCTION-ONLY — THIS IS A GEAR-A INSTRUMENT. DO NOT GATHER A NEW ROUND WITH IT.        ║
+# ╚══════════════════════════════════════════════════════════════════════════════════════════════╝
+#
+# This tool belongs to the pre-2026-07-26 rig and is kept so the ARCHIVED gear-A corpus
+# (`tools/xval-results-archive/gearA-pre-20260726/`) stays reproducible. It is NOT the current
+# instrument, and a table it produces must never be compared to, pooled with, or diffed against a
+# gear-B table (BENCH §1 — B2's sim preference moved ~0.39 pp AND CHANGED SIGN across the two).
+#
+# What replaced it, and why the replacement is not a like-for-like swap:
+#   · CURRENT DRIVER   `tools/xval-bench.mjs` + `tools/xval-bench-campaign.sh` (proven equivalent to
+#                      `tools/xval.mjs`, PHASE10 §8.9), driven by `tools/xval-round-pipeline.sh`.
+#   · ENGINE           the committed `sim/sim.wasm` — no clone, no protoc, no `go build`, and no
+#                      `RUNNER`/`EXPORT_BASE` to resolve out of a session scratchpad that may be gone.
+#   · CHARACTER        `tools/bench/export.json`, committed and frozen — not a private export.
+#   · PROTOCOL         `--var 0.5` by measurement (`tools/var-decision.mjs`), difference-in-differences
+#                      against a never-press control, and every reading STAMPED (`char=`, `emit=`,
+#                      `iter=`, `seeds=`, `wasm=`) so a later reader can classify it without trusting
+#                      a directory name.
+#
+# ⚠ It also predates `sim/planspec.mjs`'s `REQUIRES_EQUIPPED` guard, so it will happily schedule a
+# press of an UNWORN trinket — a bit-identical no-op in wowsims that reads as a small honest number
+# rather than an error (PHASE12 §2.1). That is the single most likely way an old table lies.
+#
+# If you are here to gather data: stop, and use the current driver. If you are here to reproduce an
+# archived table: carry on, and read that directory's README first.
 # Phase-6 boss-shape cross-val: run the haste-adaptation cross-val on a boss preset's REAL fight shape
 # (T, Lust time, intermission/AoE phases from window.BOSS_PRESETS) instead of a class-drawn fight.
 # Tests whether the planner adapts correctly to a specific PHASE STRUCTURE, not just a fight length.

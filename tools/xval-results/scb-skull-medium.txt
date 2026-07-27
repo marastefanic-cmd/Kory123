@@ -1,0 +1,27 @@
+seed=1047  class=medium  fight=2:55 (175s)  Lust@1:46  trinkets=scb+skull  haste=[0,30,60,90,210,240,260,290,400]  emit=fire
+  plan@h0: eff=139.819  {"_prestack":0,"BL":[106],"AP":[125],"Zerk":[4],"Gem":[4,125],"Skull":[0,120],"IV":[0,20],"CS":[20]}
+  plan@h30: eff=142.42  {"_prestack":0,"BL":[106],"AP":[125],"Zerk":[4],"Gem":[4,125],"Skull":[0,120],"IV":[0,20],"CS":[20]}
+  plan@h60: eff=144.917  {"_prestack":0,"BL":[106],"AP":[125],"Zerk":[106],"Gem":[4,125],"Skull":[0,120],"IV":[0,21],"CS":[21]}
+  plan@h90: eff=147.134  {"_prestack":0,"BL":[106],"AP":[125],"Zerk":[20],"Gem":[4,125],"Skull":[0,120],"IV":[0,20],"CS":[20]}
+  plan@h210: eff=157.092  {"_prestack":0,"BL":[106],"AP":[147],"Zerk":[20],"Gem":[4,147],"Skull":[0,147],"IV":[0,147],"CS":[147]}
+  plan@h240: eff=159.234  {"_prestack":0,"BL":[106],"AP":[4],"Zerk":[20],"Gem":[4,146],"Skull":[0,146],"IV":[0,146],"CS":[146]}
+  plan@h260: eff=160.337  {"_prestack":0,"BL":[106],"AP":[125],"Zerk":[146],"Gem":[4,125],"Skull":[0,146],"IV":[0,20],"CS":[20]}
+  plan@h290: eff=162.12  {"_prestack":0,"BL":[106],"AP":[125],"Zerk":[147],"Gem":[4,125],"Skull":[20,147],"IV":[0,40],"CS":[40]}
+  plan@h400: eff=168.778  {"_prestack":0,"BL":[106],"AP":[125],"Zerk":[20],"Gem":[4,125],"Skull":[20,147],"IV":[0,40],"CS":[40]}
+unique plans: 8/9
+
+DPS matrix (row = plan optimized @haste, col = simmed @haste):
+plan\sim        0      30      60      90     210     240     260     290     400
+0          2621.9  2672.0  2713.8  2761.1  2912.3  2948.7  2968.4  2994.9  3106.4
+30         2621.9  2672.0  2713.8  2761.1  2912.3  2948.7  2968.4  2994.9  3106.4
+60         2620.1  2671.3  2713.9  2762.8  2912.1  2948.9  2968.4  2994.9  3106.1
+90         2620.4  2668.9  2714.5  2764.0  2930.9  2963.9  2981.3  3009.4  3106.4
+210        2610.9  2658.2  2706.3  2754.7  2942.8  2989.7  3008.7  3028.0  3123.2
+240        2610.8  2657.7  2706.4  2754.3  2942.4  2989.3  3008.4  3028.1  3123.3
+260        2598.7  2650.5  2698.8  2746.7  2943.0  2984.5  3010.9  3043.6  3154.9
+290        2588.0  2646.9  2687.4  2737.2  2939.4  2979.9  3010.2  3045.4  3173.1
+400        2587.8  2646.6  2687.5  2736.8  2938.0  2979.6  3011.2  3045.7  3173.4
+
+(a) haste-monotonicity [OBSERVED, not interpreted]: worst downward dip = 0.00%
+(b) DIAGONAL DOMINANCE: DEFICIT 0.02%  [@sim60: plan@90 (2714.5) > native@60 (2713.9)]
+XVAL-DONE seed=1047 kit=scb+skull class=medium T=175 lust=106 var=0.5 wj=0 emit=fire artifact=0 iter=6000 simseed=11 mana=100000000 targets=0 char=bench-gearB engine=native:runner-ap180:18102540 tool=xval-bench pool=1 cache=9/81 monoDip=0.00% diag=DEFICIT diagWorst=0.02%

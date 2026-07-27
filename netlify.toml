@@ -42,14 +42,52 @@
     Referrer-Policy = "no-referrer"
     Permissions-Policy = "geolocation=(), camera=(), microphone=(), payment=(), usb=()"
 
-# The sim assets are immutable per deploy and large; let the browser keep them.
 # Correct MIME types matter: WebAssembly.instantiateStreaming REQUIRES
 # application/wasm, and a module import of a .mjs served as text/plain is refused.
+#
+# ⚠ `immutable` WAS SET HERE ON /sim/sim.wasm AND IT WAS WRONG (PHASE11 §1.1 B3, fixed 07-26).
+# The old comment read "the sim assets are immutable per deploy", and that is the false premise:
+# `immutable` is a promise about a URL, not about a deploy, and this URL is STABLE while its bytes
+# are rebuilt IN PLACE (`bash sim/build-wasm.sh`, DEPLOYMENT). So after any rebuild — the planned
+# Drums/PI patch is one, PHASE10 §7 — a returning visitor keeps the YEAR-CACHED old engine, while
+# `wasm_exec.js` (which line 7 says "must match the Go version that built sim.wasm") had no
+# Cache-Control at all and updates immediately. That is a version-skew pair that breaks the sim
+# button for returning users only, i.e. invisibly to whoever ships the rebuild.
+#
+# Fixed by making the whole lazily-loaded sim bundle revalidate as a UNIT. `no-cache` does not mean
+# "do not store" — the browser keeps the 22 MB and sends an If-None-Match, so the steady state is a
+# 304 with no body, and the bytes are re-sent only when they actually changed. That is the correct
+# policy for a mutable artifact at a stable URL, and it costs one conditional request per session on
+# a file that is only fetched when the user presses the sim button at all.
+#
+# ☞ The better fix, and the FREEZE HAS LIFTED (07-27): content-hash the published filenames in the
+# build command so the URL changes with the bytes, and `immutable` becomes true instead of merely
+# asserted (archived PHASE11 §2.4, now docs/PHASE13.md §5). That needs the fetch sites to learn the
+# hashed name, which lives in `index.html` — the file the module split exists to break up, which is
+# why it is sequenced behind it rather than done here.
+# ★ ONE POLICY FOR THE WHOLE LAZY BUNDLE, BY GLOB — not by a list of filenames.
+# The files below form one shared chain (planspec → genapl-core → simreq → benchmark → wasm_exec →
+# sim.wasm), and a bundle whose members expire on different schedules can serve a MISMATCHED SET.
+# Writing that as a per-file list is the copies-drift failure this repo keeps paying for: the first
+# draft of this fix enumerated the files and silently omitted `model-ref-request.json`, which is
+# published (see the build command) and is the reference character every duel is built on. A glob
+# cannot forget a file that a later deploy adds. (PHASE11 §1.1 B3 + §1.3 I8.)
+[[headers]]
+  for = "/sim/*"
+  [headers.values]
+    Cache-Control = "public, no-cache"
+
+[[headers]]
+  for = "/tools/*"
+  [headers.values]
+    Cache-Control = "public, no-cache"
+
+# MIME types, kept separate: Netlify merges every matching block, so these add Content-Type to the
+# files that need it without restating the cache policy above.
 [[headers]]
   for = "/sim/sim.wasm"
   [headers.values]
     Content-Type = "application/wasm"
-    Cache-Control = "public, max-age=31536000, immutable"
 
 [[headers]]
   for = "/sim/*.mjs"

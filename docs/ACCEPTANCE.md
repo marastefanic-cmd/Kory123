@@ -1,14 +1,53 @@
 # ACCEPTANCE — the standing test the model must pass to be called complete
 
-> ## ⚠ READ FIRST — THIS DOCUMENT IS ON THE **GEAR-A** BASELINE AND THE **PRE-07-26 INSTRUMENT**
+> # ⛔⛔ EVERY VERDICT IN THIS FILE IS VOID AS A MEASUREMENT OF THE MODEL (2026-07-27, PHASE12)
 >
-> Every sim number below was gathered on **gear A** (now archived at
+> **Nothing below grades the model that ships today.** Every round in this file was gathered against:
+> 1. a scorer that **disagreed with itself by a median 0.2114 % of score** while the deficits being
+>    graded were 0.004–0.380 % and the ranking margins ~0.005–0.07 % (PHASE12 §6.8/§6.10), and
+> 2. a press transcription that put **7.14 % of presses on a cast the model never chose**, plus
+>    25.2 % on a boundary where a millisecond of lattice drift decided the answer (§6.9), and
+> 3. a discrete walk that gave **every mid-cast press a buff window short by the press slip** (§6.11),
+>    and a per-cooldown chain anchored on the **press** rather than the fire, so a chained second use
+>    could be scheduled earlier than the sim could execute it (**HELD press failures 18 → 1 of 196**
+>    once fixed — PHASE12 §6.14c), and
+> 4. a **symmetric kill taper** (`KILL_WINDOW = 0.5`) that paid a cast completing exactly at `T` only
+>    **half** a cast, and paid a cast completing **inside an intermission in FULL** (PHASE12 §9,
+>    retired by user ruling 07-27 in favour of one boundary credit at every cut — RULES §8).
+>
+> ⇒ **The tables are KEPT — they are the append-only record and the evidence trail — but their
+> verdicts must not be cited as the model's status.** "B2 fails, 142 borrowed-win columns, worst
+> 0.380 %" is a measurement of a broken instrument, not of the search. ACCEPTANCE has **no current
+> reading** until a re-gather.
+>
+> ★ **And the re-gather is now mostly SIM-LESS.** With an exact objective, "is the emitted plan the
+> best plan at this haste?" is arithmetic: `tools/xval-model.mjs` re-optimizes at every haste and
+> cross-scores every plan at every haste with no sim at all. It was built as *"the by-construction
+> half"*, subordinate to the sim; it is now the primary instrument. ⚠ It tests the **search**, not the
+> physics — a sim-less sweep confirms the model against itself, so it cannot catch a wrong constant.
+> That is what the sim is still for (it is how the 334 ms cast-time mismatch was caught).
+>
+> ---
+>
+> ## ~~✅ THE CURRENT READING IS **"Current status (GEAR B, round 1)"** BELOW~~ — measured 2026-07-27, VOID (see above)
+>
+> Round 1 is complete (36/36, one protocol, one engine) and graded: **invariant A passes, B2 fails,
+> ACCEPTANCE NOT PASSING**. Jump to that block. **Everything from the banner below down to it is
+> about GEAR A and is a historical record of a different experiment** — its mechanisms, traps and
+> corrections are permanently valid; its verdicts and figures are not the current ones.
+>
+> ## ⚠ THE ARCHIVED BLOCK BELOW IS ON THE **GEAR-A** BASELINE AND THE **PRE-07-26 INSTRUMENT**
+>
+> Every sim number in it was gathered on **gear A** (now archived at
 > `tools/xval-results-archive/gearA-pre-20260726/`) with the old harness. Two things changed on
 > 2026-07-26, and **each on its own breaks cross-baseline comparison**:
 >
 > 1. **The character changed, gear A → gear B** (`docs/BENCH.md` §1). BENCH's own rule: *do not compare
->    a gear-B number to a gear-A number; any table mixing them is void.* This is not hypothetical —
->    B2's sim preference already moved **~0.39 pp and changed sign** on gear B (BENCH §3e).
+>    a gear-B number to a gear-A number; any table mixing them is void.* ⚠ The evidence this line used
+>    to cite — "B2's sim preference moved ~0.39 pp and changed sign" — was **RETRACTED 07-27**: it does
+>    not reproduce, and under the corpus protocol B2's cell reads `+0.389 %` on gear B against
+>    `+0.360 %` on gear A. **The rule itself is unaffected** — absolute DPS, the trust anchor and every
+>    calibrated constant are still baseline-dependent — but it now rests on that, not on a moved target.
 > 2. **The instrument changed.** `--var` is settled at **0.5 by measurement** (BENCH §3,
 >    `tools/var-decision.mjs` — `--var 0` swings a real effect by a whole cast for a 0.1 s change in the
 >    kill second), and the campaign now runs on **`tools/bench.mjs` + the committed `sim/sim.wasm`**,
@@ -18,8 +57,9 @@
 > valid — and still exactly true *about gear A under the old protocol*. **What does not survive:** any
 > verdict, target figure, deficit size or open-debt number, until it is re-measured.
 >
-> **That re-measurement is `docs/PHASE10.md`.** Do not resume work against a number in this file
-> without checking whether Phase 10 has restated it.
+> **That re-measurement is DONE** — Phase 10 closed 07-27 (`docs/archive/11-phase10-gearb-baseline.md`)
+> and its result is the gear-B block above. Do not resume work against a number in this archived
+> section without checking whether that block has restated it.
 
 
 **The planner is NOT complete until it survives this test fully.** This is not a Phase-6 artifact — it
@@ -27,17 +67,25 @@ is the **completion criterion**, re-run after every fix/upgrade phase. Phase 6 b
 future phases fix what it exposes and re-run it. A documented deficit is a **debt to fix, not a state to
 accept** (user-directed).
 
-> **The current committed round is round 5 (07-25), gathered on the CORRECTED harness gear**
-> (`tools/reference-gear.mjs`, `t5two` + effective `sp: 1450`; PHASE8 §20). It supersedes round 4, which is
-> archived at `tools/xval-results-archive/phase7-round4/`. The repricing moved **124 of 345 plan cells
-> (35.9%)** and every `eff` by −0.4…−1.1% (KT −6.1…−6.8%) — and moved the verdict **not at all**
-> (`deficitTables 34→34`, zero verdict flips, `monoDip` 0.00% in both). **So the B failure is not a
-> reference-gear artifact** (PHASE7 §6).
+> **The current committed round is GEAR-B round 1** (`tools/xval-results/`, `char=bench-gearB`),
+> complete and graded 2026-07-27 — see **"Current status (GEAR B, round 1)"** below. Rounds 2–7 were
+> gear A and are archived intact at `tools/xval-results-archive/gearA-pre-20260726/`.
+>
+> *Historical, about gear A:* round 5 was the first gathered on the **corrected** harness gear
+> (`tools/reference-gear.mjs`, `t5two` + effective `sp: 1450`; PHASE8 §20). The repricing moved
+> **124 of 345 plan cells (35.9%)** and every `eff` by −0.4…−1.1% (KT −6.1…−6.8%) — and moved the
+> verdict **not at all** (`deficitTables 34→34`, zero verdict flips, `monoDip` 0.00% in both). **So the
+> B failure was not a reference-gear artifact** (PHASE7 §6). That finding is what makes the gear
+> A→B re-measurement a genuine open question rather than a foregone repeat.
 
 Read `docs/DIARY.md` for history and `docs/TOOLING.md` for the sim methodology (esp. the ★★★
 never-prepull rule and the ★ mana trap). **Every harness cfg's gear comes from `tools/reference-gear.mjs`
-— spread it, never re-type it** (TOOLING "THE REFERENCE GEAR"). The run that first built and executed this test is archived at
-`docs/archive/07-phase6-xval-run.md` (cited across the docs as *PHASE6 §x*).
+— spread it, never re-type it** (TOOLING "THE REFERENCE GEAR").
+
+> **Citation convention for the closed phases.** *PHASE6 §x* → `docs/archive/07-phase6-xval-run.md`
+> (the run that first built and executed this test) · *PHASE7 §x* → `docs/archive/08-phase7-xval-fixes.md`
+> · *PHASE8 §x* → `docs/archive/09-phase8-b2.md`. Section numbers are unchanged by the archiving, so
+> every existing citation still resolves; `docs/archive/README.md` is the index.
 
 ---
 
@@ -93,18 +141,36 @@ The model **passes** when, across all six trinket kits × the five fight-length 
    KT counts with its AoE measured (genapl `_aoe`). There is no accepted tolerance band: the loop
    terminates by exhausting explanations, not by declaring a floor.
 
-## How to run it
+## How to run it *(rewritten 07-27 — the rig-based commands it used to give are RETIRED)*
 ```
-# fixed rig (rebuild per fresh session — TOOLING "Building the runner" + "RUNNER PROVENANCE"):
-#   runner-ap180 + a gear export (user data, never committed)
-bash tools/xval-campaign.sh                    # 6 kits × 5 fight-length classes, 2-concurrent, ITER=6000
-bash tools/xval-boss.sh                         # Vashj / Al'ar / KT × representative kits
-node tools/xval-collect.mjs tools/xval-results  # → the CLEAN/DEFICIT ledger, with deficit-cell localization
+# GATHER — 36 tables, from the repo alone. No clone, no protoc, no go build, no RUNNER/EXPORT_BASE.
+setsid nohup bash tools/xval-watchdog.sh all > /tmp/watchdog.log 2>&1 < /dev/null &   # survives the shell
+#   …or drive it directly:
+bash tools/xval-bench-campaign.sh               # WHAT=class|boss · JOBS · ITER · SKIP_EXISTING=1 to resume
+RUNNER=/path/to/runner-ap180 bash tools/xval-bench-campaign.sh   # optional: ~6× on the SIM half only
+
+# GRADE — refuses to run anything downstream of a failed provenance audit ("36 tables or no verdict")
+OUT=/tmp/grade bash tools/xval-grade.sh         # 0 clean · 1 graded-and-failing · 2 could-not-grade
+node tools/xval-band.mjs /tmp/grade/targets.json   # is a target real at ≥3 seeds? (PHASE10 §5)
+
+bash tools/xval-status.sh                       # liveness: tables, cache, shard progress, sims/min
 ```
+> ⚠ **The old commands — `bash tools/xval-campaign.sh` / `xval-kit.sh` / `xval-boss.sh` → `tools/xval.mjs`
+> — need a native rig (`RUNNER` + `EXPORT_BASE`) that no longer has to exist.** They are kept, not
+> deleted, because they are the only way to reproduce an **archived gear-A** round; do not reach for
+> them to gather a new one. The current driver is `tools/xval-bench.mjs`, which runs the committed
+> `sim/sim.wasm` and takes `RUNNER=` only as a speed option (TOOLING; PHASE12 §2.1b).
+
 Locked protocol (do NOT deviate — each cost a real bug once; PHASE6 §1, PHASE7 §5): **cold open
-(`_prestack:0`, never prepull) · ∞ mana (`--mana 100000000`) · `var 0.5` — the MODEL-MATCHED kill window
-(the scorer's `robust` is exactly expected damage under a uniform kill in T±0.5s; var10's ±10s hedging
-premium and var0's whole-cast parity are both off-question — TOOLING) · wall-jitter on boss tables
+(`_prestack:0`, never prepull) · ∞ mana (`--mana 100000000`) · `var 0.5` — ⛔ **this used to be justified
+as "the MODEL-MATCHED kill window" (the scorer's `robust` being expected damage under a uniform kill in
+T±0.5s). That justification DIED 07-27** when the kill taper was retired (PHASE12 §9): the model is now
+deterministic at `T` and credits a straddling cast its fitting fraction, so there is no model window
+left to match. **The value stays 0.5 on its own evidence** — `tools/var-decision.mjs` / BENCH §3, which
+never depended on the model — and var10's ±10s hedging premium and var0's whole-cast parity are still
+both off-question (TOOLING). ⚠ Model and sim now smooth the same discontinuity by **different means**,
+analytic partial credit vs numerical averaging; reconciling them is OPEN (PHASE12 §9.4) and a re-gather
+must state which it is measuring · wall-jitter on boss tables
 (`WJITTER=2`: cells averaged over δ∈{−2..+2}s wall shifts with post-wall presses tracking — fixed-wall
 cast parity is measurement structure no phase-averaged model can rank) · AoE phases VALUED (genapl
 `_aoe` → Arcane Explosion + `--targets N`; the KT caveat is closed) · paired seed 11 (CRN) · the AP-180
@@ -114,19 +180,50 @@ snapshot the old round into `tools/xval-results-archive/<phase>/` first (append-
 `docs/archive/`) — history stays first-class, never just git archaeology. The collector output is
 the authoritative row-by-row ledger.
 
-### The instruments (all committed; the sim rig itself is scratchpad-ephemeral — TOOLING)
-- **`tools/xval.mjs`** — the cross-val instrument. `node tools/xval.mjs <seed>`. Env: `KIT=a,b` (explicit
+### The instruments
+> **Everything below is committed, and since 07-26 so is the engine** (`sim/sim.wasm`) — the old
+> parenthetical "the sim rig itself is scratchpad-ephemeral" no longer applies to the gathering path.
+> What *is* still ephemeral is the optional **native** runner, rebuilt in ~4 min per TOOLING.
+>
+> ⚠ **The `xval.mjs` generation below is the RETIRED, rig-based path** (see "How to run it"). The
+> current chain is `xval-bench-campaign.sh` → `xval-bench.mjs` → `xval-grade.sh`
+> (`stamp-audit` → `verify` → `collect` → `ripple-audit` → `persist`) → `xval-band.mjs`. The
+> descriptions of `xval-stamp-audit` / `xval-verify` / `xval-collect` / `xval-persist` /
+> `diagnose-deficit` / `genapl` below are **current** — those tools are shared by both generations and
+> `xval-grade.sh` is exactly the order they must run in. Only the three shell wrappers and `xval.mjs`
+> itself are superseded.
+
+- **`tools/xval-bench.mjs`** — ★ **the current cross-val instrument.** `node tools/xval-bench.mjs <seed>`,
+  same env surface as `xval.mjs` below (`KIT` · `TCLASS` · `HASTES` · `BOSS` · `ITER`), same seeded fight
+  draw — so a cell reproduces the gear-A corpus's *fight* while measuring the current baseline. Runs
+  `sim/sim.wasm` by default; `RUNNER=` swaps in the native binary (asserted equal to the printed
+  decimal by `tests/sim-duel.mjs`). Content-addressed plan and DPS caches in `.xval-cache/` (gitignored,
+  keyed on the engine and wasm bytes — which is why `index.html` and `tools/xval-bench.mjs` are both
+  **frozen for the duration of a round**: PHASE12 §1.1e).
+- **`tools/xval-bench-campaign.sh`** / **`tools/xval-watchdog.sh`** / **`tools/xval-checkpoint.sh`** —
+  the round driver (30 class + 6 boss cells, `SKIP_EXISTING=1` resume), the singleton keep-alive that
+  relaunches a died campaign, and the loop that commits+pushes completed tables mid-round.
+- **`tools/xval-grade.sh`** — the grading chain in the one order that is safe, with honest exit codes;
+  it **refuses** to run anything downstream of a nonzero provenance audit, which is what makes
+  "36 tables or no verdict" mechanical instead of a rule someone must remember.
+- **`tools/xval-band.mjs`** — PHASE10 §5's ≥3-seed rule: a target column is only *real* if it survives
+  independent seeds. Validates its own config (seed spacing vs iteration count, kit equipping, wall
+  jitter) **before** it looks at data.
+
+- **`tools/xval.mjs`** *(retired — rig-based)* — the original cross-val instrument. `node tools/xval.mjs <seed>`. Env: `KIT=a,b` (explicit
   kit; else seed-drawn) · `TCLASS=short|medium|medlong|long|xl` · `HASTES=…` · `BOSS="Lady Vashj"|…`
   (load a preset's real T/Lust/segments instead of a class-drawn fight) · `ITER` · `SCRATCH`. Forces cold
   open (`_prestack:0`) and ∞ mana. Prints the N×N matrix + an `XVAL-DONE … monoDip diag diagWorst` line.
 - **`tools/xval-haste-sets.json`** — the committed per-kit breakpoint-straddle haste sets (source of
   truth for granularity; read by `xval-kit.sh`).
-- **`tools/xval-kit.sh`** — one kit across all five fight-classes. `bash tools/xval-kit.sh mqg,skull`.
-  Tees matrices to `$XVDIR/<kit>-<class>.txt`; seeds deterministically (`1000 + cksum(kit)%9000 + classIdx`).
-- **`tools/xval-campaign.sh`** / **`tools/xval-boss.sh`** — all six kits (2-concurrent, `ITER=6000`;
+- **`tools/xval-kit.sh`** *(retired — rig-based)* — one kit across all five fight-classes. `bash tools/xval-kit.sh mqg,skull`.
+  Tees matrices to `$XVDIR/<kit>-<class>.txt`; seeds deterministically (`1000 + cksum(kit)%9000 + classIdx`)
+  — **`xval-bench-campaign.sh` reuses both seed formulas verbatim**, which is what makes the gear-B round
+  a re-measurement of the same holdout sample rather than a different experiment.
+- **`tools/xval-campaign.sh`** / **`tools/xval-boss.sh`** *(retired — rig-based)* — all six kits (2-concurrent, `ITER=6000`;
   `KITS=…` overridable) / the boss-shape tables (Vashj + Al'ar + KT × representative kits, with
   `--targets N` on AoE phases).
-- **★ The three wrappers above + `xval-rerun.sh` carried the false-pass class ONE LEVEL UP** (fixed
+- **★ The three retired wrappers above + `xval-rerun.sh` carried the false-pass class ONE LEVEL UP** (fixed
   07-25, each demonstrated on the pre-fix file rather than argued). None consulted the exit status of
   the `node xval.mjs` it launched, none consulted the `python3` haste-set lookup, and each printed its
   completion banner unconditionally — so HEAD's `xval-kit.sh bogus1` printed five `XVAL-FAIL` lines and
@@ -157,6 +254,30 @@ the authoritative row-by-row ledger.
   `totalCols === 0 ⇒ PASS` branch. **Lesson: an instrument that can report PASS on no data is not an
   instrument.** The bug never bit in practice only because the documented command above passes the
   directory that happens to equal the default.
+- **`tools/xval-stamp-audit.mjs`** — **the round's PROVENANCE gate: is this one round, under one
+  protocol, over the right cells?** Run it *before* `xval-verify`. Everything it checks was already a
+  written rule with **no instrument behind it** — the round-5 certification paragraph below did all of
+  it **by hand, once**, and `tools/xval-results/README.md`'s "*that stamp, not the directory name, is
+  what tells the two baselines apart*" was read by nothing at all. It asserts: the expected cell set
+  (derived from the campaign's own job-list formula, so changing the kit list makes it disagree loudly
+  rather than grade a different round); **one protocol** — `var/emit/iter/simseed/mana/char/wasm/tool/
+  pool` identical across every table, which is how a mid-round `index.html` edit or a stray gear-A
+  table would actually show; `char=bench-gearB` and `artifact=0` on every table; `wj` and `targets`
+  matching the cell's shape (class vs boss, AoE vs not); each table's haste grid **equal to the
+  committed set for its kit** (an empty `HASTES` substitutes the coarse `[0,100,200,300,400]` default
+  and would report a verdict about adaptation for a kit whose breakpoints were never sampled);
+  `_prestack:0` on every plan row (the ★★★ never-prepull rule); and no NUL/NaN/undefined. Exit `0`
+  clean · `1` graded and failing · `2` could not grade — **a partial directory is exit 2**, which is
+  the one judgement the README says no tool could make for you, made possible by deriving the cell set.
+  Controlled in both directions before being believed: a **positive** control on the five complete
+  `mqg+skull` cells (exit 0), and **eleven** negatives each required to name the right thing — mutated
+  `wasm=`, `char=bench-gearA`, a `_prestack:1` row, the coarse default grid, `wj=2` on a class table, a
+  deleted table, injected NULs, a stripped `XVAL-DONE`, and the **whole archived gear-A round**
+  (36 correctly-named tables ⇒ exit 1, refused as a different baseline). ⚠ That last control is also
+  what caught a bug in the tool itself: `_intermissions`/`_aoe` are arrays of **pairs**, so the first
+  finiteness check reported every boss plan row as non-finite — 96 fictional violations. Fixed by
+  flattening, and two further controls (`[null]` flat, `[[10,null]]` nested) prove the loosened check
+  still fires. **It says nothing about the model** — that is the three tools below.
 - **`tools/xval-verify.mjs`** — the deterministic invariant **recompute** (restart-proof, unlike an LLM
   adversary): re-derives monoDip and diagonal dominance from every matrix and cross-checks each file's
   reported `diagWorst`. Run it before believing any ledger. **It now ends in a verdict with an exit
@@ -228,7 +349,193 @@ the authoritative row-by-row ledger.
   nothing" as a real negative verdict. Now exit **2**, per the shared contract (0 = graded clean · 1 =
   graded and failing · 2 = could not grade).
 
-## Current status (2026-07-25, **round 5** — the corrected reference gear) — NOT PASSING (B)
+> ## ★★★★ READ BEFORE USING ANY NUMBER BELOW — THE OBJECTIVE IS NOT SINGLE-VALUED (07-27)
+>
+> `robust`, which decides every ranking in this document, differs from the model's **own** per-cast sum
+> of the same fight by a **median 0.2114 % of score** (p90 0.5646 %, max 1.4263 %) — measured over 2755
+> plan-scorings with **no sim involved** (PHASE12 §6.8). **Every deficit in this round is 0.004–0.380 %,
+> and the ranking margins are ~0.005–0.07 %.**
+>
+> ⇒ **The whole B2 ledger sits inside the model's disagreement with itself.** The 142 columns are a
+> real measurement of *something*, but they cannot presently be attributed to a scorer defect, a search
+> defect, or measurement structure, because the arbiter is not single-valued at that scale. Compounding
+> it: every press in the corpus fires **1.0–1.5 s later in the sim than the plan asks** (§6.7), an
+> unmeasured and plan-dependent transcription error.
+>
+> **This does not void the round** — invariant A, the protocol stamp, the persistence structure and the
+> band all stand as measurements. It voids the *attribution*. Re-run the ledger once the objective is
+> exact and the press timing is fixed; expect the columns to move.
+>
+> ## ⛔ UPDATE, LATER THE SAME DAY — THE OBJECTIVE **IS** SINGLE-VALUED NOW, AND THAT MAKES IT WORSE
+>
+> `robust` **is** the per-cast sum since 07-27 evening (PHASE12 §6.10; gate `tools/self-consistency.mjs`
+> = `0.00e+0`), and on top of that the **kill taper was retired** for one boundary credit at every cut
+> (§9, user ruling — RULES §8). So the caveat above is no longer a warning about an ambiguous arbiter:
+> **the arbiter CHANGED.** Measured blast radius of the credit rule alone: `plan-sweep` **11 of 16**
+> cases moved plans, `tools/blast-radius.mjs` **102 of 285** cells (35.8 %). ⇒ Every plan this round
+> graded is one the current engine may no longer emit, so **the round is void as a model verdict, not
+> merely unattributable.** The tables below stay as the append-only record; read the top-of-file
+> banner for what that means.
+
+## Current status (GEAR B, round 1, 2026-07-27) — **NOT PASSING (B2)**
+
+> **★ READ THIS AS A FIRST MEASUREMENT, NOT AS A DELTA.** BENCH §1 forbids comparing a gear-B number
+> to a gear-A number, so nothing below is a change *from* the archived rounds 2–7 — every figure is
+> the first reading of that quantity on this character, under one settled protocol. Where a gear-A
+> figure happens to be nearby, that is an observation about the *shape* of the corpus, never
+> arithmetic across baselines. The gear-A block that follows is kept as a historical record of a
+> different experiment.
+
+**The protocol stamp** — asserted identical on all 36 tables by `tools/xval-stamp-audit.mjs`
+(exit 0: *"ONE PROTOCOL, 36/36 EXPECTED CELLS, cold open on every plan row"*):
+
+```
+var=0.5 · emit=fire · iter=6000 · simseed=11 · mana=100000000 · char=bench-gearB
+engine=native:runner-ap180:18102540 · tool=xval-bench · pool=1 · artifact=0 · _prestack:0 everywhere
+```
+
+| | round 1, gear B |
+|---|---|
+| **Invariant A** (`monoDip`) | **PASSES** — `0.0000%` on **all 36** tables, recomputed cell-by-cell by `xval-verify.mjs`, cross-checked against every table's own stamp ("all match") |
+| **Invariant B1** (model, by construction) | **HOLDS** — cross-haste pooling on (`pool=1`), so no borrowed plan can out-*score* a native |
+| **Invariant B2** (sim) | **FAILS** — **142** borrowed-win columns of **345**, across **33/36** tables. Bar = zero |
+| worst column | **0.380 %** — `isc-mqg medlong T=229 @sim40 ← plan@70` |
+| width distribution | median **0.035 %** · mean **0.066 %** · p90 **0.159 %** · max **0.380 %** · ≥0.3 %: **3** · ≥0.2 %: **11** · ≥0.1 %: **31** |
+| borrowed-win rate | **41.2 %** of columns · **37.3 %** are ≤0.02 % (at/below CRN resolution) · **78.2 %** are ≤0.10 % |
+| the diagonal's own margin | median **0.006 %** — native's *wins* are near-ties too |
+| borrower distance | byte-identical **0** · adjacent haste **85 (59.9 %)** · ≤2 grid steps **122 (85.9 %)** · ≥5 steps **4** |
+| **CLEAN tables** | **3/36** — ⚠ and see the two caveats below; the honest figure is **1** |
+| **plateau breadth** *(new this round)* | median **90 %** of a table's haste points carry a distinct plan · **3/36** are ≤50 % · ⚠ **2 of those 3 are CLEAN** (`isc+scb medlong` 2/10, `isc+scb xl` 3/10) |
+| **persistence work list** | **3 columns** of 57 kit-columns (`xval-persist.mjs`, exit 1) |
+
+**⚠ Two things make the `CLEAN 3/36` number worth less than it looks, and both are published rather
+than folded in.** (a) Two of the three are the low-plateau tables above — where the tool emits 2–3
+distinct plans across 10 haste points, the cross-val is barely testing adaptation, so that CLEAN is
+partly vacuous. (b) The third, `scb+mqg medlong`, is CLEAN **only as an engine-rounding artefact**:
+its borrowed and native plans both sim to `2914.8`, and the wasm's doubles put the borrowed one a
+hair above while the native runner's did not (PHASE10 §8.27). ⇒ **one non-vacuous, non-artefact CLEAN
+table in 36.**
+
+### The persistence work list — the only shape a genuine haste-adaptation defect can take
+
+```
+isc-mqg   h40  <- rival plan@h70   wins 5/5   margins% [0.070, 0.008, 0.380, 0.094, 0.071]
+isc-skull h20  <- rival plan@h100  wins 4/5   margins% [0.075, 0.004, 0.059, 0.008]
+isc-skull h130 <- rival plan@h230  wins 4/5   margins% [0.213, 0.018, 0.013, 0.007]
+```
+
+★★ **This list reproduces the gear-A list cell for cell on its first two entries** — same kit, same
+haste column, same rival haste, same win count. That is **not** a BENCH §1 violation: no number
+crosses the baselines. What is compared is *which cells a threshold-free structural test names*, and
+that test has no magnitude filter, no borrower-distance filter and nothing tuned after seeing the
+data. ⇒ **the low-haste basin debt is a property of the MODEL, not of the reference gear** — it
+survived a character change intact (PHASE10 §8.22). The third entry, `isc-skull h130`, is new and is
+reported without promotion: gear A's *discredited post-hoc sieve* once named it and the unrigged test
+correctly rejected it there.
+
+### The band grading (PHASE10 §5's ≥3-seed rule, scope pre-registered in §8.18)
+
+Scope = **every column `xval-persist` names ∪ every column `ripple-audit` puts over-floor or
+INDETERMINATE** — applied mechanically by `tools/xval-band-scope.mjs` so it could not be re-chosen
+after the widths were visible. **44 of 142 columns are in scope** (36 class, 8 boss); the other
+**98 are published as NOT GRADED**, with loci, and are **not** thereby passed — the bar is zero
+borrowed-win columns and "not resolvable by this instrument at this taper width" is a statement about
+the ruler, not a verdict.
+
+**Class stratum — COMPLETE, 36/36 scoped columns at 5 spaced seeds (`11 · 100011 · 200011 · 300011 ·
+400011`, ITER=6000, var 0.5):** **30 REAL · 6 not resolvable.**
+
+★ **The persistence work list survives almost entirely: 12 of its 13 rows grade REAL.** The single
+exception is the one this document already predicted — `isc+skull medlong @20`, whose round-1 margin
+is **0.004 %**, i.e. the "at least one length at 0.007 %, well inside the ±0.02 % ruler" caveat under
+the B-banner analysis. Every row carrying measurable magnitude survives:
+
+| column | round-1 % | band mean % | sd | seeds | verdict |
+|---|---|---|---|---|---|
+| `isc+mqg` medlong T=229 @40 ← plan@70 | 0.380 | **+0.368** | 0.020 | 5/5 | **REAL** ← B2's own cell |
+| `isc+skull` long T=293 @130 ← plan@185 | 0.289 | **+0.283** | 0.014 | 5/5 | **REAL** |
+| `isc+mqg` short T=108 @40 ← plan@20 | 0.133 | **+0.197** | 0.047 | 5/5 | **REAL** |
+| `isc+skull` medium T=177 @20 ← plan@70 | 0.075 | **+0.059** | 0.046 | 4/5 | **REAL** |
+| `isc+mqg` xl T=451 @40 ← plan@70 | 0.071 | **+0.072** | 0.009 | 5/5 | **REAL** |
+| `isc+mqg` long T=281 @40 ← plan@70 | 0.070 | **+0.068** | 0.023 | 5/5 | **REAL** |
+| `isc+skull` medlong T=251 @20 ← plan@70 | 0.004 | −0.078 | 0.054 | 1/5 | *not resolvable* |
+
+**The 6 not-resolvable columns are exactly the low-magnitude tail** — round-1 widths 0.004–0.034 %,
+every one at or inside the CRN resolution the corpus reports (37.3 % of all columns are ≤0.02 %).
+⚠ **"Not resolvable" is NOT "passed."** It is a statement about this instrument at this iteration
+count; the bar remains zero borrowed-win columns. Loci, so the list is resumable:
+`scb+skull xl @90` · `scb+skull medlong @240` · `mqg+skull xl @295` · `scb+mqg short @75` ·
+`scb+skull long @90` · `isc+skull medlong @20`.
+
+**Boss stratum — 8 scoped columns, graded in descending round-1 `pct` per §8.18's drop order, and
+NOT COMPLETE.** A boss column is a 5-variant wall-jitter mean, so at 5 seeds it is 50 sims; the four
+Kael'thas columns run ≈103 s/sim (6 targets), i.e. ~86 min each. §8.18's escape hatch applies —
+*"band in descending round-1 `pct` and name the dropped columns explicitly, with their loci, so the
+list is resumable rather than merely honest"*:
+
+| boss column | round-1 % | scope | banded? |
+|---|---|---|---|
+| `mqg+skull` KT T=420 @0 ← plan@30 | 0.304 | over-floor | queued |
+| `mqg+skull` KT T=420 @100 ← plan@0 | 0.290 | over-floor | queued |
+| `mqg+skull` KT T=420 @160 ← plan@235 | 0.141 | over-floor | queued |
+| `mqg+skull` Al'ar T=240 @295 ← plan@235 | 0.123 | over-floor | queued |
+| `mqg+skull` Al'ar T=240 @0 ← plan@100 | 0.113 | INDETERMINATE | queued |
+| `mqg+skull` Vashj T=390 @295 | 0.071 | over-floor | queued |
+| `mqg+skull` Vashj T=390 @235 | 0.045 | over-floor | queued |
+| `mqg+skull` KT T=420 @235 | 0.026 | INDETERMINATE | queued |
+
+⚠ **And a boss column could not be graded against a trustworthy ruler this round anyway**: the
+±0.1251 pp boss-cell band was measured at **one** gear-A cell and cannot be re-derived here, because
+the tool that prices boss cells fails its own KT discrimination check (below). Re-run with
+`node tools/xval-band.mjs /tmp/grade/scoped-boss.json` when a box is free.
+
+★ **What the band says overall, and it is not a small thing: the ≥3-seed rule filtered almost
+nothing.** It was pre-registered to catch single-seed artefacts after the gear-A corpus learned that
+wall-jitter variance (0.1427 pp) dwarfs seed variance (0.0058 pp). On this round **30 of 36 graded
+columns survive at 5/5 or 4/5 seeds**, and the 6 that don't are the sub-resolution tail. **The scoped
+deficits are real measurements, not noise** — which is what makes B2 a model debt rather than an
+instrument one.
+
+⚠ **Two honest limits on the band.** (a) `xval-band.mjs` loads `sim/sim.wasm` directly and has no
+`RUNNER` option, so it grades on the **wasm** while the round was gathered on the **native runner** —
+and §8.27 measured that engine offset at up to **0.01 pp** on a derived percentage, which is the size
+of the seed band itself for class cells. It is a *paired* difference measured wholly within one
+engine, so systematic offsets largely cancel; but a column whose survival turns on <0.02 pp should
+not be adjudicated by the band alone. (b) Set 2 of the scope comes from `ripple-audit`, which **fails
+two of its own pre-registered self-checks on this round** (below).
+
+### ⚠⚠ The ripple decomposition is NOT quotable on this round
+
+`tools/ripple-audit.mjs` declines to certify itself in two of the five predictions its own header
+pre-registers: **P5** (median floor must fall with fight length — it inverts at `medlong 0.103 <
+long 0.106`, marginally but with no tolerance declared) and **P3** (the KT family must not be
+explained away — **3/13** over floor against a bar of 7). Its own words are *"this tool is suspect,
+stop here"*. So this round publishes **no** ripple headline, **no** "N % is below the instrument's
+resolution", and **no** family ranking. ⚠ **And its footer stamps `mono=0` for FAILURE while the
+adjacent `vacuous=0` means success** — opposite polarity on one line, which is exactly why PHASE10
+§8.22 recorded a failing self-check as clean. Repairing P3/P5 is inherited work (PHASE10 §8.30).
+
+### What this round does NOT say
+
+Every standing limitation below still applies unchanged, and two are worth restating here because
+they bound this verdict directly: the test is **purely relative** (it detects misallocation *across
+haste*, and is blind by construction to uniform error), and a PASS would mean *"no plan is beaten by
+a plan built for different gear"*, **not** *"every plan is optimal"*. The B-banner analysis at the
+end of this file — the bar is right, the banner is nearly powerless — is the right way to read
+`33/36 tables FAIL`; steer by `xval-persist.mjs`, not by the banner.
+
+**To reproduce:** `OUT=/tmp/grade bash tools/xval-grade.sh`, then
+`node tools/ripple-audit.mjs /tmp/grade/targets.json --json /tmp/grade/ripple.json`,
+`node tools/xval-band-scope.mjs /tmp/grade/targets.json /tmp/grade/ripple.json /tmp/grade/persist.txt /tmp/grade/targets-scoped.json`,
+`node tools/xval-band.mjs /tmp/grade/targets-scoped.json`.
+
+---
+
+## Archived status (2026-07-25, **round 5**, **GEAR A** — the corrected reference gear) — NOT PASSING (B)
+
+> ⚠ **This is a historical record, not the current status** (see the block above and the banner at the
+> top of the file). Its *mechanisms* — the ripple decomposition, the four families, the B-banner
+> analysis — are permanently valid; its *numbers* are gear-A and un-denominated.
 All 36 tables re-gathered on the current engine (cross-haste pooling ON, var0.5, per-wall jitter v2, KT
 AoE valued) **and the corrected harness gear** (`tools/reference-gear.mjs`: `t5two` + effective
 `sp: 1450`), on the **same 36 seeds as rounds 3–4**. Current round in `tools/xval-results/`; earlier
@@ -489,9 +796,14 @@ under-credit to patch (RULES §3). (2) **Both layouts in this cell are floor-fre
 at R=40 ⇒ m=1.2304, steady cast 1.219 s, 0.219 s of slack), so **no ramp physics is in play here at all**
 and the model's 0.006% is *correct*.
 
-**The real mechanism is the tail-lattice ripple** (RULES §8, `tools/lattice-ripple.mjs`). The sim counts
-**integer** casts under the kill taper; the model integrates its **continuum limit**. Same width
-(`KILL_WINDOW = 0.5` ≡ `--var 0.5`), different kind — a sawtooth of `1 − W/c` casts, `0.3164` at this
+**The real mechanism is the tail-lattice ripple** (RULES §8, `tools/lattice-ripple.mjs`).
+⚠ **HISTORICAL as of 07-27** — this diagnosis is stated against the retired scorer, and both its
+premises are gone: the model no longer integrates a continuum limit (it sums per cast, §6.10) and there
+is no `KILL_WINDOW` to share a width with `--var 0.5` (the credit window is the cast's own duration,
+PHASE12 §9). The reading below is the record of what was measured then; do not re-derive a current
+resolution floor from it. — The sim counts
+**integer** casts under the kill taper; the model integrated its **continuum limit**. Same width
+(the then-current `KILL_WINDOW = 0.5` ≡ `--var 0.5`), different kind — a sawtooth of `1 − W/c` casts, `0.3164` at this
 fight's tail rate `c = 1.4629 s`. Evaluating the *sim's own* expected-cast sum on the *model's own* cast
 list settles it with no wowsims run:
 
@@ -530,9 +842,12 @@ near-tie tail — now merged with the criterion question above, since both say t
 is left. **Second repricing (07-25):** the boss half of the over-floor list is down from 9 cells to 3, and
 those 3 are one mechanism — **within-AoE-window placement** (above). So what is left of Phase 7 is *one named
 term at one kit*, plus 15 class cells whose floor is complete and whose top excess is 0.1653 pp. **The ramp-credit patch is CANCELLED** (there was no defect). Re-run this in full after each.
-A performance phase is also open (`docs/PHASE9.md`); by construction it must leave every plan
-byte-identical, so it cannot invalidate a round — but re-run the exact-match suite after each of its
-steps, and if any plan ever *does* move, the round is void.
+Performance work also touches this test. Phase 9 **closed 07-27**
+(`docs/archive/10-phase9-performance.md`); its unfinished reclaim rungs are PHASE11 §3.1's. By
+construction that work must leave every plan byte-identical, so it cannot invalidate a round — but
+re-run the exact-match suite after each of its steps, and if any plan ever *does* move, the round is
+void. ⚠ **And it must not run WHILE a round gathers**: the plan cache keys on `index.html`'s bytes, so
+an edit mid-round assembles the matrix from two different instruments (PHASE12 §1.1e).
 
 ## Known coverage gaps in the test itself (make the test stronger over time)
 - **~~Single-worst-cell reporting hides structure.~~ CLOSED (P7.1 + 07-25).** The collector now publishes
@@ -555,11 +870,18 @@ steps, and if any plan ever *does* move, the round is void.
   deficits live. **Two things follow.** (a) A cell below the floor is **not evidence of a model defect** —
   the round-5 worst non-KT column is now diagnosed as exactly this. (b) **The criterion itself needs
   restating** — plausibly *"deficit below the ripple floor for the table's tail rate"* rather than *"no
-  deficit"*. That is a **user call and is NOT being made unilaterally**; until it is made, read a
+  deficit"*. That is a **user call and is NOT being made unilaterally** — it is carried forward as
+  **PHASE12 §1.3** so it has a home rather than sitting unowned in a gap list; until it is made, read a
   short/low-haste DEFICIT under ~0.1–0.2% as *at the ruler's limit*. This compounds the model-side limit
   already recorded below (58/135 round-5 columns priced ≤0.02% apart — under the model's *own* resolution).
   Widening the taper toward the tail cast period would shrink the floor, but it also **changes the
-  objective** (`KILL_WINDOW` is the half-cast hedge of RULES §8) — do not "fix" the ruler by moving the goal.
+  objective** (`KILL_WINDOW` was the half-cast hedge of RULES §8) — do not "fix" the ruler by moving the goal.
+  ⚠ **HISTORICAL (07-27).** The taper *was* widened to the tail cast period — that is exactly what the
+  boundary credit is, a one-sided window of the cast's **own duration** — but by **user ruling**
+  (PHASE12 §9), as a change of goal, not as a fix to the ruler. So the caution above stands as written
+  and the derivation it protects is void: `1 − W/c` no longer prices anything, and this bullet's
+  numbers are the record of the retired scorer. A resolution floor for the credit rule has **not been
+  derived**, and PHASE12 §1.3's user call is still open.
 - **~~KT AoE simmed as downtime~~ (genapl has no Arcane-Explosion emission) — ~~KT numbers exclude AoE
   damage.~~ CLOSED at task #53.** `genapl` emits Arcane Explosion for every `_aoe` window and the runner gets
   `--targets N` (`tools/xval.mjs:133,161,177,265`); the round-5 KT columns are AoE-**valued**. ⚠ Stale copies
@@ -569,10 +891,14 @@ steps, and if any plan ever *does* move, the round is void.
   consequence 6). A boss column carries 7 walls and is a 5-variant mean; a class column carries 1 and is a
   single run. Never pool a boss and a class cell into one statistic without saying which instrument each came
   from — the 2.8× over-floor enrichment of boss cells was entirely this. Priced now for boss cells
-  (±0.1251), still unpriced for the *interior*-wall contribution at any other boss length or kit.
-- **Ashtongue** (random on-crit proc) is out of the kits — needs a different, stochastic treatment (Phase 7).
+  (±0.1251), still unpriced for the *interior*-wall contribution at any other boss length or kit
+  → **open, PHASE12 §3.7**.
+- **Ashtongue** (random on-crit proc) is out of the kits — needs a different, stochastic treatment.
+  ⚠ *The "(Phase 7)" owner this line used to carry is dated:* Phase 7 closed without doing it
+  (`docs/archive/08`), and it was never re-assigned. → **open, PHASE12 §3.8.**
 - **No exhaustive ground truth above ~h150** for SP-trinket-free kits (the 5s grid can't express the
-  off-grid optimum) — the tool is certified only ≥ the coarse grid there.
+  off-grid optimum) — the tool is certified only ≥ the coarse grid there. *Standing limitation, not a
+  debt: closing it needs a finer brute grid, which is exponential in the kit size.*
 
 ### ★★ What a PASS here does and does NOT prove (user's challenge, 07-25)
 
@@ -599,7 +925,7 @@ and the repricing trap that stops you doing it by subtracting two rounds' tables
 **Consequence for how this doc is used:** this test is the *"are we done yet"* measurement — run once
 per campaign, not per change. It is **not** the per-change gate, and it never was one; using it that way
 is what made the iteration loop slow. The per-change gate is the fast plan-diff instrument
-(`docs/PHASE9.md §5`), and the duel is what sits between them.
+(`docs/archive/10-phase9-performance.md §5`), and the duel is what sits between them.
 
 ### ★★★ What the B BANNER can and cannot tell you (07-25, round 5) — the bar is right, the banner is nearly powerless
 

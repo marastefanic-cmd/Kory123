@@ -19,7 +19,7 @@ Every link is shared with the harness:
 | file | what it is | also used by |
 |---|---|---|
 | `benchmark.mjs` | **THE duel protocol** — variation, mana, iterations, seed, tie band, rating conversions | `tools/plan-duel.mjs`, both tests |
-| `planspec.mjs` | plan → genapl spec: **fire times, floored**, Cold-Snap split, phases | mirrors `tools/xval.mjs`'s `toSpec` |
+| `planspec.mjs` | plan → genapl spec: **fire times, floored**, Cold-Snap split, phases | **imported by** `tools/xval-bench.mjs`, `tools/plan-duel.mjs`, `tools/bench.mjs`; `tools/xval.mjs` still carries a private twin |
 | `../tools/genapl-core.mjs` | the APL builder | `tools/genapl.mjs` CLI → every sim run this project has ever done |
 | `simreq.mjs` | patches `model-ref-request.json` into a `RaidSimRequest` | `tests/sim-duel.mjs` |
 | `model-ref.json` | the gear-agnostic reference character (runner `--export`) | the native runner |
@@ -68,14 +68,24 @@ button prints is a result the terminal would print.
 The planner asks for four numbers and knows nothing else about your character, so the sim runs a
 **fixed synthetic mage** with those numbers injected on top:
 
-- **no gear, no consumes, no raid buffs** — your spell damage / crit / haste rating already *are* the
-  raid-buffed totals, so adding buffs would double-count them
+- **no armour, no consumes, no raid buffs — with two deliberate exceptions** (07-26, PHASE10 §8.7).
+  Your spell damage / crit / haste rating already *are* the raid-buffed totals, so adding buffs would
+  double-count them. But the character now **wears the two on-use trinkets** (Icon 29370 +
+  Serpent-Coil 30720) and has **`raidBuffs.bloodlust` on**, because an on-use only fires while its
+  item is worn and `raidBuffs.bloodlust` is what makes a Lust *castable* — without them those presses
+  were bit-identical no-ops and the button could not see Bloodlust or trinket timing at all
+  (Bloodlust alone: **exactly 0.000 → +165.5 DPS**). The passives ride along in **both** arms and
+  cancel in the only number reported. ⚠ Still unverifiable: a kit naming **Skull or MQG** — wowsims
+  has two trinket slots and the planner offers four on-use trinkets.
 - **standard Arcane raid talents** (`2500052300030150330125--053500031003001`) — Arcane Concentration
   and Arcane Potency are load-bearing for AoE (RULES §9)
 - **spell hit pinned at the 16% cap** (202 rating at 12.615/1%, vs a level-73 target). A **1% miss
   floor is irreducible** in this engine — it cancels between arms
-- **infinite mana** (`1e8`), **cold open** (`_prestack: 0`), **`durationVariation` 0.5s** = the model's
-  kill-window width. Never `--var 0`: it quantizes to integer casts and has faked a result twice
+- **infinite mana** (`1e8`), **cold open** (`_prestack: 0`), and a **kill window DERIVED from the
+  model's own boundary rule** — `encounterFor(T, haste)` gives `duration = T + d/2,
+  variation = d/2` ⇒ `U[T, T+d]`, with `d` the terminal 3-stack Arcane Blast's duration at the
+  character's passive haste (7.8x tighter model/sim tracking than the flat 0.5 it replaced).
+  ⛔ Never `--var 0`: it quantizes to integer casts and has faked a result twice
 - Troll (Berserking is a troll racial)
 
 ⇒ **The absolute DPS is not your DPS and is not meant to be.** Only the paired difference is
@@ -84,9 +94,38 @@ which is what makes a 0.1% difference readable at 10 000 iterations.
 
 ## Known gaps (stated in the UI, not hidden)
 
+- **★★★ AND THE BIGGEST ONE, FOUND 07-26 (`docs/archive/11-phase10-gearb-baseline.md` §8.7): being gear-less means the trinket
+  on-uses and Bloodlust DO NOTHING here.** "No gear, no consumes, no raid buffs" above is stated as a
+  feature, and for *stats* it is one — but an on-use trinket is only castable while its item is
+  **worn**, and wowsims does not complain when it is not: the press is a **bit-identical no-op**.
+  `raid.buffs.bloodlust` is likewise `false` in `model-ref.json`, and that flag does not auto-apply a
+  Lust (BENCH §3b) — it is what makes one *castable*. Measured on the committed
+  `model-ref-request.json`, one press vs never-press, T=120:
+
+  | | Δ DPS | |
+  |---|---|---|
+  | Icy Veins · Arcane Power · Berserking | +49.269 · +39.715 · +16.100 | fire |
+  | **Bloodlust · Icon · Skull · MQG** | **+0.000 each** | ⚠ silent no-ops |
+  | Serpent-Coil "Gem" | **−2.982** | ⚠ *worse* — a GCD spent casting a Mana Emerald, and with no SCB worn it collects none of the +225 SP that is the point of pressing it |
+
+  Consequence, measured directly: two plans differing **only** in where one press goes read
+  **exactly 0.000 DPS apart** here — `Icon@6` vs `Icon@80` (74 s), `Lust@5` vs `Lust@60` (55 s) —
+  where the same pairs read **+0.756 %** and **+1.290 %** once isc+scb are worn and bloodlust is on.
+  So the button returns *"too close to call"* for the two most consequential decisions the planner
+  makes, and it looks like a clean null rather than a failure, because **both arms lose the same
+  presses**: no error, no NaN, plausible DPS, and the sign usually still agrees with the model since
+  IV/AP/Zerk survive and carry the residual.
+  ⚠ **The structural part that has to be designed around, not just fixed:** wowsims has **two**
+  trinket slots and the planner offers **four** on-use trinkets, so a kit naming three or more can
+  never be fully equipped — which must be *reported*, exactly as Drums/PI/Ashtongue are, rather than
+  silently dropped. Going gear-less made every kit equally unverifiable instead of one kit partly so.
+  **Guard already in place:** `tools/bench.mjs` refuses any arm whose spec presses something dead on
+  the chosen character and offers `--kit a,b` to equip a pair onto it.
 - **Drums of Battle and Power Infusion cannot be pressed from an APL — an UPSTREAM fact, not a genapl
   gap.** wowsims only exposes a spell to an APL if it is registered with `SpellFlagAPL`.
-  `registerBloodlustCD` has it (which is why Bloodlust works); `drumsSpellConfig` (35476) and
+  `registerBloodlustCD` has it (so Bloodlust is APL-*addressable* — ⚠ which is a statement about the
+  engine, **not** about this character: see the gap above, where the press is inert because no Lust is
+  castable); `drumsSpellConfig` (35476) and
   `registerExternalConsecutiveCDApproximation` (PI, 10060) do not — they are auto-fired
   `MajorCooldown`s, so the *sim* would choose the timing, which is exactly what a press-timing duel
   must not delegate. ⚠ **The attempt fails silently**: measured 2128.9 DPS with and without the

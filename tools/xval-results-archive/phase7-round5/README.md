@@ -7,7 +7,7 @@
 > landed, so its KT rows and any plan the new seed class reaches are pre-fix. Round 6 corrects all
 > three at once; the point of keeping this one is the table-by-table diff (`tools/xval-round-diff.mjs`).
 > Its successor lives in `tools/xval-results/`; the narrative is in `docs/ACCEPTANCE.md` and
-> `docs/PHASE7.md`.
+> `docs/archive/08-phase7-xval-fixes.md`.
 
 # Cross-validation raw matrices — the CURRENT acceptance round
 

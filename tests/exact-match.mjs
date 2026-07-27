@@ -24,7 +24,7 @@
 //
 // For the every-edit loop use tools/plan-sweep.mjs + tools/plan-diff.mjs instead
 // (bare node, no browser, ~16x faster). This stays the golden gate before a commit,
-// and it is the only one that covers the render path. See docs/PHASE9.md §5.
+// and it is the only one that covers the render path. See docs/archive/10-phase9-performance.md §5.
 //
 // Requires: playwright-core + a Chromium (set CHROMIUM=/path/to/chromium, or rely on
 // the PLAYWRIGHT default). See tests/README.md.
@@ -109,7 +109,7 @@ spec = await first.pg.evaluate(() => {
 const JOBS = Math.max(1, Math.min(+(process.env.JOBS || 0) || Math.max(1, os.cpus().length - 1), spec.cases.length));
 // Round-robin, not contiguous blocks: solve cost grows with the number of presses a fight
 // admits and the presets are T-ordered, so contiguous slices hand one page every long fight
-// and leave the rest idle. See docs/PHASE9.md §5.6.
+// and leave the rest idle. See docs/archive/10-phase9-performance.md §5.6.
 const slices = Array.from({ length: JOBS }, (_, j) => spec.cases.map((_, i) => i).filter((_, k) => k % JOBS === j)).filter(s => s.length);
 
 const results = {};
@@ -173,6 +173,28 @@ for (const c of spec.cases) {
   if (got === want) { pass++; console.log(`PASS  ${c.name}`); continue; }
   fail++;
   console.log(`\nFAIL  ${c.name}`);
+  // ★ THE GOLDEN IS A TIMELINE, SO REPORT THE FAILURE AS A TIMELINE.
+  // The line diff below is exact and stays — it is what proves the record matched or did not. But a
+  // reader's first question is never "which line differs", it is "what moved". So lead with the
+  // per-cooldown press times, which is the thing the test is actually asserting: this input produces
+  // THIS activation schedule. A test whose failure reads as a string mismatch invites the reaction
+  // "just re-record it"; one that reads "Icy Veins 0:06 -> 0:00" invites the right question.
+  const presses = txt => {
+    const m = {};
+    for (const [, t, w] of txt.matchAll(/^\s+(\d+:\d+)\s+(.+?)\s*$/gm)) (m[w] = m[w] || []).push(t);
+    return m;
+  };
+  const pw = presses(want), pg = presses(got);
+  const moved = [...new Set([...Object.keys(pw), ...Object.keys(pg)])]
+    .map(k => ({ k, a: (pw[k] || []).join(', ') || '(absent)', b: (pg[k] || []).join(', ') || '(absent)' }))
+    .filter(x => x.a !== x.b);
+  if (moved.length) {
+    console.log('  timeline changed:');
+    for (const x of moved) console.log(`    ${x.k.padEnd(30)} ${x.a}  ->  ${x.b}`);
+  } else {
+    console.log('  ⚠ the ACTIVATION SCHEDULE is unchanged — only setup/header text differs.');
+  }
+  console.log('  exact diff:');
   const gl = got.split('\n'), wl = want.split('\n'), n = Math.max(gl.length, wl.length);
   for (let i = 0; i < n; i++) {
     if (gl[i] === wl[i]) continue;

@@ -1,5 +1,28 @@
 # BENCH.md — the gear-agnostic, RNG-minimal sim bench
 
+> ## ⚠ SUPERSEDED IN PART, 2026-07-26 — read `docs/GEAR-AGNOSTIC.md` first
+>
+> The user has decided that **all** simming and verification moves to a character defined solely by
+> the planner's declared inputs (SP, crit, passive haste, hit-at-cap, the T5-2pc checkbox). The frozen
+> gear-B export this file is built around — `tools/bench/export.json` — is therefore **retired as the
+> baseline**. ~~the in-flight round is the last one gathered on it~~ ⇒ **that round is COMPLETE
+> (36/36, graded 07-27, archived as `docs/archive/11-phase10-gearb-baseline.md`) and it WAS the last
+> one gathered on it.** Every gather from here is gear-agnostic; the enforcement that makes that a
+> guarantee rather than an intention is `docs/PHASE13.md` §4. ⚠ Round 1 was subsequently **voided as a
+> model verdict** by PHASE 12 (it graded the pre-exact-objective scorer) — it stands as the
+> append-only record and as the *control* for the stat-distribution transfer test.
+>
+> **What still stands here, unchanged and load-bearing:** §0's statement of the problem, §2.1's
+> difference-in-differences, §3's RNG/`--var 0.5` work, §5's "a fresh container must produce a number
+> from the repo alone", and §6's tool. **What is superseded:** §1's framing of gear B as *the* baseline,
+> and §1.1's argument that committing an export is the fix (the fix is not needing one).
+>
+> ★ §0.1 called the passive-ride-along problem correctly and answered it with §2.1's cancellation.
+> `GEAR-AGNOSTIC.md` §3 shows that cancellation is **not sufficient** — it fixes the DPS scale but not
+> the fact that the model plans for the declared stats while the sim runs those stats *plus* whatever
+> the worn trinkets add (up to **+4.00 %**, spread **3.25 %** across the six kits, measured). The new
+> answer removes the passives instead of cancelling them downstream.
+
 **Status: IMPLEMENTED, 2026-07-26 — `tools/bench.mjs`. Supersedes the ad-hoc "reference export"
 convention.** The design below stood for hours with nothing reading `tools/bench/export.json`; it now
 has a tool, and that tool shares its backbone with the website's verification button (§6).
@@ -134,6 +157,39 @@ worse, because the source it removed was the one doing the smoothing.
 bench, plan-duel, the tests). `tests/sim-request.mjs` asserts it is neither 0 nor silently changed.
 `--var 0` remains available for a deliberate count-preserving read; anything it says must be confirmed
 at 0.5.
+
+### ⛔ 07-27 — THE VALUE STANDS, ITS *OTHER* JUSTIFICATION DIED (PHASE12 §9)
+
+Elsewhere in the project `--var 0.5` was also justified as mirroring **"the model's kill-window
+WIDTH"** — the scorer's `KILL_WINDOW = 0.5` symmetric taper (TOOLING's "MODEL-MATCHED read";
+ACCEPTANCE's protocol line; PHASE11 §1.2 F9 flagged the pairing as "aligned by prose only"). **That
+constant is retired from the objective.** The model is now deterministic at `T` and credits a
+straddling cast `min(1, (T − start)/duration)` — a **one-sided** window whose width is the *cast's own
+duration* — under one uniform rule at every cut: the fight end, an **intermission start** (the cast
+cannot land) and an **AoE phase start** (it lands, but the player cancels it for Arcane Explosion).
+⛔ Not a burn edge — there you would not cancel. ⚠ The AoE edge flipped **twice** on 07-27 (shipped as a
+cut → removed on a correct physics measurement → **restored on policy**, where it stands); RULES §9.
+⚠⚠ And it buys a **standing, expected divergence from the sim**: wowsims cannot cancel a cast, so it
+lands the Blast the model docks. Any bench across an AoE wall carries that offset — TOOLING's
+standing-divergence block.
+There is no model window left to mirror.
+
+**Nothing in §3 above depended on that.** The experiment measured the SIM: the staircase, the
+terminal-cast-rate swing, the seed band. `variation: 0.5` keeps its value on **its own** evidence, and
+it is now correctly described as the **sim's** smoothing — how the sim avoids parking its fight end on
+a discontinuity that the model, since 07-27, no longer has.
+
+✅ **CLOSED 2026-07-27 — PHASE13 §2.4.** The sim's kill window is now **derived from the model's**:
+the credit rule is algebraically the one-sided window `U[T, T+d]` (`d` = the terminal 3-stack Blast's
+own duration), and `encounterFor(T, haste)` hands the sim exactly that as `duration = T + d/2,
+variation = d/2`. Measured 7.8x tighter model/sim tracking across a cast boundary (ratio spread
+0.0208 % vs 0.1627 %, `tools/window-match.mjs`). `BENCH.variation: 0.5` survives only as a legacy
+default and as the value every archived corpus was gathered at. ⛔ Still never `--var 0`.
+
+⚠ The paragraph above this one still describes `variation: 0.5` as the protocol. Read it as the
+**legacy** default: it is what `--var 0.5` reproduces and what every archived corpus was gathered at,
+and the derived window is what an unqualified run now uses. The old `1 − W/c` tail-lattice floor
+priced the *retired* scorer and still does not transfer (RULES §8's historical banner).
 
 ## 3b. ★ What the export actually contributes — fixed vs varied vs ignored
 
@@ -278,7 +334,58 @@ go build -tags with_db -o wowsimcli    ./cmd/wowsimcli
 ⚠ Re-run this anchor **before any gating session**, and **again whenever the export is re-taken** —
 it is the cheapest possible check that the rig is the one the numbers were gathered on.
 
-## 3e. ⚠ FIRST GEAR-B OBSERVATION — the B2 sim preference has moved ~0.39 pp. Do NOT carry gear-A targets over.
+## 3e. ~~⚠ FIRST GEAR-B OBSERVATION — the B2 sim preference has moved ~0.39 pp~~ → **RETRACTED 2026-07-27**
+
+> ### ⛔ THE HEADLINE BELOW DOES NOT REPRODUCE. B2 SURVIVES THE BASELINE CHANGE ESSENTIALLY INTACT.
+>
+> §3e's own text listed three confounds and separated none of them; separating them was carried as
+> BENCH's "named next steps (a)/(b)". Doing that work **falsified the observation it was built on.**
+> Re-measured on gear B with the runner (`runner-ap180`, isc+mqg equipped, `--haste 70`, T=229,
+> §3e's own three spaced seeds), one knob at a time:
+>
+> | condition | seed 1 | seed 500 000 | seed 1 000 000 | mean %(h40−h70) |
+> |---|---|---|---|---|
+> | **§3e's published conditions verbatim** — `var 0`, `mana 500k`, `iter 20k` | +0.655 % | +0.663 % | +0.681 % | **+0.666 %** |
+> | vary `--var` only → `0.5` | +0.411 % | +0.385 % | +0.370 % | **+0.389 %** |
+> | vary `--mana` only → infinite | +0.655 % | +0.663 % | +0.681 % | **+0.666 %** |
+> | **the corpus protocol** — `var 0.5`, infinite mana | +0.411 % | +0.385 % | +0.370 % | **+0.389 %** |
+>
+> **Three results, in order of importance.**
+>
+> 1. **Under the corpus protocol, gear B reads `+0.389 %` — gear A read `+0.360 %`.** The sim's
+>    preference between the two B2 layouts did **not** move meaningfully and did **not** change sign.
+>    Independently confirmed on the *other* engine: `tools/plan-walk.mjs` (committed wasm, 3 seeds,
+>    6 000 iters) reads **+0.375 % ± 0.81 DPS** on the same pair.
+> 2. **The model half is `−0.037 %`** (`plan-walk`, current engine + `tools/reference-gear.mjs`) —
+>    matching the **−0.04 %** archive/09 §20 recorded once `t5two` was corrected. So the model-vs-sim
+>    **ranking error on gear B is ≈ 0.43 pp**, and archive/09 §13.8's ≈0.445 pp target **stands**.
+>    ⇒ *That is BENCH's named next step (a), discharged: both halves are now like-for-like.*
+> 3. **`--mana 500000` is inert at this cell** — the two `var 0` rows are identical to the digit. So
+>    of §3e's two protocol suspects only `--var` matters (0.28 pp), which is TOOLING ★★ restated:
+>    **never measure a marginal at `--var 0`.** *Named next step (b) is likewise settled — the campaign
+>    runs at `var 0.5`, infinite mana, and every table stamps it.*
+>
+> **What produced `−0.028 %`, then?** Not recovered, and the honest answer is that it is unknown. The
+> only knob that flips the sign is **whether MQG is equipped**: re-running §3e's exact conditions on
+> `tools/bench/export.json` **as shipped** (isc + Serpent-Coil — *no MQG*) gives **−0.236 %**, because
+> `MQG@9` and `MQG@202` are then bit-identical no-ops and the two layouts collapse toward each other.
+> That is exactly PHASE12 §2.1's unworn-trinket failure mode, discovered the same day §3e was written,
+> and it is the leading hypothesis — but the absolute DPS does not match either reconstruction
+> (§3e: 2499/2500; measured: 2689/2672 worn, 2645/2651 unworn), so **it is a hypothesis, not a
+> diagnosis.** `sim/planspec.mjs`'s `REQUIRES_EQUIPPED` now refuses an unworn press outright.
+>
+> **What still stands from §3e, and it is the part that matters:** the *policy*. Absolute DPS, the
+> trust anchor, and every calibrated constant are baseline-dependent, so **§1's rule is unchanged —
+> do not compare a gear-B number to a gear-A number.** What is withdrawn is only §3e's use as
+> *evidence* that the baseline change moved a model-vs-sim finding. On this one cell, it did not.
+>
+> ⚠ **One cell is not the corpus.** This says B2's representative cell survived; it says nothing about
+> the other 35 tables. The round decides those.
+
+**The original observation follows, unedited, because its reasoning about confounds was right and is
+what led to the correction.**
+
+### 3e (as published, 2026-07-26) — ⚠ FIRST GEAR-B OBSERVATION — the B2 sim preference has moved ~0.39 pp. Do NOT carry gear-A targets over.
 
 The two B2 layouts (PHASE8 §2/§13.8) re-simmed **unchanged** on gear B, bench conditions
 (`--dur 229 --var 0 --iter 20000 --mana 500000`, seeds separated per §3c.3):
@@ -307,10 +414,14 @@ candidate causes are confounded here and this run separates none of them:
 persistence columns. All of them are gear-A facts. **PHASE8 §26.2's successor question must be
 re-posed on gear B before it is worked**, not inherited.
 
-**Named next steps, in order:** (a) derive gear B's effective SP/crit/haste and compute the model's
-`%(h40−h70)` so the model-vs-sim gap is a like-for-like number again; (b) decide whether the
-campaign runs at `--mana 500000/--var 0` (bench) or the old settings, and state it once; (c) only
-then re-pose the successor question.
+**Named next steps, in order:** ~~(a) derive gear B's effective SP/crit/haste and compute the model's
+`%(h40−h70)` so the model-vs-sim gap is a like-for-like number again;~~ **DONE 07-27 — §4c derived the
+stats (unchanged from gear A), and the retraction banner above has both halves: model −0.037 %, sim
++0.389 %.** ~~(b) decide whether the campaign runs at `--mana 500000/--var 0` (bench) or the old
+settings, and state it once;~~ **DONE — `var 0.5`, infinite mana, stamped on every table
+(`xval-bench-campaign.sh`); `--mana` measured inert at this cell.** (c) re-pose the successor question
+— **still open, and now correctly posed against a target of ≈0.43 pp rather than a moved one**;
+archive/09 §26.2, carried in PHASE12.
 
 ## 4. What this does NOT fix
 
@@ -340,7 +451,12 @@ Both binaries are built from the same `wowsims/tbc-new` @ `ade9f39` tree (+ our 
 runner). ⚠ Re-run this whenever the tree, the patches, or the export change — it is the check that
 would catch a stale binary, the failure that once cost this project a day of gates.
 
-## 4c. Gear-B model parameters — SP is UNCHANGED; crit/haste still owed (07-26)
+## 4c. Gear-B model parameters — SP UNCHANGED, crit CONFIRMED; haste still owed (07-26)
+
+> ⚠ This header used to say crit was "still owed" while the body below already recorded it, and
+> PHASE10 §8.14 has since **discharged** it outright: `critPct: 38` confirmed on a 6× tighter band
+> (observed AB crit 41.88 % ± 0.85 %, which is the Potency-*inclusive* rate against a Potency-*exclusive*
+> parameter — predicted 41.0 %, measured 1.0 SE away). Only haste remains owed.
 
 `reference-gear.mjs` holds gear A's `{sp: 1450, critPct: 38, t5two: true}`. Re-derived on gear B by
 the PHASE8 §7 method (`SIMLOG=1` combat log, read the `SP:` field per AB cast):
@@ -388,6 +504,47 @@ spells, threat text — not Arcane Blast outcomes. Filtering to actual AB damage
 ⇒ **consistent with `critPct: 38`**, the gear-A value already in `reference-gear.mjs`. At n = 84 the
 band is wide (±5.3 % at 1 SE cannot separate 38 from 34 or 42), so this is *"no evidence of change"*,
 **not** *"proven identical"* — the same one-iteration logging limit as the SP uptime above.
+
+#### ✅ THE BAND IS NOW TIGHTENED ~6× — and it CONFIRMS `critPct: 38` (07-26, PHASE10 §8.14)
+
+The caveat above asked for exactly this and named the method: wowsims logs only the **first**
+iteration, so more iterations cannot help — it needs **repeated single-iteration runs at widely
+separated seeds**, aggregated. Done, 20 runs at seeds spaced 5×10⁵ apart (BENCH §3c.3), counting only
+Arcane Blast damage lines (`{SpellID: 30451} … Hit for` / `Crit for`):
+
+| | n | observed AB crit |
+|---|---|---|
+| §4c above (one iteration) | 84 | 38.1 % ± 5.3 % |
+| **this measurement** | **3362** | **41.88 % ± 0.85 %** (95 % CI 40.21–43.55) |
+
+★ **And that CONFIRMS 38, it does not contradict it — because the two numbers are different
+quantities.** `cfg.critPct` is the character's **base** spell crit: `aoeCritAmp` is written as
+`effCrit(n) = crit + qCC(n)·potencyCrit`, i.e. it *adds* Arcane Potency on top of `crit`. The log
+measures the **observed** AB crit, which already includes Potency. With the model's own constants —
+`arcaneConcentration 5/5` ⇒ `qCC(1) = 0.10`, `arcanePotency 3/3` ⇒ `+30 %` (confirmed against the log,
+which shows `SpellCritPercent: 30.000` gained on `{SpellID: 12536}`, and against
+`sim/mage/talents.go:120` `float64(mage.Talents.ArcanePotency) * 10`) — the prediction is
+
+```
+observed = base + qCC(1)·potencyCrit = 38 + 0.10 × 30 = 41.0 %      vs measured 41.88 ± 0.85  (1.0 SE)
+```
+
+⇒ `reference-gear.mjs`'s `critPct: 38` **stands, now on a band 6× tighter**, and §4c's "treat it as an
+assumption until then" is discharged.
+
+⚠ **The trap this walked into first, recorded because §4c walked into its mirror image.** My first
+read compared the measured **41.88 %** against `critPct: 38` and printed *"INCONSISTENT at 95 %"* —
+which is the same apples-to-oranges error as §4c's withdrawn 56.4 %, in the opposite direction: that
+one swept lines that were not Arcane Blast, this one compared a Potency-inclusive rate to a
+Potency-exclusive parameter. **Before calling a measurement inconsistent with a constant, check that
+the constant means what the measurement measured.**
+
+☞ **One observation banked, and it is NOT a defect.** `simulateRaw`'s single-target
+`critFactor = 1 + crit·(CRIT_MULT−1)` uses the **base** crit, so a single-target Arcane Blast is
+scored ~3 pp of crit light. It cancels exactly: `plain` (the normalizer) is built from the same
+`critPct`, so `eff` is invariant, and a uniform factor on every cast cannot change which plan wins.
+AoE is where it would matter, and there `aoeCritAmp` handles Potency explicitly as a ratio against
+the single-target Potency baseline. Nothing to fix; worth knowing before anyone "corrects" the 38.
 
 ★ **Provisional conclusion: gear B is model-equivalent to gear A.** All three parameters —
 base SP **1386.2 identical**, haste **0 exactly**, crit **38.1 % ± 5.3 %** — are unchanged within

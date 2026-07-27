@@ -1,6 +1,6 @@
 > **ARCHIVE — Phase 7, acceptance ROUND 3** (snapshot taken 07-25, before round 4 replaced it).
 > Round 3 is the state after §5.11 legibility canonicalization landed. Its successor lives in
-> `tools/xval-results/`; the round-by-round narrative is in `docs/ACCEPTANCE.md` and `docs/PHASE7.md`.
+> `tools/xval-results/`; the round-by-round narrative is in `docs/ACCEPTANCE.md` and `docs/archive/08-phase7-xval-fixes.md`.
 
 # Phase-6 cross-validation raw matrices
 

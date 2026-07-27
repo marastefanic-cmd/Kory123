@@ -4,3 +4,14 @@ dist/
 # Test deps / local artifacts
 tests/node_modules/
 node_modules/
+
+# Content-addressed sim/plan cache (tools/xval-bench.mjs) — derivable, never a record
+.xval-cache/
+
+# Transient per-cell stderr from the cross-val campaign (removed on success)
+tools/xval-results/*.err
+tools/xval-results/*.part
+tools/xval-results/*.lock
+
+# Transient boss pre-pass logs (solve/shard phases; not a record)
+tools/xval-results/*.pre.log

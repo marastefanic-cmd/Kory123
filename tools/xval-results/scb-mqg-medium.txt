@@ -1,0 +1,23 @@
+seed=5793  class=medium  fight=2:54 (174s)  Lust@2:01  trinkets=scb+mqg  haste=[0,20,75,105,235,265,400]  emit=fire
+  plan@h0: eff=139.009  {"_prestack":0,"BL":[121],"AP":[125],"Zerk":[141],"Gem":[4,125],"MQG":[0],"IV":[0,120],"CS":[120]}
+  plan@h20: eff=140.495  {"_prestack":0,"BL":[121],"AP":[4],"Zerk":[125],"Gem":[4,124],"MQG":[0],"IV":[0,20],"CS":[20]}
+  plan@h75: eff=145.117  {"_prestack":0,"BL":[121],"AP":[4],"Zerk":[125],"Gem":[4,124],"MQG":[0],"IV":[0,20],"CS":[20]}
+  plan@h105: eff=147.223  {"_prestack":0,"BL":[121],"AP":[4],"Zerk":[20],"Gem":[4,124],"MQG":[0],"IV":[0,20],"CS":[20]}
+  plan@h235: eff=157.738  {"_prestack":0,"BL":[121],"AP":[125],"Zerk":[4],"Gem":[4,125],"MQG":[0],"IV":[20,41],"CS":[41]}
+  plan@h265: eff=159.662  {"_prestack":0,"BL":[121],"AP":[125],"Zerk":[0],"Gem":[4,125],"MQG":[0],"IV":[20,41],"CS":[41]}
+  plan@h400: eff=167.706  {"_prestack":0,"BL":[121],"AP":[140],"Zerk":[60],"Gem":[20,140],"MQG":[40],"IV":[0,20],"CS":[20]}
+unique plans: 6/7
+
+DPS matrix (row = plan optimized @haste, col = simmed @haste):
+plan\sim        0      20      75     105     235     265     400
+0          2572.8  2598.1  2663.2  2699.4  2831.6  2858.0  2983.6
+20         2559.6  2597.3  2679.3  2717.6  2884.5  2918.9  3046.2
+75         2559.6  2597.3  2679.3  2717.6  2884.5  2918.9  3046.2
+105        2559.2  2595.9  2678.1  2715.1  2902.8  2931.7  3046.1
+235        2529.5  2573.4  2659.8  2702.7  2912.5  2950.4  3089.1
+265        2530.4  2572.5  2658.6  2703.6  2913.2  2951.7  3091.0
+400        2530.0  2568.3  2652.5  2698.9  2908.2  2952.0  3102.7
+
+(a) haste-monotonicity [OBSERVED, not interpreted]: worst downward dip = 0.00%
+(b) DIAGONAL DOMINANCE: DEFICIT 0.09%  [@sim105: plan@20 (2717.6) > native@105 (2715.1)]
+XVAL-DONE seed=5793 kit=scb+mqg class=medium T=174 lust=121 var=0.5 wj=0 emit=fire artifact=0 iter=6000 simseed=11 mana=100000000 targets=0 char=bench-gearB engine=native:runner-ap180:18102540 tool=xval-bench pool=1 cache=7/49 monoDip=0.00% diag=DEFICIT diagWorst=0.09%

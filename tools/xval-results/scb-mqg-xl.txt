@@ -1,0 +1,23 @@
+seed=5796  class=xl  fight=6:46 (406s)  Lust@0:32  trinkets=scb+mqg  haste=[0,20,75,105,235,265,400]  emit=fire
+  plan@h0: eff=312.195  {"_prestack":0,"BL":[32],"AP":[4,185,365],"Zerk":[0,185,381],"Gem":[4,185,365],"MQG":[0,360],"IV":[0,180,360,381],"CS":[381]}
+  plan@h20: eff=315.974  {"_prestack":0,"BL":[32],"AP":[4,185,365],"Zerk":[0,185,381],"Gem":[4,185,365],"MQG":[0,360],"IV":[0,180,360,381],"CS":[381]}
+  plan@h75: eff=326.335  {"_prestack":0,"BL":[32],"AP":[4,200,380],"Zerk":[25,205,395],"Gem":[4,200,380],"MQG":[0,375],"IV":[0,180,200,380],"CS":[200]}
+  plan@h105: eff=331.447  {"_prestack":0,"BL":[32],"AP":[4,200,380],"Zerk":[25,205,395],"Gem":[4,200,380],"MQG":[0,375],"IV":[0,180,200,380],"CS":[200]}
+  plan@h235: eff=354.868  {"_prestack":0,"BL":[32],"AP":[4,185,372],"Zerk":[1,185,372],"Gem":[4,185,372],"MQG":[12,363],"IV":[0,180,201,383],"CS":[201]}
+  plan@h265: eff=359.467  {"_prestack":0,"BL":[32],"AP":[4,185,372],"Zerk":[1,185,372],"Gem":[4,185,372],"MQG":[12,363],"IV":[0,180,201,383],"CS":[201]}
+  plan@h400: eff=380.463  {"_prestack":0,"BL":[32],"AP":[4,185,386],"Zerk":[86,356],"Gem":[4,185,386],"MQG":[66,366],"IV":[1,181,203,386],"CS":[203]}
+unique plans: 4/7
+
+DPS matrix (row = plan optimized @haste, col = simmed @haste):
+plan\sim        0      20      75     105     235     265     400
+0          2471.8  2501.2  2587.7  2624.7  2799.2  2830.0  2974.8
+20         2471.8  2501.2  2587.7  2624.7  2799.2  2830.0  2974.8
+75         2470.4  2501.4  2586.9  2625.8  2801.8  2833.5  2988.4
+105        2470.4  2501.4  2586.9  2625.8  2801.8  2833.5  2988.4
+235        2454.3  2488.5  2574.4  2621.1  2813.7  2846.7  3005.3
+265        2454.3  2488.5  2574.4  2621.1  2813.7  2846.7  3005.3
+400        2439.7  2467.3  2549.2  2594.2  2787.6  2836.3  3020.1
+
+(a) haste-monotonicity [OBSERVED, not interpreted]: worst downward dip = 0.00%
+(b) DIAGONAL DOMINANCE: DEFICIT 0.03%  [@sim75: plan@0 (2587.7) > native@75 (2586.9)]
+XVAL-DONE seed=5796 kit=scb+mqg class=xl T=406 lust=32 var=0.5 wj=0 emit=fire artifact=0 iter=6000 simseed=11 mana=100000000 targets=0 char=bench-gearB engine=native:runner-ap180:18102540 tool=xval-bench pool=1 cache=21/49 monoDip=0.00% diag=DEFICIT diagWorst=0.03%

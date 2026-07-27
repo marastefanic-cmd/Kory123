@@ -4,7 +4,7 @@
 > what round 5 corrects (`tools/reference-gear.mjs`, PHASE8 §20); the two rounds are therefore the
 > before/after pair for that correction, and the point of keeping this one is to be able to diff them
 > table-by-table. Its successor lives in `tools/xval-results/`; the round-by-round narrative is in
-> `docs/ACCEPTANCE.md` and `docs/PHASE7.md`.
+> `docs/ACCEPTANCE.md` and `docs/archive/08-phase7-xval-fixes.md`.
 
 # Cross-validation raw matrices — the CURRENT acceptance round
 

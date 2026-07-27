@@ -22,7 +22,7 @@ import { fileURLToPath } from 'url';
 import { execFileSync } from 'child_process';
 import { build } from '../tools/genapl-core.mjs';
 import { buildRequest } from '../sim/simreq.mjs';
-import { BENCH, runnerFlags } from '../sim/benchmark.mjs';
+import { BENCH, runnerFlags, killWindow, encounterFor } from '../sim/benchmark.mjs';
 
 const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const EXPORT = path.join(REPO, 'sim/model-ref.json');
@@ -36,15 +36,6 @@ const CHARACTERS = [
     template: path.join(REPO, 'tools/bench/export-request.json') },
 ];
 const RUNNER = process.env.RUNNER;
-
-if (!RUNNER || !fs.existsSync(RUNNER)) {
-  console.log('SKIPPED — set RUNNER=/path/to/runner to check the page request against the native rig.');
-  console.log('          (build one with: bash sim/build-wasm.sh is wasm-only; see docs/TOOLING.md "Building the runner")');
-  process.exit(0);
-}
-
-const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'simreq-'));
-const template = JSON.parse(fs.readFileSync(TEMPLATE_PATH, 'utf8'));
 let failures = 0;
 
 // Fields a duel legitimately varies per run, plus request-identity noise the runner stamps.
@@ -90,8 +81,41 @@ const diff = (a, b, p = '', out = []) => {
 // it is load-bearing, so a future edit has to argue with a sentence rather than a bare number.
 {
   const bad = [];
-  if (BENCH.variation === 0) bad.push('variation must NOT be 0 — `--var 0` makes every iteration the same fight, turning DPS into a staircase of whole casts. It has faked a result twice (TOOLING ★★).');
-  if (BENCH.variation !== 0.5) bad.push(`variation is ${BENCH.variation}, expected 0.5 — the model's kill-window WIDTH (RULES §8), and the value tools/var-decision.mjs measured as correct (var 0 swings a real effect by a whole cast for a 0.1s change in the kill second, and is not even quieter). Changing it re-prices every duel; do it deliberately, re-run that experiment, and update BENCH §3 + TOOLING.`);
+  // ⛔ A DUPLICATE KEY IN `BENCH` IS SILENT AND THIS FILE IS THE ONLY PLACE THAT CAN SEE IT.
+  // `hasteRatingPerPct` was declared twice — once in the GAME.AB mirror block (15.77) and again in
+  // the wowsims rating conversions (15.76923). JS keeps the LAST one, so the first was dead from the
+  // moment it was written, and `killWindow()` silently used wowsims' divisor where the comment said
+  // the model's. It happened not to matter (0.005 %, 6 µs of window at 400 rating) — which is exactly
+  // why nothing caught it. Parse the source: the evaluated object cannot report a key it never kept.
+  {
+    const src = fs.readFileSync(path.join(REPO, 'sim/benchmark.mjs'), 'utf8');
+    const body = src.slice(src.indexOf('export const BENCH'), src.indexOf('export function'));
+    const keys = [...body.matchAll(/^ {2}([A-Za-z_$][\w$]*):/gm)].map(m => m[1]);
+    const dup = [...new Set(keys.filter((k, i) => keys.indexOf(k) !== i))];
+    if (dup.length) bad.push(`sim/benchmark.mjs declares ${dup.map(d => `\`${d}\``).join(', ')} more than once. ` +
+      'JS keeps the last, so the earlier one is dead code that reads as a decision — and the protocol ' +
+      'is meant to be defined exactly once.');
+  }
+  // ★ THE WINDOW IS DERIVED NOW, NOT PINNED (2026-07-27). `BENCH.variation` survives only as the
+  // legacy flat default; the live protocol is `killWindow(haste)` + `encounterFor(T, haste)`, which
+  // reproduce the MODEL's one-sided window `U[T, T+d]` with `d` the terminal cast's own duration.
+  // So the thing worth asserting is no longer a magic number — it is the DERIVATION:
+  //   · the width must be positive and must SHRINK with haste (a faster terminal cast = a narrower
+  //     window). A width that ignores haste is the bug the flat 0.5 was.
+  //   · `encounterFor` must produce exactly `U[T, T+2w]`, i.e. the interval must START at T. Setting
+  //     `variation` without re-centring `duration` silently lengthens the average fight, which is the
+  //     one mistake this construction exists to prevent.
+  // Measured: the derived window tracks the model across a cast boundary 7.8-8.8x more tightly than
+  // the flat one (ratio spread 0.0208 % vs 0.1627 % on the current engine, tools/window-match.mjs).
+  { const w0 = killWindow(0), w250 = killWindow(250);
+    if (!(w0 > 0)) bad.push(`killWindow(0) must be positive, got ${w0}`);
+    if (!(w250 < w0)) bad.push(`killWindow must SHRINK with haste: killWindow(250)=${w250} is not < killWindow(0)=${w0} — a width that ignores gear is exactly the flat-0.5 defect.`);
+    if (Math.abs(w0 - 0.749) > 5e-4) bad.push(`killWindow(0) is ${w0}, expected ~0.749 = half a 3-stack Arcane Blast (2.5 - 3x0.334) at zero haste.`);
+    const e = encounterFor(200, 150);
+    if (Math.abs((e.duration - e.durationVariation) - 200) > 1e-9)
+      bad.push(`encounterFor must yield U[T, T+2w]: the interval starts at ${(e.duration - e.durationVariation)}, not at T=200. Setting variation without re-centring duration lengthens every fight.`);
+  }
+  if (BENCH.variation === 0) bad.push('BENCH.variation must NOT be 0 — `--var 0` makes every iteration the same fight, turning DPS into a staircase of whole casts. It has faked a result twice (TOOLING ★★). It is the legacy default now, but it must stay non-zero for the callers that still pass it.');
   if (BENCH.prestack !== 0) bad.push('prestack must be 0 — the model opens COLD, and a prepull sits at a fixed −2.3s that does not scale with haste, making any haste comparison non-monotone (TOOLING ★★★).');
   if (!(BENCH.manaInject >= 1e7)) bad.push('manaInject is too small to be "infinite" — the duel must isolate the LAYOUT, not mana.');
   if (BENCH.iterations < 10000) bad.push(`iterations is ${BENCH.iterations} — the mean settles to ~0.02% at 10k; below that a duel cannot resolve the differences this project argues about (TOOLING).`);
@@ -107,6 +131,26 @@ const diff = (a, b, p = '', out = []) => {
     console.log('PASS  benchmark protocol invariants (var≠0, cold open, infinite mana, seed spacing, hit cap)');
   }
 }
+
+// ── the RUNNER gate — AFTER §0, deliberately (PHASE11 §1.1 B8) ────────────────────────────────────
+// This used to sit at the top of the file, above §0. But §0 imports only `BENCH` and needs no rig at
+// all, so gating it on RUNNER meant that in every runner-less environment — which is most of them,
+// and all of CI — even the always-runnable assertions never ran, and the file exited 0 having
+// checked nothing. "Skips loudly rather than passing quietly" was true of the message and false of
+// the coverage. §0 now always runs; only §1/§2, which genuinely shell out to the rig, are gated.
+if (!RUNNER || !fs.existsSync(RUNNER)) {
+  if (failures) {
+    console.error(`\n${failures} protocol invariant check(s) FAILED (these need no runner).`);
+    process.exit(1);
+  }
+  console.log('\nSKIPPED §1+§2 — set RUNNER=/path/to/runner to check the page request against the native rig.');
+  console.log('          (sim/build-wasm.sh is wasm-only; see docs/TOOLING.md "Building the runner")');
+  console.log('          §0 above DID run — it needs no rig.');
+  process.exit(0);
+}
+
+const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'simreq-'));
+const template = JSON.parse(fs.readFileSync(TEMPLATE_PATH, 'utf8'));
 
 // ── 1. template freshness, for every committed character ─────────────────────────────────────────
 for (const ch of CHARACTERS) {

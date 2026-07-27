@@ -1,11 +1,13 @@
 // Sweep every baked preset through the optimizer in BARE NODE, fanned across processes,
 // emit the FULL-PRECISION schedule per case, and audit each plan for legality.
 //
-// Why this exists: tests/exact-match.mjs is the only plan gate, it takes 9m07s, and it runs the
-// cases sequentially in one chromium page. This sweeps the same corpus in BARE NODE across
+// Why this exists: tests/exact-match.mjs is the only plan gate and it is browser-bound — engine and
+// presets are reachable only through a live page. 9m07s sequential; ~270-337s parallelized, which is
+// how it runs today, so the "sequentially in one chromium page" this header used to claim is stale
+// (PHASE11 §1.3 I7). Either way it is a browser tax. This sweeps the same corpus in BARE NODE across
 // processes (the engine is DOM-free by construction — it already runs in a Web Worker), emits
 // best.s (the schedule the optimizer CHOSE) at float precision, needs no golden to maintain
-// (plan-diff.mjs diffs A vs B), and admits a QUICK tier. See docs/PHASE9.md §5.
+// (plan-diff.mjs diffs A vs B), and admits a QUICK tier. See docs/archive/10-phase9-performance.md §5.
 //
 // ⚠ It does NOT replace exact-match, and the reason is NOT "exact-match floors to seconds and
 // so misses sub-second shifts" — that claim was MEASURED FALSE (all 273 press times across all

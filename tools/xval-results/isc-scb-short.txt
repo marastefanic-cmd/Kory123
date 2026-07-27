@@ -1,0 +1,29 @@
+seed=1099  class=short  fight=1:38 (98s)  Lust@0:27  trinkets=isc+scb  haste=[0,20,65,95,140,165,195,215,245,400]  emit=fire
+  plan@h0: eff=85.164  {"_prestack":0,"BL":[27],"AP":[38],"Zerk":[27],"Icon":[38],"Gem":[38],"IV":[38,59],"CS":[59]}
+  plan@h20: eff=85.959  {"_prestack":0,"BL":[27],"AP":[51],"Zerk":[41],"Icon":[46],"Gem":[51],"IV":[51,71],"CS":[71]}
+  plan@h65: eff=88.135  {"_prestack":0,"BL":[27],"AP":[27],"Zerk":[28],"Icon":[27],"Gem":[27],"IV":[0,68],"CS":[68]}
+  plan@h95: eff=89.642  {"_prestack":0,"BL":[27],"AP":[27],"Zerk":[27],"Icon":[27],"Gem":[27],"IV":[0,67],"CS":[67]}
+  plan@h140: eff=91.76  {"_prestack":0,"BL":[27],"AP":[62],"Zerk":[67],"Icon":[57],"Gem":[62],"IV":[0,67],"CS":[67]}
+  plan@h165: eff=93.178  {"_prestack":0,"BL":[27],"AP":[62],"Zerk":[67],"Icon":[57],"Gem":[62],"IV":[0,67],"CS":[67]}
+  plan@h195: eff=94.793  {"_prestack":0,"BL":[27],"AP":[62],"Zerk":[67],"Icon":[57],"Gem":[62],"IV":[6,67],"CS":[67]}
+  plan@h215: eff=95.787  {"_prestack":0,"BL":[27],"AP":[27],"Zerk":[2],"Icon":[27],"Gem":[27],"IV":[2,68],"CS":[68]}
+  plan@h245: eff=97.295  {"_prestack":0,"BL":[27],"AP":[27],"Zerk":[0],"Icon":[27],"Gem":[27],"IV":[0,68],"CS":[68]}
+  plan@h400: eff=101.523  {"_prestack":0,"BL":[27],"AP":[27],"Zerk":[87],"Icon":[27],"Gem":[27],"IV":[0,67],"CS":[67]}
+unique plans: 9/10
+
+DPS matrix (row = plan optimized @haste, col = simmed @haste):
+plan\sim        0      20      65      95     140     165     195     215     245     400
+0          2841.8  2861.2  2907.7  2942.1  2975.2  2998.1  3021.7  3037.4  3074.7  3199.7
+20         2835.0  2865.8  2923.8  2952.6  3008.9  3042.1  3076.8  3099.8  3133.7  3266.4
+65         2809.0  2855.9  2930.7  2979.4  3057.7  3087.5  3129.6  3162.9  3216.1  3354.8
+95         2809.2  2855.9  2930.6  2979.5  3052.3  3087.4  3129.4  3160.9  3216.0  3354.6
+140        2800.0  2841.8  2914.7  2968.7  3060.2  3095.6  3148.2  3182.9  3246.2  3357.2
+165        2800.0  2841.8  2914.7  2968.7  3060.2  3095.6  3148.2  3182.9  3246.2  3357.2
+195        2796.6  2841.2  2912.3  2966.4  3058.0  3095.4  3145.8  3187.6  3246.5  3354.2
+215        2798.0  2842.4  2912.2  2969.5  3059.9  3099.9  3153.4  3195.8  3244.6  3357.7
+245        2797.8  2842.2  2915.4  2965.8  3059.9  3103.9  3150.2  3193.6  3244.8  3374.7
+400        2791.0  2837.0  2911.4  2958.1  3053.0  3095.4  3143.8  3180.9  3244.8  3384.4
+
+(a) haste-monotonicity [OBSERVED, not interpreted]: worst downward dip = 0.00%
+(b) DIAGONAL DOMINANCE: DEFICIT 0.27%  [@sim165: plan@245 (3103.9) > native@165 (3095.6)]
+XVAL-DONE seed=1099 kit=isc+scb class=short T=98 lust=27 var=0.5 wj=0 emit=fire artifact=0 iter=6000 simseed=11 mana=100000000 targets=0 char=bench-gearB engine=native:runner-ap180:18102540 tool=xval-bench pool=1 cache=10/100 monoDip=0.00% diag=DEFICIT diagWorst=0.27%

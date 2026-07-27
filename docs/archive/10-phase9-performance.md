@@ -1,5 +1,37 @@
 # PHASE 9 — Optimizer performance (CPU / latency) with ZERO plan drift
 
+> ## ✔ CLOSED 2026-07-27 — archived. The unfinished ladder rungs have an owner: **PHASE11 §3.1**.
+>
+> **Why it closes rather than continues.** The phase's own mandate — *measure first, hypothesise,
+> land only under a byte-identical-plans gate* — is discharged: §1 has the baseline profile, §3 the
+> call census and hypothesis verdicts, §4 the refactor catalogue, and four changes landed (§5.12 groom
+> early exit, §5.14/§5.16 `groupSeeds`, §5.17 `finishLine`, §5.21 the `JSON.stringify` memo key at
+> **−14 % CPU**, §5.22 the `admit` helper). What is left of §4 is a **ladder of rungs**, not a phase,
+> and `docs/archive/12-phase11-platform.md` §3.1 already claims it by name — *"The reclaim ladder
+> (PHASE9 §4, already argued — finish it in order)"*. Two docs listing the same next step is the drift
+> this archiving removes; §5.23's *"Next: (0b) the `counts`/`clipOf` hoists, then the §4.1 five-walk
+> fusion"* is ~~**PHASE11's next step now**~~ → **`docs/PHASE13.md` §5.3's now** (Phase 11 closed
+> 07-27 without starting the ladder), unchanged in content.
+>
+> ⚠ ~~**Every rung is blocked on the `index.html` freeze**~~ **The freeze is LIFTED** (PHASE 10's round
+> reached 36/36 on 07-27); the rule stands for the *next* round — the plan cache keys on `index.html`'s
+> bytes, and the real frozen set is the whole import closure, which `docs/PHASE13.md` §4.1 makes
+> tool-enforced. PHASE11 §2's module split touches the same file, so **whichever lands first
+> re-baselines the other's wall-clock numbers** (§5.14: perf figures compare only within a same-session
+> pair).
+> ⛔ **AND EVERY NUMBER IN §4's CATALOGUE NOW NEEDS A FRESH BASELINE.** PHASE 12 rewrote the scoring
+> walk — the arbiter is a per-cast sum, not the rate integral — so the code that dominates this phase's
+> profile is precisely the code that changed, and every `index.html` line anchor below has drifted
+> (the file went 5,316 → 5,654 lines). The *rungs* and the *method* are intact; the *prices* are not.
+>
+> **What stays live and is cited from the living docs — do not read this banner as "superseded":**
+> **§5 is the phase's larger contribution** — the fast iteration gate (`plan-sweep` + `plan-diff` +
+> `plan-duel`) that replaced "re-run everything after every edit", cited by CLAUDE.md, `tests/`, and
+> `tools/plan-sweep.mjs` / `plan-duel.mjs` themselves. Also permanently valid: §5.15/§5.16's lesson
+> that a gate certifying plan-identity on one corpus certifies nothing where plans move, and §5.11's
+> entrant-plateau diagnosis. Cited across the docs as **"PHASE9 §x"**; section numbers are unchanged
+> by the move, so those citations still resolve.
+
 **Trigger (user, 2026-07-24):** *"the tool has gotten a bit slow again and takes a lot of CPU, see any
 performance improvements without regressions? perhaps a refactor in the future?"*
 

@@ -1,4 +1,4 @@
-// THE DUEL — verification scoped to what actually changed (docs/PHASE9.md §5.4).
+// THE DUEL — verification scoped to what actually changed (docs/archive/10-phase9-performance.md §5.4).
 //
 // The user's rule, which this implements: *"if you implement a rule, you only need to test the
 // things it affected. If the model's output is exactly the same for a setup there's no reason to
@@ -74,11 +74,12 @@
 // harness, not an absolute-agreement test: both sides run the same gear export at the same
 // `--haste`, so a gear mismatch against the preset cancels in the difference.
 import { execFileSync } from 'node:child_process';
-import { BENCH } from '../sim/benchmark.mjs';   // the ONE duel protocol — never retype `--var 0.5` / `--mana 1e8` here
+import { BENCH, runnerFlags } from '../sim/benchmark.mjs';   // the ONE duel protocol — never retype `--var 0.5` / `--mana 1e8` here, and never hand-assemble the argv either
 import fs from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { loadEngine, cfgFor } from './engine-node.mjs';
+import { planToSpec } from '../sim/planspec.mjs';
 
 const die = m => { console.error('DUEL ERROR: ' + m); process.exit(2); };
 const arg = k => { const a = process.argv.find(x => x.startsWith(`--${k}=`)); if (a) return a.slice(k.length + 3);
@@ -141,25 +142,25 @@ const TMETA = { isc: { item: 29370, key: 'Icon' }, scb: { item: 30720, key: 'Gem
 // (genapl's own header calls it out). A cell using one of these is UNSIMMABLE, not "simmed fine".
 const NO_APL = ['ati', 'powerInfusion', 'drums'];
 
-function toSpec(s, cfg, c, eng) {
-  const spec = { _prestack: 0, BL: (s.bloodlust || []).map(Math.round) };  // ★ COLD OPEN, always (RULES §3)
-  if (s.arcanePower) spec.AP = s.arcanePower.map(Math.round);
-  if (s.berserking) spec.Zerk = s.berserking.map(Math.round);
-  for (const tk of Object.keys(TMETA)) if (cfg.enabled[tk] && s[tk]) spec[TMETA[tk].key] = s[tk].map(Math.round);
-  // Icy Veins pressed inside its own cooldown IS the Cold Snap re-press — genapl needs CS emitted
-  // separately or the second IV silently fails to fire.
-  const ivs = (s.icyVeins || []).slice().sort((a, b) => a - b).map(Math.round);
-  const ivOut = [], csOut = []; let cd = -1e9;
-  for (const t of ivs) { if (t < cd - 1e-6) csOut.push(t); ivOut.push(t); cd = t + eng.BUFFS.icyVeins.cd; }
-  if (ivOut.length) spec.IV = ivOut;
-  if (csOut.length) spec.CS = csOut;
-  const raw = c.phases || (c.intermission ? [{ type: 'intermission', from: c.intermission[0], to: c.intermission[1] }] : []);
-  const inter = raw.filter(p => p.type === 'intermission').map(p => [p.from, p.to]);
-  const aoe = raw.filter(p => p.type === 'aoe').map(p => [p.from, p.to]);
-  if (inter.length) spec._intermissions = inter;
-  if (aoe.length) spec._aoe = aoe;
-  const targets = Math.max(0, ...raw.map(p => p.targets || 0));
-  return { spec, targets };
+// ★★★ TRANSCRIPTION IS `sim/planspec.mjs`, NOT A PRIVATE COPY (PHASE11 §1.1 B4, fixed 07-26).
+//
+// This function used to be a hand-rolled twin that emitted `best.s` press INTENTS with `Math.round`.
+// The canonical convention since P7.15 is **fire times, FLOORED** — the intent snapped forward to the
+// next cast boundary (`simulate(s, cfg, true).actEff`) — because genapl schedules every cooldown
+// unconditionally, so feeding intents makes the sim press mid-downtime and buff a burn the model
+// never charged. That exact mis-transcription cost −1.5% on a KT plan when `xval.mjs` had it.
+//
+// The divergence is not hypothetical and not small: on the first golden case, an Arcane Power intent
+// of `4` fires at **4.667**. The two conventions agree only when the intent already sits on a cast
+// boundary. So the arbitration tool — the one used to decide whether an engine change is a
+// regression — was duelling plans the tool never prints.
+//
+// It is now the shared module, which also retires four private re-derivations: the Cold Snap split,
+// the intermission/AoE extraction, the target count, and the untranscribable-buff check (planspec
+// REPORTS what it dropped via `skipped`, rather than each caller keeping its own NO_APL list).
+function toSpec(s, cfg, eng) {
+  const optR = eng.simulate(s, cfg, true);       // `true` ⇒ detail, which is what carries actEff
+  return planToSpec({ cfg, best: { s }, optR }, eng.BUFFS);
 }
 
 const SIM = flag('sim');
@@ -203,13 +204,13 @@ function simDps(spec, cfg, targets, trinkets, seed) {
   fs.writeFileSync(EXPORT.path, JSON.stringify(exp));
   const apl = path.join(SCRATCH, 'duel.apl.json');
   execFileSync('node', [path.join(REPO, 'tools/genapl.mjs'), JSON.stringify(spec), apl]);
-  // ★ Protocol constants come from sim/benchmark.mjs so this instrument and the in-page button ask
-  // wowsims the same question. Only ITER/seed are per-invocation here (this tool sweeps a seed band).
-  const args = ['--export', EXPORT.path, '--apl', apl, '--dur', String(cfg.T),
-                '--var', String(BENCH.variation), '--iter', String(ITER),
-                '--seed', String(seed), '--mana', String(BENCH.manaInject),
-                '--haste', String(cfg.hasteRating || 0), '--quiet', '--tag', 'm'];
-  if (targets) args.push('--targets', String(targets));
+  // ★ The flag SHAPE comes from runnerFlags() too, not just the values (PHASE11 §1.1 B4).
+  // Hand-assembling the argv while importing BENCH for the numbers is the pattern
+  // sim/benchmark.mjs:13-14 explicitly forbids: it keeps the two sides agreeing on constants while
+  // letting them drift on which flags are passed at all — and a flag this tool forgets is a setting
+  // the runner silently defaults, with no disagreement for the anti-drift gate to catch.
+  const args = runnerFlags({ export: EXPORT.path, apl, T: cfg.T, iterations: ITER, seed,
+                             hasteRating: cfg.hasteRating || 0, targets, tag: 'm' });
   const out = execFileSync(RUNNER, args, { encoding: 'utf8' });
   const dps = parseFloat(out.trim().split(/\s+/)[4]);
   // A NaN here compares FALSE against everything, so it would slide through the verdict logic as
@@ -262,7 +263,13 @@ for (const name of changed) {
     if (blocked.length) row.unsimmable = `kit uses ${blocked.join('+')}, which genapl cannot express — simming it would silently omit the buff`;
     else if (trinkets.length !== 2) row.unsimmable = `kit has ${trinkets.length} on-use trinket(s); the export has exactly 2 slots`;
     else {
-      const a = toSpec(sOld, cfgNew, cNew, newEng), b = toSpec(sNew, cfgNew, cNew, newEng);
+      const a = toSpec(sOld, cfgNew, newEng), b = toSpec(sNew, cfgNew, newEng);
+      // planspec reports what it could not transcribe instead of dropping it in silence. A burn phase
+      // has no sim equivalent at all, and a skipped buff means the sim would run a fight missing a
+      // cooldown — either way the duel is not a duel, so say so rather than print a number.
+      const lost = [...new Set([...a.skipped, ...b.skipped])];
+      if (a.burn || b.burn) { row.unsimmable = 'fight has a BURN phase — a model construct the sim has no knob for'; rows.push(row); continue; }
+      if (lost.length) { row.unsimmable = `genapl cannot express ${lost.join(', ')} — simming it would silently omit the buff`; rows.push(row); continue; }
       const d = [];
       for (const seed of SEEDS) {                      // COMMON RANDOM NUMBERS: same seed both sides
         const dOld = simDps(a.spec, cfgNew, a.targets, trinkets, seed);

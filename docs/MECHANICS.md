@@ -11,9 +11,14 @@ Notation: `m` = total haste multiplier; `SP` = spell power; a "cast" below means
 
 ## 1. Cast time, Arcane Blast stacks, and the GCD
 
-- **Arcane Blast** base cast = **2.5 s**, reduced by **1/3 s per AB debuff stack** (max 3 stacks):
-  `cast_base(stacks) = 2.5 − (1/3)·stacks`. At 3 stacks = **1.5 s**. Each stack also costs +75% mana;
+- **Arcane Blast** base cast = **2.5 s**, reduced by **334 ms per AB debuff stack** (max 3 stacks):
+  `cast_base(stacks) = 2.5 − 0.334·stacks`. At 3 stacks = **1.498 s**. Each stack also costs +75% mana;
   the debuff lasts 8 s. We model steady-state **3 stacks** (the opener ramp is over in ~3 casts).
+  ⚠ **0.334, NOT 1/3** — this line said "1/3 s … at 3 stacks = 1.5 s" until 07-27, which is the
+  tooltip's phrasing and not the game's number. wowsims encodes `time.Millisecond * -334`
+  (`sim/mage/arcane_charge.go:17`), the 0.667 ms per stack COMPOUNDS one-signed, and the two cast
+  lattices drifted ~0.35 s apart by t=200 on a buffed plan — costing 26 of 196 presses the cast the
+  model scored them on. §1.1 carries the measurement and the history.
 - **GCD** = 1.5 s base, reduced by haste, **floored at 1.0 s**.
 - Haste divides both: `hasted_cast = cast_base / m`, `hasted_gcd = max(1.0, 1.5 / m)`. You can't start
   the next cast until both finish, so the **interval between cast starts** is:
@@ -21,7 +26,42 @@ Notation: `m` = total haste multiplier; `SP` = spell power; a "cast" below means
   **`interval(m) = max(cast_base/m, max(1.0, 1.5/m))`.**  At 3 stacks (`cast_base = 1.5`) this is
   **`interval = max(1.5/m, 1.0)`.**
 
-*Verified:* wowsims mage/cast code; matches our sims exactly.
+*Verified:* wowsims mage/cast code.
+
+### ✅ 1.1 The model and wowsims agree on the cast lattice — CLOSED 2026-07-27
+
+*"Matches our sims exactly" was measured at 60 s and is false as a general statement.* Found 2026-07-27
+(PHASE12 §6.9a) while diagnosing the press-fire offset:
+
+```
+  wowsims  sim/mage/arcane_charge.go:17   castTimeReduction := time.Millisecond * -334
+  model    index.html GAME.AB             STACK_CAST_REDUCTION: 1/3        (333.333… ms)
+```
+
+wowsims also rounds every cast to the millisecond (`sim/core/cast.go:137-138`), so its ramp is
+`2.500 / 2.166 / 1.832 / 1.498` — read straight off a combat log's `Cast Time =` field, never
+`2.167 / 1.833 / 1.5`. The ramp therefore ends **2 ms** behind the model, and:
+
+- **at h=0 the offset freezes there**, because both then run GCD-capped at exactly 1.5 s. This is why a
+  60 s bare-stream check reported "exact" — and why the combat log, which prints 2 decimals, shows the
+  boundary as `11.00` when `sim.CurrentTime` is `10.998`.
+- **off the GCD cap it accumulates**, once per cast, one-signed, sign varying with haste:
+  **0.080 s over 300 s bare** (`tools/lattice-drift.mjs`), and **~0.35 s by t=200 on a plan with haste
+  buffs in it**, because every buff re-quantizes the interval.
+
+**✅ Both were corrected on 2026-07-27** — the model now takes 334 ms per stack and rounds every cast
+and GCD to the millisecond, exactly as `sim/core/cast.go:137-138` does. The bare-stream drift went from
+**0.080 s to 0.005 s over 300 s**, which is the combat log's own 2-decimal printing floor: the grids
+coincide. Gate: `tools/lattice-drift.mjs`.
+
+⚠ **The millisecond rounding is the part that mattered; the 334 ms constant alone moved the bare
+lattice by exactly nothing** — measured twice before the cause was understood. In steady state Arcane
+Blast is **GCD-bound**: the 3-stack cast is 1.498 s, under the 1.5 s GCD at every haste, so the interval
+comes from `max(1.0, 1.5/m)` and the stack constant never enters it. The constant still matters for the
+**ramp** and for **cast completion times**, which is where the value-snapshot rule (§4) reads.
+
+Consequence that made it worth chasing: this was the entire mechanism behind "a scheduled press fires a
+full cast late" (`10.998 >= 11.000` is false).
 
 ## 2. Haste
 
@@ -99,6 +139,85 @@ begins already-buffed. Consequences the model must respect:
 
 ## 4. The driving equation: effective ABs cast
 
+> ## ★★★★ THE OBJECTIVE IS EXACT — ✅ since 2026-07-27 (PHASE12 §6.10/§6.11)
+>
+> Effective ABs cast is a **deterministic per-cast sum**. For each Arcane Blast the model already knows
+> the haste and the stack count (hence the cast time), whether Arcane Power is up (×1.30), which spell
+> power buffs apply (normalizable against a plain cast), and crit as a constant factor that cancels.
+> **There is nothing to approximate**, and since 07-27 `simulate()` accumulates exactly that sum and
+> returns it as `total`/`totalEarly`/`robust` — which are now **one and the same number**. Gate:
+> `tools/self-consistency.mjs` reads `0.00e+0` over 3000 generated plan-scorings (460 699 casts) with
+> 0 structural violations, no sim, no cache. ⚠ The `0.00e+0` alone is NOT sufficient — it compares two
+> accounts that both read the same `casts` board, so it passed straight through the PHASE13 §2.5
+> epsilon defects. The **structural** line is the one that leaves the model.
+>
+> ★ **Each term carries a BOUNDARY CREDIT (PHASE12 §9, user ruling 07-27):**
+> ```
+> credit = min(1, (nextCut − castStart) / castDuration)
+> ```
+> where a **cut** is a boundary you would not carry a cast across: the fight end `T`, an **intermission
+> start**, and an **AoE phase start** — and nothing else.
+>
+> ★★ **THREE kinds of boundary, TWO of them cuts, for TWO DIFFERENT REASONS.** The asymmetry is the
+> whole rule:
+>
+> | boundary | does the cast land? | would you cancel it? | cut? | why |
+> |---|---|---|---|---|
+> | **intermission start** | **no** — boss untargetable | n/a | ✅ **cut** | **physics** |
+> | **AoE phase start** | **yes**, for full AB damage | **yes** — AE is worth several ABs | ✅ **cut** | **policy** |
+> | **burn edge** | yes | **no** — you keep casting AB | ⛔ **not a cut** | a *value* boundary, snapshot rule |
+>
+> At an AoE start the phase does not arrive on the same second every pull, so with the wall `~ U[W, W+d]`
+> the credit is exactly `P(the wall has not arrived by completion)`: the other branch is a **cancelled**
+> cast worth zero, and the expectation is `frac × dmg` — the same one-sided window as the kill.
+> ⇒ **Because the cast is CANCELLED rather than merely re-priced, the Arcane Explosion lattice starts AT
+> THE WALL**, not at the Blast's natural end. Verified: a Blast starting **58.998** against a wall at
+> **60.000** is credited **66.9 %** = `(60 − 58.998)/1.498`, and the first AE fires at exactly **60.000**.
+> Crediting partially without truncating would be the worst of both — paying less and gaining nothing.
+>
+> ⚠ **This has flipped TWICE in one day; keep the reasoning, it is the valuable part.** It shipped **as**
+> a cut (07-27, on "the spell changes there"), was **removed on physics** hours later — the sim measured
+> an AB started at 59.000 with an AoE phase opening at 60.000 completing at 60.498 and **landing for full
+> AB damage** (1886.4, a 25 %-resist roll off a ~2577 typical hit) — and was then **restored on policy**
+> by user ruling the same day. ★ **The measurement is still true and it is not what decides the
+> question**: the question was never *"does the cast land"* but *"what would the player do"*, and no sim
+> can answer that.
+> ⚠⚠ **A deliberate, PRICED divergence from the sim:** wowsims' APL cannot cancel a cast, so it finishes
+> the Blast and lands it. `model-audit` **will** show a gap at an AoE wall and that gap is **not a bug**.
+> ⚠⚠ An **instant** cast (Arcane Explosion, `cast = 0`) takes credit **1**, not 0 — `min(1, (cut−t)/dur)
+> → 1` as `dur → 0`; the first divide-by-zero guard returned 0 and credited every AE at nothing (42 %
+> error on Kael'thas). A cast completing exactly at `T` earns a **FULL**
+> cast; one that straddles a cut earns the fraction that fits. Algebraically this is a **one-sided**
+> window whose width is the cast's own duration: for a cut `~ U[C, C+W]`, credit `= (C+W−completion)/W`,
+> and `W = duration` gives exactly `(C − start)/duration` — i.e. *"the fight lasts at least T, and at
+> most one more cast."*
+>
+> ⛔ **THREE APPROACHES ARE RETIRED. Do not let any of them back in.**
+> 0. **The symmetric kill taper.** `KILL_WINDOW = 0.5` weighted every cast by
+>    `clamp((T + KW − completion)/2KW, 0, 1)`, which paid a cast completing **exactly at T** only
+>    **0.5** — a symmetric window asserts the boss is already dead half the time. It was also
+>    *kill-only*, so a cast completing inside an **intermission** was paid in full (measured: starts
+>    89.616, wall 90, completes 91.114 — credited 2242.1, now `frac 0.2563` / `credited 574.8`). A
+>    local `KW = 0.5` survives in `index.html` feeding **only** the `integral` diagnostic.
+> 1. **Ranking on the rate integral.** It is the continuum limit — the expectation over a uniformly
+>    random cast phase — and a given plan's phase is *determined*, so it is the wrong evaluation for
+>    ranking two concrete plans. Measured gap: **median 0.2114 % of score, max 1.4263 %**, against
+>    ranking margins of ~0.005–0.07 %. It survives only as the `integral` diagnostic.
+> 2. **One snapshot rule for both kinds of buff.** ★ **Haste is fixed at the cast's START** (an
+>    in-flight cast keeps its speed) **and value — +SP, damage multipliers — is read at the cast's
+>    COMPLETION**, over `(start, end]`. Both edges measured: a cast completing exactly on the gain is
+>    not paid, one completing exactly on the fade is. Deciding both at the cast's start over-paid one
+>    cast per window (`tools/snapshot-rule.mjs`, `tools/credit-check.mjs`).
+> 3. **Expiring a buff window at `press + duration`.** A self-press cannot fire while a cast is in
+>    flight, so the window must run its full duration from when the ability actually FIRES. Expiring
+>    from the press made every mid-cast window short by the slip — a whole cast in the measured case
+>    (`tools/window-span.mjs`: Icy Veins at 9.6 covered 15 casts, wowsims 16). **Raid externals are the
+>    exception**: Lust/PI/Drums are pressed by someone else and start when CALLED.
+>
+> **Consequence for this document:** the integral form below is kept because it is how the quantity is
+> DERIVED. It is not how it is EVALUATED.
+
+
 Put §1–§3 together. Instantaneous DPS at time `t` is one cast's damage divided by how long that cast
 takes:
 
@@ -113,13 +232,29 @@ integrand by a *plain* AB's damage (`base·crit`, no buffs). Crit cancels; what'
 **`effectiveABs = ∫ [cast_damage(t)/plainAB] / interval(t) dt`.**
 
 This is the **single number the planner maximizes**, and the only one it needs (raw damage is just this
-× a constant). A haste buff raises how *many* casts fit; a damage/SP buff raises what each is *worth*.
-`total` (`simulate`/`rateAt` in `index.html`) is this integral up to the constant. **Everything the
+× a constant). ⚠ **Written as an integral above for derivation only — the quantity is a SUM OVER
+CASTS and must be evaluated as one.** The integral is the continuum limit, i.e. the expectation over a
+uniformly random cast phase; a given plan's phase is *determined*, so for ranking two concrete plans
+the realized per-cast sum is the correct evaluation and the integral is an approximation to it — they
+differ by a median 0.21 % of score, which is why ranking on the integral is retired (banner above). A haste buff raises how *many* casts fit; a damage/SP buff raises what each is *worth*.
+The evaluated form is therefore
+**`effectiveABs = Σ_i [cast_damage_i/plainAB] × min(1, (nextCut − start_i)/duration_i)`** — the
+boundary credit of the banner above, which is also the *only* place a fight boundary enters the number.
+`total` (`simulate` in `index.html`) is this SUM up to the constant — ⛔ it was `rateAt`'s integral
+until 07-27; `rateAt` now feeds only the `integral` diagnostic. **Everything the
 planner decides is a *consequence* of maximizing this one quantity — Lust alignment, haste sequencing,
 SP-on-fast-casts are *methods* that usually maximize it, never rules in their own right.** When a
-heuristic and the effective-AB count (or the sim, its ground truth) disagree, the count wins. This is
-also the output to compare **setups** on: plan each with its own ideal cooldown usage, then read off
-whose effective-AB total is higher to decide which trinkets/gear to bring.
+heuristic and the effective-AB count (or the sim, its ground truth) disagree, the count wins.
+
+⛔ **BUT IT IS NOT THE CURRENCY TO COMPARE *SETUPS* ON — this paragraph used to say it was, and that
+was wrong.** The user-directed ruling (ROADMAP payoff 2, `docs/EP.md`, CLAUDE.md) is: plan each setup
+with its **own** ideal cooldown usage, then compare them on **absolute at-kill damage** — or on each
+setup's optimal-APL sim DPS — **never** on the effective-AB count. The reason is the definition three
+paragraphs up: effective ABs is normalized to **each setup's own plain AB**, so it divides out flat
+spell power and crit *by construction*. That is exactly what makes it the right objective **within** a
+setup (it isolates scheduling) and a blind one **across** setups, where raw SP/crit throughput is most
+of what you are trying to measure. A setup with +200 SP and no scheduling change scores an identical
+effective-AB total and hits far harder. **Do not collapse the two currencies.**
 
 ## 5. What the formulas force (the decisions they drive)
 

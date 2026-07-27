@@ -30,13 +30,52 @@
 
 export const BENCH = Object.freeze({
   // ── the fight ───────────────────────────────────────────────────────────────────────────────────
-  // Duration variation = the model's kill-window WIDTH (RULES §8: the half-cast smoothing at the
-  // buzzer). ★★ NEVER 0 — SETTLED BY MEASUREMENT 07-26 (`tools/var-decision.mjs`, BENCH §3): at
-  // var 0 mean casts is flat for 1.5s then jumps +0.97 casts in one 0.1s step, and when two arms
-  // differ in TERMINAL cast rate the measured effect swings −32.8 → −0.9 → −31.8 DPS across 0.1s of
-  // fight length (worst step 31.4 DPS vs 3.3 here). It is also not quieter — seed band 0.06/0.40 vs
-  // 0.04/0.25 — because a fixed duration parks the fight end exactly on the discontinuity.
+  // ⛔ THE FLAT 0.5 IS RETIRED (2026-07-27). Use `killWindow(hasteRating)` and `encounterFor()`.
+  // It survives ONLY as the legacy default for callers that predate them, and as what every archived
+  // corpus was gathered at — a number you may need to REPRODUCE, never one to reach for.
+  //
+  // ── WHY IT HAD TO GO, AND WHY THE REPLACEMENT IS NOT A TASTE CALL ────────────────────────────────
+  // 0.5 was justified as "the model's kill-window WIDTH". That constant is gone: the model is now
+  // deterministic at T and credits a straddling cast the FRACTION of itself that fits before the cut
+  // (PHASE12 §9). And that credit is algebraically a ONE-SIDED window whose width is the cast's own
+  // duration — `U[T, T+d]`, since `(T + d − completion)/d = (T − start)/d`. So the model DOES have a
+  // window; it is one-sided, and it is `d` wide, not 0.5 wide and not symmetric.
+  //
+  // Half a 3-stack Arcane Blast at zero passive haste is **0.749 s**. The flat 0.5 was **33 % too
+  // narrow** there, and ~19 % too wide at 400 rating — and it never moved with gear at all.
+  //
+  // `killWindow` returns the HALF-width `d/2`, and `encounterFor` puts it where wowsims can express
+  // the one-sided shape: `durationVariation` is symmetric about `duration`, so
+  //     duration = T + d/2 ,  variation = d/2   ⇒   U[T, T+d]
+  // which is the model's window exactly. Model and sim are matched by CONSTRUCTION again, rather
+  // than by a coincidence of round numbers.
+  //
+  // ★★ The old ★★ warning still stands and is why the width is a half-cast and not zero — SETTLED BY
+  // MEASUREMENT 07-26 (`tools/var-decision.mjs`, BENCH §3): at var 0 mean casts is flat for 1.5 s then
+  // jumps +0.97 casts in one 0.1 s step, and when two arms differ in TERMINAL cast rate the measured
+  // effect swings −32.8 → −0.9 → −31.8 DPS across 0.1 s of fight length. It is also not quieter — seed
+  // band 0.06/0.40 vs 0.04/0.25 — because a fixed duration parks the fight end on the discontinuity.
+  // Everything that experiment established about var 0 is untouched; only the WIDTH is now derived
+  // rather than picked.
+  //
+  // ⚠ The terminal cast is assumed to be a 3-stack Arcane Blast at PASSIVE haste — i.e. temporary
+  // buffs have ended by the kill. That is the common case and it is an approximation: on a plan whose
+  // burst runs to the buzzer the true terminal cast is faster, so this window is slightly wide.
   variation: 0.5,
+
+  // The cast whose duration sets the window. Constants mirror `index.html`'s GAME.AB — they are
+  // re-stated here because `sim/` must not import the page. ⚠ They are NOT gated: this block used to
+  // claim `tests/cfg-contract.mjs` would catch a drift, and that file contains no reference to any of
+  // them. Treat the claim as what it is — absent — until someone writes the comparison.
+  //   ⛔ And do NOT re-add `hasteRatingPerPct` here. It was declared in this block AND again below at
+  //   the wowsims rating conversions, so the later literal silently won and the first was dead code
+  //   from the moment it was written (measured: `BENCH.hasteRatingPerPct === 15.76923`). The haste
+  //   divisor for the window is the one below — 15.76923 vs the model's 15.77 is a 0.005 % difference,
+  //   6 µs of window at 400 rating, so nothing moved; a duplicate key that happens not to matter is
+  //   still a duplicate key.
+  abBaseCast: 2.5,
+  abStackReduction: 0.334,
+  abMaxStacks: 3,
 
   // Mana is not in the model at all, so it must not be in the arbiter either: the duel isolates the
   // LAYOUT. 1e8 is "infinite" for any fight length this tool accepts.
@@ -85,12 +124,33 @@ export const BENCH = Object.freeze({
 // Native `runner` flags for one arm, GENERATED from BENCH so the command line cannot drift from what
 // the page sends into the wasm. `opts`: { export, apl, T, seed?, iterations?, targets?, sp?, critPct?,
 // hasteRating?, tag? }. Stat injections are omitted when absent, exactly as the runner treats 0.
+// ★ THE KILL WINDOW — half a 3-stack Arcane Blast at the given PASSIVE haste (see BENCH.variation).
+// Returns the HALF-width, because that is what `durationVariation` takes.
+export function killWindow(hasteRating = 0) {
+  const h = Number(hasteRating) || 0;
+  if (h < 0) throw new Error(`killWindow: hasteRating must be >= 0, got ${hasteRating}`);
+  const cast = (BENCH.abBaseCast - BENCH.abMaxStacks * BENCH.abStackReduction)
+             / (1 + h / (BENCH.hasteRatingPerPct * 100));
+  return cast / 2;
+}
+
+// ★ The encounter shape that makes the sim's fight length equal the MODEL's one-sided window.
+// `durationVariation` is symmetric about `duration`, so shifting the centre forward by the half-width
+// turns U[c−w, c+w] into U[T, T+2w] = U[T, T+d]. Returning both together is deliberate: setting one
+// without the other silently re-centres the fight and is exactly the mistake this exists to prevent.
+export function encounterFor(T, hasteRating = 0) {
+  const w = killWindow(hasteRating);
+  return { duration: T + w, durationVariation: w };
+}
+
 export function runnerFlags(opts) {
   const f = [
     "--export", opts.export,
     "--apl", opts.apl,
-    "--dur", String(opts.T),
-    "--var", String(BENCH.variation),
+    // Same one-sided window as the wasm path — see `encounterFor`. An explicit `opts.variation`
+    // reproduces a legacy flat-0.5 round; otherwise the width is derived from the terminal cast.
+    "--dur", String(opts.variation === undefined ? encounterFor(opts.T, opts.hasteRating || 0).duration : opts.T),
+    "--var", String(opts.variation === undefined ? encounterFor(opts.T, opts.hasteRating || 0).durationVariation : opts.variation),
     "--iter", String(opts.iterations ?? BENCH.iterations),
     "--seed", String(opts.seed ?? BENCH.seed),
     "--mana", String(BENCH.manaInject),

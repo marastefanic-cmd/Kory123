@@ -1,5 +1,10 @@
 # PHASE 8 — the B2 scorer-gap family (reserved for the highest-effort model)
 
+**Status: CLOSED 2026-07-26 (§26 closing statement), archived 07-27.** The charter — implement the
+per-window boundary charge — is DISCHARGED with a **negative** result: the charge ships OFF and changes
+no plan the tool has ever produced. ⚠ **B2 itself is NOT solved**; its target was gear-A denominated and
+PHASE 10 re-measures it. Do not resume here.
+
 > ## ⚠ READ FIRST — THIS DOCUMENT IS ON THE **GEAR-A** BASELINE AND THE **PRE-07-26 INSTRUMENT**
 >
 > Every sim number below was gathered on **gear A** (now archived at

@@ -17,10 +17,14 @@
 // this stops being a replay.  Keep them in sync.
 //
 // Usage:
-//   RUNNER=$SP/wowsims/runner-ap180 EXPORT=$SP/seedband/export.json \
+//   RUNNER=/path/to/runner-ap180 EXPORT=tools/bench/export.json \
 //   node tools/cell-band.mjs --a '<specA json>' --b '<specB json>' \
 //     --walls 15,42,69,94,105,160,306 --dur 420 --haste 195 --targets 6 \
 //     --iter 6000 --seeds 11,100011,200011,300011,400011 --seeds2 11,12,13,14,15
+//
+// ⚠ EXPORT used to be a scratchpad path here because the character was user data that was never
+// committed. That policy is REVERSED (BENCH §1.1) — `tools/bench/export.json` is in the repo — and the
+// export itself is retired as a baseline by GEAR-AGNOSTIC.md. Point EXPORT at a committed file.
 //
 // `--seeds` is the PRIMARY group (use independent base seeds: gaps >= iter).  `--seeds2` is an
 // optional comparison group (e.g. contiguous) reported alongside so the two sd's can be compared.

@@ -27,8 +27,21 @@ plan → sim/planspec.mjs → tools/genapl-core.mjs → sim/simreq.mjs → sim/s
 
 - `genapl-core.mjs` is `genapl.mjs`'s pure core, split out so the CLI and the page import the SAME
   builder (the split is proven output-identical).
-- `planspec.mjs` is the **transcription convention** — FIRE times, floored, Cold-Snap split,
-  `_intermissions`/`_aoe`, `_prestack: 0` — i.e. `xval.mjs`'s `toSpec`, in a file both can use.
+- `planspec.mjs` is the **transcription convention** — ⛔ **NOT "fire times, floored" any more (retired
+  07-27, PHASE12 §6.9c).** It emits a **schedule value**, not a press time: the model's fire time
+  **clamped into `[prevBoundary + SLACK, targetBoundary − SLACK]`**, `SLACK = min(0.5 s, interval/2)`.
+  Both edges matter, because the model↔sim lattice drift **flips sign with haste**; a press sitting in
+  a downtime gap is near neither edge and is still emitted verbatim. `planToSpec` additionally returns
+  `fire` (expected fire times) and `cast` (the cast index each press must buff).
+  ★ **Why `floor(actEff)` had to go:** it was justified as *"a press at floor(F) ≤ F snaps to the same
+  boundary"*, which is false whenever `F` is not itself a boundary — and it lost casts in **both**
+  directions. Measured over 2755 plan-scorings / 32 416 presses: **1.5 % fired on the wrong cast** and
+  a further **25.2 % landed ON a boundary**, where milliseconds of drift decided which cast got
+  buffed. Head to head on real combat logs: `floor(actEff)` **7.14 %** transcription failures →
+  schedule value **0.00 %**. Gate: `tests/press-fire.mjs`.
+  The rest of the convention is unchanged — Cold-Snap split, `_intermissions`/`_aoe`, `_prestack: 0` —
+  and `tools/xval.mjs` keeps a private twin that also supports `EMIT=intent`, to reproduce archived
+  gear-A rounds.
 - `simreq.mjs` patches `sim/model-ref-request.json`, which **is the runner's own `--dumpreq` output**,
   so the page's request is the runner's request minus the fields a duel varies.
 - `sim.wasm` is the patched build at `ade9f39` (both patches; `bash sim/build-wasm.sh` rebuilds it).
@@ -36,6 +49,29 @@ plan → sim/planspec.mjs → tools/genapl-core.mjs → sim/simreq.mjs → sim/s
   the tie band, the rating conversions, cold open. `tools/plan-duel.mjs` imports it too, and
   `runnerFlags()` generates the native command line from it, so `--var 0.5` is never retyped.
   ★ If you write a new sim instrument, import BENCH; do not copy its numbers.
+  ✅ **`variation` IS DERIVED FROM THE MODEL NOW (07-27) — use `killWindow(haste)` / `encounterFor(T, haste)`.**
+  The model's credit rule is a ONE-SIDED window `U[T, T+d]` (`d` = the terminal cast's duration), and
+  `encounterFor` reproduces it exactly as `duration = T + d/2, variation = d/2`. Half a 3-stack Arcane
+  Blast at zero haste is **0.749 s**, so the retired flat 0.5 was **33 % too narrow** there and never
+  moved with gear. Measured **7.8–8.8× tighter** model/sim tracking across a cast boundary
+  (`tools/window-match.mjs`: ratio spread **0.0208 % vs 0.1627 %** on the current engine; 0.0374 % vs
+  0.3284 % as first measured — the numbers moved slightly with the PHASE13 §2.5 epsilon fix, the verdict
+  did not). `BENCH.variation` survives only as the legacy default, and as the value every archived
+  corpus was gathered at.
+  ⛔ *The paragraph below is the RETIRED framing, kept because it is what the flat value rested on.*
+  ⛔ **`variation: 0.5` KEPT ITS VALUE AND LOST ITS OLD JUSTIFICATION (07-27, PHASE12 §9).** It used to
+  be documented as mirroring *"the model's kill-window WIDTH"* (`KILL_WINDOW = 0.5`). **That constant no
+  longer exists in the objective** — the model is deterministic at `T` and credits a straddling cast its
+  fitting fraction — so there is nothing on the model side to mirror. The value stands **solely** on
+  `tools/var-decision.mjs` / BENCH §3, evidence that never depended on the model: it is the **SIM's own**
+  smoothing, the way the sim avoids parking its fight end on a discontinuity the model no longer has.
+  ⚠ ~~**OPEN QUESTION (PHASE12 §9.4):** model and sim smooth the same problem by different means —
+  analytic partial credit vs numerical averaging — and reconciling the two is unresolved.~~
+  ✅ **CLOSED 07-27, PHASE13 §2.4** — see the ✅ block above this one: the sim's window is derived from
+  the model's. Do not "fix" anything by flipping `variation` to 0; that reintroduces BENCH §3's
+  measured failure.
+  (This also discharges PHASE11 §1.2 F9's "aligned by prose only" pairing for this constant: there is
+  no longer a pair.)
 
 **Two gates, both negative-controlled.** `tests/sim-request.mjs` asserts (a) the protocol *invariants*
 (var ≠ 0, cold open, seed spacing — sharing a constant cannot make it correct), (b) that
@@ -83,18 +119,96 @@ re-certify, not to run an experiment.
 ## Methodology — the model is the objective, the sim calibrates it
 
 The planner already knows, deterministically, every cast, every buff window, and every timing in a
-plan — so it computes **effective ABs cast** (`docs/MECHANICS.md §4`) exactly, and **that count is the
-arbiter for comparing two lines.** The tool is, by construction, a maximization function over that
-number; ranking lines is *its* job. The sim's role is **calibration**, three specific uses:
+plan — so it **can** compute **effective ABs cast** (`docs/MECHANICS.md §4`) exactly, and that count is
+the arbiter for comparing two lines. The tool is, by construction, a maximization function over that
+number; ranking lines is *its* job.
 
-1. **Anchor the physics.** Certify the formulas/constants the count is built on — the trust anchor
+> ✅ **AND SINCE 2026-07-27 EVENING IT DOES.** `robust` IS the per-cast sum; standing gate
+> `node tools/self-consistency.mjs` must read `0.00e+0` (PHASE12 §6.10). ⛔ It ranked on a rate integral
+> that differed by a median **0.2114 %** of score until then — do not restore that, and do not tune a
+> scorer term against the integral (§6.1–§6.3 record four terms falsified that way).
+> ★ **`total`, `totalEarly` and `robust` are now the same number**, each cast credited
+> `dmg × min(1, (nextCut − start)/duration)` — the **boundary credit** at every **cut**: the fight end,
+> an **intermission start** (the cast **cannot land**) and an **AoE phase start** (it lands, but you
+> **cancel** it for Arcane Explosion). ⛔ A **burn** edge is *not* a cut — the cast lands and you would
+> not cancel it. Three boundaries, two cuts, two different reasons (physics vs policy); an **instant**
+> cast takes credit **1**, not 0. PHASE12 §9 / RULES §8/§9.
+> ⚠ The AoE edge **flipped twice on 07-27** — shipped as a cut, removed on a (correct) physics
+> measurement, restored on the user's policy ruling. **It deliberately buys a sim divergence — see the
+> standing block immediately below.**
+>
+> ✅ **Both calibration debts this block opened are now DISCHARGED.** They are kept because they bounded
+> every sim-vs-model reading taken before them, and an archived number must still be read through them.
+> (a) ~~wowsims takes 334 ms per Arcane Blast stack where the model takes 1/3 s, so **26 of 196 presses**
+> still miss the cast the model scored them on (§6.9d); until that constant is fixed **no sim-vs-model
+> disagreement smaller than ~0.1 % is attributable**.~~ **Fixed** — PHASE12 §6.14, plus millisecond
+> rounding on every cast and GCD.
+> (b) ~~The model hedges the fight boundary **analytically** (partial credit on the straddling cast)
+> while the sim hedges it **numerically** at a flat `±0.5`; the two are no longer the same question and
+> no residual between them has been derived.~~ **Fixed** — PHASE13 §2.4: the sim's window is now
+> *derived from* the model's (`duration = T + d/2, variation = d/2` ⇒ `U[T, T+d]`, the same one-sided
+> window the credit rule already is), measured 7.8× tighter across a cast boundary. ⚠ One bounded
+> approximation remains, stated rather than hidden: `d` is a 3-stack Blast at **passive** haste, so on a
+> plan whose burst runs to the buzzer the window is slightly wide.
+
+### ⚠⚠⚠ STANDING, EXPECTED DIVERGENCE — THE MODEL CANCELS A CAST AT AN AoE WALL AND THE SIM CANNOT (07-27)
+
+**`tools/model-audit.mjs` WILL report a gap at an AoE phase start. It is NOT a bug and it must not be
+"fixed".** This is the one place where the model deliberately does not describe what wowsims does.
+
+- **What the model does.** An **AoE phase START is a cut** (RULES §9, user ruling 07-27). The Arcane
+  Blast in flight is scored as **cancelled**: it is credited only
+  `frac = min(1, (wall − start)/duration)` — the probability the wall has not arrived by completion,
+  since the phase does not land on the same second every pull — and the Arcane Explosion lattice
+  restarts **at the wall**, not at the Blast's natural end. Verified: a Blast starting `58.998` against
+  a wall at `60.000` is credited **66.9 %** and the first AE fires at exactly `60.000`.
+- **What the sim does.** wowsims' APL has **no cancel action**. It finishes the Blast and **lands it for
+  full Arcane Blast damage** — measured, and the measurement is correct: an AB started at 59.000 with
+  the phase opening at 60.000 completes at 60.498 and hits for 1886.4 (a 25 %-resist roll off a ~2577
+  typical hit). The boss stays targetable; this is **not** the intermission case.
+- **Why the model is right anyway.** The question a cut answers is not *"does the cast land"* — it is
+  *"would the player carry the cast across"*. Adds are up and Arcane Explosion is worth several times an
+  Arcane Blast, so the player cancels. **No sim measurement can settle that**, which is exactly why this
+  ruling is POLICY and not physics.
+- **How to read an audit across an AoE wall.** Expect a one-cast start/value disagreement **at the wall
+  only**, in the direction *model credits less, sim credits full*, plus a lattice offset on the AE
+  stream that follows it. Everything away from an AoE wall must still match cast for cast. **A gap
+  anywhere else is a real finding; the gap at the wall is priced.**
+  ★ **Don't assume it; the tool measures it.** `model-audit --by-cause` classifies every mismatch by
+  location and states at each wall whether a Blast was in flight across it. **Measured 07-27: on the
+  23-preset corpus it is NEVER in flight** — Kael'thas is the only `aoe` preset and its wall at 105
+  follows an intermission ending at 105, so both sides start the AE stream at 105.000 and cast 33 of
+  them. ⇒ **this priced divergence explains 0 of the audit's failures.** The ruling is unaffected; it is
+  simply not exercised, and a pass count "corrected for the AoE wall" is the same number as the raw one.
+  ⚠ And only the wall (the phase **START**) is priced. The phase's **far edge** — where both sides
+  resume Arcane Blast after the AE stream — carries no ruling, so a disagreement there is a finding
+  (`aoexit`, measured 0.118 s on Kael'thas). Folding the exit into the priced bucket would forgive a
+  defect with a ruling that does not cover it.
+- ⚠ **Do not close this by removing the AoE start from the cut lattice.** That is exactly what happened
+  once already on 07-27 (removed on the physics measurement above, restored hours later on the user's
+  ruling) — the flip is recorded in RULES §9 and `docs/DIARY.md` so it is not made a third time.
+- ⚠ It also means a raw **DPS duel** across an AoE wall is measuring two different policies, not two
+  plans. Duel *within* a phase, or accept the wall cast as a known constant offset.
+
+**The sim's role, in priority order — and the FIRST one is the point of the whole cross-val corpus:**
+
+1. **★★★ FALSIFY THE SEARCH'S CLAIM TO OPTIMALITY — this is what the sim is FOR.** With an exact
+   objective, the model's ranking of two plans is a matter of arithmetic and cannot be wrong. So when
+   the sim says a plan the tool did *not* emit is better, and the exact count agrees once you compute
+   it, **the search failed to find it.** The sim is the instrument that reveals search failures — it
+   brute-forces regions the search never visits, and every disagreement is a lead pointing at a
+   *pattern the search is missing*, which is then generalized into a rule or a seed class. **A
+   sim/model disagreement is a SEARCH bug report, not a scorer arbitration.**
+2. **Anchor the physics.** Certify the formulas/constants the count is built on — the trust anchor
    (runner == `wowsimcli` to the decimal, below) and any constant that changes. Get the equation right
    *once*, then trust the count.
-2. **Cover the count's blind spots.** The count is ramp-blind (steady 3 stacks), mana-blind, AoE-blind,
-   and can disagree with the sim on a *mechanic* (the AP 195-vs-180 cd, ★ below). Where a blind spot is
-   in play the sim is ground truth; where it isn't, the count is.
-3. **Verify a suspicious or novel finding** before trusting or locking it — a first-time result, a
-   counter-intuitive delta, a new *kind* of move.
+3. **Cover the count's blind spots** (ramp, mana, AoE, or a *mechanic* disagreement like the AP
+   195-vs-180 cd, ★ below). Where a blind spot is in play the sim is ground truth; where it isn't, the
+   count is. ⚠ Several historical "blind spots" were really the accounting gap in §6.8.
+4. **Build user trust** — the in-page "Check in the benchmark sim" button. A user's verification and a
+   Phase-10 measurement are the same code path by construction, which is what makes the tool's claims
+   checkable by the person relying on them.
+5. **Verify a suspicious or novel finding** before trusting or locking it.
 
 **The sim is not a routine per-golden gate.** Re-simming every plan on every change is slow and, worse,
 invites treating a raw sim delta as ground truth even when a clean cast-count already settles the line.
@@ -386,13 +500,22 @@ Lesson 7 above is the instrument for the second axis; lessons 1–4 are the firs
   `apl-schedule-strict-ready.patch`, then `go build -tags with_db`.
   Output TSV: `tag  dur  var  iter  meanDPS
   stdev  maxDPS  avgFightSec` — **column 5 is mean DPS**.
-- **Gear export** (NOT in repo — user-provided): the player's wowsims individual-export JSON. Point
-  `--export` at it; don't hardcode its path in committed files (user data). The canonical export used
-  for this project's goldens is a full, realistic Arcane raid setup (Wrath of Air, Totem of Wrath,
-  Misery, Curse of Elements, Improved Shadow Bolt, JoW, Kings/Wisdom; kit = IV, Icon, Serpent-Coil gem,
-  Arcane Power, Berserking, Bloodlust).
-- **wowsims-tbc source + `runner`** live in the **session scratchpad** (ephemeral — cleared with the
-  container, though it survives `/clear` within a session). Only `tools/genapl.mjs` persists in the repo.
+- **Gear export** — ⚠ **this bullet's "NOT in repo — user-provided" framing is RETIRED (07-26).** Two
+  reversals landed on top of it, in this order: `BENCH.md` §1.1 **committed** the export
+  (`tools/bench/export.json` — it holds no personal identifiers, and an unreproducible rig was the
+  worse problem), and then `GEAR-AGNOSTIC.md` retired *having* an export at all — the reference
+  character is now defined by the planner's own declared inputs (`sim/model-ref.json`). **Do not go
+  looking for a user gear file; do not commit a new one.** The committed export survives only as the
+  denominator of the last geared round (PHASE12 §1.1e archives it under a name that says so).
+  For the record, the character it describes is a full, realistic Arcane raid setup (Wrath of Air,
+  Totem of Wrath, Misery, Curse of Elements, Improved Shadow Bolt, JoW, Kings/Wisdom; kit = IV, Icon,
+  Serpent-Coil gem, Arcane Power, Berserking, Bloodlust).
+- **wowsims-tbc source + the native `runner`** are **ephemeral** — they live wherever you cloned and
+  built them (cleared with the container) and are rebuilt in ~4 min by the recipe below. ⚠ The old
+  claim that "only `tools/genapl.mjs` persists in the repo" is **false at HEAD**: the whole `sim/`
+  subsystem is committed, including **`sim/sim.wasm`** — the same engine, compiled — so
+  `node tools/bench.mjs …` produces a number **from the repo alone**, with no clone and no build.
+  The native runner is a ~6× *speed* option for bulk gathering (PHASE12 §2.1b), not a prerequisite.
 - **`tools/explore.mjs`** (durable): the **exploration harness** — brute-scores every placement of a small
   buff set on the model over a gear-haste sweep, reports winners + breakpoints, and flags ramp-sensitive
   winners. `--sim` cross-checks the flagged winners against the runner (needs `RUNNER=… GEAR=…`), building
@@ -403,14 +526,21 @@ Lesson 7 above is the instrument for the second axis; lessons 1–4 are the firs
     shows a spurious loss vs an interior placement (the sim drops the truncated tail casts; the model credits
     them proportionally). When cross-checking placement, keep the buff **interior** (lengthen `--dur`) or the
     fight-end masquerades as a real placement effect. Verified: IV pre-Lust ≡ post-Lust to 0.00% once interior.
-- **`tools/lattice-ripple.mjs`** (durable, **no sim needed**): derives and verifies the **tail-lattice
-  ripple** — the sum-vs-integral residual between the sim's expected damage and the model's rate integral
-  (RULES §8). Three argv-selectable sections: `ripple` (the `1 − W/c` table, verified to 4 decimals, with
+- **`tools/lattice-ripple.mjs`** ⛔ **— HISTORICAL as of 07-27, like `ripple-audit` above.** It derives
+  the **tail-lattice ripple** — the sum-vs-integral residual between the sim's expected damage and the
+  model's **rate integral** — and neither side of that comparison is HEAD any more (§6.10 retired the
+  integral, §9 retired the taper the widths were matched on). RULES §8 carries the banner. Its
+  *section 3* control ("do not discretize the scorer") is the part still worth reading, because it is
+  about method, not about the retired constant. (durable, **no sim needed**) Three argv-selectable sections: `ripple` (the `1 − W/c` table, verified to 4 decimals, with
   the `c = 1.000 → exactly 0` sanity check), `cell` (re-scores one disputed cross-val cell under both
   scorers), `column` (**the do-not-discretize control** — all 11 plan rows of one column, continuous vs
   discrete vs sim, `r` and RMSE). Default `all`. **Read section 3 before believing section 2:** the single
   cell makes the discrete sum look like a fix; the column shows it is a worse predictor.
-- **`tools/ripple-audit.mjs`** (durable, **no sim needed**): prices **every** cross-val deficit column
+- **`tools/ripple-audit.mjs`** ⛔ **— HISTORICAL as of 07-27.** It prices the ripple floor `1 − W/c`,
+  whose derivation assumes the model integrates the **continuum limit** of a symmetric taper of width
+  `W = 2·KILL_WINDOW = 1.0 s`. **Neither premise holds** (PHASE12 §6.10 retired the integral, §9 retired
+  the taper), so the tool is now a reader of the **archived** corpus, not a ruler for the shipping
+  model. Its design lessons below stay first-rate; its numbers do not transfer. (durable, **no sim needed**): prices **every** cross-val deficit column
   against that ripple floor, so a residual can be compared to the instrument's own resolution before it is
   called a model defect. Two commands:
   ```
@@ -500,7 +630,7 @@ Lesson 7 above is the instrument for the second axis; lessons 1–4 are the firs
   convergence** of the wash (the variants are **nested** — `mulb(9000+v)` — so the corpus's 5 are a prefix of
   any deeper set, and one deep run yields the whole curve); `--dump` writes the raw per-variant cell.
   ```
-  RUNNER=$SP/wowsims/runner-ap180 EXPORT=$SP/seedband/export.json node tools/cell-band.mjs \
+  RUNNER=/path/to/runner-ap180 EXPORT=tools/bench/export.json node tools/cell-band.mjs \
     --a "$(cat A.spec.json)" --labelA native --b "$(cat B.spec.json)" --labelB borrowd \
     --walls 15,42,69,94,105,160,306 --dur 420 --haste 195 --targets 6 \
     --iter 6000 --seeds 11,100011,200011,300011,400011 --variants 33 --prefix 1,3,5,9,17,25,33
@@ -586,28 +716,29 @@ make every recorded number unreproducible — so the goal is an *informed* pin, 
 > 2. `cmd/runner/` does not exist upstream; create it and copy
 >    `tools/wowsims-patches/runner-main.go` to `cmd/runner/main.go` before building.
 >
-> **The only thing genuinely NOT in the repo is the gear export**, and that is deliberate — it is
-> user data (`docs/archive/07` §6.3: *"The gear export is user data (NOT in repo) … never commit an
-> export"*). Ask the owner for it; everything else rebuilds from the recipe.
+> **The character is in the repo now — do NOT go hunting for a user export.** This block used to say
+> the gear export was the one irreplaceable input and to ask the owner for it. Both halves are dead:
+> `BENCH.md` §1.1 committed it (`tools/bench/export.json`), and `GEAR-AGNOSTIC.md` then retired the
+> whole idea of an exported character in favour of `sim/model-ref.json`, whose stats are *injected*
+> from the planner's declared inputs. **A rebuilt runner needs no external file.**
 >
-> #### The export search, done exhaustively 07-26 — do not repeat it
-> It is **not stored anywhere**, and it was never lost: it was never committed, by policy.
-> - **Working tree** — only model-side parameters (`GOLDEN_DEFAULTS.gear`, `tests/phase-portfolio.json`,
->   `tools/reference-gear.mjs`): `sp`/`crit`/`haste`/`coldSnap`. No item list.
-> - **Git history** — no `export`/`dumpreq`/gear JSON at any commit on any branch.
-> - **`tools/xval-results/`** — records plans + sim output, not the character.
-> - **`tools/xval.mjs:45`** — takes `EXPORT_BASE` as an env path to an external file, by design.
+> #### The export search, done exhaustively 07-26 — kept only so nobody repeats it
+> ⚠ **Historical.** At the time, the gear-A export was genuinely nowhere (never committed, by the
+> since-reversed policy): not in the working tree (only model-side `sp`/`crit`/`haste`/`coldSnap`
+> parameters), not at any commit on any branch, and not in `tools/xval-results/` (which records plans
+> and sim output, not the character). That search is *finished* and its conclusion — "reconstruct, or
+> re-export" — was acted on: the re-export **is** gear B. Do not run the search again.
 >
-> **What IS preserved about that character** (enough to rebuild an *equivalent*, not the original):
-> Tirisfal T5 2pc set 649 items **30206/30196/30207** (+20 % AB damage), 4pc `SpellID 37444` (+70 SP
-> on crit, 88–94 % uptime ⇒ effective **SP ≈ 1450**), Icon of the Silver Crescent **29370**,
+> **What was preserved about the gear-A character** (enough to rebuild an *equivalent*, not the
+> original): Tirisfal T5 2pc set 649 items **30206/30196/30207** (+20 % AB damage), 4pc `SpellID 37444`
+> (+70 SP on crit, 88–94 % uptime ⇒ effective **SP ≈ 1450**), Icon of the Silver Crescent **29370**,
 > `critPct 38`, measured casting regen ≈ **104 mana/s**, Vampiric Touch **+250 mp5** — see
 > `SOURCES.md` and PHASE8 §6/§7.
 >
-> ⚠ **A rebuilt export is a NEW baseline.** The trust anchor's ~0.4 % agreement is tied to the
-> original character, so re-certifying against a reconstruction makes the existing corpus rounds
-> **no longer directly comparable**. Prefer the owner's file; reconstruct only as a last resort, and
-> if you do, say so loudly in the round that first uses it.
+> ⚠ **The warning this block ended on came true, and is the reason `GEAR-AGNOSTIC.md` exists:** a
+> re-exported character *is* a new baseline, so the trust anchor and every corpus number moved with it
+> (BENCH §1). The lesson is now enforced structurally rather than by caution — `char=` stamps every
+> table, and the reference character is code, not a file that can be re-exported.
 
 ```
 git clone https://github.com/wowsims/tbc-new.git && cd tbc-new && git checkout ade9f39
@@ -645,9 +776,14 @@ SP=/path/to/scratchpad bash tools/xval-boss.sh   # or point it explicitly
 RUNNER=... EXPORT_BASE=... bash tools/xval-kit.sh mqg,skull
 ```
 
-⚠ `EXPORT_BASE` is the **user's gear export — user data, never committed**; that is why it lives in the
-scratchpad and must be found rather than read from the repo. A missing one is an exit-2 setup failure,
-never a `diag=DEFICIT` observation.
+⚠ **RETIRED PATH (07-26) — the drivers above are the pre-`bench.mjs` generation.** `xval-kit.sh` /
+`xval-boss.sh` / `xval-campaign.sh` / `xval-rerun.sh` still resolve `RUNNER` + `EXPORT_BASE` and are
+kept for reproducing an archived round; **the current round driver is
+`tools/xval-bench-campaign.sh` → `tools/xval-bench.mjs`**, which needs neither (it runs the committed
+`sim/sim.wasm`, and takes `RUNNER=` only as a ~6× speed option). The old `EXPORT_BASE`-is-user-data
+rule is **reversed** — the export is committed at `tools/bench/export.json` (BENCH §1.1), and is itself
+retired as a baseline by `GEAR-AGNOSTIC.md`. What still holds on the retired path: a missing
+`RUNNER`/`EXPORT_BASE` is an exit-2 **setup failure**, never a `diag=DEFICIT` observation.
 
 ## Trust anchor — certify the runner reproduces canonical wowsims
 
@@ -700,7 +836,49 @@ Two properties make this strong: pooling across both plans cancels **crit varian
 identical, only the counts differ), and it needs **no assumption** about coefficients, amp curves or
 stacking order — it is pure observed damage. On P7.14 (PHASE7 §5.18, RULES §9 Correction 3) it closed a
 0.29 pp deficit to **102.6 %** at **zero additional sim cost**, after five sim campaigns had been
-pre-registered to attack the same question. Reference implementation: `$SP/aoewin/walk.mjs`.
+pre-registered to attack the same question.
+
+**★ The implementation is `tools/duel-walk.mjs`** (committed 07-27). ⚠ It previously lived only at
+`$SP/aoewin/walk.mjs` — gone with the scratchpad — and was rebuilt from this description (PHASE12 §3.6).
+
+```
+node tools/duel-walk.mjs --log-a A.log --log-b B.log [--json] [--watch-all]
+RUNNER=…/runner-ap180 node tools/duel-walk.mjs --spec-a '{…}' --spec-b '{…}' \
+     --T 229 --haste 70 --kit isc,mqg          # runs both arms and walks them
+```
+
+It excludes from the state label anything already up at **t = 0** (raid buffs, equip auras — they are in
+every state and carry no information, and an equipped trinket's t=0 `ItemID` aura would otherwise read as
+a press), plus five **high-churn or inert** auras: the AB stack, Clearcasting, the Tirisfal 4pc and
+Serpent-Coil SP procs, and **Sated (57724)** — that last one is not churn but a permanent marker with no
+combat effect, and leaving it in splits "before Lust" from "after Lust ended", which are exactly the
+casts pooling most needs to merge.
+
+### ⚠⚠ THE POOLED LEDGER'S ASSUMPTION IS NOT ALWAYS TRUE — measured 07-27, and it is why there are TWO
+
+*"Pooling cancels crit variance because the states are identical and only the counts differ"* silently
+assumes the casts that **migrate** between states are interchangeable with that state's other casts.
+That held on P7.14 — 37 near-identical Arcane Explosions inside one AoE window — and it is **false in
+general**: an Arcane Blast's damage depends on its stack and on where in the ramp it sits, so "the
+average no-buff cast" is polluted by cheap opener casts that a migrating mid-fight cast is nothing like.
+Two controls, both run on the committed tool:
+
+| duel | pooled ledger | paired ledger |
+|---|---|---|
+| `Icon@6` vs **no Icon at all** (12 casts migrate) | right shape, **187 % closure** — 1.9× too big | **100.0 %** |
+| `Icon@6` vs `Icon@80` (counts identical, *different casts* in the window) | **every Δ is 0 — completely blind** | **100.0 %**, showing both 12-cast migrations |
+
+So `duel-walk` prints a **second, exact ledger** whenever both arms cast the same *number* of times —
+the common case under CRN with one seed and no haste change. Then cast `i` is the same cast in both
+fights, at nearly the same second and stack, and `Σ_i (dmg_B[i] − dmg_A[i])` grouped by the state
+**transition** that cast made needs no pooling assumption at all. It closes to 100.0 % by construction.
+Rows whose two sides are the **same** state are the instrument's own noise floor — a cast that changed
+value without changing which buffs were up. ★ **If those rows dominate, the duel is not decided by buff
+placement**, and on the B2 pair at one iteration they do (+2378 of noise against a −1675 measured Δ),
+which is the honest reason a near-cancellation needs a seed campaign rather than a log walk.
+
+Other controls: a log walked **against itself** produces an empty ledger in both halves; an empty log,
+a NUL-bearing log, and a log with no `[Player (#N)]` events each exit **2**.
 
 Corollary: **capture `SIMLOG=1` for both arms of every duel as a matter of course.** The legality gate
 is the cheap excuse to obtain the expensive-looking data.
@@ -748,8 +926,11 @@ node tools/genapl.mjs '<specA>' A.apl.json
 runner --export gear.json --apl A.apl.json --dur 420 --var 0.5 --iter 30000 --seed 11 --mana 100000000 --tag A --quiet
 # repeat for specB; compare column 5.
 ```
-- **`--var 0.5` is the default read** (it matches the scorer's kill-window **width** — but only the
-  width; there is a derivable `1 − W/c`-cast residual, see the metric bullets below).
+- **`--var 0.5` is the default read.** ⛔ This used to read *"it matches the scorer's kill-window
+  **width** — but only the width; there is a derivable `1 − W/c`-cast residual"*. **Retired 07-27**
+  (PHASE12 §9): the scorer has no kill window to match a width with, so there is no derived residual
+  either — see the metric bullets below. It is the default because `tools/var-decision.mjs` measured it
+  the better estimator (BENCH §3), full stop.
   `--var 0` is still useful for count-preserving CRN A/Bs (lowest pairing noise) but MUST be confirmed
   at var0.5 (var0's whole-cast parity flipped the §16 h150 gate's sign once). `--mana 100000000` =
   infinite (isolate the overlay from mana). `--haste N` tests gear breakpoints.
@@ -819,8 +1000,14 @@ for reproducing a specific timeline in the combat log, never for a number you in
 ## ★ THE SIM CANNOT PRESS MID-CAST — a value window covers exactly `floor(D/Δ)` casts
 
 The direct consequence of the section above, and it bites **every** damage/SP window you A/B. A value
-window of duration `D` boosts **`floor(D/Δ)` casts in the sim**, never the fractional `D/Δ` the model's rate
-integral credits. Two facts compose: wowsims applies the modifier at **cast COMPLETION** (`applyEffects`,
+window of duration `D` boosts **`floor(D/Δ)` casts in the sim**, never the fractional `D/Δ` a *rate
+integral* credits. ⚠ **The second half of that sentence used to read "…the model's rate integral
+credits", and that is no longer HEAD (07-27).** The objective is a per-cast sum and it reads a value
+buff at the cast's **COMPLETION** over `(start, end]` — the sim's own rule (CLAUDE.md's ★ snapshot rule;
+gate `tools/credit-check.mjs`), so the model now counts the same casts rather than a fraction. `D/Δ`
+survives only in the retired `integral` diagnostic. **The section's physics is unchanged and still the
+reference for reading a sim number**; what changed is that the model is no longer the party on the
+fractional side of it. Two facts compose: wowsims applies the modifier at **cast COMPLETION** (`applyEffects`,
 `sim/core/cast.go:216/258/338/356`), and the APL can only press at a **cast boundary** — so the first
 boosted completion is a full `Δ` after the press and the window really spans `[gain+Δ, gain+D]`.
 
@@ -1017,11 +1204,18 @@ all of it, not just the crit sequence).
   point on → A and B desync → the paired diff reverts to full noise, so nearby seeds "agree" on a
   desynced sample and mislead. Measure count-changing questions (e.g. 3-vs-4 icons) with
   **far-separated-seed replicates + large N**, never a single nearby-seed pair.
-- **`--var 0` vs `--var 10` — and the MODEL-MATCHED read, `--var 0.5` (Phase 7).** `--var V` draws the
-  kill uniformly in [T−V, T+V]; intermissions stay fixed. The scorer's `robust` objective is a
-  KILL_WINDOW = 0.5s linear taper over [T−0.5, T+0.5] (`index.html:717`), the **same window width** the
-  sim draws at `--var 0.5` (`xval.mjs:49-54`) — so var 0.5 is the closest question the sim can be asked,
-  and is the cross-val/acceptance metric. var0 is the razor-edge whole-cast-parity trap (measured: the
+- **`--var 0` vs `--var 10` vs `--var 0.5` — and "MODEL-MATCHED" is RETIRED as the reason (Phase 7 →
+  07-27).** `--var V` draws the
+  kill uniformly in [T−V, T+V]; intermissions stay fixed. ⛔ This bullet used to justify `--var 0.5` by
+  *"the scorer's `robust` objective is a `KILL_WINDOW = 0.5s` linear taper over [T−0.5, T+0.5], the
+  **same window width** the sim draws at `--var 0.5` — so var 0.5 is the closest question the sim can
+  be asked."* **The taper is gone** (PHASE12 §9, user ruling): the model is deterministic at `T` and
+  credits a straddling cast `min(1, (T − start)/duration)`, a **one-sided** window of the cast's own
+  duration. So there is no width to match, and `--var 0.5` now rests **entirely** on
+  `tools/var-decision.mjs` (BENCH §3) — which is the stronger footing, since that evidence never
+  depended on the model. It remains the cross-val/acceptance metric.
+  ⚠ **What this OPENS:** the model smooths the boundary analytically, the sim numerically, and no
+  residual between the two has been derived (PHASE12 §9.4). var0 is the razor-edge whole-cast-parity trap (measured: the
   §16 h150 ramp-hug pair flips −0.08% → +0.37% from var0 to var0.5 — the var0 read was a stranded whole
   cast, the var0.5 read matches the model's +0.25 casts to 0.01%). var10 asks a *different* question —
   ±10s kill hedging the model deliberately does not price (RULES §8) — and adds a late-window premium
@@ -1030,9 +1224,13 @@ all of it, not just the crit sequence).
   var0.5. No kill-variance setting clears an **intermission-wall** effect (walls stay fixed) — that
   needs wall-jitter, below.
 - **★★★ "MODEL-MATCHED" MATCHES THE WIDTH, NOT THE KIND — var 0.5 has a RESIDUAL, and it is derivable
-  (07-25).** The bullet above used to say var 0.5 asks *exactly* the model's question. That word is
+  (07-25).** ⛔ **HISTORICAL as of 07-27 — the numbers below price the RETIRED scorer.** Both premises
+  are gone: the model no longer integrates a continuum limit (§6.10) and there is no `KILL_WINDOW`
+  (§9). `1 − W/c` prices nothing about HEAD; **no replacement floor has been derived**, and the general
+  lesson at the bottom of this bullet is exactly the warning against assuming one transfers.
+  The bullet above used to say var 0.5 asks *exactly* the model's question. That word is
   **withdrawn.** The sim sums over its **integer cast lattice**, `f(T) = Σ_i clamp((T + KW − tc_i)/W, 0,
-  1)` with `W = 2·KW = 1.0s`; the model integrates that sum's **continuum limit**, `g(T) = ((T − KW) +
+  1)` with `W = 2·KW = 1.0s`; the model integrated that sum's **continuum limit**, `g(T) = ((T − KW) +
   W/2)/c`. The difference is a sawtooth in the tail phase with **peak-to-peak = `1 − W/c` casts** —
   verified numerically to 4 decimals by `tools/lattice-ripple.mjs ripple`: `c=1.000 → 0.0000` (exactly
   zero at the GCD floor, the built-in sanity check: at `c = W` the taper smears the lattice perfectly) ·
@@ -1062,15 +1260,26 @@ all of it, not just the crit sequence).
   matches the model's floored/unfloored intervals EXACTLY; only the whole-cast truncation at walls
   differs (stacked window: model +1.65 casts, sim +1.04; split: model +1.48, sim +1.54). The model's
   continuous fractional credit is the CORRECT expectation for real fights, whose transition times vary
-  run to run — so the measurement must vary **segment lengths**: each wall gets its own seeded shift
+  run to run — ★ **and since 07-27 that credit is EXPLICIT rather than incidental**: a wall is a **cut**,
+  so the cast straddling it earns `min(1, (wall − start)/duration)` (PHASE12 §9). ⚠ **An AoE phase start
+  is a cut too** — same jitter argument, different reason (the cast lands, but the player cancels it for
+  Arcane Explosion; RULES §9) — and *that* one the sim cannot reproduce, so jitter measurements across an
+  AoE wall carry the standing divergence above. Under the old scorer a
+  cast completing *inside* an intermission was paid in **full**, so this bullet's reasoning was right
+  about the goal and wrong about HEAD. The user's ruling rests on the same argument stated here — a wall
+  does not land on the same second every pull —
+  so the measurement must still vary **segment lengths**: each wall gets its own seeded shift
   δ_i ∈ [−WJ,+WJ], presses shift with the wall that starts their segment, seam-coincident window edges
   move together (KT downtime→AoE). ★ A RIGID translation (one δ for walls+presses — the first design)
   preserves every segment's internal parity and washes NOTHING — do not regress to it.
 - **var10 penalizes LATE windows near the end — decide which question you're asking.** A buff window
   inside the last `var` seconds gets clipped on short draws, so var10's A/B adds a real "late-slot
   kill-variance premium" on top of the fixed-kill effect (measured: Zerk-in-Lust vs after = +0.6% at
-  T=60 var10 but exactly the model's +0.3% at T=80 var10 where nothing clips — RULES §7). The model
-  prices only a half-cast of kill variance BY DESIGN (RULES §8), so when gating a model preference,
+  T=60 var10 but exactly the model's +0.3% at T=80 var10 where nothing clips — RULES §7). ⛔ This used
+  to end *"the model prices only a half-cast of kill variance BY DESIGN"*. **The half-cast window is
+  retired** (PHASE12 §9); the model prices **no** plan-wide kill variance at all — its only boundary
+  hedge is the one-sided credit on the straddling cast, which is narrower still. The practical advice
+  is therefore *more* binding, not less: when gating a model preference,
   either use a fight long enough that no compared window sits in the variance zone, or expect the sim
   to exceed the model by the clip premium.
 
@@ -1081,7 +1290,7 @@ all of it, not just the crit sequence).
 | question you ask the sim | trustworthy? | why / what fixed it |
 |---|---|---|
 | **absolute DPS of one plan** | ✅ ~0.4% abs vs `wowsimcli` | the trust-anchor procedure ("Trust anchor", above) — re-certify per fresh session |
-| **A vs B, same press count** | ✅ sub-DPS resolvable | CRN pairing cancels the whole RNG inventory; use one seed, `--var 0.5`. ⚠ *statistically* resolvable ≠ *structurally* comparable: at var0.5 the tail lattice still leaves `1 − W/c` casts of two-signed slack (0.32 at c=1.463), so on a short low-haste fight a sub-0.1% gap can be pure ripple |
+| **A vs B, same press count** | ✅ sub-DPS resolvable | CRN pairing cancels the whole RNG inventory; use one seed, `--var 0.5`. ⚠ *statistically* resolvable ≠ *structurally* comparable: the sim's terminal cast lattice is still two-signed slack a short low-haste fight can hide a sub-0.1% gap in. ⛔ The old size for that slack — `1 − W/c` casts, 0.32 at c=1.463 — priced the **retired** scorer (PHASE12 §9) and **no replacement has been derived**, so treat the caution as qualitative until one is |
 | **A vs B, different press count** | ⚠️ noise-limited | the streams desync (shared-stream rule) — needs far-separated seeds + large N, never a nearby-seed pair |
 | **an intermission / wall-bounded plan** | ✅ *since* the `APLActionSchedule` fix | the schedule silently DROPPED on-cooldown presses (next section) — every pre-patch intermission number was garbage. Requires the patched runner (`RUNNER PROVENANCE`) **and** wall-jitter v2, because fixed walls phase-lock cast parity |
 | **an AoE phase** | ✅ *since* Phase 5 | `--targets N` + `_aoe` emission in `genapl` (AE was previously simmed as downtime). AE constants verified exact vs `arcane_explosion.go`; KT's 2.68% AoE artifact went to 0.39% (ordinary) once AoE was actually valued |
@@ -1207,9 +1416,35 @@ model. Leave ≥ 2 s of slack in a hand-built spec, or expect the second press l
   `Aura gained: {SpellID: 2825, Tag: -1}`. **Cold Snap has no aura** — only a `Casting` line. A press
   verifier must union both event kinds and dedupe (the two events of one press land < 0.05 s apart).
 - Match **exact** id strings (`SpellID: 12472`, not `12472`) *and* guard the trailing digit (`2825` is a
-  prefix of `28250`), or the match silently lands in the `t=0` raid-buff block.
-- The reference implementation of all of the above is `$SP/p8/r6verify.mjs` (takes a directory of
-  `<name>.log` + `<name>.spec.json` + a `manifest.json`).
+  prefix of `28250`), or the match silently lands in the `t=0` raid-buff block. Matching the **whole
+  brace group** including the closing `}` makes that guard automatic.
+- On-use **trinkets log by ItemID**, not by the spell they grant: `Casting {ItemID: 29370}`.
+- ⚠ An equipped trinket can also emit `Aura gained: {ItemID: …}` at **t = 0** — that is the *equip*, not
+  a press. (Serpent-Coil does; Icon does not.) So auras must only be consulted for an ActionID that
+  produced **no** cast events at all, or a fully-dropped trinket press reads as "fired at 0.00".
+
+**★ The reference implementation is `tools/press-verify.mjs`** (committed 07-27). ⚠ It previously lived
+only at `$SP/p8/r6verify.mjs` — a session-scratchpad path that no longer exists — with the facts above
+as its only surviving documentation; the tool was rebuilt from them (PHASE12 §3.6).
+
+```
+node tools/press-verify.mjs --spec '{"IV":[8,39],"AP":[8],"BL":[7],"Icon":[8]}' --log /tmp/pv.log
+RUNNER=…/runner-ap180 node tools/press-verify.mjs --spec '{…}' --run --dur 60 --haste 0   # runs it too
+```
+
+Per intended press it prints **sched · fired · expected · off · via**, and exits `1` if any press never
+fired **or fired on the wrong cast** (see the `--cast` block below).
+It does **not retype a single spell id**: each key's ActionID is read back out of `tools/genapl-core.mjs`
+by building a one-key APL, so the two can never drift. Controlled in both directions before being
+believed — a healthy 8-press plan → exit 0 with every press matched; **two negatives that reproduce the
+real failures**: a second `IV` inside its 180 s cooldown → `DROPPED` (the `APLActionSchedule` drop bug ★)
+and an `MQG` press on a character wearing isc+scb → `DROPPED` (the unworn-trinket no-op, PHASE12 §2.1);
+plus the fact-4 case (a Gem press past the fight end reads `DROPPED` + `UNCLAIMED`, *not* a 0.00 fire),
+a synthetic log carrying only `SpellID: 124720` and a *pet* `12472` (both refused), and **twelve**
+setup negatives — no spec, bad JSON, unknown key, no presses, missing/empty/NUL log, `--run` without
+`RUNNER`, mutually exclusive flags — each required to exit **2**. ★ **An empty log exits 2, never
+"all presses fired"**: the project has shipped that exact false pass three times (`xval-collect`,
+`xval-verify`, the wrapper banners).
 
 **★ RUNNER PROVENANCE — one true binary.** The canonical runner is built from the scratchpad `wowsims`
 clone (`ade9f39` + `apl-schedule-strict-ready.patch` + `ap-cd-at-cast.patch`):
@@ -1217,6 +1452,46 @@ clone (`ade9f39` + `apl-schedule-strict-ready.patch` + `ap-cd-at-cast.patch`):
 scratchpad root and **poisoned a whole day of gates** (every drop-bug distortion re-introduced). Before
 ANY gating session: rebuild or verify the binary is the patched one (check
 `grep -c innerSpell sim/core/apl_actions_timing.go` = 3 and no `CD.Use` in `arcane_power.go`).
+
+### ★★★ AND SINCE 07-27 IT GRADES *WHEN*, NOT JUST *WHETHER* — `--fire` / `--cast`
+
+PHASE12 §6.7: *"no gate in this repo covers press-fire timing — which is exactly why it survived this
+long."* What survived was `sim/planspec.mjs` emitting `Math.floor(actEff)`, which put **7.14 % of
+presses on a cast the model never chose** (`tools/press-headtohead.mjs`, real logs). It is 0.00 % now,
+and this is the gate that keeps it there:
+
+```
+node tools/press-verify.mjs --spec '{…}' --fire '{…}' --cast '{…}' --run --dur 300 --haste 0
+node tests/press-fire.mjs                       # part A only — no sim, no browser
+RUNNER=…/runner-ap180 node tests/press-fire.mjs # + part B, graded on real logs
+```
+
+`planToSpec` returns `fire` (expected fire times) and `cast` (the cast index each press must buff)
+beside the spec; pass them straight through.
+
+**★ GRADE ON THE CAST, NOT ON THE CLOCK.** The model's cast grid and wowsims' are **not the same
+grid** — wowsims takes **334 ms** per Arcane Blast stack (`sim/mage/arcane_charge.go:17`) where the
+model takes 1/3 s, and rounds every cast to the millisecond. A bare stream drifts 0.080 s over 300 s
+(`tools/lattice-drift.mjs`); a plan with haste buffs in it reaches **~0.35 s by t=200**. So a press can
+land on exactly the right cast with its wall-clock time a third of a second off, and a clock-tolerance
+verdict calls that a failure and sends you hunting a bug that is not there. `--cast` reads the sim's
+OWN cast stream out of the log and is drift-proof; `--fire`'s `off` column becomes a *measurement of
+the lattice*, which is worth reading on its own.
+
+⚠ **The log lies to two decimal places.** The boundary it prints as `11.00` is `10.998`. That 2 ms is
+the whole of the "a scheduled press fires a full cast late" mystery: `APLActionSchedule.IsReady` is
+`>=` (not strict), and `10.998 >= 11.000` is false. Anyone reading a boundary off the log and
+scheduling that number will be bitten. Instruments: `tools/press-ns-probe.mjs` (falsifies the
+nanosecond theory), `tools/press-threshold-probe.mjs` (bisects the real threshold: `B − 0.002`),
+`tools/lattice-drift.mjs` (the drift vs haste and fight length), `tools/press-exposure.mjs` (the
+corpus exposure, no sim).
+
+**Two failure classes press-verify reports but does NOT count against you**, because no transcription
+can reach them — both are the 334 ms mismatch:
+- **HELD** — the schedule value sat inside the right interval and the sim declined anyway
+  (`IsReady` also gates on `innerSpell.IsReady`: a cooldown coming up a hair after the sim's boundary).
+- **LATTICE** — the two grids are more than half an interval apart there, which is the entire budget a
+  value derived from the model's grid can have.
 
 **Scheduled presses fire at APL decision points — during a ramp that is the NEXT SLOW-CAST BOUNDARY.**
 Sim-log-verified: with a cold opener, presses scheduled at 5 land at **6.5** (the 0→3 ramp's cast
@@ -1241,6 +1516,12 @@ accounts for it before blaming the model.
   stayed valid).
 
 ## Evaluating AoE phases (`--targets N` + AE-spam)
+
+> ⚠⚠ **Before comparing anything across the phase START, read the standing-divergence block in
+> Methodology.** The model treats an AoE phase start as a **cut** and scores the straddling Arcane Blast
+> as **cancelled** (partial credit, AE lattice restarting at the wall); wowsims cannot cancel a cast, so
+> it finishes and lands it. That gap is **expected and priced** — it is a modelled player decision, not a
+> harness fault. RULES §9.
 
 Two additions let the runner value an Arcane-Explosion AoE phase (the model's `type:"aoe"` segment):
 - **`runner --targets N`** duplicates `encounter.targets[0]` to N mobs (config protos are read-only, so

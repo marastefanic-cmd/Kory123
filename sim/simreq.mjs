@@ -11,8 +11,16 @@
 // ── WHY GEAR-AGNOSTIC ─────────────────────────────────────────────────────────────────────────────
 // The planner asks for four numbers (spell damage, crit, haste rating, fight length) and deliberately
 // knows nothing else about your character, so the verification runs on a FIXED synthetic mage —
-// `model-ref.json`: no gear, no consumes, no raid buffs, standard Arcane raid talents — with your
-// three stats injected as flat bonuses on top. Consequences, and they matter:
+// `model-ref.json`: no armour, no consumes, no raid buffs beyond the one noted below, standard Arcane
+// raid talents — with your three stats injected as flat bonuses on top. Consequences, and they matter:
+//
+// ⚠ TWO DELIBERATE EXCEPTIONS TO "NO GEAR, NO BUFFS", both added 07-26 (PHASE10 §8.7) because without
+// them the button was measuring nothing: the character WEARS the two on-use trinkets (Icon 29370 +
+// Serpent-Coil 30720) and has `raidBuffs.bloodlust` ON. An on-use is only castable while its item is
+// worn and wowsims does not complain when it is not — the press is a bit-identical no-op — and
+// `raidBuffs.bloodlust` does not auto-apply a Lust, it makes one castable. Gear-less, the button
+// scored Bloodlust at EXACTLY 0.000 (it is worth +165 DPS here) and two plans differing only in Icon
+// timing as an exact tie. The passives ride along in BOTH arms and cancel in the reported difference.
 //
 //   • The ABSOLUTE DPS is not your DPS and is not meant to be. Only the A-vs-B DIFFERENCE is
 //     meaningful, and that is the only thing the UI reports.
@@ -21,13 +29,17 @@
 //   • Spell hit is pinned at the 16% cap in the reference character's bonusStats (202 rating at
 //     12.615/1%, vs a level-73 target). A 1% miss floor is irreducible in this engine; it cancels.
 //   • Mana is effectively infinite (`MANA_INJECT`), matching the model's infinite-mana assumption.
-//   • Duration variation is 0.5s — the model's kill-window WIDTH (RULES §8). Never 0: `--var 0`
-//     quantizes to integer casts and has faked a result twice (TOOLING ★★).
+//   • The fight's kill window is DERIVED FROM THE MODEL, not a round number: `encounterFor(T, haste)`
+//     yields `duration = T + d/2, variation = d/2` ⇒ `U[T, T+d]`, with `d` the terminal 3-stack Arcane
+//     Blast's own duration. That is exactly the one-sided window the model's boundary credit already
+//     is (PHASE13 §2.4). ⛔ It used to be a flat 0.5 justified as "the model's kill-window WIDTH" — a
+//     constant that no longer exists in the objective, and 33% too narrow at zero haste besides.
+//     Never 0: `--var 0` quantizes to integer casts and has faked a result twice (TOOLING ★★).
 //   • The APL opens COLD (`_prestack: 0`, genapl's default). Never prepull in a model-compared sim.
 
 // ★ Every protocol constant comes from sim/benchmark.mjs — the ONE definition the terminal harness
 // uses too. Nothing numeric about the protocol may be typed into this file (see that file's header).
-import { BENCH } from "./benchmark.mjs";
+import { BENCH, encounterFor } from "./benchmark.mjs";
 export { BENCH };
 
 export const STAT = { intellect: 3, spellDamage: 5, spellHit: 12, spellCrit: 13, spellHaste: 14, spirit: 16, mana: 34, mp5: 35 };
@@ -57,8 +69,22 @@ export function buildRequest(template, opts) {
     player.rotation.priorityList = opts.apl.priorityList || [];
   }
 
-  req.encounter.duration = opts.T;
-  req.encounter.durationVariation = opts.variation === undefined ? BENCH.variation : opts.variation;
+  // ★ THE KILL WINDOW IS THE MODEL'S, DERIVED — not a round number (BENCH.variation's note).
+  // The model credits a straddling cast the fraction of itself that fits, which is a ONE-SIDED window
+  // `U[T, T+d]` with `d` the cast's own duration. `durationVariation` is symmetric about `duration`,
+  // so `encounterFor` shifts the centre forward by the half-width to produce exactly that interval.
+  // ⚠ Setting `variation` WITHOUT re-centring `duration` would silently make the fight longer on
+  // average than the model plans for, which is why these two are set together from one helper.
+  // An explicit `opts.variation` still wins — that is how an archived round gathered at the legacy
+  // flat 0.5 is reproduced — and it then keeps the old symmetric shape on purpose.
+  if (opts.variation === undefined) {
+    const enc = encounterFor(opts.T, opts.hasteRating || 0);
+    req.encounter.duration = enc.duration;
+    req.encounter.durationVariation = enc.durationVariation;
+  } else {
+    req.encounter.duration = opts.T;
+    req.encounter.durationVariation = opts.variation;
+  }
   // AoE: duplicate target[0] to N (runner-main.go --targets). Arcane Blast is single-target, so the
   // extra dummies are inert outside the Arcane Explosion windows.
   if (opts.targets > 1) {

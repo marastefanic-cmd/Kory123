@@ -60,6 +60,16 @@ for (const ctx of ['A', 'B']) {
 console.log(`\nTARGET asymmetry = ${TARGET.toFixed(4)} pp   (P3 A=${P3.A} B=${P3.B})`);
 
 console.log('\n=== C-BE proper: continuous credit minus board-realized credit (quantization over-credit)');
+// ⚠ C-BE NO LONGER MEASURES QUANTIZATION. It was defined as CONTINUOUS credit (`robust`, then the
+// rate integral) minus DISCRETE board damage, so the remainder was the integral's over-payment of a
+// partial cast. Since PHASE12 §6.10 `robust` is itself the discrete per-cast sum, so both arms are
+// now discrete and the only thing left between them is the BOUNDARY CREDIT: `dmg` below is each
+// cast's FULL damage, while `robust` summed `dmg * frac`. `dModel - dQuant` is therefore
+// −(the credit withheld at the cuts), not a quantization over-credit, and F2's "both must be > 0 =
+// model over-credit" sign test is inverted with respect to its own hypothesis.
+// ⇒ Read C-BE as an archived PHASE8 quantity. Do not re-derive a new claim from these two lines
+//   without redefining them first. (Summing `c.credited` instead of `c.dmg` would make dQuant equal
+//   dModel identically — a tautology, not a fix.)
 const boardDmg = s => simulate(s, cfg, true).casts.reduce((a, c) => a + c.dmg, 0);
 const res = {};
 for (const ctx of ['A', 'B']) {
@@ -77,10 +87,23 @@ console.log(`F2 sign: C-BE(A)=${res.A.cbe.toFixed(4)} C-BE(B)=${res.B.cbe.toFixe
 console.log(`F4 levels: sim-vs-model gap A=0.2105 B=0.4068 — compare C-BE per context`);
 
 console.log('\n=== F3 sensitivity: C-BE in the UNTAPERED currency (total, not robust) — is the residual the kill taper?');
-// ⚠ DEGENERACY GUARD (added when this commit was merged to master): the kill taper only reweights
-// damage inside [T-KW, T+KW], KW=0.5. Whenever no scoring breakpoint separates the two currencies
-// at this T, simulate().total and .robust come back BIT-IDENTICAL — and then this block compares a
-// quantity against itself, so it can never discriminate. Report that instead of implying a result.
+// ⛔⛔ F3 IS NOW PERMANENTLY VACUOUS — NOT "sometimes degenerate at this T", ALWAYS, EVERYWHERE. ⛔⛔
+//
+// F3's whole design was to re-measure C-BE in a currency the kill taper does NOT touch (`total`, the
+// hard cut at T) and see whether the residual survived. That required `total` and `robust` to be two
+// different numbers. Since the boundary-credit rewrite (PHASE12 §9, user ruling 07-27) they are the
+// SAME ACCUMULATOR: `KILL_WINDOW` and the symmetric taper are retired, one uniform credit rule
+// `min(1, (nextCut - castStart)/castDuration)` applies at every cut, and simulate() returns
+// `total === robust === totalEarly` by construction. All three are still returned so no caller
+// crashes — which is precisely why this block must announce the degeneracy rather than infer from it.
+//
+// The old guard below tested `total !== robust` and reported VACUOUS "at this config". That reading
+// is obsolete: there is no config, no T and no gear at which it can be non-degenerate again, so the
+// conditional verdict would understate the problem. It is kept and still evaluated ONLY so that a
+// future engine that genuinely re-separates the currencies is detected and says so out loud.
+//
+// ⇒ The 0.0724 pp residual F3 was built to explain remains UNEXPLAINED, and this instrument can no
+//   longer be the thing that explains it. See PHASE8 §21.5 erratum.
 const tot = s => simulate(s, cfg).total;
 let degenerate = true;
 for (const ctx of ['A', 'B']) {
@@ -94,7 +117,14 @@ for (const ctx of ['A', 'B']) {
               `[total===robust? ${rW.total === rW.robust ? 'YES' : 'no'}]`);
 }
 console.log(degenerate
-  ? '⚠ F3 VACUOUS at this config: total ≡ robust bitwise on both arms, so "identical in the\n' +
-    '  untapered currency" is a tautology, NOT evidence that the kill taper is excluded.\n' +
-    '  The 0.0724 pp residual remains wholly unexplained. See PHASE8 §21.5 erratum.'
-  : '✓ F3 meaningful here: the currencies differ, so the comparison discriminates.');
+  ? '⛔ F3 IS VACUOUS — AND PERMANENTLY SO, not merely at this config.\n' +
+    '  total ≡ robust bitwise on both arms, because since PHASE12 §9 the engine accumulates\n' +
+    '  total, robust and totalEarly into ONE number (the credited per-cast sum). The symmetric\n' +
+    '  kill taper this test was designed to exclude NO LONGER EXISTS to be excluded, so\n' +
+    '  "identical in the untapered currency" is a tautology at every T, gear and haste — never\n' +
+    '  evidence about the residual. F3 CANNOT BE RUN AGAINST THIS ENGINE. The 0.0724 pp residual\n' +
+    '  remains wholly unexplained and needs a different instrument. See PHASE8 §21.5 erratum.'
+  : '⚠ the currencies came back DIFFERENT — total !== robust. That contradicts PHASE12 §9, under which\n' +
+    '  they are one accumulator. Either the engine re-separated them (then F3 discriminates again and\n' +
+    '  this file needs its header revisited) or something is wrong. Do not use these numbers until you\n' +
+    '  know which.');

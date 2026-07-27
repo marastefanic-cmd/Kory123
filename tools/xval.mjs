@@ -1,3 +1,29 @@
+// ╔══════════════════════════════════════════════════════════════════════════════════════════════╗
+// ║ ⚠ REPRODUCTION-ONLY — THIS IS A GEAR-A INSTRUMENT. DO NOT GATHER A NEW ROUND WITH IT.        ║
+// ╚══════════════════════════════════════════════════════════════════════════════════════════════╝
+//
+// This tool belongs to the pre-2026-07-26 rig and is kept so the ARCHIVED gear-A corpus
+// (`tools/xval-results-archive/gearA-pre-20260726/`) stays reproducible. It is NOT the current
+// instrument, and a table it produces must never be compared to, pooled with, or diffed against a
+// gear-B table (BENCH §1 — B2's sim preference moved ~0.39 pp AND CHANGED SIGN across the two).
+//
+// What replaced it, and why the replacement is not a like-for-like swap:
+//   · CURRENT DRIVER   `tools/xval-bench.mjs` + `tools/xval-bench-campaign.sh` (proven equivalent to
+//                      `tools/xval.mjs`, PHASE10 §8.9), driven by `tools/xval-round-pipeline.sh`.
+//   · ENGINE           the committed `sim/sim.wasm` — no clone, no protoc, no `go build`, and no
+//                      `RUNNER`/`EXPORT_BASE` to resolve out of a session scratchpad that may be gone.
+//   · CHARACTER        `tools/bench/export.json`, committed and frozen — not a private export.
+//   · PROTOCOL         `--var 0.5` by measurement (`tools/var-decision.mjs`), difference-in-differences
+//                      against a never-press control, and every reading STAMPED (`char=`, `emit=`,
+//                      `iter=`, `seeds=`, `wasm=`) so a later reader can classify it without trusting
+//                      a directory name.
+//
+// ⚠ It also predates `sim/planspec.mjs`'s `REQUIRES_EQUIPPED` guard, so it will happily schedule a
+// press of an UNWORN trinket — a bit-identical no-op in wowsims that reads as a small honest number
+// rather than an error (PHASE12 §2.1). That is the single most likely way an old table lies.
+//
+// If you are here to gather data: stop, and use the current driver. If you are here to reproduce an
+// archived table: carry on, and read that directory's README first.
 // Holdout cross-validation of the planner's haste-adaptation, end to end from one seed.
 //   node tools/xval.mjs <seed>
 // (1) seed-draws a random fight (length by TCLASS, Lust time, 2 trinkets — or KIT/BOSS overrides);
@@ -52,7 +78,9 @@ for (const [name, p] of [['RUNNER', RUNNER], ['EXPORT_BASE', EXPORT_BASE]]) {
 }
 const ITER = process.env.ITER || '10000';
 // Kill-time variation (s). 0.5 matches the scorer's kill-window WIDTH: `robust` tapers linearly over
-// [T−0.5, T+0.5] (KILL_WINDOW=0.5s, index.html:717). var10 asks a different question (±10s kill hedging
+// [T−0.5, T+0.5]. ⚠ This used to cite `KILL_WINDOW=0.5` as the model constant it mirrors; that
+// constant was RETIRED 07-27 (PHASE12 §9) and `--var 0.5` now stands on var-decision.mjs alone.
+// var10 asks a different question (±10s kill hedging
 // the model deliberately does not price, RULES §8) and adds a late-window premium; var0 is the
 // razor-edge whole-cast parity trap. See ACCEPTANCE (PHASE7 metric decision).
 // ★★★ 07-25: 0.5 matches the WIDTH, NOT THE KIND — it is not "exactly" the model's objective (that

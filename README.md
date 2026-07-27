@@ -3,7 +3,7 @@
 *(the page itself is titled "WoW Anniversary cooldown optimizer for Arcane mages"; "Arcane Burn Planner"
 remains the project/repo name)*
 
-A single-file web app for **TBC Anniversary-realm Arcane mages** that works out how to overlay your
+A web app for **TBC Anniversary-realm Arcane mages** — `index.html`, no build, no deps — that works out how to overlay your
 on-use / proc haste and spell-power cooldowns over a fight, and gives you a second-screen schedule to
 follow during the pull.
 
@@ -36,15 +36,16 @@ shorter fight than last week's log so the final burn window isn't planned past t
   `total = (1 + rating/1577) × 1.30 (Lust) × 1.20 (IV/PI) × 1.10 (Zerk)`.
 - The **global cooldown** is hasted too, with a hard **1.0s floor** — reached at exactly **+50% total haste**
   (789 rating unbuffed).
-- **Arcane Blast**: 2.5s base cast; each cast stacks a debuff (max 3) cutting the **base** cast by ⅓s
-  (and +75% base mana). At 3 stacks the base is 1.5s — identical to the GCD — so once total haste
-  passes 50%, 3-stack AB is GCD-locked at 1.0s and *extra haste adds no casts*.
+- **Arcane Blast**: 2.5s base cast; each cast stacks a debuff (max 3) cutting the **base** cast by
+  **334 ms** (and +75% base mana). At 3 stacks the base is **1.498s** — a hair under the 1.5s GCD, so
+  in steady state the interval is GCD-bound, and once total haste passes 50% 3-stack AB is GCD-locked
+  at 1.0s and *extra haste adds no casts*.
   Going over the floor is still often correct: the planner simulates real casts, so it will overcap a
   window (especially under Arcane Power) when that beats staying under the line.
   The planner models the stack **ramp exactly**: the mage opens **cold** (0 stacks — no prepull) and
   re-ramps after any Arcane-Blast gap ≥ 8s (intermission, or an AoE phase, since Arcane Explosion
   neither builds nor refreshes the debuff). Ramp casts run at their true 2.5 / 2.17 / 1.83s lengths and
-  are scored **discretely** at their completions; the cast-rate integral covers everything else. Haste
+  are scored **discretely** at their completions — as, since 07-27, is every other cast. Haste
   stays exactly position-independent under this (verified 0.0000% pre- vs post-Lust), so the ramp only
   bites the **damage** side — which is why damage windows step off the ramp on their own.
 - **Wording matters**: "increases casting speed by X%" divides cast time by (1+X) — that's Icy Veins,
@@ -73,7 +74,11 @@ duration** (20s), while the used trinket takes its own full cooldown.
 
 ## The optimizer
 
-**The score is a continuous cast-rate integral** — the single law behind every overlay rule below.
+**The score is a deterministic per-cast sum** — for each Arcane Blast, its damage relative to a plain
+AB, summed over the fight. That is the single law behind every overlay rule below.
+⛔ It was a *continuous cast-rate integral* until 2026-07-27; the integral is the continuum limit (the
+expectation over a uniformly random cast phase) and it disagreed with the sum by a median 0.2114 % of
+score, against ranking margins of ~0.005–0.07 %. It survives only as a diagnostic (PHASE12 §6.10).
 Damage is `∫ castDamage(t) / interval(t) dt` over the fight: at each instant the Arcane Blast interval
 comes from the haste active then (clamped at the 1.0s GCD floor), and the cast's damage comes from the
 spellpower/damage buffs active then. Two consequences fall out for free, and hold at **every** gear
@@ -280,7 +285,8 @@ it in the top few of ~150 at every length and Bloodlust position — nothing bea
 ~0.4%, and that residual is diffuse cast-boundary noise, not a structural miss (rank 1 of 101 on the
 Kael late-Lust case).
 
-The scoring model was later rebuilt as a **continuous cast-rate integral** (see *The optimizer*) after
+The scoring model was later rebuilt as a **continuous cast-rate integral** — and then, on 2026-07-27,
+retired in favour of the exact per-cast sum it had been approximating (PHASE12 §6.10). It was adopted after
 the sim disagreed with the old per-cast sum on buff *alignment*: the sum quantised each window to a
 whole number of casts, so aligning Icy Veins/Berserking with the damage cooldowns (worth ~0.3% in the
 sim) came out as a numerical tie and the planner sometimes pressed the opener 2s early or parked

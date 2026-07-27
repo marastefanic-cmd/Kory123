@@ -35,8 +35,13 @@ Config lives in [`netlify.toml`](../netlify.toml) at the repo root.
   - The sim assets are fetched **lazily, on first press of "Check in the benchmark sim"**. A visitor who never
     presses it downloads `index.html` and nothing more, so the tool's cold-start cost is unchanged.
   - `sim/sim.wasm` is ~22 MB and needs `Content-Type: application/wasm` (set in `netlify.toml`) or
-    `WebAssembly.instantiateStreaming` refuses it; Netlify compresses it to ~4 MB on the wire and it
-    is served `immutable`.
+    `WebAssembly.instantiateStreaming` refuses it; Netlify compresses it to ~4 MB on the wire.
+    ⛔ It is served **`no-cache`**, NOT `immutable` — and this line said `immutable` long after the
+    change. `immutable` is a promise about a URL, not about a deploy, and this URL is stable while its
+    bytes are not: a returning visitor could hold a stale wasm against a fresh `index.html` forever
+    (PHASE11 §1.1 B3, fixed 07-26). `no-cache` means *revalidate*, not *re-download* — a 304 keeps the
+    22 MB off the wire. `netlify.toml`'s headers are the authority; when this file and it disagree,
+    **it wins**.
   - **The wasm is committed, not built at deploy time** — the bytes users run are the audited bytes,
     and a deploy can't break because upstream moved. Rebuild with `bash sim/build-wasm.sh`.
 - **NOT published:** `docs/`, `tools/`, `tests/`, `README.md`, `CLAUDE.md`. They stay
@@ -75,8 +80,12 @@ The live site must not identify the author (see CLAUDE.md "Working conventions")
 ## First-time Netlify setup (done once, in the Netlify dashboard)
 
 1. **Add new site → Import an existing project → Deploy with GitHub**, pick this repo.
-2. Settings auto-fill from `netlify.toml`: branch `master`, build
-   `mkdir -p dist && cp index.html dist/index.html`, publish `dist`. Confirm and **Deploy**.
+2. Settings auto-fill from `netlify.toml`: branch `master`, publish `dist`, and a build command that
+   copies **nine** files — `index.html`, the seven `sim/` assets (`sim.wasm`, `wasm_exec.js`,
+   `duel-worker.js`, `simreq.mjs`, `planspec.mjs`, `benchmark.mjs`, `model-ref-request.json`) and
+   `tools/genapl-core.mjs`. ⚠ This step used to quote it as `mkdir -p dist && cp index.html
+   dist/index.html`, which stopped being true when the sim shipped. Read `netlify.toml`; do not quote
+   it from here. Confirm and **Deploy**.
 3. **Site configuration → Change site name** → a neutral name.
 
 ## Rollback

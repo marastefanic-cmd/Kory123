@@ -22,7 +22,15 @@
 > without checking whether Phase 10 has restated it.
 
 
-**Status:** IN FLIGHT — diagnostic COMPLETE (§5 run ledger below), fixes landing. **Round 5 is gathered
+**Status: CLOSED 2026-07-27, archived.** Diagnostic mandate DISCHARGED (§5.16–§5.18), the engine
+fix LANDED (§5.19–§5.20), the `emit=fire` convention landed (§5.22), and rounds 6–7 gathered and
+certified (§5.23–§5.24). ⚠ Its residual — the two length-persistent kit-columns — was **inherited
+by PHASE 10**, which re-measured it on gear B: the persistence list reproduces **cell for cell**
+(PHASE10 §8.22), so the debt is a property of the model rather than of gear A, and PHASE10 §8.23–
+§8.25 diagnose it as **one terminal cast** the objective integrates away. Do not resume Phase-7
+work here; the live thread is PHASE 10, and the fix itself is scoped in PHASE 12.
+
+*Historical status line, kept because the archive is append-only:* IN FLIGHT — diagnostic COMPLETE (§5 run ledger below), fixes landing. **Round 5 is gathered
 and read (§5.15): the target list is TWO kit-columns** (`isc-mqg h40`, `isc-skull h20`), not the 34
 failing tables the banner names — and the corrected reference gear moved 35.9% of the plans while moving
 the verdict not at all, so the B failure is not a gear artifact. Phase 6 gathered the

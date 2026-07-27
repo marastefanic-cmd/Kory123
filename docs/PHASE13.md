@@ -1,0 +1,953 @@
+# PHASE 13 — the open work, after the objective was made exact
+
+**Status: OPEN (written 2026-07-27).** This is the project's only in-flight plan doc. It promotes
+`docs/PHASE12-RESUME.md` (deleted) and inherits the un-started work of Phases 11 and 12, which are now
+archived at `docs/archive/12-phase11-platform.md` and `docs/archive/13-phase12-exact-objective.md`.
+
+**Everything in this file is genuinely open.** Nothing here is a finished item kept for its reasoning —
+that is what the archive is for. Each item states, in one line, **why it is open**. If you close one,
+delete it from this file and record the arc in `docs/DIARY.md`.
+
+## §0 Where the tree stands — the state this phase starts from
+
+The objective is **exact**: for every Arcane Blast the walk knows haste, stacks (⇒ cast time), which
+buffs apply and crit, so `dmg` is exact and the objective is that sum, with **one boundary rule at
+every cut**:
+
+```
+credit = min(1, (nextCut − castStart) / castDuration)      × that cast's own value
+```
+
+A **cut** is a boundary you would not carry a cast across. **Three boundaries, two cuts, two different
+reasons:** an **intermission start** is a cut by **physics** (the boss is untargetable — the cast cannot
+land); an **AoE phase start** is a cut by **POLICY** (the cast lands, but adds are up and Arcane
+Explosion is worth several Arcane Blasts, so the player cancels — §1); a **burn** edge is **not** a cut
+(the cast lands *and you would not cancel it*) and is a *value* question under the snapshot rule. An
+**instant** cast (Arcane Explosion) takes credit **1**, not 0. `total`, `robust` and `totalEarly` are **one
+number**; the board carries `frac` and `credited`. Cooldowns chain from the **fire** moment (`auraAt`),
+not the press, so the model can no longer emit a plan the sim declines to execute.
+
+```
+exact-match          25 passed, 0 failed          self-consistency   0.00e+0 / 3000 scorings
+   (re-recorded 07-27 after the EPS fix:
+    6 of 25 moved — 4 better, 1 tie, 1        + 0 STRUCTURAL violations (the check
+    logged witness. A failure reports the         that catches what 0.00e+0 cannot)
+    TIMELINE change before the line diff)         board-agreement counters 0
+                                                      corpus GENERATED — no cache, bare clone,
+                                                      460 699 casts in 0.78 s
+window-span  PASS 6/6 offsets  (⚠ it had NO assertion until 07-27 — CLAUDE.md called it a gate
+                     and it exited 0 whatever the two columns said; §2.6)
+credit-check pass    snapshot-rule pass
+wall-credit  pass    sim-duel      pass           sim-request        9/9 (native runner)
+window-match pass    7.8x tighter than the retired flat 0.5 (§2.4)
+press-headtohead     HELD 18 → 1 of 196 presses
+search-witnesses     2 known misses, 1 ROOT-CAUSED (§3.1) — the gate refuses an empty witness list
+model-audit          16 of 23 exact cast-for-cast (20 of 23 setting the sub-50 ms lattice aside);
+                     unmatched casts 4, UNEXPLAINED 0
+```
+⚠ **Read that table with §2.5 in hand.** Every line in it was green on the engine that banked a whole
+Arcane Blast inside an intermission. A green board is evidence about the checks you have, not about the
+code.
+
+⇒ **The one epsilon.** `index.html` declares a single `const EPS = 1e-9` and every clock comparison in
+`simulate()`'s board walk names it — the walk's clock is a running float sum, so a wall the geometry
+puts at `90.000` arrives as `89.999999999999972` and a missing epsilon is *behaviour*, not style
+(§2.5).
+
+**No freeze is in effect.** `index.html` and the whole import closure are editable; the closure freeze
+applies only *while a cross-val round gathers* (§4.1).
+
+---
+
+## §1 ✅ THE AoE EDGE — DECIDED AND LANDED, ON THE SECOND REVERSAL (07-27). Not open.
+
+> **This section was written as a placeholder for a decision in flight. It landed while it was being
+> written — and then landed AGAIN, the other way, the same day. It is recorded here rather than deleted
+> because the question flipped TWICE and the reasoning is worth more than the verdict.**
+
+### The ruling as it stands
+
+**An AoE phase START is a CUT — by POLICY, not by physics.** A **burn** edge is still **not** a cut.
+Three boundaries, two cuts, **two different reasons**:
+
+| boundary | does the cast LAND? | would you CANCEL it? | cut? | the reason |
+|---|---|---|---|---|
+| **intermission start** | **NO** — boss untargetable | n/a | ✅ **cut** | **physics** |
+| **AoE phase start** | **YES**, full Arcane Blast damage | **YES** — AE is worth several ABs | ✅ **cut** | **policy** |
+| **burn edge** | yes | **NO** — you keep casting AB | ⛔ **not a cut** | *value* boundary (snapshot rule) |
+
+**The physics finding STANDS, and it is not what decides the question.** The boss is **targetable**
+throughout an AoE phase: an Arcane Blast started at **59.000** with the phase opening at **60.000**
+completes at **60.498** and **lands, for full Arcane Blast damage** — 1886.4, a 25 %-resist roll off a
+~2577 typical hit. **This is NOT the intermission case.** What makes it a cut is what the **player**
+does: adds are up, Arcane Explosion is worth several times an Arcane Blast, so you **CANCEL** the Blast
+and start spamming AE. A cancelled cast is worth **zero**. And the phase does not arrive on the same
+second every pull, so with the wall at `W ~ U[W, W+d]` the credit `frac` is exactly `P(the wall has not
+arrived by completion)`: the other branch is the cancelled cast, and the expectation is `frac × dmg` —
+**the same one-sided window as the kill and the intermission**, one rule at all three cuts.
+
+★ **Because the cast is CANCELLED and not merely re-priced, the AE lattice starts AT THE WALL**, not at
+the Blast's natural end. **Verified:** a Blast starting **58.998** against a wall at **60.000** is
+credited **66.9 %** = `(60 − 58.998)/1.498`, and the first Arcane Explosion fires at exactly **60.000**.
+Crediting partially *without* truncating would be the worst of both — paying less and gaining nothing.
+
+**The contrast is the cleanest way to remember the rule:** at a **burn** edge you keep casting Arcane
+Blast anyway, so **there is nothing to cancel**. Predicate: `cutsAt()` (`intermission` or `aoe` segment
+**starts** only), the one thing that builds the lattice; `AOE_CUTS` marks the truncating kind.
+
+### ⚠⚠ THE PRICE: A DELIBERATE, STANDING DIVERGENCE FROM THE SIM — record it, do not "fix" it
+
+**wowsims' APL has no cancel action.** It will finish the Blast and land it. Therefore
+`tools/model-audit.mjs` **WILL** report a gap at an AoE wall, and any duel or bench crossing one carries
+that offset. **That gap is not a bug.** It is the one place the model deliberately models a **player
+decision the harness cannot express**, and it is the reason §2.2's audit must be read *by location*:
+a disagreement at an AoE wall is priced, a disagreement anywhere else is a finding. Also in RULES §9,
+TOOLING (standing-divergence block), MECHANICS §4, ARCHITECTURE, BENCH.
+
+### ⚠ THE HISTORY, because this flipped twice in one day
+
+1. **Shipped as a cut** (PHASE12 §9), on the reasoning *"the spell changes there, so the cast in flight
+   does not land as what it started as."*
+2. **Removed on PHYSICS** (commit `6cfaeec`): the measurement above showed the Blast **does** land, so
+   the stated reasoning was false and docking the cast looked like paying less than the game pays.
+3. **RESTORED on POLICY** (user ruling, same day) — a **different** argument, and the one that governs.
+
+★ **The lesson, and it is the durable part:** the physics measurement was **true** and the conclusion
+drawn from it was **wrong**, because the question was never *"does the cast land"* but *"what would the
+player do"* — and **no sim measurement can answer that**. A correct measurement aimed at the wrong
+question is the most convincing way to get a modelling decision wrong. Recorded in `docs/DIARY.md`'s
+corrections ledger.
+
+### ⚠ Two things the whole episode exposed, both already fixed, both worth more than the verdict
+
+1. **Arcane Explosion is INSTANT (`cast = 0`), and the divide-by-zero guard credited every AE at
+   nothing.** Kael'thas scored **368,018 instead of 524,173 — a 42 % error on the corpus's only AoE
+   fight.** As `dur → 0`, `min(1, (cut − t)/dur) → 1`: an instant cast cannot be *partially*
+   interrupted. **Guard against NaN, not against the answer.**
+2. ⛔ **Neither defect was reachable by any existing gate.** `self-consistency` compares the objective
+   against itself and read `0.00e+0` throughout; `exact-match` locks in whatever the search emits, so
+   both would simply have **become the goldens**. That is a standing hole in the gate set, not a
+   one-off — see §2 and §8.
+
+★ **And the probe that first said the cast did NOT land was wrong**: its regex required `Crit|Hit for`
+while the log reads `Hit (25% Resist) for` — the **third** parse bug of that family in one session. The
+corrected probe is what produced the 1886.4 in step 2.
+
+⇒ **There is now no open item that changes numbers the tool prints.** Everything below is measurement,
+enforcement, platform or research.
+
+---
+
+## §2 THE MODEL'S STANDING BAR — re-measure what PHASE 12 voided
+
+### 2.1 Re-gather `docs/ACCEPTANCE.md`
+
+**Why it is open:** ACCEPTANCE has **no current reading**. Every round in it was gathered against the
+scorer PHASE 12 replaced — the rate integral, press-anchored buff windows, one snapshot rule, the
+symmetric kill taper, a press-anchored cooldown chain — so its verdicts (invariant A passes, B2 fails
+at 142/345, worst 0.380 %) grade an engine that no longer exists. The tables stay: they are the
+append-only record and the evidence trail. **Their verdicts must not be cited as the model's status.**
+
+★ **It is now mostly arithmetic, not sim time.** `tools/xval-model.mjs` re-optimises at every haste and
+cross-scores every plan at every haste **with no sim at all**. It was built as *"the by-construction
+half"*, subordinate to the sim; with an exact objective it is the primary instrument. ⚠ It tests the
+**search**, not the physics — a sim-less sweep confirms the model against itself and cannot catch a
+wrong constant. That is what the sim is still for; it is how the 334 ms cast-time mismatch was caught.
+
+⚠ **Re-pose the PASS criterion before grading, do not re-answer it as written.** The "restate the bar
+in terms of the ripple floor?" question (archived PHASE12 §1.3) is **void as posed** — all three of its
+premises (the model integrates the continuum limit; a `1 − W/c` sawtooth; `KILL_WINDOW` is part of the
+objective) were destroyed by the exact objective. The *trade-off* it names is still real: a hard-zero
+bar carries information only if it is reachable, and a tolerance is what Phase 7 deliberately removed.
+
+### 2.2 Re-run `tools/model-audit.mjs` at scale
+
+**✅ RE-RUN 2026-07-27 — 12 of 23 → ATTRIBUTED to 14 → and after the §2.5 epsilon fix it reads
+16 of 23** (20 of 23 setting the sub-50 ms lattice aside; the fix-side table is further down).
+The fix the audit
+had itself diagnosed (cooldowns chained from the press rather than the fire) landed and
+`press-headtohead` measured HELD **18 → 1 of 196**. Then the residue was **split by cause**
+(`tools/model-audit.mjs --by-cause`), which moved the number twice and changed what it means:
+
+- **14 of 23, not 12.** ⛔ **Two of the eleven "failures" were the AUDIT's, not the model's.** The tool
+  subtracts the Tirisfal 4pc +70 SP proc from the sim's spell power, and it read that proc's window
+  with the wrong edge rule — `gain <= t` where every other value buff in this project uses `(gain,
+  fade]` (PHASE12 §6.12a). A cast completing exactly ON a gain had 70 subtracted from an SP that never
+  contained it; that value then became the *baseline* every other cast was measured against, so a whole
+  fight read +70 SP. `2:20 lust 0:05` and `7:20 lust 0:05` now pass; `4:00 lust 0:05`'s SP column went
+  **14 → 0**. Fixed, with the control that catches it (the recovered baseline must equal the raw
+  minimum SP) wired in as a printed warning.
+- **The residue is now fully attributed. `none` = 0 of 23 fights.** Every remaining disagreement has a
+  named location. In events (a parallel-shifted lattice is ONE event plus carry, not N mismatches):
+
+| cause | count | verdict |
+|---|---|---|
+| **AoE wall — the priced §1 divergence** | **0** | see below — **it does not arise on this corpus** |
+| ms lattice (< 50 ms, MECHANICS §1.1) | 92 deviations, worst **14 ms** | known cause; it is what 2 whole "failures" are |
+| buff-window edge | 16 events (+20 carry) | **real**, three sub-causes, below |
+| AoE phase EXIT (AE lattice) | 1 event (+8 carry), 0.118 s | real, small |
+| unmatched casts | 8 | **3 MATERIAL**, below |
+| **UNEXPLAINED (no boundary near)** | **0** | — |
+
+⚠⚠ **THE PRICED AoE DIVERGENCE EXPLAINS NOTHING HERE — 0 of the failures, not "some".** §1 is about a
+Blast **in flight across** the wall. Kael'thas is the corpus's only `aoe` preset and its wall at 105
+follows an intermission ending at 105, so **no Blast is ever in flight across it**: model and sim both
+start the AE stream at exactly 105.000 and both cast 33 of them. The corrected pass count is therefore
+**14 of 23, unchanged by §1**. The tool now says so at the wall, in as many words, rather than leaving
+a reader to assume the wall absorbed the residue. (§1 stays correct and stays priced — it is simply
+**not exercised** by any preset in the corpus. A preset with a Blast crossing an AoE wall would exercise
+it, and there isn't one.)
+
+★★ **TWO REAL MODEL DEFECTS FOUND, BOTH THE SAME ROOT — an epsilon-free boundary test against a `t`
+that has drifted below the boundary by float accumulation.** `simulate()`'s cast clock reaches
+`183.99999999999994` where the fight geometry says 184, and the walk's boundary comparisons do not all
+agree on how to treat that.
+
+1. **⛔ A PHANTOM ARCANE BLAST AT AN INTERMISSION WALL, PAID IN FULL. 3 fights.** The segment advance
+   is `t >= segs[si].end` (no epsilon), so at `t = wall − 2.8e-14` the walk does not jump the
+   intermission and starts a cast; `nextCut`'s test *is* `c > ts + 1e-9`, so it skips the wall
+   entirely and returns the fight end, giving `frac = 1.0`. The model therefore banks a **whole**
+   Arcane Blast, at **100 % credit**, completing 1.5 s inside an intermission where the boss is
+   untargetable and the sim casts nothing. Priced: **0.99 % (Lurker, 2:40-intermission) and 1.50 %
+   (Solarian) of the entire fight score** — against a corpus whose argued deficits are 0.004–0.380 %.
+   It is the same defect PHASE12 §8 believed it had closed, surviving because the two tests carry
+   different epsilons. (Distinguish it from the benign case: a cast starting a genuine 2 ms before a
+   wall — KT @69, @94, Vashj @310 — is credited `frac = 0.0013` and is correctly priced at nothing.
+   The tool prints the credit at full precision because both print as "90.000".)
+2. **⛔ A PRESS LANDING ON A CAST BOUNDARY MISSES IT — and `planToSpec` and `simulate` disagree about
+   which cast the model buffed.** The press loop breaks on `if (e.ts > t)` with **no epsilon**, so a
+   press scheduled at 184.00 against a boundary stored as `183.99999999999994` slips a whole cast.
+   `sim/planspec.mjs` uses `starts[i] >= fire - 1e-9` and therefore transcribes it to the *other* cast
+   — so the sim faithfully executes what the transcription asked and the two accounts diverge by one
+   cast of every buff pressed at that instant. Measured on `3:20 lust 0:05`: Berserking **and**
+   Serpent-Coil both pressed at 184.00; the sim's cast at 184.000 runs 1.135 s with +225 SP, the
+   model's runs 1.248 s with none, and the model's windows both close one cast late to match. Direct
+   repro (no sim): pressing at **184.00** vs **183.99** changes that cast's buffs and moves `robust` by
+   **63.19**. **3 of 247 presses** in the corpus are hit; they cause **7 of the 16** window events.
+
+★ **The Serpent-Coil 225 lead, resolved.** It was exactly this — defect 2, not a new kind of error, and
+the ★ guess above ("a window edge lands on a different cast") was right about the shape and wrong about
+which side moved: the model's window is late because the model's own press missed a boundary it defines
+as inclusive. Same family as PHASE12 §6.11/§6.12, third instance.
+
+**The remaining 9 window events are NOT model defects — they are harness limits, and they cap what this
+audit can ever prove:**
+- **Raid externals (6 events, Vashj + KT).** The model starts Bloodlust at the CALL (345.000) because
+  someone else presses it — the deliberate `isExternal` rule (PHASE12 §6.11b). wowsims can only fire it
+  from the mage's APL at a **cast boundary**, and `planToSpec`'s SLACK clamp pushes it earlier still:
+  emitted 345.498, aura gained **346.50**, faded 386.50 against the model's 385.00 — so the sim keeps
+  hasting two casts the model has already dropped. ⇒ **no fight with a pinned raid external can audit
+  exact at that window's back edge**, and the clamp (right for a self-press, which targets a boundary)
+  adds up to 0.5 s of avoidable error for an external, which targets none.
+- **A cooldown coming ready exactly on the sim's boundary (3 events, `4:00`).** Berserking's racial CD
+  is up at 200.41 and the sim's boundary is 200.41; wowsims declined it and fired a cast later, while
+  the model (ready 200.38, boundary 200.407) took it. Sub-millisecond, whole-cast consequence — the
+  other face of defect 2.
+
+**Still open, and now it is a short list:** ~~defects 1 and 2~~ — ✅ **BOTH FIXED, §2.5 below** — the
+14 ms lattice floor, and the raid-external transcription.
+
+**⇒ RE-RUN AFTER THE FIX (07-27, same protocol, same runner, `--cache`): 14 → 16 of 23.**
+
+| | before EPS | after EPS |
+|---|---|---|
+| fights exact, cast for cast | 14 of 23 | **16 of 23** |
+| …setting aside the sub-50 ms lattice as well | — | **20 of 23** (4 fights fail on nothing else) |
+| unmatched casts | 8 (3 MATERIAL) | **4** |
+| buff-window edge events | 16 (+20 carry) | **4 start + 5 cast** (+12 carry) |
+| UNEXPLAINED (no boundary within 2 s) | **0** | **0** |
+| the priced AoE-wall divergence | 0 | 0 — still not exercised by any preset |
+
+Cell for cell: **Solarian now PASSES.** Lurker and `2:40 … intermission 1:30-2:10` — the other two
+fights that carried the phantom Blast — drop to **one** event each and are now marked †, *"entire
+residue is the ms lattice"*. Vashj (18), Al'ar (24), KT (68) and `4:00` (11) are the remaining
+failures, and Al'ar is also † . ⚠ The 68 on Kael'thas are **not** the AoE wall: §1 is not exercised
+here (its wall at 105 follows an intermission ending at 105, so no Blast is ever in flight across it).
+
+⚠ **Provenance, stated because it would otherwise be a hidden assumption:** the gather above ran on the
+engine *before* two later edits — an identifier rename (`EPS`/`SCORE_SLOP` de-shadowing) and a comment
+correction. Neither can move a cast, and the cache keys on the engine's bytes, so re-deriving means a
+full ~15-minute re-gather rather than the advertised warm-cache second. It was not re-run.
+
+This is the bar the user set: *"the model should be able to predict the logs press by press down to the
+milliseconds."* It holds **exactly** on **16 of 23** fights — including 247/247, 244/244 and 217/217
+casts with zero mismatches of any kind.
+
+⇒ **Re-derive the split, don't re-argue it:** `RUNNER=… node tools/model-audit.mjs --all --by-cause
+--cache DIR`. The gather is the whole cost; with a warm cache the attribution re-cuts in a second.
+`node tools/model-audit.mjs --self-check` is its negative control (7 probes, no runner needed) — it
+includes a fight with no AoE phase whose entire residue is a macro mismatch, which must never come back
+"explained".
+
+### 2.5 ✅ CLOSED 2026-07-27 — ONE EPSILON, AND THE GATE THAT WOULD HAVE CAUGHT IT
+
+**The fix, and it is four characters in three places.** Both §2.2 defects were the same root: the
+walk's clock is a running float sum of millisecond-quantized cast intervals, so a boundary the fight
+geometry puts at `90.000` arrives as `89.999999999999972`. Whether a comparison against that clock
+carried an epsilon was decided site by site, and the sites disagreed. `index.html` now declares **one**
+`const EPS = 1e-9` — the same value `sim/planspec.mjs` already used — and every clock comparison in
+`simulate()`'s board walk names it:
+
+| site | was | is | what it fixes |
+|---|---|---|---|
+| segment advance | `t >= segs[si].end` | `t >= segs[si].end - EPS` | the walk now jumps the intermission wall |
+| `nextCut` | `c > ts + 1e-9` | `c > ts + EPS` | unchanged in value; renamed so the convention is visible |
+| press loop break | `e.ts > t` | `e.ts > t + EPS` | a press at 184.00 hits the boundary at 183.99999999999994 |
+| press legality | `minStart > t` | `minStart > t + EPS` | same class, same block — a chained cooldown ready to float noise is ready |
+
+`EPS` is **not a tuned tolerance**: wowsims rounds every cast and GCD to the **millisecond**
+(`sim/core/cast.go`), so nothing real can hide below ~1e-6 s. The search passes further down still
+carry bare `1e-9` literals; those compare *scores* and *plan times*, not this clock, and sweeping them
+would be a rename with no defect behind it. Left alone deliberately.
+
+**What it moved, measured, and attributed (`plan-sweep` → `plan-diff` → `search-miss`, 16 cells):**
+
+| cell | Δ under the CURRENT scorer | cause |
+|---|---|---|
+| The Lurker Below | **+1483.9 (+0.654 %)** | defect 1 — the phantom Blast at the 90 s wall |
+| 2:40 lust 0:07 intermission 1:30-2:10 | **+1483.9 (+0.654 %)** | defect 1 (same fight shape) |
+| High Astromancer Solarian | **+1636.0 (+1.091 %)** | defect 1 — the 50 s wall |
+| 3:20 lust 0:05 | **+63.2 (+0.018 %)** | defect 2 — Berserking + Serpent-Coil at 184.00, exactly the §2.2 repro |
+
+⚠ The table above is the **quick tier** (`--max-t=200`, 16 cells). The **full 25-preset sweep** adds two
+more moved cells and one of them is a regression:
+
+| cell | Δ under the CURRENT scorer | verdict |
+|---|---|---|
+| 5:40 lust 0:05 | +0.0 | **tie** — a different layout at the identical score |
+| **Kael'thas Sunstrider** | **−50.8 (−0.008 %)** | **‼ REGRESSION — recorded as a witness, not papered over** |
+
+**Full corpus: 25 compared · 6 moved · 4 better · 1 tie · 1 regression · 19 unmoved.**
+
+⚠ `plan-diff` calls all six a *"SEARCH REGRESSION"* and is **wrong to do so** — it compares A's score
+to B's, which are different currencies after a scorer change. `search-miss` asks the question that
+survives a repricing (*"does the new plan beat the old one under ONE scorer?"*), and it is the tool that
+actually found the Kael'thas cell.
+
+**About that one cell, stated plainly rather than buried.** 0.008 % is an order of magnitude under the
+`1:40` witness (0.065 %) and two orders under this change's own wins, and the scorer did not get worse
+at Kael'thas — the **search** landed in a different, slightly worse local optimum once the press loop's
+boundary test changed which cast a press lands on. It is the corpus's only AoE preset and its longest
+fight (T=420, ~5 min to solve at 3 restarts), i.e. the most search surface and the least brute-force
+coverage. Both schedules are verified `repair()` fixpoints. It is logged in
+`tests/search-witnesses.json` **because the golden was re-recorded over it** — `search-miss`'s own rule
+is *"fix the search, or record it as a known miss, but do not re-record goldens over it silently."*
+Not root-caused: it may be the same `finishLine` mechanism as §3.1 or ordinary lattice sensitivity, and
+nobody has checked.
+
+Direct evidence at the wall, same plan under both scorers:
+
+```
+The Lurker Below, intermission [90, 130)
+  BEFORE  93 casts · one starting 89.999999999999972 · frac 1.0000 · credited 2242.1
+  AFTER   92 casts · none inside the wall            · Δrobust −2242.148 (−0.979 %)
+```
+
+The score going **down** is the fix: a whole Arcane Blast that the boss was untargetable for is no
+longer being paid for. The plan then moved because the *optimum* moved, and the moved plan is worth
++0.654 % over the old one on the same scorer.
+
+#### ⚠⚠ The part that matters more than the fix: `self-consistency` passed straight through both
+
+The project's headline sim-free gate — the one `CLAUDE.md` says to run after **any** change to
+`simulate()` — read `0.00e+0` while a 1.47 %-of-score defect was live. Two separate reasons, both
+now closed:
+
+1. **Its corpus was untracked scratch that evaporated on the change it was meant to grade.** It read
+   plans out of `.xval-cache/`, which is `.gitignore`d and keyed on the **sha1 of `index.html`**. So a
+   clean checkout has no corpus at all — and editing `simulate()` changes the hash, meaning the gate
+   stopped finding its corpus at precisely the moment it was needed. Measured: **8993 cache entries
+   present, 0 hits, against every committed revision of `index.html`.**
+   ⇒ The corpus is now **generated**: the presets shipped in the page × a haste ladder × a
+   deterministic schedule family (never-press, mash-on-cooldown, four seeded press sets legalised
+   through `repair`). No search, no cache, no network. **3000 plan-scorings over 460 699 casts in
+   0.78 s from a bare clone.** Schedules are *inputs* — the gate gets no truer if they are optimal.
+2. **It could not see this bug even with the corpus.** The check is `robust` vs a re-derived credit
+   sum, and **both sides read the same `c.t`** — so a defect in *which casts exist* makes the
+   accumulator and the re-derivation wrong in the identical way, and they agree. Confirmed, not
+   assumed: with the segmented presets added, the rebuilt gate **still** read `0.00e+0` on the broken
+   engine.
+   ⇒ Added a **third, structural** check that grades the board against the *physics* rather than
+   against the accumulator, at **millisecond** resolution: *no cast may begin inside an intermission*,
+   and *re-deriving the credit at ms resolution must not change it*. At 1e-9 the phantom cast is
+   "before the wall"; at 1e-6 it is what it physically is.
+   ⇒ And a corpus arm **aimed at the defect** rather than hoping for it: walk the fight with no wall,
+   read the cast starts off the board, and place a wall at the millisecond each one rounds to — the
+   coincidence that produces the few-ulps-low clock, constructed on demand (375 probes).
+
+**The discrimination, which is the only thing that makes a gate worth having:**
+
+| engine | THE GATE | STRUCTURAL | exit |
+|---|---|---|---|
+| before the fix | `0.00e+0` ✓ | **167 violations** ✗ | 1 |
+| after the fix | `0.00e+0` ✓ | 0 ✓ | 0 |
+
+`self-consistency` also now **refuses** a corpus with no segmented or no AoE preset, for the same
+reason it refuses zero scorings: a partial pass reported as a pass is how this went unseen.
+
+★ **The general lesson, and it is worth more than the four characters.** A consistency gate can only
+catch a disagreement between two accounts. When both accounts are derived from the same intermediate,
+it grades a tautology. Every such gate needs at least one check that leaves the model entirely and
+asks the world — here, the millisecond lattice the sim actually runs on.
+
+### 2.3 Re-run `tools/scorer-duel.mjs` — its prerequisite landed
+
+**Why it is open:** §0.4's demonstration — *show the exact objective beats the retired integral in the
+sim, cell by cell* — has never been obtained. It was run twice and came out a coin flip both times, and
+the second time the cause was named: the referee mis-executed ~13 % of its presses on the cast-time
+mismatch, and *"a referee that mis-executes ~13 % of presses cannot resolve a margin of ~0.01 %."*
+**That prerequisite is discharged** (`STACK_CAST_REDUCTION → 334 ms` plus millisecond rounding;
+LATTICE-class press failures 8 → 0, bare-stream drift 0.080 s → 0.005 s). The duel has not been re-run
+against it.
+
+⚠ **Two instrument rules this tool has already earned, do not lose them.** (a) A tie rule needs a
+**resolution floor**, not just a seed band — under common random numbers the band collapses to ±0.00
+and *"tie if |Δ| ≤ band"* turns `+0.00` vs `−0.00` into a verdict. (b) A tool taking both a *plan
+source* and an *engine* must keep them separate, and the **engine must default to the working tree**;
+three tools defaulted `--index` to the round blob and reported a byte-identical "no change" across two
+consecutive fixes.
+
+⚠ The goldens have since been re-recorded on `plan-rescore` evidence instead (15 of 16 better, 1
+plateau, **0 regressions**, all under the new engine's own scorer). The duel is therefore no longer
+gating the goldens — it is the **independent** check that the exact objective is the better ranker.
+
+### 2.4 ✅ CLOSED 2026-07-27 — the sim's kill window is DERIVED from the model's
+
+**The user's proposal, and it was the right one:** *"wouldn't it be better to have the ± dynamic so
+it's half of a 3-stack Arcane Blast's cast time? … take a 3-stack AB's cast time, shortened by passive
+gear haste, and half of that would be the variance."*
+
+**Why it works, and why it is not a taste call.** The model's credit rule already IS a window: paying a
+straddling cast the fraction of itself that fits is algebraically **one-sided**, `U[T, T+d]`, with `d`
+the cast's own duration. So the sim's window should be *that* window. wowsims can express it, because
+`durationVariation` is symmetric about `duration`:
+
+```
+duration = T + d/2 ,  variation = d/2      ⇒      U[T, T+d]
+```
+
+`killWindow(hasteRating)` and `encounterFor(T, hasteRating)` in `sim/benchmark.mjs` are the single
+definition; both the wasm path (`simreq`) and the native path (`runnerFlags`) take it from there. An
+explicit `opts.variation` still wins, which is how an archived round gathered at the legacy flat 0.5 is
+reproduced.
+
+**The flat 0.5 was not merely unjustified — it was the wrong number.** Half a 3-stack Arcane Blast at
+zero passive haste is **0.749 s**: the flat value was **33 % too narrow** there, ~19 % too wide at 400
+rating, and it never moved with gear at all.
+
+**MEASURED, not argued** (`tools/window-match.mjs`, which sweeps `T` across one cast interval and reads
+the model/sim ratio at each step — constant means one window, wobbling means two):
+
+| window | ratio across the sweep | spread |
+|---|---|---|
+| **derived** | 91.7834 → 91.8177, monotone | **0.0374 %** |
+| flat 0.5 | 91.67 → 91.47 → 91.77, wobbling | 0.3284 % |
+
+**8.79× tighter.** `tests/sim-request.mjs` no longer pins a magic number; it asserts the *derivation* —
+positive, shrinking with haste, equal to half a 3-stack Blast at zero haste, and producing an interval
+that **starts at T** (setting `variation` without re-centring `duration` silently lengthens every
+fight, the one mistake the construction exists to prevent). Gate: 9/9 with the native runner, which
+also proves the page and the runner agree on the new values field for field.
+
+⚠ **The approximation, stated:** the terminal cast is assumed to be a 3-stack Arcane Blast at *passive*
+haste — temporary buffs ended by the kill. On a plan whose burst runs to the buzzer the real terminal
+cast is faster, so the window is slightly wide there. That is a bounded, known error, not an unknown.
+
+**What remains open is the other half, and it is smaller:** absolute model-vs-sim *identity* at the
+boundary (below), which needs `model-audit`'s cast-for-cast agreement rather than a DPS comparison.
+
+---
+
+#### The original framing, kept because the reasoning is the record
+
+**Why it was open:** `sim/benchmark.mjs`'s `variation: 0.5` was no longer matched to anything in the
+model. It used to be justified as *"the model's kill-window WIDTH"*; that constant is gone. It kept
+its value on its own measured evidence (`tools/var-decision.mjs`) as the **sim's** way of not parking
+its fight end on a discontinuity. So model and sim smoothed the same problem by different means — the
+model **analytically** (proportional partial credit), the sim **numerically** (averaging over T ± 0.5)
+— and nobody had reconciled the two answers.
+
+⛔ **Do not "fix" it by flipping `variation` to 0.** That reintroduces a measured failure: at var 0,
+when two arms differ in terminal cast rate, the effect swings **−32.8 → −0.9 → −31.8 DPS across 0.1 s
+of fight length**. (TOOLING's ★★ ban on `--var 0` is about comparing **DPS**; it must be *re-stated*
+for the new comparison method, not deleted.)
+
+★ **The route the user named is the one to build, and it needs no extra sim run.** At a fixed `T` the
+sim's completed-cast set is deterministic, and `model-audit` already requires the model to predict the
+log **cast for cast** — so both sides agree on the straddling cast's start and duration, and the
+partial credit is a deterministic function of numbers they already share. Model-vs-sim verification
+becomes **identity**, not a statistical DPS comparison: a strictly stronger bar and a strictly cheaper
+one. It is blocked on §2.2 (multi-use fights must audit clean first).
+
+---
+
+### 2.6 ✅ CLOSED 2026-07-27 — the audit of the instruments themselves
+
+§2.5 ended on a lesson — *a consistency gate that reads its two accounts from the same intermediate
+grades a tautology* — so the obvious next question was how many other instruments have that shape. A
+full sweep of `tools/`, `tests/`, `sim/` and the living docs answered it. **Six defects that would make
+a gate lie, all fixed here.** They are listed with their measurement because "I checked" is not a
+finding.
+
+| # | where | what was wrong | why it mattered |
+|---|---|---|---|
+| 1 | `sim/benchmark.mjs` | **duplicate key.** `hasteRatingPerPct` declared twice — 15.77 in the GAME.AB mirror block and 15.76923 in the wowsims conversions. JS keeps the last, so the first was dead from the moment it was written and `killWindow()` used wowsims' divisor where the comment said the model's. | Harmless by luck (0.005 %, 6 µs of window at 400 rating) — which is exactly why nothing caught it. The block also claimed `tests/cfg-contract.mjs` gated its four constants; that file references none of them. **Gate added**: `sim-request` now parses the source for duplicate keys, because the evaluated object cannot report a key it never kept. |
+| 2 | `tools/bench.mjs`, `tools/scorer-duel.mjs` | **the terminal instruments and the website's button simmed different fights.** §2.4 made the page's window derived (pass nothing ⇒ `U[T, T+d]`); these still passed the flat `BENCH.variation` explicitly. Measured at T=160, h=0: `160.749 / 0.749` vs `160 / 0.5`. | `bench.mjs`'s own header said the default *"matches the website's button"* and CLAUDE.md says they *"share the whole backbone"*. `tests/page-equiv.mjs` cannot see it — it hands both sides the same `opts`, so the divergence is in the **call site**, not the module. Now both default to deriving, and the banner prints which window it used. |
+| 3 | `tools/wall-credit.mjs`, `blast-radius`, `counted-vs-integrated` | **an instant cast credited 0, not 1** — `c.cast > 1e-9 ? … : 0` in all three *independent* recomputations. | This is the **exact falsified answer** that credited every Arcane Explosion in a Kael'thas AoE phase at nothing: 368,018 vs 524,173, a 42 % error. The engine has carried a 10-line ⚠⚠ warning about it since; three checkers had the bug the warning describes. `blast-radius` and `counted-vs-integrated` cross-score real AoE columns. |
+| 4 | `tools/window-span.mjs` | **CLAUDE.md called it a gate that "must match wowsims at every probe offset"; it had no assertion, no comparison, and no non-zero exit path.** Without a runner it printed `—` in the sim column and exited 0 anyway. | Every wrapper checking its exit code was reading a constant. It now compares per offset and fails; the no-runner path SKIPS loudly and says it is a skip. Currently **6/6 offsets agree**. |
+| 5 | `tools/press-exposure.mjs`, `tools/display-second.mjs` | **positive verdicts over an empty set.** Both defaulted `ROUND_INDEX` to `/tmp/index-round.html` — a session scratch file nothing in the repo creates — then reported `NaN%` and *"so the display can always be made correct"* while exiting 0. | The same shape as §2.5's headline failure, and this repo's most expensive recurring one. Both now fall back to the repo's own `index.html`, say so, and **exit 2 on zero presses**. `tools/press-headtohead.mjs` had the same default and is fixed with them. |
+| 6 | `index.html` | **the boundary-credit heading contradicted its own body.** It still read *"it is NOT an AoE edge either — settled by the sim"* three lines above the bullet establishing that an AoE start **is** a cut by policy, and above `cutsAt()` implementing it. | The middle state of a question that flipped twice in one day (§1), left where a future session would read it first. |
+
+**Two more, smaller, same commit:** `tools/search-witnesses.mjs`'s PASS path fell off the end of the
+file and **hung** on a live engine handle (a green gate indistinguishable from a timeout — it cost a
+reviewer a 600 s timeout); and `index.html` had **two different `EPS`** — the new clock epsilon at
+module scope and a `const EPS = 0.5` **score** tolerance shadowing it inside `finishLine`. The latter
+is now `SCORE_SLOP`. Value-identical, so no plan moved; proven by `exact-match` re-passing 25/25 on
+the renamed engine, not asserted.
+
+**And one piece of missing infrastructure, which was the root of a whole class.** Fourteen tools
+default `RUNNER` to `/tmp/wowsims-build/tbc-new/runner-ap180`. That path was a convention carried
+**only in a session scratch script**, so it worked on one machine and silently took the no-runner
+branch everywhere else. `tools/build-runner.sh` is now committed: pin, both patches (asserted, not
+assumed), protoc, build. The default is a reproducible fact rather than a machine fact.
+
+⚠ **What this section is NOT.** It is not a claim that the instruments are now correct — it is a claim
+that six specific ways they could lie have been closed and measured. The audit's remaining findings
+(drifted line citations, retyped protocol constants at 17 call sites, four copies of the press
+transcription, orphaned tools) are real and are **§5's**, not blockers: none of them can make a gate
+report the wrong verdict.
+
+---
+
+## §3 THE SEARCH-OPTIMALITY PROGRAMME (archived PHASE12 §7)
+
+**Why it is open:** with an exact objective, *"the search did not find the optimum"* is a well-posed
+question for the first time — and none of the programme is built. The sim's job is to **falsify the
+search**, not arbitrate the scorer; every model-vs-sim disagreement is now a **search bug report**.
+
+★ **The structural fact that makes it tractable:** the objective is **piecewise-constant in the press
+times**. A press enters the score only through the cast boundary it snaps to (`auraAt`), and the window
+then covers a determined set of casts — moving a press *within* an interval changes the score by
+exactly zero. ⇒ **the decision variable per press is an integer: which cast it fires on.** The
+continuous search the tool runs today explores a space far larger than the one that exists.
+
+Cheapest rung first:
+
+1. **Exact enumeration on the cast lattice, small instances first** (short fights, 2–3 cooldowns).
+   Feasible today, **no sim**, and it yields the strongest possible statement: *for this fight, this IS
+   the global optimum.* It also certifies the heuristic on those cells.
+2. **Branch and bound** with an admissible upper bound — because the objective is an exact sum, the
+   remaining contribution can be bounded optimistically (give every unplaced cooldown its best
+   conceivable window, ignoring conflicts), so pruning against a good incumbent is sound. Cooldown
+   spacing collapses the space further (Icy Veins admits ≤2 uses in 300 s, ≥180 s apart — pairs, not
+   squares), as does dominance (a window wholly in downtime or wholly past the kill). How far it scales
+   is empirical — **measure before promising**.
+3. **Generalize every disagreement.** Wherever enumeration or B&B beats the heuristic, the fix is a
+   **rule or a seed class**, not a re-tuned scorer. This entire programme is arithmetic; the sim is not
+   in the loop at all.
+
+⚠ **"Proven optimal" is PER-INSTANCE, not once and for all.** You prove it for a given fight/gear/kit;
+across the input space you rely on the heuristic plus a certified corpus — which is what
+`docs/ACCEPTANCE.md` is for, and why §2.1's re-gather being cheap matters.
+
+⚠ Re-run `tools/deficit-fix.mjs` before concluding anything about search misses: its **0/4 misses at 3×
+restarts** was the search optimising the **integral**.
+
+### 3.1 ▶ ONE KNOWN SEARCH MISS IS ALREADY ON THE BOARD — start here
+
+**Why it is open:** `tools/search-miss.mjs` (new, 07-27) asks the one question a repricing does not
+confound — **score BOTH engines' plans with the SAME current scorer.** If the new plan wins, the
+timeline moved because the optimum moved; if the old one wins, **a better plan demonstrably exists and
+the search stopped finding it.** It found one: **`1:40 lust 0:05` emits a plan 0.065 % worse than a
+legal schedule the current scorer ranks higher.**
+
+★ **ROOT-CAUSED 2026-07-27. It is not a restart-depth problem, and the first diagnosis below was
+wrong about why.** ⛔ *"The basin is not being entered at all"* is **false** — retracted. The witness's
+distinguishing coordinate is found at *every* restart depth, and the full witness is found by the outer
+search from 20 restarts on. **It is then destroyed in the finishing tail, every single time:**
+
+```
+starts=  3   snap=  +0.0  hop=  +0.0  finEnter=  +0.0  ->  FINAL= +0.0
+starts= 14   snap=  +0.0  hop=  +0.0  finEnter=  +0.0  ->  FINAL= +0.0
+starts= 20   snap=+127.2  hop=+127.2  finEnter=+127.2  ->  FINAL= +0.0   <-- found, then thrown away
+starts= 40   snap=+127.2  hop=+127.2  finEnter=+127.2  ->  FINAL= +0.0
+```
+
+More search never helps because the tail discards it regardless. This is a **`finishLine` monotonicity
+bug**, not a seed-coverage bug — so archived PHASE9 §5.16's three eviction sites are *not* the
+mechanism.
+
+**The landscape** (established, not assumed): with everything else held, the witness is a **2-cell
+isolated needle** on the (IV₂ × Zerk) surface — only `(45,36)` and `(46,36)` beat the emitted plan,
+both single-coordinate half-moves are strictly worse (`(45,20)` −260.4, `(38,36)` −1604.5), and each
+polishes/hops straight back. A full-grid reachability check confirms **no sequence of single-coordinate
+moves reaches it**, even with plateau tolerance and exhaustive re-placement. Physically it is
+IV₂ = Bloodlust's end (5+40=45) with Berserking's window closing on the cast boundary at 46.01; both
+winning regions are genuine **1.0 s plateaus** (`[45,46]`, `[35.5,36.5]`), not knife edges.
+
+**The mechanism, in three steps.** The no-Cold-Snap sub-solve finds Zerk=36 on its own, at 14 restarts.
+Then:
+
+1. **`index.html`'s groom Pass 1 ("haste actives") moves Berserking 36→20 and Icon 3→4 inside that
+   sub-solve, costing −46.4.** It is admitted by the `val − QTOL` gate (`QTOL = castVal` ≈ 2036 here)
+   and chosen by a comparator where `r.robust` ranks **fifth** — behind `clip`, `anchored`, `joinsRow`,
+   `overlap`. The move is taken because Icon@3 puts IV on an occupied press row. ⚠ Note
+   `val = Math.max(val, pick.v)`: the QTOL band is measured against a **stale high-water mark**, so the
+   plan can drift arbitrarily far while every individual step looks "within one cast". `challengePass`
+   already fixed exactly this for itself — *"judge candidates against the CURRENT plan, not the running
+   max"* — **the groom passes did not.**
+2. **The Cold-Snap comparison builds its chain family by pasting an IV chain onto `cloneS(bestN.s)`
+   wholesale**, so every *other* track is inherited from the groomed sub-solve. Feeding it Zerk=36
+   yields the witness; Zerk=20 yields the emitted plan. A −46.4 groom loss upstream becomes **−127.2**
+   in the emitted plan.
+3. **Nothing ever compares `finishLine`'s output to its entrant**, at either level.
+
+This is precisely the residual archived PHASE9 §5.17 filed and declined to chase — *"the divergence is
+inside the Cold-Snap comparison, whose chain-candidate family derives from the recursive no-CS
+sub-solve… the chase stops here."* The witness is that residual coming due.
+
+**Two fixes measured, NEITHER LANDED, and the reason is a product call, not a technical one:**
+
+- **A — entrant floor**: add the tail's own entrant as a third arm alongside the two hop arms. Clean by
+  every gate: `search-witnesses` green, `search-miss` **9 better · 0 regressions · 7 unmoved** (Lurker
+  +15.0, Karathress +127.2, Solarian +46.4, 1:40 +127.2, 2:00 +127.2, 2:40-interm +15.0, 3:20 +377.3,
+  3:20-drums +145.1, 3:20-PI +145.1). ⚠ **It makes the QTOL legibility budget unspendable at the top
+  level**, i.e. it silently reverses the user-directed ruling *"Execution beats microtiming — aesthetics
+  may trade up to a full cast of EXPECTED damage for a pressable line."* Nine of sixteen plans move and
+  several move to **less** co-pressed layouts. **That is §6's kind of decision, and it needs the user.**
+- **B — additive chain base** (§5.17's own filed remedy: also offer the chain family from the
+  sub-solve's *pre-groom* entrant). Fixes the witness (+127.2) and Solarian (+46.4) but **regresses
+  `3:20 lust 0:05 drums` by −70.3** — a purely additive entrant still evicts, because a raised `champ`
+  flips the Cold-Snap materiality decision. **Rejected.**
+
+⇒ **The answer to *"is it actually worse, or just correctly calculated now?"* is: actually worse.** The
+plans differ, and under **one** scorer — the current one — the un-emitted layout scores **+127.2
+(0.065 %)** higher. A repricing cannot produce that; only a search that finds a better plan and
+discards it can. ⚠ And the converse holds too, and is the more common case: when a plan moves and
+`search-miss` says *better*, the timeline changed because the **optimum** changed, not because
+anything broke — that is exactly what §2.5's four moved cells are.
+
+It is recorded rather than papered over, in `tests/search-witnesses.json` with
+`tools/search-witnesses.mjs` as its gate. ⚠ The gate **refuses to pass on an empty witness list**, and
+says plainly that reaching a witness closes a **known hole** and is *not* a claim of optimality.
+⚠ Its PASS path used to fall off the end of the file and **hang** on a live engine handle — a green
+gate that never returns is indistinguishable from a failing one, and it cost a reviewer a 600 s
+timeout. It now exits 0 explicitly.
+
+⚠ Related: `tests/exact-match.mjs` now reports a failure as a **timeline change** (`Icy Veins 0:06 →
+0:00`) before the line diff — *"a failure that reads as a string mismatch invites 'just re-record it';
+one that reads as a moved press invites the right question."*
+
+---
+
+## §4 ENFORCEMENT — make "the last geared run" a guarantee, not an intention
+
+Inherited from archived PHASE12 §1.1e. The user asked for a guarantee; a note in a doc is not one.
+Item 1a (list the closure wherever the freeze is stated) is done; **1b and 2–4 are open.**
+
+### 4.1 ★ Fold the import closure's hashes into `ENGINE_ID` — the one that matters
+
+**Why it is open:** the plan cache keys on **`index.html`'s bytes alone** (`xval-bench.mjs:179`,
+`ENGINE_ID = sha1(index.html)`). Every *other* file `xval-bench.mjs` imports can be edited mid-round
+and the cache will keep serving plans computed by the old code **under an unchanged key** — silently,
+and only for the cells gathered after the edit, with nothing in the table saying which. The closure is
+`tools/engine-node.mjs` (it *builds* the engine), `tools/genapl-core.mjs`, `tools/reference-gear.mjs`,
+`sim/planspec.mjs`, `sim/simreq.mjs`, `sim/benchmark.mjs`, plus `tools/xval-bench.mjs` itself (the
+campaign spawns a fresh copy per cell).
+
+⇒ Hash the closure into `ENGINE_ID` so a mid-round edit **misses** the cache and re-solves rather than
+silently mixing instruments. **A freeze a tool enforces beats a freeze a doc requests** — and this was
+found by trying to make a change that looks obviously inert. Land it **before** §2.1's re-gather, which
+will need the freeze again.
+
+### 4.2 Make the geared path opt-in, not default
+
+**Why it is open:** `tools/xval-bench.mjs:251` still hardcodes `tools/bench/export-request.json`, with
+no flag to switch it. Replace with a `CHAR=` selector defaulting to **`model-ref`**, and make the
+geared path require an explicit `CHAR=bench` *plus* a printed banner naming the retirement. A future
+session must have to **choose** the retired baseline, and be told it is retired.
+
+### 4.3 Stamp it, and refuse to pool across stamps
+
+**Why it is open:** `char=` already rides every `XVAL-DONE` line — that is what lets a later reader
+classify a table without trusting a directory name. Make `xval-verify.mjs` **refuse** to pool tables
+whose `char=` values differ. Round 1 is `char=bench`; everything after is not, and a mixed directory
+must be a hard error rather than a silent average.
+
+### 4.4 Archive round 1 under a name that says what it is
+
+**Why it is open:** the last geared round still sits in `tools/xval-results/` under a neutral name.
+Move it to e.g. `gearB-final-geared-<date>/` with a README saying it is the last of its kind and why.
+`gearA-pre-20260726/` is the precedent.
+
+---
+
+## §5 THE PLATFORM TRACK — inherited from PHASE 11, which closed without starting it
+
+PHASE 11's findings ledger discharged 8/8 and CI came up; **the split and everything behind it never
+started.** Scope is unchanged: **no scorer term, no search pass, no protocol constant** — plans stay
+byte-identical except where a bug fix is itself the change.
+
+### 5.1 The module split (archived PHASE11 §2)
+
+**Why it is open:** never started. The single-file convention is **retired by user decision**, and four
+distinct mechanisms currently re-extract code from `index.html` (the DOM-tag → Blob worker scrape; the
+three-marker string slice + `new Function` in `tools/engine-node.mjs`; Playwright page-eval in 13
+loaders; `tools/census-build.mjs`'s probes) feeding ~30 consumer files. Root cause, stated once: **code
+that cannot be imported gets copied, and copies drift** — PHASE11 §1.2's twelve surviving fragilities
+are all instances.
+
+Target shape, the migration invariant, and the consumer-by-consumer table are in archived PHASE11
+§2.1–§2.4. **The gate is non-negotiable:** the split commit moves **text, not behavior** — `plan-sweep`
+A/B pre/post → `plan-diff` **IDENTICAL** (25/25, SCORE-AUDIT scorer-pinned), then `exact-match` 25/25.
+No perf edit rides the split commit.
+
+⚠ Blocked on user calls §6.1 (`file://` fate) and §6.2 (toolchain).
+
+### 5.2 Converge the six preset→cfg copies onto ONE `cfgFor()` — and fix `cfgFor` in the same move
+
+**Why it is open:** the preset→cfg constructor is retyped in at least six places, and measuring every
+copy against the engine's own declared field set (`simMemoCfgSig`) shows **`tools/engine-node.mjs`'s
+`cfgFor` drops `t5two` **and** `boundaryCharge`** — 2 of the 10 required fields. ⇒ **converging the six
+copies onto `cfgFor` unchanged would turn one copy's bug into every copy's bug.** Concretely: `cfgFor`
+cannot express the reference gear the entire acceptance corpus is measured on.
+
+Both omissions are inert *today* (`GOLDEN_DEFAULTS.gear` sets neither; `boundaryCharge` is off by user
+decision), which is precisely why nothing caught them — the engine reads `cfg.t5two ? 1.2 : 1`, so an
+absent key and an explicit `false` are indistinguishable. That is the "score a no-T5 mage against a T5
+sim" bug class with no failing test available to express it.
+
+`tests/cfg-contract.mjs` reports it today and `--strict` turns it into an exit-1 gate. **Strict is OFF
+by default and must stay off until this lands** (a permanently-red gate is one nobody reads); **turn
+`--strict` on in CI as the last step of the convergence** — it is the check that proves the convergence
+fixed the thing it was for.
+
+### 5.3 The reclaim ladder (archived PHASE11 §3.1 / PHASE9 §4)
+
+**Why it is open:** never started; it was blocked on the `index.html` freeze for its whole life, and the
+freeze is now lifted. Rungs, cheapest-and-safest first: hoist `counts(base)`/`clipOf(base)` out of the
+candidate loops via `admit`'s signature → **per-cfg memo with two-generation eviction** (kills the
+`cfgSigOf` prefix concat on ~2M lookups and the wholesale `SIM_MEMO.clear()`s) → stringify hoists at
+the remaining both-operands-in-loop sites → hot-loop allocation (`stepFor`/`scanAt` fresh objects, the
+per-`simulate` breakpoint Set→spread→sort) → **five-walk fusion** (repair:simulate:sig ≈ 1:1:1 at
+~29.3M walks each — the largest catalogued win, cheap to land behind `admit`'s single call site).
+
+⚠⚠ **IT NEEDS A FRESH CPU BASELINE AND FRESH ANCHORS BEFORE ANY RUNG IS PRICED.** Both the starting
+point ("≈ pre-§5.12 CPU +2–4 %") and the estimate ("plausibly −20–30 % combined") were measured against
+the **pre-PHASE12 scorer**, and the walk that dominates the profile is exactly the code that changed.
+Every `index.html` line anchor in PHASE11 §3.1 is dead; re-anchor by **content**. And PHASE9 §5.14's
+rule stands: wall-clock numbers compare only within a same-session pair.
+
+Per step: T0 sweep gate + wall-time re-measure + **pre-registered revert**. Search-touching changes gate
+on the **full 25**, never the quick tier. ⛔ Do not re-propose the falsified list (PHASE9 §4.12.7
+sigOf-equality, §5.10 starts-cut, §5.13 plateau/nudge/anchor-widening, §5.14 top-K raw cut, §3.6 H5) —
+all recorded with verdicts.
+
+### 5.4 The engine's interior, and the one multiplicative candidate
+
+**Why it is open:** the typed-array / struct-of-arrays interior for `simulateRaw` (preallocated
+module-scope scratch replacing per-call object graphs — where the 41.5 % self-time + 5.3 % GC live,
+10–25 % plausible) was never attempted. And PHASE9 §5.6's biggest question is still open: solve cost is
+~exponential in press count (×1.35–2 per slot; 5 cases = 73 % of corpus CPU) — **is that factor
+irreducible, or an artifact of re-exploring settled prefixes?**
+
+⚠ **The prefix/span-reuse shapes PHASE11 §3.3 proposed were written for the RATE INTEGRAL and must be
+re-derived.** "Span-contribution reuse keyed on active-window state" is a statement about integrating a
+rate between breakpoints; the arbiter is now a per-cast sum whose terms depend on each cast's
+*completion* and on a boundary credit coupling the tail of the walk to `T` and every cut. The one
+durable constraint survives: **only same-values-in-same-order summation qualifies** — any re-partition
+flips 1e-7 accepts and is the falsified-by-construction branch. Gate: full sweep + SCORE-AUDIT + duels;
+`changed > 0` = fail.
+
+⛔ **Planner-to-WASM stays rejected**: non-correctly-rounded `Math.pow`/libm means no bit-identical
+promise; it would be a deliberate re-golden major version, a project decision rather than a perf item.
+
+### 5.5 What CI still owes
+
+**Why it is open:** CI exists (`.github/workflows/ci.yml` — `fast`, `page`, `plans`) but three jobs from
+the original scope are not in it: the **`plan-sweep` A/B-vs-merge-base + `plan-diff`** job (catches
+unintended plan movement *and* scorer-pinned score regressions — the gate hole PHASE9 §5.15 closed by
+hand), the **cached native-runner build** keyed on `pin+patches-hash+go-version` that would make the
+full anti-drift matrix CI-able, and the **pooled-vs-sequential byte-equality** assertion that would turn
+F11's *"verified"* claim into a standing gate. ⚠ Every new job needs a **negative control** before its
+green is believed — two of the three existing jobs carry one, which is the only reason they are
+evidence.
+
+### 5.6 Product routes (archived PHASE11 §4)
+
+**Why it is open:** none exist. Every one is a **lazily-loaded route** — a visitor who never opens it
+downloads nothing for it. In the order PHASE11 §7 sets: **URL-shareable setups + last-setup autosave**
+first (the biggest pure-UX win; today there is zero URL state and a mid-raid refresh loses the fight
+being planned, while `snapshotState()` is already the serializer and determinism makes a link a
+*reproducible plan*), then offline/service worker, the mobile + input pass, the multi-seed error band in
+the sim button, and static APL export. The remaining four (research mode, setup comparison, EP route,
+the Drums/PI upstream patch) are gated on §6's user calls.
+
+---
+
+### 5.7 THE INSTRUMENT-AUDIT RESIDUE — real, tracked, and none of it can make a gate lie
+
+§2.6 fixed everything from the 07-27 audit that could produce a **wrong verdict**. What is left is
+listed here rather than lost. Each entry is a fact that was checked, not a suspicion.
+
+**Duplication CLAUDE.md says must not exist.**
+- **Four copies of the plan→spec transcription.** `sim/planspec.mjs` is the definition;
+  `index.html`'s `planToSpecInline` (~4843) is a ~50-line clone re-typing `SPEC_KEY`,
+  `UNTRANSCRIBABLE`, `SLACK_CAP` and `EPS` — and `index.html` itself records that it has **already
+  drifted once**, dropping `targets`. `tools/xval.mjs` and `tools/xval-emit-duel.mjs` are a fourth and
+  fifth, both still using the **retired** `Math.floor(actEff)`. ⇒ Have the Debug export
+  `await import("./sim/planspec.mjs")`, as the sim button already does; banner `xval-emit-duel` as
+  reproduction-only (it presents the floor as *"the times the tool PRINTS"*, which is no longer true).
+- **17 call sites retype `BENCH.manaInject` as `'100000000'`** and 11 retype `--seed 11`, against
+  `sim/benchmark.mjs`'s own *"if you find yourself writing `'--var','0.5'` into a new tool, you are
+  re-opening that bug"*. ⇒ Import `BENCH` / call `runnerFlags()`.
+- **`ALL_BUFFS` duplicated verbatim in four `tests/` files**; `genapl-core`'s `IDS`/`fmt`/`sched`
+  re-copied in `tools/genae.mjs` and `tools/genconserve.mjs`; `REF` hand-written out as
+  `sp:1450, critPct:38, t5two:true` in four `p8-*` probes, against `reference-gear.mjs`'s capitalised
+  *"★ SPREAD IT, DON'T COPY IT"*. ⚠ The **preset arrays are clean** — defined exactly once.
+
+**Citations that point at the wrong place.** ~20 line references inside tool comments have drifted
+(into `index.html` and into `tools/xval.mjs`). The dangerous one is `cell-band.mjs`'s *"VERBATIM from
+xval.mjs:239-257"* — a copy-**fidelity** claim against the wrong lines. Seven dangling doc paths cite
+`docs/PHASE10.md` / `docs/PLAN.md`, neither of which exists. ⇒ Cite symbols, not lines (the same
+lesson `docs/ARCHITECTURE.md` now carries at its own line map).
+
+**Instruments whose headline advice is inverted by a landed change.**
+`tools/lattice-ripple.mjs` still prints *"⇒ DO NOT adopt the discrete sum as a scorer"* — the discrete
+per-cast sum **is** the scorer (archived PHASE12 §6.10). `tools/floor-plateau.mjs`'s whole hypothesis
+is *"past the floor the rate integral is exactly FLAT"*. Both banner the premise as dead at the top and
+then print the verdict anyway. ⇒ Banner the verdict lines too.
+
+**Skips that read as passes.** `tools/credit-check.mjs` and `tools/model-audit.mjs` skip loudly with
+**exit 0** where `tools/snapshot-rule.mjs` exits 2 for the same condition. Any wrapper reading exit
+codes cannot tell a skip from a pass. ⇒ Pick one convention (exit 2), repo-wide.
+
+**Gear-export dependencies GEAR-AGNOSTIC.md abolished.** `docs/GEAR-AGNOSTIC.md` states *"No exported
+gear file, ever again"* absolutely, while `tools/bench/export.json` is hardcoded in **18** files and
+another 8 require a `GEAR`/`EXPORT_BASE` export that `tests/README.md` says lives in an ephemeral
+scratchpad, i.e. is gone. §4.2 names exactly one of them. ⇒ Either carve out the physics probes
+explicitly in GEAR-AGNOSTIC, or widen §4.2 to the full list. **This is a doc-vs-reality gap, not a
+correctness one** — those probes measure cast timing, where the character is a fixture.
+
+**`tools/engine-node.mjs`'s shared `cfgFor()` emits 8 of the 10 fields `simMemoCfgSig` reads**,
+dropping `t5two` and `boundaryCharge`; `tests/cfg-contract.mjs` says so in as many words. The stated
+reason for deferring it — *"it is imported by xval-bench.mjs while a round gathers … the freeze"* — is
+**void**: the round closed and the freeze is lifted. ⇒ §5.2.
+
+**Orphans.** `tools/ladders/verify2.mjs`, `verify3.mjs` and `cross-pair-analysis.txt` are referenced by
+nothing at all. Ten more are referenced only from `docs/archive/**` or `DIARY.md` — and one of them,
+`tools/plan-rescore.mjs`, is **live evidence** (cited in ROADMAP and §2.5's lineage) with no living doc
+saying how to run it. ⇒ Give `plan-rescore`/`plan-shift` a line in TOOLING; delete or banner the rest.
+
+**Stale CPU figures.** Every timing in the repo (CLAUDE.md's *"9m07s"* / *"~33s"*, `tests/README.md`,
+`ARCHITECTURE.md`) predates Phase 12, which rewrote the scoring walk. §5.3 already says the reclaim
+ladder needs a fresh baseline; the published figures need the same caveat. (Measured today for one of
+them: `exact-match` is **348 s at jobs=3**, not 9m07s.)
+
+**`tests/README.md`** says the suite reads `window.GOLDEN_PRESETS`, omitting `BOSS_PRESETS` — which
+supplies **10 of the 25 cases** — lists two files that do not exist, and omits six that do.
+
+---
+
+## §6 USER CALLS — carried VERBATIM from archived PHASE11 §8. These are DECISIONS, not work.
+
+> **Do not answer these in the course of doing other work.** They are reproduced word for word so that
+> nothing is lost in paraphrase; each is still unanswered.
+
+1. **file:// double-click**: accept "local preview = tiny static server" (clean modules), or keep
+   double-click via build-time inlining (committed artifact + freshness gate)?
+2. **Toolchain**: stay no-build (recommended start) — and is a later esbuild/minify step wanted at
+   all?
+3. **Precomputed preset plans**: accept shipping golden-derived plans as data (instant presets)
+   under the anti-drift gate, or keep every render solver-fresh?
+4. **Setup-comparison view**: reopen the "no dedicated feature" ruling? (Absolute-damage currency
+   per the existing ruling if yes.)
+5. **EP route in the tool**: reopen "two lightweight routes, no bespoke calculator"?
+6. **On the first wasm rebuild**: keep the wasm in git (+~4–5 MB pack per rebuild) or move to
+   release-asset + committed sha256?
+7. **Research mode**: wanted at all, and if so its cell-budget/UX guardrails.
+8. **COOP/COEP**: accept the (no-op today) embedding restriction to get instant cancellation?
+
+⚠ Call 4 additionally needs the **currency** kept straight: setups compare on **absolute at-kill
+damage**, never on the effective-AB count — effective-casts normalizes to each setup's own plain AB,
+which is what makes it right *within* a setup and blind *across* setups.
+
+---
+
+## §7 NICE-TO-HAVES — real, small, and not blocking anything
+
+- **The printed press second is wrong on 1.8 % of presses.** *Why open:* explicitly deferred by user
+  ruling — *"the model itself and the calculations and correct activations come first… we then just
+  round the shown number to be human readable, but that's secondary."* The plan prints
+  `floor(actEff)` — the **press** moment — while the assumptions panel promises *"press at the second
+  shown"* and the buff is up at the **boundary after** it; when flooring walks back past a cast
+  boundary the macro fires a whole cast early. Measured: 3005/3060 presses correct, **55 wrong**, and
+  **0** presses for which no whole second can name the scored window. Fix: print **`floor(auraAt)`**,
+  introduced as its **own field** rather than by redefining `actEff` under its other callers (the
+  transcription, the timeline and the custom-plan editor all read it). Display-only; touches neither
+  scorer nor search. Archived PHASE12 §6.13.
+- **The stat-distribution transfer test.** *Why open:* it is the **first** piece of gear-agnostic work
+  and it has never been run. *"Do scheduling conclusions transfer across stat distributions?"* decides
+  whether the new corpus measures the same thing the old one did. Cheap: solve one fight family on
+  both characters and compare the argmax plan at each haste. **Agreement** ⇒ the switch was free;
+  **divergence** ⇒ the geared operating point was load-bearing and the gear factors come back **as
+  model inputs**, which is exactly the escape hatch the user reserved.
+- **Ashtongue Talisman of Insight.** *Why open:* a random on-crit proc, outside every cross-val kit,
+  needing a stochastic treatment — and **un-owned since Phase 7 closed without it**. RULES §14 folds it
+  into passive haste, which is the *modelling* answer, not the *cross-val* one.
+- **`tools/lattice-ripple.mjs` / `tools/ripple-audit.mjs` need RE-DECIDING, not re-wording.** *Why
+  open:* both still describe the model as computing *"the CONTINUUM LIMIT of the same taper — the
+  widths match"*, which is false at every word since the objective went exact. ⚠ **Do not simply
+  reword them:** `ripple-audit` already **fails two of its own pre-registered self-checks** (P3, P5 —
+  archive/11 §8.30), so no ripple decomposition was quotable even on the round it was built for, and
+  its `mono=0` stamp means **FAILURE** beside a `vacuous=0` that means success. Decide whether either
+  tool still has a question to answer; retire them if not.
+- **Retired instruments now labelled, no action needed unless they mislead:** `tail-phase-probe` exits
+  2 (its `robust − totalEarly` is identically 0), and `p8-round10`'s F3 degeneracy guard reports
+  permanently vacuous.
+- **`tools/xval-round-pipeline.sh` and friends carry a hardcoded session-scratchpad `SP=` path**, so
+  `xval-boss-warm.sh`'s wait-loop polls a log a future session will never create and would hang
+  forever. *Why open:* "promoted into the repo" and "reproducible" are not the same property.
+
+---
+
+## §8 TRAPS — carried from archived PHASE11 §9, all still live
+
+- **"Pure addition" isn't.** `groupSeeds` regressed 7 off-corpus cells through three winner-take-all
+  narrows; anything that adds candidates, workers or cache layers must argue its floor.
+- **Golden-corpus green ≠ off-corpus safe** — plan-identity on 25 cells was structurally unable to see
+  PHASE9 §5.15; the sweep + SCORE-AUDIT + duels regime exists for exactly the split/perf commits.
+- **A second definition of anything** (plans-as-data, inlined build artifacts) **needs a freshness gate
+  in the same commit** — the `sim-request` template check is the house pattern.
+- **Silent-pass gates**: PHASE11's B7/B8 were both gates whose failure mode was a **pass**. Every new
+  CI job needs a negative control — a deliberately-broken input that must fail — before its green is
+  believed.
+- **Cache keys must cover the inputs.** The solve cache and any memo added in §5.3 must key on engine
+  hash + **full** cfg signature. §4.1 is the same lesson one level up.
+- **Two wowsims**: never derive the upstream URL from the Go module path; the pin moves only as a
+  deliberate re-baseline.
+- **Wall-clock numbers compare only within a same-session pair** — every perf step re-measures its own
+  baseline.
+- **The campaign coupling**: until the split lands, `index.html` edits and running sim campaigns share
+  one file — respect the freeze window whenever a round gathers (§4.1 is the fix that makes the freeze
+  enforceable).
+- ★ **And the one this project earned four times in a single phase: an instrument that flatters or
+  blinds itself.** A summary line that disagrees with its own table; a classifier that launders the
+  defect it was built to catch; a tie rule with a noise band but no resolution floor; a tool whose
+  engine defaulted to a stale blob. **Read a tool's output, not its verdict line**, and give every new
+  instrument a control that must fail.
+
+---
+
+## §9 OUT OF SCOPE — standing rejections, do not revisit
+
+The leeway "press anywhere" bands and reasoning-tag UI; an in-tool "exact mode" (the brute-grid
+instrument is for **research** — generalize its findings into rules, don't ship enumeration, which is
+also the fence around §3); the finite-mana model (the per-window mana-cost chip is the ceiling of mana
+UX); the boundary charge ON; any computation after the results render; any prepull in a model-compared
+sim; legend/Pressboard resurrections. The haste-graph reference lines stay.
+
+⛔ And the three retired scoring approaches must never return: ranking on the **rate integral**;
+expiring a buff window from the **press** time; **one snapshot rule** for both kinds of buff. Their
+evidence is archived PHASE12 §6.10, §6.11 and §6.12; their gates are `tools/self-consistency.mjs`,
+`tools/window-span.mjs`, and `tools/snapshot-rule.mjs` + `tools/credit-check.mjs`.
