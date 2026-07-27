@@ -50,6 +50,7 @@ const rows = JSON.parse(fs.readFileSync(MOVERS, 'utf8'));
 const N = +arg('n', '20');
 const SEEDS = arg('seeds', '11,12,13').split(',').map(Number);
 const ITER = +arg('iter', String(BENCH.iterations));
+const FLOOR = +arg('floor', '0.25');   // DPS below which this instrument declares a tie — see below
 const VAR = arg('var') === undefined ? BENCH.variation : +arg('var');
 
 const ROUND_INDEX = process.env.ROUND_INDEX || '/tmp/index-round.html';
@@ -96,7 +97,7 @@ const mean = xs => xs.reduce((s, x) => s + x, 0) / xs.length;
 const sd = xs => xs.length < 2 ? 0 : Math.sqrt(xs.reduce((s, x) => s + (x - mean(xs)) ** 2, 0) / (xs.length - 1));
 
 console.log(`SCORER DUEL — the exact per-cast sum vs the retired rate integral, in the sim\n`);
-console.log(`  ${Math.min(N, rows.length)} of ${rows.length} mover cells · ${SEEDS.length} seeds · ${ITER} iters · var ${VAR}`);
+console.log(`  ${Math.min(N, rows.length)} of ${rows.length} mover cells · ${SEEDS.length} seeds · ${ITER} iters · var ${VAR} · tie floor ${FLOOR} DPS`);
 console.log(`  plans from ${ROUND_INDEX} · scored/transcribed by ${ENGINE}\n`);
 console.log('  kit      class    T   h    integral -> castSum      sim Δ (B−A)      verdict');
 
@@ -129,7 +130,14 @@ for (const row of rows.slice(0, N)) {
   // A delta inside its own seed band is a TIE, not a win. Both arms share the seed (common random
   // numbers), so the band is the residual plan-vs-plan noise, and calling anything under it a win is
   // precisely the error §6.5a made.
-  const verdict = Math.abs(d) <= band ? 'tie' : (d > 0 ? 'CAST-SUM' : 'integral');
+  //
+  // ⚠ AND THE BAND ALONE IS NOT ENOUGH. With common random numbers the seed band collapses to ±0.00
+  // on essentially every cell, so "|d| <= band" declares a WINNER for a delta of +0.00 vs -0.00 —
+  // it turns rounding into a verdict, and it flattered this tool's own first verdict from 6-8 to
+  // 14-10 before anyone looked at the band column. FLOOR is the sim's practical resolution: 0.25 DPS
+  // on ~2700 DPS is ~0.01 %, comfortably under the corpus's smallest real deficit (0.004 % ~ 0.11 DPS)
+  // and comfortably over the noise. A verdict this instrument cannot resolve must read `tie`.
+  const verdict = Math.abs(d) <= Math.max(band, FLOOR) ? 'tie' : (d > 0 ? 'CAST-SUM' : 'integral');
   if (verdict === 'tie') tie++; else if (d > 0) bWin++; else aWin++;
   console.log(`  ${row.kit.padEnd(8)} ${row.cls.padEnd(7)} ${String(row.T).padStart(3)} ${String(row.h).padStart(3)}  ` +
     `${String(row.integralH).padStart(4)} -> ${String(row.castSumH).padEnd(4)}   ` +

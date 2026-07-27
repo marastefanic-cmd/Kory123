@@ -1040,3 +1040,75 @@ transcription. Whichever the sim scores higher is the better plan.
 Per §0.4 that is a REFUSAL to re-record goldens, not a rounding error — and it was the right refusal,
 because the cause turned out to be a second scoring bug that only became load-bearing once step 1
 landed. See §6.11. **No golden was re-recorded on this evidence.**
+
+## 6.11 ★★★ BUG 2 — THE DISCRETE WALK GAVE EVERY MID-CAST PRESS A SHORT WINDOW
+
+Found by asking why §6.10d's demonstration came out a coin flip. It is a **second scoring bug**, it had
+been in the walk all along, and it became load-bearing the moment step 1 made the walk the arbiter.
+
+### 6.11a The defect
+
+The walk applies a fired buff from the first cast boundary at or after the press — correct, a self-press
+cannot go off while a cast is in flight — and then expired it at **`press + duration`**. So a press
+landing mid-cast got a window SHORTER than the buff actually is, by the press slip.
+
+`tools/window-span.mjs`, Icy Veins (20 s) at h=0, model against wowsims:
+
+```
+  press   model: buffed casts   sim: buffed casts   model window       sim aura window
+  9.6                     15                  16   11.00–28.50        11.00–29.75     <- one cast short
+```
+
+Harmless while the rate integral was the arbiter: the integral scored from `scoreStart = eff + slip` for
+a **full** duration, which is the phase-average of *"starts at the next boundary, then runs its whole
+length"* — the correct semantics. The walk's version was start-late-end-on-time, i.e. a systematic
+under-credit of every mid-cast press.
+
+### 6.11b The fix, and the one case it must NOT touch
+
+The aura starts when the ability actually fires:
+
+- **self-press** → `max(eff, prevCastEnd)` — it cannot fire while a cast is in flight;
+- **raid EXTERNAL** (Bloodlust / PI / Drums) → `eff`, unchanged. Someone else presses these, so they
+  land when CALLED whatever this mage is casting. Expiring them from a cast boundary would over-credit
+  them by up to a full interval, which is the same bug wearing the other sign.
+
+After the fix all six probe offsets match wowsims exactly, including 9.6 → 16 casts, 11.00–29.75.
+
+### 6.11c ⛔ AND THE DEMONSTRATION IS STILL NOT IN — 6 / 8 / 10
+
+Re-running §6.10d's duel on the fixed engine (24 cells, 3 seeds, `tools/scorer-duel.mjs`):
+
+| tie rule | cast-sum | integral | ties | mean Δ |
+|---|---|---|---|---|
+| seed band only (**wrong** — see below) | 14 | 10 | 0 | +0.28 DPS |
+| **0.25 DPS resolution floor** | **6** | **8** | **10** | +0.28 DPS |
+
+⚠ **THE FIRST ROW IS AN INSTRUMENT ERROR AND IT FLATTERED THE RESULT.** With common random numbers the
+seed band collapses to ±0.00 on essentially every cell, so *"tie if |Δ| ≤ band"* declared a WINNER for
+`+0.00` against `−0.00`. It turned rounding into a verdict and moved the headline from 6–8 to 14–10.
+This is §6.5a's exact failure mode, reached from a new direction, in a tool whose own header warns
+about §6.5a. **A tie rule needs a resolution floor, not just a noise band.**
+
+**Verdict: INCONCLUSIVE, not "the integral is better".** The mean is positive (+0.28 DPS) and the
+win/loss count is negative; at n=24 neither resolves.
+
+### 6.11d ⇒ THE DEMONSTRATION IS BLOCKED, AND ON A KNOWN CAUSE
+
+The referee is still miscalibrated. §6.9d measured that **26 of 196 presses** do not land on the cast the
+model scored them on, purely from the 334 ms / (1/3) s Arcane Blast cast-time mismatch (HELD + LATTICE)
+— and no transcription can reach those. A referee that mis-executes ~13 % of presses cannot resolve a
+margin of ~0.01 %.
+
+⇒ **Fixing `STACK_CAST_REDUCTION: 1/3 → 334 ms` is now a PREREQUISITE for the demonstration, not an
+optional follow-up.** Order: land the constant, re-run `scorer-duel`, and only then consider goldens.
+
+### 6.11e ⛔ WHAT IS TRUE OF THE REPO RIGHT NOW — read this before running exact-match
+
+- `tests/exact-match.mjs` **WILL FAIL**, on every case. Plans moved by design (41.1 % of pooled-argmax
+  cells; 16 of 16 QUICK sweep cases) and **the goldens were deliberately NOT re-recorded**, because
+  §0.4 licenses that only on a demonstration that has not been obtained. This is a known, intended,
+  documented state — not a regression, and not something to fix with `--update`.
+- ⛔ **Do NOT run `exact-match --update` to make it green.** That would freeze an objective whose
+  superiority is unproven into the project's own definition of correct, and destroy the only record of
+  what the retired scorer emitted.
