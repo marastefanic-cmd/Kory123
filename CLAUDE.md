@@ -229,7 +229,9 @@ Treat maintaining them as part of the work, not an afterthought:
   model-vs-sim ranking error, closed with a **negative** result: the boundary charge failed its sign
   gate and ships OFF, changing no plan. Lasting: **THE FLOOR LAW**, the two harness input errors it
   found (now `tools/reference-gear.mjs`), and §26.1's eight settled findings — do not re-open those.
-  ⚠ **B2 itself is unsolved** and its target moved ~0.39 pp *and changed sign* on gear B.
+  ⚠ **B2 itself is unsolved.** Its target was thought to have moved ~0.39 pp and changed sign on gear
+  B; that was **retracted 07-27** (BENCH §3e) — re-measured on protocol it reads ≈0.43 pp, so the
+  gear-A target essentially **stands**.
 - `docs/PHASE10.md` — ▶ **IN EXECUTION. Round 1 is GATHERING — read `docs/PHASE10-RESUME.md` first**
   (60-second state + exact next actions). Re-establishes the acceptance baseline on gear B; every
   gear-A number is archived, so ACCEPTANCE still has **no reading** until 36/36.

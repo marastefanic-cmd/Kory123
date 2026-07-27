@@ -386,13 +386,22 @@ Lesson 7 above is the instrument for the second axis; lessons 1–4 are the firs
   `apl-schedule-strict-ready.patch`, then `go build -tags with_db`.
   Output TSV: `tag  dur  var  iter  meanDPS
   stdev  maxDPS  avgFightSec` — **column 5 is mean DPS**.
-- **Gear export** (NOT in repo — user-provided): the player's wowsims individual-export JSON. Point
-  `--export` at it; don't hardcode its path in committed files (user data). The canonical export used
-  for this project's goldens is a full, realistic Arcane raid setup (Wrath of Air, Totem of Wrath,
-  Misery, Curse of Elements, Improved Shadow Bolt, JoW, Kings/Wisdom; kit = IV, Icon, Serpent-Coil gem,
-  Arcane Power, Berserking, Bloodlust).
-- **wowsims-tbc source + `runner`** live in the **session scratchpad** (ephemeral — cleared with the
-  container, though it survives `/clear` within a session). Only `tools/genapl.mjs` persists in the repo.
+- **Gear export** — ⚠ **this bullet's "NOT in repo — user-provided" framing is RETIRED (07-26).** Two
+  reversals landed on top of it, in this order: `BENCH.md` §1.1 **committed** the export
+  (`tools/bench/export.json` — it holds no personal identifiers, and an unreproducible rig was the
+  worse problem), and then `GEAR-AGNOSTIC.md` retired *having* an export at all — the reference
+  character is now defined by the planner's own declared inputs (`sim/model-ref.json`). **Do not go
+  looking for a user gear file; do not commit a new one.** The committed export survives only as the
+  denominator of the last geared round (PHASE12 §1.1e archives it under a name that says so).
+  For the record, the character it describes is a full, realistic Arcane raid setup (Wrath of Air,
+  Totem of Wrath, Misery, Curse of Elements, Improved Shadow Bolt, JoW, Kings/Wisdom; kit = IV, Icon,
+  Serpent-Coil gem, Arcane Power, Berserking, Bloodlust).
+- **wowsims-tbc source + the native `runner`** are **ephemeral** — they live wherever you cloned and
+  built them (cleared with the container) and are rebuilt in ~4 min by the recipe below. ⚠ The old
+  claim that "only `tools/genapl.mjs` persists in the repo" is **false at HEAD**: the whole `sim/`
+  subsystem is committed, including **`sim/sim.wasm`** — the same engine, compiled — so
+  `node tools/bench.mjs …` produces a number **from the repo alone**, with no clone and no build.
+  The native runner is a ~6× *speed* option for bulk gathering (PHASE12 §2.1b), not a prerequisite.
 - **`tools/explore.mjs`** (durable): the **exploration harness** — brute-scores every placement of a small
   buff set on the model over a gear-haste sweep, reports winners + breakpoints, and flags ramp-sensitive
   winners. `--sim` cross-checks the flagged winners against the runner (needs `RUNNER=… GEAR=…`), building
@@ -586,28 +595,29 @@ make every recorded number unreproducible — so the goal is an *informed* pin, 
 > 2. `cmd/runner/` does not exist upstream; create it and copy
 >    `tools/wowsims-patches/runner-main.go` to `cmd/runner/main.go` before building.
 >
-> **The only thing genuinely NOT in the repo is the gear export**, and that is deliberate — it is
-> user data (`docs/archive/07` §6.3: *"The gear export is user data (NOT in repo) … never commit an
-> export"*). Ask the owner for it; everything else rebuilds from the recipe.
+> **The character is in the repo now — do NOT go hunting for a user export.** This block used to say
+> the gear export was the one irreplaceable input and to ask the owner for it. Both halves are dead:
+> `BENCH.md` §1.1 committed it (`tools/bench/export.json`), and `GEAR-AGNOSTIC.md` then retired the
+> whole idea of an exported character in favour of `sim/model-ref.json`, whose stats are *injected*
+> from the planner's declared inputs. **A rebuilt runner needs no external file.**
 >
-> #### The export search, done exhaustively 07-26 — do not repeat it
-> It is **not stored anywhere**, and it was never lost: it was never committed, by policy.
-> - **Working tree** — only model-side parameters (`GOLDEN_DEFAULTS.gear`, `tests/phase-portfolio.json`,
->   `tools/reference-gear.mjs`): `sp`/`crit`/`haste`/`coldSnap`. No item list.
-> - **Git history** — no `export`/`dumpreq`/gear JSON at any commit on any branch.
-> - **`tools/xval-results/`** — records plans + sim output, not the character.
-> - **`tools/xval.mjs:45`** — takes `EXPORT_BASE` as an env path to an external file, by design.
+> #### The export search, done exhaustively 07-26 — kept only so nobody repeats it
+> ⚠ **Historical.** At the time, the gear-A export was genuinely nowhere (never committed, by the
+> since-reversed policy): not in the working tree (only model-side `sp`/`crit`/`haste`/`coldSnap`
+> parameters), not at any commit on any branch, and not in `tools/xval-results/` (which records plans
+> and sim output, not the character). That search is *finished* and its conclusion — "reconstruct, or
+> re-export" — was acted on: the re-export **is** gear B. Do not run the search again.
 >
-> **What IS preserved about that character** (enough to rebuild an *equivalent*, not the original):
-> Tirisfal T5 2pc set 649 items **30206/30196/30207** (+20 % AB damage), 4pc `SpellID 37444` (+70 SP
-> on crit, 88–94 % uptime ⇒ effective **SP ≈ 1450**), Icon of the Silver Crescent **29370**,
+> **What was preserved about the gear-A character** (enough to rebuild an *equivalent*, not the
+> original): Tirisfal T5 2pc set 649 items **30206/30196/30207** (+20 % AB damage), 4pc `SpellID 37444`
+> (+70 SP on crit, 88–94 % uptime ⇒ effective **SP ≈ 1450**), Icon of the Silver Crescent **29370**,
 > `critPct 38`, measured casting regen ≈ **104 mana/s**, Vampiric Touch **+250 mp5** — see
 > `SOURCES.md` and PHASE8 §6/§7.
 >
-> ⚠ **A rebuilt export is a NEW baseline.** The trust anchor's ~0.4 % agreement is tied to the
-> original character, so re-certifying against a reconstruction makes the existing corpus rounds
-> **no longer directly comparable**. Prefer the owner's file; reconstruct only as a last resort, and
-> if you do, say so loudly in the round that first uses it.
+> ⚠ **The warning this block ended on came true, and is the reason `GEAR-AGNOSTIC.md` exists:** a
+> re-exported character *is* a new baseline, so the trust anchor and every corpus number moved with it
+> (BENCH §1). The lesson is now enforced structurally rather than by caution — `char=` stamps every
+> table, and the reference character is code, not a file that can be re-exported.
 
 ```
 git clone https://github.com/wowsims/tbc-new.git && cd tbc-new && git checkout ade9f39
@@ -645,9 +655,14 @@ SP=/path/to/scratchpad bash tools/xval-boss.sh   # or point it explicitly
 RUNNER=... EXPORT_BASE=... bash tools/xval-kit.sh mqg,skull
 ```
 
-⚠ `EXPORT_BASE` is the **user's gear export — user data, never committed**; that is why it lives in the
-scratchpad and must be found rather than read from the repo. A missing one is an exit-2 setup failure,
-never a `diag=DEFICIT` observation.
+⚠ **RETIRED PATH (07-26) — the drivers above are the pre-`bench.mjs` generation.** `xval-kit.sh` /
+`xval-boss.sh` / `xval-campaign.sh` / `xval-rerun.sh` still resolve `RUNNER` + `EXPORT_BASE` and are
+kept for reproducing an archived round; **the current round driver is
+`tools/xval-bench-campaign.sh` → `tools/xval-bench.mjs`**, which needs neither (it runs the committed
+`sim/sim.wasm`, and takes `RUNNER=` only as a ~6× speed option). The old `EXPORT_BASE`-is-user-data
+rule is **reversed** — the export is committed at `tools/bench/export.json` (BENCH §1.1), and is itself
+retired as a baseline by `GEAR-AGNOSTIC.md`. What still holds on the retired path: a missing
+`RUNNER`/`EXPORT_BASE` is an exit-2 **setup failure**, never a `diag=DEFICIT` observation.
 
 ## Trust anchor — certify the runner reproduces canonical wowsims
 
@@ -1207,9 +1222,34 @@ model. Leave ≥ 2 s of slack in a hand-built spec, or expect the second press l
   `Aura gained: {SpellID: 2825, Tag: -1}`. **Cold Snap has no aura** — only a `Casting` line. A press
   verifier must union both event kinds and dedupe (the two events of one press land < 0.05 s apart).
 - Match **exact** id strings (`SpellID: 12472`, not `12472`) *and* guard the trailing digit (`2825` is a
-  prefix of `28250`), or the match silently lands in the `t=0` raid-buff block.
-- The reference implementation of all of the above is `$SP/p8/r6verify.mjs` (takes a directory of
-  `<name>.log` + `<name>.spec.json` + a `manifest.json`).
+  prefix of `28250`), or the match silently lands in the `t=0` raid-buff block. Matching the **whole
+  brace group** including the closing `}` makes that guard automatic.
+- On-use **trinkets log by ItemID**, not by the spell they grant: `Casting {ItemID: 29370}`.
+- ⚠ An equipped trinket can also emit `Aura gained: {ItemID: …}` at **t = 0** — that is the *equip*, not
+  a press. (Serpent-Coil does; Icon does not.) So auras must only be consulted for an ActionID that
+  produced **no** cast events at all, or a fully-dropped trinket press reads as "fired at 0.00".
+
+**★ The reference implementation is `tools/press-verify.mjs`** (committed 07-27). ⚠ It previously lived
+only at `$SP/p8/r6verify.mjs` — a session-scratchpad path that no longer exists — with the facts above
+as its only surviving documentation; the tool was rebuilt from them (PHASE12 §3.6).
+
+```
+node tools/press-verify.mjs --spec '{"IV":[8,39],"AP":[8],"BL":[7],"Icon":[8]}' --log /tmp/pv.log
+RUNNER=…/runner-ap180 node tools/press-verify.mjs --spec '{…}' --run --dur 60 --haste 0   # runs it too
+```
+
+Per intended press it prints **intent · fired · slip · via**, and exits `1` if any press never fired.
+It does **not retype a single spell id**: each key's ActionID is read back out of `tools/genapl-core.mjs`
+by building a one-key APL, so the two can never drift. Controlled in both directions before being
+believed — a healthy 8-press plan → exit 0 with every press matched; **two negatives that reproduce the
+real failures**: a second `IV` inside its 180 s cooldown → `DROPPED` (the `APLActionSchedule` drop bug ★)
+and an `MQG` press on a character wearing isc+scb → `DROPPED` (the unworn-trinket no-op, PHASE12 §2.1);
+plus the fact-4 case (a Gem press past the fight end reads `DROPPED` + `UNCLAIMED`, *not* a 0.00 fire),
+a synthetic log carrying only `SpellID: 124720` and a *pet* `12472` (both refused), and **twelve**
+setup negatives — no spec, bad JSON, unknown key, no presses, missing/empty/NUL log, `--run` without
+`RUNNER`, mutually exclusive flags — each required to exit **2**. ★ **An empty log exits 2, never
+"all presses fired"**: the project has shipped that exact false pass three times (`xval-collect`,
+`xval-verify`, the wrapper banners).
 
 **★ RUNNER PROVENANCE — one true binary.** The canonical runner is built from the scratchpad `wowsims`
 clone (`ade9f39` + `apl-schedule-strict-ready.patch` + `ap-cd-at-cast.patch`):

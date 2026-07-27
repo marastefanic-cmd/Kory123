@@ -7,8 +7,11 @@
 > 2026-07-26, and **each on its own breaks cross-baseline comparison**:
 >
 > 1. **The character changed, gear A → gear B** (`docs/BENCH.md` §1). BENCH's own rule: *do not compare
->    a gear-B number to a gear-A number; any table mixing them is void.* This is not hypothetical —
->    B2's sim preference already moved **~0.39 pp and changed sign** on gear B (BENCH §3e).
+>    a gear-B number to a gear-A number; any table mixing them is void.* ⚠ The evidence this line used
+>    to cite — "B2's sim preference moved ~0.39 pp and changed sign" — was **RETRACTED 07-27**: it does
+>    not reproduce, and under the corpus protocol B2's cell reads `+0.389 %` on gear B against
+>    `+0.360 %` on gear A. **The rule itself is unaffected** — absolute DPS, the trust anchor and every
+>    calibrated constant are still baseline-dependent — but it now rests on that, not on a moved target.
 > 2. **The instrument changed.** `--var` is settled at **0.5 by measurement** (BENCH §3,
 >    `tools/var-decision.mjs` — `--var 0` swings a real effect by a whole cast for a 0.1 s change in the
 >    kill second), and the campaign now runs on **`tools/bench.mjs` + the committed `sim/sim.wasm`**,
@@ -27,17 +30,25 @@ is the **completion criterion**, re-run after every fix/upgrade phase. Phase 6 b
 future phases fix what it exposes and re-run it. A documented deficit is a **debt to fix, not a state to
 accept** (user-directed).
 
-> **The current committed round is round 5 (07-25), gathered on the CORRECTED harness gear**
-> (`tools/reference-gear.mjs`, `t5two` + effective `sp: 1450`; PHASE8 §20). It supersedes round 4, which is
-> archived at `tools/xval-results-archive/phase7-round4/`. The repricing moved **124 of 345 plan cells
-> (35.9%)** and every `eff` by −0.4…−1.1% (KT −6.1…−6.8%) — and moved the verdict **not at all**
-> (`deficitTables 34→34`, zero verdict flips, `monoDip` 0.00% in both). **So the B failure is not a
-> reference-gear artifact** (PHASE7 §6).
+> **The current committed round is GEAR-B round 1** (`tools/xval-results/`, `char=bench-gearB`) — see
+> "Current status (gear B)" below. Rounds 2–7 were gear A and are archived intact at
+> `tools/xval-results-archive/gearA-pre-20260726/`.
+>
+> *Historical, about gear A:* round 5 was the first gathered on the **corrected** harness gear
+> (`tools/reference-gear.mjs`, `t5two` + effective `sp: 1450`; PHASE8 §20). The repricing moved
+> **124 of 345 plan cells (35.9%)** and every `eff` by −0.4…−1.1% (KT −6.1…−6.8%) — and moved the
+> verdict **not at all** (`deficitTables 34→34`, zero verdict flips, `monoDip` 0.00% in both). **So the
+> B failure was not a reference-gear artifact** (PHASE7 §6). That finding is what makes the gear
+> A→B re-measurement a genuine open question rather than a foregone repeat.
 
 Read `docs/DIARY.md` for history and `docs/TOOLING.md` for the sim methodology (esp. the ★★★
 never-prepull rule and the ★ mana trap). **Every harness cfg's gear comes from `tools/reference-gear.mjs`
-— spread it, never re-type it** (TOOLING "THE REFERENCE GEAR"). The run that first built and executed this test is archived at
-`docs/archive/07-phase6-xval-run.md` (cited across the docs as *PHASE6 §x*).
+— spread it, never re-type it** (TOOLING "THE REFERENCE GEAR").
+
+> **Citation convention for the closed phases.** *PHASE6 §x* → `docs/archive/07-phase6-xval-run.md`
+> (the run that first built and executed this test) · *PHASE7 §x* → `docs/archive/08-phase7-xval-fixes.md`
+> · *PHASE8 §x* → `docs/archive/09-phase8-b2.md`. Section numbers are unchanged by the archiving, so
+> every existing citation still resolves; `docs/archive/README.md` is the index.
 
 ---
 
@@ -93,14 +104,26 @@ The model **passes** when, across all six trinket kits × the five fight-length 
    KT counts with its AoE measured (genapl `_aoe`). There is no accepted tolerance band: the loop
    terminates by exhausting explanations, not by declaring a floor.
 
-## How to run it
+## How to run it *(rewritten 07-27 — the rig-based commands it used to give are RETIRED)*
 ```
-# fixed rig (rebuild per fresh session — TOOLING "Building the runner" + "RUNNER PROVENANCE"):
-#   runner-ap180 + a gear export (user data, never committed)
-bash tools/xval-campaign.sh                    # 6 kits × 5 fight-length classes, 2-concurrent, ITER=6000
-bash tools/xval-boss.sh                         # Vashj / Al'ar / KT × representative kits
-node tools/xval-collect.mjs tools/xval-results  # → the CLEAN/DEFICIT ledger, with deficit-cell localization
+# GATHER — 36 tables, from the repo alone. No clone, no protoc, no go build, no RUNNER/EXPORT_BASE.
+setsid nohup bash tools/xval-watchdog.sh all > /tmp/watchdog.log 2>&1 < /dev/null &   # survives the shell
+#   …or drive it directly:
+bash tools/xval-bench-campaign.sh               # WHAT=class|boss · JOBS · ITER · SKIP_EXISTING=1 to resume
+RUNNER=/path/to/runner-ap180 bash tools/xval-bench-campaign.sh   # optional: ~6× on the SIM half only
+
+# GRADE — refuses to run anything downstream of a failed provenance audit ("36 tables or no verdict")
+OUT=/tmp/grade bash tools/xval-grade.sh         # 0 clean · 1 graded-and-failing · 2 could-not-grade
+node tools/xval-band.mjs /tmp/grade/targets.json   # is a target real at ≥3 seeds? (PHASE10 §5)
+
+bash tools/xval-status.sh                       # liveness: tables, cache, shard progress, sims/min
 ```
+> ⚠ **The old commands — `bash tools/xval-campaign.sh` / `xval-kit.sh` / `xval-boss.sh` → `tools/xval.mjs`
+> — need a native rig (`RUNNER` + `EXPORT_BASE`) that no longer has to exist.** They are kept, not
+> deleted, because they are the only way to reproduce an **archived gear-A** round; do not reach for
+> them to gather a new one. The current driver is `tools/xval-bench.mjs`, which runs the committed
+> `sim/sim.wasm` and takes `RUNNER=` only as a speed option (TOOLING; PHASE12 §2.1b).
+
 Locked protocol (do NOT deviate — each cost a real bug once; PHASE6 §1, PHASE7 §5): **cold open
 (`_prestack:0`, never prepull) · ∞ mana (`--mana 100000000`) · `var 0.5` — the MODEL-MATCHED kill window
 (the scorer's `robust` is exactly expected damage under a uniform kill in T±0.5s; var10's ±10s hedging
@@ -114,19 +137,50 @@ snapshot the old round into `tools/xval-results-archive/<phase>/` first (append-
 `docs/archive/`) — history stays first-class, never just git archaeology. The collector output is
 the authoritative row-by-row ledger.
 
-### The instruments (all committed; the sim rig itself is scratchpad-ephemeral — TOOLING)
-- **`tools/xval.mjs`** — the cross-val instrument. `node tools/xval.mjs <seed>`. Env: `KIT=a,b` (explicit
+### The instruments
+> **Everything below is committed, and since 07-26 so is the engine** (`sim/sim.wasm`) — the old
+> parenthetical "the sim rig itself is scratchpad-ephemeral" no longer applies to the gathering path.
+> What *is* still ephemeral is the optional **native** runner, rebuilt in ~4 min per TOOLING.
+>
+> ⚠ **The `xval.mjs` generation below is the RETIRED, rig-based path** (see "How to run it"). The
+> current chain is `xval-bench-campaign.sh` → `xval-bench.mjs` → `xval-grade.sh`
+> (`stamp-audit` → `verify` → `collect` → `ripple-audit` → `persist`) → `xval-band.mjs`. The
+> descriptions of `xval-stamp-audit` / `xval-verify` / `xval-collect` / `xval-persist` /
+> `diagnose-deficit` / `genapl` below are **current** — those tools are shared by both generations and
+> `xval-grade.sh` is exactly the order they must run in. Only the three shell wrappers and `xval.mjs`
+> itself are superseded.
+
+- **`tools/xval-bench.mjs`** — ★ **the current cross-val instrument.** `node tools/xval-bench.mjs <seed>`,
+  same env surface as `xval.mjs` below (`KIT` · `TCLASS` · `HASTES` · `BOSS` · `ITER`), same seeded fight
+  draw — so a cell reproduces the gear-A corpus's *fight* while measuring the current baseline. Runs
+  `sim/sim.wasm` by default; `RUNNER=` swaps in the native binary (asserted equal to the printed
+  decimal by `tests/sim-duel.mjs`). Content-addressed plan and DPS caches in `.xval-cache/` (gitignored,
+  keyed on the engine and wasm bytes — which is why `index.html` and `tools/xval-bench.mjs` are both
+  **frozen for the duration of a round**: PHASE12 §1.1e).
+- **`tools/xval-bench-campaign.sh`** / **`tools/xval-watchdog.sh`** / **`tools/xval-checkpoint.sh`** —
+  the round driver (30 class + 6 boss cells, `SKIP_EXISTING=1` resume), the singleton keep-alive that
+  relaunches a died campaign, and the loop that commits+pushes completed tables mid-round.
+- **`tools/xval-grade.sh`** — the grading chain in the one order that is safe, with honest exit codes;
+  it **refuses** to run anything downstream of a nonzero provenance audit, which is what makes
+  "36 tables or no verdict" mechanical instead of a rule someone must remember.
+- **`tools/xval-band.mjs`** — PHASE10 §5's ≥3-seed rule: a target column is only *real* if it survives
+  independent seeds. Validates its own config (seed spacing vs iteration count, kit equipping, wall
+  jitter) **before** it looks at data.
+
+- **`tools/xval.mjs`** *(retired — rig-based)* — the original cross-val instrument. `node tools/xval.mjs <seed>`. Env: `KIT=a,b` (explicit
   kit; else seed-drawn) · `TCLASS=short|medium|medlong|long|xl` · `HASTES=…` · `BOSS="Lady Vashj"|…`
   (load a preset's real T/Lust/segments instead of a class-drawn fight) · `ITER` · `SCRATCH`. Forces cold
   open (`_prestack:0`) and ∞ mana. Prints the N×N matrix + an `XVAL-DONE … monoDip diag diagWorst` line.
 - **`tools/xval-haste-sets.json`** — the committed per-kit breakpoint-straddle haste sets (source of
   truth for granularity; read by `xval-kit.sh`).
-- **`tools/xval-kit.sh`** — one kit across all five fight-classes. `bash tools/xval-kit.sh mqg,skull`.
-  Tees matrices to `$XVDIR/<kit>-<class>.txt`; seeds deterministically (`1000 + cksum(kit)%9000 + classIdx`).
-- **`tools/xval-campaign.sh`** / **`tools/xval-boss.sh`** — all six kits (2-concurrent, `ITER=6000`;
+- **`tools/xval-kit.sh`** *(retired — rig-based)* — one kit across all five fight-classes. `bash tools/xval-kit.sh mqg,skull`.
+  Tees matrices to `$XVDIR/<kit>-<class>.txt`; seeds deterministically (`1000 + cksum(kit)%9000 + classIdx`)
+  — **`xval-bench-campaign.sh` reuses both seed formulas verbatim**, which is what makes the gear-B round
+  a re-measurement of the same holdout sample rather than a different experiment.
+- **`tools/xval-campaign.sh`** / **`tools/xval-boss.sh`** *(retired — rig-based)* — all six kits (2-concurrent, `ITER=6000`;
   `KITS=…` overridable) / the boss-shape tables (Vashj + Al'ar + KT × representative kits, with
   `--targets N` on AoE phases).
-- **★ The three wrappers above + `xval-rerun.sh` carried the false-pass class ONE LEVEL UP** (fixed
+- **★ The three retired wrappers above + `xval-rerun.sh` carried the false-pass class ONE LEVEL UP** (fixed
   07-25, each demonstrated on the pre-fix file rather than argued). None consulted the exit status of
   the `node xval.mjs` it launched, none consulted the `python3` haste-set lookup, and each printed its
   completion banner unconditionally — so HEAD's `xval-kit.sh bogus1` printed five `XVAL-FAIL` lines and
@@ -252,7 +306,34 @@ the authoritative row-by-row ledger.
   nothing" as a real negative verdict. Now exit **2**, per the shared contract (0 = graded clean · 1 =
   graded and failing · 2 = could not grade).
 
-## Current status (2026-07-25, **round 5** — the corrected reference gear) — NOT PASSING (B)
+## Current status (gear B) — ⏳ **NO READING YET**
+
+**This is the honest answer and it should stay uncomfortable: the project's own "are we done" verdict
+is currently _undefined_.** Every figure in the gear-A block below is about a character that is no
+longer the reference (BENCH §1), so the acceptance test has **no gear-B result at all** until the
+in-flight round reads 36/36 and `tools/xval-grade.sh` exits. Do not quote the gear-A verdict as the
+current one, and do not soften this line into "probably still failing".
+
+| | state |
+|---|---|
+| round | **gear-B round 1**, gathering — `tools/xval-results/`, `char=bench-gearB` |
+| verdict | **none** — `xval-grade.sh` refuses to grade a partial directory (exit 2), by design |
+| invariant A (`monoDip`) | not yet graded over the round |
+| invariant B | not yet graded over the round |
+| what is known | the **persistence list reproduces cell for cell** from gear A (PHASE10 §8.22) — a *shape* result, not a verdict |
+
+**To fill this in:** finish the round, then `OUT=/tmp/grade bash tools/xval-grade.sh` and
+`node tools/xval-band.mjs /tmp/grade/targets.json`. Replace this block with the graded numbers, and
+move the gear-A block below into `tools/xval-results-archive/gearA-pre-20260726/README.md` if it has
+grown redundant with it.
+
+---
+
+## Archived status (2026-07-25, **round 5**, **GEAR A** — the corrected reference gear) — NOT PASSING (B)
+
+> ⚠ **This is a historical record, not the current status** (see the block above and the banner at the
+> top of the file). Its *mechanisms* — the ripple decomposition, the four families, the B-banner
+> analysis — are permanently valid; its *numbers* are gear-A and un-denominated.
 All 36 tables re-gathered on the current engine (cross-haste pooling ON, var0.5, per-wall jitter v2, KT
 AoE valued) **and the corrected harness gear** (`tools/reference-gear.mjs`: `t5two` + effective
 `sp: 1450`), on the **same 36 seeds as rounds 3–4**. Current round in `tools/xval-results/`; earlier
@@ -579,7 +660,8 @@ steps, and if any plan ever *does* move, the round is void.
   deficits live. **Two things follow.** (a) A cell below the floor is **not evidence of a model defect** —
   the round-5 worst non-KT column is now diagnosed as exactly this. (b) **The criterion itself needs
   restating** — plausibly *"deficit below the ripple floor for the table's tail rate"* rather than *"no
-  deficit"*. That is a **user call and is NOT being made unilaterally**; until it is made, read a
+  deficit"*. That is a **user call and is NOT being made unilaterally** — it is carried forward as
+  **PHASE12 §1.3** so it has a home rather than sitting unowned in a gap list; until it is made, read a
   short/low-haste DEFICIT under ~0.1–0.2% as *at the ruler's limit*. This compounds the model-side limit
   already recorded below (58/135 round-5 columns priced ≤0.02% apart — under the model's *own* resolution).
   Widening the taper toward the tail cast period would shrink the floor, but it also **changes the
@@ -593,10 +675,14 @@ steps, and if any plan ever *does* move, the round is void.
   consequence 6). A boss column carries 7 walls and is a 5-variant mean; a class column carries 1 and is a
   single run. Never pool a boss and a class cell into one statistic without saying which instrument each came
   from — the 2.8× over-floor enrichment of boss cells was entirely this. Priced now for boss cells
-  (±0.1251), still unpriced for the *interior*-wall contribution at any other boss length or kit.
-- **Ashtongue** (random on-crit proc) is out of the kits — needs a different, stochastic treatment (Phase 7).
+  (±0.1251), still unpriced for the *interior*-wall contribution at any other boss length or kit
+  → **open, PHASE12 §3.7**.
+- **Ashtongue** (random on-crit proc) is out of the kits — needs a different, stochastic treatment.
+  ⚠ *The "(Phase 7)" owner this line used to carry is dated:* Phase 7 closed without doing it
+  (`docs/archive/08`), and it was never re-assigned. → **open, PHASE12 §3.8.**
 - **No exhaustive ground truth above ~h150** for SP-trinket-free kits (the 5s grid can't express the
-  off-grid optimum) — the tool is certified only ≥ the coarse grid there.
+  off-grid optimum) — the tool is certified only ≥ the coarse grid there. *Standing limitation, not a
+  debt: closing it needs a finer brute grid, which is exponential in the kit size.*
 
 ### ★★ What a PASS here does and does NOT prove (user's challenge, 07-25)
 

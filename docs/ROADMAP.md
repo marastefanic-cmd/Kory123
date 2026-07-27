@@ -22,8 +22,11 @@
 **Read this before resuming any model work.** The reference character was re-exported on 07-26 and the
 entire gear-A corpus archived, so **ACCEPTANCE has no current reading**, and every open debt below —
 B2 ≈0.445pp, the low-haste basin, the KT/AoE cells — is denominated in a currency that no longer
-exists. B2's sim preference has already moved ~0.39pp *and changed sign* across the baselines
-(BENCH §3e), so Phase-8 work started today would aim at a number that is not there.
+exists. ⚠ **The "B2 moved ~0.39pp and changed sign" claim that used to end this paragraph was
+RETRACTED 07-27** (BENCH §3e) — it does not reproduce, and B2's cell reads `+0.389 %` on gear B against
+`+0.360 %` on gear A, so its ≈0.445pp target **stands** at ≈0.43 pp. The rest of the paragraph is
+unaffected: the other debts are still un-denominated, because *nobody has re-measured them*, which is
+a different claim from *they moved*.
 
 **Where it stands (execution log: `docs/PHASE10.md` §8).**
 - ✅ **The §4.1 shakedown PASSED** 4/4 cells on all four gate conditions (§8.1).

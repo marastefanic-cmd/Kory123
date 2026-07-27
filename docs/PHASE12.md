@@ -32,8 +32,9 @@ Status when this file was opened: **round 1 gathering at 30/36**, `index.html` f
 
 **The question as it was posed.** The user's stated intent is a gear-agnostic benchmark "so we never
 have to deal with this problem again" — *this problem* being the gear A → gear B re-export, which
-cost the project its entire acceptance baseline (BENCH §1) and moved B2's target ~0.39 pp *and
-changed its sign*.
+cost the project its entire acceptance baseline (BENCH §1). ⚠ *This sentence used to add "and moved
+B2's target ~0.39 pp and changed its sign"; that was **retracted 07-27** (BENCH §3e) — it does not
+reproduce. The ruling is unaffected: it was made about **reproducibility**, not about any one target.*
 
 **The finding: the corpus is NOT gear-agnostic, and nothing says so out loud.** There are two
 characters, and the split is not where a reader would guess:
@@ -126,6 +127,35 @@ The user asked for a guarantee, not an intention. A note in a doc is not one. Wh
 
 `docs/PHASE11.md` §8 lists the platform-phase user calls (module split boundaries, product routes).
 They are unchanged by tonight's work; **do not decide them here**. §1.1 above is additive to them.
+
+### 1.3 ⚖ Does the PASS criterion get restated in terms of the ripple floor?
+
+**Moved here 07-27 from `docs/ACCEPTANCE.md`'s "Known coverage gaps" list, where it had sat as an
+un-owned "user call and is NOT being made unilaterally" — a decision with nobody's name on it.** The
+evidence is complete; only the ruling is missing.
+
+**The question.** ACCEPTANCE's bar is *zero* invariant-B deficits. But the metric has a
+**positive-biased resolution floor**: the sim counts integer casts under the kill taper while the model
+integrates the continuum limit, leaving a `1 − W/c` sawtooth (RULES §8, `tools/lattice-ripple.mjs`).
+`diagWorst` takes a `max` over ~10 rival rows of that two-signed quantity, so **its expectation is
+positive for a flawless model** — `+0.094…+0.165%` at R=10 on an 81-cast fight. So `diagWorst = 0` is
+**not reachable by construction** on short/low-haste tables, which is exactly where the residual
+deficits live.
+
+**Should the criterion become "deficit below the ripple floor for the table's tail rate"?**
+
+| answer | what it buys | what it costs |
+|---|---|---|
+| **restate** | the bar becomes *achievable*; work stops chasing cells under the ruler (gear A: **80.2%** of determinate columns were inside the floor) | a tolerance enters the criterion, which Phase 7's amendment deliberately removed ("the guarantee is BY CONSTRUCTION, not a tolerance") |
+| **keep "zero"** | the criterion stays a hard invariant | the test can never pass on short/low-haste tables *even if the model is perfect*, so "NOT PASSING" stops carrying information |
+
+⚠ **The tempting third option is a trap and is already ruled out:** widening the taper toward the tail
+cast period would shrink the floor, but `KILL_WINDOW` **is** the half-cast hedge of RULES §8 — it is
+part of the objective, not part of the ruler. Do not fix the instrument by moving the goal.
+
+⚠ **Do not decide this off gear-A numbers.** The 80.2% figure and the floor/deficit medians
+(0.134% vs 0.035%) are gear A. `tools/ripple-audit.mjs` reprices the whole corpus arithmetically with
+**no sim run**, so the gear-B version of this table is one command once the round lands — get it first.
 
 ---
 
@@ -242,6 +272,16 @@ closes that gap using only the committed wasm.
 | 3.3 | `tests/sim-request.mjs` §1+§2 unexercised without a native runner | probe exists (§2.2); promote per §4.1 |
 | 3.4 | `RULES.md` figures are gear-A; banner added, **none re-measured** | banner landed 07-26 |
 | 3.5 | §12 crossover thresholds (`~264`, `~139`, `~77`) are haste/SP functions | most likely to have moved; re-derive first |
+| 3.6 | The SIMLOG **press verifier** exists only as prose + a dead scratchpad path | **CLOSED 07-27** — promoted to `tools/press-verify.mjs`; see §3.6 note |
+| 3.7 | Interior-wall contribution to the ripple floor is unpriced at any boss length/kit but the one measured | open — ACCEPTANCE "coverage gaps"; boss cells priced at ±0.1251, interiors not |
+| 3.8 | **Ashtongue** (random on-crit proc) is outside every kit — needs a stochastic treatment | open, and **un-owned since Phase 7 closed without it**; RULES §14 folds it into passive haste, which is the *modelling* answer, not the *cross-val* one |
+
+**§3.6 note.** `docs/TOOLING.md`'s "★★ DECOMPOSE A DUEL BY WALKING THE LOG" calls log-walking *the
+cheapest instrument in the project*, and then pointed its reference implementation at
+`$SP/p8/r6verify.mjs` — a **session scratchpad path that no longer exists**. The log-format facts it
+depended on (the `[Player (#1)]` source prefix, Bloodlust having no `Casting` line, Cold Snap having no
+aura, exact-id matching with a trailing-digit guard) were all written out in prose beside it, so the
+instrument was rebuilt from the doc rather than lost.
 
 ---
 

@@ -17,8 +17,15 @@ things into the input."*
 The reason is not convenience. A corpus denominated in an *exported character* is a corpus that can be
 invalidated by re-exporting it — and that is not hypothetical: it already happened on 2026-07-26. The
 gear A → gear B re-export voided **every acceptance and cross-val number the project owned**
-(`docs/BENCH.md` §1), archived 36 tables, and moved the Phase-8 target **~0.39 pp, changing its sign**.
-A baseline that can evaporate is not a baseline. Declared inputs cannot evaporate.
+(`docs/BENCH.md` §1) and archived 36 tables. A baseline that can evaporate is not a baseline. Declared
+inputs cannot evaporate.
+
+⚠ **This paragraph used to add "and moved the Phase-8 target ~0.39 pp, changing its sign". That claim
+was RETRACTED 07-27** — it does not reproduce (BENCH §3e's banner). The argument does **not** depend on
+it: the re-export voided the corpus because *nothing in the repo could reproduce the old character*, and
+that would be true even if every target had landed in the same place. If anything the retraction
+sharpens the case — the project spent a phase's worth of planning on a "moved target" that had not
+moved, which is the cost of a baseline you cannot re-derive from declared inputs.
 
 There is a second payoff the user named: it makes the tool's verification *the user's* verification.
 A gear-agnostic benchmark is reproducible by anyone who types the same numbers into the page.

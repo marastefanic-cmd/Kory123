@@ -16,8 +16,14 @@ reference, measured with an instrument that has since changed**.
 | rig | native runner + a private export found in a session scratchpad | `tools/bench.mjs` + the committed `sim/sim.wasm` — no rig at all |
 
 ★ **BENCH §1's rule is absolute: do not compare a gear-B number to a gear-A number. Any table mixing
-them is void.** This is not a precaution — B2's sim preference moved **~0.39 pp and changed sign**
-between the two (BENCH §3e), which is larger than most of the effects the corpus was built to resolve.
+them is void.** It rests on absolute DPS, the trust anchor and every calibrated constant being
+baseline-dependent — not on any single measured shift.
+
+⚠ **This paragraph used to say "B2's sim preference moved ~0.39 pp and changed sign between the two".
+That was RETRACTED 07-27** (BENCH §3e): it does not reproduce. Under the corpus protocol B2's cell
+reads `+0.389 %` on gear B against `+0.360 %` on gear A. **The rule stands; that piece of evidence for
+it does not** — and the retraction is *not* a licence to diff a gear-B number against a gear-A one,
+because one cell landing in the same place says nothing about the other 35 tables.
 
 ## What rests on these tables (and is therefore awaiting re-measurement)
 

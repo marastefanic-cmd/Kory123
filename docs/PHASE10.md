@@ -15,10 +15,17 @@ Three facts, and together they leave only one sensible next move.
    archived the whole gear-A corpus and cleared `tools/xval-results/`. ACCEPTANCE's "NOT PASSING (B)",
    its 135 borrowed-win columns, its 0.38 % worst case, PHASE8's B2 ≈ 0.445 pp, PHASE7's low-haste
    basin debt — all gear A, all un-denominated until re-measured.
-2. **The target is known to have moved.** BENCH §3e measured B2's sim preference shifting **~0.39 pp
-   and changing sign** on gear B. Any Phase-8 work started today would aim at a number that is not
-   there. That is the strongest argument against "just finish Phase 8": you cannot finish a chase
-   whose quarry has moved and not been re-sighted.
+2. ~~**The target is known to have moved.**~~ ⛔ **FALSIFIED 07-27 — see BENCH §3e's retraction
+   banner.** This bullet read: *"BENCH §3e measured B2's sim preference shifting ~0.39 pp and changing
+   sign on gear B. Any Phase-8 work started today would aim at a number that is not there."* Re-measured
+   one knob at a time, **it does not reproduce**: under the corpus protocol gear B reads `+0.389 %`
+   against gear A's `+0.360 %`, the model half is `−0.037 %`, and archive/09 §13.8's ≈0.445 pp target
+   **stands** at ≈0.43 pp. The quarry had not moved.
+   ⚠ **Phase 10 is still right, on bullets 1 and 3.** Un-denominated is un-denominated whether or not
+   a target happens to land in the same place — the point of the round is that nobody *knew*, and one
+   cell re-measured by hand is not 36. But the "chase whose quarry has moved" framing was wrong, and
+   this is the cautionary tale for the class: **a single off-protocol measurement (`--var 0`, and
+   probably an unworn trinket) re-planned a phase.**
 3. **It finally costs almost nothing.** The gear-A campaigns were expensive mostly in *ceremony* —
    clone wowsims, install protoc, `go build`, then hunt a private gear export out of a session
    scratchpad that may have been reclaimed. All of that is gone: `tools/bench.mjs` runs the committed
