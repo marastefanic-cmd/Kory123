@@ -1060,3 +1060,184 @@ pre-solves survived — `SOLVE-ONLY` returned instantly on restart.
 **The fix that stops the first one recurring:** `tools/xval-watchdog.sh` now takes a `noclobber` PID
 lock, so a second watchdog exits instead of racing. Two watchdogs is not twice the work — it is the
 same work at half throughput plus constant writer-lock collisions.
+
+## 8.27 ⚠ "BIT-IDENTICAL" WAS A CLAIM ABOUT THE PRINTED MATRIX — the two engines agree to 0.05 DPS, not to the bit
+
+§8.26 gated the wasm→native switch by re-running a *completed* class table (`mqg-skull-short`, all
+100 cells) through the native backend and reporting that it "reproduces the committed wasm matrix
+**BIT-IDENTICALLY**". PHASE10-RESUME §7 built on that: *"Content is provably unchanged … The re-run
+changes the **stamp**, not the numbers."*
+
+**Both statements are too strong, and the class re-gather measured by how much.** Comparing all 30
+re-emitted class tables against their wasm-era predecessors — matrix body only, with the runner's
+`running N iterations took …` stderr lines stripped — gives **24 identical, 6 differing**, and every
+one of the six differs in exactly one place, the `(b) DIAGONAL DOMINANCE` summary line:
+
+| table | wasm | native | locus |
+|---|---|---|---|
+| `isc-skull-medium` | `DEFICIT 0.24%` | `DEFICIT 0.25%` | `@sim40: plan@70 (2694.1) > native (2687.5)` — unchanged |
+| `scb-skull-short` | `DEFICIT 0.22%` | `DEFICIT 0.23%` | `@sim90: plan@30 (2995.3) > native (2988.5)` — unchanged |
+| `mqg-skull-long` | `DEFICIT 0.18%` | `DEFICIT 0.19%` | `@sim0: plan@30 (2544.8) > native (2540.1)` — unchanged |
+| `mqg-skull-medlong` | `DEFICIT 0.09%` | `DEFICIT 0.10%` | `@sim160: plan@190 (2828.5) > native (2825.8)` — unchanged |
+| `mqg-skull-short` | `DEFICIT 0.03%` | `DEFICIT 0.04%` | `@sim190: plan@235 (3103.7) > native (3102.6)` — unchanged |
+| **`scb-mqg-medlong`** | **`DEFICIT 0.00%`** | **`CLEAN`** | `@sim235: plan@265 (2914.8) > native (2914.8)` — **the column disappears** |
+
+Every printed DPS cell is identical and every locus is identical; only the **derived percentage**
+moves, by exactly one rounding step, upward in all five DEFICIT cases.
+
+★ **And the sixth is a VERDICT FLIP, which is the one that matters.** `scb-mqg-medlong`'s borrowed
+plan and native plan both print `2914.8`; the wasm's doubles put the borrowed one a hair above, the
+native's did not — so the table's headline banner moved **DEFICIT → CLEAN** and the round's CLEAN
+count is 3/36 rather than 2/36 for a reason with no model content whatsoever. That is ACCEPTANCE's
+*"the banner is an existence test over ~90 near-ties and has almost no discriminating power"*
+demonstrated at its sharpest: **a ~1e-6 relative engine difference flipped a published verdict.**
+Read it as one more argument for steering by `xval-persist.mjs`, never by the banner.
+
+**The mechanism is a precision mismatch inside the tool's own output.** `xval-bench.mjs:418` prints
+the matrix at `toFixed(1)`, while `diagWorst` is computed from the full-precision doubles
+(`:426-431`) and printed at `toFixed(2)`. So **an identical printed matrix does not imply identical
+doubles** — it constrains them only to ±0.05 DPS, and a cell whose true ratio sits near an `x.xx5`
+boundary re-rounds. `mqg-skull-short` is the arithmetic: `3103.7/3102.6 − 1 = 0.0355 %` from the
+printed values, which rounds to `0.04`; the wasm's underlying doubles must have given `< 0.0350 %`.
+A ~0.002 DPS difference (≈7e-7 relative) is enough, which is what a Monte-Carlo sim does when a
+last-bits FP difference flips one comparison in one iteration out of 6000.
+
+⚠ **And `tests/sim-duel.mjs` never claimed more.** Its assertion is `delta < 0.05` DPS absolute
+(`:87`) and it prints both sides at `toFixed(1)`. *"PASS — shipped wasm == native runner"* has always
+meant **agrees within 0.05 DPS**, not bit-identity. The gate is fine; §8.26's summary of it was not.
+
+**Three consequences, and none of them is "the round is bad".**
+
+1. **The round is internally consistent, which is the property that matters.** All 36 tables are now
+   `engine=native:runner-ap180:18102540`, and the DPS cache key carries the engine
+   (`WASM_ID = ENGINE`, `xval-bench.mjs:340`), so a wasm-warmed entry can never be served into a
+   native matrix — §8.26's claim (1) holds as written. (The `cache=10/100` on a fresh native re-run
+   is **within-run duplicate plan rows**, not stale entries: `isc+skull` reads `11/121`, one
+   duplicate row of eleven. The header at `:369-375` already says a matrix has duplicate rows.)
+2. **The re-gather was not ceremony.** It was the honest way to a uniform stamp *and* it moved three
+   published percentages. Editing the stamps by hand — the shortcut §7 explicitly refused — would
+   have left three wrong numbers in the ledger.
+3. **★ The general rule: never derive a headline at higher precision than the artefact you validated
+   it against.** The gate compared at 1 dp and the conclusion was quoted at 2. That is the same shape
+   as this project's other precision traps (the `--var 0` whole-cast parity, the seed-spacing
+   collapse): the instrument was not wrong, the reading was finer than the instrument.
+
+⇒ **§8.26's "BIT-IDENTICALLY" is amended to "identical to the printed decimal (±0.05 DPS), which is
+what `tests/sim-duel.mjs` asserts"**, and PHASE10-RESUME §7's "the stamp, not the numbers" is
+withdrawn. The switch itself stands: it was gated on the right quantity, and the residual is three
+hundredths of a percentage point in a derived summary field.
+
+## 8.28 ✅ FREEZE AUDIT AT THE CLOSE — `index.html` was never touched, and the other closure edits are all accounted for
+
+§8.24 earned the rule that *a freeze is only meaningful if violations are detectable*, and gave the
+two-command check. Run at the close, over the whole import closure (GEAR-AGNOSTIC §6.2 + PHASE12
+§1.1e) and the whole round:
+
+```
+git log --since='2026-07-26 16:00' -- index.html tools/engine-node.mjs tools/genapl-core.mjs \
+    tools/reference-gear.mjs sim/planspec.mjs sim/simreq.mjs sim/benchmark.mjs tools/xval-bench.mjs
+```
+
+Four commits, and **`index.html` is in none of them** — the file the plan cache actually keys on was
+untouched for the entire round, so no plan in the corpus was solved by a different engine than any
+other.
+
+| commit | file | disposition |
+|---|---|---|
+| `7761565` | `tools/xval-bench.mjs` | the driver's own creation — **pre-round** |
+| `74c3254` | `sim/simreq.mjs` | **§8.24**: non-comment diff empty |
+| `23c201a` | `sim/planspec.mjs` | **§8.24**: pure additions; `planToSpec` untouched |
+| `58412bf` | `tools/xval-bench.mjs` | **§8.26**: the native backend, gated in situ — and made moot by the class re-gather, which put every table on that backend |
+
+⇒ the round is one protocol over one engine, and it is *checkable* that it is, rather than asserted.
+
+## 8.29 ★★★ ROUND 1 IS COMPLETE AND GRADED — 36/36, one protocol, one engine
+
+`OUT=/tmp/grade bash tools/xval-grade.sh` → **`GRADE-EXIT=1`** (graded and failing — a real verdict
+about the model, not an instrument problem).
+
+```
+-- stamp-audit: exit 0     ✅ ONE PROTOCOL, 36/36 EXPECTED CELLS, cold open on every plan row
+-- verify:      exit 1     A holds · B FAILS
+-- collect:     exit 0
+-- persist:     exit 1     3 persistent columns
+-- ripple-audit exit 0     (⚠ but two of its own self-checks FAIL — §8.30)
+```
+
+The provenance gate passing is the part that was not available before: `var=0.5 · emit=fire ·
+iter=6000 · simseed=11 · mana=1e8 · char=bench-gearB · engine=native:runner-ap180:18102540 ·
+tool=xval-bench · pool=1`, identical on all 36 tables, every plan row `_prestack:0`.
+
+| | round 1, gear B |
+|---|---|
+| **Invariant A** | **PASSES** — `monoDip = 0.0000%` on all 36 tables |
+| **Invariant B1** (model) | **holds by construction** (cross-haste pooling, `pool=1`) |
+| **Invariant B2** (sim) | **FAILS** — **142** borrowed-win columns of 345, across **33/36** tables (bar = zero) |
+| worst column | **0.380 %** — `isc-mqg medlong T=229 @sim40 ← plan@70` |
+| width distribution | median **0.035 %** · mean **0.066 %** · p90 **0.159 %** · max **0.380 %** · ≥0.3 %: 3 · ≥0.2 %: 11 · ≥0.1 %: 31 |
+| borrowed-win rate | **142/345 = 41.2 %** · ≤0.02 %: 37.3 % · ≤0.10 %: 78.2 % |
+| native's own margin | median **0.006 %** — the diagonal's *wins* are near-ties too |
+| borrower distance | byte-identical **0** · adjacent haste **85 (59.9 %)** · ≤2 steps **122 (85.9 %)** · ≥5 steps **4** |
+| CLEAN tables | **3/36** — ⚠ and one of the three is an engine-rounding artefact (§8.27) |
+| plateau breadth | median **90 %** of a table's haste points carry a distinct plan · 3/36 ≤50 % · **2 of those are CLEAN**, so that CLEAN is partly vacuous (`isc+scb medlong` 2/10, `isc+scb xl` 3/10) |
+| **persistence** | **3 columns** of 57 kit-columns |
+
+```
+isc-mqg   h40  <- rival plan@h70   wins 5/5   margins% [0.070, 0.008, 0.380, 0.094, 0.071]
+isc-skull h20  <- rival plan@h100  wins 4/5   margins% [0.075, 0.004, 0.059, 0.008]
+isc-skull h130 <- rival plan@h230  wins 4/5   margins% [0.213, 0.018, 0.013, 0.007]
+```
+
+★ **The full round reproduces the class stratum's persistence list exactly** (§8.22) — the 6 boss
+tables add columns to B2's count but no new persistent cell, which is expected: `xval-persist`
+excludes boss tables by construction (one length each). So §8.22's finding stands over the complete
+round: **the low-haste basin is a property of the model, not of the reference gear.**
+
+⚠ **`0` byte-identical borrower plans across all 142 columns** — as on gear A. Every borrowed win is
+a real plan difference, so none of this is the plateau artefact.
+
+## 8.30 ⚠⚠ `ripple-audit` FAILS TWO OF ITS OWN SELF-CHECKS ON THIS ROUND — and §8.22 misread the stamp
+
+The ripple decomposition is what turns 142 columns into a 22-cell over-floor work list, and it
+supplies **half the band's pre-registered scope** (§8.18 set 2). On this round it declines to
+certify itself, in two of the five pre-registered predictions its own header commits to:
+
+```
+P5 ARITHMETIC SELF-CHECK — median ripplePct by length class (must FALL: it is 1/N)
+  short 0.287  medium 0.182  medlong 0.103  long 0.106  xl 0.075
+  => **NOT MONOTONE — this tool is suspect, stop here**
+
+P3 DISCRIMINATION — the KT-420 family (13 columns), which must NOT be explained away:
+  => 3/13 over floor  FAIL (the bound explains everything => meaningless)
+```
+
+- **P5** inverts at exactly one adjacent pair, `medlong 0.103 < long 0.106`, by **0.003 pp**. The
+  chain is otherwise strongly falling and the violation is marginal — but the check was
+  pre-registered with no tolerance, and it fires. On gear A round 5 it passed
+  (`0.282 → 0.183 → 0.112 → 0.101 → 0.078`, MONOTONE ✓).
+- **P3** is the larger movement: the KT family grew **8 → 13** columns and the over-floor share
+  collapsed from **6/8** to **3/13**, against a bar of ⌈13/2⌉ = 7.
+
+**⚠ AND THE STAMP'S POLARITY IS A TRAP THAT ALREADY CAUGHT ME.** The footer reads
+`mono=${mono ? 1 : 0}`, so **`mono=0` means the check FAILED** — while the neighbouring `vacuous=0`
+on the same line means the *good* outcome. §8.22 quoted the class stratum's
+`self-check mono=0 · vacuous=0` as a passing row. **That reading was wrong**: P5 was already failing
+on the class stratum and the entry recorded it as clean. Two flags with opposite polarity on one
+line is the defect; the misreading is its consequence.
+
+**What this does and does not change.**
+
+- It does **not** touch invariant A, the 142-column count, the distribution, or the persistence
+  list. Those come from `xval-verify`/`xval-collect`/`xval-persist`, which graded cleanly.
+- It **does** mean the **ripple decomposition must not be quoted as a result on this round** — no
+  "80 % is below the instrument's resolution" headline, no family ranking. A tool that says *stop
+  here* has to be repaired before its buckets are evidence.
+- The band's scope was pre-registered as `persist ∪ over-floor ∪ INDETERMINATE`, so it is honoured
+  as written (`tools/xval-band-scope.mjs`) — but **set 2's membership rests on a suspect tool** and
+  is flagged as provisional wherever it is reported. Set 1 (the 3 persistence columns) does not.
+- ⇒ **repairing `ripple-audit`'s P3/P5 is inherited work, not a Phase-10 finding to act on.**
+
+★ The generalisable lesson, and it is the same one as §8.27: **this round's two instrument problems
+were both found by reading the tool's own output rather than its summary line.** The stamp said
+`mono=0` and the prose above it said *stop here*; the gate compared at 1 dp and the conclusion was
+quoted at 2. Neither tool was broken. Both were *read* at a resolution they never claimed.
