@@ -866,3 +866,91 @@ not promoted on the strength of having once been named by a discredited sieve.
 The 6 boss tables (invariant A on them, and their contribution to B's column count and distribution),
 then the band grading of the three persistence columns ∪ the over-floor cells per §8.18's
 pre-registered scope.
+
+## 8.23 ★★★ THE WORST PERSISTENT CELL, DIAGNOSED — it is ONE terminal cast, and the model cannot see it
+
+User challenge, and it was the right one: *"how about we fix the model instead of being happy about
+reproducing the same mistakes."* §8.22 confirmed the target is real and gear-independent; this is what
+it actually is. Cell: `isc-mqg medlong` (T=229, Lust@162), `@sim40`, native `plan@40` vs rival
+`plan@70` — the 5/5 persistence column and the corpus's worst class deficit (0.380 %).
+
+### The two layouts
+
+```
+native  BL 162 · AP 8,188 · Zerk 0,188 · Icon 29,183 · MQG 9  · IV 0,20,200  CS 20
+rival   BL 162 · AP 6,186 · Zerk 6,186 · Icon 6,182  · MQG 26 · IV 6,26,206  CS 26
+```
+
+The native fires **into the cold-open ramp** (`Zerk@0`, `IV@0`); the rival waits for `t=6` and packs
+`AP+Zerk+Icon+IV` together. They also place the trinket pair in **opposite order** (`MQG→Icon` vs
+`Icon→MQG`).
+
+### It is not a mis-priced press — it is two local optima
+
+`tools/plan-walk.mjs` (new) walks the path one track at a time, **both directions**, model beside sim:
+
+| move | dir | model Δ% | sim Δ% | |
+|---|---|---|---|---|
+| AP | A→B / B→A | −0.049 / −0.055 | +0.001 / −0.016 | |
+| Zerk | A→B / B→A | −0.278 / −0.152 | −0.109 / −0.461 | agree |
+| IV+CS | A→B / B→A | −0.077 / −0.105 | −0.128 / −0.379 | agree |
+| Icon, MQG | both | — | — | **structurally illegal alone** (below) |
+| **trinket pair, atomic** | A→B / B→A | −0.252 / −0.219 | **−0.22 / −0.45** | agree |
+
+**Every legal move from either endpoint goes downhill, in both model and sim**, and the single-track
+sim moves sum to −0.236 % against a whole-pair **+0.389 %** — flatly non-additive. ⇒ the two layouts
+are **separated by a barrier**; no single move "is" the gap, and there is no press to re-price.
+
+⚠ **Icon and MQG cannot be moved independently at all.** The pair order is atomic because
+`OFF_TRINKETS = [skull, mqg, isc]` share a lockout for the buff's **duration** (`index.html:1001`),
+so `Icon@6` + `MQG@9` is unexecutable. **This caught a bug in the walk tool itself, and the bug is
+this session's fifth instrument error** — the first version checked same-track cooldowns only, and
+wowsims does not reject an illegal spec: it **retimes** the press to the first legal moment (26 s),
+which happened to be exactly where the other arm already had it. Two different specs, one execution,
+`Δ = +0.000` in model *and* sim across three seeds. That reads as "MQG placement does not matter
+here"; it means "this row measured nothing." Fixed with a cross-track lockout check (PHASE8 §17.5:
+legality is STRUCTURAL, and drift magnitude is not a legality test).
+
+### What the sim sees and the model does not: ONE CAST
+
+Combat logs, same seed, `--haste 40`:
+
+```
+native   176 Arcane Blasts    opener completions  1.85 3.45 4.80 5.91 7.02 …
+rival    177 Arcane Blasts    opener completions  2.44 4.55 6.34 7.44 8.55 …
+```
+
+The native is genuinely **ahead early** — its ramp is buffed, and it is ~2.3 s up by cast 14 — and it
+still finishes **one cast short**. It buys time in the ramp that never converts into a cast; the
+rival's placement does. One cast in 176 is 0.57 %, against a measured 0.389 % gap: consistent,
+because the marginal cast is an unbuffed one worth less than average.
+
+### Why the model is silent, and what is actually left to fix
+
+| | native | rival | |
+|---|---|---|---|
+| **model** | 186.225 | 186.198 | native better by **0.014 %** — a dead tie, *below the objective's own resolution* |
+| **sim** | 2631.3 | 2641.3 | rival better by **0.389 %** — ~13σ |
+
+The model does not **mis-rank** these layouts; it **cannot distinguish them**. That is the case
+ACCEPTANCE already names — *"where the model's margin is below the ruler, the model has no opinion to
+be wrong about, so no search fix can reach them"* (58 of 135 columns on gear A) — and it is why
+cross-haste pooling cannot help: pooling guarantees `model(rival) ≤ model(native)`, and here the two
+are equal to four digits.
+
+**The mechanism is the model integrating a continuous cast rate where the sim counts integer casts.**
+And the ripple audit prices exactly that: this cell reads `deficit 0.380 % · floor 0.170 % ·
+excess 0.210 pp · family RESIDUAL`. So **~45 % of the gap is the documented lattice ripple** and
+**0.210 pp is genuinely over the ruler** — that residual is the target, not the whole 0.380 %.
+
+⚠ **And the obvious fix is already falsified.** "Make the scorer count integer casts" was measured on
+gear A: across a full column the discrete sum is a **worse** predictor than the integral
+(r 0.7910 vs 0.9337, RMSE 0.2948 vs 0.2431) with large two-signed errors. ACCEPTANCE records it as
+*not a licence to discretize the scorer*. Any fix has to capture the terminal-cast effect **without**
+replacing the integral — which is a real modelling problem, not a patch.
+
+☞ **Next, in order:** (1) test whether the other two persistence columns are also *one terminal cast*
+— if the family shares that mechanism it is one fix, not three; (2) only then design a term, gated by
+`exact-match` 25/25 + `plan-diff SCORE-AUDIT` + a head-to-head duel at the moved cells.
+⛔ **Not landable yet regardless:** the scorer lives in `index.html`, and §8.5 forbids touching it
+until the round stops gathering.
