@@ -653,3 +653,65 @@ Veins) against an off-GCD on-use trinket (Icon, MQG) in the same sweep. If the t
 full cast, that is an APL artifact; if it fires mid-cast, the model is wrong for GCD abilities only.
 ⛔ **Do not "fix" either side before that test** — a snap applied on top of an APL artifact would
 double-count the delay.
+
+## 6.7 ⚠⚠ THE OFFSET IS A HARNESS ARTIFACT, NOT A MODEL DEFECT — and it may implicate the whole corpus
+
+§6.6 left two readings with opposite fixes. **The separating test is done and it picks the second.**
+
+**The test:** compare an ON-GCD ability against an OFF-GCD on-use trinket. An on-use trinket is
+usable mid-cast in real play, so if it *also* waits a full cast the delay cannot be game mechanics.
+
+```
+Zerk  ON-GCD    press 10 -> aura 11.000 (+1.000)   |   press 11 -> aura 12.500 (+1.500)
+IV    ON-GCD    press 10 -> aura 11.000 (+1.000)   |   press 11 -> aura 12.500 (+1.500)
+Icon  OFF-GCD   press 10 -> aura 11.000 (+1.000)   |   press 11 -> aura 12.500 (+1.500)   <- IDENTICAL
+```
+
+**The off-GCD trinket behaves exactly like the GCD abilities.** ⇒ **transcription artifact.**
+
+**And it is not a priority-list bug.** Every press is pushed *ahead* of the Arcane Blast action
+(`tools/genapl-core.mjs:68-76`), Cold Snap first. The presses have top priority and still land late.
+
+**The empirical rule:** wowsims' `schedule` action fires its inner action at the first APL evaluation
+— i.e. the first cast boundary — **strictly after** the scheduled time. Boundaries at h=0 are
+`… 9.5, 11.0, 12.5`:
+
+```
+schedule 9.6  -> fires 11.000     schedule 10 -> fires 11.000     schedule 11.0 -> fires 12.500
+```
+
+So to land a press ON boundary `B`, the schedule value must lie in `[prevBoundary(B), B)` — **a value
+exactly equal to `B` overshoots by a full cast.**
+
+### ⚠ Why this may implicate the corpus, and why that is NOT yet a claim
+
+`sim/planspec.mjs` transcribes press times as **`Math.floor(actEff)`** — integer seconds. Flooring
+usually moves a press *earlier*, which lands it correctly. **But when `actEff` is already an integer
+that happens to be a cast boundary, flooring is a no-op and the press fires a full cast late.** How
+often that occurs across the corpus is **unmeasured**, and it is the first thing to measure.
+
+⛔ **What must NOT be concluded yet.** It is tempting to read this as *"the deficits are a harness
+artifact, the model was right all along"*. That is **not established**, for three reasons:
+1. The offset applies to **both arms** of every duel, so it substantially cancels; what survives is
+   only the *plan-dependent* residue (§6.5: 0.362 s vs 0.206 s on the same fight).
+2. The corpus's `artifact=0` guard passes on every table — it checks a different failure mode
+   (`EMIT` convention), so it neither confirms nor refutes this.
+3. `tests/sim-request.mjs` asserts the *request* is well-formed, not that a scheduled press fires
+   when asked. **No gate in this repo covers press-fire timing** — which is exactly why it survived
+   this long.
+
+### ☞ The next three measurements, in order and all cheap
+
+1. **Count the exposure.** Over the round's 345 plan rows, how many transcribed press times land on a
+   cast boundary (⇒ a full-cast overshoot) versus strictly inside an interval (⇒ correct)? Pure
+   arithmetic on data already committed — no sim.
+2. **Fix the transcription and re-duel one cell.** Schedule at `actEff − ε` (or the interval's lower
+   edge) so the press fires when intended, then re-run the worst deficit column. If the deficit moves
+   materially, the corpus needs re-gathering; if it does not, the artifact is real but immaterial.
+3. **Add the missing gate.** `press-verify.mjs` already walks a SIMLOG for press events; extend it to
+   assert *fire time == intended time* and wire it into `tests/`, so this class cannot return.
+
+★ **The lesson, and it is the project's own rule arriving from a new direction:** *"when a clean
+cast-count and a sim number disagree with no blind spot in play, that is a SIM-SETUP AUDIT TRIGGER,
+not a model bug — the sim is rarely wrong, we have usually used it wrong."* Four scorer terms were
+designed and falsified this session before anyone checked whether the presses fired when asked.
