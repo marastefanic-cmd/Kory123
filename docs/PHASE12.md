@@ -1461,3 +1461,65 @@ cooldowns are haste buffs the whole downstream lattice shifts with it — 0.665 
 Durations are Go's `Duration.String()`, so **the unit changes with the magnitude**: `Cast Time = 2.083s`
 but `Cast Time = 960ms, GCD = 1s` once the value drops below a second. A regex anchored on `([0-9.]+)s`
 matched 72 of 94 casts and dropped **exactly the fast ones** — the casts a haste audit is most about.
+
+---
+
+## 8. ⚠ THE INTERMISSION WALL IS PAID IN FULL — a fourth scoring defect, found 2026-07-27
+
+**Raised by the user as a proposal:** *"we still want the scorer to accredit unfinished casts partially
+to what they would have been worth — a cast under AP would have been worth 1.3, cut off halfway before
+the intermission/fight end we'd count 1.3 × 0.5."* Probing it (`tools/wall-credit.mjs`) found the model
+is wrong at one of those two boundaries and already right at the other — and wrong in the direction
+nobody would guess.
+
+### 8.1 The two boundaries are different problems
+
+| | the KILL | an INTERMISSION wall |
+|---|---|---|
+| is the time known? | **no** — nobody knows the second the boss dies | **yes** — a scheduled second |
+| correct credit | `dmg × P(alive at completion)` — fractional | **zero** — the boss cannot be hit |
+| status | ✅ already implemented: `robust`'s kill taper (`index.html:1183`), uniform over `T ± KILL_WINDOW`, so a cast completing exactly at T is paid 0.5 | ⛔ **the model pays FULL price** |
+
+★ **At the kill, the fraction depends on WHEN THE CAST COMPLETES — never on how far through it the
+boundary cut.** A 0.75 s cast and a 2.5 s cast that both complete at `T + 0.3` are worth exactly the
+same; the boss's survival does not care how long you had been channelling. **So the proposal's
+arithmetic is right and its mechanism is not**: an AP cast completing at T is already scored
+`1.3 × 0.5 = 0.65`, arrived at as a probability rather than as cast progress. Crediting *progress*
+would pay for damage that never lands and bias the search toward parking casts against the edge.
+
+### 8.2 The defect: measured
+
+`2:40 lust 0:07 intermission 1:30-2:10`, wall at 90:
+
+```
+cast starts 89.616  ·  completes 91.114  ·  1.114 s inside the untargetable window  ·  credited 2242.1
+```
+
+The walk advances a cast at a time and reads its segment at the cast's **START** (`index.html:994`);
+the credit test at `:1183-1184` only asks `tcC <= cfg.T`. **Nothing asks whether the cast COMPLETED
+into downtime.**
+
+★ **And the correct rule is already written in this file, one function over:** `dmgOf` at
+`index.html:1327` — `if (nonAB(segAt(tc))) return 0;  // completes into downtime/AoE — no AB damage`.
+That is the exact shape of every scoring defect this phase has found: **the rule exists and the path
+that RANKS does not take it.** (§6.10's integral, §6.11's press-time windows, §6.11's single snapshot
+rule, and now this.) The lesson has been paid for four times: when a scoring question has an answer
+somewhere in the engine, check that the *scorer* is the code asking it.
+
+### 8.3 The fix, and what it is not
+
+`dmg = 0` when the completion lands in an intermission. **Not partial credit** — a wall is known
+exactly, so there is no distribution to integrate and nothing to smear. It is a scoring change, so
+plans move and it **rides alone** (§0.3).
+
+⚠ **Do not fold in the smoothing argument.** Fractional credit *would* smooth the objective, and
+`index.html:1440`'s note already warns that the exact sum lost the integral's smoothing and that a
+degraded SEARCH is where that would show. That is a real concern and it is **not** a licence to price
+a cast at something other than its damage — §6.1–§6.3 record four terms falsified for exactly that
+reason. If a wall genuinely needs smoothing, the principled route is the kill's: give the wall its own
+**uncertainty window** (an HP-triggered phase change really is uncertain) and credit
+`P(not yet walled at completion)`. Same mechanism, physically motivated, and fractional for a reason.
+
+⚠ **Adjacent, NOT settled:** a cast starting in a normal segment and completing inside an **AoE** phase.
+`dmgOf`'s `nonAB` covers `aoe` too, but the boss IS targetable there — the cast lands, it just lands
+during AoE. Decide that deliberately rather than inheriting it from this fix.
