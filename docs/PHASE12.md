@@ -1,4 +1,73 @@
-# PHASE 12 — the next phase's raw material
+# PHASE 12 — MAKE THE OBJECTIVE EXACT (▶ TOP PRIORITY, user-directed 2026-07-27)
+
+## §0 THE CHARTER
+
+**Make `simulate()` rank on the quantity the project is defined around: the deterministic per-cast sum
+of effective Arcane Blasts. Then use the sim for what it is actually for — falsifying the search.**
+
+### §0.1 Why this is above everything else
+
+For each Arcane Blast the model already knows the haste and the stack count (hence the cast time),
+whether Arcane Power is up (×1.30), which spell-power buffs apply (normalizable against a plain cast),
+and the crit rate (a constant factor that cancels). **The objective is a sum. There is nothing to
+approximate.** `simulate()` computes precisely that in its discrete cast walk (`index.html:1086`) — and
+then ranks on a **continuous rate integral** instead (`:1248-1263`).
+
+**Measured, 2755 plan-scorings, no sim (`tools/self-consistency.mjs`, §6.8):**
+
+| | |
+|---|---|
+| integral − tapered cast sum | median **+0.432** eff ABs · range **−0.757 … +1.656** |
+| as % of score | median **0.2114 %** · p90 **0.5646 %** · max **1.4263 %** |
+| corpus's entire deficit range | 0.004 % – 0.380 % |
+| the model's own ranking margins | ~0.005 % – 0.07 % |
+
+⇒ **The model disagrees with itself by ~3× the largest effect it is asked to resolve**, and the gap is
+plan-dependent so it does not cancel in a comparison — **it IS the near-tie.** Everything downstream is
+provisional until this is fixed: the 142 B2 columns, the persistence work list, the B2 debt, and every
+scorer term falsified in §6.1–§6.3 (all were tuned against a number that is not single-valued).
+
+### §0.2 The sim's role, stated correctly at last
+
+**The sim exists to FALSIFY THE SEARCH.** With an exact objective, ranking two plans is arithmetic and
+cannot be wrong. So when the sim prefers a plan the tool did not emit — and the exact count agrees once
+computed — **the search failed to find it.** The cross-val corpus is a brute-force explorer of regions
+the search never visits; each disagreement is a **pattern to generalize into a rule or a seed class**,
+which is how the model improves. It is *not* a scorer to re-tune, and a sim/model disagreement is a
+**search bug report**.
+
+Secondary, in order: **anchor the physics** (trust anchor to `wowsimcli`); **cover genuine blind spots**
+(mana, AoE weighting); **build user trust** via the in-page benchmark button — the same code path as the
+internal corpus, which is what makes the tool's claims checkable by the person relying on them; and
+**verify a novel finding** before locking it.
+
+### §0.3 The order of work
+
+1. **Score the per-cast sum.** Keep the integral only if it earns its place as a *search-smoothing*
+   device — never as the arbiter.
+   **Gate, and it needs no sim:** `robust` == the tapered cast sum to float precision, on every plan in
+   the corpus. `tools/self-consistency.mjs` already measures exactly this and currently reports the
+   0.2114 % median; it must go to ~0.
+2. **Fix the press-fire offset** (§6.7). Every press fires **1.0–1.5 s later in the sim than the plan
+   asks**, off-GCD trinkets included — so it is our transcription, not game mechanics. Until fixed, no
+   sim number is a valid reference. Add the missing gate: `press-verify.mjs` extended to assert
+   *fire time == intended time*, wired into `tests/`.
+3. **Re-gather, then hunt search bugs.** Only now is *"the search did not find the optimum"* a
+   well-posed question. ⚠ `tools/deficit-fix.mjs` found **0/4 search misses at 3× restarts** — but that
+   was the search optimising the **integral**, so it must be re-run against the corrected objective.
+
+### §0.4 Expected blast radius — this is the point, not a regression
+
+Changing the arbiter changes the argmax. Plans will move and `exact-match` goldens will need
+re-recording, under the standing rule (only after each changed plan is shown to improve the objective).
+This is the largest-blast-radius change the project has considered and the first aimed at the actual
+defect rather than its symptoms.
+
+⚠ **Do not do steps 1 and 2 in one commit.** They move numbers in different directions and a combined
+change cannot be attributed.
+
+---
+
 
 **This is not a summary.** It is (a) the working memory for whoever picks the project up next, and
 (b) the crash-recovery record for this session if its context clears. Everything here is either a

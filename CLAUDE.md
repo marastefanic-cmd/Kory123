@@ -259,7 +259,17 @@ Treat maintaining them as part of the work, not an afterthought:
   FAILURE while the neighbouring `vacuous=0` means success), and *"wasm == native"* has always meant
   **within 0.05 DPS**, not bit-identity — the re-gather moved six published figures, one a **verdict
   flip** off a ~1e-6 relative difference (§8.27). **The import-closure freeze is LIFTED.**
-- `docs/PHASE11.md` — **PLANNED (parallel track): the platform phase — the single-file convention is
+- `docs/PHASE12.md` — ▶▶ **THE LIVE PHASE AND THE TOP PRIORITY (07-27): MAKE THE OBJECTIVE EXACT.**
+  §0 is the charter, §6 the evidence. The model **disagrees with itself** — `robust` ranks on a rate
+  integral that differs from the model's own per-cast sum by a **median 0.2114 % of score** (max
+  1.4263 %) over 2755 plan-scorings, against a corpus whose deficits are 0.004–0.380 %. Order of work:
+  (1) score the per-cast sum, gated by `tools/self-consistency.mjs` going to ~0 — **no sim needed**;
+  (2) fix the press-fire offset (§6.7: every press fires 1.0–1.5 s late in the sim, off-GCD trinkets
+  included, so it is our transcription); (3) re-gather, then hunt search bugs. ⚠ Steps 1 and 2 move
+  numbers in opposite directions — **never combine them in one commit**. Expect plans to move and
+  goldens to be re-recorded; that is the point. §6.1–§6.3 record four scorer terms falsified *before*
+  anyone checked the objective was single-valued — do not re-attempt them until it is.
+- `docs/PHASE11.md` — **DEMOTED behind PHASE12 (07-27). PLANNED (parallel track): the platform phase — the single-file convention is
   RETIRED (user decision 07-26).** Its §1 is the 07-26 audit's findings ledger. ✅ **Status-audited
   07-27: §1.1 is FULLY DISCHARGED, 8 of 8.** Six were fixed in passing (`bench --targets` + its
   refusal, the cached-rejection boot, `immutable` on the unhashed wasm, `plan-duel`'s retired intent
