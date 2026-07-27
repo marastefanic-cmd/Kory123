@@ -933,8 +933,8 @@ function simulateRaw(schedule, cfg, collect) {
   let si = 0;
   // Plan for the KNOWN kill and give the sturdy, logical line — buffs snapped to
   // fully cover their cluster and the terminal burst aligned to end at the kill.
-  // The continuous cast-rate integral already credits the final partial cast by its
-  // fraction (no cliff), so it accounts for the kill honestly on its own; a broad
+  // The kill taper credits the final casts by their completion time (no cliff), so it
+  // accounts for the kill honestly on its own; a broad
   // ±variance hedge on top only drags the tail a few seconds off its clean spot for
   // a sub-cast gain the player never executes. So the window is kept to a half-cast
   // (the last cast is partial in expectation) — enough to smooth the exact-second
@@ -951,7 +951,9 @@ function simulateRaw(schedule, cfg, collect) {
   // its effective start snaps there. At STEADY state boundaries are dense and phase-uniform, so
   // the phase-averaged effective start IS the press moment (see the firing block below) — that
   // part is unchanged. Scoring: ramp casts are scored DISCRETELY (damage around each completion),
-  // the cast-rate integral covers everything else — see the scoring section.
+  // ⛔ …that sentence described the RETIRED integral. Since PHASE12 §6.10 every cast — ramp or steady —
+  // is scored the same way, by the per-cast sum in the walk below; the ramp's discrete treatment now
+  // only feeds the `integral` diagnostic.
   let t = 0, stacks = 0, lastCastStart = -Infinity, prevCastRamp = false, total = 0, totalEarly = 0, robust = 0, gcdCappedTime = 0, castCount = 0;
   // The objective, accumulated cast by cast in the board walk below. `total`/`totalEarly`/`robust`
   // are RETURNED from these; the rate integral further down is kept only as a diagnostic (`integral`)
@@ -1138,7 +1140,8 @@ function simulateRaw(schedule, cfg, collect) {
       capped: (pUp >= 0.5 ? up : dn).capped, pUp, ae: isAoe,
       // deterministic (no-Ashtongue) haste for the DISPLAY — the proc is random, so its average is
       // NOT smeared into the trend curve/readouts; ATI is shown only via its own lane + the "if it
-      // aligns" cap line (renderTimeline). These are display-only; scoring uses the rateAt integral.
+      // aligns" cap line (renderTimeline). These are display-only; the OBJECTIVE is `dmg` summed per
+      // cast just below (PHASE12 §6.10) — not the rateAt integral, which no longer ranks anything.
       multNoAti: multDn, capDn: dn.capped, castDn: dn.cast, gcdDn: dn.gcd,
     });
     if (atiOn) {
@@ -1160,7 +1163,12 @@ function simulateRaw(schedule, cfg, collect) {
     if (!isAoe) { lastCastStart = t; if (stacks < g.AB.MAX_STACKS) stacks++; }
     t += interval;
   }
-  // ═══════════ continuous cast-rate integral — THE scoring model ═══════════
+  // ═══════════ continuous cast-rate integral — ⛔ RETIRED AS THE SCORING MODEL (PHASE12 §6.10) ═══════════
+  // Everything from here to the return computes the rate integral. Since 2026-07-27 it is returned as
+  // the `integral` DIAGNOSTIC and nothing ranks on it: the objective is the per-cast sum accumulated in
+  // the board walk above. Kept so the gap stays measurable — it was a median 0.2114 % of score against
+  // ranking margins of ~0.005–0.07 %, i.e. the model disagreeing with itself by ~30x the effect it was
+  // asked to resolve. ⛔ Do not restore it as the arbiter, and do not tune a scorer term against it.
   // The discrete loop above fixes WHEN each buff lands (activation boundaries,
   // trinket lockouts, cooldown chains) and builds the press board. DAMAGE is
   // scored separately, as the time-integral of instantaneous DPS =

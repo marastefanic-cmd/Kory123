@@ -125,22 +125,28 @@ begins already-buffed. Consequences the model must respect:
 
 ## 4. The driving equation: effective ABs cast
 
-> ## ★★★★ THE OBJECTIVE MUST BE EXACT, AND TODAY IT IS NOT (found 2026-07-27, PHASE12 §6.8)
+> ## ★★★★ THE OBJECTIVE IS EXACT — ✅ since 2026-07-27 (PHASE12 §6.10/§6.11)
 >
 > Effective ABs cast is a **deterministic per-cast sum**. For each Arcane Blast the model already knows
 > the haste and the stack count (hence the cast time), whether Arcane Power is up (×1.30), which spell
 > power buffs apply (normalizable against a plain cast), and crit as a constant factor that cancels.
-> **There is nothing to approximate.** `simulate()` computes exactly that in its discrete cast walk
-> (`index.html:1086`) — and then **ranks on something else**: a continuous rate integral (`:1248-1263`).
+> **There is nothing to approximate**, and since 07-27 `simulate()` accumulates exactly that sum and
+> returns it as `total`/`totalEarly`/`robust`. Gate: `tools/self-consistency.mjs` reads `0.00e+0` over
+> 2755 plan-scorings, no sim.
 >
-> **Measured, 2755 plan-scorings, no sim: the two differ by a median 0.2114 % of score, p90 0.5646 %,
-> max 1.4263 %, swinging across 2.4 effective ABs.** The corpus's entire deficit range is
-> **0.004 %–0.380 %** and the model's own ranking margins are **~0.005 %–0.07 %**. ⇒ **the model
-> disagrees with itself by ~3× the largest effect it is being asked to resolve, and because the gap is
-> not a constant offset it does not cancel between two plans — it IS the near-tie.**
+> ⛔ **TWO APPROACHES ARE RETIRED. Do not let either back in.**
+> 1. **Ranking on the rate integral.** It is the continuum limit — the expectation over a uniformly
+>    random cast phase — and a given plan's phase is *determined*, so it is the wrong evaluation for
+>    ranking two concrete plans. Measured gap: **median 0.2114 % of score, max 1.4263 %**, against
+>    ranking margins of ~0.005–0.07 %. It survives only as the `integral` diagnostic.
+> 2. **Expiring a buff window at `press + duration`.** A self-press cannot fire while a cast is in
+>    flight, so the window must run its full duration from when the ability actually FIRES. Expiring
+>    from the press made every mid-cast window short by the slip — a whole cast in the measured case
+>    (`tools/window-span.mjs`: Icy Veins at 9.6 covered 15 casts, wowsims 16). **Raid externals are the
+>    exception**: Lust/PI/Drums are pressed by someone else and start when CALLED.
 >
-> **Consequence for this document:** wherever it says the planner "computes the count exactly" or that
-> the count "is the arbiter", that is the DESIGN, not HEAD. Fixing it is the project's top priority.
+> **Consequence for this document:** the integral form below is kept because it is how the quantity is
+> DERIVED. It is not how it is EVALUATED.
 
 
 Put §1–§3 together. Instantaneous DPS at time `t` is one cast's damage divided by how long that cast
@@ -160,9 +166,10 @@ This is the **single number the planner maximizes**, and the only one it needs (
 × a constant). ⚠ **Written as an integral above for derivation only — the quantity is a SUM OVER
 CASTS and must be evaluated as one.** The integral is the continuum limit, i.e. the expectation over a
 uniformly random cast phase; a given plan's phase is *determined*, so for ranking two concrete plans
-the realized per-cast sum is the correct evaluation and the integral is an approximation to it (see the
-banner above — they currently differ by a median 0.21 % of score). A haste buff raises how *many* casts fit; a damage/SP buff raises what each is *worth*.
-`total` (`simulate`/`rateAt` in `index.html`) is this integral up to the constant. **Everything the
+the realized per-cast sum is the correct evaluation and the integral is an approximation to it — they
+differ by a median 0.21 % of score, which is why ranking on the integral is retired (banner above). A haste buff raises how *many* casts fit; a damage/SP buff raises what each is *worth*.
+`total` (`simulate` in `index.html`) is this SUM up to the constant — ⛔ it was `rateAt`'s integral
+until 07-27; `rateAt` now feeds only the `integral` diagnostic. **Everything the
 planner decides is a *consequence* of maximizing this one quantity — Lust alignment, haste sequencing,
 SP-on-fast-casts are *methods* that usually maximize it, never rules in their own right.** When a
 heuristic and the effective-AB count (or the sim, its ground truth) disagree, the count wins. This is

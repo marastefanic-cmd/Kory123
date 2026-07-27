@@ -111,7 +111,7 @@ tag's own text (`runOptimize`; single-file preserved, main thread never computes
 **pool of polish-server workers** sized to the machine's cores with a first-accept-in-order
 reduction — pooled and sequential paths return **byte-identical plans** — while the page keeps its
 engine copy for cheap scoring and the headless tests (which run the sequential path). Core pieces:
-`simulate()` (the cast-rate-integral scorer) · `repair()` (legalizes a schedule: cooldowns, Cold
+`simulate()` (**the per-cast-sum scorer** — ⛔ it was the cast-rate integral until 07-27; the integral survives only as the `integral` diagnostic and must never rank again, PHASE12 §6.10) · `repair()` (legalizes a schedule: cooldowns, Cold
 Snap, use caps) · `optimizeAsync()` (multi-start search + a stack of finishing passes) ·
 `renderTimeline()` (the SVG burn chart). Displayed plan times are **fire times** (floored seconds),
 not press intents. Full internals + current line ranges in `docs/ARCHITECTURE.md`.
@@ -136,17 +136,25 @@ changing the model or the passes**, and keep it updated as the living theorycraf
   Read the URL, never derive it; check drift with `bash tools/upstream-drift.sh`. Details: TOOLING.
 - **Determinism is a feature.** Any change must keep one-setup-⇒-one-schedule, or the exact-match
   tests become meaningless. Don't add `Date.now()`/`Math.random()` outside the seeded PRNG.
-- **★★★★ THE OBJECTIVE MUST BE EXACT — and today it is NOT. This is the project's TOP PRIORITY.**
+- **★★★★ THE OBJECTIVE IS EXACT — ✅ LANDED 07-27, AND IT MUST STAY THAT WAY.**
   Effective ABs cast is a **deterministic per-cast sum**: for each Arcane Blast the model knows the
   haste and stacks (hence cast time), whether AP is up (×1.30), which SP buffs apply (normalized
-  against a plain cast), and crit as a constant that cancels. **Nothing needs approximating.**
-  `simulate()` computes exactly that in its discrete cast walk (`index.html:1086`) — and then **ranks
-  on a continuous rate integral instead** (`:1248-1263`). Measured over 2755 plan-scorings with no sim:
-  the two differ by a **median 0.2114 % of score, max 1.4263 %**, against a corpus whose entire deficit
-  range is 0.004–0.380 % and whose ranking margins are ~0.005–0.07 %. **The model disagrees with itself
-  by ~3× the largest effect it is asked to resolve.** Fix: score the per-cast sum; keep the integral, if
-  at all, only as a search-smoothing device, never as the arbiter. Gate needs no sim — `robust` must
-  equal the tapered cast sum to float precision. Full evidence: `docs/PHASE12.md` §6.8.
+  against a plain cast), and crit as a constant that cancels. **Nothing needs approximating.** That
+  sum is now what `simulate()` accumulates and what `robust`/`total` return.
+  **The standing gate, and it needs no sim:** `node tools/self-consistency.mjs` must read
+  `0.00e+0` — it compares the number that RANKS against a sum recomputed independently from the
+  `casts` board. Run it after ANY change to `simulate()`.
+  ⛔ **THE TWO RETIRED APPROACHES — do not let either back in.**
+  1. **Ranking on the rate integral.** It differed from the sum by a **median 0.2114 % of score**
+     against ranking margins of ~0.005–0.07 % — the model disagreeing with itself by ~30× the effect
+     it was being asked to resolve. It survives ONLY as the `integral` diagnostic. Never rank on it,
+     and never tune a scorer term against it (§6.1–§6.3 record four terms falsified that way).
+  2. **Expiring a buff window from the PRESS time.** A self-press fires at the next cast boundary, so
+     expiring at `press + duration` made every mid-cast window short by the slip — one whole cast in
+     the measured case. Windows run their full duration from when the ability actually FIRES;
+     raid externals (Lust/PI/Drums) are the exception and start when CALLED. Gate:
+     `tools/window-span.mjs` must match wowsims at every probe offset.
+  Full evidence: `docs/PHASE12.md` §6.10 (the objective) and §6.11 (the windows).
 - **The sim's job is to FALSIFY THE SEARCH, not to arbitrate the scorer.** With an exact objective the
   model's ranking of two plans is arithmetic and cannot be wrong — so when the sim prefers a plan the
   tool did not emit, **the search failed to find it.** That is the whole point of the cross-val corpus:

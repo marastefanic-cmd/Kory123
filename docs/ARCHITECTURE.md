@@ -39,7 +39,18 @@ damage in `simulate`, single-target returns 1 — sim-validated, RULES §9). `BU
 `value`, `dur`, `cd`. `KILL_WINDOW = 0.5` (inside `simulate`, ~631) — half-cast kill smoothing.
 
 ## `simulate(schedule, cfg, collect)` — the scorer (~660–990)
-Returns `{total, totalEarly, robust, castCount, gcdCappedTime, casts, actEff, dps}`.
+Returns `{total, totalEarly, robust, integral, integralTotal, castCount, gcdCappedTime, casts, actEff, dps}`.
+
+> ### ★★★★ THE OBJECTIVE IS THE PER-CAST SUM (PHASE12 §6.10, 07-27) — read before editing this section
+> `total`/`totalEarly`/`robust` are accumulated **in the board walk**, one term per Arcane Blast:
+> `dmg × taper(completion)`. That accumulation runs on **every** call, not only when `collect` is set —
+> the optimizer scores with `collect` off, and an objective cannot depend on whether a caller asked for
+> a board. `integral`/`integralTotal` carry the retired rate integral so the gap stays measurable.
+> **Standing gate, no sim:** `node tools/self-consistency.mjs` must read `0.00e+0`.
+>
+> ⛔ Two retired approaches — see CLAUDE.md's ★★★★ block before touching either: **ranking on the rate
+> integral** (median 0.2114 % off the sum, vs ~0.005–0.07 % margins), and **expiring a buff window at
+> `press + duration`** (short by the press slip — one whole cast in the measured case).
 `simulate` is now a **memo wrapper** over `simulateRaw` (the actual scorer): collect=false results
 (plain number bags; no caller mutates them — verified) are cached keyed by
 `cfgSigOf(cfg) + sigOf(schedule)` (string key, so pool workers hit despite receiving cfg as a
@@ -56,7 +67,15 @@ bit-equal to recomputation; collect=true always computes fresh.
   aura lands at the call, someone else presses) snaps its scored window to the next board-lattice
   boundary (the in-flight cast keeps its speed). `scanAt`/`bpS`/`rampCastDmg` read `scoreStart`;
   legality/cadence/display keep the fire time.
-- **Damage = cast-rate integral + discrete ramp casts** (~853–934): `rateAt(t)` = `dmg2 /
+  ⚠ **`scoreStart` now feeds ONLY the retired integral.** The objective uses `start = auraAt` — the
+  moment the ability truly fires (`max(eff, prevCastEnd)` for a self-press, `eff` for a raid external)
+  — and the window runs its FULL duration from there. Expiring from the press instead made every
+  mid-cast window short by the slip (PHASE12 §6.11); `tools/window-span.mjs` is the gate.
+- **THE OBJECTIVE = the per-cast sum** (in the board walk, above): each cast contributes
+  `dmg × taper(t + castLen)`, and `total`/`totalEarly`/`robust` return exactly that.
+- **⛔ RETIRED, kept only as the `integral` diagnostic — cast-rate integral + discrete ramp casts**
+  (~853–934). Nothing ranks on any of it, and `cfg.boundaryCharge` (which is defined against it) now
+  THROWS rather than silently doing nothing. It reads: `rateAt(t)` = `dmg2 /
   intervalAt(multDn2)` integrated over piecewise-constant breakpoints (buff-window edges, phase edges,
   T±KW, ramp-span edges) — but each `boardRamp` span is EXCLUDED from the integral and scored as its
   discrete cast instead: `rampCastDmg(ts, tc)` — buff/SP **state** jitter-averaged ±½ GCD around the
@@ -64,8 +83,8 @@ bit-equal to recomputation; collect=true always computes fresh.
   value buff at cast **completion**, so start-sampling is exact at a window's front edge and
   over-credits its back edge by `frac(D/Δ)×premium`, the known unimplemented PHASE8 term), damage
   **time** (kill taper, wall/AoE gating) at the completion `tc` (Phase 4's rule). `scanAt` (~817) is the shared deterministic buff-state scan; `intervalAt` applies
-  the **GCD floor** `max(cast/m, 1.0)` statelessly. `total` counts ≤ T; `robust` tapers the last
-  half-cast — the optimizer maximizes `robust`.
+  the **GCD floor** `max(cast/m, 1.0)` statelessly. `total` counts casts COMPLETING ≤ T; `robust` tapers
+  the last half-cast — the optimizer maximizes `robust`.
 - AoE segments: `dmg` uses AE base × `targets` × `aoeCritAmp`, interval = GCD only.
 
 ## `repair(schedule, cfg)` — feasibility projector (~949–1027)

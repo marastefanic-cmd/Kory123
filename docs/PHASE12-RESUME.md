@@ -1,101 +1,116 @@
-# PHASE 12 — RESUME HERE (handoff, 2026-07-27)
+# PHASE 12 — RESUME HERE (handoff, updated 2026-07-27 evening)
 
-**Read `docs/PHASE12.md` §0 (the charter) and §6 (the evidence). This file is the 60-second state and
-the exact next actions.** Delete it when the phase closes.
+**Read `docs/PHASE12.md` §0 (the charter), then §6.9 / §6.10 / §6.11 (what landed today).** This file
+is the 60-second state and the exact next action. Delete it when the phase closes.
 
-## 1. State right now
+## 1. ⛔ THE FIRST THING TO KNOW: `exact-match` IS RED, ON PURPOSE
 
-- **Phase 10 is CLOSED.** Round 1 is 36/36 on one protocol/one engine, graded, archived at
-  `docs/archive/11-phase10-gearb-baseline.md`. `docs/ACCEPTANCE.md` carries the gear-B block.
-  **Verdict: invariant A passes, B2 fails, ACCEPTANCE NOT PASSING** — but read its top banner: the
-  *attribution* of that failure is void (below), even though the measurements stand.
-- **No freeze is in effect.** `index.html` and the whole import closure are editable.
-- **Everything is committed and pushed** to `claude/phase10-gearb-baseline-y6gx8w`. Working tree clean.
+Plans moved by design — **41.1 % of pooled-argmax cells, 16 of 16 QUICK sweep cases** — and the
+goldens were **deliberately not re-recorded**. §0.4 licenses re-recording only on a demonstration that
+the exact scorer *ranks better*, and that demonstration has not been obtained (§4 below).
 
-## 2. ★★★★ THE FINDING THAT REORDERED EVERYTHING
+⛔ **Do NOT run `exact-match --update` to make it green.** That freezes an unproven objective into the
+project's own definition of correct and destroys the record of what the retired scorer emitted.
 
-**The model disagrees with itself by more than the effect the project has been chasing.**
-`robust` — which decides every ranking — is a continuous **rate integral**. The model's own
-**discrete cast walk** computes the documented objective exactly (per cast: haste, stacks ⇒ cast time,
-AP ×1.30, SP buffs normalized, crit constant). Measured over **2755 plan-scorings, no sim**
-(`tools/self-consistency.mjs`): the two differ by a **median 0.2114 % of score, max 1.4263 %**.
-The corpus's deficits are **0.004–0.380 %**; its ranking margins **~0.005–0.07 %**.
+## 2. What landed today, in order
 
-⇒ every B2 column, the persistence list, the B2 debt, and the four scorer terms falsified in §6.1–§6.3
-are measurements of a quantity that is **not single-valued at their own scale**.
+| | what | evidence |
+|---|---|---|
+| **step 2** — press transcription | the sim now fires every press on the cast the model scored it on | 7.14 % → **0.00 %** transcription failures on real logs; engine block byte-identical, so no plan moved |
+| **step 1** — the objective | rank on the per-cast sum, not the rate integral | `self-consistency` **0.00e+0** at 2755 scorings (control: the old engine still FAILS at 0.2114 %) |
+| **bug 2** — buff windows | mid-cast presses were given short windows | `window-span` now matches wowsims at every offset (was 15 casts vs 16) |
 
-**And the sim's role is corrected:** with an exact objective, ranking two plans is arithmetic and
-cannot be wrong — so a sim preferring a plan the tool did not emit means **the SEARCH missed it**. The
-corpus is a brute-force explorer of regions the search never visits; each disagreement is a *pattern to
-generalize into a rule or a seed class*. That is how the model improves.
+Three separate commits, never combined, each with its own gate.
 
-## 3. The next actions, in order
+## 3. ▶▶ THE NEXT ACTION, AND IT IS A PREREQUISITE — NOT A FOLLOW-UP
 
-### Step 1 — make the objective exact  ⚠ do NOT combine with step 2 in one commit
-Score the tapered per-cast sum. Keep the integral only if it earns its place as a *search-smoothing*
-device, never as the arbiter.
+**Fix `STACK_CAST_REDUCTION: 1/3` → 334 ms** (`index.html`, `GAME.AB`).
+
+wowsims uses `time.Millisecond * -334` per Arcane Blast stack (`sim/mage/arcane_charge.go:17`) and
+rounds every cast to the ms. The model uses 1/3 s. The lattices drift up to **~0.35 s by t=200** on a
+buffed plan, which still denies **26 of 196 presses** the cast the model scored them on (§6.9d) — and
+no transcription can reach those.
+
+⇒ **A referee that mis-executes ~13 % of presses cannot resolve a ~0.01 % margin**, which is exactly
+why §4's demonstration is stuck. Land the constant, re-run the demonstration, *then* consider goldens.
+
+⚠ It is a **MODEL** change — cast times, the lattice, plans and goldens all move — so it rides alone.
+Evidence: `docs/MECHANICS.md` §1.1, `docs/SOURCES.md`, PHASE12 §6.9d.
+
+## 4. The demonstration that is still owed (§0.4)
+
 ```
-node tools/self-consistency.mjs        # the gate. Needs NO sim. Currently median 0.2114%; must go to ~0
-node tools/blast-radius.mjs            # 136/285 = 47.7% of emitted plans change. Re-run to confirm
+MOVERS_OUT=/tmp/movers.json node tools/blast-radius.mjs      # the disagreement work list
+node tools/scorer-duel.mjs --movers /tmp/movers.json --n 24  # duel each in the sim, ~20 min
 ```
-⚠ **`tools/blast-radius.mjs` and `tools/self-consistency.mjs` take `--index /tmp/index-round.html`** —
-they read the round's plan cache, which keys on `sha1(index.html)`. Regenerate that blob with
-`git show <a commit before the 07-27 UI fixes>:index.html > /tmp/index-round.html`, or they will die
-naming the cache miss (they refuse to probe a different engine's plans).
 
-### Step 2 — fix the press-fire offset  ✅ **DONE 2026-07-27 — see §6.9**
-Transcription failures **7.14 % → 0.00 %** on real combat logs (`tools/press-headtohead.mjs`), engine
-block byte-identical (`sha1 7c08324250500f61`) so no plan moved and no golden was re-recorded. The gate
-that never existed is `tests/press-fire.mjs` (part A no-sim, part B skips loudly without `RUNNER`).
+Current reading, on the fixed engine: **6 cast-sum / 8 integral / 10 ties**, mean +0.28 DPS.
+**INCONCLUSIVE — not "the integral is better".** At n=24 neither resolves.
 
-⛔ **§6.7's mechanism was WRONG and §6.9a retires it.** It is not "the schedule fires strictly after" —
-`APLActionSchedule.IsReady` is `>=`, and a schedule 1 ns below the boundary also fires late. The sim's
-boundary simply **is not where the log says**: wowsims takes **334 ms** per Arcane Blast stack where the
-model takes 1/3 s, so the boundary printed as `11.00` is `10.998`, and `10.998 >= 11.000` is false.
+⚠ The first reading of this said **14–10** and was an instrument error: with common random numbers the
+seed band collapses to ±0.00, so *"tie if |Δ| ≤ band"* declared a winner for `+0.00` against `−0.00`.
+There is a `--floor` (0.25 DPS) now. **A tie rule needs a resolution floor, not just a noise band.**
 
-▶ **The residual, and it is the next commit:** 26 of 196 presses still miss, none of them a
-transcription defect (`HELD` = the sim's own cooldown gate on a drifted boundary; `LATTICE` = the grids
->½ interval apart). **Fix `STACK_CAST_REDUCTION: 1/3` → 334 ms.** That is a MODEL change — it moves
-cast times, the lattice, plans and goldens — so it rides alone, with neither step 1 nor step 2.
+## 5. ★ THE VERIFICATION LOOP IS NOW MOSTLY SIM-LESS — use it
 
-### Step 3 — re-gather, then hunt search bugs
-Only now is *"the search did not find the optimum"* well-posed. ⚠ `tools/deficit-fix.mjs` found
-**0/4 search misses at 3× restarts** — but that was the search optimising the **integral**; re-run it.
+With an exact objective, *"is the emitted plan the best plan at this haste?"* is arithmetic.
+`tools/xval-model.mjs` re-optimizes at every haste and cross-scores every plan at every haste with **no
+sim at all**; `tools/brute-grid.mjs` brute-forces regions the search never visits. Both were built as
+*"the by-construction half"*, subordinate to the sim. **They are now the primary instrument**, and a
+round that took days of sim time is minutes of arithmetic.
 
-## 4. ⚠ THE TRAP TO AVOID, stated plainly
+⚠ **A sim-less sweep tests the SEARCH, not the physics** — it confirms the model against itself, so it
+cannot catch a wrong constant. That is still the sim's job: it is how the 334 ms mismatch was caught.
 
-**"The cast sum is correct" is currently supported by DERIVATION and SELF-CONSISTENCY, not by
-measurement against ground truth** — because the only ground truth, the sim, is itself mis-transcribing
-presses. And the change moves **47.7 %** of plans. ⇒ **do not re-record `exact-match` goldens against a
-scorer whose superiority has not been demonstrated.** Fix step 2 first (or in parallel), then show the
-exact scorer beats the integral on a *correct* sim, and only then re-record.
+**Keep the sim** (the gear-agnostic one). Four jobs the model cannot do: anchor the physics; cover
+blind spots the model does not represent at all (mana, AoE weighting); back the in-page button, which
+is how a player checks the tool's claim against the real engine; and falsify the search where brute
+force is not tractable. What is dead is the *geared corpus workflow* — already the 07-26 ruling that
+round 1 was the last geared round.
 
-⛔ My own §6.5a conclusion — "the documented objective implemented literally is a WORSE ranker
-(r 0.9279 vs 0.9721)" — is **WITHDRAWN**, void twice over (the two accounts differ by 0.21 %, and the
-sim reference fires presses late). Do not cite it in either direction.
+## 6. ⛔ `docs/ACCEPTANCE.md` HAS NO CURRENT READING
 
-## 5. Loose ends, all resumable and none blocking
+Every verdict in it was gathered against all three defects above. **The tables are kept — they are the
+append-only record and the evidence trail — but their verdicts are not the model's status.** "B2 fails,
+142 borrowed-win columns, worst 0.380 %" measures a broken instrument, not the search. Re-gather
+(mostly sim-less, §5) before quoting any of it.
 
-- **7 of 8 boss band columns ungraded.** `tools/xval-results/band-scope/` has the targets and a README
-  with the resume command; the 1 that ran came back **REAL** (+0.348 ± 0.045, 5/5).
-- **98 columns published as not-banded** — explicitly *not* passed (`band-scope/*.excluded.json`).
+## 7. Loose ends, all resumable and none blocking
+
+- **7 of 8 boss band columns ungraded** — `tools/xval-results/band-scope/` has the targets + resume
+  command. ⚠ Void as a model verdict, for the same reason as §6.
 - **`ripple-audit` fails its own P3/P5 self-checks** (archive/11 §8.30) — no ripple decomposition is
-  quotable until repaired. Note its `mono=0` stamp means FAILURE while the adjacent `vacuous=0` means
-  success.
+  quotable until repaired. Its `mono=0` stamp means FAILURE while the adjacent `vacuous=0` means success.
 - **The unmerged UI branch** `origin/claude/webapp-optimization-brainstorm-unpipp` — merge order and
   the resolved TRINKETS-reorder analysis are in archive/11 §9.3.
-- **GEAR-AGNOSTIC §3.3** is unblocked; round 1 was by decision the *last geared round*.
+- **PHASE11** (the platform phase: CI bring-up, the module split) is still demoted behind this.
 
-## 6. Instruments built this session (do not re-derive)
+## 8. Instruments built this phase (do not re-derive)
 
 | tool | what it answers |
 |---|---|
-| `tools/self-consistency.mjs` | **the step-1 gate** — integral vs per-cast sum, no sim |
-| `tools/blast-radius.mjs` | how many emitted plans a scorer change moves |
-| `tools/cast-fidelity.mjs` | model cast stream vs a wowsims SIMLOG |
-| `tools/drift-bisect.mjs` | isolates drift: bare stream vs per-cooldown |
-| `tools/press-offset-probe.mjs` | the press-fire rule, by press position |
-| `tools/deficit-fix.mjs` | search miss vs scorer mis-ranking, per column |
-| `tools/tail-phase-probe.mjs` | the falsified terminal-cast term (both forms) |
-| `tools/counted-vs-integrated.mjs` | ⚠ its verdict is withdrawn — see §4 |
-| `tools/xval-band-scope.mjs` | §8.18's pre-registered band scope, executed |
+| `tools/self-consistency.mjs` | **the step-1 gate** — does the thing that RANKS equal the board the tool SHOWS? no sim |
+| `tools/window-span.mjs` | **the bug-2 gate** — model buff-window span vs wowsims |
+| `tests/press-fire.mjs` | **the step-2 gate** — part A no-sim, part B skips loudly without `RUNNER` |
+| `tools/press-exposure.mjs` | corpus press-transcription exposure, pure arithmetic |
+| `tools/press-headtohead.mjs` | old vs new transcription on real logs; splits transcription / HELD / LATTICE |
+| `tools/press-ns-probe.mjs` | kills the nanosecond theory for the press offset |
+| `tools/press-threshold-probe.mjs` | bisects the real press-fire threshold (`B − 0.002`) |
+| `tools/lattice-drift.mjs` | model-vs-sim cast-grid drift, by haste and fight length |
+| `tools/blast-radius.mjs` | how many emitted plans a scorer change moves (`MOVERS_OUT=` for the work list) |
+| `tools/scorer-duel.mjs` | **the §0.4 demonstration** — the two accounts' picks, duelled in the sim |
+
+## 9. ⚠ TWO INSTRUMENTS LIED IN THE FLATTERING DIRECTION THIS SESSION
+
+Both were caught only by reading their own output columns, and both would have shipped a wrong
+conclusion:
+
+- a failure classifier that asked whether the *model's fire time* was past the sim's boundary — true
+  for any press near a boundary once the grids drift — reported the **retired transcription's own 14
+  failures as unfixable**, i.e. it exonerated the bug it existed to catch;
+- a tie rule with no resolution floor turned `+0.00` against `−0.00` into a verdict and moved a
+  headline from 6–8 to **14–10**.
+
+★ **Any instrument that can absolve the defect it was built to catch is worse than no instrument.**
+Control a new one in the negative direction — seed the failure and check it fails — before believing a
+green run. `tests/page-equiv.mjs` was controlled that way this session; so was `self-consistency`.

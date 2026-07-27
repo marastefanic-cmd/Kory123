@@ -622,6 +622,31 @@ The most valuable part of this diary. Each entry: the belief, why we held it, wh
 where the corrected truth now lives. **Do not silently re-open these** — if you think one is wrong again,
 add a *new* entry rather than deleting the old.
 
+### ⛔⛔ 2026-07-27 — THE FOUR THAT MUST NEVER SEEP BACK (PHASE12)
+
+These are grouped at the top because each one survived for months **inside a tool whose whole purpose
+is to compute one number correctly**, and because each has a cheap standing gate now.
+
+| believed | disproved by | the gate that keeps it dead |
+|---|---|---|
+| *"`robust` is the effective-AB count."* It was a continuous **rate integral**; the count was computed in the same function and discarded. Median **0.2114 %** apart, against ranking margins of ~0.005–0.07 %. | `tools/self-consistency.mjs`, 2755 plan-scorings, no sim | that same tool must read **`0.00e+0`** |
+| *"a buff window lasts its duration."* The walk started it at the fire boundary and expired it at **press + duration**, so every mid-cast press was short by the slip — a whole cast in the measured case. | `tools/window-span.mjs` vs wowsims: IV at 9.6 covered 15 casts, sim 16 | that same tool must match at every offset |
+| *"a press at `floor(F) ≤ F` snaps to the same boundary"* (`planspec`'s own header). False whenever F is not itself a boundary; it put **7.14 %** of presses on a cast the model never chose and left 25.2 % on a knife edge. | `tools/press-headtohead.mjs` on real combat logs | `tests/press-fire.mjs` (part A needs no sim) |
+| *"the sim's schedule fires at the first boundary STRICTLY AFTER the scheduled time."* Right consequence, wrong cause — `IsReady` is `>=`. wowsims takes **334 ms** per AB stack where the model takes 1/3 s, so the boundary a log prints as `11.00` is `10.998`. | `tools/press-ns-probe.mjs` (killed the ns theory), `tools/press-threshold-probe.mjs` (bisected `B − 0.002`) | ⚠ **still open** — the constant is unfixed |
+
+★ **The meta-lesson, and it is the one worth carrying:** three of the four were *"harmless"* until
+something else was fixed. The short-window bug did nothing while the integral ranked; the transcription
+bug cancelled between duel arms until the margins got small. **A defect that is currently masked is not
+a defect that is absent** — and the mask is usually the thing you are about to remove.
+
+★★ **Two instruments lied in the flattering direction this session, and both were caught only by
+looking at their own output columns.** A failure classifier that asked the wrong question reported the
+retired transcription's own 14 failures as *unfixable*; a tie rule with no resolution floor turned
+`+0.00` against `−0.00` into a verdict and moved a headline from 6–8 to 14–10. **Any instrument that
+can absolve the defect it was built to catch is worse than no instrument.** Control new ones in the
+negative direction before believing a green run.
+
+
 | 07-26 | **The shipped page linked to `wowsims.github.io/tbc`** as "the wowsims simulator" — in the sim help dialog and the model-assumptions lede, both added this session. | **User spotted it and asked the right question: "I hope that hasn't been impacting all our progress?"** It had not — the ENGINE has always been `wowsims/tbc-new` (what `wowsims.com/tbc` deploys), and TOOLING already carried a ⚠ about not deriving that URL from the Go module path. But the *citation* pointed at the ARCHIVED 2021 pre-APL sim, whose own page now says "This sim is outdated!". ★ **A wrong citation costs exactly as much credibility as a wrong dependency**, and it is not caught by any test — the copy audit two turns earlier verified the *claims* and never checked the *hyperlinks*. Fixed, and the two-repos table is now in TOOLING, SOURCES, BENCH §4d, sim/README and CLAUDE.md's conventions. The deeper fix is `tools/upstream-drift.sh`: one command that reports the distance from the pin and filters upstream commits to the paths that could move an arcane cast stream. First run: **21 behind, all inert** — the only mage-side change (#422's Mana Gem MajorCooldown) leaves the APL-castable gem spell untouched and adds an auto-cast our APLs never trigger. | TOOLING (the ★★★ table); `tools/upstream-drift.sh`; BENCH §4d. |
 | 07-26 | **`--var 0` is "already standard for gates"** (BENCH.md §3's RNG table, written the same day) — fewer random sources ought to mean a cleaner A/B. | **Measured against `--var 0.5` side by side** (`tools/var-decision.mjs`, pre-registered). `--var 0` quantizes mean casts into a staircase (+0.97 casts in one 0.1 s step after 1.5 s flat), and where two arms differ in **terminal cast rate** it swings the measured size of a real effect **−32.8 → −0.9 → −31.8 DPS** for a 0.1 s change in the kill second. It is also **not quieter** — seed band 0.06/0.40 vs 0.04/0.25 DPS — because a fixed duration parks the fight end *on* the discontinuity, so residual jitter becomes whole-cast jumps. ★ The subtle part: the quantization **cancels** whenever both arms truncate identically, which is why two pre-registered "decisive" pairs tied and why the convention survived unchallenged. A var-0 result is therefore not reliably wrong — it is *unfalsifiable without checking whether the arms share a terminal lattice*, which is worse. | BENCH §3 (settled); TOOLING ★★; `sim/benchmark.mjs`. |
 | 07-26 | **"The sim harness has no press for Drums / Power Infusion"** — stated in the shipped UI as though it were a genapl limitation. | **User challenge: "How come it can do Bloodlust? That feels like a hasty assumption."** It was. The real reason is upstream: only spells registered with **`SpellFlagAPL`** are APL-addressable. Bloodlust has it; Drums (35476) and PI (10060) do not — they are auto-fired `MajorCooldown`s. Verified empirically, and the failure is **silent**: scheduling them gives *no error and no effect* (2128.9 DPS either way, zero aura uptime). Conclusion unchanged, reason corrected, and it is now known to be **patchable** rather than impossible. | `sim/planspec.mjs` header; the in-page dialog; `sim/README.md`. |

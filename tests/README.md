@@ -1,7 +1,7 @@
 # Exact-match regression suite
 
 The planner is **deterministic**: the optimizer seeds from a fixed PRNG, the
-cast-rate integral scores damage without cast-boundary jitter, and leftover haste
+objective is a deterministic per-cast sum, and leftover haste
 snaps to the earliest efficient spot. So one setup produces **exactly one**
 schedule — which means regressions can be caught as exact diffs, not "within
 tolerance" (a tolerance test silently passes when a placement drifts to an

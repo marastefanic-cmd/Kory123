@@ -186,6 +186,21 @@ casts**, so it should sit on the fastest part of the window.
 
 ### 3b. Press-execution physics in the SCORER *(Phase 7 — the cross-val's scorer-gap fixes, each sim-gated by a minimal pair)*
 
+> ## ⚠ SUPERSEDED IN ITS MECHANISM BY PHASE12 §6.11 (2026-07-27) — the LAW is unchanged, the term is
+>
+> The law below — *a buff affects the cast stream only from a cast boundary* — is right and still
+> governs. What changed is that the model no longer has to **price** it as an expected slip: since the
+> objective became the per-cast sum, the walk applies each buff from the boundary it truly fires on and
+> runs it for its **full duration** from there, so a window ending flush against a hard edge loses its
+> clamped tail *exactly* rather than in expectation. `scoreStart = press + ½·interval` survives only in
+> the retired `integral` diagnostic.
+>
+> ⛔ **AND THE WALK USED TO GET THE OTHER END WRONG.** It applied the buff from the boundary but expired
+> it at `press + duration`, so every mid-cast window was SHORT by the slip — one whole cast in the
+> measured case (`tools/window-span.mjs`: Icy Veins at 9.6 covered 15 casts, wowsims 16). Fixed 07-27.
+> A window runs its full length from the fire; **raid externals are the exception and start when
+> CALLED** (item 2 below), because someone else presses them.
+
 Three terms landed together, all expressing one law: **a buff affects the cast STREAM only from a cast
 boundary, and the model must price that wherever it is not phase-averageable.**
 

@@ -1,6 +1,29 @@
 # ACCEPTANCE — the standing test the model must pass to be called complete
 
-> ## ✅ THE CURRENT READING IS **"Current status (GEAR B, round 1)"** BELOW — measured 2026-07-27
+> # ⛔⛔ EVERY VERDICT IN THIS FILE IS VOID AS A MEASUREMENT OF THE MODEL (2026-07-27, PHASE12)
+>
+> **Nothing below grades the model that ships today.** Every round in this file was gathered against:
+> 1. a scorer that **disagreed with itself by a median 0.2114 % of score** while the deficits being
+>    graded were 0.004–0.380 % and the ranking margins ~0.005–0.07 % (PHASE12 §6.8/§6.10), and
+> 2. a press transcription that put **7.14 % of presses on a cast the model never chose**, plus
+>    25.2 % on a boundary where a millisecond of lattice drift decided the answer (§6.9), and
+> 3. a discrete walk that gave **every mid-cast press a buff window short by the press slip** (§6.11).
+>
+> ⇒ **The tables are KEPT — they are the append-only record and the evidence trail — but their
+> verdicts must not be cited as the model's status.** "B2 fails, 142 borrowed-win columns, worst
+> 0.380 %" is a measurement of a broken instrument, not of the search. ACCEPTANCE has **no current
+> reading** until a re-gather.
+>
+> ★ **And the re-gather is now mostly SIM-LESS.** With an exact objective, "is the emitted plan the
+> best plan at this haste?" is arithmetic: `tools/xval-model.mjs` re-optimizes at every haste and
+> cross-scores every plan at every haste with no sim at all. It was built as *"the by-construction
+> half"*, subordinate to the sim; it is now the primary instrument. ⚠ It tests the **search**, not the
+> physics — a sim-less sweep confirms the model against itself, so it cannot catch a wrong constant.
+> That is what the sim is still for (it is how the 334 ms cast-time mismatch was caught).
+>
+> ---
+>
+> ## ~~✅ THE CURRENT READING IS **"Current status (GEAR B, round 1)"** BELOW~~ — measured 2026-07-27, VOID (see above)
 >
 > Round 1 is complete (36/36, one protocol, one engine) and graded: **invariant A passes, B2 fails,
 > ACCEPTANCE NOT PASSING**. Jump to that block. **Everything from the banner below down to it is
