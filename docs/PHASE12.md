@@ -56,7 +56,31 @@ internal corpus, which is what makes the tool's claims checkable by the person r
    well-posed question. ⚠ `tools/deficit-fix.mjs` found **0/4 search misses at 3× restarts** — but that
    was the search optimising the **integral**, so it must be re-run against the corrected objective.
 
-### §0.4 Expected blast radius — this is the point, not a regression
+### §0.4 THE BLAST RADIUS IS MEASURED, NOT GUESSED — 47.7 % of plans move
+
+`tools/blast-radius.mjs`, class stratum, **no sim**: over the 285 pooled-argmax cells, switching the
+arbiter from the integral to the tapered per-cast sum changes the **emitted plan in 136 of them —
+47.7 %**. Not a tail-case correction: **nearly half the tool's output moves.**
+
+```
+isc+mqg long   T=281 @h110:  integral picks plan@70   ->  cast-sum picks plan@230
+isc+mqg medium T=176 @h70:   integral picks plan@20   ->  cast-sum picks plan@110
+isc+mqg medlong T=229 @h140: integral picks plan@140  ->  cast-sum picks plan@110
+… 133 more
+```
+
+Two things follow, and they pull in opposite directions — **hold both**:
+
+- **It confirms the finding is material.** A 0.21 % median accounting gap moving half the argmaxes is
+  exactly what §6.8 predicts when the ranking margins are ~0.005–0.07 %. The near-ties really were
+  being decided by the accounting method.
+- **⚠ It means "the cast sum is correct" is now load-bearing for half the product**, and that claim is
+  currently supported by *derivation* (it is what the docs define) and by *self-consistency*, **not by
+  measurement against ground truth** — because the only ground truth available, the sim, fires every
+  press 1.0–1.5 s late (§6.7). ⇒ **Fix §6.7 FIRST or in parallel, and do not re-record goldens against
+  a scorer whose superiority has not been demonstrated.** Deriving it is not the same as showing it.
+
+### §0.5 Expected blast radius — this is the point, not a regression
 
 Changing the arbiter changes the argmax. Plans will move and `exact-match` goldens will need
 re-recording, under the standing rule (only after each changed plan is shown to improve the objective).
