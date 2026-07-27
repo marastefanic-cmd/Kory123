@@ -104,8 +104,9 @@ casts**, so it should sit on the fastest part of the window.
   every AB gap ≥ 8s. **★ Because the model opens cold, EVERY sim compared to it must open cold too — never
   prepull (`genapl _prestack:0`). A prepull's fixed −2.3s time is haste-blind and makes a sim haste sweep
   non-monotone (TOOLING ★★★, PHASE6 §4.7).** The first 3 casts run at their true lengths and are scored **discretely** — each cast's
-  damage lands around its **completion** (jitter-smoothed ±½ GCD so no knife-edge enters the score); the
-  cast-rate integral covers everything else. Haste placement-independence is preserved *exactly* (verified
+  damage lands around its **completion**; since PHASE12 §6.10 EVERY cast is scored that way, ramp or
+  steady, by the per-cast sum. (The ±½ GCD jitter smoothing and "the integral covers everything else"
+  describe the RETIRED integral, which now feeds only the `integral` diagnostic.) Haste placement-independence is preserved *exactly* (verified
   0.0000% pre-vs-post-Lust, h0–200): haste shortens the ramp but never changes its cast count.
 - **Press-snap during ramps (sim-log-verified).** A press landing mid-ramp-cast fires at that cast's real
   END — the "/cast Buff /cast AB" macro can only land on a boundary, and during a ramp the boundaries are

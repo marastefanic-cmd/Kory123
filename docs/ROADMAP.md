@@ -5,15 +5,24 @@
 > # ★★★★ TOP PRIORITY, ABOVE EVERYTHING ELSE (set 2026-07-27, user-directed)
 > ## PHASE 12 — MAKE THE OBJECTIVE EXACT. `docs/PHASE12.md` §0 is the charter, §6 the evidence.
 >
+> ## ✅ THE OBJECTIVE IS EXACT AS OF 07-27 EVENING — read `docs/PHASE12-RESUME.md` first
+> `simulate()` ranks on the deterministic per-cast sum; gate `tools/self-consistency.mjs` reads
+> `0.00e+0` over 2755 scorings. Two scoring bugs and one transcription bug were fixed today (PHASE12
+> §6.9/§6.10/§6.11). ⛔ **`exact-match` is RED on purpose** — plans moved and goldens were deliberately
+> not re-recorded, because §0.4's demonstration is not in. **Do not `--update` it.**
+> ▶ **Next, and it is a prerequisite:** `STACK_CAST_REDUCTION: 1/3 → 334 ms`.
+>
+> *The original charter text is kept below for its reasoning.*
+>
 > **The model disagrees with itself by more than the entire effect the project has been chasing.**
 > Effective ABs cast is a **deterministic per-cast sum** — per cast we know haste, stacks (hence cast
 > time), AP on/off (×1.30), the SP buffs (normalizable), and crit as a constant that cancels. Nothing
-> needs approximating. `simulate()` computes exactly that in its discrete cast walk and then **ranks on
-> a continuous rate integral instead.** Over 2755 plan-scorings, no sim: the two differ by a **median
+> needs approximating. `simulate()` computed exactly that in its discrete cast walk and then **ranked on
+> a continuous rate integral instead.** Over 2755 plan-scorings, no sim: the two differed by a **median
 > 0.2114 % of score, max 1.4263 %**, against a corpus whose deficits are 0.004–0.380 % and whose
 > ranking margins are ~0.005–0.07 %.
 >
-> ⇒ **Everything downstream is provisional until this is fixed** — the 142 B2 columns, the persistence
+> ⇒ **Everything downstream was provisional until this was fixed** — the 142 B2 columns, the persistence
 > work list, the B2 debt, every falsified scorer term. They are measurements of a quantity that is not
 > single-valued at their own scale.
 >

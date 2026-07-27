@@ -87,11 +87,15 @@ plan — so it **can** compute **effective ABs cast** (`docs/MECHANICS.md §4`) 
 the arbiter for comparing two lines. The tool is, by construction, a maximization function over that
 number; ranking lines is *its* job.
 
-> ⚠⚠ **AS OF 2026-07-27 IT DOES NOT COMPUTE IT EXACTLY** — `robust` ranks on a rate integral that
-> differs from the model's own per-cast sum by a median **0.2114 %** of score (PHASE12 §6.8). Until
-> that is fixed, "the count is the arbiter" describes the design, not HEAD, and **no sim-vs-model
-> disagreement smaller than ~0.5 % can be attributed to anything** — it is inside the model's
-> disagreement with itself.
+> ✅ **AND SINCE 2026-07-27 EVENING IT DOES.** `robust` IS the per-cast sum; standing gate
+> `node tools/self-consistency.mjs` must read `0.00e+0` (PHASE12 §6.10). ⛔ It ranked on a rate integral
+> that differed by a median **0.2114 %** of score until then — do not restore that, and do not tune a
+> scorer term against the integral (§6.1–§6.3 record four terms falsified that way).
+>
+> ⚠ **One calibration debt is still open and it bounds what the SIM can settle:** wowsims takes 334 ms
+> per Arcane Blast stack where the model takes 1/3 s, so **26 of 196 presses** still miss the cast the
+> model scored them on (§6.9d). Until that constant is fixed, **no sim-vs-model disagreement smaller
+> than ~0.1 % is attributable** — the referee mis-executes ~13 % of presses.
 
 **The sim's role, in priority order — and the FIRST one is the point of the whole cross-val corpus:**
 
