@@ -1015,10 +1015,20 @@ function simulateRaw(schedule, cfg, collect) {
   //
   // ★★ THE SAME RULE AT EVERY CUT, and that is the user's second ruling: an intermission does not
   // land on the same second every pull either, so modelling it as exact is the identical mistake.
-  // A cut is any moment where the cast stops landing or the spell changes — the fight end, an
-  // intermission start (boss untargetable), and both edges of an AoE phase (Arcane Blast ↔ Arcane
-  // Explosion). A BURN edge is NOT a cut: the boss is targetable and the spell is the same, so a
-  // burn multiplier is a VALUE question governed by the snapshot rule, not a landing question.
+  //
+  // ★★★ A CUT IS WHERE THE CAST STOPS **LANDING** — nothing else. That is the fight end and an
+  // intermission start (boss untargetable). It is NOT a burn edge and — settled by the sim, 07-27 —
+  // it is NOT an AoE edge either.
+  //   · A **burn** edge changes what a cast is WORTH, not whether it lands. Value question ⇒ the
+  //     snapshot rule, not the cut lattice.
+  //   · An **AoE** edge was first written as a cut on the reasoning that the spell changes there
+  //     (Arcane Blast ↔ Arcane Explosion). **That was wrong, and the sim says so.** An Arcane Blast
+  //     started at 59.000 with an AoE phase opening at 60.000 completes at 60.498 and **LANDS, for
+  //     full Arcane Blast damage** (measured 1886.4, a 25 %-resist roll off a ~2577 typical hit) —
+  //     the boss is targetable throughout an AoE phase. The spell a cast will use is chosen at its
+  //     START, so a cast already in flight is unaffected by the phase it finishes in. Docking it paid
+  //     LESS than the game pays. An AoE edge is a value boundary, like burn.
+  //   ⇒ `lands()` below, deliberately, is the only predicate that builds the lattice.
   //
   // What this replaces, and why it is simpler: `total` was a hard cut at T (a staircase — measured
   // jumping a whole ~1.5-cast step as T crossed a completion boundary), `robust` was the taper, and
@@ -1032,10 +1042,12 @@ function simulateRaw(schedule, cfg, collect) {
   //
   // The cut lattice, precomputed once: merge adjacent segments that call for the same thing, and a
   // cut is a boundary between different ones. `null` segments (plain fight) ⇒ the only cut is T.
-  const castMode = sg => !sg ? "ab" : sg.type === "intermission" ? "none" : sg.type === "aoe" ? "ae" : "ab";
+  const lands = sg => !sg || sg.type !== "intermission";   // can a cast completing here deal damage?
   const CUTS = [];
+  // A cut is a landing→not-landing transition. The far edge of an intermission is NOT a cut: no cast
+  // can START inside one (the walk jumps over it), so nothing is ever in flight across it.
   if (segs) for (let k = 0; k < segs.length; k++)
-    if (k === 0 || castMode(segs[k]) !== castMode(segs[k - 1])) { if (segs[k].start > 1e-9) CUTS.push(segs[k].start); }
+    if (!lands(segs[k]) && (k === 0 || lands(segs[k - 1])) && segs[k].start > 1e-9) CUTS.push(segs[k].start);
   CUTS.push(cfg.T);
   CUTS.sort((a, b) => a - b);
   // The earliest cut strictly after a cast's start. Linear scan: CUTS is tiny (phases per fight).
@@ -1289,10 +1301,17 @@ function simulateRaw(schedule, cfg, collect) {
     // report a gap that is not a bug — or worse, a future refactor would "fix" the gate by copying
     // the accumulator, and the independence that makes it worth running would be gone.
     const dur = pUp * up.cast + (1 - pUp) * dn.cast;
-    // The fraction of THIS cast that fits before the next cut. The `dur > 0` guard refuses a
-    // degenerate zero-length cast rather than emitting NaN — a NaN here would propagate into every
-    // ranking comparison as `false` and read as "not a regression", this repo's worst failure mode.
-    const frac = t < cfg.T ? (dur > 1e-9 ? Math.min(1, Math.max(0, (nextCut(t) - t) / dur)) : 0) : 0;
+    // The fraction of THIS cast that fits before the next cut.
+    // ⚠⚠ THE `dur === 0` BRANCH IS 1, NOT 0, AND GETTING IT WRONG COST EVERY ARCANE EXPLOSION.
+    // Arcane Explosion is INSTANT (`cast = 0`, GCD-bound), so the first version's divide-by-zero
+    // guard — written to avoid a NaN, which would propagate through every ranking comparison as
+    // `false` and read as "not a regression" — returned 0 and credited **all 27 AE casts of a
+    // Kael'thas plan at exactly nothing**. The limit is not a matter of taste: as `dur → 0`,
+    // `min(1, (cut − t)/dur) → min(1, ∞) = 1`. An instant cast cannot be *partially* interrupted —
+    // it completes at the moment it starts, so it either happens before the cut or does not, and
+    // the walk only ever starts a cast at a `t` where it does. Guard against NaN, not against the
+    // answer.
+    const frac = t >= cfg.T ? 0 : dur > 1e-9 ? Math.min(1, Math.max(0, (nextCut(t) - t) / dur)) : 1;
     if (t < cfg.T) {
       countTotal += dmg * frac;
       countRobust += dmg * frac;   // ⚠ deliberately the same number — see the boundary-credit note

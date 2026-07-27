@@ -63,5 +63,5 @@ Do **not** gather a new round with them — the current driver is `tools/xval-be
 ⚠ They also predate `sim/planspec.mjs`'s `REQUIRES_EQUIPPED` guard, so they will schedule a press of an
 **unworn** trinket — a bit-identical no-op in wowsims that reads as a small honest number rather than
 an error. Kits naming `skull` or `mqg` against a two-trinket-slot character are exactly that
-configuration. **Whether any archived table is affected has not been checked** (`docs/PHASE12.md`
+configuration. **Whether any archived table is affected has not been checked** (`docs/archive/13-phase12-exact-objective.md`
 §2.1, §3.2); check before leaning on a gear-A figure again.

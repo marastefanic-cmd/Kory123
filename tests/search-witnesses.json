@@ -1,0 +1,42 @@
+{
+  "_README": [
+    "KNOWN SEARCH MISSES — each entry is a LEGAL schedule that the current scorer ranks HIGHER than",
+    "the plan `optimizeAsync` actually emits for that case. They are not bugs in the objective: the",
+    "equation ranks them correctly, which is exactly how they were found. They are failures of the",
+    "SEARCH to reach the argmax.",
+    "",
+    "Why this file exists: a search miss is invisible to every gate the project has. `exact-match`",
+    "locks in whatever the search emits, so a miss becomes the golden. `self-consistency` compares the",
+    "objective against itself. Only a second witness — a plan from a different engine, or a hand-built",
+    "one — can show that a better plan exists. This file is where those witnesses live so they are not",
+    "lost, and so the search work starts with a concrete failing case instead of a hunch.",
+    "",
+    "How to check them:   node tools/search-witnesses.mjs",
+    "How they are found:  node tools/search-miss.mjs <old-sweep.json> <new-sweep.json>",
+    "",
+    "⚠ A witness going green does NOT mean the search is correct at that cell — it means this",
+    "particular better plan is now reached. Optimality is a different and much stronger claim; that is",
+    "what the enumeration/branch-and-bound programme is for."
+  ],
+  "witnesses": [
+    {
+      "case": "1:40 lust 0:05",
+      "found": "2026-07-27",
+      "context": "Surfaced by the boundary-credit repricing: swept plans from the pre-change engine, then scored both sets with the new scorer. Every other moved cell improved or tied; this one lost.",
+      "schedule": { "isc": [4], "bloodlust": [5], "icyVeins": [0, 45], "arcanePower": [4], "scb": [4], "berserking": [36] },
+      "emitted":  { "isc": [3], "bloodlust": [5], "icyVeins": [0, 38], "arcanePower": [4], "scb": [4], "berserking": [20] },
+      "scoreWitness": 196760.5,
+      "scoreEmitted": 196633.2,
+      "shortfallPct": 0.065,
+      "notes": [
+        "The witness is a repair() FIXPOINT, i.e. legal — verified, not assumed.",
+        "Not a restart-depth problem: optimizeAsync returns the same emitted plan at 3, 8, 14 and 24",
+        "restarts, so more search does not reach it. The basin is not being entered at all.",
+        "The two differ on three tracks at once (isc 4->3, IV's second use 45->38, Zerk 36->20), which",
+        "is the signature of a candidate being cut at an intermediate narrows rather than lost in a",
+        "final tie-break — see PHASE9 §5.16 for the three eviction sites that caused exactly this shape",
+        "the last time it happened."
+      ]
+    }
+  ]
+}
