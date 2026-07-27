@@ -1,26 +1,21 @@
-# PHASE 10 — RESUME HERE (handoff, updated 2026-07-26 20:06)
+# PHASE 10 — RESUME HERE (handoff, updated 2026-07-27 04:58)
 
 **Read `docs/PHASE10.md` §8 for the full execution log. This file is the 60-second version and the
 exact next actions.** Delete it when the phase closes.
 
 ## 1. State right now
 
-- **Round 1 is GATHERING — 27 of 36 tables** complete in `tools/xval-results/`, 0 partial,
+- **Round 1 is GATHERING — 30 of 36 tables** complete in `tools/xval-results/`, 0 partial,
   `monoDip = 0.00%` on every one. Tables are committed and pushed as they land by
   `tools/xval-checkpoint.sh` (900 s cycle; a table that lands between cycles shows as untracked —
   commit it by hand after checking it carries an `XVAL-DONE` line).
-- **What remains: 3 class cells + all 6 boss cells.** Class: `isc-mqg-xl`, `scb-skull-xl`,
-  `scb-mqg-long`, `scb-mqg-xl` — minus whichever have landed since this line was written; derive the
-  list, don't trust it (`tools/xval-status.sh`, or the §3 loop). The boss half is the long pole and is
+- ✅ **All 30 CLASS tables are done.** What remains is **the 6 boss cells only** — the long pole,
   dominated by the Kael'thas pair (~29 of the ~38 boss CPU-hours: a 420 s fight with 6 targets sims
-  ~9× slower).
-- ✅ **The boss PRE-SOLVES are already banked** (finished 18:59). That was the expensive non-sim half —
-  a KT solve is ~280 s × 11 hastes × 2 tables — so the boss phase is now **sim-bound only**.
-- **It runs unattended.** `/tmp/run-round.sh` (a copy of `tools/xval-round-pipeline.sh`, pid 26698)
-  drives class → wait-for-pre-solves → boss. Alongside it: `/tmp/chain-bossshards.sh` (pid 4139)
-  warming boss sim caches cheapest-first on a nice'd core, and `tools/xval-checkpoint.sh` (pid 1587).
-  ⚠ **All three live in `/tmp` and are NOT in git** — if the container is reclaimed they are gone and
-  the round is resumed with the command below, not by restarting them.
+  ~9× slower). Derive the missing list, don't trust this line — `bash tools/xval-status.sh`.
+- ✅ **The boss PRE-SOLVES are banked and survived**, so the boss phase is **sim-bound only**. The
+  restarted shards report `cache=100/100`, i.e. no earlier work was lost.
+- **It runs unattended, and is now protected.** `tools/xval-bench-campaign.sh` (`WHAT=boss`,
+  `SKIP_EXISTING=1`, `JOBS=4`) under **`tools/xval-watchdog.sh`**, both launched with `setsid`.
 - **It is resumable.** `SKIP_EXISTING=1 bash tools/xval-bench-campaign.sh` re-runs only what is
   missing. ⚠ The caches (`.xval-cache/`) are gitignored and **not** durable — a reclaimed container
   re-solves and re-sims whatever was not finished (**including those banked boss pre-solves**), but
@@ -29,6 +24,22 @@ exact next actions.** Delete it when the phase closes.
 ```
 bash tools/xval-status.sh          # processes · tables complete · cache size
 ```
+
+### ⚠⚠ 1a. IF YOU RELAUNCH ANYTHING, USE `setsid` — this already cost 10 hours
+
+The round **died silently at 18:59 and was found at 04:55** (PHASE10 §8.21). Cause: `nohup … &` from
+an agent shell leaves the process in the session's process group, so it dies with that shell — and it
+took the **checkpoint loop** with it, so durability stopped at the same instant as the thing it
+protected. Nothing noticed, because the only liveness signal was "tables are appearing", and a boss
+cell legitimately takes ~an hour: **slow and stopped are the same observation from outside.**
+
+```
+setsid nohup bash tools/xval-watchdog.sh boss > /tmp/xval-watchdog.log 2>&1 < /dev/null &
+```
+
+The watchdog relaunches the campaign **and** the checkpoint loop whenever neither is running and the
+round is incomplete, and logs every intervention. It is safe beside a live campaign: `run_cell`'s
+writer lock makes a duplicate refuse the cell rather than truncate it (§8.10).
 
 ## 2. ⚠ Two rules that were live while gathering
 
