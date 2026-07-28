@@ -3743,6 +3743,96 @@ function optimizeCore(cfg, starts, onProgress) {
         // on exactly the fights whose tail rearranges most. Measured when it was inlined — `1:40`
         // +127.2 and Solarian +46.4 as intended, but `3:20 drums` −70.3, because the un-floored arm
         // still won at the call site. A guarantee with an early-return hole is not a guarantee.
+        // ── THE STRUCTURAL TIE-BREAK (user ruling 07-28: *"yes, absolutely"*) ────────────────────────
+        // ⛔ THE PROBLEM IT SOLVES, because it is not obvious from the code. Two layouts can differ by a
+        // margin that is **entirely the phase of the final partial cast** — same number of casts, same
+        // buffs on the same casts, the stream merely 0.3 s further along at the buzzer. Under the
+        // boundary credit that IS expected damage, so the search chases it. Measured on `1:40`: the
+        // tool put Berserking at 0:41, only 6 s of 10 inside a Bloodlust ending at 0:47, and scored it
+        // +0.211 % over Berserking fully inside Lust.
+        //
+        // ⛔⛔ AND IT WAS NOT EVEN ABOUT BERSERKING. All 41 580 legal layouts of that fight cast EXACTLY
+        // 80 Arcane Blasts — Berserking's position changes the cast count by nothing. Berserking was
+        // acting as a LEVER on the Cold-Snap Icy Veins fire time: shifting it 37→41 delayed the cast
+        // boundary IV2 snaps to (48.889 → 49.204), sliding IV2's 20 s window later so it caught one more
+        // hasted cast. Free IV2 to move directly and the whole thing collapses to **0.029 %** — which is
+        // *below* the project's own too-close-to-call band (`BENCH.tieBandPct = 0.05 %`). The planner
+        // was spending a structurally odd layout to capture a margin its own sim panel would refuse to
+        // call. The user's smell test found it: *"if Zerking during lust is stronger then it should be
+        // fully in lust… but if overlaying just half of berserking is better, then that smells."*
+        //
+        // ★ THE GENERAL SHAPE, worth more than this fix: **a preference that is non-monotone in an
+        // overlap fraction means some OTHER coordinate is being moved by proxy.** Physics gives you
+        // monotone-in-overlap. A peak at partial overlap is a proxy artifact.
+        //
+        // ⇒ So: inside the tie band, and only when the cast COUNT is unchanged (i.e. the difference
+        // really is phase and not casts), prefer the layout whose buff windows span fewer OTHER buff
+        // edges. A window that lies wholly inside another buff's window is worth the same at any kill
+        // time and reads as a rule a player can remember; one straddling three regimes is a
+        // coincidence. Damage first — this may only spend the band, never more.
+        //
+        // ⚠ This is a DELIBERATE, USER-AUTHORISED trade of up to 0.05 % of expected damage. It is the
+        // one place in the engine allowed to return a plan it scored lower, and `search-miss` will
+        // report those cells as regressions. That is correct and expected — do not "fix" it by silently
+        // widening the band, and do not confuse it with the retired legibility budget, which was a whole
+        // cast (~0.77 %) and bought co-pressing rather than robustness.
+        const buffWindows = sx => {
+          const w = [];
+          for (const k in sx) for (const t of sx[k]) w.push([t, t + BUFFS[k].dur]);
+          return w;
+        };
+        const edgeSpans = sx => {
+          const w = buffWindows(sx);
+          let n = 0;
+          for (let i = 0; i < w.length; i++)
+            for (let j = 0; j < w.length; j++) {
+              if (i === j) continue;
+              for (const edge of w[j])                       // does another window's START or END
+                if (edge > w[i][0] + EPS && edge < w[i][1] - EPS) n++;   // fall strictly inside this one?
+            }
+          return n;
+        };
+        const structuralSnap = async (s0, val0) => {
+          const band = Math.abs(val0) * 0.0005;   // 0.05 % — the tool's own "too close to call" band
+          const n0 = simulate(s0, cfg, true).casts.length;
+          let sx = cloneS(s0), cross = edgeSpans(sx), rows = pressRows(sx);
+          for (let round = 0; round < 4; round++) {
+            await breathe();
+            let moved = false;
+            // Candidates come from the OTHER windows, not from a blind sweep: the only placements that
+            // can reduce spanning are the ones that align this window inside another.
+            for (const key in sx) {
+              if (cfg.fixed[key]) continue;
+              const dur = BUFFS[key].dur;
+              for (let i = 0; i < sx[key].length; i++) {
+                const cand = new Set();
+                for (const [ws, we] of buffWindows(sx)) {
+                  for (const base of [ws, we - dur])
+                    for (const d of [-1, 0, 1]) {
+                      const t = Math.round(base) + d;
+                      if (t >= 0 && t <= cfg.T) cand.add(t);
+                    }
+                }
+                for (const t of cand) {
+                  if (Math.abs(t - sx[key][i]) < 1e-9) continue;
+                  const c = cloneS(sx); c[key] = c[key].slice();
+                  c[key][i] = t; c[key].sort((a, b) => a - b);
+                  const rep = repair(c, cfg);
+                  if (JSON.stringify(rep) === JSON.stringify(sx)) continue;
+                  const r = simulate(rep, cfg, true);
+                  if (r.casts.length !== n0) continue;        // a CAST was gained or lost ⇒ not phase
+                  if (r.robust < val0 - band) continue;        // outside the band ⇒ real damage
+                  const xc = edgeSpans(rep), xr = pressRows(rep);
+                  if (xc < cross && xr <= rows) { sx = rep; cross = xc; rows = xr; moved = true; break; }
+                }
+                if (moved) break;
+              }
+              if (moved) break;
+            }
+            if (!moved) break;
+          }
+          return sx;
+        };
         const finishLineFloored = async (entrant) => {
           const loose = await finishLine(entrant, castVal);   // tunnelling regime (the historical QTOL)
           const tight = await finishLine(entrant, TIE_TOL);   // free-moves-only regime
@@ -3758,6 +3848,14 @@ function optimizeCore(cfg, starts, onProgress) {
             if (arm.val > best.val - 1e-6 && pressRows(arm.s) < pressRows(best.s)) best = arm;
           }
           if (best === floorArm) best.floorNote.delta = Math.round(ev - Math.max(tight.val, loose.val));
+          // ★ Structural tie-break LAST, so it can only ever spend the band on the winning layout —
+          // never influence which arm wins, and never compound with the arms' own tolerances.
+          const snapped = await structuralSnap(best.s, best.val);
+          if (JSON.stringify(snapped) !== JSON.stringify(best.s)) {
+            const v = simulate(snapped, cfg).robust;
+            best = { ...best, s: snapped, val: v,
+                     structNote: { spent: Math.round(best.val - v), spans: edgeSpans(best.s) - edgeSpans(snapped) } };
+          }
           return best;
         };
         let fin = await finishLineFloored(best);
