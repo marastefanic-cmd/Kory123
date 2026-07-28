@@ -440,6 +440,41 @@ Everything above this line was written while the mechanism was unknown, and seve
 falsified by what follows. **The scorer is not the defect.** Read this section before acting on any
 earlier one.
 
+## 0. THE DEFECT IN ONE TABLE — the real optimizer, one instruction, five plans
+
+`T=120 · h=0 · 1000 SP · 25 % crit · full kit`. The *only* thing that changes between rows is where
+inside its own second the shaman's Bloodlust is assumed to land. Every row is the same instruction.
+
+| Bloodlust at | what the tool tells the player to do |
+|---|---|
+| 20.000 | Icy Veins 0:05 / 0:25 · cluster 0:25 · Berserking **0:57** |
+| 20.375 | Icy Veins 0:00 / 0:20 · cluster 0:20 · Berserking 0:51 |
+| 20.750 | Icy Veins 0:01 / 0:21 · cluster 0:21 · Berserking 0:53 |
+| 21.125 | Icy Veins **0:30 / 0:59** · cluster **0:30** · Berserking **0:19** |
+| 21.498 | Icy Veins 0:20 / 0:55 · cluster 0:20 · Berserking **0:41 — inside Lust** |
+
+Five plans, including one (21.125) with a completely different strategy — Berserking *before* the Lust
+and the whole cluster ten seconds after it.
+
+### And the search is not what is failing. Cross-scoring proves it
+
+Score all five layouts at all five pins (casts, relative to the best layout in each column):
+
+| layout | @20.000 | @20.375 | @20.750 | @21.125 | @21.498 |
+|---|---|---|---|---|---|
+| from 20.000 | **0.0000** | −0.4052 | −0.3531 | −0.3885 | −0.2350 |
+| from 20.375 | −0.0721 | **0.0000** | −0.6802 | −0.7156 | −0.7723 |
+| from 20.750 | −0.2150 | −0.3518 | **0.0000** | −0.2009 | −0.2577 |
+| from 21.125 | −0.3792 | −0.1822 | −0.1302 | **0.0000** | −0.3999 |
+| from 21.498 | −0.3224 | −0.4593 | −0.0748 | −0.1101 | **0.0000** |
+
+**The diagonal is all zeros.** Every emitted plan really is optimal at its own pin — the search found
+the right answer every time. And the off-diagonal is enormous: the plan that is optimal at 20.375 is
+**0.77 casts worse** at 21.498.
+
+⇒ **The optimizer is answering a question the user did not ask, correctly.** That is the whole defect,
+and no amount of better searching fixes it.
+
 ## 1. The scorer is EXACT. Measured, against wowsims, at 0.002 casts
 
 Hand both engines the *same* fight and the per-cast sum reproduces wowsims' Arcane Blast count to the

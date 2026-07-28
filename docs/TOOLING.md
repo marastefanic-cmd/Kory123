@@ -1144,8 +1144,18 @@ the same fight and the disagreement disappears:
 | 20.415 (on the boundary) | **0.0019 casts** |
 
 That second row is the strongest model/sim agreement this project has measured, and it is what cleared
-the scorer in `docs/MODEL-DEFECTS.md` D1 §1. Get the boundary from the model's own board —
-`simulate(s, cfg, true).casts` — never by guessing.
+the scorer in `docs/MODEL-DEFECTS.md` D1 §1.
+
+⚠ **Two ways to get the boundary wrong, and I got the first one wrong on 07-28.**
+1. **It is the boundary of the PLAN being evaluated, not of a bare stream.** With Icy Veins pressed at
+   the pull the boundary near 0:20 is **20.415**; on a bare stream it is **21.498**. Read it from
+   `simulate(s, cfg, true).casts` for the actual schedule, never from a naked one and never by guessing.
+2. ⛔ **In general there is NO single pin that is a boundary for every arm of a duel.** Arms whose
+   cooldowns differ *before* the pin have different lattices there, so a value on one arm's grid is
+   mid-cast on another's — and the 0.21-cast bias comes back for exactly those arms. The workaround is
+   sound only when every arm shares its pre-pin layout (which is the case for a single-press sweep, and
+   is why the four isolations in MODEL-DEFECTS §8c are clean). For a duel between two *whole* plans,
+   there is no fair pin, and the sim cannot arbitrate the sub-cast part of that question at all.
 
 ⇒ **Standing rule: a sim duel on a Lusted fight is only an arbiter if the Lust pin is a cast boundary.**
 If it is not, the sim is answering about a fight 0.415 s different from the one the tool planned, and
