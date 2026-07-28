@@ -257,6 +257,69 @@ a 3-stack cast, so a value window opened at the pull always covers fewer casts).
 two different rules, two different seconds. Only the **cluster's own** second is misplaced, and only by
 one.
 
+## ★★★★ REVERSE-ENGINEERED FROM GROUND TRUTH — the objective that produces the wanted layouts is the RETIRED INTEGRAL
+
+**Status: OPEN. The most important open item in this repo. Nothing has been changed on the strength of
+it.**
+
+User, 2026-07-28, supplying two hand-built layouts as ground truth: *"If the lust is pinned at 10 to
+dissolve any possibility of the arcane blast stacks mattering, this is what I'm 100 % sure I want the
+output to be. That's a ground truth and you can reverse engineer from there."* And separately: *"I don't
+care what kind of math we have to make for my output to be the correct one, but the one that does is
+the right approach. IF it's the integrals or whatever."*
+
+It is the integrals. Both layouts, scored under the two objectives the engine still computes:
+
+| case | per-cast sum (what ranks today) | continuous rate integral (retired, still emitted as `integral`) |
+|---|---|---|
+| `2:45 · 1387 SP · 38 %` | model +0.2270 | **user +0.0731** |
+| `2:00 · 1000 SP · 25 %` | model +0.4535 | **user +0.0093** |
+
+**The sum ranks the model's layout first in both cases. The integral ranks the user's layout first in
+both cases.** Two independent cases, both reversing.
+
+### Why, and it reframes PHASE12's retirement rather than contradicting it
+
+The user's reasoning is *explicitly continuous*: *"we lose 4 seconds of Icon under IV alone, and gain 4
+seconds of icon under lust+zerking… that is strictly better."* That sentence **is** a rate integral —
+it prices window-seconds against the local cast rate, never counting whole casts. The discrete sum
+cannot express it, and this file already documents why: the two 4-second regions contain **exactly three
+casts each** at this lattice phase, so the sum sees a tie (or a loss) where the continuous quantity sees
+`3.575 − 3.000 = +0.575` casts (ESTABLISHED-FACTS, *weak dominance*).
+
+⇒ **The sum is one lattice phase; the integral is the phase average.** PHASE12 retired the integral for
+disagreeing with the sum by a median 0.2114 % against ranking margins of 0.005–0.07 % — but that is
+exactly the relationship a *mean* has to a *single sample*, and the retirement argument assumed the sum
+was the truth and the integral the error. The user's ground truth is evidence for the opposite reading.
+
+Corroborated independently: the empirical phase average (`tools/jitter.mjs`, ±1 s of press error)
+collapses the sum's margin by **81–88 %** on the 2:45 case and gives the hand-built layout the better
+floor. Two different smoothings of the same single-phase artifact, both pointing the same way.
+
+### ⛔ What must NOT be done with this
+
+* **Do not simply switch `robust` back to the integral.** PHASE12's measurements stand as measurements;
+  what changed is their interpretation. The integral also has real defects the sum does not — it
+  over-pays a partial cast at a window's back edge, which is what the (default-off) boundary charge was
+  built to correct.
+* **Do not tune scorer terms against the integral** — four terms were falsified that way (PHASE12
+  §6.1–§6.3).
+* **Do not treat two reversing cases as a proof.** They are ground truth from one user at one haste
+  level (h=0) with Lust pinned to remove the stack question. The claim that needs testing is whether the
+  integral ranking is better **across the corpus and at rising passive haste**, which is exactly the
+  regime the user says they cannot check by hand.
+
+### The programme this implies
+
+1. Score the whole golden corpus under both objectives; list every case where they disagree.
+2. For each disagreement, duel the two layouts **in the sim** — the sim is the arbiter for a search or
+   ranking question, and it does not care which objective proposed the plan.
+3. If the integral's picks win in the sim, the retirement is overturned on evidence and the objective
+   changes; if they lose, the user's ground truth is a low-haste special case and needs its own rule.
+4. Either way the golden corpus is re-derived. This is a phase of work, not an edit.
+
+⚠ Until step 2 has run, **neither objective is established as correct** and `index.html` is unchanged.
+
 ## ⚠⚠ THE SCORER OVER-RESOLVES — most of its margin is not executable
 
 **Status: OPEN, and it is the most consequential open item in this file.** Not a defect in what the
