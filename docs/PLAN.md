@@ -74,7 +74,7 @@ anchor is solid. Where they disagree, that disagreement is the finding and the a
 | `tools/jitter.mjs` | execution-robustness expectation | works |
 | `tools/plan-diff.mjs` | Δscore stability signal, with a regression verdict | already a gate |
 | `tests/layout-rules.mjs` | property test of the layout spec | exists |
-| the anchor suite | — | **not started** |
+| `tests/anchors.mjs` | the anchor suite | **started 07-28 — A1 in, RED** |
 
 ## Standing warnings
 
@@ -95,3 +95,28 @@ anchors.
 tie itself is the assertion. Most of this session's disputed layouts are inside that band once execution
 error is accounted for, which means the honest anchor is *"these two are equivalent"*, not *"this one
 wins"*.
+
+## Status 07-28 — what is and is not a blocker
+
+**The two ground-truth examples are NOT yet "the only tests".** As of now:
+
+| | state |
+|---|---|
+| `tests/anchors.mjs` | **exists, 1 anchor (A1), RED** — asserts Berserking inside Lust at h=0 |
+| `golden.json` + `exact-match` | **still the gate**, still encoding the D1-afflicted plans |
+| the second example (2:45 / 1387 SP) | **not yet an anchor** — its property has not been isolated to a
+  single two-source-backed statement the way A1's was |
+| D1 | **diagnosed, not fixed** |
+
+**The one real blocker is D1**, and it is now well-posed rather than vague: the ranking resolves a
+single lattice phase, so a 0.03 % phase spike at Berserking @57 beats a genuine +0.2056-cast interaction
+at @40–@50. Averaging the ranking over ±1 s of press error flattens the spike (one sample wide) and
+leaves the plateau (three samples wide) standing.
+
+**`golden.json` is a procedural blocker, not a real one.** Fixing D1 will legitimately change many
+plans, and `exact-match` will fail on all of them — but that is the file asserting stale answers, not a
+regression. Wire `plan-diff` in as the gate (it reports Δscore with a regression verdict) and the
+goldens can be retired the same day. Nothing needs to wait for the full anchor suite.
+
+⇒ **Order from here:** fix D1 → A1 goes green → re-derive whatever `plan-diff` flags → retire
+`golden.json`. Anchors accumulate after that, one per rule, as they are isolated.
