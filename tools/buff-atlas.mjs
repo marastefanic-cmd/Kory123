@@ -223,8 +223,34 @@ for (const b of out) {
     return `  ${label}: mean ${f(st.mean, 2)} · spread ${f(st.spread, 2)} = ${st.pct.toFixed(2)}% of mean  ${ok ? '✓ FLAT' : '✗ NOT FLAT'}`;
   };
   console.log(`  [flat, interior placements]`);
-  console.log(verdict('SIM  ', sS));
-  console.log(verdict('MODEL', mS));
+  // ⚠ A percentage OF THE MEAN is meaningless when the mean is ~0, and above the passive GCD cap that
+  // is exactly what happens: a haste buff pressed at steady state is worth literally nothing, so the
+  // tool printed "700 % NOT FLAT" and "NaN %" for a column that is in fact perfectly flat at zero.
+  const NEAR_ZERO = sS && Math.abs(sS.mean) < 0.5;   // < 0.5 DPS: the buff does nothing here
+  if (NEAR_ZERO) {
+    console.log(`  ⚑ THE BUFF IS WORTH ~NOTHING AT STEADY STATE HERE (sim mean ${f(sS.mean, 2)} DPS).`);
+    console.log(`    That is the GCD cap: at this passive haste the 3-stack interval is already floored,`);
+    console.log(`    so extra haste converts only where casts are LONGER than the floor — the opening ramp.`);
+    console.log(`    Percent-of-mean is undefined against a zero mean; read the absolute column.`);
+  } else {
+    console.log(verdict('SIM  ', sS));
+    console.log(verdict('MODEL', mS));
+  }
+  // ★ THE PULL IS ASSERTED FOR HASTE BUFFS TOO, not excluded. Below the cap it should read ~0; at and
+  // above it, it is the ONLY placement that does anything, and that is the user's predicted crossover
+  // (07-28). Excluding t=0 from the verdict is what made this invisible at 400 rating, where the tool
+  // reported "flat 0.04 %" while the pull was +2.0 %.
+  if (b.haste && sS && mS) {
+    const p0 = b.rows[0];
+    const sP = NEAR_ZERO ? null : 100 * (p0.sim - sS.mean) / sS.mean;
+    const mP = NEAR_ZERO ? null : 100 * (p0.model - mS.mean) / mS.mean;
+    console.log(`  [pull — press at 0s, covering the opening ramp]`);
+    if (NEAR_ZERO)
+      console.log(`    sim ${f(p0.sim, 2)} DPS vs ${f(sS.mean, 2)} at steady state  ⇒ ABOVE THE CAP the pull is the whole value.`);
+    else
+      console.log(`    sim ${sP >= 0 ? '+' : ''}${sP.toFixed(1)}% · model ${mP >= 0 ? '+' : ''}${mP.toFixed(1)}% vs the interior` +
+        `   ${Math.abs(sP) <= FLAT_PCT ? '✓ no ramp advantage — haste placement is fully irrelevant' : '⚑ the pull IS better: the ramp casts are longer than the floor, so haste still converts there'}`);
+  }
   // ★ THE RAMP PENALTY IS A CLAIM, NOT AN EXEMPTION. A value buff pressed before full stacks covers
   // fewer casts and must be measurably WORSE — and the model is only correct here if it reproduces the
   // SIM's penalty, not merely if it has one of its own.
