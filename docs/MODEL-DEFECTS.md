@@ -112,7 +112,11 @@ witnesses (0.185 and 0.287 casts) are outside the band it can reach.
 
 ## D2 — the model emits the uglier of two BIT-IDENTICAL layouts
 
-**Status: OPEN. Mechanism established, one-line fix identified, not yet landed.**
+**Status: OPEN. Mechanism established, fix specified (two parts), not yet landed. Two witnesses.**
+
+★ **No scoring change is needed.** Both witnesses are *exact* ties — the scorer is right about the
+number and wrong only about which of several identically-scoring layouts it emits. That makes the fix
+strictly a tie-break, and a tie-break gated on bit-equality can never cost damage.
 
 On the `1:40 · h=0 · 1387 SP · 38 % crit · Lust pinned 0:07` fight the optimizer emits
 
