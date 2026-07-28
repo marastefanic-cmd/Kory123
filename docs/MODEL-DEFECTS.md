@@ -207,6 +207,33 @@ span improvement, but it can never take a pure row reduction, however free.
 and its goldens re-recorded — under a hard gate that a plan may only move when its score is **exactly**
 unchanged, never merely inside the tie band.
 
+### ⛔ ATTEMPTED 07-28 AND REVERTED — the gate caught it
+
+Both parts were implemented and measured. They do what they were meant to (the `1:40` cluster moved to
+0:07), but the sweep says they also move plans they should not:
+
+    node tools/plan-sweep.mjs <orig> A.json 3 --max-t=200
+    node tools/plan-sweep.mjs index.html B.json 3 --max-t=200
+    node tools/plan-diff.mjs A.json B.json
+
+    compared=16 changed=3   worse=1 better=0 tie=2
+    ⚠⚠ SEARCH REGRESSION — 1 cell where B's plan scores LOWER on B's own objective
+       (2:20 lust 0:05)
+
+`exact-match` read **19 passed, 6 failed**, every failure a one-second press shift.
+
+**Root cause of the leak, and it is the thing to design around next time.** The two new clauses are
+each individually gated on bit-equality and cannot lose a point on their own. But accepting a tied move
+changes `sx`, and `structuralSnap`'s *first* clause — the original span-reduction one — is allowed to
+spend the 0.05 % band. So a free move can carry the plan to a state from which the band-spending clause
+then makes a *different* choice than it would have. The tie-break is free; the path through the search
+is not.
+
+⇒ **A correct implementation must make the whole pass value-monotone**, not just the new clauses: keep
+the best-scoring layout seen and never return one that scores below it, or run the robustness tie-break
+as a separate final pass over layouts already known to be bit-identical, rather than inline where it can
+perturb the span clause. Until then D2 stays open and `index.html` is unchanged.
+
 ⚠ **Not landed.** It changes the rendering of every plan that has a free row merge available, so it
 needs `exact-match` re-run and its goldens re-recorded — and each changed plan checked to be
 bit-identical in value, not merely inside the tie band. That is the gate: this fix may only ever move

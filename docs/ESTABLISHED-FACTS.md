@@ -1414,6 +1414,50 @@ cluster, which outbids both. Reading the h=0
 row as "get out of Lust" and the h=300 row as the same rule would be wrong: they are the pull advantage
 and the GCD floor respectively, and they only happen to point the same way once.
 
+### ★★★ WEAK DOMINANCE — the rule for "same cast count, but one side is obviously better"
+
+User, 2026-07-28: *"The icon's uptime is STRICTLY BETTER AT NO OTHER OPPORTUNITY COST… the 16 seconds
+of the icon stay identical, but the other 4 strictly gain overlay with more haste buffs."*
+
+This is the case the discrete objective handles worst, and it needs its own rule.
+
+`2:00 · h=0 · 1000 SP · Lust pinned 0:10`, Icy Veins at 0:06. Icon at 0:06 versus Icon at 0:10 — the
+window slides 3.75 s later, out of the Icy-Veins-only region and into Lust:
+
+| | uniquely covered casts | region |
+|---|---|---|
+| Icon @0:06 | 6.498 · 7.748 · 8.998 | Icy Veins only, interval **1.25 s** |
+| Icon @0:10 | 26.248 · 27.248 · 28.297 | Lust (+Berserking), interval **1.00–1.05 s** |
+
+**Exactly three for three — a true tie in cast count**, and generic: swept across 17 Lust-pin phases it
+is 19.00 covered casts on both sides, every time. But the *continuous* count of the 3.75 s that changed
+hands is **3.00 casts given up against 3.575 gained**, i.e. **+0.575 casts** that the lattice quantises
+away to zero.
+
+⇒ **So it is not a coincidence to be broken arbitrarily — it is a weak dominance.** Sweep passive haste
+and the hidden margin surfaces:
+
+| passive haste | Icon @0:06 covers | Icon @0:10 covers | measured Δ | continuous prediction |
+|---|---|---|---|---|
+| 0 – 100 | 19 | 19 | 0.0000 | **+0.56 … +0.59** |
+| **150 – 300** | 19 | **20** | **+0.0772** | +0.18 … +0.46 |
+| 400 + | 20 | 20 | 0.0000 | 0.0000 |
+
+**Icon on the Lust call is never worse and is strictly better at h = 150–300** — by exactly one covered
+cast, `1 × s`. The continuous prediction is `≥ 0` at every haste on the ladder; the discrete objective
+realises it as 0 or 1 whole cast depending on where the lattice happens to fall.
+
+> **THE RULE.** When two placements tie on the discrete count, prefer the one with the higher
+> **continuous** coverage — `Σ (window seconds) / (interval in that region)`. It is never worse at the
+> measured point and strictly better across the neighbourhood in haste, fight length and phase. A tie
+> in the count is not a statement that the two are equally good; it is a statement that the lattice
+> could not resolve them **here**.
+
+★ This is why the planner's tie-break is an **execution-robustness expectation** rather than a coin
+flip (`docs/MODEL-DEFECTS.md` D2): averaging over ±1 s of press error samples the neighbourhood, so it
+recovers the sign of the continuous margin without needing a second objective. The two are the same
+idea — one derived, one measured.
+
 ### Worked example — Berserking on a real plan, predicted from the table
 
 On the `1:40 · h=0 · 1387 SP` fight (Lust pinned 0:07, Icy Veins 2.5–22.5, Icon 6.3–26.3, AP/Gem
