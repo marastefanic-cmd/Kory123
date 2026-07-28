@@ -297,14 +297,45 @@ Every duel in this file was run on a harness that hands Bloodlust ~1 s of free e
 layout in both ground-truth cases. The 2.0 DPS ± 0.37 measurement stands as a measurement; what it
 means is now in doubt.
 
-⇒ **Nothing about the objective, the scorer or the search may be concluded from those duels until the
-harness can place a raid external off a GCD.** That is now the blocking item. Until then the honest
-statement is: *the model and the sim disagree about how much Lust a mage actually gets, and the model's
-account is the one with a rule behind it.*
+### ⛔ …AND THAT SUSPICION IS ITSELF REFUTED — tested the same hour
 
-⚠ It also does **not** exonerate the model outright: the 0.216 relative miscount between the two
-ground-truth layouts is real, and this explains it only if the two layouts differ in Lust-packing by
-about that much. Checking that is the first thing to do after the harness question.
+The harness cannot be *made* to start an aura off a GCD, but the model can be given **the sim's own
+window**, which is the same comparison from the other side. Pinning Lust at the boundary the sim
+actually uses (20.998 instead of 20):
+
+| Lust pinned at | model `Σfrac` | sim casts | model − sim |
+|---|---|---|---|
+| 20 | 86.511 | 86.732 | −0.221 |
+| **20.998** | 86.742 | 86.732 | **+0.010** |
+
+**The absolute offset is 100 % the anchoring convention** — aligned, the model returns to the same
+±0.010 agreement it shows everywhere else. Mechanism confirmed.
+
+**But the ranking does not flip.** Re-scoring the two ground-truth layouts with the sim's own Lust
+window:
+
+| Lust anchored at | model plan | hand plan | model's verdict |
+|---|---|---|---|
+| 20 (the model's rule) | 101.5996 | 101.4861 | model plan by **0.1135** casts |
+| **20.998 (the sim's)** | 101.3312 | 101.0041 | model plan by **0.3271** casts |
+
+against the sim's *hand plan wins by 2.0 ± 0.37 DPS*. **Giving the model the sim's own Lust window makes
+the disagreement bigger, not smaller.**
+
+⇒ **The inversion is real and is NOT a harness artifact.** The anchoring convention explains the 0.22-cast
+*absolute* offset and none of the *relative* ranking. Retract the suspicion above.
+
+### Where that leaves it
+
+Cast counts now agree between the engines to ±0.010 once the windows are aligned, and the sim's own
+figures put damage-per-cast at 2072.1 (model plan) against 2072.5 (hand plan) — **the hand plan's casts
+are worth 0.02 % more**. With counts equal, the entire remaining disagreement is therefore on the
+**value** side: *which casts get covered by which cooldown*, not how many casts there are.
+
+⇒ **Next: audit the value windows, not the lattice.** For each layout, compare the model's per-cast
+`sp` and `dmgMult` board against the sim's, cast for cast. `tools/model-audit.mjs` does exactly this and
+needs a native runner (`tools/build-runner.sh`). The lattice is now excluded by measurement, which makes
+this a much narrower search than it was this morning.
 
 ### (original D3 entry, refuted above, retained for the record)
 
