@@ -33,6 +33,26 @@ All read from `GAME` in `index.html` — never re-typed into a tool (reference-g
 | `COEF` | 2.5/3.5 = 0.714286 | Arcane Blast spell-power coefficient |
 | `BASE` | 720 | average Arcane Blast base damage |
 
+## 0.0 Every cooldown, and its onset threshold
+
+| cooldown | kind | value | dur | cd | onset threshold alone |
+|---|---|---|---|---|---|
+| Bloodlust | ×haste | 1.30 | 40 | 600 | **242.6** |
+| Icy Veins | ×haste | 1.20 | 20 | 180 | **394.3** |
+| Power Infusion | ×haste | 1.20 | 15 | 180 | **394.3** |
+| Berserking | ×haste | 1.10 | 10 | 180 | **573.5** |
+| Mind Quickening Gem | +rating | 330 | 20 | 300 | **458.5** |
+| Skull of Gul'dan | +rating | 175 | 20 | 120 | **613.5** |
+| Drums of Battle | +rating | 80 | 30 | 120 | **708.5** |
+| Arcane Power | ×damage | 1.30 | 15 | 180 | — (no cap) |
+| Serpent-Coil Braid | +SP | 225 | 15 | 120 | — (no cap) |
+| Icon of the Silver Crescent | +SP | 155 | 20 | 120 | — (no cap) |
+
+★ **Icy Veins and Power Infusion are the same object.** Both are ×1.20, so every law and every pair
+interaction is identical between them — verified across the whole matrix in §5.5. Their only
+differences are duration and who presses them. This is the spell-agnostic law made visible: *it never
+matters which spell supplies an effect, only by how much.*
+
 The **haste multiplier** of a state is
 
     m  =  m_p · Π vᵢ · (1 + Σ rⱼ / RTG)          m_p = 1 + h / RTG
@@ -41,6 +61,32 @@ multiplicative buffs `vᵢ` (Bloodlust ×1.3, Icy Veins ×1.2, Berserking ×1.1,
 rating buffs `rⱼ` (Mind Quickening Gem +330, Skull of Gul'dan +175) folded into one additive pool with
 passive rating. **Rating adds, multipliers multiply.** That asymmetry is the source of half the rules
 below.
+
+## 0.1 ★★★★ IT IS ONE EQUATION
+
+Everything in this file is a partial derivative of a single expression. There is no second model.
+
+    V(plan)  =  ∫₀ᵀ  rate( m(t) ) · w( t )  dt
+
+    rate(m)  =  min( 1/F , m/G )                                   casts per second
+    m(t)     =  ( 1 + [ h + Σ active rating ] / RTG ) · Π active haste multipliers
+    w(t)     =  ( 1 + Σ active ΔSP · COEF / (BASE + COEF·SP) ) · Π active damage multipliers
+
+`m` is *how many* casts; `w` is *what each is worth*; the plan chooses which buffs are simultaneously
+active at each `t`. **Change one variable and watch.** Every "rule" below is that experiment written
+down — move a press, and the only thing that changes is which terms are inside the same `t`.
+
+★ Two structural facts follow immediately, and they are the whole reason the planner is hard:
+
+1. **`rate` and `w` factorise.** Haste effects only enter `m`, value effects only enter `w`. So the
+   interaction of any set of cooldowns is (haste part) × (value part), computed independently.
+2. **`rate` is `min(...)`, and `min` is the only non-linear thing anywhere in the model.** Below the
+   cap every interaction is a plain product of fractional gains and is therefore **positive**. The GCD
+   corner is the *sole* source of conflict, opportunity cost, and negative interaction in this entire
+   system.
+
+⇒ **If nothing capped, the optimal plan would be trivial: overlap everything.** The scheduling problem
+exists because of one `min`.
 
 ---
 
@@ -55,14 +101,37 @@ on this one expression.
 *Verified: engine integral matches at h = 0, 200, 400, 600, 788.5, 900 (exact, once the opener term in
 §1.2 is accounted for).*
 
-## 1.1 The cap
+## 1.1 THERE ARE TWO CAPS, AND ONLY THE SECOND ONE IS REALLY ZERO
 
-`rate` stops rising when `m = G/F = 1.5`.
+⚠ **Corrected 07-28 (user).** An earlier draft of this section said a haste point above 788.5 is worth
+*exactly zero*. That is wrong, and the reason is exactly the one the user gave: **haste still shortens
+any cast longer than the GCD**, and this rotation has three of them — the 0-, 1- and 2-stack Arcane
+Blasts at 2.500 / 2.166 / 1.832 s.
 
-    bare GCD cap:  m_p = 1.5  ⇒  h = 788.5 rating
+| | condition | h | what it stops |
+|---|---|---|---|
+| **steady-state cap** | `m = G/F = 1.5` | **788.5** | the sustained cast rate freezes |
+| **true cap** | `m = C₀/F = 2.5` | **2366** | even the 0-stack cast hits the floor; *now* haste does nothing |
 
-Above it, **every further haste point is worth exactly zero** — not "less", zero. This is a hard corner,
-not a taper.
+Between the two, a haste point still buys **ramp compression**:
+
+    above the steady cap:   d(casts)/dh  =  Σ_{k : C_k/m > F}  C_k / m²  /  RTG      per COLD START
+
+| h | worth per rating point |
+|---|---|
+| 788.5 | 1.831e-3 casts **per opener** |
+| 1000 | 1.543e-3 |
+| 1400 | 8.303e-4 |
+| 1800 | 6.452e-4 |
+| ≥ 2366 | **0 — and now it really is zero** |
+
+Against `T/2365.5 = 0.1268` casts per point below the cap on a 5:00 fight, that is **~70× smaller** —
+which is why "treat 788.5 as the cap" is the right *practical* rule, and why it is still not the exact
+statement. It also scales with the number of **cold starts**: a fight with intermissions re-ramps, and
+each re-ramp pays the toll again and each is compressible.
+
+*Verified against the engine at h = 0, 400, 788.5, 900, 1200, 1600, 2000, 2365.5, 2600 — closed form
+matches the integral to ≤2e-3 casts at every point, including the exact zero at 2365.5.*
 
 ## 1.2 The opener costs exactly **1.332 casts**, at every haste
 
@@ -71,14 +140,72 @@ The first three Arcane Blasts of any cold start run at 0, 1 and 2 debuff stacks:
 
     opener deficit  =  ( Σₖ C_k − 3G ) / G  =  (6.498 − 4.5) / 1.5  =  1.332 casts
 
-★ **`m` cancels.** While every ramp cast is longer than the GCD — true up to `m = 1.832`, i.e. h ≈ 1312,
-far beyond any gear — the opener costs the same 1.332 casts no matter how much haste you have.
-*Verified: the engine's integral sits a constant 0.00444 casts/s under the steady-state law at h = 0,
-200, 400 and 600, which over T = 300 s is 1.332 casts — the same number at every haste.*
+★ **`m` cancels — below the steady-state cap.** There `i = G/m` and every ramp interval is `C_k/m`, so
+`m` divides out of the ratio entirely: the opener costs the same **1.332 casts** at h = 0 and at
+h = 788.5, and no haste cooldown can change that.
 
-⇒ **Haste cannot compress the opener.** A haste cooldown pressed at the pull buys nothing from the ramp;
-it buys only what it covers *after* the ramp. This is why the model opens cold and why a prepull
-silently corrupts a haste comparison (RULES §3, TOOLING ★★★).
+⚠ **Above the cap it does NOT cancel**, because `i` is pinned at `F` while the ramp casts keep
+shrinking (§1.1). The general form is
+
+    opener deficit(m)  =  [ Σₖ max(C_k/m, i) − 3i ] / i          i = max(F, G/m)
+
+| h | 0 … 788.5 | 900 | 1200 | 1600 | 2000 | ≥2366 |
+|---|---|---|---|---|---|---|
+| deficit (casts) | **1.3320** | 1.1370 | 0.6901 | 0.3161 | 0.1022 | **0.0000** |
+
+*Engine integral reproduces every cell to ≤2e-3 casts.*
+
+## 1.2b ★★★★ RAMP-NEUTRALITY — and it inverts at the buff's own threshold
+
+⚠ **Corrected 07-28 (user).** An earlier draft said *"haste cannot compress the opener; a haste cooldown
+pressed at the pull buys nothing from the ramp."* Both halves are wrong. Haste **does** compress the
+ramp — the casts are `C_k/m`. What is true is subtler, and it is the user's own formulation: *"it should
+come out equal whether you pop Icy Veins before the first cast or the second or the third, as it will
+then just have longer remaining duration for the shorter already-stacked casts."*
+
+**That is exactly right, and it is exact.** Write the gain of a buff `v`, duration `D`, pressed at the
+pull, where `R_x = ΣC_k / x` is the ramp's wall-clock length under multiplier `x`:
+
+    gain = D·[rate(m·v) − rate(m)]  −  R_{mv}·rate(m·v)  +  R_m·rate(m)
+
+While **both** rates are in the linear regime, `R_{mv}·rate(m·v) = (S/mv)(mv/G) = S/G = R_m·rate(m)` —
+**the two ramp terms cancel identically**, leaving the plain steady-state value. The compression the
+buff buys on the ramp is worth exactly what the ramp's zero cast-yield costs it.
+
+    ⇒ RAMP-NEUTRAL exactly while  m·v ≤ 1.5  — which is the buff's OWN onset threshold (§2.1).
+
+Icy Veins (×1.20, onset **394.3**), pull vs deep steady, engine integral:
+
+| h | m·v | at the pull | deep steady | difference |
+|---|---|---|---|---|
+| 0 | 1.2000 | 2.666667 | 2.666667 | **−0.000000** |
+| 200 | 1.3522 | 3.004711 | 3.004862 | −0.000150 |
+| 380 | 1.4892 | 3.308575 | 3.309237 | −0.000662 |
+| **394.3** | **1.5000** | 3.333520 | 3.332911 | **+0.000610** |
+| 400 | 1.5044 | 3.296483 | 3.284718 | **+0.011765** |
+| 500 | 1.5805 | 2.660472 | 2.439231 | **+0.221242** |
+
+★ **One threshold, two meanings.** The same `m·v = 1.5` that decides whether a buff converts in full
+also decides whether its placement relative to the opener matters at all. Below it, press Icy Veins
+before cast 1, 2, 3 or at 0:60 — **identical**. Above it, the pull is strictly better.
+
+### And above the steady cap the pull is the ONLY place it is worth anything
+
+Once `m ≥ 1.5` the steady stream is floored, so a haste cooldown converts **nothing** there — but the
+ramp casts are still above the floor and still compressible (§1.1). Icy Veins, engine integral:
+
+| h | before cast 1 | cast 2 | cast 3 | cast 4 / steady |
+|---|---|---|---|---|
+| 900 | **0.662** | 0.396 | 0.166 | **0.000** |
+| 1400 | **0.367** | 0.000 | 0.000 | 0.000 |
+
+⇒ **The placement rule for the pull completely inverts across the threshold.** Below it the opener is
+irrelevant; above the steady cap the opener is the *entire* remaining value of every haste cooldown you
+own — and each intermission re-ramp is another one.
+
+⛔ **None of this licenses a prepull.** A prepull removes ramp casts from the fight rather than
+compressing them, its −2.3 s is haste-blind, and it makes a sim haste sweep non-monotone. The model
+opens cold (RULES §3, TOOLING ★★★).
 
 ## 1.3 What one point of haste rating is worth
 
@@ -98,8 +225,10 @@ Over a fight of `T` seconds: **`T / 2365.5` casts per rating point.**
 so the derivative carries `v`. A haste rating point is 30 % more valuable inside Bloodlust, and worth
 nothing at all once `m_p·v ≥ 1.5`.
 
-⇒ **The opportunity cost of overcapping is total.** There is no partial credit above the corner. This
-is the single most important fact for gearing and for cooldown placement alike.
+⇒ **The opportunity cost of overcapping is ~70:1, not infinite** (§1.1). For every practical purpose
+inside a fight it is total — a haste cooldown that pushes you past `m = 1.5` converts *nothing* at
+steady state, and only the ramp remains. That is the single most important fact for cooldown placement,
+and the one nuance is that it is a **per-opener** residue rather than a per-second one.
 
 ---
 
@@ -222,6 +351,33 @@ so there are **two** distinct thresholds and a live band between them:
 ⚠ **Do not conflate them.** Between the two the pair still helps, just less. Below the first it helps in
 full.
 
+## 4.2 ★★★★ THE CORNER IS THE ONLY SOURCE OF CONFLICT — and it has a sharp exception
+
+From §0.1: `min` is the only non-linearity. Two consequences, and the second one caught me out:
+
+**Below the cap** every interaction is a plain product of fractional gains. Therefore:
+
+* effects that compose **multiplicatively** (haste ×v, damage ×v) always interact **positively**;
+* effects that share an **additive pool** — two +SP buffs, or two +haste-**rating** buffs — interact
+  **exactly zero, at every order**;
+* so the interaction lattice is *sparse*: only subsets whose members are all multiplicative matter.
+
+*Verified: `mqg × skull = 1.1e-16`, `mqg × drums = 0`, `skull × drums = 0`, and the order-3
+`mqg × skull × drums = −2.2e-16`.*
+
+⛔ **The sparsity law holds ONLY below the cap, and I published it once without that clause.** `min` is
+not multilinear, so once the corner is active it manufactures interactions between effects that have no
+business interacting:
+
+| set | h=0 | why |
+|---|---|---|
+| `mqg × skull` | 0 | one pool, uncapped (`m = 1.320`) |
+| `mqg × skull × drums` | −2.2e-16 | one pool, still uncapped (`m = 1.371`) |
+| **`mqg × skull × bloodlust`** | **−0.0962** | same pool — but ×1.3 pushes `m` to 1.716, **over the corner** |
+
+⇒ **Every negative number anywhere in this file is the corner.** Nothing else in the model can produce
+one. "Opportunity cost", "clipping", "wasted buff", "the pair fights itself" are all one phenomenon.
+
 ---
 
 # 5. THE NAMED PAIRS — exact numbers
@@ -277,6 +433,65 @@ At h = 0: `I = 10 · (0.2)(0.1)/1.5 = +0.133` casts.
 `rate(m·v) = rate(m) = 1/F`. This is §2's cap applied to the state *including* Lust — it is not a
 separate rule, and it is why every geared placement question answers "outside Lust".
 
+## 5.5 THE FULL HASTE×HASTE MATRIX
+
+Interaction **per second of overlap**, exact from `rate(m) = min(1/F, m/G)`:
+
+**h = 0**
+
+| | Lust | IcyV | PowInf | Zerk | MQG | Skull | Drums |
+|---|---|---|---|---|---|---|---|
+| **Bloodlust** | · | **0.00000** | **0.00000** | +0.02000 | −0.00617 | +0.02219 | +0.01015 |
+| **Icy Veins** | 0.00000 | · | +0.02667 | +0.01333 | +0.02790 | +0.01480 | +0.00676 |
+| **Power Infusion** | 0.00000 | +0.02667 | · | +0.01333 | +0.02790 | +0.01480 | +0.00676 |
+| **Berserking** | +0.02000 | +0.01333 | +0.01333 | · | +0.01395 | +0.00740 | +0.00338 |
+| **MQG** | −0.00617 | +0.02790 | +0.02790 | +0.01395 | · | **0** | **0** |
+| **Skull** | +0.02219 | +0.01480 | +0.01480 | +0.00740 | **0** | · | **0** |
+| **Drums** | +0.01015 | +0.00676 | +0.00676 | +0.00338 | **0** | **0** | · |
+
+**h = 300** — the same matrix, almost entirely inverted:
+
+| | Lust | IcyV | PowInf | Zerk | MQG | Skull | Drums |
+|---|---|---|---|---|---|---|---|
+| **Bloodlust** | · | −0.15870 | −0.15870 | −0.07935 | −0.13951 | −0.07398 | −0.03382 |
+| **Icy Veins** | −0.15870 | · | −0.11089 | −0.03154 | −0.09169 | −0.02617 | +0.00676 |
+| **Berserking** | −0.07935 | −0.03154 | −0.03154 | · | −0.01234 | +0.00740 | +0.00338 |
+| **MQG** | −0.13951 | −0.09169 | −0.09169 | −0.01234 | · | −0.00698 | **0** |
+| **Drums** | −0.03382 | +0.00676 | +0.00676 | +0.00338 | **0** | **0** | · |
+
+## 5.6 ⇒ THE ONE TABLE TO PLAN FROM — sign-flip haste per pair
+
+**Below this rating, overlap the pair. Above it, separate them.** (Multiplier pairs:
+`h* = (1.5/(v₁+v₂−1) − 1)·RTG`.)
+
+| | Lust | IcyV | PowInf | Zerk | MQG | Skull | Drums |
+|---|---|---|---|---|---|---|---|
+| **Bloodlust** | · | **0** | **0** | **112.6** | **never** | 108.0 | 181.1 |
+| **Icy Veins** | 0 | · | 112.6 | 242.6 | 119.2 | 248.4 | 327.6 |
+| **Power Infusion** | 0 | 112.6 | · | 242.6 | 119.2 | 248.4 | 327.6 |
+| **Berserking** | 112.6 | 242.6 | 242.6 | · | 273.5 | 414.4 | 500.7 |
+| **MQG** | never | 119.2 | 119.2 | 273.5 | · | always | always |
+| **Skull** | 108.0 | 248.4 | 248.4 | 414.4 | always | · | always |
+| **Drums** | 181.1 | 327.6 | 327.6 | 500.7 | always | always | · |
+
+*"never" = negative already at h = 0 (MQG + Bloodlust overcaps with no gear at all). "always" =
+identically 0, so it never matters — the rating-pool block.*
+
+### The patterns, and they are the payoff
+
+1. **Read the matrix by strength.** The stronger the pair, the earlier it flips. Bloodlust flips with
+   *everything* first; Berserking — the weakest multiplier — flips last with everything and is the most
+   stackable cooldown you own.
+2. **Icy Veins and Power Infusion have identical rows**, to the digit, in all three tables. Same ×1.20,
+   same object (§0.0).
+3. **The rating-pool block is a wall of zeros** and stays zero at every haste until the corner reaches
+   it. Drums / Skull / MQG never care about each other.
+4. **`242.6` appears three times**: as Bloodlust's own onset threshold, and as the flip haste of
+   Berserking×IcyVeins and Berserking×PowerInfusion. Not a coincidence — `1.2 + 1.1 − 1 = 1.3`.
+5. **The whole matrix goes negative between h = 0 and h = 300.** Low-gear planning is "stack it all";
+   geared planning is "spread it all". There is no third regime, and the transition rating for any pair
+   is one table lookup.
+
 ---
 
 # 6. TRIPLES AND BEYOND — nothing new is needed
@@ -303,8 +518,13 @@ Consequences, each traceable to a line above. None is an axiom.
    argument wants them; there is no pairing bonus to chase.
 4. **Damage multipliers pair with everything** (`n·d·s`, `n·d₁·d₂`), and unlike +SP their `s` does not
    dilute with gear — so Arcane Power's alignment argument is gear-independent.
-5. **Never buy haste above `m = 1.5`.** Not "diminishing" — zero (§1.1, §1.3).
-6. **The opener is a fixed 1.332-cast toll no cooldown can reduce** (§1.2).
+5. **Haste above `m = 1.5` buys only ramp compression** — ~70× less per point, and only once per cold
+   start (§1.1). It reaches true zero at `m = 2.5`, h = 2366. Treat 788.5 as the cap for planning; know
+   that the exact statement is the two-cap one.
+6. **The opener is a fixed 1.332-cast toll below the cap** (§1.2), and a haste cooldown is
+   **ramp-neutral** there — pressing it before cast 1 or at 0:60 is identical (§1.2b). Above the buff's
+   own onset threshold that inverts, and above the steady cap the opener is the *only* place a haste
+   cooldown is worth anything at all.
 
 ---
 
