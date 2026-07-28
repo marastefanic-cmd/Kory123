@@ -414,20 +414,29 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
     the incumbent. With no strict winner the tie form is adopted, so equal-score fights render the same
     shape. `TIE_EPS` sits far below any deliberate sub-cast preference (the `castVal/8` class) and far
     above float noise — the 3:20 shorter-buff-leads order is a *strict* win and is untouched.
-- **Cold-Snap materiality** (~2229) distinguishes two regimes (RULES §8). `csAddsUse` starts as "the CS
-  champ has **more** IVs than the best no-CS plan"; when CS genuinely **adds** a use the full "≥ one cast"
-  bar applies (`bar = castVal`); when it only **repositions** the same IV count (or the chain ends the
-  fight) it's a **free** move gated by a sub-cast sliver (`bar = castVal/8`). This is what lets 3:20 spend
-  the free CS to sequence the opener (+3.6, same 2-IV count) instead of vetoing it.
-  - **Adds-use is now measured by VALUE, not count (~2267).** A count-only test mis-fires at high gear
-    haste: the CS champ can carry an **incidental** extra IV parked on the near-floored Lust (worth ~0)
-    while CS's real job is sliding a *different* IV OFF Lust so the damage cluster keeps the fast casts
-    (RULES §5). Before scoring the bar, the gate trims the champ to the no-CS count by dropping its
-    **least-valuable** IV (try each removal, keep the highest re-`simulate`d `robust`); if the champ loses
-    **< `castVal`**, the extra IV is incidental → `csAddsUse = false` → sub-cast bar → keep the
-    cluster-on-Lust champ instead of vetoing it back to the glued no-CS `bestN`. This closed the last
-    high-haste hold-out (~h200, sim-verified +53 DPS); h0 goldens never trim (exit layout doesn't win
-    there), so exact-match stays 23/23.
+- **Cold-Snap materiality — ⛔ THE GATE IS GONE (user ruling 07-28).** `bar = TIE_TOL`: Cold Snap is
+  spent whenever it gains **anything at all**. The user's words: *"There's no reason to not use cold
+  snap for an extra IV. The cooldown will be ready for the next boss, always. As long as using Coldsnap
+  gains you anything at all, either getting in more Icy veins uptime, or just repositioning it to a
+  better spot, it needs to be used."* Cold Snap is not scarce on the timescale that matters — its
+  8-minute cooldown outlives the pull and there is nothing after the kill to save it for, so the old
+  *"a mid-fight reset must be worth a full cast"* bar was pricing a resource whose only alternative use
+  is *never*. It was also the last place the search would knowingly emit a plan it had itself scored
+  lower.
+  - **What went with it.** Deciding *which* bar applied cost three pieces of machinery, all deleted:
+    `endChain` (is the last CS window clipped by the kill), `csAddsUse` (does CS raise the IV **count**),
+    and the `bestTrim` loop — a `simulate(repair(…))` **per Icy Veins use**, trimming the champ to the
+    no-CS count by dropping its least-valuable IV to ask whether the extra IV was worth a cast on its
+    own. That value-not-count refinement was a real fix for a real mis-veto (the ~h200 hold-out, RULES
+    §8); one tie tolerance now subsumes the whole question.
+  - **Blast radius: 0 better · 1 tie · 0 regressions** over the 25 shipped presets — the bar was never
+    binding on this corpus, which is *why* it survived so long. It is removed for correctness, not for
+    a number. Sweep cost fell ~6 % (451 s vs 479 s) with the trim loop gone.
+  - ⚠ **Cold Snap's own semantics are unchanged and are worth restating**, because they are what makes
+    the ruling correct: `repair()` allows an Icy Veins press that lands while IV is on cooldown *if*
+    Cold Snap is available, then **restarts the 180 s cadence from that press** — i.e. *"once per fight
+    you can activate Icy Veins even if it's on cooldown, but doing so resets its cooldown back to 3
+    minutes."* `prevEnd` still forbids overlapping IV windows.
 
 ## Inputs → `cfg` (`readCfg`, buff rows)
 - **`ck-t5` — Tirisfal 2-piece gear checkbox** → `cfg.t5two`: ×1.2 on Arcane Blast damage only (a `t5`
