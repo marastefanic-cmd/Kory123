@@ -257,6 +257,58 @@ a 3-stack cast, so a value window opened at the pull always covers fewer casts).
 two different rules, two different seconds. Only the **cluster's own** second is misplaced, and only by
 one.
 
+## D3 — the model UNDER-COUNTS CASTS WHEN ICY VEINS OVERLAPS BLOODLUST (07-28)
+
+**Status: OPEN. Isolated to a single condition. This is the cause of the ground-truth ranking
+inversion.**
+
+Built up one **haste** cooldown at a time (value cooldowns cannot change a cast count), bare fight →
+the hand-built layout, `T=120 · h=0 · 1000 SP · 25 %`. Model boundary-credited count against wowsims:
+
+| layout | model `Σfrac` | sim casts | model − sim |
+|---|---|---|---|
+| bare | 78.669 | 78.660 | +0.008 |
+| Icy Veins @0 | 81.391 | 81.381 | +0.010 |
+| + Cold-Snap Icy Veins @20 | 84.057 | 84.044 | +0.012 |
+| **+ Bloodlust @20** | 91.979 | 92.198 | **−0.218** |
+| + Berserking @40 | 92.910 | 93.128 | −0.218 |
+
+**The error appears entirely on one step and does not grow afterwards.** Two Icy Veins uses alone are
+fine (+0.012). Adding Bloodlust *on top of the second Icy Veins* costs **0.230 casts** of accuracy in a
+single move, and Berserking then adds nothing.
+
+### The condition
+
+Icy Veins @20 (covering 20–40) and Bloodlust @20 (covering 20–60) **fire at the same instant and
+overlap for 20 s**. At h=0 that pair is **×1.56**, which is past the 1.5 the GCD floor needs — so this
+is precisely the **overcap** region the facts corpus documents. The model computes the floored interval
+as
+
+    cast = msq(1.498 / 1.56) = 0.960 s      gcd = msq(max(1.0, 1.5/1.56)) = 1.000 s
+    interval = max(0.960, 1.000) = 1.000 s
+
+and gets 20 casts from the 20 s overlap. The sim gets ~0.22 more, implying an effective interval nearer
+**0.989 s**. **Something about how wowsims resolves a doubly-floored window is not what the model
+assumes**, and the model is the one that is wrong — its number is a clean 1.000 s and reality is not.
+
+### Why this matters more than its size
+
+* It is **the** cause of the inverted ranking on ground truth. The hand-built layout is exactly the one
+  that stacks Icy Veins into Lust; the optimizer's layout is the one that does not. Under-counting the
+  stacked layout by 0.23 casts is what makes the optimizer prefer its own.
+* It therefore **explains the whole sum-vs-integral episode without needing a new objective.** The
+  entries below observe a real inversion; this is its mechanism. ⛔ Do not change the objective on the
+  strength of them.
+* It sits on the **overcap**, which this session established is a *price, not a prohibition* — and the
+  planner's advice about when to stack haste into Lust is derived from exactly these numbers.
+
+### Next step
+
+Measure the sim's actual steady-state interval inside a doubly-floored window — `SIMLOG=1` on an
+Icy-Veins-plus-Bloodlust fight, and read consecutive Arcane Blast starts between 20 s and 40 s. If they
+are 0.989 s rather than 1.000 s, the fix is in `stepFor`'s floor arithmetic and the whole corpus's
+overcap numbers need re-deriving with it.
+
 ## ★★★★★★ LOCALISED — the model MISCOUNTS CASTS by ~1 on a mid-ramp Icy Veins (07-28)
 
 **Status: OPEN, and it supersedes the objective debate below as the first thing to fix.**
