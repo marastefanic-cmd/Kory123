@@ -257,6 +257,48 @@ a 3-stack cast, so a value window opened at the pull always covers fewer casts).
 two different rules, two different seconds. Only the **cluster's own** second is misplaced, and only by
 one.
 
+## ⚠⚠ THE SCORER OVER-RESOLVES — most of its margin is not executable
+
+**Status: OPEN, and it is the most consequential open item in this file.** Not a defect in what the
+scorer computes — the objective is exact and `self-consistency` reads `0.00e+0`. A defect in what it is
+asked to *rank*: a single lattice phase, when a real pull is a distribution over phases.
+
+User, 2026-07-28: *"I don't fully wanna trust the outputs yet, because the current scorer says that my
+suggested changes are worse. But they just aren't. They might be under specific clippings and whatnot."*
+Measured on the `2:45 · h=0 · 1387 SP · 38 % crit · Lust 0:10` fight, model plan against the
+hand-written one:
+
+| | model | hand-written | Δ |
+|---|---|---|---|
+| **exact** (what the tool ranks on) | 133.0817 | 132.8547 | **−0.2270** |
+| common ±1 s | 132.8039 | 132.7663 | −0.0376 |
+| pinned call moves | 132.7936 | 132.7663 | −0.0273 |
+| independent ±1 s | 132.7059 | 132.6622 | −0.0437 |
+| **worst case** | 132.1810 | **132.3009** | **+0.1199 in the hand-written plan's favour** |
+
+★ **81–88 % of the model's margin evaporates once presses cannot land to the millisecond.** What
+survives is 0.027–0.044 casts ≈ **0.03 % of the fight** — inside the tool's own `tieBandPct = 0.05 %`
+"too close to call" band. By the project's own standard these two layouts are **a tie under realistic
+execution**, and the hand-written one has the better floor and roughly a third less spread
+(range 0.57 casts against 0.90 on the independent grid).
+
+⇒ **The user's distrust of the ranking is justified, and it is narrower than "the scorer is wrong".**
+The scorer is right about the number; the number is a single-phase realisation, and the ranking margin
+it produces is mostly phase artifact rather than signal. Same root as D1, but this is the consequence
+that actually reaches the user: it is what decides which plan gets printed.
+
+**The design question it poses**, and it is a real one rather than a bug to patch: should the tool rank
+on the exact single-phase objective, or on the phase-averaged one? Ranking on the average would resolve
+D1, D2 and this entry at once, and would make the corpus's *weak dominance* rule
+(`docs/ESTABLISHED-FACTS.md`) the operative one — but it changes every plan and needs the whole golden
+corpus re-derived, so it is a phase of work, not an edit.
+
+⛔ Do **not** implement it as "restore the rate integral". That was a different quantity, it disagreed
+with the per-cast sum by a median 0.2114 % against ranking margins of 0.005–0.07 %, and it was retired
+for cause (archived PHASE12 §6.10). The phase average of the *exact* per-cast sum is not the integral;
+it is the same objective evaluated over a distribution of press offsets, which is what
+`tools/jitter.mjs` already computes.
+
 ## ⚠ Unresolved — a pull advantage at h=0 that should not exist
 
 **Status: OPEN QUESTION, not yet classified.** At h=0, pressing a haste cooldown at the pull is worth

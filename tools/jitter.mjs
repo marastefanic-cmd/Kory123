@@ -117,8 +117,11 @@ function underJitter(name, mode) {
       evalWith(sh, 0);
     }
   }
-  const mean = vals.reduce((a, b) => a + b, 0) / vals.length;
-  return { mean, min: Math.min(...vals), max: Math.max(...vals), n: vals.length };
+  // ⚠ NOT `Math.min(...vals)` — the independent grid runs to ~10^5 cells and spreading that many
+  // arguments overflows the call stack (measured: RangeError at 78 125 on a 7-press plan). Fold.
+  let mean = 0, min = Infinity, max = -Infinity;
+  for (const v of vals) { mean += v; if (v < min) min = v; if (v > max) max = v; }
+  return { mean: mean / vals.length, min, max, n: vals.length };
 }
 
 const names = Object.keys(plans);
