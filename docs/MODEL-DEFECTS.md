@@ -569,6 +569,35 @@ search was exploiting.
     node tools/phase-audit.mjs --mode sweep --press berserking --from 35 --to 65
     node tools/phase-audit.mjs --mode pair --a '<schedule>' --b '<schedule>' --T 120
 
+## 8b. SECOND CONFIRMATION — Ex2's Icon press, isolated the same way
+
+Ex2 (`T=120 · Lust@0:10 · 1000 SP · 25 % crit`) is the case where the optimizer puts **Icon of the
+Silver Crescent at 0:05**, five seconds ahead of Bloodlust, and the user puts it **with** Bloodlust.
+The user's reason is the composition table's `haste × value` term: a +SP window is worth more where
+casts are fastest, so it wants to sit inside Lust, not straddle its edge.
+
+Hold every other press at ground truth, move the Lust pin onto the cast boundary (10.998), and sweep
+Icon alone:
+
+| Icon at | Δ point | Δ phase-mean | Δ sim |
+|---|---|---|---|
+| 2.000 | −0.4014 | −0.4014 | −0.3837 |
+| 4.000 | −0.2779 | −0.2779 | −0.2648 |
+| **5.000** (what the tool emits) | −0.1544 | −0.2470 | **−0.1470** |
+| **10.998** (with Lust) | **0.0000** | **0.0000** | **0.0000** |
+| 12.000 | −0.1235 | −0.0720 | −0.1177 |
+| 15.000 | −0.1930 | −0.1640 | −0.1848 |
+| 20.000 | −0.3088 | −0.2798 | −0.2958 |
+| 25.000 | −0.4246 | −0.3956 | −0.4064 |
+
+**argmax: point @10.998 · phase-mean @10.998 · sim @10.998 — unanimous, and it is the user's layout.**
+The point column tracks the sim to **≤ 0.008 casts on every row**.
+
+★ So the tool only prefers Icon@5 when Bloodlust is pinned **mid-cast**. Given the same fight the sim
+is given, its own point score already agrees with the user and with wowsims. That is the second
+independent confirmation of §1–§3, on a different cooldown, a different fight, and a **value** buff
+rather than a haste one.
+
 ## 9. What is still open
 
 1. **Cost.** The phase-mean is N× `simulate()`. It cannot go into the search at N=48 as-is. Two routes:

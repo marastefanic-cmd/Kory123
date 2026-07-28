@@ -201,15 +201,37 @@ ground-truth tally goes 0/4 → 2/4 with every residual 5–10× smaller.
 
 1. ~~Settle the neighbourhood~~ ✅ — one lattice period, phase of the lattice against the wall clock.
    No free parameter.
-2. **Make it affordable.** N=48 `simulate()` calls per score cannot go in the search. Two routes, and
-   the first is much better if it works:
-   * **analytic** — charge each haste-window edge and the kill their phase *expectation* inside the
-     walk (O(1), exact, no averaging). The phase term has a closed form: the overhang past an edge is
-     uniform over the interval, so its expected value is `(1/i_fast − 1/i_slow) · i_fast / 2`.
-   * **low-N average** — measure the error against N=48 and pick the smallest N that holds the ranking.
-   ⚠ Pre-register the acceptance test before writing either, or this becomes the fifth tuned term
-   (PHASE12 §6.1–§6.3).
-3. **Re-rank on it in the search**, where cast-count changes are legal (`structuralSnap` is eliminated).
+2. **Make it affordable — MEASURED 07-28, and the two obvious routes both have a problem.**
+   * **low-N average.** Convergence measured on the Berserking sweep and the four pairs:
+
+     | N | Berserking argmax | ground-truth pairs |
+     |---|---|---|
+     | 1 (today) | @57 outside ✗ | 0/4 |
+     | 2 | @50 inside ✓ | 1/4 |
+     | 3 | @50 inside ✓ | 1/4 |
+     | 4 | @50 inside ✓ | 3/4 |
+     | 6–8 | @45–50 inside ✓ | 1–2/4 |
+     | 12–48 | @45 inside ✓ | **2/4, stable** |
+
+     ⚠ **Low N is not "cheaper", it is NOISIER**, and the 3/4 at N=4 is that noise, not a better answer
+     — it does not survive to N=8. The single-press verdict is robust from N=2, but the full-layout
+     verdicts only settle at N≈12. ⇒ budget **12×**, not 2×.
+   * **analytic.** ⛔ **Not the two-line correction it looks like.** Sketched and rejected 07-28: the
+     per-edge overhang really is uniform, but the phase-mean slides *one* wall offset δ, so every
+     segment's length moves together — the per-segment factorisation that would give a closed form
+     does not hold, and a naive "+½ per segment" term rewards layouts for having *more* haste
+     segments. It needs a real derivation, not an inline fix.
+
+   ⇒ **The affordable shape is neither: keep the point score for SEARCH, phase-mean only to CHOOSE.**
+   The search's job is to find basins, and its discrimination there is far coarser than 0.2 casts. The
+   phase term only decides between finalists. So: run `optimizeCore` unchanged, then a bounded
+   coordinate-descent polish under the phase-mean from its winner. Cost is `moves × N` **once**, not
+   per search step.
+   ⚠ Pre-register the acceptance test before writing it, or this becomes the fifth tuned term
+   (PHASE12 §6.1–§6.3). The test should be: A1 green, A2/A3 green or tied, `plan-diff` shows no cell
+   losing phase-mean score, and `phase-audit --mode anchor` reads STABLE.
+3. **Re-rank on it after the search**, where cast-count changes are legal (`structuralSnap` is
+   eliminated as a host — it refuses cast-count changes by design).
 4. **Chase the residual.** A3 (−0.017 casts) and Ex2 (−0.089) still rank the optimizer's layout first
    under the phase-mean. Isolate those the way Berserking was isolated — single press at a time, model
    against sim, **with the Lust pin moved onto a cast boundary** so the sim is a legitimate arbiter

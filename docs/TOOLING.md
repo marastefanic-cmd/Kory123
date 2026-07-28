@@ -526,6 +526,20 @@ Lesson 7 above is the instrument for the second axis; lessons 1–4 are the firs
     shows a spurious loss vs an interior placement (the sim drops the truncated tail casts; the model credits
     them proportionally). When cross-checking placement, keep the buff **interior** (lengthen `--dur`) or the
     fight-end masquerades as a real placement effect. Verified: IV pre-Lust ≡ post-Lust to 0.00% once interior.
+- **`tools/phase-audit.mjs`** ★★★ (durable, **no sim, no rig — runs from a bare clone**): measures how
+  much of a ranking is decided by an input the user cannot supply. `--mode anchor` (default) slides a
+  wall event — a Bloodlust call, an intermission edge — across **one cast interval**, every value of
+  which is the same instruction, and prints the answer each ranking gives; it labels the ranking
+  **STABLE** or **UNSTABLE** and says how many different answers it produced. `--mode sweep` puts the
+  point score and the phase-mean side by side over one press. `--mode pair` scores two named schedules
+  under both.
+  This is the instrument behind `docs/MODEL-DEFECTS.md` D1 §3, where the shipped ranking returns **four
+  different Berserking placements** across 1.5 s of *"the shaman lusts at 0:20"* and the phase-mean
+  returns one. It refuses to print from a pre-PHASE12 engine (no `casts[].frac`) rather than produce
+  numbers about the retired objective.
+  ⚠ The averaging randomiser is the whole content of the tool and it is easy to invert — read its
+  header before adapting it. It slides the **lattice against the wall clock**, not the presses against
+  the lattice; the second is a thing the player controls and averaging over it measures nothing.
 - **`tools/lattice-ripple.mjs`** ⛔ **— HISTORICAL as of 07-27, like `ripple-audit` above.** It derives
   the **tail-lattice ripple** — the sum-vs-integral residual between the sim's expected damage and the
   model's **rate integral** — and neither side of that comparison is HEAD any more (§6.10 retired the
