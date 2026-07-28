@@ -1101,6 +1101,43 @@ millisecond sweep puts its 34→35 flip at **slip = 0.764 s** against the arithm
 * To actually sim an off-boundary external you would have to apply the aura outside the APL
   (a raid-buff timeline entry, not a `castSpell`). Nothing in this repo does that today.
 
+#### ★★★★ AND IT BIASES *EVERY* DUEL ON A LUSTED FIGHT — worth 0.21 casts, enough to invert a ranking. THE WORKAROUND IS ONE LINE (07-28)
+
+The paragraph above says the sim cannot resolve two Lust placements *inside* one cast interval. That is
+the small half. **The large half is that the snap moves the aura's FAR end too, and that is where it
+costs** — so a duel between two layouts that both pin Lust at 20.000 is still contaminated, because the
+sim is not simulating a Lust at 20.000 at all.
+
+    model   Lust called 20.000  ⇒  aura [20.000, 60.000]
+    wowsims same plan, same pin ⇒  aura [20.415, 60.415]     ← the mage's next boundary, both ends
+
+Combat-log confirmed (`Aura gained 20.41 … faded 40.41` for the Cold-Snap Icy Veins on the same plan).
+The 0.415 s at the front is dead time in both engines — neither speeds up a cast in flight. The 0.415 s
+at the **back** is live: a cast starting at 60.242 is inside the sim's Lust and outside the model's, and
+that single cast is worth **0.21 casts** of score once the faster interval it unlocks is counted.
+
+⚠ **It does not apply uniformly across arms, which is why it inverts rankings rather than cancelling.**
+It pays out only on layouts whose lattice happens to put a cast start inside the 0.415 s sliver. Across
+a nine-point Berserking sweep it was worth **+0.207 casts on four arms and 0.000 on the other five** —
+a step function, not an offset. Two arms swapped order because of it.
+
+★ **THE WORKAROUND, AND IT IS FREE: pin the external ON a cast boundary.** Then both engines describe
+the same fight and the disagreement disappears:
+
+| Bloodlust pinned at | mean \|Δmodel − Δsim\| over 9 layouts |
+|---|---|
+| 20.000 (mid-cast) | **0.207 casts** — and the argmax inverts |
+| 20.415 (on the boundary) | **0.0019 casts** |
+
+That second row is the strongest model/sim agreement this project has measured, and it is what cleared
+the scorer in `docs/MODEL-DEFECTS.md` D1 §1. Get the boundary from the model's own board —
+`simulate(s, cfg, true).casts` — never by guessing.
+
+⇒ **Standing rule: a sim duel on a Lusted fight is only an arbiter if the Lust pin is a cast boundary.**
+If it is not, the sim is answering about a fight 0.415 s different from the one the tool planned, and
+the sign of its verdict is not trustworthy at the 0.2-cast scale — which is the scale of every
+interaction in `docs/ESTABLISHED-FACTS.md` Part II.
+
 ## ★★ Should we sim NAKED / hit-capped / no-crit / no-damage-roll to make the numbers cleaner? (07-25)
 
 A user question worth a standing answer, because four of the five ideas in it are safe-but-not-worth-it,

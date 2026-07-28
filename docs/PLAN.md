@@ -178,3 +178,49 @@ not a substitute for it.
 
 ⇒ Rebuilding now would mean re-deriving the verified half in order to reach the same open question. The
 open question is cheap to answer and the answer is what tells you which half to rebuild.
+
+---
+
+# ✅ STEP 1 IS ANSWERED — 07-28. And the answer changes step 2's shape
+
+Full evidence: `docs/MODEL-DEFECTS.md`, *"★★★★★★ THE MECHANISM"*. Instrument:
+`node tools/phase-audit.mjs`. In one paragraph:
+
+**The scorer is exact** — it reproduces wowsims' cast count to **0.002 casts** across nine layouts once
+both engines are handed the same fight, and at that point it already picks Berserking *inside* Bloodlust.
+The defect is that the fight it is handed is **over-specified**: "the shaman Lusts at 0:20" is an input
+known to the second, and the ranking's answer changes **four times** as that call slides across one
+1.5 s cast interval. The phase-mean gives **one** answer across the same interval.
+
+**Neither candidate width from step 1 was right, and the reason is the randomiser, not the width.** Both
+averaged over *press* offsets — moving presses against a fixed lattice. A player controls that. What
+they do not control is where their cast stream sits against the raid's clock. Slide **that** and the
+ground-truth tally goes 0/4 → 2/4 with every residual 5–10× smaller.
+
+## Revised order from here
+
+1. ~~Settle the neighbourhood~~ ✅ — one lattice period, phase of the lattice against the wall clock.
+   No free parameter.
+2. **Make it affordable.** N=48 `simulate()` calls per score cannot go in the search. Two routes, and
+   the first is much better if it works:
+   * **analytic** — charge each haste-window edge and the kill their phase *expectation* inside the
+     walk (O(1), exact, no averaging). The phase term has a closed form: the overhang past an edge is
+     uniform over the interval, so its expected value is `(1/i_fast − 1/i_slow) · i_fast / 2`.
+   * **low-N average** — measure the error against N=48 and pick the smallest N that holds the ranking.
+   ⚠ Pre-register the acceptance test before writing either, or this becomes the fifth tuned term
+   (PHASE12 §6.1–§6.3).
+3. **Re-rank on it in the search**, where cast-count changes are legal (`structuralSnap` is eliminated).
+4. **Chase the residual.** A3 (−0.017 casts) and Ex2 (−0.089) still rank the optimizer's layout first
+   under the phase-mean. Isolate those the way Berserking was isolated — single press at a time, model
+   against sim, **with the Lust pin moved onto a cast boundary** so the sim is a legitimate arbiter
+   (TOOLING, "it biases every duel on a Lusted fight").
+5. Then the goldens, as above.
+
+## ⚠ Two traps this created
+
+* **Do not un-retire the rate integral.** The integral is the phase *expectation* and that is why it
+  ranked the user's layouts first — but it also over-pays a partial cast at a window's back edge
+  (PHASE8 §25.5) and cannot express the two snapshot rules. Phase-averaging the **exact sum** keeps
+  what PHASE12 got right and drops only the phase degree of freedom. PHASE12 §6.10 stands.
+* **Do not read a sim duel on a mid-cast Lust pin as an arbiter.** It is measuring a fight 0.415 s
+  different from the planned one, worth 0.21 casts, applied to some arms and not others.

@@ -20,8 +20,15 @@ into one document, neither reads cleanly, and the facts file becomes hard to tru
 
 ## D1 — the model resolves sub-cast lattice phase as though it were damage
 
-**Status: OPEN. Mechanism not established. Two witnesses, one bug** — a third was withdrawn on 07-28
-(see below), which is why the count in older commits reads three.
+**Status: OPEN, MECHANISM ESTABLISHED 07-28. ⚠ And the name above is now MISLEADING — read
+*"★★★★★★ THE MECHANISM"* below before anything else in this entry.** In short: the scorer is **not**
+booking phase as damage. It is exact, and it reproduces wowsims' cast count to **0.002 casts** once
+both are handed the same fight. The defect is one layer up — the fight it is handed is
+**over-specified**, and the ranking resolves a sub-second input the user cannot supply. Several
+paragraphs below were written against the older reading and are bannered where they sit.
+
+**Two witnesses, one bug** — a third was withdrawn on 07-28 (see below), which is why the count in
+older commits reads three.
 
 The model books *where the cast lattice happens to land* as real expected damage. Because a cooldown's
 placement shifts every cast after it, a placement that is genuinely worth the same can come out ahead
@@ -424,6 +431,155 @@ where cast-count changes are legal — in what the search RANKS.**
 ⚠ Note the sub-finding, which is D1 stated at its sharpest: the model believes the outside-Lust layout
 fits **one more cast** (94 vs 93) and that extra cast is worth more than a +0.2056-cast interaction.
 The sim disagrees on both counts. The 94th cast is a boundary-credit artifact at one lattice phase.
+
+---
+
+# ★★★★★★ THE MECHANISM — established 07-28, and it clears the scorer
+
+Everything above this line was written while the mechanism was unknown, and several of its framings are
+falsified by what follows. **The scorer is not the defect.** Read this section before acting on any
+earlier one.
+
+## 1. The scorer is EXACT. Measured, against wowsims, at 0.002 casts
+
+Hand both engines the *same* fight and the per-cast sum reproduces wowsims' Arcane Blast count to the
+third decimal. Nine Berserking placements, `T=120 · h=0 · 1000 SP · 25 % crit · Icy Veins 0/BL ·
+Bloodlust pinned on a cast boundary (20.415)`, 3 seeds × 10 000 iterations:
+
+| Berserking | model Σfrac | sim casts | Δ model | Δ sim |
+|---|---|---|---|---|
+| @35 | 92.5594 | 92.5450 | −0.5801 | −0.5815 |
+| @40 | 93.1395 | 93.1258 | **0.0000** | −0.0007 |
+| @45 | 93.1395 | 93.1265 | 0.0000 | **0.0000** |
+| @50 | 93.1395 | 93.1265 | 0.0000 | 0.0000 |
+| @53 | 92.8812 | 92.8718 | −0.2583 | −0.2547 |
+| @55 | 92.9226 | 92.9130 | −0.2170 | −0.2135 |
+| @57 | 92.9640 | 92.9510 | −0.1756 | −0.1755 |
+| @60 | 92.9146 | 92.9062 | −0.2250 | −0.2203 |
+| @65 | 92.9352 | 92.9252 | −0.2043 | −0.2013 |
+
+**Mean |Δmodel − Δsim| = 0.0019 casts.** The point ranking's answer is @40 — *inside* Bloodlust, which
+is the user's ground truth and ESTABLISHED-FACTS P4. Nothing is wrong with the arithmetic.
+
+⇒ **Retire the reading that D1 is a scoring error.** It is not, and the four rebuild/objective framings
+that assumed it was were all chasing the wrong layer.
+
+## 2. So why does the same scorer prefer Berserking OUTSIDE Bloodlust on the ground-truth cases?
+
+Because the ground-truth cases pin Bloodlust at **20.000**, and that is a different fight.
+
+Bloodlust is a raid external: its aura runs `[call, call + 40]`. The useful part starts at your next
+cast boundary, so a call at 20.000 and a call at 20.415 buy **different amounts of casting**, and the
+difference lands entirely at the far end — a cast starting at 60.242 is inside a 20.415 Lust and
+outside a 20.000 one. Measured worth of that 0.415 s: **0.21 casts.**
+
+That is larger than the interaction the plan is supposed to be resolving (Berserking × Bloodlust,
+**+0.2056 casts**, ESTABLISHED-FACTS P4).
+
+## 3. The consequence, and it is the whole defect — `node tools/phase-audit.mjs`
+
+Slide the Bloodlust call across **one cast interval** — 20.000 to 21.500, every value of which is the
+same instruction, *"the shaman lusts at 0:20"* — and ask each ranking where Berserking goes:
+
+| Bloodlust called at | point ranking picks | phase-mean picks |
+|---|---|---|
+| 20.000 | @57 — **outside** ✗ | @45 — inside ✓ |
+| 20.375 | @40 — inside ✓ | @45 — inside ✓ |
+| 20.750 | @45 — inside ✓ | @45 — inside ✓ |
+| 21.125 | @53 — **outside** ✗ | @45 — inside ✓ |
+| 21.500 | @53 — **outside** ✗ | @45 — inside ✓ |
+| | **UNSTABLE — 4 answers** | **STABLE — 1 answer** |
+
+**The tool's answer to a question posed to the second is decided at the 100 ms.** That is D1, and it is
+not a defect of the scorer — it is a defect of *what gets ranked*.
+
+## 4. The fix, and it has NO free parameter
+
+The phase of the player's cast stream against the raid's clock is set by pull reaction, latency, and
+every global that is not an Arcane Blast. After a minute of casting it is **uniform over one interval**
+and no player controls it. A planner may therefore only rank on a quantity that is **invariant** to it:
+
+> score = the per-cast sum, averaged over the lattice's phase against the wall clock.
+
+The averaging width is **one full lattice period** — that is what makes it a phase average rather than
+a smoothing, so there is nothing to tune. (Contrast the ±1.0 s "execution error" width tried earlier,
+which was an empirical claim about players and was chosen because it gave the wanted answer.)
+
+⚠⚠ **THE RANDOMISER IS THE FINDING AND THE EARLIER ATTEMPT HAD IT BACKWARDS.** The 0/4 result recorded
+above averaged over **press offsets** — moving each press against a fixed lattice. That is the wrong
+unknown: a player *does* control when they press relative to their own casting, because they press
+between casts. What they do not control is where the cast stream sits relative to the raid's clock. So
+the lattice slides and the wall events stay:
+
+    engine t = 0 IS the first cast
+    ⇒ "lattice δ later" == every wall event, every press, and T, δ EARLIER
+
+That one sign change is the difference between 0/4 and the table below.
+
+## 5. Re-running step 1 with the correct randomiser
+
+Ground truth ranked above the optimizer's own layout, all four locked cases, `--mode pair`:
+
+| case | point: gt − model | phase-mean: gt − model |
+|---|---|---|
+| A2 · 2:00 · Lust@0:20 | −0.1039 casts ✗ | **+0.0439 casts ✓** |
+| A3 · 3:00 · Lust@0:20 | −0.1788 casts ✗ | −0.0168 casts ✗ |
+| Ex2 · 2:00 · Lust@0:10 | −0.4151 casts ✗ | −0.0890 casts ✗ |
+| Ex1 · 2:45 · Lust@0:10 | −0.2098 casts ✗ | **+0.0083 casts ✓** |
+| | **0/4** | **2/4** |
+
+**Not a fix on its own, and it should not be reported as one.** But every residual shrinks by 5–10×,
+and the two that still lose do so by 0.017 and 0.089 casts — inside and near `BENCH.tieBandPct`
+respectively, where D2's structural tie-break is the right arbiter rather than the score.
+
+## 6. Where the margin actually lives — the body is INVARIANT
+
+Decomposing A2's twelve candidate layouts into *casts that complete before T* and *the terminal partial
+cast*:
+
+| | spread across all 12 layouts |
+|---|---|
+| body (92 full casts) | **173737 — identical in every one, to the digit** |
+| terminal partial cast | 829 → 1720 |
+
+Every haste cooldown's entire contribution to the objective, at this fight length, is expressed through
+**one partial cast at the kill**. That is not a bug — haste's payoff genuinely is "did one more cast
+fit" — but it means the ranking has exactly one channel, and that channel is phase.
+
+## 7. ⇒ It also retro-explains PHASE12's 0.2114 %
+
+PHASE12 retired the rate integral because it disagreed with the per-cast sum by a **median 0.2114 % of
+score**. One cast at this setup is 1/93 = 1.075 % of score, so **0.2114 % = 0.197 casts** — the same
+0.2 casts measured here as the lattice-phase term, from a completely independent direction.
+
+★ The integral is the phase *expectation*; the sum is the phase *realisation*. They differ by exactly
+the phase term. PHASE12 was right that the sum is the exact account **of a fight whose phase you know**,
+and right to rank on it rather than on an approximation. What was not asked is whether the phase is
+knowable. It is not.
+
+⛔ **This is NOT a licence to un-retire the integral, and PHASE12 §6.10's rejection stands.** The
+integral also over-pays a partial cast at a window's back edge (PHASE8 §25.5) and cannot express the
+two snapshot rules exactly. The phase-mean of the exact sum keeps everything PHASE12 got right —
+per-cast values, both snapshot rules, boundary credit — and removes only the degree of freedom the
+search was exploiting.
+
+## 8. Reproduction
+
+    node tools/phase-audit.mjs                      # the anchor-slide table (§3)
+    node tools/phase-audit.mjs --mode sweep --press berserking --from 35 --to 65
+    node tools/phase-audit.mjs --mode pair --a '<schedule>' --b '<schedule>' --T 120
+
+## 9. What is still open
+
+1. **Cost.** The phase-mean is N× `simulate()`. It cannot go into the search at N=48 as-is. Two routes:
+   charge each haste-window edge and the kill their phase *expectation* analytically inside the walk
+   (O(1), no averaging), or average at low N and measure the error. Neither is written.
+2. **A3 and Ex2 still lose**, by 0.017 and 0.089 casts. Those layouts differ from ground truth in more
+   than one press, and the residual has not been isolated to a press the way Berserking was.
+3. Whether the same slide should be applied to **intermission and AoE walls**, which are also
+   externally anchored and also specified to the second.
+
+---
 
 ## ⛔ D3 — WITHDRAWN THE SAME DAY. It is not Icy Veins × Bloodlust; it is BLOODLUST ALONE, and it is the harness
 
