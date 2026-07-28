@@ -3642,37 +3642,26 @@ function optimizeCore(cfg, starts, onProgress) {
                   await breathe();
                 }
               }
-              // a Cold-Snapped IV whose window is cut by the kill falls under
-              // "always press what's ready when the fight is ending" — burn it
-              // for any real gain; a mid-fight reset must be worth a full cast
-              const endChain = Math.max(...champ.s.icyVeins) > cfg.T - BUFFS.icyVeins.dur;
-              // CS that only REPOSITIONS the IVs — same count as the best no-CS plan,
-              // because the fight can't fit an extra IV either way — buys nothing
-              // scarce, so it's a FREE sequence/spread gated by a sub-cast sliver, not
-              // the full "is the extra IV worth burning CS" bar. Only CS that genuinely
-              // ADDS a use keeps that bar. (3:20: CS frees IV1 off 0:00 to sequence into
-              // Lust, same 2-IV count as natural — a +3.6 opener the full bar would veto.)
-              // "Adds a use" is measured by VALUE, not count: at high gear haste CS's real
-              // job can be to slide an IV fully OFF a near-floored Lust (RULES §5) while
-              // the count incidentally rises by a barely-useful IV parked on the floored
-              // window (marginal value ~0). Trim champ to the no-CS count by dropping its
-              // least-valuable IV; if that costs < a cast, the extra IV is incidental and
-              // CS is really REPOSITIONING — the sub-cast regime — so holding it back to
-              // the worse no-CS LAYOUT (bestN, e.g. the cluster glued off Lust) would
-              // forfeit a real gain. (h200 4:00 opener: 3-IV champ 476318 vs glued 475101;
-              // its extra IV on floored Lust is worth ~+44, so the +1173 is repositioning.)
-              let csAddsUse = (champ.s.icyVeins || []).length > ivsN.length;
-              if (csAddsUse && (champ.s.icyVeins || []).length > 1) {
-                const ivc = champ.s.icyVeins;
-                let bestTrim = 0;
-                for (let di = 0; di < ivc.length; di++) {
-                  const cand = cloneS(champ.s);
-                  cand.icyVeins = ivc.filter((_, j) => j !== di);
-                  bestTrim = Math.max(bestTrim, simulate(repair(cand, cfg), cfg).robust);
-                }
-                if (champ.val - bestTrim < castVal) csAddsUse = false; // the extra IV isn't worth a use → repositioning regime
-              }
-              const bar = (endChain || !csAddsUse) ? castVal / 8 : castVal;
+              // ★★★ COLD SNAP IS SPENT FOR ANY GAIN AT ALL — user ruling 07-28, verbatim:
+              // *"There's no reason to not use cold snap for an extra IV. The cooldown will be ready
+              // for the next boss, always. As long as using Coldsnap gains you anything at all,
+              // either getting in more Icy veins uptime, or just repositioning it to a better spot,
+              // it needs to be used."*
+              //
+              // ⛔ WHAT THIS DELETES, and why the deletion is the point. The bar used to be
+              // `(endChain || !csAddsUse) ? castVal/8 : castVal` — a **whole effective cast** whenever
+              // Cold Snap ADDED an Icy Veins use, on the reasoning that *"a mid-fight reset must be
+              // worth a full cast"*. That is a scarcity argument, and Cold Snap is not scarce on the
+              // timescale that matters: its 8-minute cooldown outlives the pull, and there is nothing
+              // after the kill to save it for. So the bar was pricing a resource whose only
+              // alternative use is *never*. It was also the last place the search would knowingly
+              // emit a plan it had itself scored LOWER.
+              //
+              // Deciding which regime applied cost real work, all of it now gone: `endChain` (is the
+              // last CS window clipped by the kill), `csAddsUse` (does CS raise the IV count), and the
+              // `bestTrim` loop — a `simulate(repair(...))` per Icy Veins use, to ask whether the
+              // extra IV was worth a cast on its own. One tolerance replaces all three.
+              const bar = TIE_TOL;
               // ★ Re-score the plan we are about to EMIT.  `normalize()` runs after the last
               // simulate() and coPressAlign spends a designed pressability trade of up to
               // castVal/8; carrying the pre-transform `val` therefore reported the score of a
@@ -3681,10 +3670,10 @@ function optimizeCore(cfg, starts, onProgress) {
               // pre-transform values: it records the margin the branch was DECIDED on.
               if (bestN.val >= champ.val - bar) {
                 const sOut = await canonicalWindowOrder(await normalize(bestN.s));
-                return { s: sOut, val: simulate(sOut, cfg).robust, csNote: { held: true, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: bestN.squeakNote };
+                return { s: sOut, val: simulate(sOut, cfg).robust, csNote: { held: true, delta: Math.round(champ.val - bestN.val) }, squeakNote: bestN.squeakNote };
               } else {
                 const sOut = await canonicalWindowOrder(await normalize(champ.s));
-                return { ...champ, s: sOut, val: simulate(sOut, cfg).robust, csNote: { held: false, delta: Math.round(champ.val - bestN.val), castVal, endChain }, squeakNote: best.squeakNote };
+                return { ...champ, s: sOut, val: simulate(sOut, cfg).robust, csNote: { held: false, delta: Math.round(champ.val - bestN.val) }, squeakNote: best.squeakNote };
               }
             });
           }
@@ -5052,11 +5041,20 @@ function debugExportText() {
   L.push("", "--- SIM TRANSCRIPTION (tools/bench.mjs / sim/planspec.mjs) ---");
   try {
     const A = planToSpecInline(run);
+    const B = customR ? planToSpecInline(CUSTOM.run || { cfg, best: { s: CUSTOM.s }, optR: customR }) : null;
     L.push(`model plan spec:  ${JSON.stringify(A.spec)}`);
-    if (customR) L.push(`custom spec:      ${JSON.stringify(planToSpecInline(CUSTOM.run || { cfg, best: { s: CUSTOM.s }, optR: customR }).spec)}`);
+    if (B) L.push(`custom spec:      ${JSON.stringify(B.spec)}`);
     if (A.skipped.length) L.push(`⚠ not transcribable (absent from BOTH arms): ${A.skipped.join(", ")}`);
     if (A.burn) L.push(`⚠ this fight has a Burn phase — wowsims has no "AB damage xN" knob, so it cannot be simmed at all.`);
-    else L.push(`reproduce:        node tools/bench.mjs --char model-ref --spec-a '${JSON.stringify(A.spec)}' --T ${cfg.T} --haste ${cfg.hasteRating} --sp ${cfg.sp} --crit ${cfg.critPct}${A.targets > 1 ? ` --targets ${A.targets}` : ""}`);
+    // ★ THE COMMAND MUST REPRODUCE THE COMPARISON THE EXPORT IS ABOUT. When there is a hand-edited
+    // timeline, the whole point of the export is *model vs custom* — and this line emitted only
+    // `--spec-a`, so pasting it duelled the model plan against nothing and the reader had to
+    // hand-assemble the `--spec-b`. Reported by the user 07-28, having done exactly that.
+    // ⚠ Same defect family as the `--targets` omission fixed earlier: a "ready-to-run" command that
+    // silently drops half of what it is documenting is worse than printing no command at all.
+    else L.push(`reproduce:        node tools/bench.mjs --char model-ref --spec-a '${JSON.stringify(A.spec)}'` +
+      (B ? ` --spec-b '${JSON.stringify(B.spec)}'` : "") +
+      ` --T ${cfg.T} --haste ${cfg.hasteRating} --sp ${cfg.sp} --crit ${cfg.critPct}${A.targets > 1 ? ` --targets ${A.targets}` : ""}`);
   } catch (e) {
     L.push(`(transcription unavailable: ${String(e && e.message || e)})`);
   }

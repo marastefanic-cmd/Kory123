@@ -425,8 +425,13 @@ Lust** (its fastest casts). No hard breakpoint to hardcode — it emerges from t
   trust-anchored at h0.
 - **Consistent across the WHOLE gear-haste range now** (h50…h300, 4:00 fight: opener cluster on Lust at
   every level). The last hold-out — a narrow ~h200 band where the exit layout needs Cold Snap and the
-  CS-materiality gate mis-vetoed it as "adds a use" — is **fixed** by measuring adds-use by **value not
-  count** (§8, last bullet). No per-haste rule; it falls out of the floor math + the value-based CS gate.
+  CS-materiality gate mis-vetoed it as "adds a use" — was **fixed** by measuring adds-use by **value not
+  count** (§8, last bullet). No per-haste rule; it falls out of the floor math + the CS gate.
+  ⇒ ⛔ **AND THE GATE ITSELF IS NOW GONE (user ruling 07-28)** — `bar = TIE_TOL`, so Cold Snap is spent
+  for *any* gain and there is no longer an adds-use question to get wrong. The mis-veto this bullet
+  describes cannot recur, and the value-vs-count refinement that fixed it is deleted along with the
+  thing it was refining. The ruling: *"the cooldown will be ready for the next boss, always"* — an
+  8-minute reset is not scarce inside one pull. ARCHITECTURE carries the deletion list.
 
 ## 6. Spellpower × Arcane Power is multiplicative
 

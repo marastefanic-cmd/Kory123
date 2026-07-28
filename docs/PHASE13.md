@@ -760,6 +760,49 @@ claim of optimality. Optimality needs enumeration, and that is what the rest of 
 
 ---
 
+### 3.3 ✅ CLOSED 2026-07-28 — Cold Snap is spent for any gain at all
+
+I had flagged the Cold-Snap materiality bar as *"a different question wearing a similar shape"*: it
+gates only the case where a reset **adds** an Icy Veins use (a kill-cut reset and a pure repositioning
+already passed at a sub-cast sliver), and its rationale was scarcity — *"a mid-fight reset must be
+worth a full cast"* — rather than aesthetics, so the legibility ruling did not obviously reach it. The
+user settled it:
+
+> *"There's no reason to not use cold snap for an extra IV. The cooldown will be ready for the next
+> boss, always. As long as using Coldsnap gains you anything at all, either getting in more Icy veins
+> uptime, or just repositioning it to a better spot, it needs to be used."*
+
+**The scarcity premise was simply false.** Cold Snap's cooldown is **8 minutes** — it outlives the pull,
+and there is nothing after the kill to save it for. The bar was pricing a resource whose only
+alternative use is *never*. ⇒ `bar = TIE_TOL`.
+
+**What the deletion removed,** because deciding *which* bar applied was not free:
+
+| deleted | what it did |
+|---|---|
+| `endChain` | is the last Cold-Snapped window clipped by the kill? |
+| `csAddsUse` | does Cold Snap raise the Icy Veins **count**? |
+| the `bestTrim` loop | a `simulate(repair(…))` **per Icy Veins use** — trim the champ to the no-CS count by dropping its least-valuable IV, to ask whether the extra IV was worth a cast on its own |
+
+⚠ That last one was a **real fix for a real mis-veto** (the ~h200 hold-out; RULES §8's "adds-use by
+value, not count"). It is deleted along with the thing it was refining — one tie tolerance subsumes the
+whole question. Do not restore the refinement without restoring the bar it corrected.
+
+**Measured: 0 better · 1 tie · 0 regressions** over the 25 shipped presets; −2 lone press rows; sweep
+~6 % faster (451 s vs 479 s) with the trim loop gone.
+
+⚠⚠ **Report that honestly: the bar was never binding on this corpus** — which is precisely why it
+survived. It is removed for **correctness**, not for a number: it was the last place the search would
+knowingly emit a plan it had itself scored lower. It may well bind on a setup outside these 25 cases.
+
+⚠ **Cold Snap's semantics are unchanged**, and they are what make the ruling correct. `repair()` lets an
+Icy Veins press land while IV is on cooldown *if* Cold Snap is available, then **restarts the 180 s
+cadence from that press**; `prevEnd` still forbids overlapping IV windows. That is the user's own
+second phrasing — *"once per fight you can activate icy veins even if it's on cooldown, but doing so
+will reset it's cooldown back to 3 minutes"* — line for line. Verified against the code, not assumed.
+
+---
+
 ## §4 ENFORCEMENT — make "the last geared run" a guarantee, not an intention
 
 Inherited from archived PHASE12 §1.1e. The user asked for a guarantee; a note in a doc is not one.
