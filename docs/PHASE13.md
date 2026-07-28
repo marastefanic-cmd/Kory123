@@ -35,13 +35,17 @@ exact-match          25 passed, 0 failed          self-consistency   0.00e+0 / 3
     TIMELINE change before the line diff)         board-agreement counters 0
                                                       corpus GENERATED — no cache, bare clone,
                                                       460 699 casts in 0.78 s
+★ 07-28: the SEARCH is monotone too — `finishLine` can no longer return worse than it entered,
+   and the legibility budget is a tie-break rather than a damage trade (§3.1). All THREE recorded
+   search witnesses reached. ⚠ Monotone ≠ optimal; optimality needs enumeration.
 window-span  PASS 6/6 offsets  (⚠ it had NO assertion until 07-27 — CLAUDE.md called it a gate
                      and it exited 0 whatever the two columns said; §2.6)
 credit-check pass    snapshot-rule pass
 wall-credit  pass    sim-duel      pass           sim-request        9/9 (native runner)
 window-match pass    7.8x tighter than the retired flat 0.5 (§2.4)
 press-headtohead     HELD 18 → 1 of 196 presses
-search-witnesses     2 known misses, 1 ROOT-CAUSED (§3.1) — the gate refuses an empty witness list
+search-witnesses     3 recorded misses, ALL REACHED 07-28 (§3.1) — kept, because a green witness
+                     closes a KNOWN hole and is not a claim of optimality
 model-audit          16 of 23 exact cast-for-cast (20 of 23 setting the sub-50 ms lattice aside);
                      unmatched casts 4, UNEXPLAINED 0
 ```
@@ -627,6 +631,101 @@ discards it can. ⚠ And the converse holds too, and is the more common case: wh
 `search-miss` says *better*, the timeline changed because the **optimum** changed, not because
 anything broke — that is exactly what §2.5's four moved cells are.
 
+### ✅ CLOSED 2026-07-28 — BOTH WITNESSES REACHED, on a user ruling that reframed the question
+
+**The user's correction, and it dissolved the "product decision" this section was blocked on:**
+*"That's a misunderstanding. I want the perfect plan, I just want the timeline/schedule rounded to
+something legible, as defined previously."*
+
+⛔ **My framing of fix A as a trade was wrong, and the retraction matters more than the fix.** I had
+written that the entrant floor *"makes the QTOL legibility budget unspendable … nine of sixteen plans
+move to less co-pressed layouts … that is a product decision, not a search fix."* Two errors in one
+sentence: the ruling it invoked was never "trade damage for aesthetics" (legibility is a property of
+the **display** — press times print as whole seconds), and the claim about co-pressing was an
+**assertion nobody could measure**, because no instrument counted press rows. Built one
+(`tools/legibility.mjs`) and it comes out the other way — see below.
+
+**Two changes, measured separately.**
+
+**1. The entrant floor.** `finishLine` may not hand back something worse than what walked in. Grades
+`better 9 · tie 0 · REGRESSIONS 0` on the quick tier — including this section's own witness at +127.2.
+
+⚠⚠ **It has to WRAP the call, not sit above the final `return` — and that distinction cost a measured
+regression.** The Cold-Snap materiality block `return`s out of `finishLine` from inside a callback, so
+an inlined floor is skipped on exactly the fights whose tail rearranges most. First attempt did that:
+`1:40` +127.2 and Solarian +46.4 as intended, but **`3:20 lust 0:05 drums` −70.3**, because the
+un-floored arm still won at the call site. *A guarantee with an early-return hole is not a guarantee* —
+and note that the −70.3 is the same cell, and the same magnitude, that fix **B** was rejected for.
+
+**2. The legibility budget became a tie tolerance.** `QTOL` was `castVal` — a **whole Arcane Blast**,
+~0.77 % of a 130-cast fight, against margins this project argues about at 0.005–0.1 %; every
+groom/snap/merge pass could spend it and the losses compound. `coPressAlign` separately bought an
+eighth of a cast for a tidier line. Both are now `castVal/1000`, i.e. float-tie territory.
+
+★★ **AND THIS IS THE RESULT I HAD BACKWARDS: removing the budget made the plans MORE legible.** Every
+one of the 10 cells it moved is an **exact score tie**, and across them:
+
+| | before | after |
+|---|---|---|
+| press rows (seconds a player must hit) | — | **−16** |
+| lone rows (seconds carrying one press) | — | **−18** |
+| max cluster (macro group size) | — | **+12** |
+
+Solarian now presses **four** cooldowns on second 5; Hydross three on second 6; `3:20 drums` drops from
+12 rows to 9 and from 11 lone rows to 6. The budget had been letting passes wander to layouts that were
+*both* slightly worse *and* more scattered — and the stale high-water mark (`val = Math.max(val,
+pick.v)`) meant they never came back. Forcing the passes onto genuinely-free alignments lands them on
+the tight co-pressed ones. It is also **~44 % faster** (full 25-preset sweep 470 s vs 844 s): a search
+that cannot wander has less ground to cover.
+
+⇒ **Both recorded witnesses are now reached** — `1:40 lust 0:05` (196760.5, was −127.2) and
+**Kael'thas Sunstrider** (615370.6, the −50.8 logged the previous day, and never root-caused; fixing
+the monotonicity bug closed it too). `tests/search-witnesses.json` keeps them as *reached*, because the
+file's own rule is that a witness going green closes a **known hole** and is not a claim of optimality.
+
+**3. And then the budget turned out to have a SECOND job, which is why neither change alone was right.**
+
+Cutting `QTOL` flat cost one cell: **`7:20 lust 0:05`, −127.2 (0.017 %)** — with the signature
+`IV₂ 38→45, Zerk 20→36`, i.e. **the identical 2-cell needle as the `1:40` witness**, on a 440 s fight.
+That is the tell. `QTOL` was standing in for two unrelated policies:
+
+| job | what it bought | verdict |
+|---|---|---|
+| **aesthetic** — a co-pressed line, paid for in expected damage, up to a WHOLE cast | ⛔ **retired** by the 07-28 ruling — and it was not even achieving its own aim: cutting it moved 10 exact-tie cells by **−16 press rows** |
+| **search** — accept a worse INTERMEDIATE to tunnel out of a local optimum | ✅ **kept** — this is what `7:20` lost |
+
+**The resolution: run the tail under BOTH budgets and keep the better.** The floor is what makes
+tunnelling safe — a pass may wander anywhere provided the tail can never *return* worse than it
+entered — so the loose regime supplies reach, the tight one supplies tidiness, and the entrant floors
+both. **Ties go to the plan with fewer press rows**, which is the whole ruling in one line: damage
+first, legibility only where damage cannot tell the difference.
+
+**FULL 25-PRESET CORPUS, all three variants measured, no cell left unexplained:**
+
+| variant | damage (`search-miss`) | legibility (`legibility.mjs`) |
+|---|---|---|
+| floor only (budget kept) | 11 better · **0 regressions** | **+20 rows, +26 lone, −10 cluster** ✗ |
+| floor + flat tie tolerance | 11 better · 8 tie · **1 regression** | −6 rows, −4 lone, +5 cluster ✓ |
+| ★ **two regimes (shipped)** | **11 better · 7 tie · 0 REGRESSIONS** | **−8 rows, −7 lone, +6 cluster** ✓ |
+
+⇒ **All three recorded witnesses are reached** — `1:40` (196760.5), **Kael'thas** (615370.6, never
+root-caused; the monotonicity fix closed it), and `7:20`, which existed for the length of one
+configuration. All three are KEPT in `tests/search-witnesses.json`: a witness going green closes a
+**known hole** and is not a claim of optimality.
+
+★ **The lesson is worth more than the cells.** One tolerance had been standing in for two unrelated
+policies for months, and no measurement could separate them until they were separated *in the code*.
+The aesthetic reading was even self-defeating — it was buying scatter. ⚠ Do not "simplify" this back
+to a single `QTOL`.
+
+⚠ **The cost is a second pass over the finishing tail** (full sweep 479 s vs 459 s floor-only and 470 s
+tight-only — ~4 %, because the two regimes share the memoized scorer). If that ever matters, the
+principled optimization is a best-seen tracker inside the tail, not dropping a regime.
+
+---
+
+#### The original investigation, kept because the reasoning is the record
+
 It is recorded rather than papered over, in `tests/search-witnesses.json` with
 `tools/search-witnesses.mjs` as its gate. ⚠ The gate **refuses to pass on an empty witness list**, and
 says plainly that reaching a witness closes a **known hole** and is *not* a claim of optimality.
@@ -637,6 +736,27 @@ timeout. It now exits 0 explicitly.
 ⚠ Related: `tests/exact-match.mjs` now reports a failure as a **timeline change** (`Icy Veins 0:06 →
 0:00`) before the line diff — *"a failure that reads as a string mismatch invites 'just re-record it';
 one that reads as a moved press invites the right question."*
+
+---
+
+### 3.2 ✅ LANDED WITH §3.1 — the two-regime tail
+
+The proposal that lived here (*"floor the return against the best plan seen"*) was superseded by a
+cheaper construction that achieves the same guarantee: **run the tail twice, once per budget regime,
+and floor both against the entrant.** An entrant floor is the degenerate case where the tail's best is
+its final plan; two regimes recover the reach that a single tight budget loses, without needing a
+tracker at each of the tail's ~65 plan-update sites. Measured: 0 regressions, more legible. See §3.1.
+
+⚠ **Two implementation traps, both caught by measurement rather than by reading, both permanent:**
+1. **The floor must WRAP the call.** The Cold-Snap materiality block `return`s out of `finishLine` from
+   inside a callback, so a floor written above the final `return` is skipped on exactly the fights
+   whose tail rearranges most. Measured when inlined: `1:40` +127.2 as intended but **`3:20 drums`
+   −70.3**. A guarantee with an early-return hole is not a guarantee.
+2. **`castVal` and `TIE_TOL` are hoisted OUT of `finishLine`** so the wrapper can name them. When they
+   were not, every sweep child died instantly — the good kind of failure.
+
+**Still open here:** the search is monotone and reaches every recorded witness, which is **not** a
+claim of optimality. Optimality needs enumeration, and that is what the rest of §3 is for.
 
 ---
 

@@ -730,6 +730,65 @@ landed. PHASE13 §3.1.
 
 ---
 
+### 07-28 — one number was standing in for two policies, and nobody could see it
+
+The user, correcting me: *"That's a misunderstanding. I want the perfect plan, I just want the
+timeline/schedule rounded to something legible, as defined previously."*
+
+I had deferred a search fix to them as a product decision, on the grounds that it *"spends the
+legibility budget you ruled on"* and that *"nine of sixteen plans move to less co-pressed layouts."*
+Both halves were wrong. The ruling was never "trade damage for aesthetics" — legibility is a property
+of the **display**, and press times already print as whole seconds. And the co-pressing claim was an
+**assertion nobody could check**, because nothing in the repo counted press rows.
+
+**So the first thing built was the missing instrument.** `tools/legibility.mjs` counts what a player
+actually executes: distinct press *seconds*, the largest macro cluster, and lone seconds. It exits 0
+always — a measurement, not a gate — and its header says to read it beside `search-miss`, never
+instead, because legibility is worth nothing on a plan that is not already optimal.
+
+**Then the fix, in two parts, each measured on its own.**
+
+1. **The finishing tail was not monotone.** `finishLine` could hand back a plan worse than the one it
+   was given: a groom pass admitted a −46.4 move against a **stale high-water mark** (`val =
+   Math.max(val, pick.v)` — the exact defect `challengePass` had already fixed for itself), the
+   Cold-Snap comparison inherited the groomed plan wholesale, and −46.4 became −127.2 in the emitted
+   plan. The outer search had FOUND the better layout and the tail threw it away every time, which is
+   why more restarts never helped. ⚠ The floor has to **wrap** the call: the Cold-Snap block returns
+   from inside a callback, so an inlined floor is skipped on exactly the fights that rearrange most —
+   measured `3:20 drums` −70.3 before that was caught.
+2. **`QTOL` was doing two unrelated jobs.** Cutting it flat to a tie tolerance fixed the aesthetics and
+   broke `7:20 lust 0:05` by 127.2 — with the signature `IV₂ 38→45, Zerk 20→36`, **the identical
+   needle as the `1:40` witness** on a 440 s fight. That is what exposed the second job: the budget was
+   also letting the search **tunnel** through a worse *intermediate* to escape a local optimum. One
+   number, two policies, and no measurement could separate them until they were separated in the code.
+
+**The resolution:** run the tail under *both* budgets and keep the better, with the entrant flooring
+both, and ties going to the plan with fewer press rows. Loose supplies reach, tight supplies tidiness,
+neither can lose ground.
+
+| variant | damage | legibility |
+|---|---|---|
+| floor only | 11 better · 0 regressions | +20 press rows ✗ |
+| floor + flat tie tolerance | 11 better · 8 tie · **1 regression** | −6 rows ✓ |
+| **two regimes (shipped)** | **11 better · 7 tie · 0 regressions** | **−8 rows, −7 lone, +6 cluster** ✓ |
+
+All **three** recorded search witnesses reached — `1:40`, Kael'thas (never root-caused; the
+monotonicity fix closed it anyway) and `7:20`, which existed for the length of one configuration. All
+three are kept: a green witness closes a *known* hole and is not a claim of optimality.
+
+★★ **The correction worth carrying:** the aesthetic reading of `QTOL` was not merely unauthorised, it
+was **self-defeating** — removing it made ten *exact-tie* cells tidier, by −16 press rows. A budget
+justified as buying legibility had been buying scatter for months, and the only reason that was
+invisible is that no one had written the four-line function that counts rows.
+
+⚠ Two smaller things the same day: `castVal` had to be hoisted out of `finishLine` for the wrapper to
+name it (every sweep child died instantly — the good kind of failure), and the in-page benchmark panel
+kept a **stale result** across a re-solve. It printed two DPS numbers and a verdict with nothing on it
+naming the fight they came from, so a changed input left an authoritative-looking answer about a
+different timeline. Now cleared on every path that invalidates the plan.
+
+---
+
 ---
 
 ## The corrections ledger — what we believed, and what disproved it
@@ -750,6 +809,8 @@ is to compute one number correctly**, and because each has a cheap standing gate
 | *"a press at `floor(F) ≤ F` snaps to the same boundary"* (`planspec`'s own header). False whenever F is not itself a boundary; it put **7.14 %** of presses on a cast the model never chose and left 25.2 % on a knife edge. | `tools/press-headtohead.mjs` on real combat logs | `tests/press-fire.mjs` (part A needs no sim) |
 | *"the sim's schedule fires at the first boundary STRICTLY AFTER the scheduled time."* Right consequence, wrong cause — `IsReady` is `>=`. wowsims takes **334 ms** per AB stack where the model takes 1/3 s, so the boundary a log prints as `11.00` is `10.998`. | `tools/press-ns-probe.mjs` (killed the ns theory), `tools/press-threshold-probe.mjs` (bisected `B − 0.002`) | ⚠ **still open** — the constant is unfixed |
 | *"a float clock comparison against a boundary is a style question."* It is behaviour: the walk's clock reaches `89.999999999999972` where geometry says `90.000`, and the segment advance and the cut lattice carried **different** epsilons — so the walk skipped an intermission wall and banked a whole Arcane Blast at **100 % credit** completing inside it (0.99 % / 1.47 % of fight score). | `tools/model-audit.mjs --by-cause` on real combat logs, then a direct two-scorer probe on the same plan | `index.html`'s single `const EPS`, and `tools/self-consistency.mjs`'s **structural** check (167 violations before, 0 after) |
+| *"the tail's `QTOL` is a legibility budget — aesthetics may trade up to a full cast of expected damage for a pressable line."* One number, TWO policies: it also let the search tunnel through a worse intermediate out of a local optimum. And the aesthetic half was self-defeating — removing it made 10 **exact-tie** cells tidier by −16 press rows. | `tools/legibility.mjs` (built for the purpose) beside `tools/search-miss.mjs`; the `7:20` regression that appeared when it was cut flat | `finishLine` runs under BOTH budgets and keeps the better, entrant-floored, ties to fewer press rows |
+| *"the finishing tail only polishes, so it cannot lose ground."* It could hand back a plan worse than its entrant, and did — the search FOUND the `1:40` layout and the tail discarded it every time, which is why more restarts never helped. | `tools/search-miss.mjs` on a two-engine sweep; the stale high-water mark `val = Math.max(val, pick.v)` | the entrant floor, **wrapping** `finishLine` (an inlined one is bypassed by the Cold-Snap early return — measured −70.3) |
 | *"`self-consistency` reading `0.00e+0` means the objective is sound."* It means the accumulator agrees with a re-derivation **that reads the same `c.t`**. It printed a clean zero through both epsilon defects, and its corpus lived in a `.gitignore`d cache keyed on the page's sha1 — so it silently graded **nothing at all** the moment `simulate()` was edited. | 8993 cache entries, **0 hits** on every committed revision; and the rebuilt segmented corpus still reading `0.00e+0` on the broken engine | the same tool: a **generated** corpus (no cache), a refusal on 0 scorings *or* a corpus with no segmented/AoE preset, and the ms-resolution structural check |
 
 ★ **The meta-lesson, and it is the one worth carrying:** three of the four were *"harmless"* until

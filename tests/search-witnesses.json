@@ -16,7 +16,12 @@
     "",
     "⚠ A witness going green does NOT mean the search is correct at that cell — it means this",
     "particular better plan is now reached. Optimality is a different and much stronger claim; that is",
-    "what the enumeration/branch-and-bound programme is for."
+    "what the enumeration/branch-and-bound programme is for.",
+    "",
+    "⚠ A witness is KEPT after it goes green. `reachedOn` below records when, but the live status",
+    "always comes from `tools/search-witnesses.mjs` re-solving — a note in a file cannot notice a",
+    "regression. Both entries went green on 2026-07-28 with the entrant floor + the legibility",
+    "budget retired (PHASE13 §3.1); they stay so the gate keeps proving it."
   ],
   "witnesses": [
     {
@@ -47,8 +52,10 @@
         "⚠ NOT FIXED, deliberately. The clean fix (an entrant floor in the tail) is green on every gate",
         "(search-miss: 9 better, 0 regressions) but makes the QTOL legibility budget unspendable at the top",
         "level, silently reversing the user-directed ruling that aesthetics may trade up to a full cast of",
-        "expected damage for a pressable line. That is a product decision, not a search fix."
-      ]
+        "expected damage for a pressable line. That is a product decision, not a search fix.",
+        "✅ REACHED 2026-07-28. Root cause fixed, not worked around: `finishLine` now WRAPS in an entrant floor (it may not return worse than it was given) and the legibility budget dropped from a whole cast to a tie tolerance. Emitted score 196760.5 == witness. The 'NOT FIXED, deliberately' note above is retracted: the user ruled that legibility is a display property, so there was never a damage budget to protect (PHASE13 §3.1)."
+      ],
+      "reachedOn": "2026-07-28"
     },
     {
       "case": "Kael'thas Sunstrider",
@@ -68,8 +75,34 @@
         "witness is the record that a better one exists.",
         "NOT yet root-caused. It may be the same finishLine monotonicity mechanism as the 1:40 witness, or",
         "it may be ordinary sensitivity to a shifted press lattice; nobody has checked. Checking it is",
-        "expensive — KT solves in ~5 minutes at 3 restarts, so a restart-depth sweep is ~an hour."
-      ]
+        "expensive — KT solves in ~5 minutes at 3 restarts, so a restart-depth sweep is ~an hour.",
+        "✅ REACHED 2026-07-28, by the same two changes and without ever being root-caused — which is worth recording: it was logged as 'may be the same finishLine mechanism as the 1:40 witness, or ordinary sensitivity to a shifted press lattice; nobody has checked.' Fixing the monotonicity bug closed it too. Emitted score 615370.6 == witness."
+      ],
+      "reachedOn": "2026-07-28"
+    },
+    {
+      "case": "7:20 lust 0:05",
+      "found": "2026-07-28",
+      "context": "Surfaced by retiring the legibility budget (PHASE13 §3.1). Swept all 25 presets before and after and scored both sets with the same scorer: 11 cells better, 8 exact ties, and this one 127.2 worse. ⚠ Its signature is `IV2 38->45, Zerk 20->36` — the IDENTICAL 2-cell needle as the 1:40 witness, on a 440 s fight. That is the tell: the old `QTOL = castVal` was not only buying co-pressed layouts, it was also letting the search TUNNEL through a slightly-worse intermediate into a better basin. Cutting it to a tie tolerance closed that escape route here, while the entrant floor opened the same basin at 1:40 and 2:00.",
+      "schedule": { "isc": [ 3, 123, 243, 418 ], "bloodlust": [ 5 ], "icyVeins": [ 0, 45, 231, 411 ], "arcanePower": [ 4, 243, 423 ], "scb": [ 4, 243, 423 ], "berserking": [ 36, 246, 426 ] },
+      "emitted": { "isc": [ 3, 123, 243, 418 ], "bloodlust": [ 5 ], "icyVeins": [ 0, 38, 231, 411 ], "arcanePower": [ 4, 243, 423 ], "scb": [ 4, 243, 423 ], "berserking": [ 20, 246, 426 ] },
+      "scoreWitness": 751117.3,
+      "scoreEmitted": 750990.1,
+      "shortfallPct": 0.017,
+      "notes": [
+        "✅ REACHED THE SAME DAY IT WAS RECORDED — and it is kept, because what it proved is the point.",
+        "It existed for the length of one configuration: the entrant floor plus a FLAT cut of QTOL to a tie",
+        "tolerance. That cut removed the budget's second, undocumented job — tunnelling through a worse",
+        "intermediate to escape a local optimum — which is what this cell needed and what its `IV2 38->45,",
+        "Zerk 20->36` signature (the 1:40 witness's needle, on a 440 s fight) was pointing at.",
+        "The fix was to stop treating one number as one decision: `finishLine` now runs under BOTH budgets",
+        "and keeps the better, with the entrant flooring both and ties going to the plan with fewer press",
+        "rows. Loose supplies reach, tight supplies tidiness, neither can lose ground. Full corpus after:",
+        "11 better, 7 tie, 0 regressions, and -8 press rows / -7 lone seconds / +6 clustering.",
+        "⚠ The lesson, which is why this entry survives: a single tolerance had been standing in for two",
+        "unrelated policies, and no measurement could separate them until they were separated in the code."
+      ],
+      "reachedOn": "2026-07-28"
     }
   ]
 }
