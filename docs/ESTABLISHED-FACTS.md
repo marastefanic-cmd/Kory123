@@ -1132,6 +1132,34 @@ The general `haste × haste` rule (P4) treats both presses as free. In every rea
 is at a fixed second, where does my own haste cooldown go?* Measured on a 1:40 fight with Lust pinned
 at 0:07 (so it covers 7–47 s), 1387 SP, 38 % crit, value in casts above "Lust alone":
 
+> ⚠⚠ **READ THIS BEFORE QUOTING A *BEST PLACEMENT* COLUMN — added 07-28.** Every figure below is a
+> **point** measurement at one lattice phase, and a pinned Lust carries a phase term of **±0.2 casts**
+> — the same size as the interactions this table is reporting. `docs/MODEL-DEFECTS.md` D1 §3 shows the
+> best-placement answer changing **four times** as a Lust pinned "at 0:20" slides across one 1.5 s cast
+> interval, without any fact about the game changing.
+>
+> ⇒ The **value columns** are sound: they are differences at a fixed phase and the phase term largely
+> cancels between neighbouring cells. The **"best placement" column is not** unless the winner clears
+> its neighbours by more than ~0.2 casts. Where it does — every `@47` row here, which beats
+> inside-Lust by 1.5–3.3 casts — the verdict stands untouched. Where it does not — **the h=0 rows,
+> where the three columns sit within 0.28 (Icy Veins) and 0.21 (Berserking) casts** — the named winner
+> is one phase's answer and must be re-checked with `node tools/phase-audit.mjs` before it is used to
+> justify a plan.
+>
+> ★ Concretely — re-measured on this exact setup, `node /tmp`-free, model only:
+>
+> | Berserking | point | phase-mean |
+> |---|---|---|
+> | @10 / @20 / @30 — fully inside Lust | 0.9306 | **0.9163** |
+> | **@39** — straddling Lust's end at 47 | **0.9720** | 0.8861 |
+> | @47+ — fully outside | 0.7263 | 0.7254 |
+>
+> The table's `best @39` beats fully-inside by **0.041 casts**, which is 20 % of the phase term — and
+> the phase-mean **reverses it**, putting fully-inside ahead by 0.030. Both rankings agree on the
+> inside-vs-outside interaction (0.2043 point, 0.1909 phase-mean), which is P4's `+0.2056` and is what
+> the row is really evidence for. ⇒ Treat that row's *placement* as **decided by P4, not by this
+> table**; its *values* are fine.
+
 ### Icy Veins (20 s)
 
 | passive haste | best placement | at the pull | at 3 stacks / inside Lust | just after Lust |
