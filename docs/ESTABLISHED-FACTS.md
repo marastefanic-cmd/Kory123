@@ -88,6 +88,36 @@ down — move a press, and the only thing that changes is which terms are inside
 ⇒ **If nothing capped, the optimal plan would be trivial: overlap everything.** The scheduling problem
 exists because of one `min`.
 
+## 0.2 ★★★ IT ALREADY IS A DPS INTEGRAL, AND THE RAMP IS ALREADY PROGRESSIVE (user, 07-28)
+
+*"Better yet if it could be a function of dps that scales with haste, spell power and crit and the ramp
+is modelled into the function progressively, instead of just summing. Or is that already how it works
+by nature?"* — **it is already how it works, on all three counts.**
+
+* `rate(m(t)) · w(t)` **is** instantaneous DPS in cast-equivalents. `V` is its time integral. Haste
+  enters through `m`, spell power through `w`.
+* **Crit is a pure scalar and factors straight out.** Ratio `V(38 % crit) / V(25 % crit)` measured across
+  four structurally different plans at two haste levels: **1.088240789 at every one**, matching
+  `(1 + 0.38(CM−1)) / (1 + 0.25(CM−1))` to nine decimals. ⇒ crit changes the absolute number and **no
+  decision** — which is why no threshold anywhere in this file mentions it.
+* **The ramp is not "summed instead of integrated" — the two are the same number.** Over one cast's own
+  interval, `∫ (1/interval) dt = 1` exactly. So the three discrete ramp casts *are* the integral of a
+  stack-aware rate over those spans, not a patch on top of it. Verified against pure geometry
+  (`Σ max(C_k/m, i)/i − 3`) with no per-cast bookkeeping at all:
+
+  | h | 0 | 400 | 900 | 1200 |
+  |---|---|---|---|---|
+  | geometry | 1.33200 | 1.33200 | 1.13700 | 0.69008 |
+  | engine | 1.33200 | 1.33177 | 1.13700 | 0.69000 |
+
+  The engine writes it as a discrete span only because `rateAt` is not stack-aware; making it so would
+  delete the special case and change no value.
+
+⚠ **But do NOT smear the value side to match.** A cast's damage lands at its **completion** (the
+snapshot rule), so a value window's edge falling mid-cast must credit that cast 0 or 1 — not a
+fraction. Smearing it is exactly the over-payment `boundaryCharge` exists to correct. ⇒ the right form
+is **integrate the rate, discretise the value**, which is what the engine does.
+
 ---
 
 # 1. THE MASTER LAW — cast rate
@@ -154,6 +184,51 @@ shrinking (§1.1). The general form is
 | deficit (casts) | **1.3320** | 1.1370 | 0.6901 | 0.3161 | 0.1022 | **0.0000** |
 
 *Engine integral reproduces every cell to ≤2e-3 casts.*
+
+## 1.2a ⚠ DO NOT CLUMP IT — the three ramp casts are not interchangeable
+
+**Corrected 07-28 (user).** "1.332 casts" is the right *total* and the wrong *granularity*. The engine
+has always scored the ramp cast by cast (`boardRamp` — each with its own start and completion); this
+document was the thing lumping them. Per cast:
+
+    d_k  =  max(C_k/m, i) / i  −  1                  i = max(F, G/m)
+
+| | cast 1 (0 stacks) | cast 2 (1 stack) | cast 3 (2 stacks) | total |
+|---|---|---|---|---|
+| cast time | 2.500 / m | 2.166 / m | 1.832 / m | |
+| **deficit, h ≤ 788.5** | **0.6667** | **0.4440** | **0.2213** | 1.3320 |
+| h = 1200 | 0.4197 | 0.2300 | 0.0404 | 0.6901 |
+| h = 1600 | 0.2410 | 0.0752 | 0.0000 | 0.3161 |
+
+★ **Cast one is half the whole toll**, and `m` cancels in each term separately below the cap — so the
+*shape* is fixed too, not just the sum. This is what decides partial coverage: a buff that starts after
+cast 1 pays only `0.4440 + 0.2213 = 0.665`, not 1.332. It is also why haste above the cap drains the
+deficit from the back (cast 3 reaches the floor first).
+
+## 1.2c ★★★ SHORT WINDOWS AND RE-RAMPS — when waiting for stacks stops paying
+
+**Raised by the user 07-28**, and it is the case where §1.2's aggregate would mislead: after an
+intermission you ramp again, and the burn window may be too short to wait.
+
+Waiting `w` seconds for the stacks **saves** the deficits you skip (`Σ d_k · s`) and **costs** whatever
+the buff loses off its far end if it no longer fits. Both scale with `s` — so **`s` cancels and the
+break-even is a pure timing question, identical for Icon, Serpent-Coil and Arcane Power.** Algebraically
+the cost of waiting past cast `k` is `Σ C_j / G` against a saving of `Σ (C_j − G)/G`, which is smaller by
+exactly `k` — so once the buff is truncated at all, waiting always loses.
+
+    ⇒  wait for the stacks  ⟺  rampLength + D  ≤  window remaining
+
+Icon (20 s) at h = 0, where `rampLength = 6.498`, so the crossover is at **26.5 s**:
+
+| window | 10 | 15 | 20 | 24 | **26.5** | 30 | 40 |
+|---|---|---|---|---|---|---|---|
+| wait − press-now (casts) | −0.232 | −0.232 | −0.232 | −0.026 | **+0.103** | +0.103 | +0.103 |
+| fits after the ramp? | no | no | no | no | **yes** | yes | yes |
+
+⇒ **A short post-intermission burn wants its value buffs pressed immediately**, and the penalty for
+getting this backwards is bigger than the prize for getting it right (−0.232 against +0.103). Note it
+is the *buff* that is time-constrained, not the ramp: the same rule with a 15 s Serpent-Coil moves the
+crossover to 21.5 s.
 
 ## 1.2b ★★★★ RAMP-NEUTRALITY — and it inverts at the buff's own threshold
 
@@ -491,6 +566,41 @@ identically 0, so it never matters — the rating-pool block.*
 5. **The whole matrix goes negative between h = 0 and h = 300.** Low-gear planning is "stack it all";
    geared planning is "spread it all". There is no third regime, and the transition rating for any pair
    is one table lookup.
+
+## 5.6b RAMP PREFERENCE FOR THE WHOLE KIT — (post-ramp − pull), casts
+
+Positive = wants the stacks built first. Passive SP 1000.
+
+| cooldown | h=0 | h=200 | h=400 | h=600 | h=900 | law |
+|---|---|---|---|---|---|---|
+| **Arcane Power** ×1.3 dmg | **+0.3996** | +0.3997 | +0.3995 | +0.3996 | +0.3411 | `1.332 · s`, `s = 0.30` |
+| **Serpent-Coil** +225 SP | **+0.1493** | +0.1493 | +0.1492 | +0.1492 | +0.1274 | `1.332 · s` |
+| **Icon** +155 SP | **+0.1028** | +0.1028 | +0.1028 | +0.1028 | +0.0878 | `1.332 · s` |
+| Bloodlust ×1.3 [242.6] | 0 | 0 | −0.345 | −0.711 | −0.852 | 0, then pull |
+| Icy Veins ×1.2 [394.3] | 0 | 0 | −0.012 | −0.409 | −0.662 | 0, then pull |
+| Power Infusion ×1.2 [394.3] | 0 | 0 | −0.012 | −0.409 | −0.662 | identical to Icy Veins |
+| MQG +330 [458.5] | 0 | 0 | 0 | −0.245 | −0.486 | 0, then pull |
+| Berserking ×1.1 [573.5] | 0 | 0 | 0 | −0.054 | −0.376 | 0, then pull |
+| Skull +175 [613.5] | 0 | 0 | 0 | 0 | −0.273 | 0, then pull |
+| Drums +80 [708.5] | 0 | 0 | 0 | 0 | −0.129 | 0, then pull |
+
+★ **Two clean families, and no exceptions.**
+* **Value buffs are ramp-averse by exactly `1.332 · s`, at every haste below the cap** — the opener
+  deficit priced per cast. `s` does not depend on `h`, so neither does the aversion. **Arcane Power is
+  the most ramp-averse cooldown you own, at 0.40 casts** — nearly four Icons.
+* **Haste buffs are exactly ramp-NEUTRAL below their own onset threshold and pull-preferring above it**
+  (§1.2b). Every one of the seven turns at its own bracketed number. There is no other pattern to find.
+
+⇒ **The split haste of any (haste × value) pair sits just above the HASTE buff's own onset threshold** —
+measured: Bloodlust 242.6 → splits ~250; Icy Veins 394.3 → 402–427; Power Infusion 394.3 → 427–494;
+MQG 458.5 → 461–472; Berserking 573.5 → 593–629; Skull 613.5 → 617–618; Drums 708.5 → 710–711.
+**Seven for seven.** How far above depends on how much overlap the split gives up, which scales with `s`
+— the second-order spell-power effect of §5.7.
+
+⚠ **Why those are ranges and not single numbers.** The margin near the crossing is smaller than the
+~0.011-cast press-snap residual (§9), so a bisection on sign alone reports crossings that are noise —
+it initially gave "Bloodlust splits at h = 4" and "Drums at h = 4", both artifacts. The **law** (just
+above the buff's own threshold) is exact; the measured crossing is not, and this file quotes the law.
 
 ## 5.7 ★★★ WORKED EXAMPLE — Icy Veins + Icon, and when the pair splits
 
