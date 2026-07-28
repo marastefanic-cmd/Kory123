@@ -1,0 +1,87 @@
+# PLAN — replace the goldens with an anchored correctness suite
+
+**In flight as of 2026-07-28. Delete this file when it lands, folding anything lasting into ROADMAP.**
+
+User: *"I think it would be better if we got rid of all the 'goldens' and 'tests' and just established
+them from the ground up on extremely concrete examples, and then reverse engineer the rest."*
+
+## The diagnosis is right
+
+`tests/golden.json` asserts **stability, not correctness**. It locks in whatever the optimizer said on
+the day it was recorded. Three things this session demonstrated the cost of:
+
+1. **It cannot judge a change.** The `structuralSnap` attempt read *19 passed, 6 failed* and every
+   failure was a one-second press shift. The suite could not say whether that was an improvement or a
+   regression — `tools/plan-diff.mjs` had to, by comparing **scores**, and it found the one cell that
+   actually mattered.
+2. **It defends the current objective.** If the objective is wrong — and `docs/MODEL-DEFECTS.md`'s
+   ground-truth entry is live evidence that it may be — then the goldens encode wrong answers and make
+   *fixing* them look like a regression. A test that resists correction is worse than no test.
+3. **It says nothing about what a plan SHOULD look like.** All the knowledge for that now exists in
+   `docs/ESTABLISHED-FACTS.md` and none of it is asserted anywhere.
+
+## But two things must not be thrown out with it
+
+**⚠ 1. Stability and correctness are different tests and the project needs both.** A correctness anchor
+says "this layout is right". It does *not* notice that an unrelated edit quietly moved fourteen other
+plans. That is a real failure mode and it is what the goldens were for.
+⇒ The replacement for that job is **not** another golden file — it is `plan-sweep` + `plan-diff`, which
+already exists, runs in ~33 s against exact-match's ~9 min, and reports **Δscore** rather than a text
+diff. It is strictly the better stability instrument and it is already written.
+
+**⚠⚠ 2. "Concrete examples where I know the answer" needs an ARBITER, and right now there isn't one.**
+This is the load-bearing caution. As of today:
+
+* the per-cast sum ranks the model's layouts first,
+* the retired continuous integral ranks the user's layouts first,
+* **the sim has not ruled on either.**
+
+Baking the user's layouts in as ground truth *before* the sim rules would lock in unverified answers —
+the same failure the goldens are being retired for, with a different author. And the user's intuition,
+while very good, was measured wrong twice this session (Berserking onto the second cluster: −0.0995
+casts; Arcane Power onto the second cluster: −1.1555).
+
+⇒ **Anchors must be sim-certified, not just author-certified.** Where the sim and the author agree, the
+anchor is solid. Where they disagree, that disagreement is the finding and the anchor waits.
+
+## The order of work
+
+1. **Settle the objective first** (`MODEL-DEFECTS.md`, the ground-truth entry). Score the corpus under
+   both objectives, list every disagreement, and **sim-duel each one**. The sim does not care which
+   objective proposed a plan, which is exactly why it can arbitrate. Until this runs, no anchor built on
+   either objective is trustworthy.
+2. **Then build the anchor suite.** Each anchor is a fight plus a layout plus *why*:
+   * the setup (T, haste, SP, crit, kit, pins),
+   * the asserted layout,
+   * the **rule from `ESTABLISHED-FACTS.md` it demonstrates** — an anchor with no rule behind it is a
+     golden wearing a better name,
+   * its sim margin over the runner-up, with the seed band,
+   * and a **negative control**: the plausible layout it must beat, so the anchor fails loudly if the
+     engine ever prefers the wrong one.
+3. **Assert the rules directly too**, not only through layouts. `tools/rules-audit.mjs` already checks
+   the inclusion–exclusion expansion closes to `0.000e+0`; `tools/facts-ladder.mjs` already asserts
+   interior flatness and the cap thresholds. Promote both to gates.
+4. **Then retire `exact-match` + `golden.json`**, replaced by: anchors (correctness) + `plan-diff`
+   (stability) + the rule gates (self-consistency).
+
+## What is already built toward this
+
+| piece | what it does | status |
+|---|---|---|
+| `docs/ESTABLISHED-FACTS.md` | the rules the anchors will cite | Parts I–III done |
+| `tools/rules-audit.mjs` | scorer vs the rules; search vs coordinate descent | works, not a gate |
+| `tools/facts-ladder.mjs` | flatness + threshold assertions | works, not a gate |
+| `tools/jitter.mjs` | execution-robustness expectation | works |
+| `tools/plan-diff.mjs` | Δscore stability signal, with a regression verdict | already a gate |
+| `tests/layout-rules.mjs` | property test of the layout spec | exists |
+| the anchor suite | — | **not started** |
+
+## Standing warnings
+
+⛔ Do not delete `golden.json` before the anchors exist and pass. There would be a window with no
+protection at all, and this repo's history is a list of silent regressions caught by exactly that file.
+
+⛔ Do not make an anchor out of a layout whose margin is inside `BENCH.tieBandPct` (0.05 %) unless the
+tie itself is the assertion. Most of this session's disputed layouts are inside that band once execution
+error is accounted for, which means the honest anchor is *"these two are equivalent"*, not *"this one
+wins"*.
