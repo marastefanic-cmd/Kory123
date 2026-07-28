@@ -257,6 +257,46 @@ a 3-stack cast, so a value window opened at the pull always covers fewer casts).
 two different rules, two different seconds. Only the **cluster's own** second is misplaced, and only by
 one.
 
+## ★★★★★ THE SIM HAS RULED — the model's ranking is INVERTED on ground truth (07-28)
+
+**Status: ESTABLISHED. This is the finding the objective question was waiting on.**
+
+Two layouts supplied as ground truth with **Bloodlust pinned at 0:20**, deliberately late enough that
+"Icy Veins reaching left to cheese an Arcane Blast stack is no longer even plausible". Duelled
+head-to-head in wowsims, common random numbers:
+
+| case | model scorer says | **sim says** |
+|---|---|---|
+| `2:00 · h=0 · 1000 SP · 25 %` | hand-built layout **−0.112 %** | **hand-built WINS by 2.0 DPS ± 0.37** (5 seeds, ~5.4σ) |
+| `3:00 · h=0 · 1000 SP · 25 %` | hand-built layout **−0.134 %** | hand-built wins by 0.4 DPS (inside the tie band) |
+
+**On the case that resolves, the model's ranking is inverted.** Not close: 2.0 ± 0.37 DPS is ~0.13 % of
+the fight, roughly 3× `BENCH.tieBandPct`, and the model had the sign backwards.
+
+⇒ Combined with the entry below — the retired continuous integral ranks these same hand-built layouts
+**first** where the per-cast sum ranks them last — the picture is consistent across four independent
+cases and two independent instruments:
+
+* the **per-cast sum** (what ranks today) prefers the optimizer's layouts,
+* the **continuous integral** prefers the hand-built ones,
+* the **execution-jitter expectation** collapses the sum's margin by 81–88 %,
+* and the **sim** — which does not care which objective proposed a plan — prefers the hand-built ones.
+
+**Three of the four point the same way, and the fourth is the one currently in charge.**
+
+### What this does and does not establish
+
+**Does:** the single-phase per-cast sum is not a reliable ranker at h=0 with a late-pinned Lust. Its
+sign can be wrong against the arbiter. That is a stronger statement than "it over-resolves".
+
+**Does not:** it does not yet establish the integral as the replacement. Only two of these cases were
+scored under the integral, and neither has been swept across haste. The integral has its own known
+defect (over-paying a partial cast at a window's back edge) and PHASE12's measurements against it stand.
+
+⇒ **The next measurement is no longer optional and no longer ambiguous**: score the whole corpus under
+both objectives, and sim-duel *every* disagreement. If the integral's picks keep winning, the objective
+changes. Four cases is a strong prior, not a corpus.
+
 ## ★★★★ REVERSE-ENGINEERED FROM GROUND TRUTH — the objective that produces the wanted layouts is the RETIRED INTEGRAL
 
 **Status: OPEN. The most important open item in this repo. Nothing has been changed on the strength of

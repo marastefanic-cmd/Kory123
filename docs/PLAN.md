@@ -78,8 +78,18 @@ anchor is solid. Where they disagree, that disagreement is the finding and the a
 
 ## Standing warnings
 
-⛔ Do not delete `golden.json` before the anchors exist and pass. There would be a window with no
-protection at all, and this repo's history is a list of silent regressions caught by exactly that file.
+⚠ **Narrowed 07-28, after the user pushed back with *"or it's a blocker of legitimate progress"* — and
+they are right.** The original wording here was "do not delete `golden.json` before the anchors exist
+and pass", which is too strong: the sim has since ruled that the goldens encode at least one **inverted**
+ranking, so protecting them protects a wrong answer. A test that locks in a sign error is not
+protection.
+
+The real requirement is narrower and much cheaper: **do not leave the STABILITY job uncovered.** That
+job is "did an unrelated edit quietly move fourteen other plans", and `plan-sweep` + `plan-diff` already
+does it better than `golden.json` ever did — it reports Δscore with a regression verdict instead of a
+text diff, and runs in ~33 s against ~9 min. ⇒ Wire `plan-diff` into CI as the gate, and `golden.json`
+can go the same day. That is a small piece of work, not a phase, and it is not a reason to wait for the
+anchors.
 
 ⛔ Do not make an anchor out of a layout whose margin is inside `BENCH.tieBandPct` (0.05 %) unless the
 tie itself is the assertion. Most of this session's disputed layouts are inside that band once execution
