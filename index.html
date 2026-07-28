@@ -1430,10 +1430,36 @@ function simulateRaw(schedule, cfg, collect) {
   // A per-cast SUM (the old model) quantised each window to a whole number of casts,
   // so it couldn't see sub-cast alignment — that blindness produced the phantom
   // "press 2s before lust" gains and the lust-position-dependent placement.
-  // The retired symmetric kill window, kept ONLY so the `integral` diagnostic below still
-  // computes the quantity it always did. ⛔ It no longer touches the objective — the boundary
-  // credit above is the whole story. Do not reintroduce it as a scoring term (PHASE12 §9).
-  const KW = 0.5;
+  // ★★★ AN INTEGRAL NEEDS NO FIGHT-END WINDOW AT ALL — user question, 07-28, and they were right.
+  // The kill window is a DE-QUANTIZER. The per-cast sum has a 0/1 cliff at the terminal cast (a cast
+  // completing at 119.99 counts 1, one at 120.01 counts 0), so it needs a smear, and PHASE12 §9's
+  // `credit = min(1, (cut − start)/dur)` is that smear — `U[T, T+d]` is the *interpretation* of a
+  // smoothing device, reverse-derived, not an independent claim about fight lengths.
+  // ∫₀^T rate(t) dt has no cliff: the terminal cast is fractional automatically. So a window past T
+  // could only express uncertainty in T itself — and MEASURED, it does no ranking work: on all four
+  // locked ground-truth cases, `none` / `sym` / `oneSided` give the SAME margin to four decimals,
+  // because two plans compared at one T share the tail flux and the window scales them equally.
+  // ⇒ DEFAULT `none`, a hard ∫₀^T, which needs no constant and no justification. The knob stays so
+  // the claim is one flag to re-test — the case it could bite is two plans differing in RATE at the
+  // kill, which the four cases do not cover.
+  // (Retained below because `KWD` is still the right width should a window ever be wanted.)
+  // This used to be `KW = 0.5`, the SYMMETRIC window PHASE12 §9 retired everywhere else. It survived
+  // here only because nothing ranked on the integral; the moment the integral is a ranking candidate
+  // again, a retired kill rule inside it is a defect, not a curiosity. The credit rule is
+  // algebraically `C ~ U[T, T+d]` with `d` the cast's own duration, so the flux at time `t` is worth
+  // `P(C ≥ t)` — a linear ramp from 1 at `T` to 0 at `T + KWD`, NOT one centred on T.
+  // ⚠ The symmetric form paid a cast completing exactly at T only ½, and at zero haste its width
+  // (2 × 0.5 = 1.0 s) was 33 % narrower than the cast it was standing in for (1.498 s).
+  const KWD = (g.AB.BASE_CAST - g.AB.MAX_STACKS * g.AB.STACK_CAST_REDUCTION) /
+              (1 + (cfg.hasteRating || 0) / (GAME.HASTE_RATING_PER_PCT * 100));
+  // ⚠ DIAGNOSTIC KNOB (07-28, user question: *"we shouldn't need any variance at fight end no?"*).
+  // `cfg.killMode`: "oneSided" (default) | "sym" (the old symmetric 0.5) | "none" (hard stop at T).
+  // An integral needs NO window to de-quantize — it is already continuous — so the window's only job
+  // here is expressing uncertainty in T itself. Measuring how much it moves a RANKING is the way to
+  // find out whether it is doing any work at all.
+  const killW = cfg.killMode === "sym"      ? (tc => Math.min(1, Math.max(0, (cfg.T + 0.5 - tc) / 1.0)))
+              : cfg.killMode === "oneSided" ? (tc => Math.min(1, Math.max(0, (cfg.T + KWD - tc) / KWD)))
+              : (tc => tc <= cfg.T + 1e-9 ? 1 : 0);   // DEFAULT: none
   // deterministic buff state at time tt: the haste multiplier (no ATI) and the per-cast damage. Shared by
   // the rate integrand (rateAt) and the ramp-deficit dock (below), so both read one consistent state.
   const scanAt = (tt, segB) => {
@@ -1536,18 +1562,18 @@ function simulateRaw(schedule, cfg, collect) {
   // completion (jitter-smoothed above).
   const rampSpans = [], rampCasts = [];
   for (const rc of boardRamp) {
-    const e2 = Math.min(rc.e, cfg.T + KW);
+    const e2 = Math.min(rc.e, cfg.T + KWD);
     if (rampSpans.length && Math.abs(rampSpans[rampSpans.length - 1][1] - rc.s) < 1e-9) rampSpans[rampSpans.length - 1][1] = e2;
     else rampSpans.push([rc.s, e2]);
     rampCasts.push({ tc: rc.c, dmg: rampCastDmg(rc.s, rc.c) });
   }
   // integrate over piecewise-constant segments: buff state changes only at window
   // edges / phase boundaries / the kill window, so a few dozen breakpoints are exact
-  const bpS = new Set([0, cfg.T, Math.max(0, cfg.T - KW), cfg.T + KW]);
+  const bpS = new Set([0, cfg.T, cfg.T + KWD]);
   for (let i = 0; i < active.length; i++) { const w = active[i]; if (w.scoreStart > 0) bpS.add(w.scoreStart); bpS.add(w.scoreStart + w.def.dur); }
   if (segs) for (const sg of segs) { bpS.add(sg.start); bpS.add(sg.end); }
   for (const [ra, rb] of rampSpans) { if (ra > 0) bpS.add(ra); bpS.add(rb); }
-  const bps = [...bpS].filter(x => x >= 0 && x <= cfg.T + KW).sort((a, b) => a - b);
+  const bps = [...bpS].filter(x => x >= 0 && x <= cfg.T + KWD).sort((a, b) => a - b);
   total = 0; totalEarly = 0; robust = 0;
   let sj = 0;
   for (let i = 0; i < bps.length - 1; i++) {
@@ -1563,8 +1589,8 @@ function simulateRaw(schedule, cfg, collect) {
     }
     const contrib = rateAt(mid, segB) * len;
     if (b <= cfg.T + 1e-9) total += contrib;
-    if (b <= cfg.T - KW + 1e-9) totalEarly += contrib;
-    robust += contrib * Math.min(1, Math.max(0, (cfg.T + KW - mid) / (2 * KW)));
+    if (b <= cfg.T + 1e-9) totalEarly += contrib;
+    robust += contrib * killW(mid);
     // §25: cast-EQUIVALENTS this span credits, per value window covering it. Same denominator
     // rateAt uses, so nModel is exactly the continuous count the integral paid for.
     if (bcOn) {
@@ -1620,8 +1646,8 @@ function simulateRaw(schedule, cfg, collect) {
   // the discrete ramp casts' damage (suppressed spans above), kill-window-weighted like the integral
   for (const c of rampCasts) {
     if (c.tc <= cfg.T + 1e-9) total += c.dmg;
-    if (c.tc <= cfg.T - KW + 1e-9) totalEarly += c.dmg;
-    robust += c.dmg * Math.min(1, Math.max(0, (cfg.T + KW - c.tc) / (2 * KW)));
+    if (c.tc <= cfg.T + 1e-9) totalEarly += c.dmg;
+    robust += c.dmg * killW(c.tc);
   }
   // ═══════════ THE ARBITER IS THE PER-CAST SUM (PHASE12 §0.3 step 1) ═══════════
   // Everything above this line computed the rate integral. It is no longer what anything ranks on: it

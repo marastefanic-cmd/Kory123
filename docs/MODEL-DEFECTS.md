@@ -821,6 +821,74 @@ first `MAX_STACKS` casts placed at its own completion, phase-averaged over `RAMP
 because a rate is wrong while the interval changes per cast. That was the user's suspected gap; it is
 the one part that is already right.
 
+### Does the integral get the two locked layouts? — measured 07-28
+
+**Ranking: 4/4, where the shipped rankings are 0/4 and 1/4.** Ground truth minus its rival, in casts:
+
+| case | point | **integral** | phase-mean N=96 |
+|---|---|---|---|
+| A2 · 2:00 · Lust@0:20 | ✗ −0.0814 | ✅ **+0.0322** | ✗ −0.1075 |
+| A3 · 3:00 · Lust@0:20 | ✗ −0.2145 | ✅ **+0.0462** | ✗ −0.0447 |
+| Ex2 · 2:00 · Lust@0:10 | ✗ −0.4535 | ✅ **+0.0093** | ✗ −0.0917 |
+| Ex1 · 2:45 · Lust@0:10 | ✗ −0.2183 | ✅ **+0.0703** | ✓ +0.0086 |
+
+**Optimising on it** (same three move classes and multi-start as `phaseRerank`, score swapped):
+
+| | A2 |
+|---|---|
+| integral argmax | Icy Veins 0:00/0:20 · **Icon 0:20** · Gem 0:21 · AP 0:21 · Berserking 0:48 |
+| ground truth | Icy Veins 0:00/0:20 · Icon 0:20 · Gem 0:20 · AP 0:20 · Berserking 0:40 |
+| | **structure identical**, Δ = **0.0108 casts** — inside `tieBandPct` |
+
+★ A2's *structure* is exact: Icy Veins at the pull, Cold-Snap Icy Veins onto the Lust, the value
+cluster with the Lust, Berserking inside the Lust. What is left is a within-band tie-break (Gem/AP one
+second, Berserking @48 vs @40) — D2 territory, not a scoring question.
+
+⚠ **A3 is not there**: the integral argmax puts both clusters at 0:33 / 2:33 rather than 0:20 / 2:20,
+Δ = **0.1145 casts**. That is *inside the uncorrected integral's own 0.09–0.34-cast error band*, so it
+is not yet an answer either way — it has to be re-asked once the three corrections land.
+
+### ⛔ CORRECTION 1 IS DELETED, NOT LANDED — an integral needs NO fight-end window (user, 07-28)
+
+*"I don't fully understand integral, but from what I know about them we shouldn't need any variance at
+fight end no?"* — **correct, and it removes a term rather than fixing one.**
+
+The kill window is a **de-quantizer**. The per-cast sum has a 0/1 cliff at the terminal cast — one
+completing at 119.99 counts 1, one at 120.01 counts 0 — so it needs a smear, and PHASE12 §9's
+`credit = min(1, (cut − start)/dur)` *is* that smear. `U[T, T+d]` is the **interpretation** of a
+smoothing device, reverse-derived from it, not an independent claim about fight lengths.
+`∫₀^T rate(t) dt` has no cliff: the terminal cast comes out fractional automatically.
+
+So a window past `T` could only be expressing uncertainty in `T` itself — and measured, it does **no
+ranking work**:
+
+| integral, ground truth − rival (casts) | A2 | A3 | Ex2 | Ex1 |
+|---|---|---|---|---|
+| `none` — hard `∫₀^T` | +0.0322 | +0.0462 | +0.0093 | +0.0703 |
+| `sym` — the old ±0.5 | +0.0322 | +0.0462 | +0.0093 | +0.0703 |
+| `oneSided` — PHASE12 §9's `U[T, T+d]` | +0.0322 | +0.0462 | +0.0093 | +0.0703 |
+
+**Identical to four decimals, every case.** Two plans compared at one `T` share the tail flux, so the
+window scales both equally and cancels. ⇒ default **`none`**, which needs no constant and no
+justification at all. `cfg.killMode` keeps the other two so the claim is one flag to re-test.
+⚠ Not over-claimed: the case that could bite is two plans differing in *rate* at the kill, which these
+four do not cover.
+
+★ This is the second time in one day that the right move on the integral was to **delete** a term the
+sum needed. Both times the term was a discreteness artifact wearing a physical interpretation.
+
+### (superseded) Correction 1 as first attempted — the one-sided kill window
+
+`KW = 0.5` → `KWD = (BASE_CAST − MAX_STACKS·STACK_CAST_REDUCTION) / m`, weight `min(1, (T + KWD − t)/KWD)`.
+The old form paid a cast completing exactly at T only **½**, and at zero haste its width (1.0 s) was
+**33 % narrower** than the cast it stood in for (1.498 s). `self-consistency` unchanged (`0.00e+0`,
+0 structural) — the integral is a diagnostic, so nothing that ships moved.
+
+⚠ **It is a level shift, not a ranking term, on the A2 pair**: gt and rival both rose by +862 and the
+gap stayed **0.0322 casts to four decimals**. Both layouts run at the same steady interval into the
+kill, so the flux near T is identical and the window scales them equally. It will matter where two
+layouts differ in *rate* at the kill — which is exactly the case the symmetric window mispriced.
+
 ### ⇒ What this means for §8e
 
 `phaseScore`/`phaseRerank` should be treated as **provisional**. They established the objective and
