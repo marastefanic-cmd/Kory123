@@ -76,34 +76,6 @@ than to this witness: the effect is real *for a given lattice phase*, and the ph
 from a clean pull — but it is not knowable to ±0.3 s on a real one. Whether the planner should resolve
 it or average over it is a judgement call about what the tool is for, not a defect against a fact.
 
-### ★ 07-28 — D1 now decides a PAIR layout, not just a nudge
-
-Until now D1 was a tie-break-sized error on where one cooldown sits. Measuring Icy Veins + Icon
-(ESTABLISHED-FACTS P1) put it in charge of a real structural choice for the first time.
-
-The question "press Icy Veins with Icon, or at the pull?" has an exact margin:
-
-    margin(pull − aligned)  =  residual  −  Δ(covered) × s
-                            =  0.0544    −  1 × s            at h=340
-
-where `residual` is D1's own ~0.0544-cast phantom pull advantage and `s` is Icon's per-cast bonus. So
-the defect is not a rounding error on the answer — **it is one of the two terms that decide it**, and
-it wins whenever `s` drops below 0.0544, i.e. above ~1841 passive spell power at h=340. Measured:
-
-| passive SP | s | model's answer below the 394 threshold |
-|---|---|---|
-| 500 | 0.10279 | aligned, stable at every rung ✓ |
-| 1000 | 0.07719 | aligned, stable at every rung ✓ |
-| 2000 | 0.05153 | **flips in bands** as haste moves — aligned at 200–220 and 300–320, pulled at 150–190, 230–290, 330+ |
-| 4000 | 0.03095 | pulled everywhere — entirely on the residual |
-
-The pulled margins in the unstable rows are ~0.003 casts against aligned margins of ~0.16: the model is
-choosing the structurally wrong layout by a hair, in a region where the right answer is not close.
-
-⇒ **This raises D1's priority.** It also gives it a much better test than a tie-band nudge: fixing the
-residual must make the 2000 and 4000 SP rows read "aligned, stable" below the threshold, while leaving
-the 500/1000 rows and everything above the threshold unchanged.
-
 ### The direction to look, from the user (07-28)
 
 > *"The only difference can possibly be the clipping of haste buffs that miraculously align in a way
@@ -161,6 +133,41 @@ interior (@5…@35, all identical) it is **+2.078 %, or 0.0554 casts**. Same ope
 ⇒ Two possibilities, and picking between them matters: either it is a real effect neither the arithmetic
 nor rule 3 captures, **or** part of what is filed above as D1 is real and the model is not wrong about
 it. Do not fix D1 without settling this first.
+
+### ★ 07-28 — this now decides a PAIR layout, not just a nudge
+
+Until now this was a tie-break-sized discrepancy on where one cooldown sits. Measuring Icy Veins +
+Icon (ESTABLISHED-FACTS P1) put it in charge of a real structural choice for the first time.
+
+The question "press Icy Veins with Icon, or at the pull?" has an exact margin:
+
+    margin(pull − aligned)  =  residual  −  Δ(covered) × s
+                            =  0.0544    −  1 × s            at h=340
+
+where `residual` is the ~0.0544-cast pull advantage recorded above and `s` is Icon's per-cast bonus.
+So it is not a rounding error on the answer — **it is one of the two terms that decide it**, and
+it wins whenever `s` drops below 0.0544, i.e. above ~1841 passive spell power at h=340. Measured:
+
+| passive SP | s | model's answer below the 394 threshold |
+|---|---|---|
+| 500 | 0.10279 | aligned, stable at every rung ✓ |
+| 1000 | 0.07719 | aligned, stable at every rung ✓ |
+| 2000 | 0.05153 | **flips in bands** as haste moves — aligned at 200–220 and 300–320, pulled at 150–190, 230–290, 330+ |
+| 4000 | 0.03095 | pulled everywhere — entirely on the residual |
+
+The pulled margins in the unstable rows are ~0.003 casts against aligned margins of ~0.16: the model is
+choosing the structurally wrong layout by a hair, in a region where the right answer is not close.
+
+⇒ **This raises the priority of settling it.** It also gives a much sharper test than a tie-band
+nudge: whatever explains or removes the residual must make the 2000 and 4000 SP rows read "aligned,
+stable" below the threshold, while leaving the 500/1000 rows and everything above the threshold
+unchanged.
+
+⚠ Attribute this to the open question, **not to D1** — the residual appears in the sim column too, so
+by this file's own rule 1 it is not (yet) a model defect. An earlier draft of this block filed it under
+D1, which would have made D1 look like it had a sim-confirmed witness. It does not.
+
+
 
 ## Not defects — recorded so they are not re-filed
 

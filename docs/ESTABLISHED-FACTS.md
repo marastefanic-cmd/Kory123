@@ -891,8 +891,8 @@ Where `IV@0 + Icon@t` first beats `IV@t + Icon@t`, brute-forced on a 1 s press g
 Above the breakpoint the margin grows monotonically and without competition: at 1000 SP it is +0.006
 casts at h=410, +0.056 at 440, +0.24 at 550, +0.53 at 700.
 
-⚠ **Below Icy Veins' 394.3 threshold this comparison is not stable, and that is a model defect, not a
-fact.** The margin there is `residual − s`, where `residual` is the ~0.0544-cast pull advantage the
+⚠ **Below Icy Veins' 394.3 threshold this comparison is not stable, and that instability is a model
+artifact rather than a fact about the game.** The margin there is `residual − s`, where `residual` is the ~0.0544-cast pull advantage the
 model shows below every threshold and that the arithmetic says should be zero
 (`docs/MODEL-DEFECTS.md`, open question). So:
 
@@ -904,9 +904,9 @@ model shows below every threshold and that the arithmetic says should be zero
 * at 4000 SP the residual wins outright and the model prefers the pull everywhere.
 
 ⇒ **The SP-dependence of the breakpoint is real and its direction is confirmed. Its exact location at
-high passive spell power is currently decided by a known defect**, and should be re-measured when that
-is fixed. This is the first time D1 has been observed choosing a *pair* layout rather than nudging a
-single one.
+high passive spell power is currently decided by the unexplained residual**, and should be re-measured
+once that is settled. It is the first time the residual has been seen choosing a *pair* layout rather
+than nudging a single one.
 
 ### Data
 
