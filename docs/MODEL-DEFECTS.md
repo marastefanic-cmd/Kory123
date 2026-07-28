@@ -302,8 +302,11 @@ paper over it rather than fix it.
 
 * At **0.216 casts** it is ~0.23 % of the fight — 3–40× the margins argued over this session
   (0.005–0.07 %), and enough to flip this ranking on its own.
-* It is **localised to a condition**: the model is accurate (+0.015) when Icy Veins fires mid-ramp and
-  wrong (−0.216) when it fires at 0. The ramp under haste is the suspect region.
+* ⛔ **The ramp is EXONERATED (07-28).** Isolated on a bare Icy-Veins-only fight, the model matches the
+  sim to **±0.010 casts at every placement including the pull** (ESTABLISHED-FACTS, *the model's cast
+  lattice is exact*). The −0.216 does **not** reproduce without other cooldowns present. ⇒ The defect is
+  in cooldown **interaction**, not in the cast walk. Next suspects, in order: the Cold-Snap second Icy
+  Veins, the pinned external, and the value cluster's effect on the lattice.
 * It plausibly subsumes the **open question** below (the unexplained +2.078 % pull advantage at h=0).
   If the model miscounts the ramp under haste, a phantom pull advantage is exactly the symptom.
 * And it is checkable without any objective change: `model-audit` compares the model's cast board to
@@ -464,7 +467,20 @@ for cause (archived PHASE12 §6.10). The phase average of the *exact* per-cast s
 it is the same objective evaluated over a distribution of press offsets, which is what
 `tools/jitter.mjs` already computes.
 
-## ⚠ Unresolved — a pull advantage at h=0 that should not exist
+## ✅ CLOSED 07-28 — the h=0 pull advantage is REAL, not a defect
+
+**The sim confirms it to three decimals.** Bare fight, Icy Veins alone, `T=120 · h=0 · 1000 SP`:
+the pull is worth **2.722 casts (model) / 2.720 (sim)** against an interior placement's
+**2.666 / 2.665** — **+2.10 % model, +2.06 % sim**. Both engines see the same 0.055-cast advantage.
+
+⇒ It never belonged in this file: a defect requires the sim to satisfy a fact the model does not, and
+here they agree. Moved to `docs/ESTABLISHED-FACTS.md` as a fact. What remains open is the **derivation**
+— the closed form says the pull and the interior should be equal at h=0 — and that is a gap in the
+arithmetic, not in the model. The original entry is kept below for its history.
+
+### (original entry, retained)
+
+## ⚠ Superseded — a pull advantage at h=0 that should not exist
 
 **Status: OPEN QUESTION, not yet classified.** At h=0, pressing a haste cooldown at the pull is worth
 **+2.078 % (model)** over any interior placement — **0.0554 of a cast**. The sim shows a pull advantage

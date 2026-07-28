@@ -100,6 +100,40 @@ you are in:
 > wowsims returns 1462.30 DPS at *every* sub-cast offset, identical to the last digit. `docs/TOOLING.md`
 > carries the full write-up; do not read that flatness as the sim disagreeing with the model.
 
+### ★★ THE MODEL'S CAST LATTICE IS EXACT — sim-checked, and the pull advantage is REAL
+
+Every fact in Part I is a *model* measurement. This is the one that says the model may be trusted to
+produce them. Bare fight, **Icy Veins alone**, nothing else in the kit, `T=120 · h=0 · 1000 SP · 25 %` —
+model boundary-credited cast count (`Σfrac`) against wowsims' own Arcane Blast count:
+
+| Icy Veins at | model `Σfrac` | sim casts | model − sim |
+|---|---|---|---|
+| never | 78.669 | 78.660 | +0.008 |
+| **@0** | 81.391 | 81.381 | **+0.010** |
+| @5 | 81.335 | 81.327 | +0.008 |
+| @10 / @20 / @40 / @60 | 81.335 | 81.325 | +0.010 |
+
+**The model agrees with the sim to ±0.010 casts at every placement**, including the pull. Its lattice,
+its haste snapshot and its boundary credit are all sound in isolation — so any model/sim disagreement
+larger than that comes from cooldown *interaction*, never from the cast walk itself.
+
+> ### ★★★ AND THE h=0 PULL ADVANTAGE IS REAL — the sim confirms it to three decimals
+>
+> | Icy Veins at | model gain | sim gain |
+> |---|---|---|
+> | **@0** | **2.722 casts** | **2.720 casts** |
+> | @5 … @60 (interior) | 2.666 | 2.665 |
+>
+> **+2.10 % model against +2.06 % sim.** This settles a question that stood open through this whole
+> session as *"a pull advantage at h=0 that should not exist"*. It exists. It is worth **0.055 casts**,
+> both engines see it, and it is **not a model defect** — `docs/MODEL-DEFECTS.md` has been updated to
+> say so.
+>
+> ⚠ What is still unexplained is the *arithmetic*: at h=0 nothing is floored, the ramp casts are
+> cast-bound and the steady casts are GCD-bound, and a haste multiplier divides both by the same factor
+> — so the closed form says the pull and the interior should be equal. **Two independent engines say
+> otherwise.** The gap is in the derivation, not in the model.
+
 ### Where each haste cooldown hits the cap — the TENT
 
 A haste cooldown's steady-state value is **not** flat-then-cliff in passive haste. It is a tent, and its
