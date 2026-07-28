@@ -8,12 +8,17 @@ makes both harder to trust.
 User, 2026-07-28: *"observe the behavior of each singular buff at different haste levels, then in
 combination with other buffs… so they are referencable and testable whether our model follows them."*
 
-## Scope of these baselines
+## Scope, and how this file is laid out
 
-Every measurement below is **one cooldown, alone, on an otherwise bare fight**. Nothing overlaps
-anything. So this file establishes how each cooldown behaves **around Arcane Blast stacks and the GCD
-floor, and nothing else** — haste's value is multiplied by *aligning* it with other haste or with
-damage buffs, and none of that can appear here. Combinations are the next expansion.
+**Part I** is **one cooldown, alone, on an otherwise bare fight** — nothing overlaps anything. It
+establishes how each cooldown behaves **around Arcane Blast stacks and the GCD floor, and nothing
+else**. **Part II** adds the second cooldown, which is where *alignment* — the thing the planner is
+actually for — first appears. Triples are the next expansion.
+
+Read Part I first: every Part II result is stated as a deviation from it, and the interaction term is
+only meaningful because each cooldown alone is already known to be interior-flat.
+
+# Part I — one cooldown at a time
 
 ## The rules
 
@@ -782,14 +787,191 @@ conclusion from a small difference.
 
 ---
 
+---
+
+# Part II — two cooldowns at a time
+
+Everything above is one cooldown alone, which is deliberately blind to the thing the planner actually
+optimizes: **alignment**. This part adds the second cooldown, and one number carries all of it.
+
+## The combination law
+
+    interaction(a, b)  =  V(both)  −  V(a alone)  −  V(b alone)
+
+Zero means the two are independent and may be placed separately. Everything the planner is *for* lives
+in the cases where it is not zero.
+
+> ### ★ THE LAW, for a HASTE cooldown paired with a VALUE cooldown
+>
+>     interaction = Δ(casts the value buff covers) × s
+>
+>     where  Δ(covered) = casts it covers WITH the haste buff − casts it covers WITHOUT
+>            s          = the value buff's per-cast bonus, relative to a plain Arcane Blast
+>                       = COEF·ΔSP / (AVG_BASE + COEF·SP)     for a +spell-power buff
+>                       = value − 1                            for a damage multiplier
+>
+> The haste cooldown does not make the value cooldown *stronger*; it makes it cover **more casts**.
+> That is the whole of the interaction, and `Δ(covered)` is always a **whole number** away from a
+> boundary — you cannot cover two-thirds of a cast.
+>
+> ⚠ **Count the covered casts at COMPLETION, and read them off the board, not off the clock.** A value
+> buff applies over `(auraStart, auraStart + dur]` measured at each cast's *completion*, and `auraStart`
+> is the next cast boundary after the press — which the haste cooldown itself moves. Reconstructing the
+> window by hand from the press time gives the wrong count (it did here, twice); `casts[].sp` records
+> what the model actually applied.
+
+> ### ★★ THE GENERALISATION BACK INTO THE SINGLES — per point of temporary spell power
+>
+>     d(interaction) / d(ΔSP)  =  Δ(covered) · COEF / (AVG_BASE + COEF·SP)
+>
+> A haste cooldown gains this much per 1 point of temporary spell power it is overlaid with. It is
+> **symmetric** and may be read from either end — the haste cooldown is worth more because the extra
+> casts it creates are worth more, or the value buff is worth more because it covers more casts. Same
+> number, and there is no third effect.
+>
+> Note what is and is not in it: `Δ(covered)` depends on passive **haste** and on the two durations;
+> the denominator depends on passive **spell power**. Crit appears nowhere — it scales the cooldown and
+> the plain cast alike and cancels, exactly as in rule 2b.
+
+## P1. Icy Veins + Icon of the Silver Crescent
+
++20 % casting haste (20 s) with +155 spell power (20 s). Equal durations, so "aligned" means pressing
+both at the same second.
+
+### Conclusions
+
+**Overlapping wins, and it is worth about a sixth of a cast.** At h=0 / 1000 SP the best aligned layout
+beats the best disjoint one by **0.1762 casts** (+0.42 % of the fight). **Sim-confirmed**: +0.389 %
+measured against +0.416 % modelled, and +0.705 % against +0.731 % on the other disjoint arrangement —
+both agreeing to 0.03 pp against a ±0.035 % seed band.
+
+**Below Icy Veins' cap threshold, press them at the same moment, as early as 3 stacks allow.** Every
+aligned interior placement from @5 to @35 is *identical* (3.9013 casts at h=0/1000 SP) and every one of
+them beats every non-aligned layout. The interaction is exactly **3.000 × s** at all of them.
+
+**Above the threshold Icy Veins moves to the pull and Icon stays at 3 stacks** — `IV@0 + Icon@5`. This
+is the layout the planner should produce at high haste, and it is *not* an abandonment of the overlap:
+two 20 s windows 5–6 s apart still share 15 s, so moving Icy Veins to the pull surrenders **exactly one
+covered cast**, not the whole interaction.
+
+**The breakpoint moves DOWN as passive spell power rises**, because a fixed +155 is worth relatively
+less on a bigger base, so there is less reason to stay aligned with it.
+
+### The exact trade
+
+Moving Icy Veins from aligned to the pull is worth, in casts:
+
+    margin = (Icy Veins' own pull advantage)  −  Δ(covered) × s
+           = 0.0544                           −  1 × s              at h=340
+
+Measured at h=340 against the closed form, and the surrendered coverage is **1.000 covered cast** at
+every spell power:
+
+| passive SP | s | Icon-covered casts, aligned → pulled | predicted margin | measured margin |
+|---|---|---|---|---|
+| 500 | 0.10279 | 19.000 → 18.000 | −0.0484 | **−0.0484** |
+| 1000 | 0.07719 | 19.000 → 18.000 | −0.0228 | **−0.0228** |
+| 2000 | 0.05153 | 19.000 → 18.000 | +0.0029 | **+0.0029** |
+| 4000 | 0.03095 | 19.000 → 18.000 | +0.0234 | **+0.0234** |
+
+(negative = stay aligned). Four decimals, four spell powers. Setting the margin to zero gives the
+break-even directly: at h=340 it is **1841 passive spell power**.
+
+### Breakpoints
+
+Where `IV@0 + Icon@t` first beats `IV@t + Icon@t`, brute-forced on a 1 s press grid:
+
+| passive SP | s | Icy Veins leaves the interior at |
+|---|---|---|
+| 500 | 0.10279 | **h = 425** |
+| 1000 | 0.07719 | **h = 410** |
+| 2000 | 0.05153 | below the threshold — see the warning |
+| 4000 | 0.03095 | below the threshold — see the warning |
+
+Above the breakpoint the margin grows monotonically and without competition: at 1000 SP it is +0.006
+casts at h=410, +0.056 at 440, +0.24 at 550, +0.53 at 700.
+
+⚠ **Below Icy Veins' 394.3 threshold this comparison is not stable, and that is a model defect, not a
+fact.** The margin there is `residual − s`, where `residual` is the ~0.0544-cast pull advantage the
+model shows below every threshold and that the arithmetic says should be zero
+(`docs/MODEL-DEFECTS.md`, open question). So:
+
+* at 500 and 1000 SP, `s` comfortably exceeds the residual and aligned wins cleanly at every rung —
+  the answer is stable and correct;
+* at 2000 SP `s ≈ residual` and the model's answer **flips back and forth in bands** as passive haste
+  moves (aligned at 200–220 and 300–320, pulled at 150–190, 230–290, 330+), with the pulled margins at
+  ~0.003 casts and the aligned ones at ~0.16;
+* at 4000 SP the residual wins outright and the model prefers the pull everywhere.
+
+⇒ **The SP-dependence of the breakpoint is real and its direction is confirmed. Its exact location at
+high passive spell power is currently decided by a known defect**, and should be re-measured when that
+is fixed. This is the first time D1 has been observed choosing a *pair* layout rather than nudging a
+single one.
+
+### Data
+
+`node tools/facts-pair.mjs --a=icyVeins --b=isc --haste=0 --sp=1000 --step=5`
+
+Aligned diagonal at h=0 / 1000 SP (`s = 0.07719`) — press both at @t:
+
+| t | pair (casts) | interaction | interaction / s | regime |
+|---|---|---|---|---|
+| 0 | 3.8023 | 0.1544 | **2.000** | pull |
+| 5 | 3.9013 | 0.2316 | **3.000** | interior |
+| 10 | 3.9013 | 0.2316 | **3.000** | interior |
+| 15 | 3.9013 | 0.2316 | **3.000** | interior |
+| 20 | 3.9013 | 0.2316 | **3.000** | interior |
+| 25 | 3.9013 | 0.2316 | **3.000** | interior |
+| 30 | 3.9013 | 0.2316 | **3.000** | interior |
+| 35 | 3.9013 | 0.2316 | **3.000** | interior |
+| 40 | 3.7065 | 0.1955 | 2.533 | terminal |
+
+The three placement regimes of Part I reappear in the *interaction*: whole in the interior, one cast
+smaller at the pull (the ramp casts are long, so Icy Veins creates fewer extra casts inside a 20 s
+window), and fractional at the kill (boundary credit).
+
+Covered-cast counts behind the interior row, read off `casts[].sp` — Icon covers **13** casts alone and
+**16** with Icy Veins, at every interior placement.
+
+And the interaction is exactly `3 × s` at every spell power, which is the generalisation stated as a
+measurement rather than a derivation:
+
+| passive SP | s | interaction | interaction / s | per 1 temporary SP |
+|---|---|---|---|---|
+| 500 | 0.10279 | 0.30836 | 3.0000 | 1.9894e−3 |
+| 750 | 0.08817 | 0.26451 | 3.0000 | 1.7065e−3 |
+| 1000 | 0.07719 | 0.23157 | 3.0000 | 1.4940e−3 |
+| 1500 | 0.06180 | 0.18541 | 3.0000 | 1.1962e−3 |
+| 2000 | 0.05153 | 0.15459 | 3.0000 | 9.9734e−4 |
+| 3000 | 0.03867 | 0.11602 | 3.0000 | 7.4850e−4 |
+
+⚠ The continuous closed form `N × s` — Icy Veins' own interior value times `s` — predicts 2.6662 × s
+and is **11 % low**. `Δ(covered)` is an integer (3), not `N` (2.6662): the fight is a lattice of whole
+casts, and a 20 s window either does or does not contain a cast. Use the integer.
+
+## Still to do in Part II
+
+The remaining 27 pairs, and then triples. The two structural questions each pair should answer are
+already fixed by the law above: **what is `Δ(covered)`**, and **where is the breakpoint**. Two cases
+are known in advance to need their own treatment rather than the law as stated:
+
+* **haste + haste** — there is no `s`; the interaction is that the two multipliers compound into the
+  GCD floor, so it must be derived from the tent (a stacked pair's threshold is far lower than either
+  alone: Icy Veins × Bloodlust is ×1.56, already capped at h=0).
+* **value + value** — two spell-power buffs on the same casts. Expected interaction ≈ 0 in casts, since
+  neither changes when casts happen; worth confirming rather than assuming.
+
 ## The two generators
 
 | | what it produces | cost |
 |---|---|---|
-| `tools/facts-ladder.mjs` | model only — arbitrary haste granularity, value in casts, closed form beside it, flatness and threshold assertions | seconds |
+| `tools/facts-ladder.mjs` | model only — one cooldown, arbitrary haste granularity, value in casts, closed form beside it, flatness and threshold assertions | seconds |
+| `tools/facts-pair.mjs` | model only — two cooldowns, brute-forced over both press times; the interaction surface and the breakpoint sweep (Part II) | seconds to minutes |
 | `tools/buff-atlas.mjs` | model **and** sim, one baseline at a time — the per-placement tables | minutes |
 
-Use the ladder to find where something interesting happens and the atlas to have the sim rule on it.
+Use the ladder and the pair tool to find where something interesting happens, and the atlas to have the
+sim rule on it. ★ For a PAIR the sim genuinely can rule — both cooldowns are self-presses, so the aura
+snapping that makes it blind to Bloodlust's placement (rule 5) does not apply.
 The ladder is what makes fine granularity affordable: the 86-rung sweep in this file is one command,
 where the same coverage through the atlas would be 86 sim campaigns.
 
