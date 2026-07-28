@@ -803,6 +803,55 @@ will reset it's cooldown back to 3 minutes"* — line for line. Verified against
 
 ---
 
+## §3.9 ⛔ OPEN DEFECT — the model over-values Icy Veins pressed BEFORE Bloodlust
+
+**Found 2026-07-28 by a user argument, confirmed against the sim, mechanism not yet known.** This is a
+scorer defect with the **wrong sign**, not a search miss, and it is the reason the tool emits
+`Icy Veins @ 0:00–0:02` on short fights instead of putting it with the damage cluster inside Bloodlust.
+
+### The isolation — one press moves, nothing else
+
+`--char model-ref`, T=120, h=0, 1387 SP, 38 % crit, `--no-control`, 5 seeds:
+
+| test | model says | **sim says** | verdict |
+|---|---|---|---|
+| bare fight, only IV: `IV@0` vs `IV@20` | IV@0 better by **+0.068 %** | **+1.1 DPS ±0.07 (IV@0)** | agree — ramp haste is worth a little, not zero |
+| **with Bloodlust@5: `IV@0` vs `IV@7` (fully inside Lust)** | **IV@0 better by +0.23 %** | **−0.4 DPS ±0.02 → `IV@7` WINS** | ⛔ **DISAGREE, and the model has the SIGN backwards** |
+
+±0.02 DPS over 5 seeds is a ~20σ separation — this is not noise. The model is wrong by ~0.25
+percentage points on a single press, which is **5× the tie band** and larger than most of the margins
+this project argues about.
+
+### Why the user's argument is the right one to have believed
+
+The rate arithmetic is exact and engine-independent (RULES §5b): at h=0, 20 s of Icy Veins buys
+**2.6667 casts inside Bloodlust and 2.6667 outside it**, because the GCD floor gives back precisely
+what the multiplication wins. So IV placement is rate-neutral, and the tie-break should then go to the
+window where the *damage* buffs are — i.e. with the cluster, inside Lust. That reasoning was stated by
+the user as three premises and a conclusion; the sim agrees with the conclusion and the model does not.
+
+⚠ **What is NOT established:** the mechanism. Candidates not yet distinguished — the ramp's discrete
+cast lengths, the press-snap at `t = 0` (a press at 0 fires immediately with no boundary to wait for,
+which no other press enjoys), and how the walk credits the pre-Lust unfloored window. **Do not guess
+it.** Two guesses have already been wrong today (see the corrections below).
+
+### ⚠⚠ Two process failures produced this section, and both are worth more than the finding
+
+1. **I explained a right measurement with a wrong mechanism, twice.** First "the discrete walk beats the
+   continuous rate" for Berserking (it was an Icy-Veins-timing lever), then "ramp compression buys a
+   whole cast" for Icy Veins (the clean isolation shows the ramp is worth 0.068 %, not a cast). Both
+   explanations were plausible, both were built from a *composite* comparison where several coordinates
+   moved at once. ⇒ **Isolate to ONE moving coordinate before naming a mechanism.**
+2. **The working tree silently rolled back twice mid-session** (container restarts restoring an older
+   snapshot), and a batch of measurements ran on the **pre-boundary-credit engine** without my noticing.
+   That engine returns *exactly neutral* for every Icy Veins placement, which looked like a clean
+   confirmation of the user's premise and was reported as one. The tell was `casts[].frac` coming back
+   `undefined` — a field the current engine always sets. ⇒ **Stamp the engine.** Any measurement script
+   should assert a marker of the version it thinks it is running (`frac` on the board is a good one)
+   before printing a number.
+
+---
+
 ## §4 ENFORCEMENT — make "the last geared run" a guarantee, not an intention
 
 Inherited from archived PHASE12 §1.1e. The user asked for a guarantee; a note in a doc is not one.
