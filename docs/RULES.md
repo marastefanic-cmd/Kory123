@@ -433,6 +433,61 @@ Lust** (its fastest casts). No hard breakpoint to hardcode — it emerges from t
   thing it was refining. The ruling: *"the cooldown will be ready for the next boss, always"* — an
   8-minute reset is not scarce inside one pull. ARCHITECTURE carries the deletion list.
 
+## 5b. ★ AT THE GCD FLOOR, ICY VEINS PLACEMENT IS RATE-NEUTRAL — and the tie is broken by
+##      DISCRETE CAST PLACEMENT, not by the rate
+
+**A user argument on 07-28, and the arithmetic is exactly right:** *"at h=0 IV by itself is irrelevant
+if it sits inside lust or outside of it — the loss by the 'over the GCD cap' is equal to the bonus
+gained by multiplicating the haste effects."*
+
+Verified to float precision at h = 0 (`interval = max(1.0, 1.5/m)`, 3-stack cast 1.498):
+
+| window | mult | interval | rate |
+|---|---|---|---|
+| bare | 1.00 | 1.5000 | 0.6667/s |
+| Lust | 1.30 | 1.1538 | 0.8667/s |
+| Icy Veins | 1.20 | 1.2500 | 0.8000/s |
+| **IV + Lust** | 1.56 | **1.0000** | 1.0000/s ← **GCD-FLOORED** |
+| Zerk + Lust | 1.43 | 1.0490 | 0.9533/s |
+| IV + Zerk + Lust | 1.716 | **1.0000** | 1.0000/s ← floored, so **Zerk on IV+Lust buys ZERO** |
+
+20 s of Icy Veins buys **2.6667 casts inside Lust and 2.6667 casts outside it** — equal to 1e-9. The
+floor gives back precisely what the multiplication wins. Berserking is **not** neutral (10 s buys
+0.8667 casts inside Lust vs 0.6667 outside), and Berserking stacked on an already-floored IV+Lust
+window buys **nothing at all**.
+
+⇒ **Two consequences that ARE rules.** (a) Since IV placement is free, the real question is which haste
+window the *damage* cluster (SP + Arcane Power) sits on, and **IV+Lust at 1.0000/s beats Zerk+Lust at
+0.9533/s** — the model already puts the cluster there. (b) Never stack Berserking onto a floored
+IV+Lust window.
+
+### ⚠ …AND WHY THE RATE ARGUMENT STILL DOES NOT DECIDE THE PLAN
+
+Carried to its conclusion the argument says Berserking should sit *fully inside* Lust. Measured, it is
+**wrong**, and the reason is the one this project already learned the expensive way:
+
+```
+Zerk@41 (6 s in Lust, tail on the Cold-Snap IV)   196814.3
+Zerk@37 (10 s fully inside Lust)                  196399.7      −0.211 %
+  both fit EXACTLY 80 casts; both have 45 casts before t=51
+  the whole difference is the FINAL cast:  starts 98.612 (frac 0.9266) vs 98.889 (frac 0.7417)
+```
+
+The continuous-rate calculation predicts Zerk@37 by ~0.04 casts. The **discrete walk** — intervals
+quantized to the millisecond, casts placed one at a time — lands the stream **0.277 s further along by
+the buzzer**, worth 0.185 of a partial cast under the boundary credit. Sim-confirmed: **+4.4 DPS ±0.06
+over 3 seeds**. Structural, not razor-timed: **0 sign flips across T = 94…106 s**.
+
+★★ **This is PHASE12's lesson wearing new clothes.** The rate integral and the per-cast sum disagreed by
+~30× the margins being resolved, which is why the integral was retired as the arbiter. A rate argument
+is a *good* way to see why a rule exists and a *bad* way to rank two specific layouts — the model ranks
+on where the casts actually land. When a rate argument and the emitted plan disagree, check the cast
+board before assuming the plan is wrong.
+
+⚠ Related, from the same exchange: the cluster printed at `0:06` against a Lust pinned at `0:07` is not
+a mistake. Brute force over 13 725 legal layouts scores cluster ∈ {6, 7, 8} **identically** — value
+buffs are read at cast completion, so the same casts are covered either way.
+
 ## 6. Spellpower × Arcane Power is multiplicative
 
 Icon's +155 SP is multiplied by Arcane Power's +30% — so a spellpower buff wants to land **on** the
