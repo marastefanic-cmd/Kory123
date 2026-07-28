@@ -860,7 +860,7 @@ Then every pair follows one of four rules, and no cooldown identity survives int
 | **sp × sp** | `0` — exactly, always | none |
 | **dmg × sp**, **dmg × dmg** | `n × s₁ × s₂` | always **+** |
 | **haste × value** | `Δ(covered) × s` | always **+** |
-| **haste × haste** | `d·[1/i(v₁v₂m) + 1/i(m) − 1/i(v₁m) − 1/i(v₂m)]` | **+** below the pair threshold, **−** above |
+| **haste × haste** | `d·[1/i(v₁v₂m) + 1/i(m) − 1/i(v₁m) − 1/i(v₂m)]` | **+** below `m_p = 1.5/(v₁+v₂−1)`, **−** above |
 
 Three things follow that are worth stating out loud, because each one contradicts a natural guess:
 
@@ -1037,10 +1037,27 @@ Uncapped this is `d·m_p·(v₁−1)(v₂−1)/1.5` — **positive**, the ordina
 haste. Once the *pair* floors the GCD the first term is clipped to `d` and the expression **turns
 negative**: you are paying for haste the floor will not let you spend.
 
-> ### ★★ THE PAIR THRESHOLD, AND WHY IT IS THE ONE THAT MATTERS
-> A pair floors the GCD at `v₁·v₂·m_p = 1.5`, so its threshold is roughly **each cooldown's own
-> threshold divided by the other's multiplier** — always far lower than either alone. Two haste
-> cooldowns stop wanting to overlap **long before** either one stops being useful by itself.
+> ### ★★ TWO THRESHOLDS, NOT ONE — and an earlier draft of this file conflated them
+> A pair floors the GCD at `v₁·v₂·m_p = 1.5`, so **overcap begins** at roughly each cooldown's own
+> threshold divided by the other's multiplier — always far lower than either alone.
+>
+> ⚠ **But that is not where overlapping starts losing.** Between the two there is a band where the pair
+> is floored and overlapping still wins, because the multiplicative gain has not yet been eaten. Setting
+> the interaction to zero gives the second threshold in closed form:
+>
+>     overcap begins   m_p = 1.5 / (v₁·v₂)
+>     overlap LOSES    m_p = 1.5 / (v₁ + v₂ − 1)
+>
+> | pair | overcap begins | overlap starts losing | band where it is floored **and still worth it** |
+> |---|---|---|---|
+> | Icy Veins + Bloodlust | −61 | **0** | 61 rating (below h=0 — unreachable) |
+> | Berserking + Bloodlust | 77 | **113** | **35 rating** |
+> | Icy Veins + Berserking | 215 | **243** | 28 rating |
+>
+> Measured for Berserking + Bloodlust: `+0.2031` at h=77, still `+0.1022` at h=100, `+0.0494` at h=113,
+> negative from ~120. The floor starts biting at 77 and overlapping keeps paying for another 40 rating.
+> ⚠ Sign-flip cells are quantization-noisy on a 10 s window (h=130 reads −0.019 against h=120's −0.214);
+> trust the closed form for the location and the table for the magnitude.
 
 | pair | pair threshold | their own thresholds | interaction h=0 | interaction h=400 |
 |---|---|---|---|---|
@@ -1160,8 +1177,70 @@ between joining the cluster (and overcapping) or staying out of Lust (and not):
 | 100 | 2.469 | **3.028** | −0.559 |
 | 140 | 1.579 | **3.004** | −1.425 |
 
-⇒ **Below h ≈ 52, Icy Veins should sit inside Lust with the cluster and eat the overcap**, and it is not
-close — **+1.05 casts** at h=0.
+⇒ At **1000 SP with an Icon + Arcane Power cluster**, Icy Veins should sit inside Lust and eat the
+overcap up to **h ≈ 55**, and at h=0 it is not close: **+1.05 casts**.
+
+⚠⚠ **THAT NUMBER IS ONE CELL OF A SURFACE AND MUST NOT BE QUOTED ALONE.** An earlier draft of this
+section published "h ≈ 52" as *the* crossover. It is the crossover for one spell-power baseline and one
+cluster; change either and it moves by a factor of six. The user's objection is the correct one:
+*"this logic HAS to be different based on passive spellpower too… it will also change if arcane power
+enters the fray. That's why I wanted ground rules and the equations of deltas."* Here is the equation.
+
+### ★★★ THE EQUATION — align inside Lust iff the cluster outbids the overcap
+
+    align inside Lust   ⇔   B  >  N_out / N_in  −  1
+
+    N_out = d · [ 1/i(v·m_p) − 1/i(m_p) ]           casts the haste cooldown buys OUTSIDE Lust
+    N_in  = d · [ 1/i(v·1.3·m_p) − 1/i(1.3·m_p) ]   casts it buys INSIDE Lust
+    B     = Π(1 + sₖ) − 1  over the cluster          the cluster's per-cast bonus (composition table)
+
+Both sides are dimensionless. The right-hand side is **pure haste physics** — no spell power, no crit,
+no cooldown identity. The left-hand side is **pure damage** — no haste. They meet at the crossover.
+
+**The right side — what the overcap costs, in units of cluster bonus:**
+
+| passive haste | N_out | N_in | required B |
+|---|---|---|---|
+| **0** | 2.667 | 2.667 | **0.0000** — the overcap costs *nothing* at h=0 |
+| 25 | 2.709 | 2.392 | 0.1326 |
+| 50 | 2.751 | 2.117 | 0.2995 |
+| 100 | 2.836 | 1.568 | 0.8091 |
+| 150 | 2.920 | 1.018 | 1.8688 |
+| **243** | 3.078 | 0.000 | **∞** — no cluster can pay for it |
+
+★ **At h=0 the required B is exactly zero**, because `N_in = N_out = 2.667`: the floor takes back
+precisely as much as Lust's compression handed over. So at h=0 *any* value cooldown at all makes
+aligning correct.
+
+**The left side — what each cluster offers, and how much of that is gear-dependent:**
+
+| cluster | SP 500 | SP 1000 | SP 2000 | SP 4000 | swing |
+|---|---|---|---|---|---|
+| Icon alone | 0.1028 | 0.0772 | 0.0515 | 0.0310 | **3.32×** |
+| Icon + Arcane Power | 0.4336 | 0.4003 | 0.3670 | 0.3402 | 1.27× |
+| Icon + Gem + Arcane Power | 0.6475 | 0.5573 | 0.4692 | 0.4004 | 1.62× |
+| Arcane Power alone | 0.3000 | 0.3000 | 0.3000 | 0.3000 | **1.00×** |
+
+★★ **A cluster's spell-power sensitivity is decided entirely by how much of its bonus is `+SP` rather
+than `×damage`.** A +SP buff contributes `COEF·N/(AVG_BASE + COEF·SP)`, which decays as you gear; a
+damage multiplier contributes a flat `v−1` forever. So Arcane Power is a **gear-independent anchor**
+and Icon is not — which is exactly why adding Arcane Power both raises the crossover and *flattens* it.
+
+**The measured surface** — the haste at which "align inside Lust" stops winning:
+
+| cluster | SP 500 | SP 1000 | SP 2000 | SP 4000 |
+|---|---|---|---|---|
+| Icon alone | 15 | 15 | 10 | **never** — out-of-Lust wins even at h=0 |
+| Icon + Arcane Power | 65 | 55 | 55 | 50 |
+| Icon + Gem + Arcane Power | **95** | 80 | 65 | **55** |
+
+Both of the predicted dependencies are there and neither is small: **passive spell power moves the
+crossover 95 → 55** on the full cluster, and **Arcane Power entering moves it 15 → 65**. Quoting a
+single number for this was the mistake.
+
+The closed form tracks the measurement to within **8 rating** across the whole surface (worst cells:
+predicted 63 vs measured 55, and 71 vs 65) — close enough to use as the rule, with the table as the
+anchor when a cell matters.
 
 ★★ **The general lesson, and it is the one to carry:** a negative `haste × haste` interaction does **not**
 mean "do not overlap". It is one term in a sum. The overcap loss is **bounded** — you can never lose
@@ -1185,6 +1264,58 @@ decides a placement.**
 ⚠ The 52 is specific to this cluster. A bigger value cluster buys more, so it moves **up**; a bare
 fight with no value cooldowns has nothing to buy and the crossover is at h=0 — which is exactly the
 "Icy Veins × Lust with nothing else" table above, where out-of-Lust wins from h=0 onward.
+
+### ★★★ The two factors, separated — and the answers to "overlap or not, in isolation"
+
+An overlap is exactly two things pulling against each other, and they can be priced independently:
+
+    GAIN = d · m_p · (v₁−1)(v₂−1) / 1.5        the multiplicative cross-term, if there were no floor
+    LOSS = GAIN − NET                           what the floor then refuses to deliver
+    NET  = d · [1/i(v₁v₂m) + 1/i(m) − 1/i(v₁m) − 1/i(v₂m)]
+
+**Icy Veins + Bloodlust, alone on a bare fight:**
+
+| passive haste | pair mult | floored? | GAIN | LOSS | NET |
+|---|---|---|---|---|---|
+| **0** | 1.5600 | yes | **0.800** | **0.800** | **−0.000 — exactly a wash** |
+| 50 | 1.6095 | yes | 0.825 | 1.459 | −0.634 |
+| 100 | 1.6589 | yes | 0.851 | 2.119 | −1.268 |
+| 200 | 1.7578 | yes | 0.901 | 3.438 | −2.536 |
+| 400 | 1.9557 | yes | 1.003 | 4.288 | −3.285 |
+
+⇒ **In isolation, Icy Veins × Lust is EXACTLY irrelevant at h=0 — and that is not a coincidence.** The
+multiplicative cross-term is `+0.800` casts and the overcap takes back `−0.800` casts. They cancel to
+the last digit, because `v₁ + v₂ − 1 = 1.2 + 1.3 − 1 = 1.5` puts the sign flip precisely at `m_p = 1`.
+So the earlier intuition that "it doesn't matter" was right *at h=0 and only there*: from the very
+first point of passive haste the loss outruns the gain, and by h=400 overlapping costs **3.3 casts**.
+
+**Berserking + Bloodlust, alone on a bare fight:**
+
+| passive haste | pair mult | floored? | GAIN | LOSS | NET |
+|---|---|---|---|---|---|
+| **0** | 1.4300 | **no** | **0.200** | **0.000** | **+0.200** |
+| 50 | 1.4753 | no | 0.206 | 0.000 | +0.206 |
+| 77 | 1.4998 | no | 0.210 | 0.000 | +0.210 |
+| 100 | 1.5207 | yes | 0.213 | 0.138 | +0.075 |
+| 150 | 1.5660 | yes | 0.219 | 0.440 | −0.221 |
+
+⇒ **Yes — Berserking × Lust is strictly better overlapped at h=0, with NO overcap at all.** The pair
+multiplier is ×1.43, under the 1.5 the floor needs, so nothing is clipped and the full multiplicative
+bonus lands: `+0.200` casts, measured `+0.2043`. It stays strictly positive to h≈113.
+
+### Do spell power and crit enter this? No — and both ways of asking are right
+
+Every term above is a **cast-rate difference** (`1/interval`), and `interval = max(1.0, 1.5/m)` depends
+on passive haste alone. Neither stat appears. Asked the other way — quoted in raw damage, both terms
+carry the same `(720 + COEF·sp) · critFactor` factor, which **divides out exactly** when the result is
+expressed in casts. So they are absent by construction *and* they cancel; those are the same statement
+seen from the two sides. Measured spread across spell power {500, 1000, 2000} × crit {0, 25, 50 %} at
+four haste levels: **0.00000000 casts**.
+
+⚠ **This is true of the pair in ISOLATION only.** The moment a value cooldown is in the window, spell
+power re-enters through `B` — not through the haste physics, but through what the aligned casts are
+worth. That is the whole content of the overcap-vs-alignment section below, and it is why the crossover
+there moves with gear while nothing on this page does.
 
 ### ★ The governing inequality — and Icy Veins and Berserking are on opposite sides of it
 
