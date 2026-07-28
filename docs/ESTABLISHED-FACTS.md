@@ -24,11 +24,45 @@ damage buffs, and none of that can appear here. Combinations are the next expans
 > a press written at 5 s already lands on the first full-stack cast, so the penalty is confined to the
 > pull:  `@0  <  @5 ≈ @10 = @15 = … = @(T − duration)`
 >
+> **2b. ★ RULE 2 IS BASELINE-INDEPENDENT — verified, not assumed.** Across **81 combinations**
+> (Arcane Power / Icon / Serpent-Coil × haste 0, 400, 800 × spell power 500, 1000, 2000 × crit 0, 25,
+> 50 %) the interior spread is **0.0000 % in every single one**, and the pull penalty is present in
+> every single one. There are no diminishing returns and no interaction with spell power or crit: a
+> damage cooldown used once, after 3 stacks, with no competing opportunity, is worth the same wherever
+> it goes. ⚠ The *size* of the pull penalty does move with passive haste (−6.2 % … −20.0 %) — not a
+> diminishing return, just the ramp occupying a different share of the window as casts get faster.
+>
+> **2c. The same independence holds for the haste family's steady state.** Icy Veins' interior value is
+> flat to **0.0000 %** at all 12 spell-power × crit combinations measured (500–2000 SP × 0–50 % crit),
+> and its pull advantage is **2.812 % in every one of them** — identical to three decimals. Placement
+> behaviour is uncorrelated with spell power and with crit.
+>
 > **3. ★ THE ONE EXCEPTION, AND IT IS A HASTE EXCEPTION.** As passive haste rises toward the GCD cap
 > (**~789 rating**, where the 3-stack interval is already floored at 1.0 s), a haste cooldown converts
 > less and less at steady state — but keeps converting at the **pull**, where casts are 2.500 / 2.166 /
 > 1.832 s and still longer than the floor. Above the cap the steady-state value is **zero** and the
 > pull is the entire value of the cooldown. Damage cooldowns are unaffected: they have no cap.
+
+### Where each haste cooldown hits the cap
+
+Derived from the engine's own constants (`GCD_BASE / GCD_FLOOR = 1.5`, `15.77` rating per 1 %), i.e.
+the passive haste at which *that buff + passive + 3 stacks* first floors the GCD. Below its threshold a
+cooldown's steady-state value is untouched; above it, the value drains toward zero and the pull becomes
+the whole of it. A **bigger multiplier reaches the cap on LESS passive haste**, which is why Bloodlust
+gets there first and Berserking last.
+
+| cooldown | | threshold (passive haste rating) |
+|---|---|---|
+| Bloodlust | ×1.30 | **243** |
+| Icy Veins | ×1.20 | **394** |
+| Mind Quickening Gem | +330 rating | **459** |
+| Berserking | ×1.10 | **573** |
+| Skull of Gul'dan | +175 rating | **614** |
+| *(no cooldown at all)* | — | *789* |
+
+⚠ These are **derived**, and confirmed at the endpoints (h=0 below every threshold, h=800 above every
+one — where all five read 0.00 DPS at steady state). The knee itself has not been swept finely; that is
+the next measurement, and Icy Veins at ~394 is the one to do first.
 
 ## Baselines
 

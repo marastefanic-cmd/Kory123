@@ -77,6 +77,24 @@ inside the 0.05 % band. It bounds the *symptom* — it does not fix the cause, a
 
 ---
 
+## ⚠ Unresolved — a pull advantage at h=0 that should not exist
+
+**Status: OPEN QUESTION, not yet classified.** At h=0, pressing a haste cooldown at the pull is worth
+**+2.8 % (model) / +2.1 % (sim)** over any interior placement — about **0.05 of a cast**.
+
+It is in **both** columns, so it is not D1 (which is model-only by definition). But by the arithmetic it
+should not exist: at h=0 nothing is floored, the ramp casts are cast-bound and the steady casts are
+GCD-bound, and a haste multiplier divides both by the same factor. ESTABLISHED-FACTS rule 3 explains a
+pull advantage **at and above a buff's cap threshold** — h=0 is far below every threshold (the lowest,
+Bloodlust, is 243).
+
+It is also **perfectly stable**: 2.812 % at all 12 spell-power × crit combinations, to three decimals.
+A quantity that constant is a mechanism, not noise.
+
+⇒ Two possibilities, and picking between them matters: either it is a real effect neither the arithmetic
+nor rule 3 captures, **or** part of what is filed above as D1 is real and the model is not wrong about
+it. Do not fix D1 without settling this first.
+
 ## Not defects — recorded so they are not re-filed
 
 * **Serpent-Coil's steady-state column is not flat in the SIM** (1.85 % at 60 k iterations). The model
