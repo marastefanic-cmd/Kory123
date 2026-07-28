@@ -194,6 +194,24 @@ bit-equal to recomputation; collect=true always computes fresh.
   returned `total`/`robust` are overwritten by the per-cast sum.
 - AoE segments: `dmg` uses AE base × `targets` × `aoeCritAmp`, interval = GCD only.
 
+> ### ★★★★ THE FINISHING TAIL IS MONOTONE, AND ITS BUDGET IS A TIE-BREAK (user ruling 07-28)
+> `finishLineFloored` (~3700) runs `finishLine` **twice** — once at `QTOL = castVal` (loose: lets a
+> pass tunnel through a worse *intermediate* out of a local optimum) and once at `QTOL = castVal/1000`
+> (tight: free moves only) — and returns the better, with the **entrant** as a third arm flooring both.
+> Ties go to the plan with fewer **press rows** (`pressRows`, distinct `Math.floor(t)` seconds), which
+> is the ruling in one line: *damage first, legibility only where damage cannot tell the difference.*
+> ⛔ `QTOL` used to be `castVal` — a whole Arcane Blast — spendable by every groom/snap/merge pass on
+> "a pressable line", and nothing compared the tail's output to its input, so the losses compounded and
+> never came back (the stale high-water mark `val = Math.max(val, pick.v)`). Measured: `1:40` emitted a
+> plan 127.2 below one the search had already FOUND.
+> ⚠⚠ **The floor must WRAP the call.** The Cold-Snap materiality block `return`s out of `finishLine`
+> from inside a callback, so a floor above the final `return` is skipped on exactly the fights whose
+> tail rearranges most — measured `3:20 drums` −70.3 when it was inlined.
+> ⚠ `castVal`/`TIE_TOL` are hoisted OUT of `finishLine` so the wrapper can name them.
+> Blast radius: 11 of 25 plans better, 7 tie, **0 regressions**; legibility −8 press rows / −7 lone
+> seconds / +6 clustering; all three recorded witnesses reached. Gates: `tools/search-miss.mjs` (the
+> objective) beside `tools/legibility.mjs` (the display) — never one without the other.
+
 ## `repair(schedule, cfg)` — feasibility projector (~1661–1740; re-grepped 07-27)
 Legalizes any raw schedule: per-track cooldown spacing (`trackRule`), `maxUses` cap, `lastFor = T−1`
 cutoff, **Icy Veins + Cold Snap chaining** (~1700–1720 — the only way two IVs sit <180s apart; a use

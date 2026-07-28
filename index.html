@@ -2239,22 +2239,39 @@ function optimizeCore(cfg, starts, onProgress) {
         // ——— the finishing tail as a CALLABLE, run once per hop arm (PHASE9 §5.16 residual
         // closed): `best` inside shadows the outer champion on purpose, so the body is unchanged.
         let bestNMemo = null; // the no-Cold-Snap comparison solve is arm-independent — solve once
-        const finishLine = async (entrant) => {
+        // ⚠ HOISTED OUT OF `finishLine` (07-28): the two-regime runner below has to name `castVal` and
+        // `TIE_TOL` to pick the budgets it runs the tail under, and a `const` inside the body is
+        // invisible to a wrapper around it. Both depend only on `cfg`, so nothing else moves.
+        const castVal = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + (cfg.critPct / 100) * (GAME.CRIT_MULT - 1)) * (cfg.t5two ? 1.2 : 1);
+        const TIE_TOL = castVal / 1000;
+        const finishLine = async (entrant, QTOL) => {
         let best = null;
         let s = entrant.s, val = entrant.val;
         setStage(0.72, 0.82, "Grooming (ties & legibility)");
         const SCORE_SLOP = 0.5;   // ⚠ NOT the clock EPS at the top of this file — a SCORE tolerance, in raw
                                  // damage units, and it shadowed `EPS` under the same name until 07-27.
-        // Execution beats microtiming: expected-damage differences under ONE
-        // effective cast are below real-world execution noise (movement, the
-        // opener, latency), so aesthetics may trade up to a full cast of
-        // EXPECTED damage for a pressable line — but never damage that's
-        // BANKED by the pessimistic kill (T−3s). A cast that squeaks under
-        // the exact entered wire is priced by the robust objective (it only
-        // exists if the boss dies on schedule) and reported as a note, not
-        // allowed to dictate a razor-timed plan.
-        const castVal = (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) * (1 + (cfg.critPct / 100) * (GAME.CRIT_MULT - 1)) * (cfg.t5two ? 1.2 : 1);
-        const QTOL = castVal;
+        // ★★★ THE LEGIBILITY BUDGET IS A TIE TOLERANCE, NOT A TRADE (user ruling 07-28).
+        //
+        // ⛔ This block used to read: *"Execution beats microtiming: expected-damage differences under
+        // ONE effective cast are below real-world execution noise (movement, the opener, latency), so
+        // aesthetics may trade up to a full cast of EXPECTED damage for a pressable line."* `QTOL` was
+        // therefore `castVal` — a WHOLE Arcane Blast, ~0.77 % of a 130-cast fight, against ranking
+        // margins the project argues about at 0.005–0.1 %. Every groom/snap/merge pass could spend it,
+        // and they compound.
+        //
+        // The user's clarification retires that reading outright: *"I want the perfect plan, I just
+        // want the timeline/schedule rounded to something legible."* Legibility is a property of the
+        // DISPLAY — press times render as whole seconds, and `planspec` clamps a press into
+        // `[prevBoundary + SLACK, targetBoundary − SLACK]` so the printed second fires the cast the
+        // model scored. It is not something the search may buy with damage. So the passes below may
+        // still reorder, merge and align — but only across a plan they cannot distinguish.
+        //
+        // `castVal / 1000` is ~0.001 of one cast: float-tie territory, the same bar the canonicalizer
+        // and `TIE_EPS` already use. It is deliberately NOT zero — two schedules that differ only in
+        // the order of simultaneous presses can score a few ulps apart, and a strict `>=` would then
+        // make the canonical form unreachable.
+        // ⇒ `QTOL` is now a PARAMETER of `finishLine`, because it turned out to have two jobs and only
+        // one of them is retired. See the two-regime runner below the body.
         // The ONLY guarded currency is expected (kill-uncertainty-weighted)
         // damage — the objective itself. Sharp per-second thresholds (at-T,
         // banked-by-T−3) cliff by a whole cast when the tail slides across a
@@ -3314,7 +3331,12 @@ function optimizeCore(cfg, starts, onProgress) {
                 cand[key][i] = target; cand[key].sort((a, b) => a - b);
                 const rep = admit(cand, sx);
                 if (!rep) continue;
-                if (simulate(rep, cfg).robust >= r0 - castVal / 8) { sx = rep; moved = true; break; }
+                // ⛔ WAS `r0 - castVal / 8` — "coPressAlign's designed pressability trade", i.e. an
+                // eighth of a cast bought outright for a tidier line. Retired by the same 07-28 ruling
+                // as `QTOL`: pull the burst onto one second only when it is FREE. The measured case
+                // this pass was built for (7:20 Window 6, gem/AP at 6:21 vs 6:20) was an EXACT sim
+                // wash, so it still qualifies — the pass keeps its purpose and loses its budget.
+                if (simulate(rep, cfg).robust >= r0 - Math.max(TIE_TOL, QTOL / 8)) { sx = rep; moved = true; break; }
               }
               if (moved) break;
             }
@@ -3672,9 +3694,86 @@ function optimizeCore(cfg, starts, onProgress) {
         best.val = simulate(best.s, cfg).robust;     // …and report the score of THAT plan (PHASE7 §5.14)
         return best;
         };
-        let fin = await finishLine(best);
+        // ★★★ THE ENTRANT FLOOR — the finishing tail may never hand back something WORSE than what it
+        // was given. Landed 07-28 on the user's clarification: *"I want the perfect plan, I just want
+        // the timeline/schedule rounded to something legible."* Legibility is a DISPLAY property; the
+        // search's job is the argmax, full stop.
+        //
+        // Why a floor is needed even with the legibility budget at a tie epsilon: the tail is a long
+        // chain of passes (grooms, macro snap, legibility merges, downtime slide, coPressAlign →
+        // spreadLoneHaste → dodgeDowntime, the Cold-Snap materiality recursion), each with its OWN
+        // tolerance, and the losses COMPOUND. Nothing between them ever compared the running plan to
+        // the one that walked in. Measured: `1:40 lust 0:05` — the outer search FINDS the better
+        // layout from 20 restarts on, a groom pass moves Berserking 36→20 for −46.4 (admitted against
+        // a stale high-water mark, `val = Math.max(val, pick.v)` — the exact defect `challengePass`
+        // had already fixed for itself), the Cold-Snap comparison inherits the groomed plan wholesale,
+        // and −46.4 becomes −127.2 in the emitted plan. More restarts never helped, because the tail
+        // discarded the result every time. Archived PHASE9 §5.17's declined residual, coming due.
+        //
+        // ⚠⚠ IT WRAPS, IT IS NOT INLINED AT THE BOTTOM OF THE BODY — and that distinction cost a
+        // measured regression. The Cold-Snap materiality block `return`s out of `finishLine` from
+        // inside a callback, so a floor written just above the final `return` is SKIPPED on exactly
+        // the fights where the tail rearranges the most. First attempt did that: `1:40` +127.2 and
+        // Solarian +46.4 as intended, but `3:20 lust 0:05 drums` −70.3, because the un-floored arm
+        // still won at the call site. A guarantee with an early-return hole is not a guarantee.
+        //
+        // ⚠ Compare LIKE FOR LIKE: the entrant's own `val` was computed upstream, possibly before a
+        // transform, so re-score it here rather than trusting the carried number. Strictly-greater, so
+        // the tail keeps genuine ties — it is the pass that made the line legible.
+        // ── PRESS ROWS: the legibility tie-break, and the ONLY thing legibility is allowed to decide ──
+        // What a player executes is one row per SECOND — the granularity the plan is printed at — with
+        // everything on that second macro'd together. So "more legible" is "fewer rows", and it may
+        // only break a tie in expected damage. `tools/legibility.mjs` measures the same quantity from
+        // the outside; keep the two definitions in step.
+        const pressRows = sx => {
+          const secs = new Set();
+          for (const k in sx) for (const t of sx[k]) secs.add(Math.floor(t + EPS));
+          return secs.size;
+        };
+        // ★★★ TWO REGIMES, THEN THE FLOOR — because `QTOL` was doing two unrelated jobs and the 07-28
+        // ruling retires exactly one of them.
+        //
+        //   AESTHETIC job: buy a co-pressed line with expected damage, up to a WHOLE cast. ⛔ Retired.
+        //     "I want the perfect plan, I just want the timeline/schedule rounded to something
+        //     legible." Legibility is a property of the DISPLAY. And measured, this job was not even
+        //     achieving its own aim: cutting it moved 10 exact-tie cells by −16 press rows.
+        //   SEARCH job: accept a worse INTERMEDIATE to tunnel out of a local optimum. ✅ Kept — this is
+        //     what `7:20 lust 0:05` lost when the budget was cut flat (−127.2, and its `IV₂ 38→45,
+        //     Zerk 20→36` signature is the same needle the `1:40` witness turned on).
+        //
+        // The floor is what makes tunnelling safe: a pass may wander anywhere provided the tail can
+        // never RETURN worse than it entered. So run the tail under both budgets and keep the better —
+        // the loose regime supplies reach, the tight one supplies tidiness, and neither can lose ground
+        // because the entrant floors both.
+        //
+        // ⚠ TIES GO TO THE LEGIBLE PLAN, and that ordering is the whole ruling in one line: damage
+        // first, and legibility only where damage cannot tell the difference.
+        //
+        // ⚠⚠ THE FLOOR WRAPS THE CALL. It cannot live at the bottom of `finishLine`'s body: the
+        // Cold-Snap materiality block `return`s from inside a callback, so an inlined floor is skipped
+        // on exactly the fights whose tail rearranges most. Measured when it was inlined — `1:40`
+        // +127.2 and Solarian +46.4 as intended, but `3:20 drums` −70.3, because the un-floored arm
+        // still won at the call site. A guarantee with an early-return hole is not a guarantee.
+        const finishLineFloored = async (entrant) => {
+          const loose = await finishLine(entrant, castVal);   // tunnelling regime (the historical QTOL)
+          const tight = await finishLine(entrant, TIE_TOL);   // free-moves-only regime
+          const ev = simulate(entrant.s, cfg).robust;
+          // ⛔ Drop `csNote` when the ENTRANT wins: it records the Cold-Snap decision taken for a plan
+          // being discarded, and a note describing a schedule the user is not shown is worse than none.
+          const { csNote, ...keep } = tight;
+          const floorArm = { ...keep, s: cloneS(entrant.s), val: ev,
+                             floorNote: { reverted: true, delta: 0 } };
+          let best = null;
+          for (const arm of [tight, loose, floorArm]) {          // tight first ⇒ it wins exact ties
+            if (!best || arm.val > best.val + 1e-6) { best = arm; continue; }
+            if (arm.val > best.val - 1e-6 && pressRows(arm.s) < pressRows(best.s)) best = arm;
+          }
+          if (best === floorArm) best.floorNote.delta = Math.round(ev - Math.max(tight.val, loose.val));
+          return best;
+        };
+        let fin = await finishLineFloored(best);
         if (hopAlt && sigOf(hopAlt.s) !== sigOf(best.s)) {
-          const fin2 = await finishLine(hopAlt);
+          const fin2 = await finishLineFloored(hopAlt);
           if (fin2.val > fin.val) fin = fin2; // strict: the primary (old-rule) line keeps ties
         }
         resolve(fin);
@@ -4594,6 +4693,7 @@ function setEditBtn(editing) {
   b.title = editing ? EDIT_TIP.on : EDIT_TIP.off;
 }
 function customReset() {
+  simClear();   // the benchmark result described the OLD timeline — see simClear's note
   CUSTOM.editing = CUSTOM.locked = false;
   CUSTOM.s = CUSTOM.run = CUSTOM.rep = null;
   CUSTOM.legal = true; CUSTOM.diffs = [];
@@ -4685,6 +4785,7 @@ function renderEditMsg() {
 function refreshCustomView() {
   const run = lastRun;
   if (!run || !CUSTOM.s) return;
+  simClear();   // the edit just changed the plan the last benchmark judged
   const v = validateCustom(CUSTOM.s, run.cfg);
   CUSTOM.rep = v.rep; CUSTOM.legal = v.legal; CUSTOM.diffs = v.diffs;
   const optR = simulate(CUSTOM.s, run.cfg, true);
@@ -5044,6 +5145,15 @@ function simRun(request, idx) {
   });
 }
 function simBox(html) { const b = el("simbox"); b.hidden = false; b.innerHTML = html; }
+// ★ A SIM RESULT IS ABOUT ONE TIMELINE, SO IT DIES WITH THAT TIMELINE. The panel prints two DPS
+// numbers and a verdict, with nothing on it naming the fight it came from — so a stale one left
+// standing after the inputs change is not merely untidy, it is WRONG and it looks authoritative
+// (user report 07-28: "when changing inputs and running the model again, this needs to get reset.
+// currently it stays there with the previous fight's values"). Every path that invalidates the plan
+// clears it: `customReset()` (which `render()` calls on each fresh optimize, and `revertCustom()`
+// calls on revert) and `refreshCustomView()` (every hand-edit). ⚠ If you add a third way to change
+// the plan, clear it there too — a number with no provenance on screen is worse than no number.
+function simClear() { const b = el("simbox"); b.hidden = true; b.innerHTML = ""; }
 const simPct = v => (v >= 0 ? "+" : "−") + Math.abs(v).toFixed(2) + "%";
 
 async function runSimDuel() {
