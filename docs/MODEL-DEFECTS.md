@@ -20,7 +20,8 @@ into one document, neither reads cleanly, and the facts file becomes hard to tru
 
 ## D1 — the model resolves sub-cast lattice phase as though it were damage
 
-**Status: OPEN. Mechanism not established. Three witnesses, one bug.**
+**Status: OPEN. Mechanism not established. Two witnesses, one bug** — a third was withdrawn on 07-28
+(see below), which is why the count in older commits reads three.
 
 The model books *where the cast lattice happens to land* as real expected damage. Because a cooldown's
 placement shifts every cast after it, a placement that is genuinely worth the same can come out ahead
@@ -28,65 +29,52 @@ by a fraction of a cast — and the model spends real layout quality chasing it.
 
 | witness | size | the fact it violates |
 |---|---|---|
-| **Bloodlust's interior alternates between exactly two values** | **0.231 casts** | ESTABLISHED-FACTS rule 1 |
 | Berserking "prefers" partial Bloodlust overlap over sitting fully inside it | **0.185 casts** | RULES §5b |
 | Icy Veins before Bloodlust valued above Icy Veins inside it | **0.287 casts** | ESTABLISHED-FACTS §1 rule 1 |
 
-All three are **sub-cast**, all three are on placements that shift the downstream lattice, and all
-three are **deterministic** — the Bloodlust figure is identical at 10 000 and 60 000 iterations, so it
-is not Monte-Carlo noise.
+Both are **sub-cast**, both are on placements that shift the downstream lattice, and both are
+**deterministic** — the figures are identical at 10 000 and 60 000 iterations, so they are not
+Monte-Carlo noise.
 
-### The Bloodlust witness — measured head-to-head, and the model loses by ~3600σ
+### ⛔ WITHDRAWN — the third witness was never a defect (07-28)
 
-This is the sharpest of the three and the one to develop a fix against, because the sim's verdict on it
-is not close. Duelling `BL@10` against `BL@15` with **common random numbers** (both arms on the same
-seed, so the paired difference resolves far better than either absolute DPS), 5 seeds × 10 000
-iterations, h=0, T=60:
+A third witness used to sit in that table: *"Bloodlust at t=15 s valued above Bloodlust at t=5 s or
+t=10 s, 0.178 casts"*, later re-measured at 0.231 casts and filed here as the sharpest of the three,
+on the strength of a head-to-head duel in which the model predicted **+7.26 DPS** and the sim measured
+**+0.001 ± 0.002**. That looked like a ~3600σ refutation. It is not one: **the sim cannot express the
+question**, and a gap where the sim is the odd one out is a harness limitation, not a model defect —
+rule 1 of this file, applied to the entry that was breaking it.
 
-| | Δ |
-|---|---|
-| model | +399.0 damage = **+0.2310 casts** = +0.497 % of the fight |
-| what that predicts in sim DPS | **+7.26 DPS** |
-| sim, measured | **+0.001 ± 0.002 DPS** |
+The user's objection is what unpicked it: *"the midcast lust will only affect the next cast, so it's
+essentially the same, it won't speed up the already going one."* The first half is right and both
+engines already agree on it — haste is snapshot at cast start, so an in-flight cast is never sped up.
+But the conclusion does not follow, **because the buff's 40 s clock starts at the call while your first
+hasted cast starts at your next boundary**. Whatever sits between them is window you paid for and
+cannot use:
 
-Every individual seed reads 0.000 – 0.004. There is no overlap with the prediction whatsoever.
+    aura      [call, call + 40]
+    usable    [call + slip, call + 40]        slip = time to your next cast boundary
+    count     floor((40 − slip) / 1.1538) + 1  = 35 while slip ≤ 0.769 s, else 34
 
-It is not a fight-length artifact: at `T=180`, with 26 interior placements instead of 2, the model still
-alternates between exactly **7.842457** and **8.073431** casts, on a period of 15 s — which at h=0 is
-exactly ten cast intervals.
+Swept at millisecond resolution across one full 1.5 s lattice period, the model flips 34 → 35 at
+**slip = 0.764 s** — the arithmetic says 0.769, and one ladder step of ms rounding separates them. So
+the model is computing the right thing.
 
-**Localized.** The sim's own action table reports Arcane Blast `casts = 467318` over 10 000 iterations
-— i.e. **46.7318 casts per fight, byte-identical in both arms**. The model books 46.5113 at @10 and
-46.7423 at @15. So the sim fits the same number of casts wherever Bloodlust goes, and the model's @10
-arm is the one that is wrong, by 0.22 casts. The whole discrepancy is the *terminal* cast: both model
-arms start 47 casts, and the last one earns `frac` 0.5113 at @10 against 0.7423 at @15.
+**The sim is flat because its Bloodlust is cast by the mage.** `tools/genapl-core.mjs` transcribes it
+as `castSpell(spellId 2825)` on the mage's own APL, so the aura can only ever begin on one of *his*
+GCDs and `slip` is structurally zero. Swept across the same lattice period at 0.2 s steps, wowsims
+returns **1462.30 DPS at every single offset** — not "flat within noise", identical to the last printed
+digit, which is what a snapped aura looks like and what no genuinely varying quantity looks like.
 
-**Mechanism — this one is established, unlike the rest of D1.** Bloodlust is the only cooldown the
-model treats as a raid *external*: `isExternal` sets `auraAt = eff = e.ts`, so its window is literally
-`[ts, ts+40]` with no snapping. How many cast boundaries fall inside that window therefore depends on
-`ts mod interval` — 34 covered casts at @10, 35 at @15 — and the extra hasted cast pulls the whole
-downstream lattice 0.346 s earlier, which the kill-boundary credit banks as 0.231 of an extra cast. In
-wowsims the aura can only begin on a GCD, so the covered count is placement-invariant and nothing
-shifts.
+⇒ Filed as a harness limitation in `docs/TOOLING.md`. **Do not re-file it here**, and do not "fix" the
+model by snapping raid externals to a cast boundary — that would be copying the harness's artifact into
+the engine. `isExternal` setting `auraAt = e.ts` with no snapping is correct: someone else presses
+Bloodlust, and their cast does not wait for your global cooldown.
 
-⚠ **Note what is *not* wrong here.** A real shaman does press Lust mid-cast, so a real window really can
-begin at an arbitrary sub-cast phase — the model's physics is arguably closer to a real pull than the
-sim's is. The defect is that the model **resolves** that phase into a 0.5 % scoring difference instead
-of averaging over it, and 0.5 % is far more than enough to pick a plan. Nobody can know their cast
-lattice to ±0.3 s when planning, which is the engine's own stated reason for phase-averaging the press
-moment a few lines earlier in the same function.
-
-### Reproduction
-
-    node tools/buff-atlas.mjs --T 60 --sp 1000 --crit 25 --haste 0 --step 5 --iter 60000 --md
-    node tools/facts-ladder.mjs --haste=0:850:10 --buffs=bloodlust    # "⚠ NOT FLAT" on most rungs
-
-Bloodlust's sim column is flat to **0.00 %** across every interior placement. The model's is not: it
-pays 13547.2 at 5 s and 10 s and **13946.2** at 15 s.
-
-`tools/facts-ladder.mjs` now asserts interior flatness on every rung of the haste ladder, so this
-defect fails loudly rather than needing to be noticed: Bloodlust reports a worst interior spread of
-0.231538 casts, and **every other cooldown reports exactly 0.000000**.
+⚠ What survives is a much narrower question, and it belongs to D1's "realize vs average" theme rather
+than to this witness: the effect is real *for a given lattice phase*, and the phase is deterministic
+from a clean pull — but it is not knowable to ±0.3 s on a real one. Whether the planner should resolve
+it or average over it is a judgement call about what the tool is for, not a defect against a fact.
 
 ### The direction to look, from the user (07-28)
 
@@ -117,15 +105,16 @@ again:
 ### Partial mitigation already shipped
 
 `structuralSnap` (RULES §5b) breaks ties toward the structurally sensible layout when the difference is
-inside the 0.05 % band. It bounds the *symptom* — it does not fix the cause, and the Bloodlust witness
-(2.92 % of that cooldown's value) is well outside the band it can reach.
+inside the 0.05 % band. It bounds the *symptom* — it does not fix the cause, and both surviving
+witnesses (0.185 and 0.287 casts) are outside the band it can reach.
 
 ---
 
 ## ⚠ Unresolved — a pull advantage at h=0 that should not exist
 
 **Status: OPEN QUESTION, not yet classified.** At h=0, pressing a haste cooldown at the pull is worth
-**+2.8 % (model) / +2.1 % (sim)** over any interior placement — about **0.05 of a cast**.
+**+2.078 % (model)** over any interior placement — **0.0554 of a cast**. The sim shows a pull advantage
+of the same order (~2.1 % at the coarser resolution it was gathered at).
 
 It is in **both** columns, so it is not D1 (which is model-only by definition). But by the arithmetic it
 should not exist: at h=0 nothing is floored, the ramp casts are cast-bound and the steady casts are
@@ -133,8 +122,13 @@ GCD-bound, and a haste multiplier divides both by the same factor. ESTABLISHED-F
 pull advantage **at and above a buff's cap threshold** — h=0 is far below every threshold (the lowest,
 Bloodlust, is 243).
 
-It is also **perfectly stable**: 2.812 % at all 12 spell-power × crit combinations, to three decimals.
-A quantity that constant is a mechanism, not noise.
+It is also **perfectly stable**: identical across all 1224 (cooldown × haste × spell power × crit)
+cells of the grid, to a spread of 0.000000. A quantity that constant is a mechanism, not noise.
+
+⚠ **The figure was 2.812 % until 07-28 and that was wrong** — it averaged the *terminal* placement into
+the interior baseline, and ESTABLISHED-FACTS rule 4 now establishes the terminal as a separate regime
+that is worth *less* than the interior, which inflated the apparent pull advantage. Against a clean
+interior (@5…@35, all identical) it is **+2.078 %, or 0.0554 casts**. Same open question, smaller.
 
 ⇒ Two possibilities, and picking between them matters: either it is a real effect neither the arithmetic
 nor rule 3 captures, **or** part of what is filed above as D1 is real and the model is not wrong about

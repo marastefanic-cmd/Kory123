@@ -5,10 +5,12 @@
 // fight, so nothing here is contaminated by alignment with anything else — that is the whole point of
 // the facts corpus, and the reason its numbers are quotable.
 //
-// Two modes:
+// Three modes:
 //   --mode=placement   the per-press-time table (pull / interior / terminal) at one baseline
 //   --mode=ladder      (default) steady-state value in CASTS across a fine passive-haste sweep,
 //                      printed beside the closed form it is supposed to obey
+//   --mode=grid        the same sweep crossed with spell power and crit, asserting that neither
+//                      changes placement behaviour (`--sps=`, `--crits=`)
 //
 // ★ WHY THE LADDER NEEDS TO BE FINE. At {0, 400, 800} a haste cooldown's value reads "high, high,
 // zero" and looks like a cliff. It is not a cliff — it is a TENT, and the peak sits exactly at that
@@ -77,27 +79,29 @@ const VALUE_FAMILY = ['arcanePower', 'isc', 'scb'];
 const KEYS = args.buffs ? String(args.buffs).split(',') : [...HASTE_FAMILY, ...VALUE_FAMILY];
 
 const clone = o => JSON.parse(JSON.stringify(o));
-const cfgFor = (key, haste) => {
+// `sp`/`crit` are parameters, not globals, because `--mode=grid` varies them. They default to the
+// single-baseline values so ladder and placement mode read unchanged.
+const cfgFor = (key, haste, sp = SP, crit = CRIT) => {
   const enabled = {}; for (const k of ALL_BUFFS) enabled[k] = (k === key);
-  return { T, hasteRating: haste, sp: SP, critPct: CRIT, enabled, fixed: {}, warnings: [], coldSnap: false, segments: null };
+  return { T, hasteRating: haste, sp, critPct: crit, enabled, fixed: {}, warnings: [], coldSnap: false, segments: null };
 };
 // ⚠ `repair` drops `cfg.fixed` entries for keys absent from the schedule, so the key must be in BOTH
 // or a pinned raid external (Bloodlust) scores as never pressed — which read as a column of zeros
 // once already. Pass the schedule; let repair legalise it.
-const score = (key, t, haste, collect = false) => {
-  const cfg = cfgFor(key, haste);
+const score = (key, t, haste, collect = false, sp = SP, crit = CRIT) => {
+  const cfg = cfgFor(key, haste, sp, crit);
   return api.simulate(api.repair(t === null ? {} : clone({ [key]: [t] }), cfg), cfg, collect);
 };
 // One plain 3-stack Arcane Blast, so values are quoted in CASTS rather than raw damage.
-const oneCast = haste => {
-  const r = score('__none__', null, haste, true);
+const oneCast = (haste, sp = SP, crit = CRIT) => {
+  const r = score('__none__', null, haste, true, sp, crit);
   const c = r.casts.find(x => x.stacks >= api.GAME.AB.MAX_STACKS);
   if (!c) { console.error('FACTS-LADDER ERROR: no full-stack cast in a bare fight.'); process.exit(2); }
   return c.dmg;
 };
 // When the first full-stack cast STARTS — the earliest press that is not a pull press.
-const t3Of = haste => {
-  const c = score('__none__', null, haste, true).casts.find(x => x.stacks >= api.GAME.AB.MAX_STACKS);
+const t3Of = (haste, sp = SP, crit = CRIT) => {
+  const c = score('__none__', null, haste, true, sp, crit).casts.find(x => x.stacks >= api.GAME.AB.MAX_STACKS);
   return c ? c.t : 0;
 };
 
@@ -128,13 +132,82 @@ function threshold(key) {
 
 // A press time that is unambiguously INTERIOR: at/after 3 stacks, and its window ends before the
 // kill — so neither the ramp nor the terminal cast is in the measurement.
-const interiorT = (key, haste) => {
-  const dur = api.BUFFS[key].dur, last = T - dur, t3 = t3Of(haste);
+const interiorT = (key, haste, sp = SP, crit = CRIT) => {
+  const dur = api.BUFFS[key].dur, last = T - dur, t3 = t3Of(haste, sp, crit);
   const t = Math.max(Math.ceil(t3 / STEP) * STEP, Math.min(last - STEP, Math.floor((last - STEP) / STEP) * STEP));
   return t >= last ? null : t;
 };
 
 const pad = (s, n) => String(s).padStart(n);
+
+// ── grid mode ─────────────────────────────────────────────────────────────────────────────────────
+// ★ THE CLAIM UNDER TEST, from the user (07-28): a cooldown's PLACEMENT behaviour is a property of the
+// GCD floor and the Arcane Blast ramp, and of nothing else — so it must be **uncorrelated with spell
+// power and with crit**, at every passive haste, for both families. Spell power and crit change what a
+// cast is WORTH; they do not change WHEN casts happen, and placement is a question about when.
+//
+// So this mode does not ask "is the value the same" (it is not — more spell power means every cast is
+// worth more). It asks whether the two placement facts survive: the interior is flat, and the pull
+// differs from it by the same amount. Both are quoted in CASTS, which divides the worth back out.
+if (args.mode === 'grid') {
+  const SPS   = String(args.sps   || '500,1000,2000').split(',').map(Number);
+  const CRITS = String(args.crits || '0,25,50').split(',').map(Number);
+  console.log(`GRID — is placement behaviour independent of spell power and crit, at every haste?`);
+  console.log(`T=${T}s.  haste ${HASTES[0]}..${HASTES[HASTES.length - 1]} (${HASTES.length} steps) × SP ${SPS.join('/')} × crit ${CRITS.join('/')}%`);
+  console.log(`"pull cost" = (pull − interior) / interior — the fraction of the cooldown's own value that`);
+  console.log(`pressing it at the pull instead of the interior gains or loses.\n`);
+  // ★ WHY THE RATIO AND NOT THE RAW CAST DELTA. The first version of this mode asserted on
+  // `pull − interior` measured in plain casts, and Serpent-Coil "failed" with a 0.1488-cast spread
+  // across the SP axis. It is not a dependency, it is the UNIT: the structural penalty is exactly two
+  // COVERED casts at every baseline, but one covered cast of a flat +225 SP buff is worth
+  //   COEF·225 / (AVG_BASE + COEF·SP)  =  0.1492 plain casts at 500 SP and 0.0748 at 2000,
+  // because a fixed spell-power buff is a smaller relative boost on a bigger base. Both measured
+  // numbers are exactly 2× those. Dividing by the cooldown's own interior value removes the unit and
+  // leaves the structural claim, which is the one under test. (Crit cancels either way — `critFactor`
+  // multiplies numerator and denominator alike.)
+  let flatWorst = 0, flatAt = '', spreadWorst = 0, spreadAt = '', n = 0;
+  for (const key of KEYS) {
+    const d = api.BUFFS[key];
+    console.log(`### ${d.name} (${d.dur}s, ${d.kind})`);
+    console.log('   haste |   pull cost, min … max over the SP×crit grid |   spread | interior flat?');
+    for (const h of HASTES) {
+      const ratios = [];
+      let flat = 0;
+      for (const sp of SPS) for (const crit of CRITS) {
+        const it = interiorT(key, h, sp, crit);
+        if (it === null) continue;
+        const unit = oneCast(h, sp, crit), base = score(key, null, h, false, sp, crit).robust;
+        const interior = (score(key, it, h, false, sp, crit).robust - base) / unit;
+        const pull = (score(key, 0, h, false, sp, crit).robust - base) / unit;
+        // above a haste cooldown's cap the interior is exactly 0, so the ratio is undefined — skip
+        // rather than print an infinity, and say so in the header line below.
+        if (Math.abs(interior) > 1e-9) ratios.push((pull - interior) / interior);
+        const t3 = t3Of(h, sp, crit), last = T - d.dur, vs = [];
+        for (let t = Math.ceil(t3 / STEP) * STEP; t < last - 1e-9; t += STEP)
+          vs.push((score(key, t, h, false, sp, crit).robust - base) / unit);
+        if (vs.length > 1) flat = Math.max(flat, Math.max(...vs) - Math.min(...vs));
+        n++;
+      }
+      if (flat > flatWorst) { flatWorst = flat; flatAt = `${key}@h${h}`; }
+      if (!ratios.length) { console.log(`   ${pad(h, 5)} |   (interior value is zero — above the cap)      |          | ${flat.toFixed(6)}`); continue; }
+      const spread = Math.max(...ratios) - Math.min(...ratios);
+      if (spread > spreadWorst) { spreadWorst = spread; spreadAt = `${key}@h${h}`; }
+      console.log(`   ${pad(h, 5)} | ${pad(Math.min(...ratios).toFixed(6), 12)} … ${pad(Math.max(...ratios).toFixed(6), 12)}` +
+                  `        | ${spread.toFixed(6)} | ${flat.toFixed(6)}`);
+    }
+    console.log('');
+  }
+  console.log(`Over ${n} (buff × haste × SP × crit) cells:`);
+  // Bloodlust is expected to fail this one — rule 5, see the note in ladder mode.
+  const extOnly = /^(bloodlust|powerInfusion|drums)@/.test(flatAt);
+  console.log(`  interior flat everywhere?           worst spread ${flatWorst.toFixed(6)} casts` +
+              (flatWorst < 1e-6 ? '  ✓'
+                : extOnly ? `  — ${flatAt}, a raid external anchored to the CALL (rule 5), expected`
+                          : `  ✗ at ${flatAt}`));
+  console.log(`  pull cost independent of SP/crit?   worst spread ${spreadWorst.toFixed(6)}` +
+              (spreadWorst < 1e-6 ? '  ✓' : `  ✗ at ${spreadAt}`));
+  process.exit(0);
+}
 
 if (args.mode === 'placement') {
   console.log(`PLACEMENT — T=${T}s, ${SP} SP, ${CRIT}% crit, passive haste ${HASTES.join('/')}, one cooldown alone.`);
@@ -231,9 +304,17 @@ for (const key of KEYS) {
                 `  — ${ok ? 'the stated threshold fits BEST' : '✗ a shifted threshold fits better'}`);
   }
   const flat = Math.max(...rows.map(r => r.spread));
+  // ⚠ NOT-FLAT IS EXPECTED FOR A RAID EXTERNAL AND MUST NOT BE READ AS A BUG. A self-press cannot go
+  // off mid-cast, so its window begins at a cast boundary and covers a fixed number of casts. Bloodlust
+  // is pressed by someone else and its 40 s runs from the CALL, so the slip to your next boundary is
+  // window you cannot use, and the covered count alternates between two adjacent integers. That is
+  // ESTABLISHED-FACTS rule 5, and it was mis-filed as a model defect for part of 07-28 because the sim
+  // reads it flat (its Bloodlust is an APL castSpell, so the aura snaps and slip is structurally zero).
+  const external = key === 'bloodlust' || key === 'powerInfusion' || key === 'drums';
   console.log(`   worst interior spread over the whole ladder: ${flat.toFixed(6)} casts` +
               (flat < 1e-6 ? '  ✓ FLAT everywhere'
-                           : '  ⚠ NOT FLAT — the interior value depends on WHERE you press it'));
+                : external ? '  — expected: raid external, window anchored to the CALL (rule 5)'
+                           : '  ⚠ NOT FLAT — a self-press interior must not depend on where you press it'));
   console.log('');
 }
 if (worstErr) console.log(`Worst model-vs-closed-form gap: ${worstErr.toFixed(4)} casts at ${worstAt}`);

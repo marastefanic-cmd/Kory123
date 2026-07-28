@@ -1059,6 +1059,48 @@ RULES §13), which is a stronger anchor than a ~100-DPS-noise A/B. A plain singl
 this file). Re-run an actual APL sim only if a Drums/PI case ever lands on a blind spot (e.g. an
 intermission-exit or AoE phase).
 
+### ★★★ AND THE SIM CANNOT START AN EXTERNAL'S AURA OFF A CAST BOUNDARY (measured 07-28)
+
+**The harness cannot ask the question "what if the shaman Lusts mid-cast?", and it does not say so — it
+answers a subtly different question and returns a confident number.** This one cost a wrongly-filed
+model defect, so it is written down at the length it earned.
+
+`schedule→castSpell{2825}` costs no GCD (above), but the APL is only *evaluated* when the mage is free
+to act, and mid-cast he is not. So a Lust scheduled at 10.0 s does not apply at 10.0 s — it applies at
+his next cast boundary. **The aura start snaps to the mage's lattice, and its 40 s therefore runs from
+there.**
+
+Measured, at h=0 where cast boundaries sit at `0.498 mod 1.5`: sweeping the scheduled call across a
+whole 1.5 s lattice period in 0.2 s steps, wowsims returns
+
+    10.0  10.2  10.4  10.6  10.8  11.0  11.2  11.4  11.6      ← scheduled call
+    1462.30 at every single one                               ← DPS
+
+Not flat *within noise* — **identical to the last printed digit at every offset**, which is what a
+snapped aura looks like and what no genuinely varying quantity looks like.
+
+★ **The model is the one that is right here, and it must not be "fixed" to match.** In the real game
+the shaman's cast does not wait for your global cooldown: the aura is applied when *they* finish, and
+its 40 s expires 40 s later regardless of what you were doing. So the window you can actually use is
+`[call + slip, call + 40]` where `slip` is the wait to your next boundary — the buff never speeds up an
+in-flight cast (both engines agree), but the time you spend finishing that cast is window you paid for
+and cannot spend. At h=0 that swings the covered count between 34 and 35 Arcane Blasts:
+
+    count = floor((40 − slip) / 1.1538) + 1 = 35 while slip ≤ 0.769 s, else 34
+
+The engine's `isExternal` branch (`auraAt = e.ts`, no snapping) implements exactly that, and a
+millisecond sweep puts its 34→35 flip at **slip = 0.764 s** against the arithmetic's 0.769.
+
+⇒ **Consequences for anyone using this harness:**
+* A sim duel between two placements of Bloodlust / PI / Drums that differ by **less than one cast
+  boundary** is measuring nothing. The sim will report a clean, tight, repeatable zero.
+* That zero is **not** evidence the model is wrong. `docs/MODEL-DEFECTS.md` carried this as a
+  "~3600σ refutation" for part of a day; the withdrawal notice there is the cautionary tale.
+* Self-pressed cooldowns are unaffected — a mage cannot press his own trinket mid-cast either, so for
+  those two the model and the sim snap alike and the sim *can* arbitrate.
+* To actually sim an off-boundary external you would have to apply the aura outside the APL
+  (a raid-buff timeline entry, not a `castSpell`). Nothing in this repo does that today.
+
 ## ★★ Should we sim NAKED / hit-capped / no-crit / no-damage-roll to make the numbers cleaner? (07-25)
 
 A user question worth a standing answer, because four of the five ideas in it are safe-but-not-worth-it,

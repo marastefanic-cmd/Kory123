@@ -34,18 +34,31 @@ you are in:
 > penalty is confined to the pull:  `@0  <  @5 ≈ @10 = @15 = … `, up to but not including the terminal
 > placement, which rule 4 governs.
 >
-> **2b. ★ RULE 2 IS BASELINE-INDEPENDENT — verified, not assumed.** Across **81 combinations**
-> (Arcane Power / Icon / Serpent-Coil × haste 0, 400, 800 × spell power 500, 1000, 2000 × crit 0, 25,
-> 50 %) the interior spread is **0.0000 % in every single one**, and the pull penalty is present in
-> every single one. There are no diminishing returns and no interaction with spell power or crit: a
-> damage cooldown used once, after 3 stacks, with no competing opportunity, is worth the same wherever
-> it goes. ⚠ The *size* of the pull penalty does move with passive haste (−6.2 % … −20.0 %) — not a
-> diminishing return, just the ramp occupying a different share of the window as casts get faster.
+> **2b. ★★ PLACEMENT IS UNCORRELATED WITH SPELL POWER AND WITH CRIT — verified across 1224 cells, for
+> BOTH families, at 17 passive-haste levels.** All eight cooldowns × haste 0→800 in steps of 50 ×
+> spell power 500 / 1000 / 2000 × crit 0 / 25 / 50 %:
 >
-> **2c. The same independence holds for the haste family's steady state.** Icy Veins' interior value is
-> flat to **0.0000 %** at all 12 spell-power × crit combinations measured (500–2000 SP × 0–50 % crit),
-> and its pull advantage is **2.812 % in every one of them** — identical to three decimals. Placement
-> behaviour is uncorrelated with spell power and with crit.
+> | | worst spread over all 1224 cells |
+> |---|---|
+> | interior flat? | **0.000000 casts** — every cooldown except Bloodlust (rule 5) |
+> | pull cost independent of SP and crit? | **0.000000** |
+>
+> There are no diminishing returns and no interaction with either stat. This is not a coincidence, it
+> is what placement *is*: spell power and crit change what a cast is **worth**; they never change
+> **when** casts happen, and placement is a question about when. Crit cancels outright (it multiplies
+> the cooldown's value and the plain cast alike).
+>
+> ⚠ **Quote the pull cost as a fraction of the cooldown's own value, not in plain casts.** The two
+> differ for a flat +SP buff and only one of them is baseline-independent. Serpent-Coil's pull penalty
+> is exactly **two covered casts** at every baseline — but one covered cast of a +225 SP buff is worth
+> `0.714286 × 225 / (720 + 0.714286 × SP)` = **0.1492** plain casts at 500 SP and **0.0748** at 2000,
+> so the same structural fact reads as a 2× "dependence" in the wrong unit. It is the unit moving, not
+> the fact. (Measuring in plain casts is what made this rule appear to fail at `scb@h800`.)
+>
+> ⚠ The *size* of the pull penalty does move with passive haste — but only as an integer ratio of
+> covered casts. Arcane Power reads exactly −1/5, −1/10, −2/11, −1/11, −1/6, −1/12, −2/13, −1/13,
+> −1/7, −1/14, −2/15 as haste rises: `−(casts missed)/(casts covered)`, and the ramp occupies a
+> different number of cast slots as casts get faster. No spell power or crit anywhere in it.
 >
 > **3. ★ THE ONE EXCEPTION, AND IT IS A HASTE EXCEPTION.** As passive haste rises toward the GCD cap
 > (**789 rating**, where the 3-stack interval is already floored at 1.0 s), a haste cooldown converts
@@ -61,6 +74,25 @@ you are in:
 > the GCD cap**, because the cap limits how often you may *start* a cast, never how fast the cast
 > itself goes: at h=800 Icy Veins fits the identical 59 casts on the identical 1.000 s lattice, and
 > the whole of its value is the terminal cast completing in 0.828 s instead of 0.994 s.
+>
+> **5. A RAID EXTERNAL behaves differently from a self-press, and this is the one place the two
+> families genuinely part.** A cooldown you press yourself cannot go off mid-cast, so its window
+> begins at your next cast boundary and runs its full duration from there. **Bloodlust does not wait
+> for you.** The shaman's cast completes, the aura lands, and its 40 s expires 40 s later whatever you
+> were doing — so the part of the window you spend finishing your in-flight cast is window you paid
+> for and cannot use:
+>
+>     usable = [call + slip, call + 40]        slip = the wait to your next cast boundary
+>     covered = floor((40 − slip) / 1.1538) + 1  = 35 while slip ≤ 0.769 s at h=0, else 34
+>
+> The buff never speeds up a cast already in flight — haste is snapshot at cast start. That is exactly
+> why the slip is lost rather than recovered. ⇒ **A raid external's value depends on the sub-cast phase
+> of the call**, alternating between two adjacent cast counts, where a self-press does not.
+>
+> ⛔ The sim **cannot measure this** — its Bloodlust is an APL `castSpell`, so the aura can only begin
+> at one of the mage's own action opportunities and `slip` is structurally zero. A placement sweep in
+> wowsims returns 1462.30 DPS at *every* sub-cast offset, identical to the last digit. `docs/TOOLING.md`
+> carries the full write-up; do not read that flatness as the sim disagreeing with the model.
 
 ### Where each haste cooldown hits the cap — the TENT
 
@@ -157,14 +189,52 @@ every cast to whole ms) plus the 3-cast opening ramp, both of which the closed f
 construction. The apex rows read slightly under the closed-form peak for the same reason; the finest
 sweep puts Bloodlust's measured maximum at 9.244 (h=210) and Icy Veins' at 3.342 (h=390).
 
-⚠ **The Bloodlust column is the only one that is not trustworthy to its last digits, and that is a
-model defect, not a property of Bloodlust.** Its interior is not flat in the model — the value alternates
-by **0.23 casts** depending on where in the interior you press it, so "the" interior value is whichever
-sample the ladder happened to take. The sim says flat. See `docs/MODEL-DEFECTS.md` D1. Every other
-column has an interior spread of exactly 0.000000 at every rung.
+⚠ **The Bloodlust column is the only one whose last digits depend on where the ladder sampled, and that
+is rule 5, not an error.** Being a raid external its window is anchored to the *call*, so its value
+alternates by **0.23 casts** between two adjacent covered-cast counts as the call moves across a cast
+period; "the" interior value is whichever phase the sample landed on. Every other column — all
+self-presses, all snapping to a cast boundary — has an interior spread of exactly 0.000000 at every
+rung. ⛔ The sim reads this column flat, and that is a harness limitation rather than a contradiction
+(`docs/TOOLING.md`).
 
     node tools/facts-ladder.mjs --haste=0:850:10                 # the ladder above
+    node tools/facts-ladder.mjs --mode=grid   --haste=0:800:50   # the SP × crit independence check
     node tools/facts-ladder.mjs --mode=placement --haste=0,400,800   # the per-placement tables below
+
+### ★ Where the PULL takes over — and it is the same threshold
+
+The tent describes the *interior* value. The **pull** value has its own curve, and the two cross at the
+same place. Below a cooldown's threshold the pull is worth a hair more than the interior and that
+margin barely moves; from the threshold onward it climbs without bound, because the interior is
+draining to zero while the pull — where casts are still 2.500 / 2.166 / 1.832 s — is not.
+
+Icy Veins (threshold **394.3**), as a fraction of the cooldown's own value:
+
+| passive haste | interior (casts) | pull (casts) | pull worth |
+|---|---|---|---|
+| 300 | 3.3336 | 3.2216 | −3.4 % |
+| 350 | 3.3393 | 3.3940 | +1.6 % |
+| **390** | **3.3422** | 3.3963 | +1.6 % |
+| 400 | 3.2904 | 3.3531 | +1.9 % |
+| 450 | 2.8635 | 3.0112 | +5.2 % |
+| 500 | 2.4415 | 2.6746 | +9.5 % |
+| 600 | 1.6000 | 2.0820 | +30.1 % |
+| 700 | 0.7502 | 1.3607 | +81.4 % |
+| 750 | 0.3330 | 1.0059 | +202 % |
+| 780 | 0.0798 | 0.7894 | +889 % |
+| **789** | **0.0000** | 0.7204 | the pull is the **whole** cooldown |
+
+The interior column peaks at 390 and falls from 400 — the tent apex. The pull column is flat-ish
+through 400 and then rises monotonically at every single rung. So the user's prediction (07-28) —
+*"the only observable difference in behavior starts to happen at passive haste's level where Icy Veins
++ passive haste + 3 Arcane Blast stacks = GCD cap, where Icy Veins is pushed to start @0"* — is
+confirmed, at **394.3** rather than the remembered 389.
+
+⚠ The residual **+2.1 %** the pull carries *below* the threshold is not explained by any of this, and
+is filed as an open question in `docs/MODEL-DEFECTS.md`. It is small (0.0554 casts) and it does not
+grow, but it should be zero by the arithmetic. **The figure was 2.812 % until 07-28** — that version
+averaged the *terminal* placement into the interior baseline, which rule 4 now says is a different
+regime; excluding it gives 2.078 %.
 
 ### The terminal placement — what the last row of every table is
 
