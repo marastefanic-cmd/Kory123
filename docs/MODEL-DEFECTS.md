@@ -357,6 +357,35 @@ answer.
 **Neither is written yet, and the choice between them is the open design question.** `tests/anchors.mjs`
 is the pass/fail signal for whichever wins.
 
+### ⛔ AND A THIRD FRAMING WAS TRIED AND IS DEAD — `structuralSnap` cannot host this fix
+
+The most attractive option looked like a **rule-based tie-break with no free constant**: the whole
+@40…@57 range spans **0.053 % of score**, i.e. it sits *inside* `tieBandPct`, so by the tool's own
+standard the score should not be choosing between those layouts and a rule should. The rule is already
+measured — P4's +0.2056 casts for a haste pair that stays under the floor — so a `nestedHastePairs`
+criterion in `structuralSnap` would need no tuning at all.
+
+**It is inert, by construction.** `structuralSnap` opens with
+
+    const n0 = simulate(s0, cfg, true).casts.length;
+    …
+    if (r.casts.length !== n0) continue;      // a CAST was gained or lost ⇒ not phase
+
+and the move in question changes the cast count:
+
+| Berserking at | `casts.length` | robust |
+|---|---|---|
+| @57 (outside Lust) | **94** | 175505 |
+| @50 / @45 / @40 (inside) | **93** | 175450 / 175172 / 174566 |
+
+The pass is a *"same casts, better shape"* polisher and refuses cast-count changes on purpose. The
+correct move is precisely such a change. ⇒ **The fix cannot live in the finishing pass. It has to live
+where cast-count changes are legal — in what the search RANKS.**
+
+⚠ Note the sub-finding, which is D1 stated at its sharpest: the model believes the outside-Lust layout
+fits **one more cast** (94 vs 93) and that extra cast is worth more than a +0.2056-cast interaction.
+The sim disagrees on both counts. The 94th cast is a boundary-credit artifact at one lattice phase.
+
 ## ⛔ D3 — WITHDRAWN THE SAME DAY. It is not Icy Veins × Bloodlust; it is BLOODLUST ALONE, and it is the harness
 
 **Status: WITHDRAWN. The entry below was filed on an incomplete ladder and the next measurement
