@@ -238,6 +238,27 @@ ground-truth tally goes 0/4 → 2/4 with every residual 5–10× smaller.
    (TOOLING, "it biases every duel on a Lusted fight").
 5. Then the goldens, as above.
 
+## The ranking candidates, scored (07-28) — `both` leads, and A2 is a modelling gap
+
+Pre-registered on two criteria so neither alone can be gamed. Full tables: `MODEL-DEFECTS.md` §8d.
+
+| ranking | one answer across a cast interval? | ground-truth pairs |
+|---|---|---|
+| point (ships today) | ✗ 4 answers | 0/4 |
+| pin-mean (average the raid call over its second) | ✗ 2 answers | 3/4 |
+| phase-mean (average the lattice against the wall) | ✓ 1 | 2/4 |
+| **both** | **✓ 1** | **3/4** |
+
+⛔ **Do not treat 3/4 as "nearly done" and go hunting for the framing that scores 4/4.** A2's residual
+has an identified cause that no averaging framing addresses: a press whose purpose is to align with a
+raid call should **co-move with the call**, and the plan specifies presses on a wall clock. Fixing that
+by tuning a co-move radius is the fifth falsified term waiting to happen.
+
+★ And the strongest single result argues for doing **less**, not more: with the Bloodlust pin on a cast
+boundary, the **shipped point score already picks the user's layout on all four isolated presses, and
+matches wowsims to ≤0.008 casts** (§8c). The ranking change is for robustness to an unspecifiable
+input — it is not a correction of a wrong answer.
+
 ## ⚠ Two traps this created
 
 * **Do not un-retire the rate integral.** The integral is the phase *expectation* and that is why it

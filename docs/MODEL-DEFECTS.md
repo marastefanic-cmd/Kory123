@@ -598,6 +598,60 @@ is given, its own point score already agrees with the user and with wowsims. Tha
 independent confirmation of §1–§3, on a different cooldown, a different fight, and a **value** buff
 rather than a haste one.
 
+## 8c. ★★★ FOUR ISOLATIONS, FAIR PIN — the point score is 4/4 against the sim AND against the user
+
+Every disputed press from the four ground-truth cases, isolated the way Berserking was: hold the rest
+at ground truth, move the Bloodlust pin onto a cast boundary, sweep one press.
+
+| isolation | point | phase-mean | wowsims | user's layout | point vs sim |
+|---|---|---|---|---|---|
+| A2 · Berserking (Lust@20.415) | @40 ✓ | @45 ✓ | @45 ✓ | inside Lust | ≤0.002 casts |
+| Ex2 · Icon | @10.998 ✓ | @10.998 ✓ | @10.998 ✓ | with Lust | ≤0.008 |
+| Ex2 · Icy Veins 1st use | @10.998 ✓ | **@8 ✗** | @10.998 ✓ | with Lust | ≤0.016 except 3 ramp rows |
+| Ex2 · Berserking | @30 ✓ | @30 ✓ | @30 ✓ | @30 | ≤0.003 |
+
+★★★ **Given the same fight the sim is given, the shipped point score already picks the user's layout on
+all four presses.** It is the mid-cast Lust pin, not the ranking, that breaks it.
+
+⚠ **And note the third row: the phase-mean is NOT uniformly better.** On Ex2's Icy Veins press it picks
+@8 while point and sim both pick @10.998 — the sim scores @8 at −0.0035 casts (a tie) against the
+phase-mean's +0.109 preference. Phase-averaging is a way to make the answer *insensitive* to an input
+nobody supplies; it is not independently more accurate, and it must not be sold as such.
+
+⚠ A separate residual is visible in that row and is **not** the phase term: on three presses (@0, @2,
+@8 — all at or just past the ramp) the point score is off the sim by ~0.16 casts, while the other five
+rows agree to 0.016. That is a ramp effect, unexamined, and it is its own question.
+
+## 8d. The four candidate rankings, scored on both criteria
+
+Two pre-registered criteria, because either alone is gameable: **(i)** does the ranking give ONE answer
+as the raid call slides across a cast interval, and **(ii)** does it rank the user's layout above the
+optimizer's on the four locked cases.
+
+| ranking | anchor-slide (i) | ground-truth pairs (ii) |
+|---|---|---|
+| **point** — what ships today | UNSTABLE — 4 answers | 0/4 |
+| **pin-mean** — average the raid call over the second the user gave | UNSTABLE — 2 answers | **3/4** |
+| **phase-mean** — average the lattice against the wall clock | **STABLE — 1** | 2/4 |
+| **both** — the product of the two | **STABLE — 1** | **3/4** |
+
+`both` wins on both criteria. The two randomisations are different unknowns — *when the shaman actually
+casts it* and *where my cast stream sits* — so averaging over the product is not double-counting.
+
+### ⚠ A2 is the sole survivor, and the reason is a modelling gap, not a knob
+
+Under `both`, A2 still ranks the optimizer's layout first by **0.161 casts**, and pin-averaging is what
+costs it: A2's ground-truth layout presses its whole cluster **at** the pin, so when the pin moves the
+cluster falls off it, while the optimizer's cluster sits 5 s inside Lust and does not care.
+
+★ **That is a real defect in all four framings, and it should not be fixed by choosing a different
+one.** A player does not press Icon at a pre-agreed wall-clock second — they press it *when the Lust
+lands*. So a press whose whole purpose is to align with a raid call must **co-move with that call**,
+and none of these rankings model that. ⛔ Do not paper over it with a "presses within X seconds of a pin
+co-move" rule: X is exactly the kind of tuned constant PHASE12 §6.1–§6.3 records four casualties of.
+The honest statement is that the plan's presses are specified relative to two different clocks and the
+model only has one.
+
 ## 9. What is still open
 
 1. **Cost.** The phase-mean is N× `simulate()`. It cannot go into the search at N=48 as-is. Two routes:
