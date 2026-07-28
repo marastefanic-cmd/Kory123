@@ -257,6 +257,77 @@ a 3-stack cast, so a value window opened at the pull always covers fewer casts).
 two different rules, two different seconds. Only the **cluster's own** second is misplaced, and only by
 one.
 
+## ✅ CRACKED 07-28 — it is D1, on ONE press, and it is big enough to flip a plan
+
+**The ground-truth inversion is fully explained. It is not the objective, not the ramp, not the
+lattice, not the harness. It is `D1` — the model booking sub-cast lattice phase as real damage — landing
+on a single Berserking press.**
+
+### The isolation
+
+Hand layout against optimizer layout, adding one cooldown at a time to both, ratio `hand / optimizer` in
+each engine (`>1` = that engine prefers the hand layout):
+
+| step | model | sim | |
+|---|---|---|---|
+| Icy Veins only | 1.000660 | 1.000640 | agree |
+| + Lust | 0.996853 | 0.999344 | agree |
+| + Arcane Power | 0.996999 | 0.999434 | agree |
+| + Icon | 0.997057 | 0.999449 | agree |
+| + Gem | 0.997120 | 0.999662 | agree |
+| **+ Berserking** | 0.998883 | **1.001445** | **★ DISAGREE** |
+
+Five steps agree. The sixth flips the sim and not the model. **The entire inversion is the Berserking
+press.**
+
+### Single variable — the hand layout, moving only Berserking (Lust covers 20–60)
+
+| Berserking at | inside Lust? | model damage | sim damage |
+|---|---|---|---|
+| 40 / 45 | yes | 175309 | **193000** ← sim's best |
+| 50 | yes | 175345 | 193000 |
+| 55 | no | 175331 | 192589 |
+| **57** | **no** | **175402** ← model's best | 192665 |
+| 60 – 80 | no | 174954 | ~192600 |
+
+**The model picks @57, outside Lust. The sim picks @40, inside it.**
+
+★★ **And the model contradicts its OWN corpus.** `ESTABLISHED-FACTS.md` P4 measures Berserking ×
+Bloodlust at h=0 as **+0.2056 casts** — the pair is ×1.43, *under* the 1.5 the GCD floor needs, so
+nothing is clipped and Berserking wants to be inside Lust. The sim agrees with the corpus. The optimizer
+does not.
+
+### Why the model gets it wrong — the mechanism
+
+Read the model's column: 175345 at @50, **down** to 175331 at @55, **up** to 175402 at @57, **down** to
+174954 at @60. **Non-monotone.** The @57 figure is a **spike of +57 damage (+0.03 %)** over the
+inside-Lust plateau — and the sim's column over the same range is clean and monotone, with inside-Lust
+ahead by **+0.17 %**.
+
+That spike is lattice phase. It is exactly D1: *"the model books where the cast lattice happens to land
+as real expected damage."* What is new is the **size of its consequence** — 0.03 % of phase noise is
+enough to override a genuine +0.2056-cast interaction and move a press 17 seconds, which then flips the
+whole plan comparison.
+
+### What this settles
+
+* **The user's layouts were right, and for the reason they gave.** Berserking belongs inside Lust at
+  h=0. Their claim *"overlaying Berserking with IV, Gem and Icon has to be better than overlaying it
+  with a naked lust"* is the same instinct, and the corpus and the sim both back it.
+* **The objective does not need changing.** ⛔ Every entry below arguing toward the integral is
+  explained by this instead. The per-cast sum is fine; it is being fed a phase artifact.
+* **D1 is promoted from a tie-break nuisance to the top open defect.** Its previous witnesses were
+  0.185 and 0.287 casts and were treated as cosmetic. This one changes which plan the tool prints.
+
+### The fix, and why it is now well-posed
+
+D1's cure is to stop resolving one lattice phase. The **phase-averaged** score is what `tools/jitter.mjs`
+computes and what the continuous integral approximates — and note that on this very sweep, averaging
+over ±1 s of press error would flatten the @57 spike (it is one sample wide) while leaving the
+inside-Lust plateau (three samples wide, @40–@50) intact. **The plateau survives averaging; the spike
+does not.** That is the shape of the fix and it needs no new objective — only that the *ranking* read a
+neighbourhood rather than a point.
+
 ## ⛔ D3 — WITHDRAWN THE SAME DAY. It is not Icy Veins × Bloodlust; it is BLOODLUST ALONE, and it is the harness
 
 **Status: WITHDRAWN. The entry below was filed on an incomplete ladder and the next measurement
