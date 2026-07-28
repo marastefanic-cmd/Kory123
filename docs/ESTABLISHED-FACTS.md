@@ -265,7 +265,47 @@ also decides whether its placement relative to the opener matters at all. Below 
 before cast 1, 2, 3 or at 0:60 — **identical to within 7e-4 casts**. Above it, the pull is strictly
 better, and by two orders of magnitude more (0.0118 at h = 400, 0.221 at h = 500).
 
-### ⚠ OPEN — the sub-1e-3 residual below the threshold is REAL, and it is not yet explained
+### ⚠ OPEN — the residual is REAL, LOCALISED TO THE FIRST RAMP CAST, and my closed form is the incomplete one
+
+*User: "since it's deterministic algebra, isn't this a symptom that we've forgotten to include a factor
+somewhere? Or is it a rounding error? Or is it really better because of the multiplication effect?"* —
+**the first one.** Not rounding, not a multiplication benefit. Swept finely, the shape gives it away:
+
+Icy Veins press time vs value, h = 380 (bare ramp cast starts 0.0000 / 2.0146 / 3.7600 / 5.2363):
+
+| press at | value | |
+|---|---|---|
+| **exactly 0.000** | 3.308575 | catches ramp cast 1 |
+| 0.25 … 2.00 | 3.308410 | misses cast 1, wastes its remainder |
+| **2.25 and every value after** | **3.309237** | = deep steady, to **1e-13** |
+
+★ **Neutrality is EXACT — to machine precision — for any press from ramp cast 2 onward.** The entire
+residual lives in **ramp cast one**, and nowhere else. That is a three-order-of-magnitude narrowing of
+where to look.
+
+Two of the three levels are already correct physics: a press at 0.25 misses cast 1 (haste is snapshot
+at cast start) and forfeits the remainder of the longest cast in the fight — the 8.3e-4 dip is that,
+and it is right. The unexplained part is only that **pressing at exactly 0.000, which catches
+everything, still lands 6.6e-4 below deep steady.**
+
+⇒ **And the closed form is not innocent either.** Working the same case by hand — ramp under the buff
+`R_v = 4.36350 s`, without it `R_1 = 5.23620 s`, remainder at the respective steady rates — gives
+**−4.6e-5**, not zero. So `R_{mv}·rate(m·v) = S/G = R_m·rate(m)` is an *approximate* cancellation, and
+"exactly neutral" was my overstatement, not just the engine's residue. The engine and the hand
+derivation disagree by ~6e-4 and **both** disagree with zero.
+
+⛔ Two dismissals are ruled out by measurement, not argument:
+* **Not rounding.** Five deep-steady placements agree to **2.8e-14** and a sub-interval sweep to
+  **8.5e-14**. The arithmetic is exact to float precision; a 6.6e-4 is 10¹⁰ times that.
+* **Not haste × haste.** One haste buff in the experiment; passive haste is the state, not a placeable
+  effect, so there is nothing to multiply against.
+
+⇒ **Open, and the right kind of open: a named missing term with a one-line reproduction**
+(`node tools/facts-ladder.mjs --score=integral`, or the sweep above), bounded at 7e-4 casts — 0.05 % of
+one cast, ~300× below the effect it sits inside. The law "a haste cooldown is ramp-neutral below its own
+onset threshold" is safe to plan on; the word **exactly** is not, until the first-cast term is found.
+
+### (superseded) the earlier framing of this residual
 
 *User question, 07-28: "How can there be a difference here? Shouldn't it be neutral?"* The algebra says
 exactly zero: `R_{mv}·rate(m·v) = S/G = R_m·rate(m)` cancels identically while both rates are linear.
