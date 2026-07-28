@@ -67,6 +67,10 @@ const T      = Number(args.T ?? 60);
 const SP     = Number(args.sp ?? 1000);
 const CRIT   = Number(args.crit ?? 25);
 const STEP   = Number(args.step ?? 5);            // placement granularity, seconds
+// ★ SCORE SELECTOR (07-28). 'robust' = the realised per-cast sum; 'integral' = its phase EXPECTATION.
+// A ladder's VALUES are differences at one lattice phase and the phase term largely cancels between
+// neighbouring cells; a BEST-PLACEMENT verdict is an argmax and there it does not (MODEL-DEFECTS §8f).
+const SCORE  = String(args.score ?? 'point') === 'integral' ? 'integral' : 'robust';
 const HASTES = (() => {
   if (!args.haste) return Array.from({ length: 86 }, (_, i) => i * 10);   // 0..850 by 10
   const s = String(args.haste);
@@ -176,15 +180,15 @@ if (args.mode === 'grid') {
       for (const sp of SPS) for (const crit of CRITS) {
         const it = interiorT(key, h, sp, crit);
         if (it === null) continue;
-        const unit = oneCast(h, sp, crit), base = score(key, null, h, false, sp, crit).robust;
-        const interior = (score(key, it, h, false, sp, crit).robust - base) / unit;
-        const pull = (score(key, 0, h, false, sp, crit).robust - base) / unit;
+        const unit = oneCast(h, sp, crit), base = score(key, null, h, false, sp, crit)[SCORE];
+        const interior = (score(key, it, h, false, sp, crit)[SCORE] - base) / unit;
+        const pull = (score(key, 0, h, false, sp, crit)[SCORE] - base) / unit;
         // above a haste cooldown's cap the interior is exactly 0, so the ratio is undefined — skip
         // rather than print an infinity, and say so in the header line below.
         if (Math.abs(interior) > 1e-9) ratios.push((pull - interior) / interior);
         const t3 = t3Of(h, sp, crit), last = T - d.dur, vs = [];
         for (let t = Math.ceil(t3 / STEP) * STEP; t < last - 1e-9; t += STEP)
-          vs.push((score(key, t, h, false, sp, crit).robust - base) / unit);
+          vs.push((score(key, t, h, false, sp, crit)[SCORE] - base) / unit);
         if (vs.length > 1) flat = Math.max(flat, Math.max(...vs) - Math.min(...vs));
         n++;
       }
@@ -216,11 +220,11 @@ if (args.mode === 'placement') {
     const d = api.BUFFS[key];
     console.log(`### ${d.name}  (${d.dur}s)`);
     for (const h of HASTES) {
-      const unit = oneCast(h), base = score(key, null, h).robust, t3 = t3Of(h);
+      const unit = oneCast(h), base = score(key, null, h)[SCORE], t3 = t3Of(h);
       const last = T - d.dur;
       console.log(`  passive haste ${h}   (3 stacks from ${t3.toFixed(2)}s)`);
       for (let t = 0; t <= last + 1e-9; t += STEP) {
-        const v = (score(key, t, h).robust - base) / unit;
+        const v = (score(key, t, h)[SCORE] - base) / unit;
         const tag = t < t3 - 1e-9 ? 'pull' : (t >= last - 1e-9 ? 'covers the kill' : '');
         console.log(`    @${pad(t, 3)}s  ${pad(v.toFixed(4), 9)} casts  ${tag}`);
       }
@@ -249,11 +253,11 @@ for (const key of KEYS) {
   for (const h of HASTES) {
     const it = interiorT(key, h);
     if (it === null) continue;
-    const unit = oneCast(h), base = score(key, null, h).robust;
-    const v = (score(key, it, h).robust - base) / unit;
+    const unit = oneCast(h), base = score(key, null, h)[SCORE];
+    const v = (score(key, it, h)[SCORE] - base) / unit;
     // flatness: every interior press must agree, or "the interior value" is not a thing
     const t3 = t3Of(h), last = T - d.dur, vs = [];
-    for (let t = Math.ceil(t3 / STEP) * STEP; t < last - 1e-9; t += STEP) vs.push((score(key, t, h).robust - base) / unit);
+    for (let t = Math.ceil(t3 / STEP) * STEP; t < last - 1e-9; t += STEP) vs.push((score(key, t, h)[SCORE] - base) / unit);
     const spread = vs.length > 1 ? Math.max(...vs) - Math.min(...vs) : 0;
     const p = isHaste ? predict(key, h) : null;
     // ⚠ Price the gap in CASTS, not in percent. A percentage against a prediction that is heading to
@@ -338,7 +342,7 @@ if (groups.length) {
     for (const h of hs) {
       const vals = ks.map(k => {
         const it = interiorT(k, h);
-        return it === null ? null : (score(k, it, h).robust - score(k, null, h).robust) / oneCast(h);
+        return it === null ? null : (score(k, it, h)[SCORE] - score(k, null, h)[SCORE]) / oneCast(h);
       }).filter(v => v !== null);
       const spread = Math.max(...vals) - Math.min(...vals);
       if (spread > worst) { worst = spread; worstH = h; }

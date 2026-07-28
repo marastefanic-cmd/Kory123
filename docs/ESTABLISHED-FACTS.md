@@ -8,6 +8,39 @@ makes both harder to trust.
 User, 2026-07-28: *"observe the behavior of each singular buff at different haste levels, then in
 combination with other buffs… so they are referencable and testable whether our model follows them."*
 
+## ★★★★ 07-28 — REGENERATE THE NUMBERS ON THE INTEGRAL. THE LAWS SURVIVE UNTOUCHED.
+
+Every value in this file was measured on the **per-cast sum at one lattice phase**. That quantity
+carries a phase term of ±0.2 casts (`docs/MODEL-DEFECTS.md` §8f) — the same size as the interactions
+this file reports. The rate **integral** is the phase *expectation* of the same objective, in closed
+form. Re-running `tools/facts-ladder.mjs --score=integral` against the file's own closed-form column
+settles which one is measuring the game:
+
+| cooldown (threshold) | rms fit, per-cast sum | rms fit, **integral** |
+|---|---|---|
+| Bloodlust (242.6) | 0.0729 casts | **0.0000** |
+| Icy Veins (394.3) | 0.0665 | **0.0000** |
+| Mind Quickening Gem (458.5) | 0.0641 | **0.0000** |
+| Berserking (573.5) | 0.0408 | **0.0000** |
+| Skull of Gul'dan (613.5) | 0.0425 | **0.0000** |
+| **worst gap anywhere on the ladder** | **0.2385 casts** | **0.0000** |
+
+★ **The closed forms in this file are EXACT — they always were.** The measurements disagreed with them
+by up to 0.24 casts, and that disagreement was the phase term, not the theory. So:
+
+* **Every law stands, unchanged and unqualified**: the tent, both thresholds, the composition table,
+  the `h≥243 ⇒ a haste cooldown inside Lust is worth zero` rule, inclusion–exclusion for triples. None
+  of them was derived from a measurement — they are algebra from the GCD floor, and the integral now
+  reproduces them to the digit.
+* **Every measured NUMBER should be regenerated** with `--score=integral`. Most move by ~0.05 casts.
+* ⚠ **Every ARGMAX must be regenerated — some move a long way.** Peak-value haste changes with the
+  score: Bloodlust h=210 → **240**, Mind Quickening Gem h=0 → **10**, Skull h=30 → **10**, and
+  Berserking **h=430 → 570**. A "best placement" column is an argmax over cells whose noise was the
+  size of the effect; do not cite one until it is re-measured.
+
+⇒ Status: `tools/facts-ladder.mjs` and `tools/facts-pair.mjs` both take `--score=integral` as of
+07-28. The regeneration itself is **not yet done** — until it is, read the laws, verify the numbers.
+
 ## Scope, and how this file is laid out
 
 **Part I** is **one cooldown, alone, on an otherwise bare fight** — nothing overlaps anything. It

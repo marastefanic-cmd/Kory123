@@ -60,6 +60,8 @@ const range = v => { const m = String(v).match(/^(\d+):(\d+):(\d+)$/); if (!m) r
 const HASTES = range(args.haste) || list(args.haste, '0');
 const SPS    = range(args.sp)    || list(args.sp, '1000');
 const CRIT   = Number(args.crit ?? 25);
+const SCORE  = String(args.score ?? 'point');
+if (!['point','integral'].includes(SCORE)) { console.error('FACTS-PAIR ERROR: --score must be point|integral'); process.exit(2); }
 
 const EXTERNAL = new Set(['bloodlust', 'powerInfusion', 'drums']);
 const clone = o => JSON.parse(JSON.stringify(o));
@@ -78,7 +80,12 @@ function scoreOf(sched, h, sp) {
   for (const k of Object.keys(sched))
     if (!rep[k] || rep[k].length !== sched[k].length || rep[k].some((t, i) => Math.abs(t - sched[k][i]) > 1e-9))
       moved = `${k}: asked ${JSON.stringify(sched[k])}, repair returned ${JSON.stringify(rep[k])}`;
-  return { v: api.simulate(rep, cfg).robust, moved };
+  // ★ SCORE SELECTOR (07-28). `--score integral` reads the phase EXPECTATION instead of the realised
+  // per-cast sum. A pair's VALUE is a difference at one lattice phase and the phase term largely
+  // cancels between neighbouring cells, so the two agree closely — but a BEST-PLACEMENT verdict is an
+  // argmax, and there the phase term is the same size as the interaction (MODEL-DEFECTS §8f).
+  const r0 = api.simulate(rep, cfg);
+  return { v: SCORE === 'integral' ? r0.integral : r0.robust, moved };
 }
 const unitOf = (h, sp) => {
   const cfg = { T, hasteRating: h, sp, critPct: CRIT, enabled: {}, fixed: {}, warnings: [], coldSnap: false, segments: null };
