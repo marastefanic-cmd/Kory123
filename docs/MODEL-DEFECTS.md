@@ -319,14 +319,43 @@ whole plan comparison.
 * **D1 is promoted from a tie-break nuisance to the top open defect.** Its previous witnesses were
   0.185 and 0.287 casts and were treated as cosmetic. This one changes which plan the tool prints.
 
-### The fix, and why it is now well-posed
+### The fix — it works, and it has a FREE PARAMETER that flips the answer
 
-D1's cure is to stop resolving one lattice phase. The **phase-averaged** score is what `tools/jitter.mjs`
-computes and what the continuous integral approximates — and note that on this very sweep, averaging
-over ±1 s of press error would flatten the @57 spike (it is one sample wide) while leaving the
-inside-Lust plateau (three samples wide, @40–@50) intact. **The plateau survives averaging; the spike
-does not.** That is the shape of the fix and it needs no new objective — only that the *ranking* read a
-neighbourhood rather than a point.
+D1's cure is to stop resolving one lattice phase: let the **ranking** read a neighbourhood instead of a
+point. No new objective is needed — the same per-cast sum, averaged over press offsets. Tested on the
+failing sweep before writing any of it into the engine:
+
+| averaging window | ranking picks | verdict |
+|---|---|---|
+| ±1.5 s | Berserking **@50** | ✓ inside Lust — matches ground truth |
+| **±1.0 s** | Berserking **@50** | ✓ inside Lust — matches ground truth |
+| **±0.75 s** | Berserking **@57** | ✗ still outside Lust |
+
+**The fix works — and only above some width.** At ±0.75 s the @57 spike is still wide enough to survive
+the average and the wrong answer comes back.
+
+⛔ **That is a tuned constant, and this repo has a rule against exactly this.** PHASE12 §6.1–§6.3 records
+four scorer terms falsified after being tuned against the quantity they were meant to resolve. Choosing
+±1.0 s *because it gives the answer we want* would be the fifth. It must be derived.
+
+**What a derivation has to contend with:** the obvious principled width is **one full lattice period** —
+that is what makes an average a true *phase* average, independent of where the lattice sits. But there
+is no single period in a real fight: at h=0 the bare interval is 1.5 s, under Lust it is 1.1538 s, under
+Lust+Berserking 1.049 s. A press near the pull sits on a 2.5 s ramp cast. **The window would have to be
+local to the press, not global** — plausibly `±½ · (the interval at that press's own fire time)`, which
+at the Berserking press under Lust is ±0.577 s, i.e. in the region that currently gives the *wrong*
+answer.
+
+⇒ Two candidate framings, and they are not the same and should not be conflated:
+
+1. **Lattice-phase average** — width = the local cast interval. Mathematically principled, no free
+   parameter, and on this evidence may not fix the case.
+2. **Execution-error average** — width = how accurately a human presses (~±1 s). Physically motivated,
+   fixes the case, but the width is an empirical claim about players, not about the game, and it
+   belongs in `BENCH` beside `tieBandPct` rather than inside `simulate()`.
+
+**Neither is written yet, and the choice between them is the open design question.** `tests/anchors.mjs`
+is the pass/fail signal for whichever wins.
 
 ## ⛔ D3 — WITHDRAWN THE SAME DAY. It is not Icy Veins × Bloodlust; it is BLOODLUST ALONE, and it is the harness
 
