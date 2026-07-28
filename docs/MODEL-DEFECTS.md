@@ -140,6 +140,41 @@ expectation over execution error instead of at its nominal times:
 being traded against damage here; it is free at nominal times and then pays. Fewer distinct press
 moments means fewer things to land late.
 
+### Second witness — and it shows the fix must be broader than "fewer press rows"
+
+`2:00 · h=0 · 1000 SP · 25 % crit · Lust pinned 0:10`. The optimizer emits **Icon at 0:06**, with Icy
+Veins, while Serpent-Coil, Arcane Power and Bloodlust all sit at 0:10.
+
+**Icon @5 through @10 are an exact six-second plateau** — every one of them scores identically, because
+Icon covers **exactly 19 casts** at every placement in that range. The window slides but the count does
+not: the completion rule clips the last cast at the far end exactly as fast as the slower pre-Lust casts
+are given up at the near end. (User, 2026-07-28, predicting this before it was measured: *"the concrete
+exact per cast modeling under the hood might have it come out exactly the same, because exactly the same
+amount of casts will be affected."* It does.)
+
+Within that plateau the model picks the **earliest** second, which is the one that splits the value
+cluster. Moving it to 0:10 — joining Serpent-Coil, Arcane Power and the Lust call — is again free and
+again better in practice:
+
+| | Icon @0:06 (emitted) | Icon @0:10 | Δ |
+|---|---|---|---|
+| exact | 101.7380 | 101.7380 | **+0.0000** |
+| common jitter ±1.5 s | 101.4853 | 101.4963 | **+0.0110** |
+| pinned call moves | 101.2884 | 101.2994 | **+0.0110** |
+| independent jitter | 101.2660 | 101.2774 | **+0.0115** |
+| **worst case** (independent) | 100.4420 | **100.4960** | better floor |
+
+★★ **`pressRows` cannot see this one.** Both layouts have exactly four press rows — `{6, 10, 27, 38}`
+either way, because Icy Veins is already at 0:06. What changes is *which* moment Icon joins, and
+therefore whether the value cluster is coherent. So the one-clause fix below is necessary and **not
+sufficient**: it fixes the first witness and leaves this one.
+
+⇒ **The tie-break metric should be the jitter expectation itself.** It is principled (it answers the
+question a raider is actually asking), it is measurable (`tools/jitter.mjs`), it subsumes both press-row
+merging and cluster coherence, and it is only ever consulted on an **exact** tie — so it can never cost
+damage. A common-shift expectation is ~7 extra scorings per candidate, which a finishing pass can
+afford.
+
 ### Mechanism
 
 `structuralSnap` (`index.html`, the finishing pass) gates every candidate move on
@@ -151,9 +186,22 @@ the cluster from 0:06 to 0:07 spans no fewer buff edges; it only merges two pres
 `xc < cross` is false and the move is never taken. The pass can trade rows as a tie-break *within* a
 span improvement, but it can never take a pure row reduction, however free.
 
-### The fix
+### The fix — two parts, and the second is the one that matters
+
+**1. Let a pure row reduction through** (fixes witness 1):
 
     if ((xc < cross && xr <= rows) || (xc === cross && xr < rows)) { ...accept... }
+
+**2. Break exact ties on the jitter expectation** (fixes witness 2, which part 1 cannot see):
+
+    // only ever consulted when r.robust === val0 to the bit, so it can never cost damage
+    const robustness = sched => mean over δ ∈ {−1, −0.5, 0, +0.5, +1} of
+                                simulate(repair(shiftAllPresses(sched, δ)), cfg).robust
+    accept if robustness(candidate) > robustness(current)
+
+⚠ Both change the rendering of plans that have a free move available, so they need `exact-match` re-run
+and its goldens re-recorded — under a hard gate that a plan may only move when its score is **exactly**
+unchanged, never merely inside the tie band.
 
 ⚠ **Not landed.** It changes the rendering of every plan that has a free row merge available, so it
 needs `exact-match` re-run and its goldens re-recorded — and each changed plan checked to be
