@@ -889,6 +889,38 @@ gap stayed **0.0322 casts to four decimals**. Both layouts run at the same stead
 kill, so the flux near T is identical and the window scales them equally. It will matter where two
 layouts differ in *rate* at the kill — which is exactly the case the symmetric window mispriced.
 
+### ★★★ THE DIRECT QUESTION — do the user's layouts beat the CLIPPING plans under the integral?
+
+Not the phase-reranked rivals: the **original** point-score plans, the ones that banked the terminal
+partial cast. User layout minus that plan, in casts:
+
+| case | point score | **INTEGRAL** | last cast start / frac — yours | — the model's |
+|---|---|---|---|---|
+| A2 · 2:00 · Lust@0:20 | ✗ −0.1135 | ✅ **+0.1722** | 118.637 / 0.9099 | **119.965 / 0.0234** |
+| A3 · 3:00 · Lust@0:20 | ✗ −0.1938 | ✅ **+0.0531** | 178.840 / 0.7744 | **179.932 / 0.0454** |
+| Ex2 · 2:00 · Lust@0:10 | ✗ −0.4535 | ✅ **+0.0093** | 118.939 / 0.7083 | 119.642 / 0.2390 |
+| Ex1 · 2:45 · Lust@0:10 | ✗ −0.2183 | ✅ **+0.0703** | 163.840 / 0.7744 | **164.901 / 0.0661** |
+
+**4/4 for the user, and the clipping is legible in the last two columns.** In every case the model's
+plan puts its final cast start within ~0.4 s of the kill, earning a 0.02–0.24 sliver, while the user's
+carries a genuinely partial 0.71–0.91 tail. That is the lattice slid so one more cast squeaks under the
+wire — not a better plan.
+
+A2 decomposed, and it is the whole margin:
+
+| | full casts completing before T | terminal partial | total |
+|---|---|---|---|
+| user | 92 = 173737 | 1571.7 | 175308.9 |
+| model | **93 = 175465** | **40.4** | 175504.9 |
+
+The model's entire +196 point win is converting a 0.91-of-a-cast tail into a 93rd *full* cast plus a
+0.02 sliver — **+0.1135 casts of pure phase.** The integral, which has no terminal cast to bank, flips
+it to **+0.1722 for the user**.
+
+⚠ Margins against the integral's own uncorrected error band (0.09–0.34 casts, §8f): A2's **+0.172 is
+decisive**; A3's +0.053, Ex1's +0.070 and Ex2's +0.009 are **inside it** and are direction, not proof,
+until the two edge corrections land.
+
 ### ⇒ What this means for §8e
 
 `phaseScore`/`phaseRerank` should be treated as **provisional**. They established the objective and
