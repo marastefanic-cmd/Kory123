@@ -802,6 +802,7 @@ Zero means the two are independent and may be placed separately. Everything the 
 in the cases where it is not zero.
 
 > ### ★ THE LAW, for a HASTE cooldown paired with a VALUE cooldown
+> *(one of four — the full set is the composition table below)*
 >
 >     interaction = Δ(casts the value buff covers) × s
 >
@@ -832,6 +833,46 @@ in the cases where it is not zero.
 > Note what is and is not in it: `Δ(covered)` depends on passive **haste** and on the two durations;
 > the denominator depends on passive **spell power**. Crit appears nowhere — it scales the cooldown and
 > the plain cast alike and cancels, exactly as in rule 2b.
+
+## ★★★ THE COMPOSITION TABLE — it does not matter WHICH spell, only by how much
+
+User, 2026-07-28: *"from this point onwards it shouldn't really matter what spell or what effect is the
+one modifying the haste or damage side of the equation, just by how much."* That is right, and the
+table below is the whole of it. **Which rule applies is decided by where the modifier sits in the damage
+formula**, not by the cooldown's name, icon, or which "family" a doc filed it under:
+
+    dmg = (AVG_BASE + COEF · sp) · critFactor · dmgMult          per cast
+    interval = max(GCD_FLOOR, GCD_BASE / m)                       how many casts
+
+| modifier | where it acts | reduce it to |
+|---|---|---|
+| +N spell power | inside the bracket | `s = COEF·N / (AVG_BASE + COEF·SP)` |
+| ×v damage | multiplies everything | `s = v − 1` |
+| ×v haste | the interval | `v` |
+| +R haste rating | the interval | `v = (1 + (h+R)/1577) / (1 + h/1577)` |
+| crit | multiplies everything | **nothing — it cancels** |
+
+Then every pair follows one of four rules, and no cooldown identity survives into any of them:
+
+| pair | interaction | sign |
+|---|---|---|
+| **sp × sp** | `0` — exactly, always | none |
+| **dmg × sp**, **dmg × dmg** | `n × s₁ × s₂` | always **+** |
+| **haste × value** | `Δ(covered) × s` | always **+** |
+| **haste × haste** | `d·[1/i(v₁v₂m) + 1/i(m) − 1/i(v₁m) − 1/i(v₂m)]` | **+** below the pair threshold, **−** above |
+
+Three things follow that are worth stating out loud, because each one contradicts a natural guess:
+
+1. **Two spell-power buffs cannot interact** — spell power is additive inside the bracket, so two
+   deltas are one bigger delta. (P2, measured `0.000000` everywhere.)
+2. **Arcane Power is not a spell-power buff.** It is a damage *multiplier*, so it multiplies the
+   spell-power bonus too and does interact with Icon and Serpent-Coil. Filing it with them under
+   "value cooldowns" gets this backwards. (P3.)
+3. **Only haste × haste can be negative**, and it is the only rule with a threshold in it — because it
+   is the only one where the GCD floor can refuse to spend what you bought. (P4.)
+
+⇒ **To price a cooldown this corpus has never seen, you need three numbers and no lore**: its duration,
+which of the two clocks it moves, and by how much.
 
 ## P1. Icy Veins + Icon of the Silver Crescent
 
@@ -949,17 +990,143 @@ measurement rather than a derivation:
 and is **11 % low**. `Δ(covered)` is an integer (3), not `N` (2.6662): the fight is a lattice of whole
 casts, and a 20 s window either does or does not contain a cast. Use the integer.
 
+## P2. Icon of the Silver Crescent + Serpent-Coil Braid — `sp × sp`
+
+**Interaction is exactly 0.000000**, at every passive haste and every passive spell power measured.
+Two spell-power buffs cannot interact, and the reason is one line of the damage formula: spell power
+enters as `(AVG_BASE + COEF·sp)`, so two deltas on the same cast are just **one bigger delta**. There is
+no cross term to find.
+
+⇒ **Place them independently.** Each maximizes itself — which by rule 2 means each goes as soon as 3
+Arcane Blast stacks are up — and neither placement constrains the other. Confirmed at haste 0 and 400
+× spell power 500, 1000, 2000: `−0.000000` in all six.
+
+## P3. Arcane Power + a spell-power buff — `dmg × sp`
+
+★ **Arcane Power is NOT a spell-power buff, and this is where the difference shows.** It multiplies
+damage (`×1.30`) rather than adding spell power, so it multiplies the spell-power bonus as well:
+
+    per cast under both  =  1.30 × (1 + s)  =  1.30 + 1.30·s
+    sum of the parts     =  0.30 + s
+    interaction          =  n × 0.30 × s          ← a real, positive cross term
+
+Measured at h=0, and the covered count comes out an exact integer at every spell power:
+
+| passive SP | s (Icon) | interaction | ÷ (0.3 × s) |
+|---|---|---|---|
+| 500 | 0.10279 | 0.30836 | **10.000** |
+| 1000 | 0.07719 | 0.23157 | **10.000** |
+| 2000 | 0.05153 | 0.15459 | **10.000** |
+
+⇒ **Arcane Power wants to overlap with your spell-power cooldowns**, even though those cooldowns do not
+care about each other (P2). Grouping it with Icon or Serpent-Coil under one "value family" heading is
+the natural mistake and it is wrong: the family that matters is *where in the damage formula the
+modifier sits*, not whether we call it a damage cooldown.
+
+## P4. The haste × haste family
+
+**There is no `s` here** — neither cooldown changes what a cast is worth, so the interaction is entirely
+about the GCD floor. Two haste multipliers compound, and what happens depends on whether the compounded
+multiplier is still under the floor:
+
+    interaction = d · [ 1/i(v₁v₂·m_p) + 1/i(m_p) − 1/i(v₁·m_p) − 1/i(v₂·m_p) ]
+    where  d = the shorter duration,  i(m) = max(1.0, 1.5/m)
+
+Uncapped this is `d·m_p·(v₁−1)(v₂−1)/1.5` — **positive**, the ordinary multiplicative bonus for stacking
+haste. Once the *pair* floors the GCD the first term is clipped to `d` and the expression **turns
+negative**: you are paying for haste the floor will not let you spend.
+
+> ### ★★ THE PAIR THRESHOLD, AND WHY IT IS THE ONE THAT MATTERS
+> A pair floors the GCD at `v₁·v₂·m_p = 1.5`, so its threshold is roughly **each cooldown's own
+> threshold divided by the other's multiplier** — always far lower than either alone. Two haste
+> cooldowns stop wanting to overlap **long before** either one stops being useful by itself.
+
+| pair | pair threshold | their own thresholds | interaction h=0 | interaction h=400 |
+|---|---|---|---|---|
+| Icy Veins + Bloodlust | **−61** | 394 / 243 | +0.0788 | **−3.2904** |
+| Bloodlust + MQG | **−87** | 243 / 459 | −0.2016 | −2.8736 |
+| Icy Veins + MQG | **64** | 394 / 459 | +0.6008 | −2.8736 |
+| Bloodlust + Skull | **68** | 243 / 614 | +0.4953 | −1.5548 |
+| Berserking + Bloodlust | **77** | 573 / 243 | +0.2056 | −0.9105 |
+| Icy Veins + Berserking | **215** | 394 / 573 | +0.1255 | −0.9105 |
+| Icy Veins + Skull | **219** | 394 / 614 | +0.3338 | −1.5548 |
+| Berserking + MQG | **243** | 573 / 459 | −0.0534 | −0.7013 |
+| MQG + Skull | *284* | 459 / 614 | *cannot overlap* | *cannot overlap* |
+| Berserking + Skull | **398** | 573 / 614 | +0.1128 | −0.0017 |
+
+**At h=400 every single haste × haste pair is negative, and the aligned layout loses outright.** Icy
+Veins on Bloodlust costs **3.29 casts** there. This is the general form of the rule this project already
+had as "Icy Veins slides out of Lust with gear" (RULES §3) — it is not special to those two cooldowns
+and it is not special to Lust.
+
+**Your assumption confirmed: haste × haste varies with passive haste and with nothing else.** Across
+haste 0 / 200 / 400 / 600 × spell power 500 / 1000 / 2000 × crit 0 / 25 / 50 %, the interaction's spread
+over the 9 spell-power × crit combinations is **0.00000000 casts** at every haste, for every pair tested.
+
+⚠ **The closed form gets the sign right for 7 of the 9 measurable pairs at h=0 and the magnitude to
+~0.1 casts, but it is a continuous approximation of a discrete lattice and it does miss.** Icy Veins +
+Bloodlust is a boundary case (it predicts exactly 0.0000 and measures +0.0788), and Berserking + MQG
+predicts +0.1395 against a measured −0.0534. Both misses are on 10 s windows where one whole cast is
+~0.14 casts of interaction — i.e. both are inside one cast's quantization of zero. **Use the table, not
+the formula, when the predicted value is small.**
+
+⚠ Every Bloodlust row also carries rule 5's caveat: as a raid external its window is anchored to the
+call, so its exact interaction depends on the sub-cast phase and the sim cannot arbitrate it.
+
+## The full pair table
+
+`node tools/facts-pair.mjs --mode=all --haste=0,400 --sp=1000 --step=5`, aligned-interior layout.
+"overlap worth" is the aligned layout minus the best legal **disjoint** layout — negative means
+separate them.
+
+| pair | family | interaction h=0 | worth h=0 | interaction h=400 | worth h=400 |
+|---|---|---|---|---|---|
+| Icy Veins + Berserking | haste × haste | 0.1255 | −0.0267 | −0.9105 | −0.9732 |
+| Icy Veins + Bloodlust | haste × haste | 0.0788 | −0.1267 | −3.2904 | −3.6340 |
+| Icy Veins + MQG | haste × haste | 0.6008 | 0.4633 | −2.8736 | −2.9364 |
+| Icy Veins + Skull | haste × haste | 0.3338 | 0.1001 | −1.5548 | −1.6192 |
+| Berserking + Bloodlust | haste × haste | 0.2056 | 0.1282 | −0.9105 | −1.4167 |
+| Berserking + MQG | haste × haste | −0.0534 | −0.0848 | −0.7013 | −0.7456 |
+| Berserking + Skull | haste × haste | 0.1128 | 0.0788 | −0.0017 | −0.0017 |
+| Bloodlust + MQG | haste × haste | −0.2016 | −0.2505 | −2.8736 | −3.1707 |
+| Bloodlust + Skull | haste × haste | 0.4953 | 0.4937 | −1.5548 | −1.9215 |
+| MQG + Skull | haste × haste | — | — | — | — |
+| Icy Veins + Arcane Power | haste × dmg | 0.6000 | 0.5446 | 0.9000 | 0.8372 |
+| Berserking + Arcane Power | haste × dmg | 0.0000 | −0.0314 | 0.3000 | 0.3000 |
+| Bloodlust + Arcane Power | haste × dmg | 0.6000 | 0.5226 | 0.9000 | 0.3937 |
+| MQG + Arcane Power | haste × dmg | 0.6000 | 0.6000 | 0.6000 | 0.5556 |
+| Skull + Arcane Power | haste × dmg | 0.3000 | 0.2673 | 0.3000 | 0.3000 |
+| Icy Veins + Icon | haste × sp | 0.2316 | 0.1762 | 0.3088 | 0.2460 |
+| Icy Veins + Serpent-Coil | haste × sp | 0.2241 | 0.1687 | 0.3362 | 0.2734 |
+| Berserking + Icon | haste × sp | 0.0772 | 0.0458 | 0.0772 | 0.0772 |
+| Berserking + Serpent-Coil | haste × sp | 0.0000 | −0.0314 | 0.1121 | 0.1121 |
+| Bloodlust + Icon | haste × sp | 0.3088 | 0.2452 | 0.3088 | −0.1887 |
+| Bloodlust + Serpent-Coil | haste × sp | 0.2241 | 0.1467 | 0.3362 | −0.1701 |
+| MQG + Icon | haste × sp | — | — | — | — |
+| MQG + Serpent-Coil | haste × sp | 0.2241 | 0.2241 | 0.2241 | 0.1798 |
+| Skull + Icon | haste × sp | — | — | — | — |
+| Skull + Serpent-Coil | haste × sp | 0.1121 | 0.0793 | 0.1121 | 0.1121 |
+| Arcane Power + Icon | dmg × sp | 0.2316 | 0.2316 | 0.2779 | 0.2779 |
+| Arcane Power + Serpent-Coil | dmg × sp | 0.3362 | 0.3362 | 0.4034 | 0.4034 |
+| Icon + Serpent-Coil | sp × sp | **−0.0000** | −0.0000 | **−0.0000** | −0.0000 |
+
+**Every `haste × dmg` figure is an exact integer multiple of 0.3**, and every `haste × sp` figure an
+exact integer multiple of that buff's `s` (0.07719 for Icon, 0.11205 for Serpent-Coil, at 1000 SP). The
+integer is `Δ(covered)`. Nothing in this table is fractional except where a window touches the kill.
+
+### ⛔ Three pairs CANNOT overlap at all
+
+Icon of the Silver Crescent, Mind Quickening Gem and Skull of Gul'dan are all **on-use trinkets and
+share a lockout** — using one locks the group for that buff's duration. `repair` retimes any schedule
+that tries, so `MQG + Icon`, `MQG + Skull` and `Skull + Icon` have no overlapping layout to measure.
+Their alignment question is answered by the item, not by the arithmetic.
+
 ## Still to do in Part II
 
-The remaining 27 pairs, and then triples. The two structural questions each pair should answer are
-already fixed by the law above: **what is `Δ(covered)`**, and **where is the breakpoint**. Two cases
-are known in advance to need their own treatment rather than the law as stated:
-
-* **haste + haste** — there is no `s`; the interaction is that the two multipliers compound into the
-  GCD floor, so it must be derived from the tent (a stacked pair's threshold is far lower than either
-  alone: Icy Veins × Bloodlust is ×1.56, already capped at h=0).
-* **value + value** — two spell-power buffs on the same casts. Expected interaction ≈ 0 in casts, since
-  neither changes when casts happen; worth confirming rather than assuming.
+Triples, and the remaining baselines for the pairs above (this table is haste 0 and 400 at 1000 SP;
+`haste × sp` and `dmg × sp` rows will move with passive spell power exactly as P1's did, `haste × haste`
+rows will not move at all). The structural questions are now fixed by the composition table, so what is
+left is filling cells rather than finding rules.
 
 ## The two generators
 

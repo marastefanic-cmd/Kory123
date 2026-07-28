@@ -127,6 +127,83 @@ function solve(h, sp) {
 const pad = (s, n) => String(s).padStart(n);
 const nameA = api.BUFFS[A].name, nameB = api.BUFFS[B].name;
 
+// ── the composition rules, spell-agnostically ─────────────────────────────────────────────────────
+// ★ WHICH RULE APPLIES IS DECIDED BY WHERE THE MODIFIER SITS IN THE DAMAGE FORMULA, not by which spell
+// it is. `dmg = (AVG_BASE + COEF·sp) · critFactor · dmgMult`, so:
+//   +SP  buffs add INSIDE the bracket   ⇒ two of them are one bigger delta ⇒ they cannot interact
+//   ×dmg buffs multiply the WHOLE thing ⇒ they interact with everything that changes the damage
+//   haste changes HOW MANY casts happen ⇒ it interacts with anything that changes what a cast is worth
+// This is why Arcane Power does not behave like Icon even though both are "value" cooldowns: Icon adds
+// spell power, Arcane Power multiplies damage.
+const FAMILY = key => {
+  const k = api.BUFFS[key].kind;
+  return k === 'mult' || k === 'rating' ? 'haste' : k === 'sp' ? 'sp' : 'dmg';
+};
+function ruleFor(a, b) {
+  const fa = FAMILY(a), fb = FAMILY(b), set = [fa, fb].sort().join('+');
+  if (set === 'sp+sp')       return { name: 'sp × sp',       expect: 'exactly 0 — spell power is additive inside the damage bracket' };
+  if (set === 'dmg+sp')      return { name: 'dmg × sp',      expect: 'n × (v−1) × s — a multiplier scales the spell-power bonus too' };
+  if (set === 'dmg+dmg')     return { name: 'dmg × dmg',     expect: 'n × (v1−1) × (v2−1)' };
+  if (set === 'haste+sp')    return { name: 'haste × sp',    expect: 'Δ(covered casts) × s' };
+  if (set === 'dmg+haste')   return { name: 'haste × dmg',   expect: 'Δ(covered casts) × (v−1)' };
+  return { name: 'haste × haste', expect: 'd·[1/i(v₁v₂m) + 1/i(m) − 1/i(v₁m) − 1/i(v₂m)] — sign flips at the PAIR threshold' };
+}
+
+if (args.mode === 'all') {
+  // Every unordered pair, at each baseline, judged on the aligned-interior layout.
+  const KEYS_ALL = args.buffs ? String(args.buffs).split(',')
+                              : ['icyVeins', 'berserking', 'bloodlust', 'mqg', 'skull', 'arcanePower', 'isc', 'scb'];
+  for (const h of HASTES) for (const sp of SPS) {
+    console.log(`═══ ALL PAIRS — haste ${h}, ${sp} SP, ${CRIT}% crit, T=${T}s ═══`);
+    console.log(`   pair                                     | family        | interaction | overlap worth | note`);
+    const t3 = t3Of(h, sp), unit = unitOf(h, sp), zero = scoreOf({}, h, sp).v;
+    for (let i = 0; i < KEYS_ALL.length; i++) for (let j = i + 1; j < KEYS_ALL.length; j++) {
+      const a = KEYS_ALL[i], b = KEYS_ALL[j], rule = ruleFor(a, b);
+      const label = `${api.BUFFS[a].name} + ${api.BUFFS[b].name}`;
+      // ⚠ BOTH ARMS GET THE SAME SEARCH. The first version fixed the aligned arm at the earliest
+      // interior second while giving the disjoint arm a full grid sweep, which handed several pairs a
+      // spurious "SEPARATE THEM" — the aligned layout was losing to a better-placed rival, not to
+      // separation. Aligned = the best t with both pressed together; disjoint = the best legal
+      // non-overlapping pair. Same freedom on each side.
+      let al = null, tAl = null;
+      for (const t of timesFor(a)) {
+        if (t < t3 - 1e-9 || t > T - api.BUFFS[b].dur + 1e-9) continue;
+        const r = scoreOf({ [a]: [t], [b]: [t] }, h, sp);
+        if (r.moved) continue;
+        if (!al || r.v > al.v + 1e-9) { al = r; tAl = t; }
+      }
+      let note = '';
+      if (!al) al = scoreOf({ [a]: [Math.ceil(t3 / STEP) * STEP], [b]: [Math.ceil(t3 / STEP) * STEP] }, h, sp);
+      if (al.moved) {
+        // the shared on-use trinket lockout is the usual cause, and it is a FACT about the pair
+        const locked = ['skull', 'mqg', 'isc'].includes(a) && ['skull', 'mqg', 'isc'].includes(b);
+        note = locked ? 'CANNOT overlap — shared on-use trinket lockout' : 'repair moved a press';
+        console.log(`   ${label.padEnd(40)} | ${rule.name.padEnd(13)} |      —      |       —       | ${note}`);
+        continue;
+      }
+      const sA = (scoreOf({ [a]: [tAl] }, h, sp).v - zero) / unit;
+      const sB = (scoreOf({ [b]: [tAl] }, h, sp).v - zero) / unit;
+      const inter = (al.v - zero) / unit - sA - sB;
+      // best disjoint layout on the grid, for "is overlapping worth it"
+      let bestDis = null;
+      for (const ta of timesFor(a)) for (const tb of timesFor(b)) {
+        if (Math.min(ta + api.BUFFS[a].dur, tb + api.BUFFS[b].dur) - Math.max(ta, tb) > 1e-9) continue;
+        const r = scoreOf({ [a]: [ta], [b]: [tb] }, h, sp);
+        if (r.moved) continue;
+        const v = (r.v - zero) / unit;
+        if (!bestDis || v > bestDis + 1e-9) bestDis = v;
+      }
+      const alV = (al.v - zero) / unit;
+      const worth = bestDis === null ? null : alV - bestDis;
+      if (worth !== null && worth < -1e-6) note = 'SEPARATE THEM — aligned loses';
+      console.log(`   ${label.padEnd(40)} | ${rule.name.padEnd(13)} | ${pad(inter.toFixed(4), 11)} | ` +
+                  `${pad(worth === null ? '—' : worth.toFixed(4), 13)} | ${note}`);
+    }
+    console.log('');
+  }
+  process.exit(0);
+}
+
 if (args.mode === 'breakpoint') {
   // ★ TWO NAMED ARMS, NOT AN ARGMAX. Reading the breakpoint off `argmax over the whole grid` does not
   // work: the pair surface is quantised (the interaction moves in whole covered casts), so the winner
