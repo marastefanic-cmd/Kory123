@@ -1114,9 +1114,77 @@ at 0:07 (so it covers 7–47 s), 1387 SP, 38 % crit, value in casts above "Lust 
 > | **243** | **0.0000** | **0.0000** |
 > | 300 | 0.0000 | 0.0000 |
 >
-> ⇒ **At any geared haste level, never put a haste cooldown inside Lust.** This is the sharpest form of
-> the rule the project has carried as "Icy Veins slides out of Lust with gear" (RULES §3), and it names
-> the exact rating at which it stops being a trade-off and becomes free.
+> ⇒ **From 243 upward, a haste cooldown inside Lust is worth nothing, and moving it out is free.** This
+> is the sharpest form of the rule the project has carried as "Icy Veins slides out of Lust with gear"
+> (RULES §3), and it names the exact rating at which it stops being a trade-off.
+>
+> ⚠ **BELOW 243 it IS a trade-off, and an earlier draft of this file got that badly wrong** — it read
+> *"at any geared haste level, never put a haste cooldown inside Lust"*, which is false anywhere under
+> ~243 and catastrophically false at low haste. See the next section.
+
+### ★★★ OVERCAP IS A PRICE, NOT A PROHIBITION — only the part *below* the floor is lost
+
+User, 2026-07-28: *"as soon as a haste × haste combination touches the GCD cap it's wasted — that's not
+true. Only the part that is above the GCD is wasted. And it might be worth to do that if you gain more
+by doing so."* Correct, and the size of the correction is large.
+
+Stacking Icy Veins on Lust asks for an interval of `1.5/(1.56·m_p)`, and the floor refuses to go below
+1.0 — but the *starting point* was Lust's `1.5/(1.30·m_p)`, not 1.0. The cooldown still delivers
+everything between the two:
+
+| passive haste | Lust interval | +IV, asked for | +IV, actually got | **IV still converts** | **wasted** |
+|---|---|---|---|---|---|
+| 0 | 1.1538 | 0.9615 | 1.0000 | 0.1538 s/cast — **80 % of nominal** | **20 %** |
+| 50 | 1.1184 | 0.9320 | 1.0000 | 0.1184 — 64 % | 36 % |
+| 100 | 1.0850 | 0.9042 | 1.0000 | 0.0850 — 47 % | 53 % |
+| 150 | 1.0536 | 0.8780 | 1.0000 | 0.0536 — 31 % | 69 % |
+| 200 | 1.0240 | 0.8533 | 1.0000 | 0.0240 — 14 % | 86 % |
+| **243** | 1.0000 | 0.8332 | 1.0000 | **0** | **100 %** |
+
+**At h=0, four fifths of Icy Veins survives being stacked on Lust.** "Touches the cap ⇒ wasted" is off
+by that whole 80 %.
+
+### And the price is worth paying when it buys alignment
+
+The reason to accept the clip is the rest of the plan. Lust pinned 60–100, with the value cluster
+(Icon + Arcane Power) pressed at 65 — *inside* Lust, where rule 2 puts it. Icy Veins now chooses
+between joining the cluster (and overcapping) or staying out of Lust (and not):
+
+| passive haste | IV aligned @65 — inside Lust | best placement outside Lust | Δ |
+|---|---|---|---|
+| 0 | **3.716** | 2.668 | **+1.049** |
+| 20 | **3.217** | 2.993 | +0.224 |
+| 50 | **2.963** | 2.829 | +0.134 |
+| **52 ± 3** | — | — | **crossover** |
+| 60 | 2.889 | **2.976** | −0.087 |
+| 100 | 2.469 | **3.028** | −0.559 |
+| 140 | 1.579 | **3.004** | −1.425 |
+
+⇒ **Below h ≈ 52, Icy Veins should sit inside Lust with the cluster and eat the overcap**, and it is not
+close — **+1.05 casts** at h=0.
+
+★★ **The general lesson, and it is the one to carry:** a negative `haste × haste` interaction does **not**
+mean "do not overlap". It is one term in a sum. The overcap loss is **bounded** — you can never lose
+more than the part of the window that would have gone below 1.0 s — while the alignment gain scales
+with whatever value cooldowns are there (`Δ(covered) × B`, and `B` for an Icon + Arcane Power cluster is
+~0.4 per cast). A bounded loss can be outbid, and here it is.
+
+⇒ **This adds a fourth breakpoint, and it is the lowest one:**
+
+| | Icy Veins × Lust | what it is |
+|---|---|---|
+| **overcap-vs-alignment** | **h ≈ 52** | below it, join the cluster inside Lust anyway |
+| pair threshold | −61 (never positive) | where the raw pair interaction turns negative |
+| Lust's own cap | 243 | inside Lust is worth exactly 0; nothing left to align |
+| the bare cap | 789 | steady state worth nothing anywhere |
+
+Note the first two are in the "wrong" order and that is the whole point: the pair interaction is
+negative at *every* haste, yet the aligned layout still wins below 52. **The pair term alone never
+decides a placement.**
+
+⚠ The 52 is specific to this cluster. A bigger value cluster buys more, so it moves **up**; a bare
+fight with no value cooldowns has nothing to buy and the crossover is at h=0 — which is exactly the
+"Icy Veins × Lust with nothing else" table above, where out-of-Lust wins from h=0 onward.
 
 ### ★ The governing inequality — and Icy Veins and Berserking are on opposite sides of it
 
@@ -1130,9 +1198,14 @@ A haste cooldown `×v` wants to be **inside** Lust exactly when the pair does no
 | **Berserking** | ×1.10 | ×1.43 | **h < 77** |
 
 ⇒ **They are not the same rule and must not be given the same advice.** Icy Veins and Lust floor the
-GCD together before you have any gear at all, so Icy Veins is *always* wasting itself inside Lust.
-Berserking is small enough that the pair still fits under the floor at low haste, so at h=0 Berserking
-genuinely wants to be inside Lust and Icy Veins genuinely does not.
+GCD together before you have any gear at all, so Icy Veins always gives up *some* of itself inside Lust
+— 20 % at h=0, rising with haste. Berserking is small enough that the pair still fits under the floor at
+low haste, so at h=0 Berserking wants to be inside Lust on its own merits and Icy Veins does not.
+
+⚠ **"Does not want to be inside Lust" here means *on a bare fight, with nothing else to align with*.**
+That is all these two tables measure. Put a value cluster inside Lust and Icy Veins joins it anyway
+below h ≈ 52, overcap and all — the overcap section above. **The inequality decides whether the pair by
+itself pays; it does not decide the placement.**
 
 Measured on a 140 s fight with Lust pinned at 0:60 (so **before**, **inside** and **after** are all
 reachable), value in casts above "Lust alone":
@@ -1203,9 +1276,10 @@ are `haste × haste` interactions, they are entirely about the GCD floor, and th
 what your spell power is. **Only passive haste moves any of it.**
 
 ⚠ **At h=0 the ordering is `pull > inside Lust > after Lust`, and that is not the same rule.** With
-nothing floored, Lust is nearly transparent to Icy Veins (P4's interaction is ≈ 0 there — the floor has
-not started biting, so Icy Veins converts the same 2.67 casts whether Lust is up or not). What decides
-the placement at h=0 is not Lust at all, it is the **pull advantage** of Part I rule 3. Reading the h=0
+nothing else floored, Lust is nearly transparent to Icy Veins (P4's interaction is ≈ 0 there, and 80 %
+of Icy Veins still converts under it). What decides the placement at h=0 on a *bare* fight is not Lust
+at all, it is the **pull advantage** of Part I rule 3 — and on a fight with a value cluster it is the
+cluster, which outbids both. Reading the h=0
 row as "get out of Lust" and the h=300 row as the same rule would be wrong: they are the pull advantage
 and the GCD floor respectively, and they only happen to point the same way once.
 
