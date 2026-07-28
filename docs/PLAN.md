@@ -265,11 +265,29 @@ boundary, the **shipped point score already picks the user's layout on all four 
 matches wowsims to ≤0.008 casts** (§8c). The ranking change is for robustness to an unspecifiable
 input — it is not a correction of a wrong answer.
 
-## ⚠ Two traps this created
+## ▶▶ NEXT: replace the sampled phase mean with a CORRECTED INTEGRAL (user challenge, 07-28)
 
-* **Do not un-retire the rate integral.** The integral is the phase *expectation* and that is why it
-  ranked the user's layouts first — but it also over-pays a partial cast at a window's back edge
-  (PHASE8 §25.5) and cannot express the two snapshot rules. Phase-averaging the **exact sum** keeps
-  what PHASE12 got right and drops only the phase degree of freedom. PHASE12 §6.10 stands.
+Evidence: `MODEL-DEFECTS.md` §8f. The shipped `phaseScore` computes the right objective the wrong way —
+12 samples of a quantity that has a closed form, and it still reads **UNSTABLE** on the anchor slide
+while the raw integral reads **STABLE**. Three corrections, all closed-form, all needed together:
+
+1. Swap the integral's **retired symmetric kill window** (`KILL_WINDOW = 0.5`) for PHASE12 §9's
+   one-sided window of the cast's own duration.
+2. Add the **haste-window edge terms**, which were never implemented:
+   `trailing = ½ − i_in/(2·i_out)`, `leading = i_out/(2·i_in) − ½`. They nearly cancel, which is why
+   the residual is 0.03 casts on a narrow sweep and 0.34 on a wide one.
+3. Re-measure `boundaryCharge` (the **value**-window back-edge term). It exists, ships OFF, and was
+   ruled ANTI-B2 against a corpus and an arbiter that no longer exist.
+
+Acceptance, pre-registered: the corrected integral must track an **N=96 phase mean to ≲0.02 casts**
+(today: 0.09–0.34), read **STABLE** on `phase-audit --mode anchor`, hold `self-consistency` at
+`0.00e+0` / 0 structural, and keep A1 green. Then `phaseScore` becomes a *checker* — the N=96 mean is
+the definition the closed form is graded against — and `phaseRerank`'s 12× cost goes away.
+
+⛔ **This is not a return to PHASE12 §6.10's rejected quantity.** What it rejected is the integral *as
+it stands*: retired kill window, two missing edge terms. Fix those and it is the same objective the
+per-cast sum computes, minus the one degree of freedom no player controls.
+
+## ⚠ One trap this created
 * **Do not read a sim duel on a mid-cast Lust pin as an arbiter.** It is measuring a fight 0.415 s
   different from the planned one, worth 0.21 casts, applied to some arms and not others.

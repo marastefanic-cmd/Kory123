@@ -760,6 +760,75 @@ ordinary solve while appearing to work.
   not a regression — but it means `exact-match`/`golden.json` had to be re-recorded, and any comparison
   to a pre-07-28 corpus is denominated in the old objective.
 
+## 8f. ★★★★ USER CHALLENGE 07-28: *"Are integrals really not the way? They feel like the way."* — MEASURED, AND THEY ARE
+
+⚠ **This section supersedes §8e's implementation choice.** §8e's finding stands (rank on the phase
+expectation); its *implementation* — a 12-sample average — is the wrong way to compute it, and the
+measurement below is unambiguous about that.
+
+A rate integral **is** a phase expectation, in closed form, exactly, at O(segments): `E[casts in a
+segment of length L at interval i] = L/i` averaged over phase, which is precisely what the integral
+computes. A sampled mean is an approximation of it. So the question is not "sum vs integral" — it is
+"which arithmetic computes the phase expectation", and one of them needs no samples.
+
+### The decisive test — the anchor slide, all three rankings
+
+Bloodlust slid across one 1.5 s cast interval of *"lust at 0:20"*; where does each ranking put
+Berserking?
+
+| ranking | @20.000 | @20.375 | @20.750 | @21.125 | @21.498 | |
+|---|---|---|---|---|---|---|
+| point (pre-07-28) | @57 | @40 | @45 | @53 | @53 | **UNSTABLE — 4 answers** |
+| **integral** (the diagnostic) | @45 | @45 | @45 | @45 | @45 | ✅ **STABLE** |
+| phase-mean N=12 (**shipped §8e**) | @45 | **@50** | @45 | @45 | @45 | ⚠ **UNSTABLE — 2 answers** |
+
+**The retired integral passes the test the shipped fix was built to pass, and the shipped fix does
+not.** At N=12 the sampling noise is still large enough to flip @45↔@50; `phase-audit`'s N=48 is
+stable, which is exactly the tell that the difference is sampling, not substance. The integral's curve
+is also smooth where the sampled one is bumpy (non-monotone between @53 and @55) — the residual is
+noise, and the integral has none because it does not sample.
+
+### But "properly implement the stacks" is necessary and NOT sufficient — three terms are missing
+
+Against an N=96 phase mean (the definition) over four sweeps, the integral's **argmax agreed 4/4** —
+but the level residual runs **0.09 – 0.34 casts per layout**, far above the 0.005–0.07-cast margins
+this project argues at. So it ranks well *here* and is not yet the phase expectation. Three closed-form
+corrections, none of them speculative:
+
+1. **The kill window is still the RETIRED symmetric one.** `index.html` says so in as many words —
+   *"the retired symmetric kill window, kept ONLY so the `integral` diagnostic below still…"*. PHASE12
+   §9 replaced `KILL_WINDOW = 0.5` with a one-sided window whose width is the cast's own duration. That
+   correction was never applied here because nothing ranked on the integral.
+2. **Haste-window edges — never implemented at all.** The integral switches rate exactly at the edge;
+   the game snapshots at cast start, so a cast beginning just inside keeps the fast interval past the
+   edge, and one beginning just before the window carries the slow interval into it. Both are closed
+   form, opposite signs, and they nearly cancel — which is why the residual is 0.03 on a narrow sweep
+   and 0.34 on a wide one:
+
+       trailing edge  gain = ½ − i_in /(2·i_out)      at h=0, 1.049→1.364:  +0.115 casts
+       leading  edge  loss = i_out/(2·i_in ) − ½      at h=0, 1.364→1.049:  −0.150 casts
+
+   ⚠ PHASE8 §25.5 deliberately skipped the haste half on the reasoning that *"a cast that does not fit
+   is not LOST, it happens later at the slower rate"*. True — and it is still a rate error at the edge,
+   which is a different claim from the count error §25.5 was rejecting.
+3. **Value-window back edge.** The integral pays a fractional cast that never completes inside the
+   window. `boundaryCharge` **already implements exactly this** and ships OFF — measured ANTI-B2, but
+   against the old corpus and against an arbiter that no longer exists. It is defined again and must be
+   re-measured, not assumed dead.
+
+★ **The stacks are already done.** The ramp is scored discretely inside the integral path (each of the
+first `MAX_STACKS` casts placed at its own completion, phase-averaged over `RAMP_JITTER`) precisely
+because a rate is wrong while the interval changes per cast. That was the user's suspected gap; it is
+the one part that is already right.
+
+### ⇒ What this means for §8e
+
+`phaseScore`/`phaseRerank` should be treated as **provisional**. They established the objective and
+they moved 13 of 13 swept cells in its favour, but they compute it by brute force at 12× the cost and
+still measure UNSTABLE on the one criterion that discriminates. The corrected integral is the same
+objective computed exactly and once. ⛔ It is *not* a return to PHASE12 §6.10's rejected quantity —
+that was the integral **as it stands**, with a retired kill window and two missing edge terms.
+
 ## 9. What is still open
 
 1. **Cost.** The phase-mean is N× `simulate()`. It cannot go into the search at N=48 as-is. Two routes:
