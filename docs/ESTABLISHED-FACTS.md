@@ -1074,6 +1074,57 @@ the formula, when the predicted value is small.**
 ⚠ Every Bloodlust row also carries rule 5's caveat: as a raid external its window is anchored to the
 call, so its exact interaction depends on the sub-cast phase and the sim cannot arbitrate it.
 
+## P5. Icy Veins × Lust and Berserking × Lust, with Lust PINNED
+
+The general `haste × haste` rule (P4) treats both presses as free. In every real fight Bloodlust is a
+**pinned raid call**, which turns the question into a different and more useful one: *given that Lust
+is at a fixed second, where does my own haste cooldown go?* Measured on a 1:40 fight with Lust pinned
+at 0:07 (so it covers 7–47 s), 1387 SP, 38 % crit, value in casts above "Lust alone":
+
+### Icy Veins (20 s)
+
+| passive haste | best placement | at the pull | at 3 stacks / inside Lust | just after Lust |
+|---|---|---|---|---|
+| 0 | **@1** — the pull | **2.945** | 2.746 | 2.668 |
+| 100 | **@47** — after Lust | 2.071 | 1.436 | **3.011** |
+| 200 | **@47** | 1.520 | 0.591 | **3.169** |
+| 300 | **@47** | 1.222 | **0.000** | **3.334** |
+| 400 | **@47** | 1.213 | **0.000** | **3.290** |
+
+### Berserking (10 s)
+
+| passive haste | best placement | at the pull | inside Lust | just after Lust |
+|---|---|---|---|---|
+| 0 | **@39** | 0.925 | 0.931 | 0.726 |
+| 100 | **@1** | 0.926 | 0.835 | 0.732 |
+| 200 | **@44** | 0.630 | 0.410 | 0.818 |
+| 300 | **@47** | 0.576 | **0.000** | **0.814** |
+| 400 | **@47** | 0.666 | **0.000** | **0.910** |
+
+> ### ★★★ ABOVE 243 PASSIVE HASTE, ANY HASTE COOLDOWN USED INSIDE LUST IS WORTH EXACTLY ZERO
+> Not "nearly zero" — **0.0000**. Bloodlust alone floors the GCD at **243** (Part I's tent table), so
+> from that point on there is no interval left for a second haste cooldown to shorten. Pinned to the
+> rating point:
+>
+> | passive haste | Icy Veins inside Lust | Berserking inside Lust |
+> |---|---|---|
+> | 200 | 0.5907 | 0.4101 |
+> | 220 | 0.1970 | 0.0989 |
+> | 240 | 0.0154 | 0.0077 |
+> | **243** | **0.0000** | **0.0000** |
+> | 300 | 0.0000 | 0.0000 |
+>
+> ⇒ **At any geared haste level, never put a haste cooldown inside Lust.** This is the sharpest form of
+> the rule the project has carried as "Icy Veins slides out of Lust with gear" (RULES §3), and it names
+> the exact rating at which it stops being a trade-off and becomes free.
+
+⚠ **At h=0 the ordering is `pull > inside Lust > after Lust`, and that is not the same rule.** With
+nothing floored, Lust is nearly transparent to Icy Veins (P4's interaction is ≈ 0 there — the floor has
+not started biting, so Icy Veins converts the same 2.67 casts whether Lust is up or not). What decides
+the placement at h=0 is not Lust at all, it is the **pull advantage** of Part I rule 3. Reading the h=0
+row as "get out of Lust" and the h=300 row as the same rule would be wrong: they are the pull advantage
+and the GCD floor respectively, and they only happen to point the same way once.
+
 ## The full pair table
 
 `node tools/facts-pair.mjs --mode=all --haste=0,400 --sp=1000 --step=5`, aligned-interior layout.
@@ -1235,9 +1286,13 @@ and won the aligned arm at two rungs. Read the layout column, not just the numbe
 | `tools/facts-ladder.mjs` | model only — one cooldown, arbitrary haste granularity, value in casts, closed form beside it, flatness and threshold assertions | seconds |
 | `tools/facts-pair.mjs` | model only — two or three cooldowns, brute-forced over their press times; the interaction surface, the breakpoint sweep, and the triple decomposition (Parts II–III) | seconds to minutes |
 | `tools/buff-atlas.mjs` | model **and** sim, one baseline at a time — the per-placement tables | minutes |
+| `tools/jitter.mjs` | model only — re-scores a whole plan as an **expectation over execution error** rather than at its nominal seconds | seconds |
 
 Use the ladder and the pair tool to find where something interesting happens, and the atlas to have the
-sim rule on it. ★ For a PAIR the sim genuinely can rule — both cooldowns are self-presses, so the aura
+sim rule on it. ★ Reach for `jitter.mjs` whenever a plan's margin is small enough that it might be
+exact-timing luck: it answers "is this advantage EXECUTABLE", which is a different question from "is
+this advantage real" and the one a raider is actually asking. A margin that survives ±1 s of press
+error is a rule; one that does not is a coincidence of the lattice. ★ For a PAIR the sim genuinely can rule — both cooldowns are self-presses, so the aura
 snapping that makes it blind to Bloodlust's placement (rule 5) does not apply.
 The ladder is what makes fine granularity affordable: the 86-rung sweep in this file is one command,
 where the same coverage through the atlas would be 86 sim campaigns.

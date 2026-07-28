@@ -110,6 +110,74 @@ witnesses (0.185 and 0.287 casts) are outside the band it can reach.
 
 ---
 
+## D2 — the model emits the uglier of two BIT-IDENTICAL layouts
+
+**Status: OPEN. Mechanism established, one-line fix identified, not yet landed.**
+
+On the `1:40 · h=0 · 1387 SP · 38 % crit · Lust pinned 0:07` fight the optimizer emits
+
+    0:02  Icy Veins            0:06  Icon · Serpent-Coil · Arcane Power      0:07  Bloodlust
+
+when the layout with the value cluster at **0:07** — one press moment, coinciding with the Lust call —
+scores `196814.3490798448` against `196814.3490798448`. **Bit-identical**, `0.000e+0` apart, and it has
+**4 press rows instead of 5**.
+
+### It is not a cosmetic preference — the legible layout is measurably more robust
+
+User, 2026-07-28: *"the fights, the lust activation, the movement etc, are not executable to the
+millisecond, so the hypothetical perfect clipping is not realistic; what is realistic is following an
+established logical set of rules."* Measured with `tools/jitter.mjs`, which re-scores a plan as an
+expectation over execution error instead of at its nominal times:
+
+| jitter model | model plan | legible layout | Δ |
+|---|---|---|---|
+| exact (nominal seconds) | 87.7794 | 87.7794 | **+0.0000** |
+| common (whole opener shifts ±1 s) | 87.5499 | 87.6382 | **+0.0883** |
+| call (the raid call moves ±1 s) | 87.4097 | 87.4097 | +0.0000 |
+| independent (every press wanders ±1 s) | 87.4713 | 87.6194 | **+0.1481** |
+
+⇒ **Identical when executed perfectly, strictly better when executed by a human.** Legibility is not
+being traded against damage here; it is free at nominal times and then pays. Fewer distinct press
+moments means fewer things to land late.
+
+### Mechanism
+
+`structuralSnap` (`index.html`, the finishing pass) gates every candidate move on
+
+    if (xc < cross && xr <= rows) { ...accept... }
+
+— the **edge-span count must strictly decrease** before the press-row count is even consulted. Moving
+the cluster from 0:06 to 0:07 spans no fewer buff edges; it only merges two press rows into one. So
+`xc < cross` is false and the move is never taken. The pass can trade rows as a tie-break *within* a
+span improvement, but it can never take a pure row reduction, however free.
+
+### The fix
+
+    if ((xc < cross && xr <= rows) || (xc === cross && xr < rows)) { ...accept... }
+
+⚠ **Not landed.** It changes the rendering of every plan that has a free row merge available, so it
+needs `exact-match` re-run and its goldens re-recorded — and each changed plan checked to be
+bit-identical in value, not merely inside the tie band. That is the gate: this fix may only ever move
+plans whose score is **exactly** unchanged.
+
+### Reproduction
+
+    node tools/jitter.mjs \
+      --spec '{"T":100,"hasteRating":0,"sp":1387,"critPct":38,"coldSnap":true,
+               "kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"pins":{"bloodlust":[7]}}' \
+      --plans '{"model":{"isc":[6],"bloodlust":[7],"icyVeins":[1,48],"arcanePower":[6],"scb":[6],"berserking":[41]},
+                "legible":{"isc":[7],"bloodlust":[7],"icyVeins":[1,48],"arcanePower":[7],"scb":[7],"berserking":[41]}}'
+
+### ⚠ What is NOT wrong with that plan — do not "fix" the two-regime split
+
+The same export was read as *"the cooldowns are smeared across 0:02–0:07 instead of one clean moment"*.
+The smear is **correct**, and Parts I–III say why: Icy Veins belongs at the pull (rule 3's pull
+advantage, and P5's pinned-Lust table reads 2.945 casts at @1 against 2.746 inside Lust and 2.668 after
+it), while the value cluster can never want the pull (T1's theorem — a ramp cast is always longer than
+a 3-stack cast, so a value window opened at the pull always covers fewer casts). Two cooldown families,
+two different rules, two different seconds. Only the **cluster's own** second is misplaced, and only by
+one.
+
 ## ⚠ Unresolved — a pull advantage at h=0 that should not exist
 
 **Status: OPEN QUESTION, not yet classified.** At h=0, pressing a haste cooldown at the pull is worth
