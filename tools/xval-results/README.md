@@ -171,8 +171,33 @@ invariants, and it exits **2 when it could not grade** (empty directory, or a cr
 matrix) precisely so a missing round can never read as a pass. Both instruments carried that false-pass
 bug until 07-25; see the DIARY corrections ledger.
 
-Every sim here is **cold open (`_prestack:0`), infinite mana (`--mana 100000000`), `var 0.5`
-(the model-matched kill window), wall-jitter v2 on boss tables (`WJITTER=2`), AoE phases valued,
-paired seed 11 (CRN), the AP-180 patched runner**, on the breakpoint-straddle haste sets in
-`tools/xval-haste-sets.json`. The full locked protocol lives in `docs/ACCEPTANCE.md` — deviating from
+Every sim here is **cold open (`_prestack:0`), infinite mana (`--mana 100000000`), `var 0.5`,
+wall-jitter v2 on boss tables (`WJITTER=2`), AoE phases valued, paired seed 11 (CRN), the AP-180
+patched runner**, on the breakpoint-straddle haste sets in `tools/xval-haste-sets.json`.
+
+> ⚠⚠ **TWO THINGS ABOUT THIS ROUND'S PROTOCOL ARE NOW HISTORY, AND BOTH MATTER WHEN YOU READ IT.**
+>
+> 1. **`var 0.5` is the LEGACY flat window, not "the model-matched kill window".** That description was
+>    true when it was written and stopped being true twice: first when the model's `KILL_WINDOW`
+>    constant was deleted (PHASE12 §9), and then when the sim's window was *derived* from the model's
+>    (`docs/PHASE13.md` §2.4 — `duration = T + d/2, variation = d/2` ⇒ `U[T, T+d]`). Half a 3-stack
+>    Arcane Blast at zero haste is **0.749 s**, so the flat value was 33 % too narrow there and never
+>    moved with gear. This round was gathered flat, and `--var 0.5` still reproduces it — which is the
+>    only reason `BENCH.variation` still exists.
+> 2. **The `plan@h…` rows describe a SUPERSEDED ENGINE.** The whole round predates the boundary-epsilon
+>    fix (`docs/PHASE13.md` §2.5), which moved **6 of 25** shipped presets — including Kael'thas, one of
+>    the boss cells right here. The DPS matrices are still valid sim measurements of the plans printed
+>    beside them; what is stale is the claim that those plans are what the tool emits today. ⇒ Read the
+>    matrices as evidence about *those layouts*, and re-gather before quoting a verdict about the
+>    current model (that re-gather is §2.1, and it is why `docs/ACCEPTANCE.md` still has no reading).
+>
+> ⚠ **The round is 36 of 36 and the verdict is obtainable from the repo alone.** `tools/xval-verify.mjs`
+> reads: **invariant A holds** (worst `monoDip` 0.0000 %), **invariant B FAILS** — worst diagonal
+> deficit 0.38 % (`isc-mqg-medlong` @sim40), 142 borrowed-plan-win columns ⇒ **ACCEPTANCE NOT
+> PASSING**. That is the long-standing low-haste slack, not a new regression, and it is measured on
+> the plans in caveat 2 above — so it is a verdict about *this round's* layouts, not about the model
+> as it stands today.
+>
+> ⚠ Neither stamp records the *model's* bytes — `engine=` names the RUNNER and `wasm=` the sim build.
+> Folding the engine's hash into the stamp is `docs/PHASE13.md` §4.1/§4.3, and it is open. The full locked protocol lives in `docs/ACCEPTANCE.md` — deviating from
 any line of it has cost a real bug at least once. **Never compare a prepulled sim to the model.**
