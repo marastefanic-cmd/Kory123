@@ -461,28 +461,45 @@ window the *damage* cluster (SP + Arcane Power) sits on, and **IV+Lust at 1.0000
 0.9533/s** — the model already puts the cluster there. (b) Never stack Berserking onto a floored
 IV+Lust window.
 
-### ⚠ …AND WHY THE RATE ARGUMENT STILL DOES NOT DECIDE THE PLAN
+### ⚠ …AND THE PLAN THAT LOOKS LIKE IT CONTRADICTS THIS IS ~86 % AN ARTIFACT
 
-Carried to its conclusion the argument says Berserking should sit *fully inside* Lust. Measured, it is
-**wrong**, and the reason is the one this project already learned the expensive way:
+Carried further, the argument says Berserking should sit **fully inside** Lust. The tool emits it at
+`0:41` — 6 s of 10 inside a Lust that ends at `0:47` — and scores that **+0.211 %** over fully-inside.
+A partial overlap winning is a **non-monotonicity**, and the user called it: *"if it's better to not
+overlay them then it should be AFTER lust… but if you genuinely somehow come to the conclusion that
+overlaying just half of berserking is better, then that smells."* It does, and it was.
+
+**Every one of 41 580 legal layouts fits EXACTLY 80 casts.** Berserking's position changes the cast
+count by nothing at all. The whole spread is where the 80th cast lands. So the +0.211 % is not
+Berserking's haste doing anything — and the cast board says what it actually is:
 
 ```
-Zerk@41 (6 s in Lust, tail on the Cold-Snap IV)   196814.3
-Zerk@37 (10 s fully inside Lust)                  196399.7      −0.211 %
-  both fit EXACTLY 80 casts; both have 45 casts before t=51
-  the whole difference is the FINAL cast:  starts 98.612 (frac 0.9266) vs 98.889 (frac 0.7417)
+cast 59   Zerk@37 → starts 68.889, interval 1.5000   (Icy Veins 2 has expired)
+          Zerk@41 → starts 68.862, interval 1.2500   (Icy Veins 2 still running)
 ```
 
-The continuous-rate calculation predicts Zerk@37 by ~0.04 casts. The **discrete walk** — intervals
-quantized to the millisecond, casts placed one at a time — lands the stream **0.277 s further along by
-the buzzer**, worth 0.185 of a partial cast under the boundary credit. Sim-confirmed: **+4.4 DPS ±0.06
-over 3 seeds**. Structural, not razor-timed: **0 sign flips across T = 94…106 s**.
+**Berserking was being used as an indirect LEVER on the Cold-Snap Icy Veins fire time.** Moving Zerk
+from 37 to 41 delays the cast boundary that IV2 snaps to (48.889 → 49.204), sliding its 20 s window
+later and catching one more hasted cast. Pull that lever *directly* — let IV2 move too — and the gap
+**collapses from 0.211 % to 0.029 %**.
 
-★★ **This is PHASE12's lesson wearing new clothes.** The rate integral and the per-cast sum disagreed by
-~30× the margins being resolved, which is why the integral was retired as the arbiter. A rate argument
-is a *good* way to see why a rule exists and a *bad* way to rank two specific layouts — the model ranks
-on where the casts actually land. When a rate argument and the emitted plan disagree, check the cast
-board before assuming the plan is wrong.
+**What survives is real but negligible.** The residual 0.029 % is persistent (no sign flip over
+T = 92…108 s) and the sim confirms it independently (**+0.6 DPS ±0.05 over 5 seeds**). But it is
+**below the tool's own tie band** (`BENCH.tieBandPct = 0.05 %`) — the sim panel would print *"too close
+to call"* for it. So the planner spends a structurally odd layout to capture a margin it would itself
+refuse to call.
+
+⇒ **Two rules, and one open question.**
+1. When a rate argument and the emitted plan disagree, **read the cast board before believing either**.
+   Here the rate argument was wrong about the mechanism *and* the plan was right for a reason that had
+   nothing to do with the cooldown being discussed.
+2. **Suspect any preference that is non-monotone in an overlap fraction.** Monotone-in-overlap is what
+   physics produces; a peak at partial overlap means some *other* coordinate is being moved by proxy.
+   That is a general-purpose smell test and it worked first time.
+3. ⚠ **OPEN:** should layouts whose entire difference is terminal-cast phase, and which fall inside the
+   tie band, be treated as ties and broken toward the structurally sensible layout (Berserking inside a
+   haste window it can use)? Same shape as the legibility tie-break — damage first, structure second.
+   Needs a user call; not decided here.
 
 ⚠ Related, from the same exchange: the cluster printed at `0:06` against a Lust pinned at `0:07` is not
 a mistake. Brute force over 13 725 legal layouts scores cluster ∈ {6, 7, 8} **identically** — value
