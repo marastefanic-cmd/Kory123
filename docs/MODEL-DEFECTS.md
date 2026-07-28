@@ -265,14 +265,28 @@ Reverse-engineering the ground-truth disagreement to its arithmetic, as the user
 be an equation… figure out the reverse engineering towards the known solution"*). Example 1
 (`2:00 · h=0 · 1000 SP · 25 % · Lust@20`):
 
-| | model's own claim | **wowsims** | error |
+⚠ **First pass compared the wrong quantities and is corrected here.** `castCount` is casts *started*
+before T — an integer, 94 vs 93 — while the sim reports an **average over its kill window** `U[T, T+d]`.
+The comparable model quantity is `Σfrac`, the boundary-credited count. Like for like:
+
+| | model `Σfrac` | **wowsims** | error |
 |---|---|---|---|
-| optimizer's layout (Icy Veins fires **6.498**, mid-ramp) | **94** casts | **93.008** | **model over-counts by 0.99** |
-| hand-built layout (Icy Veins fires **0**, on the pull) | **93** casts | **93.126** | model under by 0.13 |
+| optimizer's layout (Icy Veins fires **6.498**, mid-ramp) | 93.023 | **93.008** | **+0.015 — essentially exact** |
+| hand-built layout (Icy Veins fires **0**, on the pull) | 92.910 | **93.126** | **−0.216 — under-counted** |
+
+| | model says | sim says |
+|---|---|---|
+| which layout fits more casts | optimizer's, by **+0.113** | hand-built, by **+0.118** |
 
 And the damage *per cast* is the same in both plans to 0.02 % (2072.1 vs 2072.5). **So the entire
-disagreement is cast COUNT, and the model has the comparison backwards** — it believes its layout fits
-one more cast than the hand-built one, while the sim says the hand-built one fits slightly more.
+disagreement is cast count, and the model has the comparison backwards** — but the error is **0.216
+casts, not ~1**, and it is **not** an over-count of the optimizer's layout. The model is accurate on
+that one. It **under-counts the hand-built layout**, whose distinguishing feature is that **Icy Veins
+fires at 0, hasting the opening ramp**.
+
+⇒ **The defect is: the model under-credits Icy Veins used at the pull, by ~0.22 casts.** That is
+coherent with the open question further down — the model *does* show a pull advantage (+2.078 %), and
+this says the true one is **larger** than the model believes.
 
 ★★ **This is not an objective-choice error.** Value, alignment, the per-cast sum, the integral — none of
 them are implicated. The two plans' casts are worth the same. One plan is simply being credited **a cast
@@ -286,10 +300,10 @@ paper over it rather than fix it.
 
 ### Why this is the right thing to chase first
 
-* It is a **~1-cast** error, not a sub-cast one — an order of magnitude larger than every margin argued
-  over this session (0.005–0.07 %).
-* It is **localised to a condition**: Icy Veins firing mid-ramp (6.498) rather than at 0. The model is
-  accurate on the pull case and wrong on the mid-ramp case.
+* At **0.216 casts** it is ~0.23 % of the fight — 3–40× the margins argued over this session
+  (0.005–0.07 %), and enough to flip this ranking on its own.
+* It is **localised to a condition**: the model is accurate (+0.015) when Icy Veins fires mid-ramp and
+  wrong (−0.216) when it fires at 0. The ramp under haste is the suspect region.
 * It plausibly subsumes the **open question** below (the unexplained +2.078 % pull advantage at h=0).
   If the model miscounts the ramp under haste, a phantom pull advantage is exactly the symptom.
 * And it is checkable without any objective change: `model-audit` compares the model's cast board to
@@ -297,10 +311,10 @@ paper over it rather than fix it.
 
 ### Next step, concretely
 
-Run `tools/model-audit.mjs` on both layouts and diff the cast boards against the sim's log. The extra
-cast is either present in the model's board and absent from the sim's, or the two lattices diverge at a
-known instant. Either way it is a single identifiable cast, and the fix is arithmetic rather than a
-change of objective.
+Isolate it on a **bare fight**: Icy Veins alone at 0 versus at an interior second, model `Σfrac` against
+wowsims' cast count. If the −0.216 reproduces there, the defect is in how the walk hastes the three ramp
+casts (2.500 / 2.166 / 1.832 s) and needs no plan context at all. `tools/model-audit.mjs` gives the
+cast-for-cast diff once a native runner is available (`tools/build-runner.sh`).
 
 ⛔ Do **not** switch the objective on the strength of the entries below until this is resolved. They
 observe a real inversion; this entry explains it without needing a new objective.
