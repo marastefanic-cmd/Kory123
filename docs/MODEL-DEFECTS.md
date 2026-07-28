@@ -357,6 +357,45 @@ answer.
 **Neither is written yet, and the choice between them is the open design question.** `tests/anchors.mjs`
 is the pass/fail signal for whichever wins.
 
+### ⛔⛔ ALL THREE FRAMINGS ARE NOW DEAD — phase-averaging does NOT reconcile the rankings
+
+Step 1 of the plan was *"settle the neighbourhood by measurement across several ground-truth cases, not
+by which width fixes A1"*. Done, and the answer is that **none of them do**. Each framing scoring the
+**full** ground-truth layout against the **full** model layout, on all four cases the sim decides for
+ground truth:
+
+| framing | A2 (2:00 L@20) | A3 (3:00 L@20) | Ex2 (2:00 L@10) | Ex1 (2:45 L@10) | tally |
+|---|---|---|---|---|---|
+| point (today) | ✗ | ✗ | ✗ | ✗ | **0/4** |
+| ±0.75 s lattice-phase | ✗ | ✗ | ✗ | ✗ | **0/4** |
+| ±1.0 s execution | ✗ | ✗ | ✗ | ✗ | **0/4** |
+| ±1.5 s execution | ✗ | ✗ | ✗ | ✗ | **0/4** |
+
+**The model layout scores higher under every framing, at every width, on every case.** Averaging moves
+the numbers (A2: 175505 → 175332 as the window widens) but never the ordering.
+
+⚠ **This does not contradict the earlier de-risk, and the difference is the finding.** Averaging *did*
+fix the **Berserking-only** sweep — holding every other press at its ground-truth value, ±1.0 s picked
+@50 over @57. It fails here because the full layouts differ in **more than Berserking**: Icy Veins
+(@0/20 vs @5/25) and the value cluster (@20 vs @25) also move, and the model scores *those* differences
+in its own favour under every framing.
+
+⇒ **So there are at least two separate disagreements, not one.** The Berserking one is phase noise and
+averaging addresses it. Whatever is happening on the Icy Veins / cluster placements is **not phase
+noise**, survives averaging at every width tested, and is currently unexplained — it is the larger of
+the two, since it outweighs the Berserking correction in all four cases.
+
+### What is eliminated, and what the next question is
+
+Eliminated by measurement, in order: the objective choice (sum vs integral), the ramp, the Icy Veins ×
+Bloodlust interaction, the harness anchoring convention, `structuralSnap` as a host, and now
+**phase-averaging as the ranking fix**.
+
+**The open question is now narrower and different**: on these four cases, isolate the *Icy Veins and
+cluster* placements the way the Berserking press was isolated — single-variable sweeps of each, model
+against sim, holding the rest at ground truth. The Berserking ladder found its answer in one run; the
+same method has not yet been pointed at the other two presses.
+
 ### ⛔ AND A THIRD FRAMING WAS TRIED AND IS DEAD — `structuralSnap` cannot host this fix
 
 The most attractive option looked like a **rule-based tie-break with no free constant**: the whole
