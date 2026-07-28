@@ -257,10 +257,60 @@ a 3-stack cast, so a value window opened at the pull always covers fewer casts).
 two different rules, two different seconds. Only the **cluster's own** second is misplaced, and only by
 one.
 
+## ⛔ D3 — WITHDRAWN THE SAME DAY. It is not Icy Veins × Bloodlust; it is BLOODLUST ALONE, and it is the harness
+
+**Status: WITHDRAWN. The entry below was filed on an incomplete ladder and the next measurement
+refuted it. Kept in full because the correction is the useful part.**
+
+The ladder that produced D3 added Bloodlust *on top of two Icy Veins uses*, so it could not tell
+"the pair interacts badly" from "Bloodlust alone is mis-counted". Splitting them:
+
+| layout | model `Σfrac` | sim casts | model − sim |
+|---|---|---|---|
+| bare | 78.669 | 78.660 | +0.008 |
+| Icy Veins @20 **only** | 81.335 | 81.325 | +0.010 |
+| **Bloodlust @20 only** | 86.511 | 86.732 | **−0.220** |
+| Bloodlust + Icy Veins @20 | 89.256 | 89.477 | −0.221 |
+
+**The whole error is in Bloodlust by itself**, and it does not grow when Icy Veins is added. Icy Veins'
+marginal value *inside* Lust is **2.745 casts in both engines — identical to three decimals**. There is
+no interaction defect, and the implied doubly-floored interval is **1.0000 s**, exactly what the model
+assumes. D3's mechanism was wrong in every particular.
+
+### What it actually is — and it is already documented, as a HARNESS limitation
+
+This is `docs/TOOLING.md`'s *"the sim cannot start an external's aura off a cast boundary"*, seen from
+the other side. At h=0 casts sit on `…19.498, 20.998…`, so a Lust **called at 20**:
+
+    model   aura [20, 60]        usable [20.998, 60]      — the 0.998 s slip is LOST (rule 5)
+    sim     aura [20.998, 60.998]                          — a full 40 s, because the APL can only
+                                                             fire it on the mage's GCD
+
+The sim gets **0.998 s more Lust than the model**, worth ≈ 0.20 casts at the 1.1538 s Lust interval —
+against a measured 0.220. ⇒ **The model is right and the sim is short a rule.** ESTABLISHED-FACTS rule 5
+and the TOOLING entry both say so explicitly, and both warn against "fixing" the model to match.
+
+### ⚠⚠ WHICH MEANS THE GROUND-TRUTH INVERSION MAY BE AN ARTIFACT
+
+Every duel in this file was run on a harness that hands Bloodlust ~1 s of free extra uptime. That
+**systematically favours whichever layout packs more into Lust** — which is precisely the hand-built
+layout in both ground-truth cases. The 2.0 DPS ± 0.37 measurement stands as a measurement; what it
+means is now in doubt.
+
+⇒ **Nothing about the objective, the scorer or the search may be concluded from those duels until the
+harness can place a raid external off a GCD.** That is now the blocking item. Until then the honest
+statement is: *the model and the sim disagree about how much Lust a mage actually gets, and the model's
+account is the one with a rule behind it.*
+
+⚠ It also does **not** exonerate the model outright: the 0.216 relative miscount between the two
+ground-truth layouts is real, and this explains it only if the two layouts differ in Lust-packing by
+about that much. Checking that is the first thing to do after the harness question.
+
+### (original D3 entry, refuted above, retained for the record)
+
 ## D3 — the model UNDER-COUNTS CASTS WHEN ICY VEINS OVERLAPS BLOODLUST (07-28)
 
-**Status: OPEN. Isolated to a single condition. This is the cause of the ground-truth ranking
-inversion.**
+**Status: ⛔ REFUTED — see the correction immediately above.**
 
 Built up one **haste** cooldown at a time (value cooldowns cannot change a cast count), bare fight →
 the hand-built layout, `T=120 · h=0 · 1000 SP · 25 %`. Model boundary-credited count against wowsims:
