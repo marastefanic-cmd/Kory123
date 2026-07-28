@@ -635,8 +635,34 @@ optimizer's on the four locked cases.
 | **phase-mean** — average the lattice against the wall clock | **STABLE — 1** | 2/4 |
 | **both** — the product of the two | **STABLE — 1** | **3/4** |
 
-`both` wins on both criteria. The two randomisations are different unknowns — *when the shaman actually
-casts it* and *where my cast stream sits* — so averaging over the product is not double-counting.
+The two randomisations are different unknowns — *when the shaman actually casts it* and *where my cast
+stream sits* — so averaging over the product is not double-counting.
+
+### ⛔⛔ BUT THE (ii) COLUMN CANNOT SELECT BETWEEN THEM, AND I ALMOST LET IT
+
+The pin window above is `U[t, t+1)` — *"no earlier than the plan, up to a second late"*. The other
+defensible reading is that a `mm:ss` field is a rounded value, so the call is `U[t−½, t+½)`. Both are
+honest models of a human calling Bloodlust. Re-run with the symmetric window:
+
+| ranking | A2 | A3 | Ex2 | Ex1 | tally | anchor-slide |
+|---|---|---|---|---|---|---|
+| pin-mean `U[t, t+1)` | ✗ −0.136 | ✓ +0.010 | ✓ +0.341 | ✓ +0.491 | 3/4 | UNSTABLE (2) |
+| pin-mean `U[t±½)` | ✓ +0.046 | ✓ +0.021 | ✗ −0.156 | ✗ −0.058 | 2/4 | UNSTABLE (2) |
+| both `U[t, t+1)` | ✗ −0.181 | ✓ +0.008 | ✓ +0.027 | ✓ +0.099 | 3/4 | **STABLE @45** |
+| both `U[t±½)` | ✓ +0.010 | ✗ −0.020 | ✗ −0.076 | ✓ +0.026 | 2/4 | **STABLE @45** |
+
+**A modelling choice with nothing to do with the phase question moves the tally by a whole case, in
+both directions.** ⇒ The four-case corpus cannot arbitrate between these rankings, and "3/4 beats 2/4"
+is not a result. Choosing the asymmetric window *because it tallies better* would be the fifth term
+falsified the way PHASE12 §6.1–§6.3's four were.
+
+★ **What survives the choice is the finding.** The anchor-slide verdict is identical under both windows:
+the **lattice** term is what buys stability, the **pin** term does not, and neither depends on which
+window convention is used. That is the discriminating criterion precisely because it is insensitive to
+the modelling question the tally is sensitive to.
+
+⇒ Report it that way: **phase-averaging the lattice is the established fix; the raid-call window is a
+separate, still-open modelling choice, and the corpus is too small to settle it.**
 
 ### ⚠ A2 is the sole survivor, and the reason is a modelling gap, not a knob
 

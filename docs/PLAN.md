@@ -245,14 +245,20 @@ Pre-registered on two criteria so neither alone can be gamed. Full tables: `MODE
 | ranking | one answer across a cast interval? | ground-truth pairs |
 |---|---|---|
 | point (ships today) | ✗ 4 answers | 0/4 |
-| pin-mean (average the raid call over its second) | ✗ 2 answers | 3/4 |
+| pin-mean (average the raid call over its second) | ✗ 2 answers | 3/4 or 2/4 |
 | phase-mean (average the lattice against the wall) | ✓ 1 | 2/4 |
-| **both** | **✓ 1** | **3/4** |
+| **both** | **✓ 1** | 3/4 or 2/4 |
 
-⛔ **Do not treat 3/4 as "nearly done" and go hunting for the framing that scores 4/4.** A2's residual
-has an identified cause that no averaging framing addresses: a press whose purpose is to align with a
-raid call should **co-move with the call**, and the plan specifies presses on a wall clock. Fixing that
-by tuning a co-move radius is the fifth falsified term waiting to happen.
+⛔ **The tally column cannot choose between them and must not be used to.** Switching the raid-call
+window from `U[t, t+1)` to `U[t±½)` — a modelling choice with nothing to do with the phase question,
+and both readings defensible — moves the tally by a whole case in both directions. The anchor-slide
+column does **not** move: it is identical under either window. ⇒ **The lattice term is the established
+fix; the raid-call window is a separate open question and four cases cannot settle it.**
+
+⛔ And do not go hunting for the framing that scores 4/4. A2's residual has an identified cause that no
+averaging framing addresses: a press whose purpose is to align with a raid call should **co-move with
+the call**, and the plan specifies presses on a wall clock. Fixing that by tuning a co-move radius is
+the fifth falsified term waiting to happen.
 
 ★ And the strongest single result argues for doing **less**, not more: with the Bloodlust pin on a cast
 boundary, the **shipped point score already picks the user's layout on all four isolated presses, and
