@@ -496,10 +496,26 @@ refuse to call.
 2. **Suspect any preference that is non-monotone in an overlap fraction.** Monotone-in-overlap is what
    physics produces; a peak at partial overlap means some *other* coordinate is being moved by proxy.
    That is a general-purpose smell test and it worked first time.
-3. ⚠ **OPEN:** should layouts whose entire difference is terminal-cast phase, and which fall inside the
-   tie band, be treated as ties and broken toward the structurally sensible layout (Berserking inside a
-   haste window it can use)? Same shape as the legibility tie-break — damage first, structure second.
-   Needs a user call; not decided here.
+3. ✅ **DECIDED 2026-07-28 — user ruling, "yes, absolutely".** Layouts whose entire difference is
+   terminal-cast phase, and which fall inside the tie band, ARE treated as ties and broken toward the
+   structurally sensible layout. `structuralSnap` in `index.html` implements it, with three guards that
+   are the whole safety argument:
+   · **cast count must be unchanged** — if a move gains or loses a cast it is not phase, it is damage;
+   · **`robust ≥ val − 0.05 %`** — the band is the tool's own `BENCH.tieBandPct`, the margin below which
+     its sim panel prints *"too close to call"*;
+   · **press rows must not increase** — the structural win may not be paid for in legibility.
+   It runs LAST, on the winning layout only, so it can never influence which search arm wins and never
+   compounds with any other tolerance.
+
+   **Measured (16-case quick tier):** 9 layouts moved, **every one inside the band, worst −0.050 %**,
+   legibility unchanged-to-better (+6 clustering, 0 change in lone rows). What it buys is exactly what
+   was asked for — Berserking pulled **fully inside Bloodlust** on Solarian (36→35), Morogrim (36→35),
+   Lurker (39→37) and Void Reaver (42→40), and stray presses aligned onto an already-occupied second.
+
+   ⚠⚠ **`search-miss` WILL report those cells as regressions, and that is correct.** This is the one
+   place in the engine allowed to return a plan it scored lower. Do not silence it, do not widen the
+   band, and do not confuse it with the **retired** legibility budget — that was a *whole cast*
+   (~0.77 %, 15× wider) and it bought co-pressing rather than robustness.
 
 ⚠ Related, from the same exchange: the cluster printed at `0:06` against a Lust pinned at `0:07` is not
 a mistake. Brute force over 13 725 legal layouts scores cluster ∈ {6, 7, 8} **identically** — value
