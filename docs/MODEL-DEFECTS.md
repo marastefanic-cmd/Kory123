@@ -28,20 +28,65 @@ by a fraction of a cast — and the model spends real layout quality chasing it.
 
 | witness | size | the fact it violates |
 |---|---|---|
+| **Bloodlust's interior alternates between exactly two values** | **0.231 casts** | ESTABLISHED-FACTS rule 1 |
 | Berserking "prefers" partial Bloodlust overlap over sitting fully inside it | **0.185 casts** | RULES §5b |
 | Icy Veins before Bloodlust valued above Icy Veins inside it | **0.287 casts** | ESTABLISHED-FACTS §1 rule 1 |
-| Bloodlust at t=15 s valued above Bloodlust at t=5 s or t=10 s | **0.178 casts** | ESTABLISHED-FACTS §3 rule 1 |
 
 All three are **sub-cast**, all three are on placements that shift the downstream lattice, and all
 three are **deterministic** — the Bloodlust figure is identical at 10 000 and 60 000 iterations, so it
 is not Monte-Carlo noise.
 
+### The Bloodlust witness — measured head-to-head, and the model loses by ~3600σ
+
+This is the sharpest of the three and the one to develop a fix against, because the sim's verdict on it
+is not close. Duelling `BL@10` against `BL@15` with **common random numbers** (both arms on the same
+seed, so the paired difference resolves far better than either absolute DPS), 5 seeds × 10 000
+iterations, h=0, T=60:
+
+| | Δ |
+|---|---|
+| model | +399.0 damage = **+0.2310 casts** = +0.497 % of the fight |
+| what that predicts in sim DPS | **+7.26 DPS** |
+| sim, measured | **+0.001 ± 0.002 DPS** |
+
+Every individual seed reads 0.000 – 0.004. There is no overlap with the prediction whatsoever.
+
+It is not a fight-length artifact: at `T=180`, with 26 interior placements instead of 2, the model still
+alternates between exactly **7.842457** and **8.073431** casts, on a period of 15 s — which at h=0 is
+exactly ten cast intervals.
+
+**Localized.** The sim's own action table reports Arcane Blast `casts = 467318` over 10 000 iterations
+— i.e. **46.7318 casts per fight, byte-identical in both arms**. The model books 46.5113 at @10 and
+46.7423 at @15. So the sim fits the same number of casts wherever Bloodlust goes, and the model's @10
+arm is the one that is wrong, by 0.22 casts. The whole discrepancy is the *terminal* cast: both model
+arms start 47 casts, and the last one earns `frac` 0.5113 at @10 against 0.7423 at @15.
+
+**Mechanism — this one is established, unlike the rest of D1.** Bloodlust is the only cooldown the
+model treats as a raid *external*: `isExternal` sets `auraAt = eff = e.ts`, so its window is literally
+`[ts, ts+40]` with no snapping. How many cast boundaries fall inside that window therefore depends on
+`ts mod interval` — 34 covered casts at @10, 35 at @15 — and the extra hasted cast pulls the whole
+downstream lattice 0.346 s earlier, which the kill-boundary credit banks as 0.231 of an extra cast. In
+wowsims the aura can only begin on a GCD, so the covered count is placement-invariant and nothing
+shifts.
+
+⚠ **Note what is *not* wrong here.** A real shaman does press Lust mid-cast, so a real window really can
+begin at an arbitrary sub-cast phase — the model's physics is arguably closer to a real pull than the
+sim's is. The defect is that the model **resolves** that phase into a 0.5 % scoring difference instead
+of averaging over it, and 0.5 % is far more than enough to pick a plan. Nobody can know their cast
+lattice to ±0.3 s when planning, which is the engine's own stated reason for phase-averaging the press
+moment a few lines earlier in the same function.
+
 ### Reproduction
 
     node tools/buff-atlas.mjs --T 60 --sp 1000 --crit 25 --haste 0 --step 5 --iter 60000 --md
+    node tools/facts-ladder.mjs --haste=0:850:10 --buffs=bloodlust    # "⚠ NOT FLAT" on most rungs
 
 Bloodlust's sim column is flat to **0.00 %** across every interior placement. The model's is not: it
 pays 13547.2 at 5 s and 10 s and **13946.2** at 15 s.
+
+`tools/facts-ladder.mjs` now asserts interior flatness on every rung of the haste ladder, so this
+defect fails loudly rather than needing to be noticed: Bloodlust reports a worst interior spread of
+0.231538 casts, and **every other cooldown reports exactly 0.000000**.
 
 ### The direction to look, from the user (07-28)
 
@@ -104,3 +149,13 @@ it. Do not fix D1 without settling this first.
 * **A haste cooldown is worth more pressed at the pull.** Real, and in both columns: the ramp casts are
   longer than the GCD floor, so haste still converts there. It grows with passive haste and becomes the
   *entire* value of the cooldown above the cap. ESTABLISHED-FACTS rule 3.
+
+* **A haste cooldown is worth something above the GCD cap when its window reaches the kill.** Raised
+  07-28 as a suspected clipping bug — *"is the clipping by the kill not respecting the GCD cap? that it
+  takes remaining time to cast not capped by the GCD?"* It respects it. At h=800 Icy Veins leaves the
+  lattice byte-identical (59 casts, 1.000 s apart, with and without), and its entire 0.1390-cast value
+  is the last cast completing in 0.828 s instead of 0.994 s, so more of it lands before the boss dies.
+  The floor caps how often a cast may **start**, never how fast one **goes** — `frac` divides by the
+  cast duration, which is correct, and dividing by the GCD-bound interval instead would be the bug. The
+  sim agrees independently (0.00 DPS at every interior placement, 5.20 DPS at the terminal one).
+  ESTABLISHED-FACTS rule 4.
