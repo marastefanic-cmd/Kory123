@@ -219,6 +219,31 @@ inside cd is allowed only if Cold Snap is ready, then burns it), and the OFF_TRI
 (skull/mqg/isc). Called after **every** candidate move — this is what makes "packing would cost a 2nd
 use" fail automatically (via `sameCounts`).
 
+## ★★★ `phaseFinish` — the D1 re-rank, and it is the LAST thing that touches a plan (07-28)
+Both of `optimizeAsync`'s exits go through `phaseFinish(best, cfg)`. It is a bounded **multi-start
+coordinate descent under `phaseScore`** — the per-cast sum averaged over one full lattice period of the
+cast stream's phase against the raid's wall clock. Rationale, evidence and limits:
+`docs/MODEL-DEFECTS.md` D1 §0 and §8e. In one line: `simulate()` is exact, but the *fight it is handed*
+is over-specified — a Bloodlust call is known to the second, and the point ranking returns four
+different Berserking placements across one 1.5 s cast interval of that same instruction.
+
+- `phaseScore(s, cfg, N=PHASE_N=12)` — mean of `simulate` over `N` shifts. Engine `t=0` **is** the first
+  cast, so "lattice δ later" = every press, pin, segment and `T` moved δ **earlier** (`phaseShift`).
+  ⚠ The opposite randomiser — presses against a fixed lattice — is a thing the player controls and
+  measures nothing; it scored 0/4 on the ground-truth corpus.
+- `phaseRerank(s, cfg)` — three move classes, up to 3 rounds: whole-plan slide (±8 s), per-track slide
+  (±8 s), per-press move (±12 s). ⚠ **Single-press moves alone are provably not enough** — the phase
+  argmax is usually a different basin, not a neighbour. A candidate `repair` had to relegalize is
+  refused, so a plan is never scored as one layout and adopted as another.
+- `phaseStarts(winner, cfg)` — the point winner plus the same structural seeds the main search uses
+  (naive, packed, pin-stacked, kill-anchored). One start left an outlier at 1 of 5 pins.
+- `best.val` stays in **point** units so the pooling comparison, `plan-diff` and the UI readout keep
+  meaning what they meant; only the *choice* of plan comes from the phase mean.
+- Off switch: `cfg.phaseRank === false`. Cost: **+8 %** wall clock (T=180: 13.1 → 14.2 s).
+- ⛔ It cannot live in `structuralSnap`: that pass refuses cast-count changes by design and the correct
+  move is precisely such a change. It is not in the *search* either — the phase term only decides
+  between finalists, so an N× score inside the search buys nothing.
+
 ## `optimizeAsync` = cross-haste pooling wrapper over `optimizeCore` (B1 dominance by construction)
 `optimizeAsync(cfg, starts, onProgress)` is a thin `async` wrapper (Phase 7): it runs `optimizeCore`
 at `cfg.hasteRating`, and — **only when `cfg.poolHastes` is a non-empty array** — forms the fixed
@@ -231,8 +256,10 @@ outside C and leaks the guarantee); pool solves use the **same `starts`** as the
 one object whether computed as base or as a neighbor); and the baseline is anchored to
 `simulate(base.s)` not `base.val` (the Cold-Snap path returns a normalize()-d schedule whose `.val`
 predates the normalize). Recursion is guarded by `_noPool` (neighbor solves and the internal no-Cold-
-Snap comparison call `optimizeCore` directly). **Default (no `poolHastes`) returns the plain core solve
-— goldens/UI byte-identical, exact-match 25/25 unchanged.** Cost = `|poolHastes|`× solves; the caller
+Snap comparison call `optimizeCore` directly). **Default (no `poolHastes`) returns the plain core solve**
+— ⚠ *"goldens/UI byte-identical, exact-match 25/25 unchanged"* was true of the pooling wrapper alone and
+is **false since 07-28**: both exits now pass through `phaseFinish` above, which moves 13 of 16 swept
+plans. Cost = `|poolHastes|`× solves; the caller
 picks the grid. The cross-val (`tools/xval.mjs`) computes each `champ(h)` **once** and takes the argmax
 per column (identical result, deduplicated — `POOL=0` env restores the raw per-haste search to measure
 what pooling fixed). Design validated on committed round-2 data: pooling closes model-side B1 **22→0**.

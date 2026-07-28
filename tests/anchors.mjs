@@ -11,10 +11,16 @@
 // sources agree on. Pinning the other presses would smuggle today's answers back in under a better
 // name, which is the exact failure this file exists to escape.
 //
-// ⛔ THIS SUITE IS EXPECTED TO FAIL TODAY. A1 fails on `docs/MODEL-DEFECTS.md`'s D1: the optimizer
-// books ~0.03 % of cast-lattice phase as real damage and moves Berserking out of Bloodlust to chase it,
-// against a +0.2056-cast interaction saying it should stay in. Red is the correct state — the anchor is
-// the target for that fix, and it should go green when D1 does.
+// ── STATUS 07-28 ──────────────────────────────────────────────────────────────────────────────────
+// ✅ **A1 PASSES.** The D1 fix landed (`phaseFinish` in `index.html`, MODEL-DEFECTS §8e) and the
+// optimizer now puts Berserking inside Bloodlust. The header note that used to sit here — "this suite
+// is expected to fail, A1 is the target" — is discharged for A1.
+//
+// ⛔ **A2 and A3 still FAIL, and the failure has changed in kind.** They lock exact timestamps; the
+// phase-ranked optimizer emits a THIRD layout (A2: Icy Veins 0:06/0:26 · cluster 0:23 · Berserking
+// 0:50) which it scores ABOVE ground truth on the objective it now ranks on. So the diff no longer
+// says "a press is outside its rule" — it says "not these exact seconds". Read the diff before
+// concluding anything: the two mean different things, and only the first is a scoring defect.
 //
 //   node tests/anchors.mjs
 import { loadEngine, ALL_BUFFS } from '../tools/engine-node.mjs';

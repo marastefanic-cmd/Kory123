@@ -2047,6 +2047,119 @@ async function basinHop(champ, cfg, onStep) {
   }
   return { s: bestS, val: bestV };
 }
+/* ═══════════ PHASE RANKING — the fix for MODEL-DEFECTS D1 (07-28) ═══════════════════════════════
+   ★★★★ WHAT THIS IS FOR, AND WHAT IT IS NOT.
+   `simulate()` is EXACT and stays exact: it reproduces wowsims' Arcane Blast count to 0.002 casts
+   once both engines are handed the same fight (MODEL-DEFECTS D1 §1). Nothing here corrects it.
+
+   What it corrects is one layer up. A planner input like *"the shaman Bloodlusts at 0:20"* is known
+   to the second and no further, and the phase of the player's own cast stream against the raid's
+   clock — set by pull reaction, latency, and every global that is not an Arcane Blast — is not known
+   at all. `simulate()` resolves both to the microsecond, and the answer moves: run the optimizer at
+   five values inside that one second and it emits FIVE DIFFERENT PLANS, each genuinely optimal at its
+   own value (cross-scored: the diagonal is all zeros) and up to 0.77 casts worse at the others.
+   The search is not failing. The objective is answering a question the user did not ask.
+
+   ⇒ Rank on the phase EXPECTATION of the exact sum. The averaging width is one full lattice period,
+   which is what makes it a phase average rather than a smoothing — there is no constant to tune.
+
+   ⚠⚠ THE RANDOMISER IS THE WHOLE CONTENT AND IT IS EASY TO INVERT. An earlier attempt averaged over
+   PRESS offsets — moving each press against a fixed lattice — and scored 0/4 on the ground-truth
+   corpus. That is the wrong unknown: a player DOES control when they press relative to their own
+   casting, because they press between casts. So the LATTICE slides and the WALL EVENTS stay. Engine
+   t=0 IS the first cast, so "lattice δ later" == every press, every pin, every segment and T, δ
+   EARLIER. That one sign is the difference between 0/4 and the fix.
+
+   ⚠ It is NOT independently more accurate than the point score, and must not be sold as such: on one
+   of four isolated presses (MODEL-DEFECTS §8c) the point score matches wowsims and this does not.
+   Its job is to be INVARIANT to an input nobody can supply — which the point score demonstrably is
+   not — and that is the whole claim. */
+const PHASE_N = 12;   // where the full-layout verdicts settle; below ~8 they are NOISIER, not cheaper
+function latticePeriod(cfg) {
+  // The bare interval — the fight's SLOWEST rate, so one sweep covers every faster segment's shorter
+  // period at least once. Read from GAME, never re-typed.
+  return Math.max(GAME.GCD_FLOOR, GAME.GCD_BASE / (1 + (cfg.hasteRating || 0) / (GAME.HASTE_RATING_PER_PCT * 100)));
+}
+function phaseShift(s, cfg, d) {
+  // A press already at the pull stays at the pull — you cannot react before the pull.
+  const s2 = {}; for (const k in s) s2[k] = s[k].map(x => Math.max(0, x - d));
+  const c2 = { ...cfg, T: cfg.T - d };
+  if (cfg.fixed) c2.fixed = Object.fromEntries(Object.entries(cfg.fixed).map(([k, v]) => [k, v.map(x => Math.max(0, x - d))]));
+  if (cfg.segments) c2.segments = cfg.segments.map(g => ({ ...g, start: Math.max(0, g.start - d), end: Math.max(0, g.end - d) }));
+  return { s: s2, cfg: c2 };
+}
+function phaseScore(s, cfg, N) {
+  N = N || PHASE_N;
+  const P = latticePeriod(cfg);
+  let acc = 0;
+  for (let i = 0; i < N; i++) {
+    const { s: s2, cfg: c2 } = phaseShift(s, cfg, i * P / N);
+    acc += simulate(repair(cloneS(s2), c2), c2).robust;
+  }
+  return acc / N;
+}
+/* Bounded coordinate descent under `phaseScore`, run ONCE on the search's winner.
+   ★ WHY IT IS NOT IN THE SEARCH, which is where an earlier plan put it. The phase term is ~0.2 casts;
+   the search's job is finding basins and its discrimination there is far coarser than that. Putting
+   an N× score inside the search buys nothing and costs N×. The phase term only decides between
+   finalists — so the search keeps the point score and this chooses. Cost is `moves × N` once.
+   ⛔ It also cannot live in `structuralSnap`: that pass refuses cast-count changes by design
+   (`if (r.casts.length !== n0) continue`) and the correct move is precisely such a change. */
+/* ⚠ SINGLE-PRESS MOVES ARE NOT ENOUGH, measured 07-28 and it is the reason for the three move classes
+   below. A per-press descent from the point winner on A2 emitted the point winner unchanged, even
+   though ground truth scores +83 above it under the phase mean: the two layouts differ by a −5 s
+   shift of Icy Veins AND the whole value cluster AND a −17 s move of Berserking, and no single one of
+   those steps improves on its own. The phase argmax is a DIFFERENT BASIN, not a neighbour — which is
+   exactly what §0's five-plan table already showed. Group moves are what reach it. */
+function phaseRerank(s0, cfg) {
+  const keys = scheduledKeys(cfg).filter(k => !cfg.fixed[k]);
+  let s = repair(cloneS(s0), cfg), val = phaseScore(s, cfg);
+  // Whole seconds only: the plan a player reads is in whole seconds, and the search already snapped.
+  const SHIFTS = [-8, -7, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8];
+  const MOVES = [];
+  for (let d = -12; d <= 12; d++) if (d) MOVES.push(d);
+  // Adopt a candidate only if `repair` left it alone. A relegalized candidate would be scored under
+  // one layout and adopted as another, which is how a polish pass grows a plan nobody chose.
+  const intact = (cand, rep) => {
+    for (const k in cand) {
+      if (!rep[k] || rep[k].length !== cand[k].length) return false;
+      for (let j = 0; j < cand[k].length; j++) if (Math.abs(rep[k][j] - cand[k][j]) > 1e-9) return false;
+    }
+    return true;
+  };
+  const shifted = (base, ks, d) => {
+    const c = cloneS(base);
+    for (const k of ks) c[k] = c[k].map(t => Math.round(t) + d);
+    for (const k of ks) for (const t of c[k]) if (t < 0 || t > cfg.T - 1) return null;
+    return c;
+  };
+  const tryCand = cand => {
+    if (!cand) return false;
+    const rep = repair(cloneS(cand), cfg);
+    if (!intact(cand, rep)) return false;
+    const v = phaseScore(rep, cfg);
+    if (v > val + 1e-7) { val = v; s = rep; return true; }
+    return false;
+  };
+  for (let round = 0; round < 3; round++) {
+    let moved = false;
+    // 1. the whole plan slides together — the cluster keeps its shape
+    for (const d of SHIFTS) if (tryCand(shifted(s, keys, d))) { moved = true; break; }
+    // 2. one cooldown's whole track slides
+    for (const k of keys) for (const d of SHIFTS) if (tryCand(shifted(s, [k], d))) { moved = true; break; }
+    // 3. one press moves
+    for (const k of keys) for (let i = 0; i < (s[k] || []).length; i++) {
+      for (const d of MOVES) {
+        const t = Math.round(s[k][i]) + d;
+        if (t < 0 || t > cfg.T - 1) continue;
+        const cand = cloneS(s); cand[k][i] = t;
+        if (tryCand(cand)) { moved = true; break; }
+      }
+    }
+    if (!moved) break;
+  }
+  return { s, val };
+}
 // ═══════════ cross-haste pooling wrapper — B1 dominance BY CONSTRUCTION (RULES §16, ACCEPTANCE) ═══
 // The per-haste search can settle in a basin a NEIGHBOR gear-haste's search would beat when its plan
 // is scored at H (the Phase-6 cross-val's "borrowed plan out-scores native" — a search miss, not a
@@ -2065,7 +2178,9 @@ async function basinHop(champ, cfg, onStep) {
 async function optimizeAsync(cfg, starts, onProgress) {
   const base = await optimizeCore(cfg, starts, onProgress);
   const pool = cfg.poolHastes;
-  if (cfg._noPool || !Array.isArray(pool) || !pool.length) return base;
+  // ⚠ The common path leaves through HERE, not through the pooled return below — an earlier version of
+  // the D1 re-rank hung only off the pooled return and was therefore dead for every ordinary solve.
+  if (cfg._noPool || !Array.isArray(pool) || !pool.length) return phaseFinish(base, cfg);
   // Anchor the baseline to the ACTUAL score of the returned plan: a core solve's `.val` can differ
   // by a hair from `simulate(.s)` (the Cold-Snap path returns a normalize()-d schedule with the
   // pre-normalize val), and the argmax must compare like-for-like or the guarantee leaks.
@@ -2081,7 +2196,51 @@ async function optimizeAsync(cfg, starts, onProgress) {
     const v = simulate(rep, cfg).robust;            // champ(h) scored raw at H — a member of C
     if (v > best.val + 1e-7) best = { s: rep, val: v, csNote: best.csNote, squeakNote: best.squeakNote };
   }
-  return best;
+  return phaseFinish(best, cfg);
+}
+// The D1 re-rank, applied to whatever the search (and the pooling wrapper) settled on. `val` is kept
+// in POINT units so every existing consumer — the pooling comparison above, `plan-diff`, the UI's
+// score readout — keeps meaning what it meant; only the CHOICE of plan comes from the phase mean.
+// `cfg.phaseRank === false` turns it off, which is how the A/B that justified it was measured.
+function phaseFinish(best, cfg) {
+  if (cfg.phaseRank === false) return best;
+  let bs = repair(cloneS(best.s), cfg), bv = phaseScore(bs, cfg);
+  for (const start of phaseStarts(best.s, cfg)) {
+    const r = phaseRerank(start, cfg);
+    if (r.val > bv + 1e-7) { bv = r.val; bs = r.s; }
+  }
+  if (bs === best.s) return best;
+  return { ...best, s: bs, val: simulate(cloneS(bs), cfg).robust };
+}
+/* ⚠⚠ ONE START IS NOT ENOUGH, and this is the second thing measured rather than assumed. With the
+   descent seeded only from the point winner, sliding the Bloodlust pin across a cast interval still
+   produced an outlier plan at one of five pins: the point score's basin there is a different one, and
+   a bounded local descent cannot cross to the phase argmax — the two differ in three coordinates at
+   once. So the descent gets the same treatment the main search gets: STARTS.
+   They are the cheap structural ones, not random — a phase descent from a handful of distinct shapes,
+   which is what "multi-start" has always meant here. Cost is `starts × moves × N`, once. */
+function phaseStarts(winner, cfg) {
+  const out = [cloneS(winner), naiveSchedule(cfg), packedSchedule(cfg)];
+  const keys = scheduledKeys(cfg);
+  // every planner-controlled track stacked on a pinned raid call — the "everything with the Lust"
+  // shape, which is a basin the point winner is often nowhere near
+  for (const pt of [...new Set(Object.values(cfg.fixed).flat().map(Math.round))].slice(0, 3)) {
+    const s = {};
+    for (const k of keys) s[k] = cfg.fixed[k] ? cfg.fixed[k].slice()
+      : Array.from({ length: Math.min(maxUses(k, cfg), 64) }, () => pt);
+    out.push(repair(s, cfg));
+  }
+  // each track's last use as late as it still fully runs, siblings packed backward by cooldown
+  {
+    const s = {};
+    for (const k of keys) {
+      if (cfg.fixed[k]) { s[k] = cfg.fixed[k].slice(); continue; }
+      const n = Math.min(maxUses(k, cfg), 64), last = Math.max(0, cfg.T - BUFFS[k].dur);
+      s[k] = Array.from({ length: n }, (_, i) => Math.max(0, last - (n - 1 - i) * BUFFS[k].cd));
+    }
+    out.push(repair(s, cfg));
+  }
+  return out;
 }
 function optimizeCore(cfg, starts, onProgress) {
   return new Promise(resolve => {

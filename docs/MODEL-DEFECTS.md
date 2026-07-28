@@ -713,6 +713,53 @@ co-move" rule: X is exactly the kind of tuned constant PHASE12 §6.1–§6.3 rec
 The honest statement is that the plan's presses are specified relative to two different clocks and the
 model only has one.
 
+## 8e. ✅ THE FIX IS LANDED — `phaseFinish` / `phaseRerank` / `phaseScore` in `index.html`
+
+Shipped 07-28. The search is **unchanged** and still ranks on the point score — its job is finding
+basins and its discrimination there is far coarser than the 0.2-cast phase term. What changed is the
+final **choice**: a bounded multi-start coordinate descent under `phaseScore`, run once on the search's
+winner. `cfg.phaseRank === false` turns it off, which is how every A/B below was measured.
+
+**Two things were measured rather than assumed, and both changed the design:**
+
+1. **Single-press moves cannot reach the answer.** A per-press descent from the point winner on A2
+   emitted the point winner *unchanged*, though ground truth scores +83 above it under the phase mean.
+   The two layouts differ by a −5 s shift of Icy Veins **and** the whole cluster **and** a −17 s move of
+   Berserking, and no single step improves alone. ⇒ three move classes: whole-plan slide, per-track
+   slide, per-press move.
+2. **One start is not enough either.** With the descent seeded only from the point winner, the pin
+   slide still produced an outlier plan at 1 of 5 pins. ⇒ it gets the same structural starts the main
+   search gets (naive, packed, pin-stacked, kill-anchored).
+
+⚠ And a wiring bug worth remembering: the first version hung the re-rank off `optimizeAsync`'s **pooled**
+return only, and the common path leaves through an early return above it — so it was dead for every
+ordinary solve while appearing to work.
+
+### What it achieves, measured
+
+| | before | after |
+|---|---|---|
+| `tests/anchors.mjs` **A1** (Berserking inside Lust) | FAIL | ✅ **PASS** |
+| Berserking inside Lust across the 5-pin slide | 1 of 5 | **4 of 5** |
+| worst off-diagonal in the cross-score table | **0.77 casts** | **~0.15** |
+| `plan-sweep` corpus, on the objective that now ranks | — | **13 changed cells, 13 better, 0 worse** (+0.08 … +0.54 casts) |
+| `self-consistency` | 0.00e+0 · 0 structural | unchanged |
+| wall clock (A3, T=180) | 13.1 s | 14.2 s (**+8 %**) |
+
+### ⛔ What it does NOT achieve — state this, do not round it up
+
+* **A2 and A3 are still RED.** They lock exact timestamps, and the phase mean's winner is a *third*
+  layout (A2: Icy Veins 0:06/0:26 · cluster 0:23 · Berserking 0:50), which it scores **above** ground
+  truth. The failure has changed in kind — it is no longer "Berserking outside Lust", it is "not these
+  exact seconds" — but it is still a failure.
+* **Stability is reduced ~5×, not achieved.** One of five pins still emits a structurally different
+  plan, and cross-scoring confirms that plan really is the phase-mean argmax there. Some pin
+  sensitivity survives because the phase mean removes the *lattice* phase and the pin-to-kill distance
+  is still resolved exactly.
+* The point score **falls** on 12 of 13 changed cells (0.01–0.70 casts). That is the deliberate price,
+  not a regression — but it means `exact-match`/`golden.json` had to be re-recorded, and any comparison
+  to a pre-07-28 corpus is denominated in the old objective.
+
 ## 9. What is still open
 
 1. **Cost.** The phase-mean is N× `simulate()`. It cannot go into the search at N=48 as-is. Two routes:
