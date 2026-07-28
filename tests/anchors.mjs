@@ -73,6 +73,50 @@ await anchor({
   },
 });
 
+// ── A2 / A3 — FULL-TIMELINE anchors ───────────────────────────────────────────────────────────────
+// ★ These two lock every press time, not just one property. That is a deliberate exception to the
+// header's rule and it is the user's ruling (2026-07-28): *"these two examples I sent are genuinely
+// safe to lock even the timestamps on… these two need to always be this way."*
+//
+// It is defensible on two separate grounds, and it is worth being clear which is doing the work:
+//   · the SCORE part — Bloodlust is pinned late enough (0:20) that no Arcane-Blast-stack cheese is
+//     available, every cooldown's placement follows a rule in ESTABLISHED-FACTS, and wowsims prefers
+//     these layouts over what the optimizer emits (Example 1: +2.0 DPS ± 0.37 over 5 seeds).
+//   · the TIE-BREAK part — where a press sits on a plateau the sim cannot resolve (Berserking scores
+//     193000 at @40, @45 AND @50 on Example 1), the exact second locked here is the *structural*
+//     choice: cluster with the other presses, fewest distinct press moments, most robust to a press
+//     landing late. That is the same ruling as MODEL-DEFECTS D2.
+// ⚠ So an A2/A3 failure means one of two different things, and the diff will say which: a press
+// OUTSIDE its rule (a real scoring defect) or a press on the wrong member of a plateau (a tie-break
+// defect). Do not "fix" the second by loosening the anchor.
+const FULL = [
+  { name: 'A2 — 2:00, Lust@0:20, h=0, 1000 SP, 25% crit',
+    c: { T: 120, haste: 0, sp: 1000, crit: 25, coldSnap: true, pins: { bloodlust: [20] },
+         kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking', 'bloodlust'] },
+    want: { icyVeins: [0, 20], isc: [20], scb: [20], arcanePower: [20], bloodlust: [20], berserking: [40] } },
+  { name: 'A3 — 3:00, Lust@0:20, h=0, 1000 SP, 25% crit',
+    c: { T: 180, haste: 0, sp: 1000, crit: 25, coldSnap: true, pins: { bloodlust: [20] },
+         kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking', 'bloodlust'] },
+    want: { icyVeins: [20, 140], isc: [20, 140], scb: [20, 140], arcanePower: [20], bloodlust: [20], berserking: [140] } },
+];
+for (const { name, c, want } of FULL) {
+  ran++;
+  const cfg = cfgFor(c);
+  const out = await api.optimizeAsync(cfg, undefined, () => {});
+  const got = out.s;
+  const diffs = [];
+  for (const k of Object.keys(want)) {
+    const g = (got[k] || []).map(x => +x.toFixed(3)), w = want[k];
+    if (g.length !== w.length || g.some((v, i) => Math.abs(v - w[i]) > 1e-6)) diffs.push(`${k}: want [${w}] got [${g}]`);
+  }
+  for (const k of Object.keys(got)) if (!(k in want)) diffs.push(`${k}: unexpected, got [${got[k]}]`);
+  if (diffs.length) failures++;
+  console.log(`${diffs.length ? 'FAIL' : 'PASS'}  ${name}`);
+  console.log(`      ground truth, user-ruled 07-28; Lust pinned late so no stack cheese is available`);
+  for (const d of diffs) console.log(`      ⛔ ${d}`);
+  console.log('');
+}
+
 console.log(`${ran - failures} passed, ${failures} failed`);
 if (failures) {
   console.log('\n⛔ Expected while MODEL-DEFECTS D1 is open. This suite is the target for that fix,');
