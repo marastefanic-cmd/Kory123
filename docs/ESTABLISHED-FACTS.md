@@ -262,7 +262,32 @@ Icy Veins (×1.20, onset **394.3**), pull vs deep steady, engine integral:
 
 ★ **One threshold, two meanings.** The same `m·v = 1.5` that decides whether a buff converts in full
 also decides whether its placement relative to the opener matters at all. Below it, press Icy Veins
-before cast 1, 2, 3 or at 0:60 — **identical**. Above it, the pull is strictly better.
+before cast 1, 2, 3 or at 0:60 — **identical to within 7e-4 casts**. Above it, the pull is strictly
+better, and by two orders of magnitude more (0.0118 at h = 400, 0.221 at h = 500).
+
+### ⚠ OPEN — the sub-1e-3 residual below the threshold is REAL, and it is not yet explained
+
+*User question, 07-28: "How can there be a difference here? Shouldn't it be neutral?"* The algebra says
+exactly zero: `R_{mv}·rate(m·v) = S/G = R_m·rate(m)` cancels identically while both rates are linear.
+The engine says −0.000150 at h = 200 and −0.000662 at h = 380.
+
+**It is not instrument noise.** Measured floor: five deep-steady placements of Icy Veins (60 … 140 s)
+agree to **2.8e-14** — machine epsilon — and a sub-interval sweep across one full cast interval agrees
+to **8.5e-14**. So the scoring of a window in steady state is exact to float precision, and the residual
+is specific to a window that *starts on the ramp*.
+
+**It is not haste × haste.** There is only one haste buff in this experiment. Passive haste is the
+state, not a placeable effect, so there is nothing for Icy Veins to multiply against.
+
+What is known: it is monotone in `h`, grows toward the threshold, is **negative** below it (the pull is
+slightly *worse*) and flips sign at it. Magnitude ≤ 7e-4 casts — 0.05 % of one cast, ~300× smaller than
+the effect it sits inside, and far below anything a plan turns on. ⇒ **The neutrality law stands as
+stated; this is a known unexplained residual at its edge, not a competing effect.** Most likely
+suspects, both unverified: the engine's expected press-snap slip differing between a ramp interval and
+a steady one, and the discrete ramp casts' completions interacting with the window edge.
+
+⛔ It was briefly labelled "press-snap noise" in this file. That was wrong — the floor measurement above
+rules noise out, and a real 7e-4 deserves an open flag rather than a dismissal.
 
 ### And above the steady cap the pull is the ONLY place it is worth anything
 
@@ -597,10 +622,13 @@ MQG 458.5 → 461–472; Berserking 573.5 → 593–629; Skull 613.5 → 617–6
 **Seven for seven.** How far above depends on how much overlap the split gives up, which scales with `s`
 — the second-order spell-power effect of §5.7.
 
-⚠ **Why those are ranges and not single numbers.** The margin near the crossing is smaller than the
-~0.011-cast press-snap residual (§9), so a bisection on sign alone reports crossings that are noise —
-it initially gave "Bloodlust splits at h = 4" and "Drums at h = 4", both artifacts. The **law** (just
-above the buff's own threshold) is exact; the measured crossing is not, and this file quotes the law.
+⚠ **Why those are ranges and not single numbers.** Near the crossing the margin is ~0.01 casts and
+non-monotone in `h` (Bloodlust × Icon reads +0.0108 at h = 10, −0.0008 at h = 200, +0.1417 at h = 300),
+so a bisection on *sign* reports crossings that are structure, not the crossing — it initially gave
+"Bloodlust splits at h = 4" and "Drums at h = 4", both artifacts of that. The **law** — just above the
+haste buff's own onset threshold — is exact and is what this file quotes.
+⚠ That local non-monotonicity is the same unexplained ramp-edge residual as §1.2b's, one order larger
+because two windows are involved. Open, small, flagged.
 
 ## 5.7 ★★★ WORKED EXAMPLE — Icy Veins + Icon, and when the pair splits
 
