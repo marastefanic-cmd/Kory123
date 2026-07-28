@@ -257,6 +257,54 @@ a 3-stack cast, so a value window opened at the pull always covers fewer casts).
 two different rules, two different seconds. Only the **cluster's own** second is misplaced, and only by
 one.
 
+## ★★★★★★ LOCALISED — the model MISCOUNTS CASTS by ~1 on a mid-ramp Icy Veins (07-28)
+
+**Status: OPEN, and it supersedes the objective debate below as the first thing to fix.**
+
+Reverse-engineering the ground-truth disagreement to its arithmetic, as the user asked (*"it should just
+be an equation… figure out the reverse engineering towards the known solution"*). Example 1
+(`2:00 · h=0 · 1000 SP · 25 % · Lust@20`):
+
+| | model's own claim | **wowsims** | error |
+|---|---|---|---|
+| optimizer's layout (Icy Veins fires **6.498**, mid-ramp) | **94** casts | **93.008** | **model over-counts by 0.99** |
+| hand-built layout (Icy Veins fires **0**, on the pull) | **93** casts | **93.126** | model under by 0.13 |
+
+And the damage *per cast* is the same in both plans to 0.02 % (2072.1 vs 2072.5). **So the entire
+disagreement is cast COUNT, and the model has the comparison backwards** — it believes its layout fits
+one more cast than the hand-built one, while the sim says the hand-built one fits slightly more.
+
+★★ **This is not an objective-choice error.** Value, alignment, the per-cast sum, the integral — none of
+them are implicated. The two plans' casts are worth the same. One plan is simply being credited **a cast
+it does not get**, and it is the plan whose Icy Veins fires *after* the ramp rather than at the pull.
+
+⇒ **The prior conclusion — "the ranking is inverted, therefore the objective may be wrong" — is
+premature and possibly wrong.** The ranking IS inverted, that measurement stands (2.0 DPS ± 0.37). But
+the cause localises to the **cast lattice**, not to the choice of objective. A scorer summing the wrong
+number of casts will rank wrongly under *any* objective, and swapping the sum for the integral would
+paper over it rather than fix it.
+
+### Why this is the right thing to chase first
+
+* It is a **~1-cast** error, not a sub-cast one — an order of magnitude larger than every margin argued
+  over this session (0.005–0.07 %).
+* It is **localised to a condition**: Icy Veins firing mid-ramp (6.498) rather than at 0. The model is
+  accurate on the pull case and wrong on the mid-ramp case.
+* It plausibly subsumes the **open question** below (the unexplained +2.078 % pull advantage at h=0).
+  If the model miscounts the ramp under haste, a phantom pull advantage is exactly the symptom.
+* And it is checkable without any objective change: `model-audit` compares the model's cast board to
+  wowsims' combat log cast-for-cast.
+
+### Next step, concretely
+
+Run `tools/model-audit.mjs` on both layouts and diff the cast boards against the sim's log. The extra
+cast is either present in the model's board and absent from the sim's, or the two lattices diverge at a
+known instant. Either way it is a single identifiable cast, and the fix is arithmetic rather than a
+change of objective.
+
+⛔ Do **not** switch the objective on the strength of the entries below until this is resolved. They
+observe a real inversion; this entry explains it without needing a new objective.
+
 ## ★★★★★ THE SIM HAS RULED — the model's ranking is INVERTED on ground truth (07-28)
 
 **Status: ESTABLISHED. This is the finding the objective question was waiting on.**
