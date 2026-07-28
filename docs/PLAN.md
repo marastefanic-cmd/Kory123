@@ -120,3 +120,61 @@ goldens can be retired the same day. Nothing needs to wait for the full anchor s
 
 ⇒ **Order from here:** fix D1 → A1 goes green → re-derive whatever `plan-diff` flags → retire
 `golden.json`. Anchors accumulate after that, one per rule, as they are isolated.
+
+---
+
+# Should the model be rebuilt from scratch? — assessed 07-28
+
+**No. The defect is one layer above the model, and a rewrite would reproduce it.**
+
+## What is verified correct, and would survive a rewrite unchanged
+
+| | evidence |
+|---|---|
+| `simulate()`'s objective | `self-consistency` **0.00e+0**, **0** structural violations |
+| the cast lattice | matches wowsims to **±0.010 casts** at every Icy Veins placement on a bare fight |
+| value windows / snapshot rules / boundary credit | `window-span`, `credit-check`, `snapshot-rule`, `wall-credit` all green |
+| the facts corpus (Parts I–III) | engine-independent — measured behaviour, not model output |
+| the instruments | `facts-ladder`, `facts-pair`, `jitter`, `rules-audit`, `plan-diff`, `bench` — all engine-independent |
+
+A rewrite discards a scorer that has been verified **at the cast level** in order to fix a problem that
+is not at the cast level.
+
+## Where the defect actually is
+
+`simulate()` returns a **correct number for one lattice phase**. D1 is that the optimizer treats that
+number as the objective, when the thing worth maximising is a **neighbourhood** of it. That is a
+statement about what gets *ranked*, not about what gets *computed* — so it is a change **around**
+`simulate()`, not to it. Rebuilding from scratch reproduces the same architecture and meets the same
+wall on day two, unless the rewrite changes the objective — which does not require a rewrite.
+
+## The part that IS worth rebuilding
+
+Not the scorer — the **finishing passes**. `finishLine` (two tolerance regimes) → `finishLineFloored`
+(three arms) → `structuralSnap` (a 0.05 % band, edge-spans, press rows, a cast-count guard). They
+interact in ways that bit twice in one day:
+
+* a free tie-break move changed the incumbent, and the older band-spending clause then chose
+  differently — a **0.0156-cast regression** from a change that could not lose a point on its own;
+* the pass refuses cast-count changes by design, which made a correct rule-based tie-break **inert**.
+
+★ **And most of them exist to paper over D1.** The 0.05 % band, the structural snapping, the legibility
+tie-breaks — all are machinery for choosing between layouts whose score differences are phase noise. **A
+neighbourhood objective removes that noise at the source, and most of this layer can then be deleted
+rather than debugged.** That is the rebuild worth doing, and it is downstream of the objective decision,
+not a substitute for it.
+
+## The path, in order
+
+1. **Settle the neighbourhood.** Two candidates (`MODEL-DEFECTS.md`): lattice-phase-local width vs
+   execution-error width. ⚠ Decide it by **measurement across several ground-truth cases**, not by which
+   one fixes A1 — one case cannot distinguish a correct objective from a tuned one.
+2. **Re-rank on it.** In the search, where cast-count changes are legal. Not in a finishing pass — that
+   host is eliminated by measurement.
+3. **Let the passes fall out.** Re-run the anchors and `plan-diff`; delete whatever finishing machinery
+   is no longer earning its place.
+4. **Then the goldens.** `plan-diff` becomes the stability gate, `golden.json` retires, anchors
+   accumulate one per rule.
+
+⇒ Rebuilding now would mean re-deriving the verified half in order to reach the same open question. The
+open question is cheap to answer and the answer is what tells you which half to rebuild.
