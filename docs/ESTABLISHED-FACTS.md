@@ -13,7 +13,8 @@ combination with other buffs… so they are referencable and testable whether ou
 **Part I** is **one cooldown, alone, on an otherwise bare fight** — nothing overlaps anything. It
 establishes how each cooldown behaves **around Arcane Blast stacks and the GCD floor, and nothing
 else**. **Part II** adds the second cooldown, which is where *alignment* — the thing the planner is
-actually for — first appears. Triples are the next expansion.
+actually for — first appears. **Part III** adds the third, and finds no new rule: the composition table
+extends by inclusion–exclusion.
 
 Read Part I first: every Part II result is stated as a deviation from it, and the interaction term is
 only meaningful because each cooldown alone is already known to be interior-flat.
@@ -1121,19 +1122,118 @@ share a lockout** — using one locks the group for that buff's duration. `repai
 that tries, so `MQG + Icon`, `MQG + Skull` and `Skull + Icon` have no overlapping layout to measure.
 Their alignment question is answered by the item, not by the arithmetic.
 
-## Still to do in Part II
+---
 
-Triples, and the remaining baselines for the pairs above (this table is haste 0 and 400 at 1000 SP;
-`haste × sp` and `dmg × sp` rows will move with passive spell power exactly as P1's did, `haste × haste`
-rows will not move at all). The structural questions are now fixed by the composition table, so what is
-left is filling cells rather than finding rules.
+# Part III — three cooldowns
+
+## The law extends by inclusion–exclusion, and nothing new is needed
+
+    V(abc) = Σ singles  +  Σ pair terms  +  TRIPLE-SPECIFIC term
+
+and the triple-specific term is just the next product in the expansion. For Icy Veins + Icon + Arcane
+Power it is `Δ₃ × s × (v−1)` — the casts Icy Veins adds *inside the region covered by both value
+cooldowns*, each paid the product of their two bonuses. Measured:
+
+| passive haste | triple-specific term | = Δ₃ × s × 0.3 |
+|---|---|---|
+| 0 | 0.0463 | **2** × 0.07719 × 0.3 |
+| 400 | 0.0695 | **3** × 0.07719 × 0.3 |
+
+Same integer structure as everywhere else. ⇒ **A triple needs no new rule.** Expand the product of the
+per-cast multipliers, count the covered casts at each level of overlap, and you have it.
+
+## T1. Icy Veins + Icon of the Silver Crescent + Arcane Power
+
+### Conclusions
+
+**The value cooldowns form a cluster, and the cluster is what the haste cooldown is holding on to.**
+Walking away from Icon alone costs `s = 0.07719` per surrendered cast. Walking away from Icon *and*
+Arcane Power costs the cluster bonus
+
+    B = 1.30 × (1 + s) − 1 = 0.30 + 1.30·s = 0.40035          at 1000 SP
+
+which is **5.19× dearer**. So Icy Veins clings to the cluster far longer than it clings to Icon alone.
+
+**Confirmed: the breakpoint moves a long way up.**
+
+| layout | Icy Veins leaves the interior at |
+|---|---|
+| Icy Veins + Icon (pair, P1) | **h = 410** |
+| Icy Veins + Icon + Arcane Power | **h ≈ 472** |
+
+(brute-forced on a 1 s press grid at 1000 SP; aligned wins through h=470, `IV@0` wins from h=475.)
+
+⚠ The transition is a **step, not a smooth crossing** — the margin jumps 0.333 casts between h=470 and
+h=475 — because `Δ(covered)` changes by a whole cast. The closed form gives the right *scale* for the
+shift; the exact rung is set by where a covered cast is gained or lost.
+
+**Confirmed: the value cooldowns never want the pull — at any passive haste.** Across h = 0 … 800,
+`Icon@0` and `ArcanePower@0` lose in every single case, and Arcane Power is always the worst arm
+because its per-cast bonus is the largest thing to waste on a ramp:
+
+| passive haste | Icy Veins @0 | Icon @0 | Arcane Power @0 | all three @0 |
+|---|---|---|---|---|
+| 0 | −0.4221 | −0.3474 | −1.1084 | −0.7453 |
+| 200 | −0.5897 | −0.3474 | −1.1316 | −0.5897 |
+| 400 | −0.4148 | −0.4709 | −1.4779 | −0.7379 |
+| 600 | **best** | −0.5824 | −1.1438 | −0.3232 |
+| 800 | **best** | −0.8938 | −1.4552 | −0.4003 |
+
+*(casts, against the best aligned-interior layout)*
+
+### Why the value cooldowns can never want the pull — and it is a theorem, not a measurement
+
+User, 2026-07-28: *"at no point will it be worth for Icon and Arcane Power themselves to go to start,
+since even Icy vein'd start of ramp will be slower than unhasted casting at 3 stacks."* Exactly right,
+and it holds at every haste because it is structural rather than numerical:
+
+| passive haste | Icy-Veins'd ramp intervals | fastest of them | bare 3-stack interval |
+|---|---|---|---|
+| 0 | 2.083 / 1.805 / 1.527 | 1.527 | 1.500 |
+| 200 | 1.849 / 1.602 / 1.355 | 1.355 | 1.331 |
+| 400 | 1.662 / 1.440 / 1.218 | 1.218 | 1.197 |
+| 600 | 1.509 / 1.308 / 1.106 | 1.106 | 1.087 |
+| 800 | 1.382 / 1.198 / 1.013 | 1.013 | 1.000 |
+
+★ **The ordering can never invert.** Each Arcane Blast stack removes a fixed 0.334 s of cast time, so a
+ramp cast is *always* longer than a 3-stack cast at the same haste; a haste multiplier divides both by
+the same factor and preserves the ordering; and the GCD floor applies to both, so at the extreme they
+converge to 1.000 s and tie rather than cross. A value window opened at the pull therefore always
+covers **fewer or equal** casts, never more — measured as 2 fewer at h=0 and h=400, 1 fewer at h=800.
+
+The margin does narrow with haste (1.527 vs 1.500 at h=0; 1.013 vs 1.000 at h=800), so the *penalty*
+shrinks. It never reverses.
+
+### Sim verification
+
+All three pull arms, duelled against the aligned layout with common random numbers, 5 seeds × 10 000
+iterations at h=0 / 1000 SP:
+
+| arm | sim | model |
+|---|---|---|
+| Icy Veins @0 | −0.891 % | −0.903 % |
+| Icon @0 | −0.721 % | −0.743 % |
+| Arcane Power @0 | −2.393 % | −2.372 % |
+
+Same ordering, agreeing to **0.02 pp** on every arm against a ±0.04 % seed band.
+
+## Still to do
+
+The remaining triples, and more baselines for the pairs (Part II's table is haste 0 and 400 at 1000 SP;
+`haste × sp` and `dmg × sp` rows move with passive spell power exactly as P1's did, `haste × haste` rows
+do not move at all). The structural questions are now closed by the composition table and its
+inclusion–exclusion extension, so what is left is filling cells rather than finding rules.
+
+⚠ One instrument caveat to carry forward: `--mode=triple` excludes the terminal placement from its
+interior arm, but a press one second short of it (`@39` on a 60 s fight) still picks up boundary credit
+and won the aligned arm at two rungs. Read the layout column, not just the number.
 
 ## The two generators
 
 | | what it produces | cost |
 |---|---|---|
 | `tools/facts-ladder.mjs` | model only — one cooldown, arbitrary haste granularity, value in casts, closed form beside it, flatness and threshold assertions | seconds |
-| `tools/facts-pair.mjs` | model only — two cooldowns, brute-forced over both press times; the interaction surface and the breakpoint sweep (Part II) | seconds to minutes |
+| `tools/facts-pair.mjs` | model only — two or three cooldowns, brute-forced over their press times; the interaction surface, the breakpoint sweep, and the triple decomposition (Parts II–III) | seconds to minutes |
 | `tools/buff-atlas.mjs` | model **and** sim, one baseline at a time — the per-placement tables | minutes |
 
 Use the ladder and the pair tool to find where something interesting happens, and the atlas to have the

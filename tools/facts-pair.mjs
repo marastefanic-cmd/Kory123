@@ -149,6 +149,80 @@ function ruleFor(a, b) {
   return { name: 'haste × haste', expect: 'd·[1/i(v₁v₂m) + 1/i(m) − 1/i(v₁m) − 1/i(v₂m)] — sign flips at the PAIR threshold' };
 }
 
+// ── triples ───────────────────────────────────────────────────────────────────────────────────────
+// ★ THE POINT OF A TRIPLE IS THAT THE VALUE COOLDOWNS FORM A CLUSTER. Pairwise, Icy Veins moving to the
+// pull surrenders `Δ(covered) × s` — one cast of Icon's bonus. Add Arcane Power and the casts it
+// surrenders are worth the CLUSTER's bonus instead:
+//     B = 1.30·(1 + s) − 1 = 0.30 + 1.30·s
+// which at 1000 SP is 0.4003 against s = 0.0772 — 5.2× dearer. So the haste cooldown should cling to
+// the cluster far longer than it clings to Icon alone, and the breakpoint should move a long way up.
+// The three-way decomposition that makes this checkable:
+//     interaction(all three) = V(abc) − V(a) − V(b) − V(c) + 2·V(none)
+//     pairwise sum           = Σ over the three pairs
+//     TRIPLE-SPECIFIC term   = interaction(all three) − pairwise sum
+// A zero triple-specific term means the pairs tell the whole story and no new rule is needed.
+if (args.mode === 'triple' || args.mode === 'triple-breakpoint') {
+  const C = String(args.c ?? 'arcanePower');
+  if (!api.BUFFS[C]) { console.error(`FACTS-PAIR ERROR: no cooldown "${C}"`); process.exit(2); }
+  const KEYS3 = [A, B, C], nameC = api.BUFFS[C].name;
+  const sc3 = (ts, h, sp) => scoreOf(Object.fromEntries(KEYS3.map((k, i) => [k, [ts[i]]]).filter(([, v], i) => ts[i] !== null)), h, sp);
+  const one = (k, t, h, sp) => scoreOf({ [k]: [t] }, h, sp);
+
+  for (const h of HASTES) for (const sp of SPS) {
+    const unit = unitOf(h, sp), zero = scoreOf({}, h, sp).v, t3 = t3Of(h, sp);
+    const V = r => r.moved ? null : (r.v - zero) / unit;
+    const sB = sOf(B, sp), sC = sOf(C, sp);
+    const clusterB = sB !== null && sC !== null ? (1 + sB) * (1 + sC) - 1 : null;
+    console.log(`═══ ${nameA} + ${nameB} + ${nameC} — haste ${h}, ${sp} SP, ${CRIT}% crit, T=${T}s ═══`);
+    console.log(`    3 stacks from ${t3.toFixed(2)}s, press grid ${STEP}s.`);
+    if (clusterB !== null)
+      console.log(`    ${nameB} alone is worth s=${sB.toFixed(5)} per covered cast; with ${nameC} the CLUSTER is worth ` +
+                  `B=${clusterB.toFixed(5)} — ${(clusterB / sB).toFixed(2)}× dearer to walk away from.`);
+
+    // ⚠ strict `<`, excluding the TERMINAL placement: a window ending exactly at the kill is its own
+    // regime (rule 4) and it won the aligned arm at h=450 and h=625, which is not the layout the
+    // breakpoint question is about.
+    const interior = timesFor(A).filter(t => t >= t3 - 1e-9 && t < T - Math.max(...KEYS3.map(k => api.BUFFS[k].dur)) - 1e-9);
+    // the four named layouts the question is about
+    const arms = {};
+    for (const t of interior) {
+      arms.ALIGNED = pick(arms.ALIGNED, V(sc3([t, t, t], h, sp)), `all three @${t}`);
+      arms['A at pull'] = pick(arms['A at pull'], V(sc3([0, t, t], h, sp)), `${A}@0, other two @${t}`);
+      arms['B at pull'] = pick(arms['B at pull'], V(sc3([t, 0, t], h, sp)), `${B}@0, other two @${t}`);
+      arms['C at pull'] = pick(arms['C at pull'], V(sc3([t, t, 0], h, sp)), `${C}@0, other two @${t}`);
+      arms['all at pull'] = pick(arms['all at pull'], V(sc3([0, 0, 0], h, sp)), 'all three @0');
+    }
+    const best = Object.entries(arms).reduce((x, y) => (!x || (y[1] && y[1].v > x[1].v) ? y : x), null);
+    for (const [k, a] of Object.entries(arms))
+      if (a) console.log(`    ${k.padEnd(12)} ${pad(a.v.toFixed(4), 9)} casts   ${a.how.padEnd(34)}` +
+                         `${k === best[0] ? '  ← best' : `  ${(a.v - best[1].v).toFixed(4)}`}`);
+
+    if (args.mode !== 'triple-breakpoint') {
+      // the three-way decomposition
+      const t = Math.max(...interior.filter(x => x <= interior[Math.floor(interior.length / 2)]));
+      const vAll = V(sc3([t, t, t], h, sp));
+      const singles = KEYS3.map(k => V(one(k, t, h, sp)));
+      const pairs = [[0, 1], [0, 2], [1, 2]].map(([i, j]) => {
+        const s2 = {}; s2[KEYS3[i]] = [t]; s2[KEYS3[j]] = [t];
+        const v = V(scoreOf(s2, h, sp));
+        return v === null ? null : v - singles[i] - singles[j];
+      });
+      if (vAll !== null && singles.every(x => x !== null) && pairs.every(x => x !== null)) {
+        const inter3 = vAll - singles.reduce((x, y) => x + y, 0);
+        const pairSum = pairs.reduce((x, y) => x + y, 0);
+        console.log(`    ── decomposition at @${t} ──`);
+        console.log(`       singles      ${singles.map(x => x.toFixed(4)).join('  ')}`);
+        console.log(`       pair terms   ${pairs.map(x => x.toFixed(4)).join('  ')}   (${A}+${B}, ${A}+${C}, ${B}+${C})`);
+        console.log(`       total interaction ${inter3.toFixed(4)}   −  pairwise sum ${pairSum.toFixed(4)}   ` +
+                    `=  TRIPLE-SPECIFIC ${(inter3 - pairSum).toFixed(4)}`);
+      }
+    }
+    console.log('');
+  }
+  process.exit(0);
+}
+function pick(cur, v, how) { return v === null ? cur : (!cur || v > cur.v + 1e-9 ? { v, how } : cur); }
+
 if (args.mode === 'all') {
   // Every unordered pair, at each baseline, judged on the aligned-interior layout.
   const KEYS_ALL = args.buffs ? String(args.buffs).split(',')
