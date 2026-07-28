@@ -492,6 +492,61 @@ identically 0, so it never matters — the rating-pool block.*
    geared planning is "spread it all". There is no third regime, and the transition rating for any pair
    is one table lookup.
 
+## 5.7 ★★★ WORKED EXAMPLE — Icy Veins + Icon, and when the pair splits
+
+This is the whole framework answering one real question, and every step is a line above.
+
+**Both are 20 s, so they overlap perfectly; `haste × value` is positive, so they want to be together.
+The question is only WHERE.**
+
+### Together — and after the stacks, not at the pull
+
+Icy Veins is **ramp-neutral** below its threshold (§1.2b): it does not care. Icon does. A **value buff
+is ramp-AVERSE**, and by exactly the amount §1.2 already priced — it pays per *cast*, and the ramp
+yields **1.332 fewer casts** than the same seconds at steady state:
+
+    cost of putting a value buff on the opener  =  1.332 · s
+
+| passive SP | predicted `1.332 · s` | engine: post-ramp − pull |
+|---|---|---|
+| 700 | 0.1209 | **0.12088** |
+| 1000 | 0.1028 | **0.10282** |
+| 1387 | 0.0862 | **0.08620** |
+| 2000 | 0.0686 | **0.06864** |
+
+⇒ **The pair goes after the ramp — and the reason is Icon, not Icy Veins.**
+
+### At high haste Icy Veins leaves for the pull, and the pair splits
+
+Above **394.3** (Icy Veins' own onset threshold) ramp-neutrality ends and the pull starts paying
+(§1.2b). Splitting costs the overlap you give up, which is worth `haste × value ∝ s`. So:
+
+    split when   IV's pull-gain (a pure haste quantity)   >   lost overlap × s
+
+| passive SP | `s` (Icon per cast) | **split haste** |
+|---|---|---|
+| 700 | 9.075 % | **429.7** |
+| 1000 | 7.719 % | **425.1** |
+| 1387 | 6.472 % | **420.4** |
+| 2000 | 5.153 % | **415.2** |
+| 2600 | 4.296 % | **412.2** |
+
+★ **The higher your passive spell power, the SOONER the pair splits** — monotone, and the mechanism is
+§3.1: more passive SP dilutes `s`, so the overlap you are protecting is worth less, so a smaller
+haste-side gain is enough to break it.
+
+⇒ **Three regimes for this pair, and the boundaries are computable, not measured:**
+
+| | | |
+|---|---|---|
+| `h < 394.3` | Icy Veins is ramp-neutral | **together, after the ramp** |
+| `394.3 < h < split` | the pull pays, but not enough to buy out the overlap | **together, after the ramp** |
+| `h > split` (412–430) | it does | **Icy Veins to the pull, Icon stays** |
+
+⚠ **Honest magnitude:** the split band is narrow (~394 → ~425) and the spell-power sensitivity inside it
+is modest — 17.5 rating across a 700 → 2600 SP swing. The *direction* is exact and the *size* is a
+second-order effect. Do not build a gearing rule on the 17.5.
+
 ---
 
 # 6. TRIPLES AND BEYOND — nothing new is needed
