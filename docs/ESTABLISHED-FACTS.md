@@ -1,1782 +1,333 @@
-# ESTABLISHED FACTS — how each cooldown behaves
+# ESTABLISHED FACTS — the exact laws
 
-Measured, reproducible behaviour of every cooldown, one at a time. **This file records facts only.**
-Where the planner's model fails to reproduce one, that is written down in
-`docs/MODEL-DEFECTS.md` instead — a fact and a bug are different kinds of statement and mixing them
-makes both harder to trust.
+Every statement in this file is a **closed form**, derived from the mechanics in `docs/MECHANICS.md`
+and **verified against the engine's rate integral** to the digit. There are no sampled tables here and
+no "measured max at h=…" verdicts. If a number is in this file it is exact, or it is labelled.
 
-User, 2026-07-28: *"observe the behavior of each singular buff at different haste levels, then in
-combination with other buffs… so they are referencable and testable whether our model follows them."*
+⚠ **This file was rewritten 07-28.** The previous version reported values measured on the *per-cast sum
+at one lattice phase*, which carries a **±0.2-cast** phase term — the same size as the interactions it
+was reporting. Against this file's own closed forms the sum was off by up to **0.2385 casts**; the
+integral is off by **0.0000** (`docs/MODEL-DEFECTS.md` §8f). The laws never moved. The measurements
+did, so they are gone. The old tables are in git history if a provenance question ever needs them.
 
-## ★★★★ 07-28 — REGENERATE THE NUMBERS ON THE INTEGRAL. THE LAWS SURVIVE UNTOUCHED.
+**Reproduce anything here:**
 
-Every value in this file was measured on the **per-cast sum at one lattice phase**. That quantity
-carries a phase term of ±0.2 casts (`docs/MODEL-DEFECTS.md` §8f) — the same size as the interactions
-this file reports. The rate **integral** is the phase *expectation* of the same objective, in closed
-form. Re-running `tools/facts-ladder.mjs --score=integral` against the file's own closed-form column
-settles which one is measuring the game:
+    node tools/facts-ladder.mjs --score=integral        # singles + threshold fits
+    node tools/facts-pair.mjs --score=integral --a=X --b=Y
 
-| cooldown (threshold) | rms fit, per-cast sum | rms fit, **integral** |
-|---|---|---|
-| Bloodlust (242.6) | 0.0729 casts | **0.0000** |
-| Icy Veins (394.3) | 0.0665 | **0.0000** |
-| Mind Quickening Gem (458.5) | 0.0641 | **0.0000** |
-| Berserking (573.5) | 0.0408 | **0.0000** |
-| Skull of Gul'dan (613.5) | 0.0425 | **0.0000** |
-| **worst gap anywhere on the ladder** | **0.2385 casts** | **0.0000** |
-
-★ **The closed forms in this file are EXACT — they always were.** The measurements disagreed with them
-by up to 0.24 casts, and that disagreement was the phase term, not the theory. So:
-
-* **Every law stands, unchanged and unqualified**: the tent, both thresholds, the composition table,
-  the `h≥243 ⇒ a haste cooldown inside Lust is worth zero` rule, inclusion–exclusion for triples. None
-  of them was derived from a measurement — they are algebra from the GCD floor, and the integral now
-  reproduces them to the digit.
-* **Every measured NUMBER should be regenerated** with `--score=integral`. Most move by ~0.05 casts.
-* ⚠ **Every ARGMAX must be regenerated — some move a long way.** Peak-value haste changes with the
-  score: Bloodlust h=210 → **240**, Mind Quickening Gem h=0 → **10**, Skull h=30 → **10**, and
-  Berserking **h=430 → 570**. A "best placement" column is an argmax over cells whose noise was the
-  size of the effect; do not cite one until it is re-measured.
-
-⇒ Status: `tools/facts-ladder.mjs` and `tools/facts-pair.mjs` both take `--score=integral` as of
-07-28. The regeneration itself is **not yet done** — until it is, read the laws, verify the numbers.
-
-## Scope, and how this file is laid out
-
-**Part I** is **one cooldown, alone, on an otherwise bare fight** — nothing overlaps anything. It
-establishes how each cooldown behaves **around Arcane Blast stacks and the GCD floor, and nothing
-else**. **Part II** adds the second cooldown, which is where *alignment* — the thing the planner is
-actually for — first appears. **Part III** adds the third, and finds no new rule: the composition table
-extends by inclusion–exclusion.
-
-Read Part I first: every Part II result is stated as a deviation from it, and the interaction term is
-only meaningful because each cooldown alone is already known to be interior-flat.
-
-# Part I — one cooldown at a time
-
-## The rules
-
-**A fight has three placement regimes, not two**, and every rule below is a statement about which one
-you are in:
-
-| regime | when | what is different about it |
-|---|---|---|
-| **pull** | the press lands before 3 Arcane Blast stacks | the casts it covers are longer and fewer |
-| **interior** | the whole window sits inside the fight, past the ramp | nothing — this is the flat one |
-| **terminal** | the window reaches the kill | it also pays for the cut-off last cast (rule 4) |
-
-> **1. A haste cooldown is worth the same wherever you put it in the interior.**
->
-> **2. A damage cooldown is worth the same wherever you put it in the interior — i.e. from 3 Arcane
-> Blast stacks onward.** Before that it covers fewer casts and is worth less. Since a press fires at the
-> *next cast boundary*, a press written at 5 s already lands on the first full-stack cast, so the
-> penalty is confined to the pull:  `@0  <  @5 ≈ @10 = @15 = … `, up to but not including the terminal
-> placement, which rule 4 governs.
->
-> **2b. ★★ PLACEMENT IS UNCORRELATED WITH SPELL POWER AND WITH CRIT — verified across 1224 cells, for
-> BOTH families, at 17 passive-haste levels.** All eight cooldowns × haste 0→800 in steps of 50 ×
-> spell power 500 / 1000 / 2000 × crit 0 / 25 / 50 %:
->
-> | | worst spread over all 1224 cells |
-> |---|---|
-> | interior flat? | **0.000000 casts** — every cooldown except Bloodlust (rule 5) |
-> | pull cost independent of SP and crit? | **0.000000** |
->
-> There are no diminishing returns and no interaction with either stat. This is not a coincidence, it
-> is what placement *is*: spell power and crit change what a cast is **worth**; they never change
-> **when** casts happen, and placement is a question about when. Crit cancels outright (it multiplies
-> the cooldown's value and the plain cast alike).
->
-> ⚠ **Quote the pull cost as a fraction of the cooldown's own value, not in plain casts.** The two
-> differ for a flat +SP buff and only one of them is baseline-independent. Serpent-Coil's pull penalty
-> is exactly **two covered casts** at every baseline — but one covered cast of a +225 SP buff is worth
-> `0.714286 × 225 / (720 + 0.714286 × SP)` = **0.1492** plain casts at 500 SP and **0.0748** at 2000,
-> so the same structural fact reads as a 2× "dependence" in the wrong unit. It is the unit moving, not
-> the fact. (Measuring in plain casts is what made this rule appear to fail at `scb@h800`.)
->
-> ⚠ The *size* of the pull penalty does move with passive haste — but only as an integer ratio of
-> covered casts. Arcane Power reads exactly −1/5, −1/10, −2/11, −1/11, −1/6, −1/12, −2/13, −1/13,
-> −1/7, −1/14, −2/15 as haste rises: `−(casts missed)/(casts covered)`, and the ramp occupies a
-> different number of cast slots as casts get faster. No spell power or crit anywhere in it.
->
-> **3. ★ THE ONE EXCEPTION, AND IT IS A HASTE EXCEPTION.** As passive haste rises toward the GCD cap
-> (**789 rating**, where the 3-stack interval is already floored at 1.0 s), a haste cooldown converts
-> less and less at steady state — but keeps converting at the **pull**, where casts are 2.500 / 2.166 /
-> 1.832 s and still longer than the floor. Above the cap the steady-state value is **zero** and the
-> pull is the entire value of the cooldown — together with the terminal cast, which rule 4 covers.
-> Damage cooldowns are unaffected: they have no cap.
->
-> **4. A cooldown whose window reaches the kill is worth more than an interior one — by part of one
-> cast.** The last cast of the fight is cut off mid-flight, and damage lands on *completion*, so
-> whatever fraction of it finishes before the boss dies is what it pays. A haste cooldown covering that
-> moment makes the cast shorter, so more of it lands. ★ **This is the one thing haste still buys above
-> the GCD cap**, because the cap limits how often you may *start* a cast, never how fast the cast
-> itself goes: at h=800 Icy Veins fits the identical 59 casts on the identical 1.000 s lattice, and
-> the whole of its value is the terminal cast completing in 0.828 s instead of 0.994 s.
->
-> **5. A RAID EXTERNAL behaves differently from a self-press, and this is the one place the two
-> families genuinely part.** A cooldown you press yourself cannot go off mid-cast, so its window
-> begins at your next cast boundary and runs its full duration from there. **Bloodlust does not wait
-> for you.** The shaman's cast completes, the aura lands, and its 40 s expires 40 s later whatever you
-> were doing — so the part of the window you spend finishing your in-flight cast is window you paid
-> for and cannot use:
->
->     usable = [call + slip, call + 40]        slip = the wait to your next cast boundary
->     covered = floor((40 − slip) / 1.1538) + 1  = 35 while slip ≤ 0.769 s at h=0, else 34
->
-> The buff never speeds up a cast already in flight — haste is snapshot at cast start. That is exactly
-> why the slip is lost rather than recovered. ⇒ **A raid external's value depends on the sub-cast phase
-> of the call**, alternating between two adjacent cast counts, where a self-press does not.
->
-> ⛔ The sim **cannot measure this** — its Bloodlust is an APL `castSpell`, so the aura can only begin
-> at one of the mage's own action opportunities and `slip` is structurally zero. A placement sweep in
-> wowsims returns 1462.30 DPS at *every* sub-cast offset, identical to the last digit. `docs/TOOLING.md`
-> carries the full write-up; do not read that flatness as the sim disagreeing with the model.
-
-### ★★ THE MODEL'S CAST LATTICE IS EXACT — sim-checked, and the pull advantage is REAL
-
-Every fact in Part I is a *model* measurement. This is the one that says the model may be trusted to
-produce them. Bare fight, **Icy Veins alone**, nothing else in the kit, `T=120 · h=0 · 1000 SP · 25 %` —
-model boundary-credited cast count (`Σfrac`) against wowsims' own Arcane Blast count:
-
-| Icy Veins at | model `Σfrac` | sim casts | model − sim |
-|---|---|---|---|
-| never | 78.669 | 78.660 | +0.008 |
-| **@0** | 81.391 | 81.381 | **+0.010** |
-| @5 | 81.335 | 81.327 | +0.008 |
-| @10 / @20 / @40 / @60 | 81.335 | 81.325 | +0.010 |
-
-**The model agrees with the sim to ±0.010 casts at every placement**, including the pull. Its lattice,
-its haste snapshot and its boundary credit are all sound in isolation — so any model/sim disagreement
-larger than that comes from cooldown *interaction*, never from the cast walk itself.
-
-> ### ★★★ AND THE h=0 PULL ADVANTAGE IS REAL — the sim confirms it to three decimals
->
-> | Icy Veins at | model gain | sim gain |
-> |---|---|---|
-> | **@0** | **2.722 casts** | **2.720 casts** |
-> | @5 … @60 (interior) | 2.666 | 2.665 |
->
-> **+2.10 % model against +2.06 % sim.** This settles a question that stood open through this whole
-> session as *"a pull advantage at h=0 that should not exist"*. It exists. It is worth **0.055 casts**,
-> both engines see it, and it is **not a model defect** — `docs/MODEL-DEFECTS.md` has been updated to
-> say so.
->
-> ⚠ What is still unexplained is the *arithmetic*: at h=0 nothing is floored, the ramp casts are
-> cast-bound and the steady casts are GCD-bound, and a haste multiplier divides both by the same factor
-> — so the closed form says the pull and the interior should be equal. **Two independent engines say
-> otherwise.** The gap is in the derivation, not in the model.
-
-### Where each haste cooldown hits the cap — the TENT
-
-A haste cooldown's steady-state value is **not** flat-then-cliff in passive haste. It is a tent, and its
-apex is that cooldown's own cap threshold. In steady state the Arcane Blast interval is GCD-bound at
-every haste (the 3-stack cast is 1.498 s, under the 1.5 s base GCD), so `interval = max(1.0, 1.5/m)`
-and one use of a cooldown lasting `d` seconds buys:
-
-| regime | casts bought | in passive haste |
-|---|---|---|
-| neither capped, **multiplier** ×v | `d·m_p·(v−1) / 1.5` | **rises** |
-| neither capped, **rating** +R | `d·R / (15.77·100·1.5)` | **flat** |
-| buff capped, passive not | `d·(1 − m_p/1.5)` | **falls**, to zero at 789 |
-| both capped | `0` | — |
-
-where `m_p = 1 + h/1577`. Three consequences, each measured below and each **invisible** at a
-0 / 400 / 800 sampling:
-
-1. **The apex is the threshold.** Where `m_b·m_p = 1.5` the buff first floors the GCD.
-2. **A multiplier gains value as you gear haste; a rating buff does not.** Same family, opposite
-   gearing behaviour — a multiplier scales the base it multiplies, a fixed rating does not.
-3. ★ **Above its own threshold, a cooldown's value stops depending on its strength at all.** The
-   falling limb mentions only *duration* and *passive haste*. Two 20 s haste cooldowns are worth
-   identically the same there, however differently they are specced — both pin the interval at the
-   1.0 s floor, and the floor does not care how hard you hit it.
-
-| cooldown | | threshold (passive haste rating) | value at the threshold |
-|---|---|---|---|
-| Bloodlust | ×1.30 | **242.6** | 9.22 casts |
-| Icy Veins | ×1.20 | **394.3** | 3.33 casts |
-| Mind Quickening Gem | +330 rating | **458.5** | 2.79 casts |
-| Berserking | ×1.10 | **573.5** | 0.91 casts |
-| Skull of Gul'dan | +175 rating | **613.5** | 1.48 casts |
-| *(no cooldown at all)* | — | *788.5* | — |
-
-*(The last column is the closed form at the threshold — the top of the tent. For the two multipliers it
-is also the measured maximum; for the two rating buffs it is the level of a plateau they have been
-sitting on since h=0, so their measured maximum lands wherever the millisecond ripple is highest rather
-than at the threshold.)*
-
-**These are measured, and the threshold is falsified rather than admired.** Each was re-fitted against
-counterfactual thresholds 50 rating either side; the stated value fits best in all five cases, so the
-bend is where it is claimed to be and not merely consistent with it:
-
-| cooldown | rms fit at the stated threshold | shifted −50 | shifted +50 |
-|---|---|---|---|
-| Bloodlust | **0.0729** | 0.1603 | 0.1782 |
-| Icy Veins | **0.0665** | 0.0865 | 0.0974 |
-| Mind Quickening Gem | **0.0641** | 0.0846 | 0.0829 |
-| Berserking | **0.0408** | 0.0496 | 0.0525 |
-| Skull of Gul'dan | **0.0425** | 0.0658 | 0.0751 |
-
-*(rms in casts, over 86 haste samples. "Measured argmax" is deliberately **not** the test: a rating
-buff's curve has no apex — it is flat, then falls — so its argmax lands wherever the millisecond ripple
-is highest, which is how Skull's peak reads h=30 against a threshold of 613.)*
-
-### The ladder
-
-`tools/facts-ladder.mjs`, 0→850 rating in steps of 10, one cooldown alone, interior placement. Value in
-casts; the closed form beside it. Every cooldown reaches zero at **790**, the first ladder step above
-the 788.5 bare cap.
-
-Bold marks each cooldown's own threshold row.
-
-| haste | Bloodlust 40 s ⚠ | Icy Veins 20 s | MQG 20 s | Berserking 10 s | Skull 20 s |
-|---|---|---|---|---|---|
-| 0 | 8.0734 | 2.6662 | 2.9466 | 0.7250 | 1.4993 |
-| 100 | 8.3180 | 3.0106 | 2.7963 | 0.7324 | 1.5202 |
-| 200 | 8.9955 | 3.1693 | 2.8126 | 0.8179 | 1.5192 |
-| **240** | **9.0162** | 3.1669 | 2.9185 | 0.8154 | 1.4877 |
-| 300 | 8.2542 | 3.3336 | 2.8348 | 0.8141 | 1.5290 |
-| **390** | 6.5803 | **3.3422** | 2.8759 | 0.9142 | 1.5629 |
-| 400 | 6.5824 | 3.2904 | 2.8736 | 0.9105 | 1.5548 |
-| **460** | 5.5474 | 2.7733 | **2.7733** | 0.9043 | 1.5060 |
-| 500 | 4.8813 | 2.4415 | 2.4415 | 0.9129 | 1.5638 |
-| **570** | 3.7036 | 1.8527 | 1.8527 | **0.9073** | 1.5073 |
-| 600 | 3.2000 | 1.6000 | 1.6000 | 0.8000 | 1.4894 |
-| **610** | 3.0315 | 1.5167 | 1.5167 | 0.7593 | **1.4981** |
-| 650 | 2.3355 | 1.1678 | 1.1678 | 0.5844 | 1.1678 |
-| 700 | 1.5024 | 0.7502 | 0.7502 | 0.3761 | 0.7502 |
-| 750 | 0.6680 | 0.3330 | 0.3330 | 0.1675 | 0.3330 |
-| 790 | 0.0000 | 0.0000 | 0.0000 | 0.0000 | 0.0000 |
-
-**Read the Icy Veins, MQG and Skull columns from the bottom.** At 460 the first two become the same
-number to four decimals; at 650 the third joins them. A ×1.20 multiplier, +330 rating and +175 rating
-— indistinguishable, because all three last 20 s and all three are past their own thresholds. Checked
-directly rather than by eye: over h = 640…760 the worst disagreement between them is **0.000000 casts**.
-That is consequence 3, and it is the sharpest confirmation of the falling limb available, because it
-assumes no model of the floor at all.
-
-The closed form tracks the measurement to within **0.1749 casts** worst-case over the whole ladder (Icy
-Veins at h=100), and the gap does **not** grow with haste — it is millisecond rounding (wowsims rounds
-every cast to whole ms) plus the 3-cast opening ramp, both of which the closed form ignores by
-construction. The apex rows read slightly under the closed-form peak for the same reason; the finest
-sweep puts Bloodlust's measured maximum at 9.244 (h=210) and Icy Veins' at 3.342 (h=390).
-
-⚠ **The Bloodlust column is the only one whose last digits depend on where the ladder sampled, and that
-is rule 5, not an error.** Being a raid external its window is anchored to the *call*, so its value
-alternates by **0.23 casts** between two adjacent covered-cast counts as the call moves across a cast
-period; "the" interior value is whichever phase the sample landed on. Every other column — all
-self-presses, all snapping to a cast boundary — has an interior spread of exactly 0.000000 at every
-rung. ⛔ The sim reads this column flat, and that is a harness limitation rather than a contradiction
-(`docs/TOOLING.md`).
-
-    node tools/facts-ladder.mjs --haste=0:850:10                 # the ladder above
-    node tools/facts-ladder.mjs --mode=grid   --haste=0:800:50   # the SP × crit independence check
-    node tools/facts-ladder.mjs --mode=placement --haste=0,400,800   # the per-placement tables below
-
-### ★ Where the PULL takes over — and it is the same threshold
-
-The tent describes the *interior* value. The **pull** value has its own curve, and the two cross at the
-same place. Below a cooldown's threshold the pull is worth a hair more than the interior and that
-margin barely moves; from the threshold onward it climbs without bound, because the interior is
-draining to zero while the pull — where casts are still 2.500 / 2.166 / 1.832 s — is not.
-
-Icy Veins (threshold **394.3**), as a fraction of the cooldown's own value:
-
-| passive haste | interior (casts) | pull (casts) | pull worth |
-|---|---|---|---|
-| 300 | 3.3336 | 3.2216 | −3.4 % |
-| 350 | 3.3393 | 3.3940 | +1.6 % |
-| **390** | **3.3422** | 3.3963 | +1.6 % |
-| 400 | 3.2904 | 3.3531 | +1.9 % |
-| 450 | 2.8635 | 3.0112 | +5.2 % |
-| 500 | 2.4415 | 2.6746 | +9.5 % |
-| 600 | 1.6000 | 2.0820 | +30.1 % |
-| 700 | 0.7502 | 1.3607 | +81.4 % |
-| 750 | 0.3330 | 1.0059 | +202 % |
-| 780 | 0.0798 | 0.7894 | +889 % |
-| **789** | **0.0000** | 0.7204 | the pull is the **whole** cooldown |
-
-The interior column peaks at 390 and falls from 400 — the tent apex. The pull column is flat-ish
-through 400 and then rises monotonically at every single rung. So the user's prediction (07-28) —
-*"the only observable difference in behavior starts to happen at passive haste's level where Icy Veins
-+ passive haste + 3 Arcane Blast stacks = GCD cap, where Icy Veins is pushed to start @0"* — is
-confirmed, at **394.3** rather than the remembered 389.
-
-⚠ The residual **+2.1 %** the pull carries *below* the threshold is not explained by any of this, and
-is filed as an open question in `docs/MODEL-DEFECTS.md`. It is small (0.0554 casts) and it does not
-grow, but it should be zero by the arithmetic. **The figure was 2.812 % until 07-28** — that version
-averaged the *terminal* placement into the interior baseline, which rule 4 now says is a different
-regime; excluding it gives 2.078 %.
-
-### The terminal placement — what the last row of every table is
-
-The bottom row of each table below is the press at `T − duration`: the window ends exactly on the kill.
-It is **not** clipped — nothing is lost off the end — and it is not an interior placement either. It is
-its own regime, because it is the only placement that touches the fight's last, half-finished cast.
-
-Decomposed (Icy Veins, `T=60`, so the terminal press is @40), splitting the cooldown's value into the
-casts before the last one and the last one alone:
-
-| passive haste | interior placement | terminal placement | of which: the earlier casts | the terminal cast |
-|---|---|---|---|---|
-| 0 | 2.6662 | 2.5330 | 3.0000 | −0.4670 |
-| 200 | 3.1693 | 2.9515 | 3.0000 | −0.0486 |
-| 400 | 3.2904 | 3.1140 | 3.0000 | 0.1140 |
-| 600 | 1.6000 | 1.5977 | 2.0000 | −0.4023 |
-| **800** | **0.0000** | **0.1390** | **0.0000** | **0.1390** |
-
-*(casts, relative to never pressing it)*
-
-**The h=800 row is the clean one, and it is the answer to "does the kill respect the GCD cap?" — it
-does.** Above the cap the earlier casts pay exactly nothing: the lattice is byte-identical with and
-without Icy Veins, 59 casts either way, 1.000 s apart either way. The entire 0.1390 is the last cast:
-
-    it starts at 59.311 with 0.689 s of fight left
-    bare:  0.689 / 0.994 s cast = 0.6932 of it lands
-    IV:    0.689 / 0.828 s cast = 0.8321 of it lands      difference 0.1390 casts
-
-The GCD floor caps how often you may **start** a cast. It has never capped how fast a cast **goes** —
-those are different clocks, and only the second one decides whether the last cast beats the boss's
-death. The sim agrees independently: at h=800 it reads 0.00 DPS at every interior placement of Icy
-Veins and **5.20 DPS** at the terminal one.
-
-⚠ The other rows are muddier, and honestly so: below the cap, moving a haste cooldown also shifts every
-cast after it, so the terminal column there mixes the real effect above with the lattice-phase artifact
-recorded as `docs/MODEL-DEFECTS.md` D1. Only the h=800 row isolates it, which is exactly why it is the
-one to quote.
-
-## Baselines
-
-| | fight | passive haste | spell power | crit |
-|---|---|---|---|---|
-| **A** | 60 s | 0 | 1000 | 25 % |
-| **B** | 60 s | 400 | 1000 | 25 % |
-| **C** | 60 s | 800 (above the cap) | 1000 | 25 % |
-
-All: Tirisfal 2-pc/4-pc **off**, mana **infinite**, opener **cold** (`_prestack: 0`), 3 stacks built at
-**t = 6.50 s**, sim 20 000 iterations seed 11.
-
-    node tools/buff-atlas.mjs --T 60 --sp 1000 --crit 25 --haste {0,400,800} --step 5 --md
-
-Columns are **absolute value added by the press**: `DPS(one press) − DPS(never press)` for the sim, and
-`robust(one press) − robust(no presses)` for the model. Different units — compare *shapes*.
-
-⛔ Power Infusion and Drums of Battle are omitted: `sim/planspec.mjs` lists both as `UNTRANSCRIBABLE`
-(wowsims has no APL action for either), so they could only produce a model column with nothing to check
-it against. Ashtongue is out too — a proc, not a press.
+⛔ **Never quote a `--score=point` number as a fact.** It is a realisation at one cast-lattice phase,
+and the phase is not a property of the game.
 
 ---
 
-## 1. Icy Veins
+# 0. Constants
 
-+20 % casting haste, as a **multiplier** — it stacks multiplicatively with Bloodlust and Berserking, and is subject to the 1.0 s GCD floor.
+All read from `GAME` in `index.html` — never re-typed into a tool (reference-gear doctrine).
 
-| duration | cooldown | kind |
+| symbol | value | meaning |
 |---|---|---|
-| 20 s | 3 min | haste |
-
-### Conclusions
-
-**Placement does not matter at steady state.** Every interior placement is worth the same, at every
-baseline measured.
-
-**Pressed at the pull it is worth more, and the gap grows with passive haste.** The opening casts are
-2.500 / 2.166 / 1.832 s — longer than the GCD floor — so haste still converts there after it has
-stopped converting at 3 stacks.
-
-**Above the passive GCD cap (789 rating) it is worth nothing at any interior placement.** At h=800 it is
-0.00 DPS at every steady-state placement and 22.71 DPS pressed at 0.
-
-### Data
-
-**Baseline A — passive haste 0**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 85.21 | 4701.4 | pull |
-| 5s | 83.52 | 4605.7 |  |
-| 10s | 83.45 | 4605.7 |  |
-| 15s | 83.45 | 4605.7 |  |
-| 20s | 83.45 | 4605.7 |  |
-| 25s | 83.45 | 4605.7 |  |
-| 30s | 83.45 | 4605.7 |  |
-| 35s | 83.45 | 4605.7 |  |
-| 40s | 83.44 | 4375.6 | covers the kill |
-
-**Baseline B — passive haste 400**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 104.91 | 5792.3 | pull |
-| 5s | 102.86 | 5683.9 |  |
-| 10s | 102.81 | 5683.9 |  |
-| 15s | 102.81 | 5683.9 |  |
-| 20s | 102.81 | 5683.9 |  |
-| 25s | 102.81 | 5683.9 |  |
-| 30s | 102.81 | 5683.9 |  |
-| 35s | 102.81 | 5683.9 |  |
-| 40s | 101.38 | 5379.2 | covers the kill |
-
-**Baseline C — passive haste 800**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 22.71 | 1237.3 | pull |
-| 5s | 0.01 | 0.0 |  |
-| 10s | 0.00 | 0.0 |  |
-| 15s | 0.00 | 0.0 |  |
-| 20s | 0.00 | 0.0 |  |
-| 25s | 0.00 | 0.0 |  |
-| 30s | 0.00 | 0.0 |  |
-| 35s | 0.00 | 0.0 |  |
-| 40s | 5.20 | 240.1 | covers the kill |
-
-
-## 2. Berserking
-
-+10 % casting haste (Troll racial). Multiplier, same floor.
-
-| duration | cooldown | kind |
-|---|---|---|
-| 10 s | 3 min | haste |
-
-### Conclusions
-
-Identical in shape to Icy Veins at every baseline; only the magnitude differs (10 % vs 20 %, 10 s vs
-20 s). Flat at steady state, better at the pull, and **worth nothing in the interior above the cap**
-(h=800: 0.00 DPS steady, 12.28 DPS at 0).
-
-### Data
-
-**Baseline A — passive haste 0**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 23.56 | 1306.5 | pull |
-| 5s | 22.65 | 1252.3 |  |
-| 10s | 22.65 | 1252.3 |  |
-| 15s | 22.65 | 1252.3 |  |
-| 20s | 22.65 | 1252.3 |  |
-| 25s | 22.65 | 1252.3 |  |
-| 30s | 22.65 | 1252.3 |  |
-| 35s | 22.65 | 1252.3 |  |
-| 40s | 22.65 | 1252.3 |  |
-| 45s | 22.65 | 1252.3 |  |
-| 50s | 19.91 | 975.3 | covers the kill |
-
-**Baseline B — passive haste 400**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 26.54 | 1465.8 | pull |
-| 5s | 28.17 | 1572.7 |  |
-| 10s | 28.23 | 1572.7 |  |
-| 15s | 28.23 | 1572.7 |  |
-| 20s | 28.23 | 1572.7 |  |
-| 25s | 28.23 | 1572.7 |  |
-| 30s | 28.23 | 1572.7 |  |
-| 35s | 28.23 | 1572.7 |  |
-| 40s | 28.23 | 1572.7 |  |
-| 45s | 28.23 | 1572.7 |  |
-| 50s | 25.47 | 1348.6 | covers the kill |
-
-**Baseline C — passive haste 800**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 12.28 | 670.8 | pull |
-| 5s | 0.00 | 0.0 |  |
-| 10s | 0.00 | 0.0 |  |
-| 15s | 0.00 | 0.0 |  |
-| 20s | 0.00 | 0.0 |  |
-| 25s | 0.00 | 0.0 |  |
-| 30s | 0.00 | 0.0 |  |
-| 35s | 0.00 | 0.0 |  |
-| 40s | 0.00 | 0.0 |  |
-| 45s | 0.00 | 0.0 |  |
-| 50s | 2.83 | 120.7 | covers the kill |
-
-
-## 3. Bloodlust
-
-+30 % casting haste, raid-wide. Multiplier, same floor. **Pressed by someone else** — the planner treats it as a pinned raid call.
-
-| duration | cooldown | kind |
-|---|---|---|
-| 40 s | 10 min (Sated) | haste |
-
-### Conclusions
-
-Flat at steady state, better at the pull, and **worth nothing in the interior above the cap** (h=800:
-0.00 DPS steady, 29.46 DPS at 0). The largest haste cooldown in the game and it obeys the same rule as
-the smallest.
-
-### Data
-
-**Baseline A — passive haste 0**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 255.22 | 14080.0 | pull |
-| 5s | 252.81 | 13547.2 |  |
-| 10s | 252.80 | 13547.2 |  |
-| 15s | 252.80 | 13946.2 |  |
-| 20s | 245.68 | 13293.7 | covers the kill |
-
-**Baseline B — passive haste 400**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 221.64 | 12245.2 | pull |
-| 5s | 205.75 | 11370.6 |  |
-| 10s | 205.63 | 11085.8 |  |
-| 15s | 205.63 | 11370.6 |  |
-| 20s | 207.67 | 11197.0 | covers the kill |
-
-**Baseline C — passive haste 800**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 29.46 | 1605.8 | pull |
-| 5s | 0.01 | 0.0 |  |
-| 10s | 0.00 | 0.0 |  |
-| 15s | 0.00 | 0.0 |  |
-| 20s | 7.29 | 360.5 | covers the kill |
-
-
-## 4. Mind Quickening Gem
-
-+330 haste **rating** — added to the rating pool before the percentage is computed, rather than multiplying it.
-
-| duration | cooldown | kind |
-|---|---|---|
-| 20 s | 5 min | haste |
-
-### Conclusions
-
-A haste **rating** buff, and it behaves exactly like the multipliers: flat at steady state, better at
-the pull, nothing in the interior above the cap (h=800: 0.00 steady, 16.49 at 0). Rating and multiplier
-differ in how they combine with *each other*, not in whether placement matters on a bare fight.
-
-### Data
-
-**Baseline A — passive haste 0**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 87.80 | 4888.2 | pull |
-| 5s | 91.28 | 5090.0 |  |
-| 10s | 91.40 | 5090.0 |  |
-| 15s | 91.40 | 5090.0 |  |
-| 20s | 91.40 | 5090.0 |  |
-| 25s | 91.40 | 5090.0 |  |
-| 30s | 91.40 | 5090.0 |  |
-| 35s | 91.40 | 5090.0 |  |
-| 40s | 85.96 | 4587.3 | covers the kill |
-
-**Baseline B — passive haste 400**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 90.38 | 5040.6 | pull |
-| 5s | 89.04 | 4964.0 |  |
-| 10s | 89.01 | 4964.0 |  |
-| 15s | 89.01 | 4964.0 |  |
-| 20s | 89.01 | 4964.0 |  |
-| 25s | 89.01 | 4964.0 |  |
-| 30s | 89.01 | 4964.0 |  |
-| 35s | 89.01 | 4964.0 |  |
-| 40s | 84.55 | 4577.0 | covers the kill |
-
-**Baseline C — passive haste 800**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 16.49 | 903.7 | pull |
-| 5s | 0.00 | 0.0 |  |
-| 10s | 0.00 | 0.0 |  |
-| 15s | 0.00 | 0.0 |  |
-| 20s | 0.00 | 0.0 |  |
-| 25s | 0.00 | 0.0 |  |
-| 30s | 0.00 | 0.0 |  |
-| 35s | 0.00 | 0.0 |  |
-| 40s | 3.76 | 166.0 | covers the kill |
-
-
-## 5. Skull of Gul’dan
-
-+175 haste **rating**.
-
-| duration | cooldown | kind |
-|---|---|---|
-| 20 s | 2 min | haste |
-
-### Conclusions
-
-Same as Mind Quickening Gem in every respect (h=800: 0.00 steady, 9.67 at 0).
-
-### Data
-
-**Baseline A — passive haste 0**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 48.96 | 2646.5 | pull |
-| 5s | 47.93 | 2590.0 |  |
-| 10s | 47.90 | 2590.0 |  |
-| 15s | 47.90 | 2590.0 |  |
-| 20s | 47.90 | 2590.0 |  |
-| 25s | 47.90 | 2590.0 |  |
-| 30s | 47.90 | 2590.0 |  |
-| 35s | 47.90 | 2590.0 |  |
-| 40s | 47.85 | 2430.1 | covers the kill |
-
-**Baseline B — passive haste 400**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 47.47 | 2586.1 | pull |
-| 5s | 49.03 | 2685.8 |  |
-| 10s | 49.09 | 2685.8 |  |
-| 15s | 49.09 | 2685.8 |  |
-| 20s | 49.09 | 2685.8 |  |
-| 25s | 49.09 | 2685.8 |  |
-| 30s | 49.09 | 2685.8 |  |
-| 35s | 49.09 | 2685.8 |  |
-| 40s | 46.60 | 2431.1 | covers the kill |
-
-**Baseline C — passive haste 800**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 9.67 | 514.4 | pull |
-| 5s | 0.00 | 0.0 |  |
-| 10s | 0.00 | 0.0 |  |
-| 15s | 0.00 | 0.0 |  |
-| 20s | 0.00 | 0.0 |  |
-| 25s | 0.00 | 0.0 |  |
-| 30s | 0.00 | 0.0 |  |
-| 35s | 0.00 | 0.0 |  |
-| 40s | 2.13 | 87.9 | covers the kill |
-
-
-## 6. Arcane Power
-
-+30 % spell damage (and +30 % mana cost, outside these infinite-mana baselines).
-
-| duration | cooldown | kind |
-|---|---|---|
-| 15 s | 3 min | damage |
-
-### Conclusions
-
-**Placement does not matter from 3 Arcane Blast stacks onward** — every interior placement is worth the
-same, at every baseline.
-
-**Pressed at the pull it is worth materially less**, because a fixed-duration damage buff is worth the
-casts it covers and the ramp casts are slower. The size of that penalty moves with baseline: 18.6 DPS
-at h=0, 9.9 at h=400, 19.0 at h=800.
-
-**A press at 5 s is already at full value** — the press fires at the next cast boundary, 6.50 s, which
-is the first full-stack cast. The penalty is confined to the pull itself.
-
-⚠ Unlike the haste cooldowns, **nothing here changes above the GCD cap.** A damage buff has no cap.
-
-### Data
-
-**Baseline A — passive haste 0**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 75.08 | 4145.8 | ramp, pull |
-| 5s | 93.69 | 5182.3 | ramp |
-| 10s | 93.94 | 5182.3 |  |
-| 15s | 93.82 | 5182.3 |  |
-| 20s | 93.95 | 5182.3 |  |
-| 25s | 93.94 | 5182.3 |  |
-| 30s | 93.97 | 5182.3 |  |
-| 35s | 93.85 | 5182.3 |  |
-| 40s | 93.79 | 5182.3 |  |
-| 45s | 90.59 | 5010.7 | covers the kill |
-
-**Baseline B — passive haste 400**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 103.18 | 5700.5 | ramp, pull |
-| 5s | 113.05 | 6218.7 | ramp |
-| 10s | 112.91 | 6218.7 |  |
-| 15s | 113.02 | 6218.7 |  |
-| 20s | 113.01 | 6218.7 |  |
-| 25s | 112.95 | 6218.7 |  |
-| 30s | 112.88 | 6218.7 |  |
-| 35s | 112.91 | 6218.7 |  |
-| 40s | 113.00 | 6218.7 |  |
-| 45s | 111.48 | 6113.3 | covers the kill |
-
-**Baseline C — passive haste 800**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 122.48 | 6736.9 | ramp, pull |
-| 5s | 141.50 | 7773.4 |  |
-| 10s | 141.39 | 7773.4 |  |
-| 15s | 141.52 | 7773.4 |  |
-| 20s | 141.41 | 7773.4 |  |
-| 25s | 141.38 | 7773.4 |  |
-| 30s | 141.41 | 7773.4 |  |
-| 35s | 141.49 | 7773.4 |  |
-| 40s | 141.46 | 7773.4 |  |
-| 45s | 138.41 | 7614.4 | covers the kill |
-
-
-## 7. Icon of the Silver Crescent
-
-+155 spell damage.
-
-| duration | cooldown | kind |
-|---|---|---|
-| 20 s | 2 min | damage |
-
-### Conclusions
-
-Same two facts as Arcane Power, with a smaller pull penalty because the window is longer (20 s, so the
-ramp is a smaller share of it): 2.4 DPS at h=0, 2.4 at h=400, 4.7 at h=800. Flat from full stacks
-onward at every baseline, and unaffected by the GCD cap.
-
-### Data
-
-**Baseline A — passive haste 0**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 27.56 | 1600.1 | ramp, pull |
-| 5s | 29.96 | 1733.4 | ramp |
-| 10s | 29.96 | 1733.4 |  |
-| 15s | 29.96 | 1733.4 |  |
-| 20s | 29.98 | 1733.4 |  |
-| 25s | 29.97 | 1733.4 |  |
-| 30s | 29.96 | 1733.4 |  |
-| 35s | 29.94 | 1733.4 |  |
-| 40s | 29.19 | 1689.3 | covers the kill |
-
-**Baseline B — passive haste 400**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 34.59 | 2000.1 | ramp, pull |
-| 5s | 36.98 | 2133.5 | ramp |
-| 10s | 36.96 | 2133.5 |  |
-| 15s | 36.99 | 2133.5 |  |
-| 20s | 36.96 | 2133.5 |  |
-| 25s | 36.96 | 2133.5 |  |
-| 30s | 36.96 | 2133.5 |  |
-| 35s | 36.96 | 2133.5 |  |
-| 40s | 36.61 | 2106.3 | covers the kill |
-
-**Baseline C — passive haste 800**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 41.63 | 2400.1 | ramp, pull |
-| 5s | 46.31 | 2666.8 |  |
-| 10s | 46.28 | 2666.8 |  |
-| 15s | 46.28 | 2666.8 |  |
-| 20s | 46.28 | 2666.8 |  |
-| 25s | 46.28 | 2666.8 |  |
-| 30s | 46.28 | 2666.8 |  |
-| 35s | 46.29 | 2666.8 |  |
-| 40s | 45.56 | 2625.9 | covers the kill |
-
-
-## 8. Serpent-Coil Braid
-
-+225 spell damage, delivered by using a **Mana Emerald** while wearing the belt. ⚠ The item that must be *equipped* (30720) is not the item that is *cast* (22044).
-
-| duration | cooldown | kind |
-|---|---|---|
-| 15 s | 2 min (Mana Emerald, 3 charges) | damage |
-
-### Conclusions
-
-Same two facts again. ⚠ This is the smallest-value cooldown in the table (≈33 DPS against ~1700 total),
-so it has the worst signal-to-noise of any row: its steady-state column wanders ~1 DPS, and that spread
-**shrinks with iterations** (2.98 % at 10 k → 1.85 % at 60 k), which is the signature of Monte-Carlo
-noise rather than a mechanism. Read it with more iterations or a multi-seed band before drawing a
-conclusion from a small difference.
-
-### Data
-
-**Baseline A — passive haste 0**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 25.71 | 1548.5 | ramp, pull |
-| 5s | 32.47 | 1935.6 | ramp |
-| 10s | 32.75 | 1935.6 |  |
-| 15s | 33.36 | 1935.6 |  |
-| 20s | 33.02 | 1935.6 |  |
-| 25s | 33.28 | 1935.6 |  |
-| 30s | 33.39 | 1935.6 |  |
-| 35s | 33.57 | 1935.6 |  |
-| 40s | 33.20 | 1935.6 |  |
-| 45s | 32.01 | 1871.5 | covers the kill |
-
-**Baseline B — passive haste 400**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 35.25 | 2129.2 | ramp, pull |
-| 5s | 38.85 | 2322.7 | ramp |
-| 10s | 39.60 | 2322.7 |  |
-| 15s | 39.36 | 2322.7 |  |
-| 20s | 39.74 | 2322.7 |  |
-| 25s | 39.98 | 2322.7 |  |
-| 30s | 39.85 | 2322.7 |  |
-| 35s | 39.60 | 2322.7 |  |
-| 40s | 39.91 | 2322.7 |  |
-| 45s | 39.43 | 2283.4 | covers the kill |
-
-**Baseline C — passive haste 800**
-
-| press at | sim DPS added | model added | |
-|---|---|---|---|
-| 0s | 42.46 | 2516.3 | ramp, pull |
-| 5s | 49.41 | 2903.4 |  |
-| 10s | 49.97 | 2903.4 |  |
-| 15s | 49.95 | 2903.4 |  |
-| 20s | 50.02 | 2903.4 |  |
-| 25s | 49.94 | 2903.4 |  |
-| 30s | 49.74 | 2903.4 |  |
-| 35s | 50.04 | 2903.4 |  |
-| 40s | 49.84 | 2903.4 |  |
-| 45s | 49.15 | 2844.0 | covers the kill |
+| `G` | 1.5 s | base global cooldown |
+| `F` | 1.0 s | GCD floor |
+| `C₃` | 1.498 s | 3-stack Arcane Blast cast time = `2.5 − 3 × 0.334` |
+| `RTG` | 1577 | haste rating for +100 % (15.77 per 1 %) |
+| `COEF` | 2.5/3.5 = 0.714286 | Arcane Blast spell-power coefficient |
+| `BASE` | 720 | average Arcane Blast base damage |
+
+The **haste multiplier** of a state is
+
+    m  =  m_p · Π vᵢ · (1 + Σ rⱼ / RTG)          m_p = 1 + h / RTG
+
+multiplicative buffs `vᵢ` (Bloodlust ×1.3, Icy Veins ×1.2, Berserking ×1.1, Power Infusion ×1.2),
+rating buffs `rⱼ` (Mind Quickening Gem +330, Skull of Gul'dan +175) folded into one additive pool with
+passive rating. **Rating adds, multipliers multiply.** That asymmetry is the source of half the rules
+below.
 
 ---
 
----
+# 1. THE MASTER LAW — cast rate
 
-# Part II — two cooldowns at a time
+    rate(m)  =  min( 1/F , m/G )  =  min( 1 , m/1.5 )        casts per second
 
-Everything above is one cooldown alone, which is deliberately blind to the thing the planner actually
-optimizes: **alignment**. This part adds the second cooldown, and one number carries all of it.
+That is the whole steady-state model. `C₃ < G` always, so Arcane Blast is **GCD-bound at every haste**
+and the cast time never enters the rate — only the GCD does. Everything else in this file is arithmetic
+on this one expression.
 
-## The combination law
+*Verified: engine integral matches at h = 0, 200, 400, 600, 788.5, 900 (exact, once the opener term in
+§1.2 is accounted for).*
 
-    interaction(a, b)  =  V(both)  −  V(a alone)  −  V(b alone)
+## 1.1 The cap
 
-Zero means the two are independent and may be placed separately. Everything the planner is *for* lives
-in the cases where it is not zero.
+`rate` stops rising when `m = G/F = 1.5`.
 
-> ### ★ THE LAW, for a HASTE cooldown paired with a VALUE cooldown
-> *(one of four — the full set is the composition table below)*
->
->     interaction = Δ(casts the value buff covers) × s
->
->     where  Δ(covered) = casts it covers WITH the haste buff − casts it covers WITHOUT
->            s          = the value buff's per-cast bonus, relative to a plain Arcane Blast
->                       = COEF·ΔSP / (AVG_BASE + COEF·SP)     for a +spell-power buff
->                       = value − 1                            for a damage multiplier
->
-> The haste cooldown does not make the value cooldown *stronger*; it makes it cover **more casts**.
-> That is the whole of the interaction, and `Δ(covered)` is always a **whole number** away from a
-> boundary — you cannot cover two-thirds of a cast.
->
-> ⚠ **Count the covered casts at COMPLETION, and read them off the board, not off the clock.** A value
-> buff applies over `(auraStart, auraStart + dur]` measured at each cast's *completion*, and `auraStart`
-> is the next cast boundary after the press — which the haste cooldown itself moves. Reconstructing the
-> window by hand from the press time gives the wrong count (it did here, twice); `casts[].sp` records
-> what the model actually applied.
+    bare GCD cap:  m_p = 1.5  ⇒  h = 788.5 rating
 
-> ### ★★ THE GENERALISATION BACK INTO THE SINGLES — per point of temporary spell power
->
->     d(interaction) / d(ΔSP)  =  Δ(covered) · COEF / (AVG_BASE + COEF·SP)
->
-> A haste cooldown gains this much per 1 point of temporary spell power it is overlaid with. It is
-> **symmetric** and may be read from either end — the haste cooldown is worth more because the extra
-> casts it creates are worth more, or the value buff is worth more because it covers more casts. Same
-> number, and there is no third effect.
->
-> Note what is and is not in it: `Δ(covered)` depends on passive **haste** and on the two durations;
-> the denominator depends on passive **spell power**. Crit appears nowhere — it scales the cooldown and
-> the plain cast alike and cancels, exactly as in rule 2b.
+Above it, **every further haste point is worth exactly zero** — not "less", zero. This is a hard corner,
+not a taper.
 
-## ★★★ THE COMPOSITION TABLE — it does not matter WHICH spell, only by how much
+## 1.2 The opener costs exactly **1.332 casts**, at every haste
 
-User, 2026-07-28: *"from this point onwards it shouldn't really matter what spell or what effect is the
-one modifying the haste or damage side of the equation, just by how much."* That is right, and the
-table below is the whole of it. **Which rule applies is decided by where the modifier sits in the damage
-formula**, not by the cooldown's name, icon, or which "family" a doc filed it under:
+The first three Arcane Blasts of any cold start run at 0, 1 and 2 debuff stacks:
+`C_k = 2.5 − k × 0.334` = 2.500 / 2.166 / 1.832 s. Their intervals are `max(C_k/m, max(F, G/m))`.
 
-    dmg = (AVG_BASE + COEF · sp) · critFactor · dmgMult          per cast
-    interval = max(GCD_FLOOR, GCD_BASE / m)                       how many casts
+    opener deficit  =  ( Σₖ C_k − 3G ) / G  =  (6.498 − 4.5) / 1.5  =  1.332 casts
 
-| modifier | where it acts | reduce it to |
-|---|---|---|
-| +N spell power | inside the bracket | `s = COEF·N / (AVG_BASE + COEF·SP)` |
-| ×v damage | multiplies everything | `s = v − 1` |
-| ×v haste | the interval | `v` |
-| +R haste rating | the interval | `v = (1 + (h+R)/1577) / (1 + h/1577)` |
-| crit | multiplies everything | **nothing — it cancels** |
+★ **`m` cancels.** While every ramp cast is longer than the GCD — true up to `m = 1.832`, i.e. h ≈ 1312,
+far beyond any gear — the opener costs the same 1.332 casts no matter how much haste you have.
+*Verified: the engine's integral sits a constant 0.00444 casts/s under the steady-state law at h = 0,
+200, 400 and 600, which over T = 300 s is 1.332 casts — the same number at every haste.*
 
-Then every pair follows one of four rules, and no cooldown identity survives into any of them:
+⇒ **Haste cannot compress the opener.** A haste cooldown pressed at the pull buys nothing from the ramp;
+it buys only what it covers *after* the ramp. This is why the model opens cold and why a prepull
+silently corrupts a haste comparison (RULES §3, TOOLING ★★★).
 
-| pair | interaction | sign |
-|---|---|---|
-| **sp × sp** | `0` — exactly, always | none |
-| **dmg × sp**, **dmg × dmg** | `n × s₁ × s₂` | always **+** |
-| **haste × value** | `Δ(covered) × s` | always **+** |
-| **haste × haste** | `d·[1/i(v₁v₂m) + 1/i(m) − 1/i(v₁m) − 1/i(v₂m)]` | **+** below `m_p = 1.5/(v₁+v₂−1)`, **−** above |
+## 1.3 What one point of haste rating is worth
 
-Three things follow that are worth stating out loud, because each one contradicts a natural guess:
+    d(rate)/dh  =  1 / (G · RTG)  =  1 / 2365.5  =  4.2274e-4  casts/s per point       (m < 1.5)
+                =  0                                                                    (m ≥ 1.5)
 
-1. **Two spell-power buffs cannot interact** — spell power is additive inside the bracket, so two
-   deltas are one bigger delta. (P2, measured `0.000000` everywhere.)
-2. **Arcane Power is not a spell-power buff.** It is a damage *multiplier*, so it multiplies the
-   spell-power bonus too and does interact with Icon and Serpent-Coil. Filing it with them under
-   "value cooldowns" gets this backwards. (P3.)
-3. **Only haste × haste can be negative**, and it is the only rule with a threshold in it — because it
-   is the only one where the GCD floor can refuse to spend what you bought. (P4.)
+Over a fight of `T` seconds: **`T / 2365.5` casts per rating point.**
 
-⇒ **To price a cooldown this corpus has never seen, you need three numbers and no lore**: its duration,
-which of the two clocks it moves, and by how much.
-
-## P1. Icy Veins + Icon of the Silver Crescent
-
-+20 % casting haste (20 s) with +155 spell power (20 s). Equal durations, so "aligned" means pressing
-both at the same second.
-
-### Conclusions
-
-**Overlapping wins, and it is worth about a sixth of a cast.** At h=0 / 1000 SP the best aligned layout
-beats the best disjoint one by **0.1762 casts** (+0.42 % of the fight). **Sim-confirmed**: +0.389 %
-measured against +0.416 % modelled, and +0.705 % against +0.731 % on the other disjoint arrangement —
-both agreeing to 0.03 pp against a ±0.035 % seed band.
-
-**Below Icy Veins' cap threshold, press them at the same moment, as early as 3 stacks allow.** Every
-aligned interior placement from @5 to @35 is *identical* (3.9013 casts at h=0/1000 SP) and every one of
-them beats every non-aligned layout. The interaction is exactly **3.000 × s** at all of them.
-
-**Above the threshold Icy Veins moves to the pull and Icon stays at 3 stacks** — `IV@0 + Icon@5`. This
-is the layout the planner should produce at high haste, and it is *not* an abandonment of the overlap:
-two 20 s windows 5–6 s apart still share 15 s, so moving Icy Veins to the pull surrenders **exactly one
-covered cast**, not the whole interaction.
-
-**The breakpoint moves DOWN as passive spell power rises**, because a fixed +155 is worth relatively
-less on a bigger base, so there is less reason to stay aligned with it.
-
-### The exact trade
-
-Moving Icy Veins from aligned to the pull is worth, in casts:
-
-    margin = (Icy Veins' own pull advantage)  −  Δ(covered) × s
-           = 0.0544                           −  1 × s              at h=340
-
-Measured at h=340 against the closed form, and the surrendered coverage is **1.000 covered cast** at
-every spell power:
-
-| passive SP | s | Icon-covered casts, aligned → pulled | predicted margin | measured margin |
-|---|---|---|---|---|
-| 500 | 0.10279 | 19.000 → 18.000 | −0.0484 | **−0.0484** |
-| 1000 | 0.07719 | 19.000 → 18.000 | −0.0228 | **−0.0228** |
-| 2000 | 0.05153 | 19.000 → 18.000 | +0.0029 | **+0.0029** |
-| 4000 | 0.03095 | 19.000 → 18.000 | +0.0234 | **+0.0234** |
-
-(negative = stay aligned). Four decimals, four spell powers. Setting the margin to zero gives the
-break-even directly: at h=340 it is **1841 passive spell power**.
-
-### Breakpoints
-
-Where `IV@0 + Icon@t` first beats `IV@t + Icon@t`, brute-forced on a 1 s press grid:
-
-| passive SP | s | Icy Veins leaves the interior at |
-|---|---|---|
-| 500 | 0.10279 | **h = 425** |
-| 1000 | 0.07719 | **h = 410** |
-| 2000 | 0.05153 | below the threshold — see the warning |
-| 4000 | 0.03095 | below the threshold — see the warning |
-
-Above the breakpoint the margin grows monotonically and without competition: at 1000 SP it is +0.006
-casts at h=410, +0.056 at 440, +0.24 at 550, +0.53 at 700.
-
-⚠ **Below Icy Veins' 394.3 threshold this comparison is not stable, and that instability is a model
-artifact rather than a fact about the game.** The margin there is `residual − s`, where `residual` is the ~0.0544-cast pull advantage the
-model shows below every threshold and that the arithmetic says should be zero
-(`docs/MODEL-DEFECTS.md`, open question). So:
-
-* at 500 and 1000 SP, `s` comfortably exceeds the residual and aligned wins cleanly at every rung —
-  the answer is stable and correct;
-* at 2000 SP `s ≈ residual` and the model's answer **flips back and forth in bands** as passive haste
-  moves (aligned at 200–220 and 300–320, pulled at 150–190, 230–290, 330+), with the pulled margins at
-  ~0.003 casts and the aligned ones at ~0.16;
-* at 4000 SP the residual wins outright and the model prefers the pull everywhere.
-
-⇒ **The SP-dependence of the breakpoint is real and its direction is confirmed. Its exact location at
-high passive spell power is currently decided by the unexplained residual**, and should be re-measured
-once that is settled. It is the first time the residual has been seen choosing a *pair* layout rather
-than nudging a single one.
-
-### Data
-
-`node tools/facts-pair.mjs --a=icyVeins --b=isc --haste=0 --sp=1000 --step=5`
-
-Aligned diagonal at h=0 / 1000 SP (`s = 0.07719`) — press both at @t:
-
-| t | pair (casts) | interaction | interaction / s | regime |
-|---|---|---|---|---|
-| 0 | 3.8023 | 0.1544 | **2.000** | pull |
-| 5 | 3.9013 | 0.2316 | **3.000** | interior |
-| 10 | 3.9013 | 0.2316 | **3.000** | interior |
-| 15 | 3.9013 | 0.2316 | **3.000** | interior |
-| 20 | 3.9013 | 0.2316 | **3.000** | interior |
-| 25 | 3.9013 | 0.2316 | **3.000** | interior |
-| 30 | 3.9013 | 0.2316 | **3.000** | interior |
-| 35 | 3.9013 | 0.2316 | **3.000** | interior |
-| 40 | 3.7065 | 0.1955 | 2.533 | terminal |
-
-The three placement regimes of Part I reappear in the *interaction*: whole in the interior, one cast
-smaller at the pull (the ramp casts are long, so Icy Veins creates fewer extra casts inside a 20 s
-window), and fractional at the kill (boundary credit).
-
-Covered-cast counts behind the interior row, read off `casts[].sp` — Icon covers **13** casts alone and
-**16** with Icy Veins, at every interior placement.
-
-And the interaction is exactly `3 × s` at every spell power, which is the generalisation stated as a
-measurement rather than a derivation:
-
-| passive SP | s | interaction | interaction / s | per 1 temporary SP |
-|---|---|---|---|---|
-| 500 | 0.10279 | 0.30836 | 3.0000 | 1.9894e−3 |
-| 750 | 0.08817 | 0.26451 | 3.0000 | 1.7065e−3 |
-| 1000 | 0.07719 | 0.23157 | 3.0000 | 1.4940e−3 |
-| 1500 | 0.06180 | 0.18541 | 3.0000 | 1.1962e−3 |
-| 2000 | 0.05153 | 0.15459 | 3.0000 | 9.9734e−4 |
-| 3000 | 0.03867 | 0.11602 | 3.0000 | 7.4850e−4 |
-
-⚠ The continuous closed form `N × s` — Icy Veins' own interior value times `s` — predicts 2.6662 × s
-and is **11 % low**. `Δ(covered)` is an integer (3), not `N` (2.6662): the fight is a lattice of whole
-casts, and a 20 s window either does or does not contain a cast. Use the integer.
-
-## P2. Icon of the Silver Crescent + Serpent-Coil Braid — `sp × sp`
-
-**Interaction is exactly 0.000000**, at every passive haste and every passive spell power measured.
-Two spell-power buffs cannot interact, and the reason is one line of the damage formula: spell power
-enters as `(AVG_BASE + COEF·sp)`, so two deltas on the same cast are just **one bigger delta**. There is
-no cross term to find.
-
-⇒ **Place them independently.** Each maximizes itself — which by rule 2 means each goes as soon as 3
-Arcane Blast stacks are up — and neither placement constrains the other. Confirmed at haste 0 and 400
-× spell power 500, 1000, 2000: `−0.000000` in all six.
-
-## P3. Arcane Power + a spell-power buff — `dmg × sp`
-
-★ **Arcane Power is NOT a spell-power buff, and this is where the difference shows.** It multiplies
-damage (`×1.30`) rather than adding spell power, so it multiplies the spell-power bonus as well:
-
-    per cast under both  =  1.30 × (1 + s)  =  1.30 + 1.30·s
-    sum of the parts     =  0.30 + s
-    interaction          =  n × 0.30 × s          ← a real, positive cross term
-
-Measured at h=0, and the covered count comes out an exact integer at every spell power:
-
-| passive SP | s (Icon) | interaction | ÷ (0.3 × s) |
-|---|---|---|---|
-| 500 | 0.10279 | 0.30836 | **10.000** |
-| 1000 | 0.07719 | 0.23157 | **10.000** |
-| 2000 | 0.05153 | 0.15459 | **10.000** |
-
-⇒ **Arcane Power wants to overlap with your spell-power cooldowns**, even though those cooldowns do not
-care about each other (P2). Grouping it with Icon or Serpent-Coil under one "value family" heading is
-the natural mistake and it is wrong: the family that matters is *where in the damage formula the
-modifier sits*, not whether we call it a damage cooldown.
-
-## P4. The haste × haste family
-
-**There is no `s` here** — neither cooldown changes what a cast is worth, so the interaction is entirely
-about the GCD floor. Two haste multipliers compound, and what happens depends on whether the compounded
-multiplier is still under the floor:
-
-    interaction = d · [ 1/i(v₁v₂·m_p) + 1/i(m_p) − 1/i(v₁·m_p) − 1/i(v₂·m_p) ]
-    where  d = the shorter duration,  i(m) = max(1.0, 1.5/m)
-
-Uncapped this is `d·m_p·(v₁−1)(v₂−1)/1.5` — **positive**, the ordinary multiplicative bonus for stacking
-haste. Once the *pair* floors the GCD the first term is clipped to `d` and the expression **turns
-negative**: you are paying for haste the floor will not let you spend.
-
-> ### ★★ TWO THRESHOLDS, NOT ONE — and an earlier draft of this file conflated them
-> A pair floors the GCD at `v₁·v₂·m_p = 1.5`, so **overcap begins** at roughly each cooldown's own
-> threshold divided by the other's multiplier — always far lower than either alone.
->
-> ⚠ **But that is not where overlapping starts losing.** Between the two there is a band where the pair
-> is floored and overlapping still wins, because the multiplicative gain has not yet been eaten. Setting
-> the interaction to zero gives the second threshold in closed form:
->
->     overcap begins   m_p = 1.5 / (v₁·v₂)
->     overlap LOSES    m_p = 1.5 / (v₁ + v₂ − 1)
->
-> | pair | overcap begins | overlap starts losing | band where it is floored **and still worth it** |
-> |---|---|---|---|
-> | Icy Veins + Bloodlust | −61 | **0** | 61 rating (below h=0 — unreachable) |
-> | Berserking + Bloodlust | 77 | **113** | **35 rating** |
-> | Icy Veins + Berserking | 215 | **243** | 28 rating |
->
-> Measured for Berserking + Bloodlust: `+0.2031` at h=77, still `+0.1022` at h=100, `+0.0494` at h=113,
-> negative from ~120. The floor starts biting at 77 and overlapping keeps paying for another 40 rating.
-> ⚠ Sign-flip cells are quantization-noisy on a 10 s window (h=130 reads −0.019 against h=120's −0.214);
-> trust the closed form for the location and the table for the magnitude.
-
-| pair | pair threshold | their own thresholds | interaction h=0 | interaction h=400 |
-|---|---|---|---|---|
-| Icy Veins + Bloodlust | **−61** | 394 / 243 | +0.0788 | **−3.2904** |
-| Bloodlust + MQG | **−87** | 243 / 459 | −0.2016 | −2.8736 |
-| Icy Veins + MQG | **64** | 394 / 459 | +0.6008 | −2.8736 |
-| Bloodlust + Skull | **68** | 243 / 614 | +0.4953 | −1.5548 |
-| Berserking + Bloodlust | **77** | 573 / 243 | +0.2056 | −0.9105 |
-| Icy Veins + Berserking | **215** | 394 / 573 | +0.1255 | −0.9105 |
-| Icy Veins + Skull | **219** | 394 / 614 | +0.3338 | −1.5548 |
-| Berserking + MQG | **243** | 573 / 459 | −0.0534 | −0.7013 |
-| MQG + Skull | *284* | 459 / 614 | *cannot overlap* | *cannot overlap* |
-| Berserking + Skull | **398** | 573 / 614 | +0.1128 | −0.0017 |
-
-**At h=400 every single haste × haste pair is negative, and the aligned layout loses outright.** Icy
-Veins on Bloodlust costs **3.29 casts** there. This is the general form of the rule this project already
-had as "Icy Veins slides out of Lust with gear" (RULES §3) — it is not special to those two cooldowns
-and it is not special to Lust.
-
-**Your assumption confirmed: haste × haste varies with passive haste and with nothing else.** Across
-haste 0 / 200 / 400 / 600 × spell power 500 / 1000 / 2000 × crit 0 / 25 / 50 %, the interaction's spread
-over the 9 spell-power × crit combinations is **0.00000000 casts** at every haste, for every pair tested.
-
-⚠ **The closed form gets the sign right for 7 of the 9 measurable pairs at h=0 and the magnitude to
-~0.1 casts, but it is a continuous approximation of a discrete lattice and it does miss.** Icy Veins +
-Bloodlust is a boundary case (it predicts exactly 0.0000 and measures +0.0788), and Berserking + MQG
-predicts +0.1395 against a measured −0.0534. Both misses are on 10 s windows where one whole cast is
-~0.14 casts of interaction — i.e. both are inside one cast's quantization of zero. **Use the table, not
-the formula, when the predicted value is small.**
-
-⚠ Every Bloodlust row also carries rule 5's caveat: as a raid external its window is anchored to the
-call, so its exact interaction depends on the sub-cast phase and the sim cannot arbitrate it.
-
-## P5. Icy Veins × Lust and Berserking × Lust, with Lust PINNED
-
-The general `haste × haste` rule (P4) treats both presses as free. In every real fight Bloodlust is a
-**pinned raid call**, which turns the question into a different and more useful one: *given that Lust
-is at a fixed second, where does my own haste cooldown go?* Measured on a 1:40 fight with Lust pinned
-at 0:07 (so it covers 7–47 s), 1387 SP, 38 % crit, value in casts above "Lust alone":
-
-> ⚠⚠ **READ THIS BEFORE QUOTING A *BEST PLACEMENT* COLUMN — added 07-28.** Every figure below is a
-> **point** measurement at one lattice phase, and a pinned Lust carries a phase term of **±0.2 casts**
-> — the same size as the interactions this table is reporting. `docs/MODEL-DEFECTS.md` D1 §3 shows the
-> best-placement answer changing **four times** as a Lust pinned "at 0:20" slides across one 1.5 s cast
-> interval, without any fact about the game changing.
->
-> ⇒ The **value columns** are sound: they are differences at a fixed phase and the phase term largely
-> cancels between neighbouring cells. The **"best placement" column is not** unless the winner clears
-> its neighbours by more than ~0.2 casts. Where it does — every `@47` row here, which beats
-> inside-Lust by 1.5–3.3 casts — the verdict stands untouched. Where it does not — **the h=0 rows,
-> where the three columns sit within 0.28 (Icy Veins) and 0.21 (Berserking) casts** — the named winner
-> is one phase's answer and must be re-checked with `node tools/phase-audit.mjs` before it is used to
-> justify a plan.
->
-> ★ Concretely — re-measured on this exact setup, `node /tmp`-free, model only:
->
-> | Berserking | point | phase-mean |
-> |---|---|---|
-> | @10 / @20 / @30 — fully inside Lust | 0.9306 | **0.9163** |
-> | **@39** — straddling Lust's end at 47 | **0.9720** | 0.8861 |
-> | @47+ — fully outside | 0.7263 | 0.7254 |
->
-> The table's `best @39` beats fully-inside by **0.041 casts**, which is 20 % of the phase term — and
-> the phase-mean **reverses it**, putting fully-inside ahead by 0.030. Both rankings agree on the
-> inside-vs-outside interaction (0.2043 point, 0.1909 phase-mean), which is P4's `+0.2056` and is what
-> the row is really evidence for. ⇒ Treat that row's *placement* as **decided by P4, not by this
-> table**; its *values* are fine.
-
-### Icy Veins (20 s)
-
-| passive haste | best placement | at the pull | at 3 stacks / inside Lust | just after Lust |
-|---|---|---|---|---|
-| 0 | **@1** — the pull | **2.945** | 2.746 | 2.668 |
-| 100 | **@47** — after Lust | 2.071 | 1.436 | **3.011** |
-| 200 | **@47** | 1.520 | 0.591 | **3.169** |
-| 300 | **@47** | 1.222 | **0.000** | **3.334** |
-| 400 | **@47** | 1.213 | **0.000** | **3.290** |
-
-### Berserking (10 s)
-
-| passive haste | best placement | at the pull | inside Lust | just after Lust |
-|---|---|---|---|---|
-| 0 | **@39** | 0.925 | 0.931 | 0.726 |
-| 100 | **@1** | 0.926 | 0.835 | 0.732 |
-| 200 | **@44** | 0.630 | 0.410 | 0.818 |
-| 300 | **@47** | 0.576 | **0.000** | **0.814** |
-| 400 | **@47** | 0.666 | **0.000** | **0.910** |
-
-> ### ★★★ ABOVE 243 PASSIVE HASTE, ANY HASTE COOLDOWN USED INSIDE LUST IS WORTH EXACTLY ZERO
-> Not "nearly zero" — **0.0000**. Bloodlust alone floors the GCD at **243** (Part I's tent table), so
-> from that point on there is no interval left for a second haste cooldown to shorten. Pinned to the
-> rating point:
->
-> | passive haste | Icy Veins inside Lust | Berserking inside Lust |
-> |---|---|---|
-> | 200 | 0.5907 | 0.4101 |
-> | 220 | 0.1970 | 0.0989 |
-> | 240 | 0.0154 | 0.0077 |
-> | **243** | **0.0000** | **0.0000** |
-> | 300 | 0.0000 | 0.0000 |
->
-> ⇒ **From 243 upward, a haste cooldown inside Lust is worth nothing, and moving it out is free.** This
-> is the sharpest form of the rule the project has carried as "Icy Veins slides out of Lust with gear"
-> (RULES §3), and it names the exact rating at which it stops being a trade-off.
->
-> ⚠ **BELOW 243 it IS a trade-off, and an earlier draft of this file got that badly wrong** — it read
-> *"at any geared haste level, never put a haste cooldown inside Lust"*, which is false anywhere under
-> ~243 and catastrophically false at low haste. See the next section.
-
-### ★★★ OVERCAP IS A PRICE, NOT A PROHIBITION — only the part *below* the floor is lost
-
-User, 2026-07-28: *"as soon as a haste × haste combination touches the GCD cap it's wasted — that's not
-true. Only the part that is above the GCD is wasted. And it might be worth to do that if you gain more
-by doing so."* Correct, and the size of the correction is large.
-
-Stacking Icy Veins on Lust asks for an interval of `1.5/(1.56·m_p)`, and the floor refuses to go below
-1.0 — but the *starting point* was Lust's `1.5/(1.30·m_p)`, not 1.0. The cooldown still delivers
-everything between the two:
-
-| passive haste | Lust interval | +IV, asked for | +IV, actually got | **IV still converts** | **wasted** |
-|---|---|---|---|---|---|
-| 0 | 1.1538 | 0.9615 | 1.0000 | 0.1538 s/cast — **80 % of nominal** | **20 %** |
-| 50 | 1.1184 | 0.9320 | 1.0000 | 0.1184 — 64 % | 36 % |
-| 100 | 1.0850 | 0.9042 | 1.0000 | 0.0850 — 47 % | 53 % |
-| 150 | 1.0536 | 0.8780 | 1.0000 | 0.0536 — 31 % | 69 % |
-| 200 | 1.0240 | 0.8533 | 1.0000 | 0.0240 — 14 % | 86 % |
-| **243** | 1.0000 | 0.8332 | 1.0000 | **0** | **100 %** |
-
-**At h=0, four fifths of Icy Veins survives being stacked on Lust.** "Touches the cap ⇒ wasted" is off
-by that whole 80 %.
-
-### And the price is worth paying when it buys alignment
-
-The reason to accept the clip is the rest of the plan. Lust pinned 60–100, with the value cluster
-(Icon + Arcane Power) pressed at 65 — *inside* Lust, where rule 2 puts it. Icy Veins now chooses
-between joining the cluster (and overcapping) or staying out of Lust (and not):
-
-| passive haste | IV aligned @65 — inside Lust | best placement outside Lust | Δ |
-|---|---|---|---|
-| 0 | **3.716** | 2.668 | **+1.049** |
-| 20 | **3.217** | 2.993 | +0.224 |
-| 50 | **2.963** | 2.829 | +0.134 |
-| **52 ± 3** | — | — | **crossover** |
-| 60 | 2.889 | **2.976** | −0.087 |
-| 100 | 2.469 | **3.028** | −0.559 |
-| 140 | 1.579 | **3.004** | −1.425 |
-
-⇒ At **1000 SP with an Icon + Arcane Power cluster**, Icy Veins should sit inside Lust and eat the
-overcap up to **h ≈ 55**, and at h=0 it is not close: **+1.05 casts**.
-
-⚠⚠ **THAT NUMBER IS ONE CELL OF A SURFACE AND MUST NOT BE QUOTED ALONE.** An earlier draft of this
-section published "h ≈ 52" as *the* crossover. It is the crossover for one spell-power baseline and one
-cluster; change either and it moves by a factor of six. The user's objection is the correct one:
-*"this logic HAS to be different based on passive spellpower too… it will also change if arcane power
-enters the fray. That's why I wanted ground rules and the equations of deltas."* Here is the equation.
-
-### ★★★ THE EQUATION — align inside Lust iff the cluster outbids the overcap
-
-    align inside Lust   ⇔   B  >  N_out / N_in  −  1
-
-    N_out = d · [ 1/i(v·m_p) − 1/i(m_p) ]           casts the haste cooldown buys OUTSIDE Lust
-    N_in  = d · [ 1/i(v·1.3·m_p) − 1/i(1.3·m_p) ]   casts it buys INSIDE Lust
-    B     = Π(1 + sₖ) − 1  over the cluster          the cluster's per-cast bonus (composition table)
-
-Both sides are dimensionless. The right-hand side is **pure haste physics** — no spell power, no crit,
-no cooldown identity. The left-hand side is **pure damage** — no haste. They meet at the crossover.
-
-**The right side — what the overcap costs, in units of cluster bonus:**
-
-| passive haste | N_out | N_in | required B |
-|---|---|---|---|
-| **0** | 2.667 | 2.667 | **0.0000** — the overcap costs *nothing* at h=0 |
-| 25 | 2.709 | 2.392 | 0.1326 |
-| 50 | 2.751 | 2.117 | 0.2995 |
-| 100 | 2.836 | 1.568 | 0.8091 |
-| 150 | 2.920 | 1.018 | 1.8688 |
-| **243** | 3.078 | 0.000 | **∞** — no cluster can pay for it |
-
-★ **At h=0 the required B is exactly zero**, because `N_in = N_out = 2.667`: the floor takes back
-precisely as much as Lust's compression handed over. So at h=0 *any* value cooldown at all makes
-aligning correct.
-
-**The left side — what each cluster offers, and how much of that is gear-dependent:**
-
-| cluster | SP 500 | SP 1000 | SP 2000 | SP 4000 | swing |
-|---|---|---|---|---|---|
-| Icon alone | 0.1028 | 0.0772 | 0.0515 | 0.0310 | **3.32×** |
-| Icon + Arcane Power | 0.4336 | 0.4003 | 0.3670 | 0.3402 | 1.27× |
-| Icon + Gem + Arcane Power | 0.6475 | 0.5573 | 0.4692 | 0.4004 | 1.62× |
-| Arcane Power alone | 0.3000 | 0.3000 | 0.3000 | 0.3000 | **1.00×** |
-
-★★ **A cluster's spell-power sensitivity is decided entirely by how much of its bonus is `+SP` rather
-than `×damage`.** A +SP buff contributes `COEF·N/(AVG_BASE + COEF·SP)`, which decays as you gear; a
-damage multiplier contributes a flat `v−1` forever. So Arcane Power is a **gear-independent anchor**
-and Icon is not — which is exactly why adding Arcane Power both raises the crossover and *flattens* it.
-
-**The measured surface** — the haste at which "align inside Lust" stops winning:
-
-| cluster | SP 500 | SP 1000 | SP 2000 | SP 4000 |
-|---|---|---|---|---|
-| Icon alone | 15 | 15 | 10 | **never** — out-of-Lust wins even at h=0 |
-| Icon + Arcane Power | 65 | 55 | 55 | 50 |
-| Icon + Gem + Arcane Power | **95** | 80 | 65 | **55** |
-
-Both of the predicted dependencies are there and neither is small: **passive spell power moves the
-crossover 95 → 55** on the full cluster, and **Arcane Power entering moves it 15 → 65**. Quoting a
-single number for this was the mistake.
-
-The closed form tracks the measurement to within **8 rating** across the whole surface (worst cells:
-predicted 63 vs measured 55, and 71 vs 65) — close enough to use as the rule, with the table as the
-anchor when a cell matters.
-
-★★ **The general lesson, and it is the one to carry:** a negative `haste × haste` interaction does **not**
-mean "do not overlap". It is one term in a sum. The overcap loss is **bounded** — you can never lose
-more than the part of the window that would have gone below 1.0 s — while the alignment gain scales
-with whatever value cooldowns are there (`Δ(covered) × B`, and `B` for an Icon + Arcane Power cluster is
-~0.4 per cast). A bounded loss can be outbid, and here it is.
-
-⇒ **This adds a fourth breakpoint, and it is the lowest one:**
-
-| | Icy Veins × Lust | what it is |
-|---|---|---|
-| **overcap-vs-alignment** | **h ≈ 52** | below it, join the cluster inside Lust anyway |
-| pair threshold | −61 (never positive) | where the raw pair interaction turns negative |
-| Lust's own cap | 243 | inside Lust is worth exactly 0; nothing left to align |
-| the bare cap | 789 | steady state worth nothing anywhere |
-
-Note the first two are in the "wrong" order and that is the whole point: the pair interaction is
-negative at *every* haste, yet the aligned layout still wins below 52. **The pair term alone never
-decides a placement.**
-
-⚠ The 52 is specific to this cluster. A bigger value cluster buys more, so it moves **up**; a bare
-fight with no value cooldowns has nothing to buy and the crossover is at h=0 — which is exactly the
-"Icy Veins × Lust with nothing else" table above, where out-of-Lust wins from h=0 onward.
-
-### ★★★ The two factors, separated — and the answers to "overlap or not, in isolation"
-
-An overlap is exactly two things pulling against each other, and they can be priced independently:
-
-    GAIN = d · m_p · (v₁−1)(v₂−1) / 1.5        the multiplicative cross-term, if there were no floor
-    LOSS = GAIN − NET                           what the floor then refuses to deliver
-    NET  = d · [1/i(v₁v₂m) + 1/i(m) − 1/i(v₁m) − 1/i(v₂m)]
-
-**Icy Veins + Bloodlust, alone on a bare fight:**
-
-| passive haste | pair mult | floored? | GAIN | LOSS | NET |
-|---|---|---|---|---|---|
-| **0** | 1.5600 | yes | **0.800** | **0.800** | **−0.000 — exactly a wash** |
-| 50 | 1.6095 | yes | 0.825 | 1.459 | −0.634 |
-| 100 | 1.6589 | yes | 0.851 | 2.119 | −1.268 |
-| 200 | 1.7578 | yes | 0.901 | 3.438 | −2.536 |
-| 400 | 1.9557 | yes | 1.003 | 4.288 | −3.285 |
-
-⇒ **In isolation, Icy Veins × Lust is EXACTLY irrelevant at h=0 — and that is not a coincidence.** The
-multiplicative cross-term is `+0.800` casts and the overcap takes back `−0.800` casts. They cancel to
-the last digit, because `v₁ + v₂ − 1 = 1.2 + 1.3 − 1 = 1.5` puts the sign flip precisely at `m_p = 1`.
-So the earlier intuition that "it doesn't matter" was right *at h=0 and only there*: from the very
-first point of passive haste the loss outruns the gain, and by h=400 overlapping costs **3.3 casts**.
-
-**Berserking + Bloodlust, alone on a bare fight:**
-
-| passive haste | pair mult | floored? | GAIN | LOSS | NET |
-|---|---|---|---|---|---|
-| **0** | 1.4300 | **no** | **0.200** | **0.000** | **+0.200** |
-| 50 | 1.4753 | no | 0.206 | 0.000 | +0.206 |
-| 77 | 1.4998 | no | 0.210 | 0.000 | +0.210 |
-| 100 | 1.5207 | yes | 0.213 | 0.138 | +0.075 |
-| 150 | 1.5660 | yes | 0.219 | 0.440 | −0.221 |
-
-⇒ **Yes — Berserking × Lust is strictly better overlapped at h=0, with NO overcap at all.** The pair
-multiplier is ×1.43, under the 1.5 the floor needs, so nothing is clipped and the full multiplicative
-bonus lands: `+0.200` casts, measured `+0.2043`. It stays strictly positive to h≈113.
-
-### Do spell power and crit enter this? No — and both ways of asking are right
-
-Every term above is a **cast-rate difference** (`1/interval`), and `interval = max(1.0, 1.5/m)` depends
-on passive haste alone. Neither stat appears. Asked the other way — quoted in raw damage, both terms
-carry the same `(720 + COEF·sp) · critFactor` factor, which **divides out exactly** when the result is
-expressed in casts. So they are absent by construction *and* they cancel; those are the same statement
-seen from the two sides. Measured spread across spell power {500, 1000, 2000} × crit {0, 25, 50 %} at
-four haste levels: **0.00000000 casts**.
-
-⚠ **This is true of the pair in ISOLATION only.** The moment a value cooldown is in the window, spell
-power re-enters through `B` — not through the haste physics, but through what the aligned casts are
-worth. That is the whole content of the overcap-vs-alignment section below, and it is why the crossover
-there moves with gear while nothing on this page does.
-
-### ★ The governing inequality — and Icy Veins and Berserking are on opposite sides of it
-
-A haste cooldown `×v` wants to be **inside** Lust exactly when the pair does not floor the GCD:
-
-    1.30 · v · m_p  <  1.5          ⇔        h  <  (1.5 / (1.30·v) − 1) · 1577
-
-| cooldown | | pair with Lust | wants to be inside Lust while |
-|---|---|---|---|
-| **Icy Veins** | ×1.20 | ×1.56 — **already ≥ 1.5 at h=0** | **never, at any haste** |
-| **Berserking** | ×1.10 | ×1.43 | **h < 77** |
-
-⇒ **They are not the same rule and must not be given the same advice.** Icy Veins and Lust floor the
-GCD together before you have any gear at all, so Icy Veins always gives up *some* of itself inside Lust
-— 20 % at h=0, rising with haste. Berserking is small enough that the pair still fits under the floor at
-low haste, so at h=0 Berserking wants to be inside Lust on its own merits and Icy Veins does not.
-
-⚠ **"Does not want to be inside Lust" here means *on a bare fight, with nothing else to align with*.**
-That is all these two tables measure. Put a value cluster inside Lust and Icy Veins joins it anyway
-below h ≈ 52, overcap and all — the overcap section above. **The inequality decides whether the pair by
-itself pays; it does not decide the placement.**
-
-Measured on a 140 s fight with Lust pinned at 0:60 (so **before**, **inside** and **after** are all
-reachable), value in casts above "Lust alone":
-
-**Icy Veins × Lust** — pair threshold h = −61, i.e. the interaction is negative at every haste ≥ 0
-
-| passive haste | before Lust | inside Lust | after Lust | @0 | interaction | true optimum |
-|---|---|---|---|---|---|---|
-| 0 | 2.437 | 2.515 | 2.668 | 2.492 | −0.1522 | **@50** — straddling into Lust's start |
-| 100 | 3.028 | 1.668 | 3.011 | 2.896 | −1.3442 | **@40** — ending as Lust begins |
-| 200 | 3.020 | 0.591 | 3.168 | 3.057 | −2.8081 | **@5** — the pull |
-| **243** | 3.005 | **0.000** | 3.172 | 2.995 | −3.1718 | **@5** |
-| 300 | 3.167 | 0.000 | 3.334 | 3.222 | −3.3328 | **@4** |
-| 500 | 2.442 | 0.000 | 2.442 | 2.552 | −2.4398 | **@1** |
-| 800 | 0.000 | 0.000 | 0.000 | 0.716 | 0.0000 | **@0** |
-
-**Berserking × Lust** — pair threshold h = 77
-
-| passive haste | before Lust | inside Lust | after Lust | @0 | interaction | true optimum |
-|---|---|---|---|---|---|---|
-| 0 | 0.475 | **0.931** | 0.726 | 0.527 | **+0.2043** | **@58** — straddling into Lust |
-| 50 | 0.706 | **0.926** | 0.726 | 0.756 | **+0.2011** | **@93** — straddling Lust's end |
-| 100 | 0.991 | 0.833 | 0.732 | 0.991 | +0.1022 | **@1** — the pull |
-| 150 | 0.538 | 0.393 | 0.821 | 0.528 | −0.4276 | **@53** |
-| 200 | 0.745 | 0.179 | 0.818 | 0.758 | −0.6388 | **@3** |
-| **243** | 0.726 | **0.000** | 0.817 | 0.847 | −0.8166 | **@0** |
-| 400 | 0.819 | 0.000 | 0.910 | 0.849 | −0.9105 | **@4** |
-| 800 | 0.000 | 0.000 | 0.000 | 0.388 | 0.0000 | **@0** |
-
-### The three breakpoints, and what each one is
-
-| breakpoint | Icy Veins | Berserking | what changes there |
-|---|---|---|---|
-| **pair threshold** — the interaction turns negative | −61 (never positive) | **77** | stacking stops paying and starts costing |
-| **Lust's own cap** — inside Lust is worth exactly 0 | **243** | **243** | Lust alone floors the GCD; nothing is left to shorten |
-| **the bare cap** — everything collapses to the pull | **789** | **789** | steady state is worth nothing anywhere (rule 3) |
-
-The middle one is shared because it is a property of **Lust**, not of the partner. The first is the
-partner's own, and it is the one that separates the two cooldowns.
-
-### How additional haste points move it
-
-The interaction gets **worse, then recovers to zero** — it is not monotone. It bottoms out at
-**h ≈ 300 for Icy Veins (−3.33 casts)** and **h ≈ 400 for Berserking (−0.91)**, then climbs back to
-**0.0000 at h = 800**, because past the bare cap both cooldowns are worth nothing at steady state
-anyway and there is no longer anything for them to take from each other. **The worst haste level to
-stack these is the middle of the range, not the top.**
-
-The *placement* follows, in three stages — and note the middle stage is **short**:
-
-| passive haste | where the partner goes |
+| fight | per haste rating point |
 |---|---|
-| below the pair threshold (77 for Berserking; never for Icy Veins) | **inside Lust**, or straddling into it |
-| just above it | **abutting Lust** — ending as it begins, or straddling its end |
-| from ~150 (Icy Veins) / ~200 (Berserking) upward | **the pull**, and it stays there |
+| 1:00 | 0.0254 casts |
+| 2:00 | 0.0507 |
+| 3:00 | 0.0761 |
+| 5:00 | 0.1268 |
 
-⚠ **"After Lust" is a trap reading.** The *after* column beats the *inside* column at every haste above
-the pair threshold, which makes it look like the answer — but it is almost never the optimum. From
-h≈150 the true optimum is at or within a few seconds of the pull, because by then rule 3's pull
-advantage is worth more than anything the Lust window has to offer. Read the optimum column, not the
-best of the three named probes.
+**Under an active multiplier `v` (itself uncapped) a passive point is worth `v ×` that** — `rate = m_p·v/G`,
+so the derivative carries `v`. A haste rating point is 30 % more valuable inside Bloodlust, and worth
+nothing at all once `m_p·v ≥ 1.5`.
 
-### Passive spell power and passive crit: no effect whatsoever
-
-Every number in this section is **invariant to 0.00000000 casts** across spell power 500 / 1000 / 2000
-× crit 0 / 25 / 50 %, at haste 0 / 200 / 400 / 600. This is Part I rule 2b holding for a pair: these
-are `haste × haste` interactions, they are entirely about the GCD floor, and the floor does not know
-what your spell power is. **Only passive haste moves any of it.**
-
-⚠ **At h=0 the ordering is `pull > inside Lust > after Lust`, and that is not the same rule.** With
-nothing else floored, Lust is nearly transparent to Icy Veins (P4's interaction is ≈ 0 there, and 80 %
-of Icy Veins still converts under it). What decides the placement at h=0 on a *bare* fight is not Lust
-at all, it is the **pull advantage** of Part I rule 3 — and on a fight with a value cluster it is the
-cluster, which outbids both. Reading the h=0
-row as "get out of Lust" and the h=300 row as the same rule would be wrong: they are the pull advantage
-and the GCD floor respectively, and they only happen to point the same way once.
-
-### ★★★ WEAK DOMINANCE — the rule for "same cast count, but one side is obviously better"
-
-User, 2026-07-28: *"The icon's uptime is STRICTLY BETTER AT NO OTHER OPPORTUNITY COST… the 16 seconds
-of the icon stay identical, but the other 4 strictly gain overlay with more haste buffs."*
-
-This is the case the discrete objective handles worst, and it needs its own rule.
-
-`2:00 · h=0 · 1000 SP · Lust pinned 0:10`, Icy Veins at 0:06. Icon at 0:06 versus Icon at 0:10 — the
-window slides 3.75 s later, out of the Icy-Veins-only region and into Lust:
-
-| | uniquely covered casts | region |
-|---|---|---|
-| Icon @0:06 | 6.498 · 7.748 · 8.998 | Icy Veins only, interval **1.25 s** |
-| Icon @0:10 | 26.248 · 27.248 · 28.297 | Lust (+Berserking), interval **1.00–1.05 s** |
-
-**Exactly three for three — a true tie in cast count**, and generic: swept across 17 Lust-pin phases it
-is 19.00 covered casts on both sides, every time. But the *continuous* count of the 3.75 s that changed
-hands is **3.00 casts given up against 3.575 gained**, i.e. **+0.575 casts** that the lattice quantises
-away to zero.
-
-⇒ **So it is not a coincidence to be broken arbitrarily — it is a weak dominance.** Sweep passive haste
-and the hidden margin surfaces:
-
-| passive haste | Icon @0:06 covers | Icon @0:10 covers | measured Δ | continuous prediction |
-|---|---|---|---|---|
-| 0 – 100 | 19 | 19 | 0.0000 | **+0.56 … +0.59** |
-| **150 – 300** | 19 | **20** | **+0.0772** | +0.18 … +0.46 |
-| 400 + | 20 | 20 | 0.0000 | 0.0000 |
-
-**Icon on the Lust call is never worse and is strictly better at h = 150–300** — by exactly one covered
-cast, `1 × s`. The continuous prediction is `≥ 0` at every haste on the ladder; the discrete objective
-realises it as 0 or 1 whole cast depending on where the lattice happens to fall.
-
-> **THE RULE.** When two placements tie on the discrete count, prefer the one with the higher
-> **continuous** coverage — `Σ (window seconds) / (interval in that region)`. It is never worse at the
-> measured point and strictly better across the neighbourhood in haste, fight length and phase. A tie
-> in the count is not a statement that the two are equally good; it is a statement that the lattice
-> could not resolve them **here**.
-
-★ This is why the planner's tie-break is an **execution-robustness expectation** rather than a coin
-flip (`docs/MODEL-DEFECTS.md` D2): averaging over ±1 s of press error samples the neighbourhood, so it
-recovers the sign of the continuous margin without needing a second objective. The two are the same
-idea — one derived, one measured.
-
-### Worked example — Berserking on a real plan, predicted from the table
-
-On the `1:40 · h=0 · 1387 SP` fight (Lust pinned 0:07, Icy Veins 2.5–22.5, Icon 6.3–26.3, AP/Gem
-6.3–21.3, Lust 6.6–46.6, Cold-Snap Icy Veins 48–68), sweeping Berserking with everything else held:
-
-| Berserking at | value vs @41 | what it overlaps |
-|---|---|---|
-| 0–20 | −0.42 … −1.50 | Icy Veins **+** Lust — the floored region |
-| 22 | −0.2757 | still catches Icy Veins' last 0.92 s |
-| **23 – 36** | **−0.2056**, flat | Lust only (Icon's tail for part of it) |
-| **41** | **0.0000** ← best | the *end* of Lust, running into Icy Veins #2 |
-| 68 – 88 | −0.4112 | nothing |
-
-Three things the composition table called in advance:
-
-1. **Overlapping Lust is worth `+0.2056` casts** (@23–36 against @68–88, which overlap nothing). That is
-   the P4 `Berserking + Bloodlust` interaction at h=0 **to four decimals** — the pair table predicting a
-   real plan's number with no fitting.
-2. **Catching Icon's tail is worth exactly nothing.** @23, @24 and @26 sit inside Icon's remaining
-   window and @28–36 are past it entirely, and all of them read **identically −0.2056**. The rule is
-   `Δ(covered) × s`, and a 3–4 s tail overlap does not produce a whole extra covered cast, so
-   `Δ(covered) = 0`. **A partial value-window overlap pays nothing until it buys a whole cast.**
-3. **@22 loses 0.07 casts to the floor.** Berserking's first 0.92 s there runs inside Icy Veins + Lust,
-   which is ×1.56 — already floored, so those 0.92 s are worth exactly zero (the rule above, applied to
-   a window rather than to passive haste). Nudging to @23 recovers it.
-
-⇒ **@41 wins by straddling the END of Lust into the second Icy Veins**, collecting two partial overlaps
-(+0.4112 against no overlap) rather than one whole one (+0.2056).
-
-⚠ **But it is a spike, and @23–36 is a 14-second plateau.** Under `tools/jitter.mjs`, @41 keeps the
-better *mean* at every jitter model (−0.14 … −0.16 casts for the plateau, never reversing) while having
-the **worse floor** (worst case 86.81 casts against the plateau's 86.92). @41 is the higher-mean,
-higher-variance choice. Optimising expected damage picks it; optimising the bad pull does not.
-
-## The full pair table
-
-`node tools/facts-pair.mjs --mode=all --haste=0,400 --sp=1000 --step=5`, aligned-interior layout.
-"overlap worth" is the aligned layout minus the best legal **disjoint** layout — negative means
-separate them.
-
-| pair | family | interaction h=0 | worth h=0 | interaction h=400 | worth h=400 |
-|---|---|---|---|---|---|
-| Icy Veins + Berserking | haste × haste | 0.1255 | −0.0267 | −0.9105 | −0.9732 |
-| Icy Veins + Bloodlust | haste × haste | 0.0788 | −0.1267 | −3.2904 | −3.6340 |
-| Icy Veins + MQG | haste × haste | 0.6008 | 0.4633 | −2.8736 | −2.9364 |
-| Icy Veins + Skull | haste × haste | 0.3338 | 0.1001 | −1.5548 | −1.6192 |
-| Berserking + Bloodlust | haste × haste | 0.2056 | 0.1282 | −0.9105 | −1.4167 |
-| Berserking + MQG | haste × haste | −0.0534 | −0.0848 | −0.7013 | −0.7456 |
-| Berserking + Skull | haste × haste | 0.1128 | 0.0788 | −0.0017 | −0.0017 |
-| Bloodlust + MQG | haste × haste | −0.2016 | −0.2505 | −2.8736 | −3.1707 |
-| Bloodlust + Skull | haste × haste | 0.4953 | 0.4937 | −1.5548 | −1.9215 |
-| MQG + Skull | haste × haste | — | — | — | — |
-| Icy Veins + Arcane Power | haste × dmg | 0.6000 | 0.5446 | 0.9000 | 0.8372 |
-| Berserking + Arcane Power | haste × dmg | 0.0000 | −0.0314 | 0.3000 | 0.3000 |
-| Bloodlust + Arcane Power | haste × dmg | 0.6000 | 0.5226 | 0.9000 | 0.3937 |
-| MQG + Arcane Power | haste × dmg | 0.6000 | 0.6000 | 0.6000 | 0.5556 |
-| Skull + Arcane Power | haste × dmg | 0.3000 | 0.2673 | 0.3000 | 0.3000 |
-| Icy Veins + Icon | haste × sp | 0.2316 | 0.1762 | 0.3088 | 0.2460 |
-| Icy Veins + Serpent-Coil | haste × sp | 0.2241 | 0.1687 | 0.3362 | 0.2734 |
-| Berserking + Icon | haste × sp | 0.0772 | 0.0458 | 0.0772 | 0.0772 |
-| Berserking + Serpent-Coil | haste × sp | 0.0000 | −0.0314 | 0.1121 | 0.1121 |
-| Bloodlust + Icon | haste × sp | 0.3088 | 0.2452 | 0.3088 | −0.1887 |
-| Bloodlust + Serpent-Coil | haste × sp | 0.2241 | 0.1467 | 0.3362 | −0.1701 |
-| MQG + Icon | haste × sp | — | — | — | — |
-| MQG + Serpent-Coil | haste × sp | 0.2241 | 0.2241 | 0.2241 | 0.1798 |
-| Skull + Icon | haste × sp | — | — | — | — |
-| Skull + Serpent-Coil | haste × sp | 0.1121 | 0.0793 | 0.1121 | 0.1121 |
-| Arcane Power + Icon | dmg × sp | 0.2316 | 0.2316 | 0.2779 | 0.2779 |
-| Arcane Power + Serpent-Coil | dmg × sp | 0.3362 | 0.3362 | 0.4034 | 0.4034 |
-| Icon + Serpent-Coil | sp × sp | **−0.0000** | −0.0000 | **−0.0000** | −0.0000 |
-
-**Every `haste × dmg` figure is an exact integer multiple of 0.3**, and every `haste × sp` figure an
-exact integer multiple of that buff's `s` (0.07719 for Icon, 0.11205 for Serpent-Coil, at 1000 SP). The
-integer is `Δ(covered)`. Nothing in this table is fractional except where a window touches the kill.
-
-### ⛔ Three pairs CANNOT overlap at all
-
-Icon of the Silver Crescent, Mind Quickening Gem and Skull of Gul'dan are all **on-use trinkets and
-share a lockout** — using one locks the group for that buff's duration. `repair` retimes any schedule
-that tries, so `MQG + Icon`, `MQG + Skull` and `Skull + Icon` have no overlapping layout to measure.
-Their alignment question is answered by the item, not by the arithmetic.
+⇒ **The opportunity cost of overcapping is total.** There is no partial credit above the corner. This
+is the single most important fact for gearing and for cooldown placement alike.
 
 ---
 
-# Part III — three cooldowns
+# 2. ONE HASTE BUFF
 
-## The law extends by inclusion–exclusion, and nothing new is needed
+A buff of multiplier `v` and duration `D`, on top of a state whose multiplier is `m`:
 
-    V(abc) = Σ singles  +  Σ pair terms  +  TRIPLE-SPECIFIC term
+    Δcasts  =  D · [ rate(m·v) − rate(m) ]
 
-and the triple-specific term is just the next product in the expansion. For Icy Veins + Icon + Arcane
-Power it is `Δ₃ × s × (v−1)` — the casts Icy Veins adds *inside the region covered by both value
-cooldowns*, each paid the product of their two bonuses. Measured:
+*Verified exact, 12/12 cells: Bloodlust / Icy Veins / Berserking × h = 0, 200, 400, 600.*
 
-| passive haste | triple-specific term | = Δ₃ × s × 0.3 |
+## 2.1 Its two thresholds
+
+| | condition | meaning |
 |---|---|---|
-| 0 | 0.0463 | **2** × 0.07719 × 0.3 |
-| 400 | 0.0695 | **3** × 0.07719 × 0.3 |
+| **onset of waste** | `m · v = 1.5` | below this the buff converts in full |
+| **worth zero** | `m = 1.5` | the state is already capped; the buff does nothing |
 
-Same integer structure as everywhere else. ⇒ **A triple needs no new rule.** Expand the product of the
-per-cast multipliers, count the covered casts at each level of overlap, and you have it.
+For a buff used **alone** on passive haste, the onset threshold is
 
-## T1. Icy Veins + Icon of the Silver Crescent + Arcane Power
+    multiplier buff:  h = (1.5/v − 1) · RTG            rating buff:  h = 788.5 − r
 
-### Conclusions
+| cooldown | | onset threshold |
+|---|---|---|
+| Bloodlust | ×1.30 | **242.6** |
+| Icy Veins | ×1.20 | **394.3** |
+| Mind Quickening Gem | +330 | **458.5** |
+| Berserking | ×1.10 | **573.5** |
+| Skull of Gul'dan | +175 | **613.5** |
 
-**The value cooldowns form a cluster, and the cluster is what the haste cooldown is holding on to.**
-Walking away from Icon alone costs `s = 0.07719` per surrendered cast. Walking away from Icon *and*
-Arcane Power costs the cluster bonus
+*All five reproduced by `facts-ladder --score=integral` with rms fit `0.0000` casts, and each beats a
+±50-rating shifted threshold.*
 
-    B = 1.30 × (1 + s) − 1 = 0.30 + 1.30·s = 0.40035          at 1000 SP
+## 2.2 The tent, and how much of a buff is thrown away
 
-which is **5.19× dearer**. So Icy Veins clings to the cluster far longer than it clings to Icon alone.
+Between its onset threshold and the cap the buff is **partially** wasted:
 
-**Confirmed: the breakpoint moves a long way up.**
+    wasted fraction  =  1 − (1.5 − m) / ( m · (v − 1) )              for  m < 1.5 ≤ m·v
 
-| layout | Icy Veins leaves the interior at |
+⚠ **Touching the cap does NOT waste the whole buff — only the part above it.** A buff that overcaps
+still delivers everything up to `m = 1.5`. Example, Berserking at h = 600: `m = 1.38047`, delivered
+`10 × (1 − 0.92031) = 0.797` casts against an uncapped `0.920` ⇒ **13.4 % wasted, 86.6 % kept.**
+*(Engine integral at that cell: 0.79687.)*
+
+So the value of a haste cooldown as passive haste rises is a **tent**: flat (rating buffs) or rising
+(multiplier buffs) up to its threshold, then falling linearly to exactly zero at h = 788.5.
+
+---
+
+# 3. ONE VALUE BUFF
+
+A value buff does not change how many casts you get — it changes what each is worth. Write its
+per-cast fractional gain as `s`:
+
+    +SP buff:            s  =  COEF · ΔSP / ( BASE + COEF · SP_passive )
+    damage multiplier:   s  =  v − 1
+
+    Δcasts-equivalent  =  n · s        n = casts covered = D · rate(m)
+
+*Verified exact at SP_passive = 0, 700, 1000, 1387, 2000.*
+
+## 3.1 ★ A temporary +SP buff is diluted by passive spell power
+
+`s` falls as `SP_passive` rises — the same +155 SP is a smaller *fraction* of a bigger hit:
+
+| passive SP | Icon of the Silver Crescent (+155) | Serpent-Coil Braid (+225) |
+|---|---|---|
+| 0 | **15.377 %** | 22.32 % |
+| 700 | **9.075 %** | 13.17 % |
+| 1000 | **7.719 %** | 11.21 % |
+| 1387 | **6.472 %** | 9.39 % |
+| 2000 | **5.153 %** | 7.48 % |
+
+*(Icon's column verified against the engine at all five rows; Serpent-Coil follows from the same
+formula.)*
+
+⇒ **Everything a +SP trinket is worth — including every alignment bonus it earns by sitting inside a
+haste window — shrinks with your gear.** Icon loses 16 % of its value going from 1000 to 1387 passive
+SP, and a rule that says "always put Icon inside Bloodlust" is quietly a rule about *your* spell power.
+
+A **damage multiplier** (Arcane Power ×1.3) is immune: `s = 0.30` at every gear level.
+
+---
+
+# 4. PAIRS — the composition table
+
+The interaction is the excess over adding the two effects separately:
+`I = V(A∪B) − V(A) − V(B) + V(∅)`. It does not matter **which** spell supplies an effect, only **by how
+much** — everything below is written in `v`, `r`, `s` only.
+
+| pair | interaction over the overlap |
 |---|---|
-| Icy Veins + Icon (pair, P1) | **h = 410** |
-| Icy Veins + Icon + Arcane Power | **h ≈ 472** |
+| **sp × sp** | **exactly 0** — spell power adds, so `s₁₊₂ = s₁ + s₂` identically |
+| **dmg × sp** | `n · d · s` |
+| **dmg × dmg** | `n · d₁ · d₂` |
+| **haste × value** | `D · [ rate(m·v) − rate(m) ] · s` |
+| **haste × haste** | `D · [ rate(m·v₁·v₂) + rate(m) − rate(m·v₁) − rate(m·v₂) ]` |
 
-(brute-forced on a 1 s press grid at 1000 SP; aligned wins through h=470, `IV@0` wins from h=475.)
+*All verified: sp×sp reads `0.00000` casts at 1000 and 1387 SP; dmg×sp and haste×value exact at both
+(e.g. AP × Icon at 1000 SP: formula 0.23157, engine 0.23157).*
 
-⚠ The transition is a **step, not a smooth crossing** — the margin jumps 0.333 casts between h=470 and
-h=475 — because `Δ(covered)` changes by a whole cast. The closed form gives the right *scale* for the
-shift; the exact rung is set by where a covered cast is gained or lost.
+**haste × value in words:** the extra casts the haste buff buys inside the overlap, each worth `s`
+extra. That is why a +SP window wants to sit where casts are fastest — and why the size of that want
+falls with your passive spell power (§3.1).
 
-**Confirmed: the value cooldowns never want the pull — at any passive haste.** Across h = 0 … 800,
-`Icon@0` and `ArcanePower@0` lose in every single case, and Arcane Power is always the worst arm
-because its per-cast bonus is the largest thing to waste on a ramp:
+## 4.1 haste × haste has two regimes and two thresholds
 
-| passive haste | Icy Veins @0 | Icon @0 | Arcane Power @0 | all three @0 |
-|---|---|---|---|---|
-| 0 | −0.4221 | −0.3474 | −1.1084 | −0.7453 |
-| 200 | −0.5897 | −0.3474 | −1.1316 | −0.5897 |
-| 400 | −0.4148 | −0.4709 | −1.4779 | −0.7379 |
-| 600 | **best** | −0.5824 | −1.1438 | −0.3232 |
-| 800 | **best** | −0.8938 | −1.4552 | −0.4003 |
+Expanding `rate` in each regime:
 
-*(casts, against the best aligned-interior layout)*
+    while  m·v₁·v₂ ≤ 1.5   (nothing capped):      I = D · m · (v₁−1)(v₂−1) / G          ≥ 0, always
+    once   m·v₁·v₂ > 1.5   (the pair overcaps):   I = D · [ 1/F − m·(v₁+v₂−1) / G ]
 
-### Why the value cooldowns can never want the pull — and it is a theorem, not a measurement
+so there are **two** distinct thresholds and a live band between them:
 
-User, 2026-07-28: *"at no point will it be worth for Icon and Arcane Power themselves to go to start,
-since even Icy vein'd start of ramp will be slower than unhasted casting at 3 stacks."* Exactly right,
-and it holds at every haste because it is structural rather than numerical:
-
-| passive haste | Icy-Veins'd ramp intervals | fastest of them | bare 3-stack interval |
-|---|---|---|---|
-| 0 | 2.083 / 1.805 / 1.527 | 1.527 | 1.500 |
-| 200 | 1.849 / 1.602 / 1.355 | 1.355 | 1.331 |
-| 400 | 1.662 / 1.440 / 1.218 | 1.218 | 1.197 |
-| 600 | 1.509 / 1.308 / 1.106 | 1.106 | 1.087 |
-| 800 | 1.382 / 1.198 / 1.013 | 1.013 | 1.000 |
-
-★ **The ordering can never invert.** Each Arcane Blast stack removes a fixed 0.334 s of cast time, so a
-ramp cast is *always* longer than a 3-stack cast at the same haste; a haste multiplier divides both by
-the same factor and preserves the ordering; and the GCD floor applies to both, so at the extreme they
-converge to 1.000 s and tie rather than cross. A value window opened at the pull therefore always
-covers **fewer or equal** casts, never more — measured as 2 fewer at h=0 and h=400, 1 fewer at h=800.
-
-The margin does narrow with haste (1.527 vs 1.500 at h=0; 1.013 vs 1.000 at h=800), so the *penalty*
-shrinks. It never reverses.
-
-### Sim verification
-
-All three pull arms, duelled against the aligned layout with common random numbers, 5 seeds × 10 000
-iterations at h=0 / 1000 SP:
-
-| arm | sim | model |
+| threshold | condition | what happens |
 |---|---|---|
-| Icy Veins @0 | −0.891 % | −0.903 % |
-| Icon @0 | −0.721 % | −0.743 % |
-| Arcane Power @0 | −2.393 % | −2.372 % |
+| **overcap onset** | `m · v₁ · v₂ = 1.5` | the pair starts wasting; the bonus stops growing |
+| **sign flip** | `m · (v₁ + v₂ − 1) = 1.5` | the bonus reaches **zero** and goes negative above |
 
-Same ordering, agreeing to **0.02 pp** on every arm against a ±0.04 % seed band.
+⚠ **Do not conflate them.** Between the two the pair still helps, just less. Below the first it helps in
+full.
 
-## Still to do
+---
 
-The remaining triples, and more baselines for the pairs (Part II's table is haste 0 and 400 at 1000 SP;
-`haste × sp` and `dmg × sp` rows move with passive spell power exactly as P1's did, `haste × haste` rows
-do not move at all). The structural questions are now closed by the composition table and its
-inclusion–exclusion extension, so what is left is filling cells rather than finding rules.
+# 5. THE NAMED PAIRS — exact numbers
 
-⚠ One instrument caveat to carry forward: `--mode=triple` excludes the terminal placement from its
-interior arm, but a press one second short of it (`@39` on a 60 s fight) still picks up boundary credit
-and won the aligned arm at two rungs. Read the layout column, not just the number.
+## 5.1 Berserking × Bloodlust — **+0.2000 casts at h = 0**
 
-## The two generators
+`v₁ v₂ = 1.43 < 1.5`, so at h = 0 nothing is clipped and the whole multiplicative cross-term lands:
 
-| | what it produces | cost |
-|---|---|---|
-| `tools/facts-ladder.mjs` | model only — one cooldown, arbitrary haste granularity, value in casts, closed form beside it, flatness and threshold assertions | seconds |
-| `tools/facts-pair.mjs` | model only — two or three cooldowns, brute-forced over their press times; the interaction surface, the breakpoint sweep, and the triple decomposition (Parts II–III) | seconds to minutes |
-| `tools/buff-atlas.mjs` | model **and** sim, one baseline at a time — the per-placement tables | minutes |
-| `tools/jitter.mjs` | model only — re-scores a whole plan as an **expectation over execution error** rather than at its nominal seconds | seconds |
+    I = 10 · 1 · (0.3)(0.1) / 1.5 = 0.2000 casts
 
-Use the ladder and the pair tool to find where something interesting happens, and the atlas to have the
-sim rule on it. ★ Reach for `jitter.mjs` whenever a plan's margin is small enough that it might be
-exact-timing luck: it answers "is this advantage EXECUTABLE", which is a different question from "is
-this advantage real" and the one a raider is actually asking. A margin that survives ±1 s of press
-error is a rule; one that does not is a coincidence of the lattice. ★ For a PAIR the sim genuinely can rule — both cooldowns are self-presses, so the aura
-snapping that makes it blind to Bloodlust's placement (rule 5) does not apply.
-The ladder is what makes fine granularity affordable: the 86-rung sweep in this file is one command,
-where the same coverage through the atlas would be 86 sim campaigns.
+| passive haste | interaction |
+|---|---|
+| 0 | **+0.200** |
+| 50 | +0.206 ← peak, just under the overcap onset |
+| **77.2** | overcap onset (`m · 1.43 = 1.5`) |
+| 100 | +0.075 |
+| **112.6** | **sign flip** (`m · 1.40 = 1.5`) |
+| 150 | −0.221 |
+| 200 | −0.517 |
 
-⚠ Both refuse to print if `index.html` is an older engine (they check `casts[].frac`), because a
-container restart silently rolled this repo back mid-session on 07-28 and a batch of measurements ran
-against the pre-boundary-credit scorer before anyone noticed.
+⇒ **Below h ≈ 113, Berserking belongs inside Bloodlust. Above it, outside.** *(Formula vs engine
+integral: agrees to ≤0.005 casts at every row.)*
 
-## Expanding this file
+## 5.2 Icy Veins × Bloodlust — **exactly 0.000 at h = 0**, negative everywhere above
 
-Add baselines; **never edit one in place** — the vectors between them are the point.
+`v₁ v₂ = 1.56 > 1.5`: the pair is overcapped *before you have any gear at all*, so the capped branch
+applies from h = 0 — and `v₁ + v₂ − 1 = 1.5` puts h = 0 **precisely on the sign-flip threshold**:
 
-1. **Spell power** and **crit**, alone and together. *(Model side done for the damage family: rule 2b,
-   81 combinations. The sim side of that grid has not been run.)*
-2. **Haste × spell power**, haste × crit, all three.
-3. **Two-cooldown combinations**, then three. This is where the behaviour the planner actually
-   optimizes lives — haste stacking into the floor, a damage buff riding a haste window — and none of
-   it can appear in a table where each cooldown is alone.
+    I(h=0) = 20 · [ 1 − 1 · 1.5 / 1.5 ] = 0 exactly
 
-★ **The ladder is what makes step 3 answerable.** Whether two haste cooldowns stacked together are
-worth more or less than the sum of their parts depends entirely on which side of its own threshold each
-one is on, and on where the *pair* floors the GCD — a combined multiplier reaches the cap on far less
-passive haste than either alone (Icy Veins + Bloodlust is ×1.56, already past 1.5 at **h=0**). Expect
-the tent for a pair to peak at or below zero passive haste and to be falling everywhere. That is a
-prediction, not a measurement, and it is the first thing the combination work should check.
+| passive haste | interaction |
+|---|---|
+| **0** | **0.000 — a genuine, exact tie** |
+| 50 | −0.634 |
+| 100 | −1.268 |
+
+⇒ **At h = 0 it is exactly irrelevant whether Icy Veins overlaps Bloodlust.** The multiplicative bonus
+and the GCD overcap cancel to the digit. At any gear haste at all, **separate them** — and the cost of
+not doing so grows fast (−1.27 casts by h = 100).
+
+★ This is the cleanest example of the whole framework: two haste cooldowns, one pairing worth +0.200
+and the other worth 0.000, at the same haste, for one reason — 1.43 is under the floor and 1.56 is over
+it.
+
+## 5.3 Icy Veins × Berserking
+
+`v₁ v₂ = 1.32`. Overcap onset `m = 1.5/1.32` ⇒ **h = 215.0**; sign flip `m = 1.5/1.30` ⇒ **h = 242.6**.
+At h = 0: `I = 10 · (0.2)(0.1)/1.5 = +0.133` casts.
+
+## 5.4 ★ Above h = 242.6, any haste cooldown used inside Bloodlust is worth exactly zero
+
+`m_p · 1.3 ≥ 1.5` at h ≥ 242.6, so the state is already capped for the whole Bloodlust window and
+`rate(m·v) = rate(m) = 1/F`. This is §2's cap applied to the state *including* Lust — it is not a
+separate rule, and it is why every geared placement question answers "outside Lust".
+
+---
+
+# 6. TRIPLES AND BEYOND — nothing new is needed
+
+The interaction of any set `S` is Möbius inversion over its subsets:
+
+    I(S) = Σ_{R ⊆ S} (−1)^{|S|−|R|} · V(R)
+
+and every term is one of §4's five forms. `tools/rules-audit.mjs` checks the expansion closes to
+`0.000e+0`. **There is no triple-specific law**: Icy Veins + Icon + Arcane Power is `haste×sp`,
+`haste×dmg`, `dmg×sp` and one third-order term, all already given.
+
+---
+
+# 7. WHAT THIS MEANS FOR A PLAN
+
+Consequences, each traceable to a line above. None is an axiom.
+
+1. **Stack value buffs where casts are fastest** (§4 haste×value) — and expect that pull to weaken as
+   your spell power grows (§3.1).
+2. **Stack haste buffs only while their product stays under 1.5** (§4.1). Berserking + Bloodlust
+   qualifies at low gear; Icy Veins + Bloodlust never does.
+3. **Two +SP buffs neither help nor hurt each other** (§4, sp×sp = 0). Put them wherever the *haste*
+   argument wants them; there is no pairing bonus to chase.
+4. **Damage multipliers pair with everything** (`n·d·s`, `n·d₁·d₂`), and unlike +SP their `s` does not
+   dilute with gear — so Arcane Power's alignment argument is gear-independent.
+5. **Never buy haste above `m = 1.5`.** Not "diminishing" — zero (§1.1, §1.3).
+6. **The opener is a fixed 1.332-cast toll no cooldown can reduce** (§1.2).
+
+---
+
+# 8. WHAT IS **NOT** IN THIS FILE, AND WHY
+
+* **"Best placement at haste h" columns.** They are argmaxes, and the old ones were argmaxes over cells
+  whose noise was the size of the effect (peak-value haste moved by up to 140 rating between scores —
+  Berserking 430 → 570). Compute one when you need it, from §1–§6, and state the objective you used.
+* **Mana.** The planner is infinite-mana by user decision (`docs/PLAN.md`, permanently rejected list).
+* **Crit.** A constant multiplier on every cast; it cancels out of every ratio here. It changes what a
+  cast is worth, never which plan is best.
+* **The sim's numbers.** wowsims is a *realisation at one lattice phase*; these are expectations. A
+  disagreement of order 0.2 casts is **predicted**, not a defect (`docs/TOOLING.md`). Use the sim to
+  anchor the physics, never to arbitrate a sub-cast margin.
+
+# 9. TWO CAVEATS ON THE ARITHMETIC BEHIND THIS FILE
+
+1. **The engine's integral still carries two uncorrected edge terms** — a haste window's leading and
+   trailing snapshot edges, worth `i_out/(2·i_in) − ½` and `½ − i_in/(2·i_out)` casts and nearly
+   cancelling (`docs/MODEL-DEFECTS.md` §8f). They shift *levels* by up to 0.34 casts on a wide sweep.
+   Every closed form above was checked against the integral **and** derived independently from §1, so
+   the laws do not depend on them — but a value re-measured after those corrections may move.
+2. **Two engine/formula gaps are known and are not law errors**: a self-pressed window's start snaps to
+   the next cast boundary, so a pair's *overlap* can differ from its nominal duration by up to one
+   interval (this is the ≤0.005-cast residual in §5.1); and at very high haste a ramp cast can reach
+   the GCD floor, retiring §1.2's `m`-cancellation above h ≈ 1312 — beyond any gear.
