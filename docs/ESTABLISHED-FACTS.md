@@ -1118,12 +1118,130 @@ at 0:07 (so it covers 7–47 s), 1387 SP, 38 % crit, value in casts above "Lust 
 > the rule the project has carried as "Icy Veins slides out of Lust with gear" (RULES §3), and it names
 > the exact rating at which it stops being a trade-off and becomes free.
 
+### ★ The governing inequality — and Icy Veins and Berserking are on opposite sides of it
+
+A haste cooldown `×v` wants to be **inside** Lust exactly when the pair does not floor the GCD:
+
+    1.30 · v · m_p  <  1.5          ⇔        h  <  (1.5 / (1.30·v) − 1) · 1577
+
+| cooldown | | pair with Lust | wants to be inside Lust while |
+|---|---|---|---|
+| **Icy Veins** | ×1.20 | ×1.56 — **already ≥ 1.5 at h=0** | **never, at any haste** |
+| **Berserking** | ×1.10 | ×1.43 | **h < 77** |
+
+⇒ **They are not the same rule and must not be given the same advice.** Icy Veins and Lust floor the
+GCD together before you have any gear at all, so Icy Veins is *always* wasting itself inside Lust.
+Berserking is small enough that the pair still fits under the floor at low haste, so at h=0 Berserking
+genuinely wants to be inside Lust and Icy Veins genuinely does not.
+
+Measured on a 140 s fight with Lust pinned at 0:60 (so **before**, **inside** and **after** are all
+reachable), value in casts above "Lust alone":
+
+**Icy Veins × Lust** — pair threshold h = −61, i.e. the interaction is negative at every haste ≥ 0
+
+| passive haste | before Lust | inside Lust | after Lust | @0 | interaction | true optimum |
+|---|---|---|---|---|---|---|
+| 0 | 2.437 | 2.515 | 2.668 | 2.492 | −0.1522 | **@50** — straddling into Lust's start |
+| 100 | 3.028 | 1.668 | 3.011 | 2.896 | −1.3442 | **@40** — ending as Lust begins |
+| 200 | 3.020 | 0.591 | 3.168 | 3.057 | −2.8081 | **@5** — the pull |
+| **243** | 3.005 | **0.000** | 3.172 | 2.995 | −3.1718 | **@5** |
+| 300 | 3.167 | 0.000 | 3.334 | 3.222 | −3.3328 | **@4** |
+| 500 | 2.442 | 0.000 | 2.442 | 2.552 | −2.4398 | **@1** |
+| 800 | 0.000 | 0.000 | 0.000 | 0.716 | 0.0000 | **@0** |
+
+**Berserking × Lust** — pair threshold h = 77
+
+| passive haste | before Lust | inside Lust | after Lust | @0 | interaction | true optimum |
+|---|---|---|---|---|---|---|
+| 0 | 0.475 | **0.931** | 0.726 | 0.527 | **+0.2043** | **@58** — straddling into Lust |
+| 50 | 0.706 | **0.926** | 0.726 | 0.756 | **+0.2011** | **@93** — straddling Lust's end |
+| 100 | 0.991 | 0.833 | 0.732 | 0.991 | +0.1022 | **@1** — the pull |
+| 150 | 0.538 | 0.393 | 0.821 | 0.528 | −0.4276 | **@53** |
+| 200 | 0.745 | 0.179 | 0.818 | 0.758 | −0.6388 | **@3** |
+| **243** | 0.726 | **0.000** | 0.817 | 0.847 | −0.8166 | **@0** |
+| 400 | 0.819 | 0.000 | 0.910 | 0.849 | −0.9105 | **@4** |
+| 800 | 0.000 | 0.000 | 0.000 | 0.388 | 0.0000 | **@0** |
+
+### The three breakpoints, and what each one is
+
+| breakpoint | Icy Veins | Berserking | what changes there |
+|---|---|---|---|
+| **pair threshold** — the interaction turns negative | −61 (never positive) | **77** | stacking stops paying and starts costing |
+| **Lust's own cap** — inside Lust is worth exactly 0 | **243** | **243** | Lust alone floors the GCD; nothing is left to shorten |
+| **the bare cap** — everything collapses to the pull | **789** | **789** | steady state is worth nothing anywhere (rule 3) |
+
+The middle one is shared because it is a property of **Lust**, not of the partner. The first is the
+partner's own, and it is the one that separates the two cooldowns.
+
+### How additional haste points move it
+
+The interaction gets **worse, then recovers to zero** — it is not monotone. It bottoms out at
+**h ≈ 300 for Icy Veins (−3.33 casts)** and **h ≈ 400 for Berserking (−0.91)**, then climbs back to
+**0.0000 at h = 800**, because past the bare cap both cooldowns are worth nothing at steady state
+anyway and there is no longer anything for them to take from each other. **The worst haste level to
+stack these is the middle of the range, not the top.**
+
+The *placement* follows, in three stages — and note the middle stage is **short**:
+
+| passive haste | where the partner goes |
+|---|---|
+| below the pair threshold (77 for Berserking; never for Icy Veins) | **inside Lust**, or straddling into it |
+| just above it | **abutting Lust** — ending as it begins, or straddling its end |
+| from ~150 (Icy Veins) / ~200 (Berserking) upward | **the pull**, and it stays there |
+
+⚠ **"After Lust" is a trap reading.** The *after* column beats the *inside* column at every haste above
+the pair threshold, which makes it look like the answer — but it is almost never the optimum. From
+h≈150 the true optimum is at or within a few seconds of the pull, because by then rule 3's pull
+advantage is worth more than anything the Lust window has to offer. Read the optimum column, not the
+best of the three named probes.
+
+### Passive spell power and passive crit: no effect whatsoever
+
+Every number in this section is **invariant to 0.00000000 casts** across spell power 500 / 1000 / 2000
+× crit 0 / 25 / 50 %, at haste 0 / 200 / 400 / 600. This is Part I rule 2b holding for a pair: these
+are `haste × haste` interactions, they are entirely about the GCD floor, and the floor does not know
+what your spell power is. **Only passive haste moves any of it.**
+
 ⚠ **At h=0 the ordering is `pull > inside Lust > after Lust`, and that is not the same rule.** With
 nothing floored, Lust is nearly transparent to Icy Veins (P4's interaction is ≈ 0 there — the floor has
 not started biting, so Icy Veins converts the same 2.67 casts whether Lust is up or not). What decides
 the placement at h=0 is not Lust at all, it is the **pull advantage** of Part I rule 3. Reading the h=0
 row as "get out of Lust" and the h=300 row as the same rule would be wrong: they are the pull advantage
 and the GCD floor respectively, and they only happen to point the same way once.
+
+### Worked example — Berserking on a real plan, predicted from the table
+
+On the `1:40 · h=0 · 1387 SP` fight (Lust pinned 0:07, Icy Veins 2.5–22.5, Icon 6.3–26.3, AP/Gem
+6.3–21.3, Lust 6.6–46.6, Cold-Snap Icy Veins 48–68), sweeping Berserking with everything else held:
+
+| Berserking at | value vs @41 | what it overlaps |
+|---|---|---|
+| 0–20 | −0.42 … −1.50 | Icy Veins **+** Lust — the floored region |
+| 22 | −0.2757 | still catches Icy Veins' last 0.92 s |
+| **23 – 36** | **−0.2056**, flat | Lust only (Icon's tail for part of it) |
+| **41** | **0.0000** ← best | the *end* of Lust, running into Icy Veins #2 |
+| 68 – 88 | −0.4112 | nothing |
+
+Three things the composition table called in advance:
+
+1. **Overlapping Lust is worth `+0.2056` casts** (@23–36 against @68–88, which overlap nothing). That is
+   the P4 `Berserking + Bloodlust` interaction at h=0 **to four decimals** — the pair table predicting a
+   real plan's number with no fitting.
+2. **Catching Icon's tail is worth exactly nothing.** @23, @24 and @26 sit inside Icon's remaining
+   window and @28–36 are past it entirely, and all of them read **identically −0.2056**. The rule is
+   `Δ(covered) × s`, and a 3–4 s tail overlap does not produce a whole extra covered cast, so
+   `Δ(covered) = 0`. **A partial value-window overlap pays nothing until it buys a whole cast.**
+3. **@22 loses 0.07 casts to the floor.** Berserking's first 0.92 s there runs inside Icy Veins + Lust,
+   which is ×1.56 — already floored, so those 0.92 s are worth exactly zero (the rule above, applied to
+   a window rather than to passive haste). Nudging to @23 recovers it.
+
+⇒ **@41 wins by straddling the END of Lust into the second Icy Veins**, collecting two partial overlaps
+(+0.4112 against no overlap) rather than one whole one (+0.2056).
+
+⚠ **But it is a spike, and @23–36 is a 14-second plateau.** Under `tools/jitter.mjs`, @41 keeps the
+better *mean* at every jitter model (−0.14 … −0.16 casts for the plateau, never reversing) while having
+the **worse floor** (worst case 86.81 casts against the plateau's 86.92). @41 is the higher-mean,
+higher-variance choice. Optimising expected damage picks it; optimising the bad pull does not.
 
 ## The full pair table
 
