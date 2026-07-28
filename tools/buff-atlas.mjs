@@ -37,11 +37,16 @@
 //     ⚠ *"if they aren't [flat] then that's a fault in setting up the sim"* — so a non-flat SIM column
 //       is a harness bug to hunt, not a fact to write down.
 //
-//   VALUE buffs (Arcane Power, Icon, Serpent-Coil, Skull of Gul'dan)
-//     → value must be FLAT across every placement **at or after 3 Arcane Blast stacks are built**.
-//       Before that the mage is casting slower, so a fixed-duration damage buff covers fewer casts and
-//       is genuinely worth less. Placements inside the ramp are therefore reported but EXCLUDED from
-//       the flatness verdict, and marked `ramp`.
+//   VALUE buffs (Arcane Power, Icon, Serpent-Coil)
+//     → TWO claims, and both are ASSERTED. ⛔ The first version of this tool merely *exempted* the ramp
+//       placements from the flatness check, which quietly threw away the more interesting half of the
+//       rule and reported "flat ✓" for a column whose first row is 20% low. An exemption is not a
+//       finding. So:
+//         (a) FLAT at or after 3 Arcane Blast stacks are built, and
+//         (b) STRICTLY WORSE before that — *"if you use them once stacks are built up, it obviously can
+//             cover more casts than if you use them before stacks are built up"* (user, 07-28).
+//       (b) is checked in BOTH columns and the two penalties are compared: the model is only right here
+//       if it reproduces the sim's penalty, not merely if it has one.
 //
 // ⛔ Power Infusion and Drums of Battle are OMITTED (user, 07-28). `sim/planspec.mjs`'s
 // `UNTRANSCRIBABLE` lists both — wowsims has no APL action for either — so they could only ever have
@@ -217,18 +222,47 @@ for (const b of out) {
     const ok = st.pct <= FLAT_PCT;
     return `  ${label}: mean ${f(st.mean, 2)} · spread ${f(st.spread, 2)} = ${st.pct.toFixed(2)}% of mean  ${ok ? '✓ FLAT' : '✗ NOT FLAT'}`;
   };
+  console.log(`  [flat, interior placements]`);
   console.log(verdict('SIM  ', sS));
   console.log(verdict('MODEL', mS));
+  // ★ THE RAMP PENALTY IS A CLAIM, NOT AN EXEMPTION. A value buff pressed before full stacks covers
+  // fewer casts and must be measurably WORSE — and the model is only correct here if it reproduces the
+  // SIM's penalty, not merely if it has one of its own.
+  const ramps = b.rows.filter(r => r.ramp);
+  if (ramps.length && sS && mS) {
+    console.log(`  [ramp penalty — pressed before 3 stacks at ${T3.toFixed(2)}s, must be WORSE]`);
+    let bad = 0;
+    for (const r of ramps) {
+      const sPen = 100 * (r.sim - sS.mean) / sS.mean, mPen = 100 * (r.model - mS.mean) / mS.mean;
+      // "Worse" only bites where it should: a press at 5s FIRES at the next cast boundary, which is
+      // the first full-stack cast, so it is expected to read ~0 and that is not a failure.
+      const material = Math.abs(sPen) > FLAT_PCT;
+      // ⚠ Scale the agreement tolerance by THIS column's measured sim noise, not a fixed number. A flat
+      // 1.0 pp flagged Serpent-Coil as a model disagreement when the gap (1.5 pp) sits inside the sim's
+      // own 1.85 % spread on that row — the noisiest cooldown in the table, 34 DPS out of ~1700.
+      // Comparing a measurement against a tolerance tighter than its own noise manufactures findings.
+      const tol = Math.max(1.0, 1.5 * sS.pct);
+      const agree = !material || Math.abs(sPen - mPen) <= tol;
+      if (!agree) bad++;
+      console.log(`    press ${String(r.t).padStart(2)}s: sim ${sPen >= 0 ? '+' : ''}${sPen.toFixed(1)}% · model ${mPen >= 0 ? '+' : ''}${mPen.toFixed(1)}%` +
+                  `   ${!material ? '(fires at the first full-stack boundary — no penalty expected)' : agree ? `✓ model reproduces the sim penalty (±${tol.toFixed(1)}pp)` : `✗ MODEL DISAGREES with the sim (gap ${Math.abs(sPen-mPen).toFixed(1)}pp > ±${tol.toFixed(1)}pp)`}`);
+    }
+    if (!bad) console.log(`    => ✓ the ramp penalty is real and the model has it right`);
+  }
   if (sS && sS.pct > FLAT_PCT)
     console.log(`  ⚠ the SIM column is not flat — per the 07-28 ruling that is a HARNESS setup fault to hunt, not a fact.`);
   if (mS && mS.pct > FLAT_PCT && (!sS || sS.pct <= FLAT_PCT))
     console.log(`  ⛔ the MODEL disagrees with a flat sim — a scorer defect, at ${mS.pct.toFixed(2)}% of the buff's own value.`);
   console.log('');
-  verdicts.push({ name: b.def.name, sim: sS, model: mS });
+  const rp = b.rows.filter(r => r.ramp);
+  const ramp0 = rp.length && sS && mS ? { sim: 100*(rp[0].sim-sS.mean)/sS.mean, model: 100*(rp[0].model-mS.mean)/mS.mean } : null;
+  verdicts.push({ name: b.def.name, haste: b.haste, sim: sS, model: mS, ramp0 });
 }
 console.log('## summary\n');
-console.log('| cooldown | sim flat? | model flat? |');
-console.log('|---|---|---|');
+console.log('| cooldown | kind | sim flat? | model flat? | press-at-0 penalty (sim / model) |');
+console.log('|---|---|---|---|---|');
+const mark = st => st ? (st.pct <= FLAT_PCT ? `✓ ${st.pct.toFixed(2)}%` : `✗ ${st.pct.toFixed(2)}%`) : '—';
 for (const v of verdicts)
-  console.log(`| ${v.name} | ${v.sim ? (v.sim.pct <= FLAT_PCT ? `✓ ${v.sim.pct.toFixed(2)}%` : `✗ ${v.sim.pct.toFixed(2)}%`) : '—'} | ${v.model ? (v.model.pct <= FLAT_PCT ? `✓ ${v.model.pct.toFixed(2)}%` : `✗ ${v.model.pct.toFixed(2)}%`) : '—'} |`);
+  console.log(`| ${v.name} | ${v.haste ? 'haste' : 'value'} | ${mark(v.sim)} | ${mark(v.model)} | ` +
+    (v.ramp0 ? `${v.ramp0.sim.toFixed(1)}% / ${v.ramp0.model.toFixed(1)}%` : 'n/a (haste — expected none)') + ' |');
 process.exit(0);
