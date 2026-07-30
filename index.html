@@ -5100,14 +5100,30 @@ function renderTimeline(run, opts) {
      a plain plan renders byte-identically to before — the same discipline the ghost bars follow. */
   const PRE = (() => {
     if (cfg.prepull === false) return 0;
-    const used = Object.values((run.best && run.best.s) || {}).some(v => v.some(t => t < 0));
-    if (!used && !opts.editing) return 0;
-    let m = 0;
+    /* ⚠ SIZE IT TO WHAT IS ACTUALLY THERE. Reserving the deepest LEGAL prepull for a plan that only
+       uses 5 s spends a fifth of a short fight's chart on empty gutter. So:
+         · not editing → exactly the deepest press in the plan (0 if none, so nothing changes);
+         · editing     → the deepest LEGAL press, because the drag has to be able to reach it. */
+    let used = 0;
+    for (const v of Object.values((run.best && run.best.s) || {})) for (const t of v) used = Math.max(used, -t);
+    if (!opts.editing) return Math.max(0, Math.ceil(used));
+    let m = used;
     for (const k of lanes) if (!(cfg.fixed && cfg.fixed[k])) m = Math.max(m, BUFFS[k].dur - 1);
-    return Math.min(m, 30);
+    return Math.min(Math.ceil(m), 30);
   })();
-  const SPAN = cfg.T + PRE;
-  const x = t => PADL + ((t + PRE) / SPAN) * plotW;
+  /* ⚠⚠ THE GUTTER IS PIXEL-ADDITIVE, NOT DOMAIN-COMPRESSIVE — and the first version got that wrong.
+     It mapped `[−PRE, T]` across the SAME `plotW`, which silently rescaled the fight: on a 2:15 fight a
+     19 s gutter squeezed every second by 12 % and moved 0:00 a tenth of the way in from the plot edge.
+     Nothing was misplaced — the bands, ticks and bars all go through `x()`, so they stayed consistent
+     with each other — but the chart no longer read as the fight it describes, which the user reported
+     immediately: *"that broke the zones aligning with the actual time visually."*
+     ⇒ Keep the fight's own seconds-per-pixel EXACTLY as it was and add the gutter as extra width on the
+     left, widening the viewBox. The svg is `width:100%`, so the page scales the whole thing down a few
+     percent and every internal proportion — and the fight's own scale relative to its axis — is
+     untouched. A plan with no prepull is byte-identical to before, as it already was. */
+  const GUT = PRE > 0 ? (PRE / cfg.T) * plotW : 0;
+  const VW2 = VW + GUT;
+  const x = t => PADL + GUT + (t / cfg.T) * plotW;
   const bandTop = PADT, bandBot = H - AXIS_H;
 
   // theme colours (read the CSS vars so the chart tracks the palette)
@@ -5125,10 +5141,10 @@ function renderTimeline(run, opts) {
   const maxPct = Math.max(60, Math.ceil((samples.length ? Math.max(...samples.map(s => s.pct)) : 0) / 10) * 10 + 5);
   const y = p => PADT + CURVE_H - (Math.min(p, maxPct) / maxPct) * CURVE_H;
 
-  let sv = `<svg viewBox="0 0 ${VW} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" font-family="system-ui,-apple-system,sans-serif" role="img" aria-label="Buff timeline and haste curve" style="display:block">`;
+  let sv = `<svg viewBox="0 0 ${VW2} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" font-family="system-ui,-apple-system,sans-serif" role="img" aria-label="Buff timeline and haste curve" style="display:block">`;
   sv += `<defs><pattern id="interHatch" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="${PH.intermission}" opacity="0.09"/><line x1="0" y1="0" x2="0" y2="8" stroke="${PH.intermission}" stroke-width="1.5" opacity="0.55"/></pattern></defs>`;
   // haste-curve backing panel
-  sv += `<rect x="${PADL}" y="${PADT}" width="${plotW}" height="${CURVE_H}" fill="${surf}" opacity="0.4" rx="5"/>`;
+  sv += `<rect x="${PADL}" y="${PADT}" width="${plotW + GUT}" height="${CURVE_H}" fill="${surf}" opacity="0.4" rx="5"/>`;
   if (PRE > 0) {   // shade the prepull gutter and mark the pull — it is NOT fight time
     sv += `<rect x="${PADL}" y="${PADT}" width="${(x(0) - PADL).toFixed(1)}" height="${(H - AXIS_H - PADT).toFixed(1)}" fill="${ink2}" opacity="0.07"/>`;
     sv += `<line x1="${x(0).toFixed(1)}" y1="${PADT}" x2="${x(0).toFixed(1)}" y2="${(H - AXIS_H).toFixed(1)}" stroke="${ink2}" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.8"/>`;
@@ -5165,8 +5181,8 @@ function renderTimeline(run, opts) {
   // GCD-floor line at +50% + faint "wasted haste" shading above it
   if (maxPct > 50) {
     const gcdTip = `<title>A 3-stack Arcane Blast is a 1.5s cast and the global cooldown floors at 1.0s, so +50% haste is the ceiling. Haste above this line buys no extra casts in that window — the shading is the part that is wasted.</title>`;
-    sv += `<rect x="${PADL}" y="${PADT}" width="${plotW}" height="${(y(50) - PADT).toFixed(1)}" fill="${warn}" opacity="0.06"/>`;
-    sv += `<line x1="${PADL}" y1="${y(50).toFixed(1)}" x2="${VW - PADR}" y2="${y(50).toFixed(1)}" stroke="${warn}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85">${gcdTip}</line>`;
+    sv += `<rect x="${PADL}" y="${PADT}" width="${plotW + GUT}" height="${(y(50) - PADT).toFixed(1)}" fill="${warn}" opacity="0.06"/>`;
+    sv += `<line x1="${PADL}" y1="${y(50).toFixed(1)}" x2="${VW2 - PADR}" y2="${y(50).toFixed(1)}" stroke="${warn}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85">${gcdTip}</line>`;
     sv += `<text x="${PADL - 8}" y="${(y(50) + 4).toFixed(1)}" fill="${warn}" font-size="11" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">GCD cap${gcdTip}</text>`;
   }
   // Frostbolt filler soft cap: at +25% passive haste a 2.5s Frostbolt (Imp Frostbolt 5/5) casts in 2.0s,
@@ -5176,7 +5192,7 @@ function renderTimeline(run, opts) {
   const fbFrost = "#5cc6e6";
   if (maxPct > FB_PCT + 3) {
     const fbTip = `<title>A gearing reference, not part of the plan: at +${FB_PCT.toFixed(0)}% passive gear haste (~${Math.round(FB_PCT * GAME.HASTE_RATING_PER_PCT)} rating) a Frostbolt casts in 2.0s, so four of them exactly fill the 8s Arcane Blast debuff — your conserve filler goes from 3 Frostbolts to 4. Read your no-cooldown haste against it; the planner itself never casts Frostbolt.</title>`;
-    sv += `<line x1="${PADL}" y1="${y(FB_PCT).toFixed(1)}" x2="${VW - PADR}" y2="${y(FB_PCT).toFixed(1)}" stroke="${fbFrost}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85">${fbTip}</line>`;
+    sv += `<line x1="${PADL}" y1="${y(FB_PCT).toFixed(1)}" x2="${VW2 - PADR}" y2="${y(FB_PCT).toFixed(1)}" stroke="${fbFrost}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85">${fbTip}</line>`;
     sv += `<text x="${PADL - 8}" y="${(y(FB_PCT) + 4).toFixed(1)}" fill="${fbFrost}" font-size="11" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">4× FB${fbTip}</text>`;
   }
   // Second GCD-floor line — "cap +ATI". A live 145-rating proc adds ≈+9.2% haste (145/15.77), so 3-stack AB
@@ -5187,7 +5203,7 @@ function renderTimeline(run, opts) {
     if (atiCapPct > 2 && maxPct > atiCapPct + 3) {
       const atiCol = colorOf("ati");
       const atiTip = `<title>GCD cap if an Ashtongue proc aligns: at +${atiCapPct.toFixed(0)}% base haste a live 145-rating proc reaches the 1.0s Arcane Blast floor. Between this line and the +50% one you are capped only while a proc is up; above it, procs are (partly) wasted to the cap.</title>`;
-      sv += `<line x1="${PADL}" y1="${y(atiCapPct).toFixed(1)}" x2="${VW - PADR}" y2="${y(atiCapPct).toFixed(1)}" stroke="${atiCol}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85">${atiTip}</line>`;
+      sv += `<line x1="${PADL}" y1="${y(atiCapPct).toFixed(1)}" x2="${VW2 - PADR}" y2="${y(atiCapPct).toFixed(1)}" stroke="${atiCol}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85">${atiTip}</line>`;
       sv += `<text x="${PADL - 8}" y="${(y(atiCapPct) + 4).toFixed(1)}" fill="${atiCol}" font-size="11" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">cap +ATI${atiTip}</text>`;
     }
   }
@@ -5213,22 +5229,22 @@ function renderTimeline(run, opts) {
     const ly = PADT + CURVE_H + 22 + li * (LANE_H + LANE_GAP);
     const col = colorOf(k);
     sv += `<text x="${PADL - 8}" y="${ly + LANE_H / 2 + 4}" fill="${ink2}" font-size="12" text-anchor="end">${laneName(k)}</text>`;
-    sv += `<rect x="${PADL}" y="${ly}" width="${plotW}" height="${LANE_H}" fill="${surf}" rx="4"/>`;
+    sv += `<rect x="${PADL}" y="${ly}" width="${plotW + GUT}" height="${LANE_H}" fill="${surf}" rx="4"/>`;
     if (def.kind === "proc") {
-      sv += `<rect x="${PADL}" y="${ly}" width="${plotW}" height="${LANE_H}" fill="${col}" opacity="${(0.14 + atiUp * 0.5).toFixed(2)}" rx="4"/>`;
+      sv += `<rect x="${PADL}" y="${ly}" width="${plotW + GUT}" height="${LANE_H}" fill="${col}" opacity="${(0.14 + atiUp * 0.5).toFixed(2)}" rx="4"/>`;
       sv += `<text x="${PADL + 8}" y="${ly + LANE_H / 2 + 4}" fill="${col}" font-size="11">~${(atiUp * 100).toFixed(0)}% avg uptime (+${atiR.toFixed(0)} rating avg)</text>`;
     } else {
       // ghost bars first (under the solid ones): the model plan, for visual comparison
       const ghostTimes = (opts.ghost && opts.ghost[k]) || [];
       for (const t of ghostTimes) {
-        const bw = Math.max(3, (Math.min(def.dur, cfg.T - t) / SPAN) * plotW);
+        const bw = Math.max(3, (Math.min(def.dur, cfg.T - t) / cfg.T) * plotW);
         sv += `<rect x="${x(t).toFixed(1)}" y="${ly + 1}" width="${bw.toFixed(1)}" height="${LANE_H - 2}" fill="${col}" opacity="0.12" stroke="${col}" stroke-width="1.2" stroke-dasharray="4 3" rx="4"><title>Model plan: ${def.name} @ ${fmtT(t)}</title></rect>`;
       }
       const times = shownTimes(run, k);
       const intents = times;   // the display IS the intent now, so the drag handle needs no pairing
       const pinned = !!(cfg.fixed && cfg.fixed[k]);
       times.forEach((t, j) => {
-        const bw = Math.max(3, (Math.min(def.dur, cfg.T - t) / SPAN) * plotW);
+        const bw = Math.max(3, (Math.min(def.dur, cfg.T - t) / cfg.T) * plotW);
         const tipTxt = `${def.name} @ ${fmtT(t)}` + (opts.editing ? (pinned ? " · pinned raid call — not editable" : " · drag to move") : "");
         let bar = `<rect x="${x(t).toFixed(1)}" y="${ly}" width="${bw.toFixed(1)}" height="${LANE_H}" fill="${col}" rx="4"><title>${tipTxt}</title></rect>`;
         bar += `<line x1="${x(t).toFixed(1)}" y1="${ly - 1}" x2="${x(t).toFixed(1)}" y2="${ly + LANE_H + 1}" stroke="${ink}" stroke-width="1.5" opacity="0.9"/>`;
@@ -5244,7 +5260,7 @@ function renderTimeline(run, opts) {
   const box = el("chartbox");
   box.querySelectorAll("svg").forEach(s => s.remove());
   box.insertAdjacentHTML("beforeend", sv);
-  lastGeo = { x, PADL, PADR, VW, plotW, H, T: cfg.T, PRE, SPAN };
+  lastGeo = { x, PADL, PADR, VW: VW2, plotW, H, T: cfg.T, PRE, GUT };
   box.classList.toggle("editing", !!opts.editing);
   // The legend paragraph is GONE. Everything it used to spell out is now on the chart itself: the
   // curve and every reference line carry their own gutter label and a hover title, the phase bands
@@ -5266,8 +5282,8 @@ function hookTooltip(run, geo) {
     if (DRAG.active) return; // a press-bar drag owns the pointer — the hover tip would fight it
     const r = svg.getBoundingClientRect();
     const vbX = (e.clientX - r.left) / r.width * geo.VW; // rendered px → viewBox units (responsive svg)
-    if (vbX < geo.PADL || vbX > geo.VW - geo.PADR) { tip.style.display = "none"; return; }
-    const t = (vbX - geo.PADL) / geo.plotW * (geo.SPAN || cfg.T) - (geo.PRE || 0);
+    if (vbX < geo.PADL + (geo.GUT || 0) || vbX > geo.VW - geo.PADR) { tip.style.display = "none"; return; }
+    const t = (vbX - geo.PADL - (geo.GUT || 0)) / geo.plotW * cfg.T;
     if (!geo.samples.length) { tip.style.display = "none"; return; }
     let s = geo.samples[0];
     for (const c of geo.samples) { if (c.t <= t) s = c; else break; }
@@ -5670,10 +5686,10 @@ function attachDrag(svg, run) {
     /* the drag maps through the SAME domain the chart drew, gutter included — otherwise the bar
        tracks the pointer at the wrong rate the moment a prepull gutter exists. */
     const lo = earliestPress(d.k, cfg);
-    let dxT = (vbOf(e) - d.x0) / geo.plotW * (geo.SPAN || cfg.T);
+    let dxT = (vbOf(e) - d.x0) / geo.plotW * cfg.T;
     dxT = Math.max(lo - d.fire0, Math.min(cfg.T - 1 - d.fire0, dxT)); // inside [earliest legal, kill]
     if (Math.abs(dxT) > 0.01) d.moved = true;
-    d.g.setAttribute("transform", `translate(${(dxT / (geo.SPAN || cfg.T) * geo.plotW).toFixed(2)} 0)`);
+    d.g.setAttribute("transform", `translate(${(dxT / cfg.T * geo.plotW).toFixed(2)} 0)`);
     const snap = Math.max(lo, Math.min(Math.floor(cfg.T - 1), Math.round(d.int0 + dxT)));
     tip.innerHTML = `<b>${fmtT(snap)}</b> · ${BUFFS[d.k].name} — release snaps here`;
     tip.style.display = "block";
