@@ -764,16 +764,36 @@ that stays — a prepull cast is haste-blind and makes a haste sweep non-monoton
 net = value(x s gained at use k+1) − value(x s lost from the tail of use k)
 ```
 
-**Three conditions, and ALL of them must hold** — which is why the user's own instinct that it "makes
-very little sense in normal fights" is right:
+**The conditions** — and ⛔ **the first version of this section got condition 2 badly wrong; the user
+corrected it: *"this is too shallow of a thinking."*** It read *"use `k+1` must be cooldown-limited"*,
+which is false, and the correction is the whole substance of the rule:
 
 1. **The tail must already be dead.** Free only if `[dur−x, dur]` falls inside an intermission or past
    the kill. Otherwise you are paying full price for it.
-2. **Use `k+1` must be COOLDOWN-LIMITED.** If it was placed by choice rather than by the cooldown, an
-   earlier cooldown changes nothing at all.
-3. **★ Use `k+1`'s window must be TRUNCATED at its far end.** This is the one that is easy to miss: an
-   untruncated 20 s window slid 5 s earlier is still 20 s of the same value. Sliding only *adds*
-   anything when the far end was being cut off — by the kill, or by a wall.
+2. **★★ SOME LATER USE MUST BE COOLDOWN-LIMITED — not necessarily the next one.** Cooldown-limitation
+   is **transitive down the chain**, and a use with slack is a **CONDUIT, not a blocker**: it can slide
+   earlier at zero cost and hand the whole `x` seconds to the use behind it. *"The over-next use might
+   be cooldown-limited, while the second use is free to move with nothing to gain or lose, but it would
+   allow the next one to align better."*
+   ⇒ the real test is: **does any downstream use want to be earlier, and is the total cost of sliding
+   every use between here and there less than what it gains?**
+   ★ Measured on Kael'thas, which is where the shallow version went wrong: Icon #2 at **120, 122 and
+   125 all score `275.204056` — bit-identical**. That is a 5-second free-slide conduit sitting in plain
+   sight, and the shallow rule looked at the same plan and called Icon "not cooldown-limited" because
+   the *gaps* had slack. The slack was the point.
+3. **★ The use that gains must be TRUNCATED at its far end.** An untruncated 20 s window slid 5 s
+   earlier is still 20 s of the same value. Sliding only *adds* anything where the far end was being cut
+   off — by the kill, or by a wall.
+4. **★★ …OR IT FREES A SHARED CONSTRAINT, which is a second mechanism entirely** (user, same
+   correction: *"or free up the hands of other cooldowns"*). Trinkets share a **20 s on-use lockout**
+   (§17), so moving Icon 5 s earlier moves the earliest legal Skull/MQG press 5 s earlier too — a gain
+   that appears on a **different track** and that none of conditions 1–3 mentions. Any shared resource
+   does this; the lockout is simply the one this kit has.
+
+⚠ **CONSEQUENCE: this is not reliably decidable by hand.** Conditions 2 and 4 both reach arbitrarily far
+down the plan and across tracks, so "is a prepull worth it here" is a question about the whole layout,
+not about one window. That is an argument for MODELLING it rather than ruling on it case by case — see
+the implementation note below.
 
 **Measured, in the shape where all three hold** (T=250, Icon cd 120, chain `0:07 → 2:07 → 4:07` with
 the third window cut at the kill):
@@ -783,17 +803,26 @@ chain 7 / 127 / 247    193.346582 casts
 chain 2 / 122 / 242    193.420645 casts     +0.074064   ← 37× the tie band
 ```
 
-⛔ **AND ON THE FIGHT THAT PROMPTED THE RULE IT IS WORTH EXACTLY ZERO.** Kael'thas 7:00: pressing Icon
-at −5 s is genuinely free (the 0:15 intermission truncates the window anyway, so usable uptime is 15 s
-either way, and the cooldown does come back at 115 instead of 120) — but **no track in that plan is
-cooldown-limited**. Icon's uses sit 125 / 135 / 136 s apart against a 120 s cooldown; every one was
-placed by choice with 5–16 s of slack. Condition 2 fails, so the 5 s of earlier availability buys
-nothing. *Free* there means free of cost **and** free of benefit.
+⚠ **KAEL'THAS 7:00 — the fight that prompted the rule, and the verdict is now UNDECIDED rather than
+zero.** Pressing Icon at −5 s is genuinely free on the cost side (the 0:15 intermission truncates the
+window anyway, so usable uptime is 15 s either way). The first analysis then declared the benefit zero
+because Icon's uses sit 125 / 135 / 136 s apart against a 120 s cooldown — "every one placed by choice".
+**That reasoning is retired by the corrected condition 2:** the slack means those uses are conduits, so
+the question is whether anything downstream — including on another track via the trinket lockout — wants
+those 5 seconds. Answering it needs the negative-press-time model, which does not exist yet.
 
-⚠ **NOT IMPLEMENTED.** The model has no negative press times: `repair` clamps to `t ≥ 0` and the search
-never proposes one. Building it means allowing `t ∈ [−dur, 0)` for player-pressed tracks, truncating the
-window at `t = 0`, and chaining the cooldown from the press — all three of which the engine already does
-in every other respect. The gain is real but narrow; it is a candidate, not a debt.
+⚠ **NOT IMPLEMENTED, and the corrected rule makes that matter more.** The model has no negative press
+times: `repair` clamps to `t ≥ 0` and the search never proposes one. Building it means allowing
+`t ∈ (−dur, 0)` for player-pressed tracks (never `≤ −dur`, which wastes the whole window — the user's
+own bound), truncating the window at `t = 0`, and chaining the cooldown from the press. The engine
+already does all three of those things in every other respect, so the change is mostly search-space.
+⇒ Because conditions 2 and 4 are non-local, **a case-by-case hand ruling is not reliable** — which turns
+this from "a narrow optimisation we could add" into "the only way to answer the question at all".
+
+★ **Verified worth having.** A user-built 2:15 fight (Lust 1:35, intermission 0:15–0:20) satisfies every
+condition at once: Icon `[0,20]` with a dead `[15,20]` tail, uses exactly 120 s apart, and use #2's
+window `[120,140]` cut by the 135 s kill. The 5 s prepull is worth **+0.323591 casts — 162× the tie
+band**.
 
 ## 8. Known-kill planning + Cold Snap
 
