@@ -424,10 +424,44 @@ intermission is therefore strictly worse than the same seconds of uptime**, by i
 1.332 casts *plus* whatever cooldown time it wasted — three separate costs, and only the first is
 obvious.
 
-★ Practical consequence, and it is the reverse of the intuition: **the presses you want to fire just
-BEFORE a long intermission are the ones whose cooldown will come back during it.** Anything whose
-cooldown outlasts the downtime should be held for the exit, where it can cover the new ramp's cluster
-instead of expiring into an empty room.
+### ⛔ AND "HOLD IT FOR THE EXIT TO COVER THE NEW RAMP" IS WRONG — corrected 07-28 (user)
+
+That was this file's advice for a few hours and the user killed it with one line: *"the ramp doesn't
+really matter for haste until ridiculously high passive haste numbers."* Right — §1.2b — and worse, a
+**value** buff does not merely not-care, it is ramp-**averse** (§5.6b). *Nothing* wants to cover a ramp.
+
+Measured. `T = 200`, intermission `80–100`, h = 0; 3 stacks return at `t = 106.498`. Value in casts
+above never pressing:
+
+| press at | Icy Veins (20 s, haste) | Icon (20 s, +SP) | Arcane Power (15 s, ×dmg) |
+|---|---|---|---|
+| whole window fits before the wall | 2.5667 (**−0.100**) | 0.9906 (**−0.039**) | 2.8500 (**−0.150**) |
+| 2 s before the wall | 0.1667 (−2.500) | 0.0643 (−0.965) | 0.2500 (−2.750) |
+| 0.1 s before the wall | **0.0000 (−2.667)** | 0.0772 (−0.952) | **0.0000 (−3.000)** |
+| at the exit (covering the ramp) | 2.6667 (**best, tied**) | 0.8878 (**−0.141**) | 2.4504 (**−0.550**) |
+| once 3 stacks are back | 2.6667 (**best, tied**) | **1.0292 (best)** | **3.0000 (best)** |
+
+★★★ Three things fall out, and only the first was in the earlier advice:
+
+1. **The dominant cost is a window expiring into the empty room, and it is just the wasted seconds.**
+   Icy Veins pressed 0.1 s before the wall is worth **0.0000** against 2.6667 — the entire cooldown
+   thrown away. This is the real reason to hold, and it has nothing to do with ramps.
+2. **A window that fits ENTIRELY before the wall is nearly as good as the best placement after it** —
+   −0.100 / −0.039 / −0.150 casts. So *do not* hold reflexively: if the whole window fits in the
+   remaining uptime, spend it there and start the cooldown ticking sooner.
+3. ⛔ **Pressing at the EXIT is the worst of the sensible options for a value buff** — worse than
+   pressing it before the intermission at all (Icon 0.8878 vs 0.9906; Arcane Power 2.4504 vs 2.8500),
+   because the exit is precisely where the ramp is. For a **haste** cooldown the exit and
+   post-stacks are **exactly tied**, which is §1.2b's ramp-neutrality reappearing on the far side of an
+   intermission.
+
+⇒ **The corrected rule.** Fit the whole window before the wall if it fits — that is nearly free. If it
+does not, hold it, and then at the exit apply the ordinary ramp rules unchanged: a **haste** cooldown may
+fire immediately (tied), a **value** buff should **wait for the stacks** — subject to §5.7's ladder, which
+is exactly the constraint that binds here because a post-intermission burn window is short.
+
+⚠ The cooldown-availability point survives and is unchanged: the downtime spends cooldown time and buys
+nothing, so what you can press on the far side is decided by what came back.
 
 ## 1.3 What one point of haste rating is worth
 
@@ -963,9 +997,9 @@ Consequences, each traceable to a line above. None is an axiom.
    cooldown is worth anything at all.
 7. **Treat every intermission ≥ 8 s as a new mini-fight** (§1.2d) — the Arcane Blast debuff drops at
    exactly `DEBUFF_DUR`, so rules 1–6 all reset. Below 8 s it is only downtime and nothing resets.
-   ⚠ The cooldowns kept ticking through it, so plan the second mini-fight against **availability**, and
-   hold anything whose cooldown outlasts the downtime for the exit rather than spending it into an
-   empty room.
+   ⚠ The cooldowns kept ticking through it, so plan the second mini-fight against **availability**.
+   Spend a cooldown before the wall if its **whole window fits** (nearly free, ≤0.15 casts); hold it
+   only to avoid wasting uptime — never "to cover the new ramp", which nothing wants (§1.2d).
 
 ---
 
