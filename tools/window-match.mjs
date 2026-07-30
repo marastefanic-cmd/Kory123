@@ -1,6 +1,6 @@
 // ARE THE MODEL'S AND THE SIM'S KILL WINDOWS THE SAME WINDOW? — the reconciliation test.
 //
-//   node tools/window-match.mjs [--preset "3:20 lust 0:05"] [--steps 11]
+//   node tools/window-match.mjs [--preset "T2 · 3:00 lust 0:20"] [--steps 11]
 //
 // Exit: 0 = the two track each other · 1 = they do not · 2 = could not measure.
 //
@@ -46,7 +46,7 @@ const argv = process.argv.slice(2);
 const flag = (n, d) => { const i = argv.indexOf(`--${n}`); return i < 0 ? d : argv[i + 1]; };
 
 const api = loadEngine(path.join(REPO, 'index.html'));
-const NAME = flag('preset', '3:20 lust 0:05');
+const NAME = flag('preset', 'T2 · 3:00 lust 0:20');
 const STEPS = +flag('steps', '11');
 const kase = api.cases.find(c => c.name === NAME) || die(`no preset "${NAME}"`);
 const base = cfgFor(api, kase);

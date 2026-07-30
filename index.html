@@ -660,7 +660,7 @@
       <span class="pchips" id="boss-chips"></span>
     </div>
     <details class="preset-strip golden-strip" id="golden-strip">
-      <summary title="Plain reference fights used to test the planner — a fight length plus a Bloodlust time, nothing else. Handy for sanity-checking a rule, not for planning a raid night.">Reference fights <span class="sublab">— test cases, not bosses</span></summary>
+      <summary title="The three layouts declared as ground truth. Click one to load its exact inputs, then press Find optimal overlay — the planner should reproduce the declared plan. These are the tool's own tests, not raid-night presets.">Declared tests <span class="sublab">— ground truth, click to reproduce</span></summary>
       <span class="pchips" id="golden-chips"></span>
     </details>
     <div class="preset-strip" id="preset-strip">
@@ -6356,24 +6356,24 @@ const GOLDEN_DEFAULTS = {
   gear: { sp: 1387, crit: 38, haste: 0, coldSnap: true },
   kit: ["icyVeins", "isc", "scb", "arcanePower", "berserking", "bloodlust"],
 };
+/* ★★★★ THE REFERENCE FIGHTS **ARE** THE DECLARED TESTS — user decision, 2026-07-30:
+   *"remove the current reference fights and add these hard tests there instead."*
+   What was here was fifteen plain length+Lust cases inherited from the deleted `exact-match` golden
+   suite. They asserted nothing once the goldens went (07-28) and they were the strip a user saw first,
+   so the tool advertised its scaffolding. Now the strip holds exactly the three layouts the user has
+   declared as ground truth, so clicking one loads the test's own inputs and you can see for yourself
+   whether the planner reproduces it.
+   ⚠ T1/T2 carry their own `gear` (1000 SP, 25 % crit) because that is what was declared; `cfgFor`
+   merges `gear` over `GOLDEN_DEFAULTS`. T3 is the Morogrim preset's own setup, which already matches
+   the defaults (1387 SP, 38 % crit) — it is deliberately listed here as well as in the boss strip,
+   because the strip is the TEST list and Morogrim is one of the tests.
+   ⛔ Five code paths defaulted to names deleted here (`ci.yml`'s bench smoke, `page-equiv`,
+   `model-audit`, `window-match`, `sp-sensitivity`); all five were repointed in the same commit. If you
+   add a preset name to a tool, expect to be the one who repoints it next time. */
 const GOLDEN_PRESETS = [
-  { name: "1:40 lust 0:05", T: 100, pins: { bloodlust: [5] } },
-  { name: "2:00 lust 0:05", T: 120, pins: { bloodlust: [5] } },
-  { name: "2:20 lust 0:05", T: 140, pins: { bloodlust: [5] } },
-  { name: "2:40 lust 0:05", T: 160, pins: { bloodlust: [5] } },
-  { name: "2:40 lust 0:07", T: 160, pins: { bloodlust: [7] } },
-  { name: "2:40 lust 0:07 intermission 1:30-2:10", T: 160, pins: { bloodlust: [7] }, intermission: [90, 130] },
-  { name: "3:20 lust 0:05", T: 200, pins: { bloodlust: [5] } },
-  // Drums (+80 haste rating, 30s, 2-min Tinnitus) and Power Infusion (×1.20 haste, 15s, does NOT
-  // stack with Bloodlust — sim-source-verified, RULES §13) locked as raid-haste regression cases.
-  { name: "3:20 lust 0:05 drums", T: 200, pins: { bloodlust: [5] }, kit: ["icyVeins", "isc", "scb", "arcanePower", "berserking", "bloodlust", "drums"] },
-  { name: "3:20 lust 0:05 PI", T: 200, pins: { bloodlust: [5] }, kit: ["icyVeins", "isc", "scb", "arcanePower", "berserking", "bloodlust", "powerInfusion"] },
-  { name: "4:00 lust 0:05", T: 240, pins: { bloodlust: [5] } },
-  { name: "5:00 lust 0:05", T: 300, pins: { bloodlust: [5] } },
-  { name: "5:40 lust 0:05", T: 340, pins: { bloodlust: [5] } },
-  { name: "7:20 lust 0:05", T: 440, pins: { bloodlust: [5] } },
-  { name: "6:00 lust 4:20", T: 360, pins: { bloodlust: [260] } },
-  { name: "5:45 lust 4:20", T: 345, pins: { bloodlust: [260] } },
+  { name: "T1 · 2:00 lust 0:20", T: 120, pins: { bloodlust: [20] }, gear: { sp: 1000, crit: 25 } },
+  { name: "T2 · 3:00 lust 0:20", T: 180, pins: { bloodlust: [20] }, gear: { sp: 1000, crit: 25 } },
+  { name: "T3 · Morogrim 2:45 lust 0:05", T: 165, pins: { bloodlust: [5] } },
 ];
 window.GOLDEN_PRESETS = GOLDEN_PRESETS;
 

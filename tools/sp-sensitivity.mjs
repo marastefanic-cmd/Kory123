@@ -104,7 +104,7 @@ const REPO = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const argv = process.argv.slice(2);
 const flag = (n, d) => { const i = argv.indexOf(`--${n}`); return i < 0 ? d : argv[i + 1]; };
 const api = loadEngine(process.env.ENGINE || path.join(REPO, 'index.html'));
-const NAMES = flag('presets', '3:20 lust 0:05').split(',').map(s => s.trim()).filter(Boolean);
+const NAMES = flag('presets', 'T2 · 3:00 lust 0:20').split(',').map(s => s.trim()).filter(Boolean);
 const RESTARTS = +flag('restarts', '2');
 const SPS = flag('sp', '800,1100,1400,1700,2000,2400').split(',').map(Number);
 if (SPS.some(s => !Number.isFinite(s) || s <= 0)) { console.error('--sp must be positive numbers'); process.exit(2); }

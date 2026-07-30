@@ -71,7 +71,7 @@ const INDEX = path.join(REPO, 'index.html');
 // copy of the fight table); an `inline` case carries its own row in the SAME shape a preset row has,
 // and both sides build it through the engine's own `buildSegments`.
 const CASES = [
-  { label: '2:00 lust 0:05 (preset)', preset: '2:00 lust 0:05' },
+  { label: 'T1 · 2:00 lust 0:20 (preset)', preset: 'T1 · 2:00 lust 0:20' },
   { label: '0:40 + AoE window (synthetic)', row: {
       name: '__equiv_aoe__', T: 40, pins: { bloodlust: [5] },
       phases: [{ from: 12, to: 22, type: 'aoe', targets: 6 }] } },

@@ -104,6 +104,16 @@ this month to accommodate objective changes), `layout-rules.mjs` (asserted a pro
 that belong in `docs/ESTABLISHED-FACTS.md` with their algebra — its R4 encoded a two-body rule as
 universal and its R3 rested on a cast count later shown to be ramp-neutral), and `monotonicity.mjs`.
 
+★ **THE UI's "Reference fights" STRIP IS NOW THE DECLARED TESTS** (user decision 07-30: *"remove the
+current reference fights and add these hard tests there instead"*). `GOLDEN_PRESETS` held fifteen plain
+length+Lust cases inherited from the deleted `exact-match` goldens — they asserted nothing after 07-28 and
+they were the first strip a visitor saw, so the tool advertised its own scaffolding. It now holds exactly
+`T1 · 2:00 lust 0:20`, `T2 · 3:00 lust 0:20`, `T3 · Morogrim 2:45 lust 0:05`, and clicking one loads that
+test's own inputs. ⚠ Five code paths defaulted to deleted names and were repointed in the same commit:
+`ci.yml`'s bench smoke, `tests/page-equiv.mjs`, `tools/model-audit.mjs`, `tools/window-match.mjs`,
+`tools/sp-sensitivity.mjs`. Docs still quote the old names in examples; treat a `no preset matching…`
+error as a stale doc, not a broken tool.
+
 ⚠ **The harness-integrity gates STAY and are a different kind of thing** — they assert the harness is
 not lying, never which plan is best: `tests/sim-request.mjs`, `tests/sim-duel.mjs`,
 `tests/page-equiv.mjs`, `tests/press-fire.mjs`, `tools/self-consistency.mjs`. CI runs all of them, and

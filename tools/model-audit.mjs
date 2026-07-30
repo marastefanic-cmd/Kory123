@@ -1,6 +1,6 @@
 // THE END-TO-END AUDIT — does the model's entire cast-by-cast account match a real combat log?
 //
-//   RUNNER=… node tools/model-audit.mjs [--preset "2:00 lust 0:05"] [--all] [--show 12]
+//   RUNNER=… node tools/model-audit.mjs [--preset "T1 · 2:00 lust 0:20"] [--all] [--show 12]
 //                                       [--by-cause] [--cache DIR] [--horizon 2.0] [--macro 0.05]
 //   node tools/model-audit.mjs --self-check      # the classifier's negative control — no runner needed
 //
@@ -103,7 +103,7 @@ const cacheKey = () => sha1(fs.readFileSync(ENGINE)) + '-' +
 
 const api = loadEngine(ENGINE);
 const picked = has('all') ? api.cases
-  : api.cases.filter(c => c.name === flag('preset', '2:00 lust 0:05'));
+  : api.cases.filter(c => c.name === flag('preset', 'T1 · 2:00 lust 0:20'));
 if (!picked.length) { console.error(`no such preset — try --all or one of:\n  ${api.cases.map(c => c.name).join('\n  ')}`); process.exit(2); }
 
 const slug = n => n.replace(/\W+/g, '_');

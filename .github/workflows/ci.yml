@@ -99,7 +99,7 @@ jobs:
 
       # End-to-end: engine -> planspec -> genapl -> simreq -> wasm, on a real preset, both arms.
       - name: bench smoke (end-to-end chain)
-        run: node tools/bench.mjs --preset "2:00 lust 0:05" --vs naive --iter 2000
+        run: node tools/bench.mjs --preset "T1 · 2:00 lust 0:20" --vs naive --iter 2000
 
   page:
     name: page == terminal (browser)
