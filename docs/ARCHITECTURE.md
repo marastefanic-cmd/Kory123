@@ -55,19 +55,30 @@ Returns `{total, totalEarly, robust, integral, integralTotal, castCount, gcdCapp
 (below). They are kept as three fields, and three accumulators, purely so every existing consumer keeps
 reading a field that still exists; do not "simplify" one of them away without auditing the callers.
 
-> ### ★★★★ THE OBJECTIVE IS THE PER-CAST SUM (PHASE12 §6.10, 07-27) — read before editing this section
-> `total`/`totalEarly`/`robust` are accumulated **in the board walk**, one term per Arcane Blast:
-> `dmg × frac`, where `frac` is the boundary credit (next block). That accumulation runs on **every**
-> call, not only when `collect` is set — the optimizer scores with `collect` off, and an objective
-> cannot depend on whether a caller asked for a board. `integral`/`integralTotal` carry the retired
-> rate integral so the gap stays measurable.
-> **Standing gate, no sim:** `node tools/self-consistency.mjs` must read `0.00e+0` **and 0 structural
-> violations** — 3000 generated scorings over 460 699 casts in 0.78 s, no cache, from a bare clone.
+> ### ★★★★★ THE RATE INTEGRAL RANKS; THE PER-CAST SUM IS REPORTED — ⚠ CORRECTED 07-30 (§8h)
+> ⛔⛔ **THIS BLOCK SAID "THE OBJECTIVE IS THE PER-CAST SUM" AND THAT IS OVERTURNED.** Measured against
+> `docs/ESTABLISHED-FACTS.md`'s closed forms, the sum ranked *Berserking with nothing up* (0.7250)
+> ABOVE *Berserking inside Bloodlust* (0.7203) against laws of 0.667 and 0.867 — a ~0.15-cast
+> inversion, because moving a haste window re-prices the whole downstream lattice. The integral hits
+> all three law values to four decimals.
+> ⇒ **`rankScore()` returns `integral`.** `total`/`totalEarly`/`robust` are still accumulated in the
+> board walk, one term per Arcane Blast (`dmg × frac`, `frac` being the boundary credit in the next
+> block), on **every** call rather than only when `collect` is set — but they are now the number the UI
+> REPORTS, not the number anything ranks on. Both are returned on purpose so the gap stays measurable.
+> ★ **And the objective is a PAIR:** integral first, then inside `TIE_CASTS = 0.002` casts the SHAPE
+> decides — fewest distinct press moments → earliest → the flattened press vector
+> (`rankPair`/`planBetter`, `~2369–2390`). A search with no tie-break wanders inside a plateau, which
+> is what the 07-28 revert punished.
+> **Standing gates, no sim:** `node tools/self-consistency.mjs` must read `0.00e+0` **and 0 structural
+> violations**; `node tools/law-check.mjs` must reproduce the closed forms and CATCH its `--self-test`.
+> ⚠ The first alone is not enough — it compares two accounts that read the same board, and printed a
+> clean zero straight through seven defects. **The closed forms are the only thing that leaves the
+> model**, and with the simulator retired they are the ONLY scorer check that does.
 >
-> ⛔ Three retired approaches — see CLAUDE.md's ★★★★ block before touching any of them: **ranking on the
-> rate integral** (median 0.2114 % off the sum, vs ~0.005–0.07 % margins), **expiring a buff window at
-> `press + duration`** (short by the press slip — one whole cast in the measured case), and **the
-> symmetric kill taper** (below).
+> ⛔ Two approaches that ARE retired — see CLAUDE.md before touching either: **expiring a buff window at
+> `press + duration`** (short by the press slip — one whole cast in the measured case) and **the
+> symmetric kill taper** (below). ⚠ "Ranking on the rate integral" used to be listed here as a third;
+> it is not retired, it is the objective.
 
 > ### ★★★★ BOUNDARY CREDIT — ONE RULE AT EVERY CUT (PHASE12 §9, user rulings 07-27; `~1019–1087` the rule + lattice, `~1320–1362` the credit, `~1391–1400` the AoE truncation; `~839–857` the shared `EPS`)
 > ```
@@ -152,7 +163,7 @@ bit-equal to recomputation; collect=true always computes fresh.
   aura lands at the call, someone else presses) snaps its scored window to the next board-lattice
   boundary (the in-flight cast keeps its speed). `scanAt`/`bpS`/`rampCastDmg` read `scoreStart`;
   legality/cadence/display keep the fire time.
-  ⚠ **`scoreStart` now feeds ONLY the retired integral.** The objective uses `start = auraAt` — the
+  ⚠ **`scoreStart` feeds the RANKING integral** (⛔ this said "the retired integral" — the integral ranks again since §8h, 07-30). The objective uses `start = auraAt` — the
   moment the ability truly fires (`max(eff, prevCastEnd)` for a self-press, `eff` for a raid external)
   — and the window runs its FULL duration from there. Expiring from the press instead made every
   mid-cast window short by the slip (PHASE12 §6.11); `tools/window-span.mjs` is the gate.

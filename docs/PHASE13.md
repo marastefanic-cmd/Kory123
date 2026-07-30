@@ -466,9 +466,19 @@ catch a disagreement between two accounts. When both accounts are derived from t
 it grades a tautology. Every such gate needs at least one check that leaves the model entirely and
 asks the world — here, the millisecond lattice the sim actually runs on.
 
-### 2.3 Re-run `tools/scorer-duel.mjs` — its prerequisite landed
+### 2.3 ~~Re-run `tools/scorer-duel.mjs`~~ — ⛔ VOID TWICE OVER (07-30)
 
-**Why it is open:** §0.4's demonstration — *show the exact objective beats the retired integral in the
+⛔ **Void on both halves.** (a) The tool is DELETED with the simulator. (b) The question it asked no
+longer exists: it was to *show the exact per-cast sum beats the retired integral in the sim, cell by
+cell* — and on 07-30 the integral was measured against the closed forms and **won**, so it is not
+retired and the sum is not the ranking objective (§8h). The demonstration was never obtained because it
+was pointed the wrong way.
+★ The durable lesson survives and is worth more than the item: it was run twice and came out a coin
+flip both times, and the second time the cause was named — the referee mis-executed ~13 % of its
+presses, and *"a referee that mis-executes ~13 % of presses cannot resolve a margin of ~0.01 %."*
+**Historical text follows.**
+
+**Why it was open:** §0.4's demonstration — *show the exact objective beats the retired integral in the
 sim, cell by cell* — has never been obtained. It was run twice and came out a coin flip both times, and
 the second time the cause was named: the referee mis-executed ~13 % of its presses on the cast-time
 mismatch, and *"a referee that mis-executes ~13 % of presses cannot resolve a margin of ~0.01 %."*

@@ -1076,7 +1076,7 @@ Two buffs fully overlap whenever the shorter's window is **contained** in the lo
 a whole **range** of start-seconds, not one. So many placements are **DPS-equivalent**, and the planner
 must pick the **consistent** member of that equivalence class, not an arbitrary one (a consequence of the
 scoring law §1 — joint value depends on window **intersection**, MECHANICS §5 pt 5; this used to be
-attributed to "the cast-rate integral", which is retired, but the consequence is identical under the
+attributed to "the cast-rate integral" — which ⛔ is NOT retired; it ranks again since §8h (07-30). The consequence is identical under the
 per-cast sum). Two concrete
 forms, both sim-verified:
 - **Position-independent haste spreads to natural cd ticks.** A haste buff whose window overlaps **no**

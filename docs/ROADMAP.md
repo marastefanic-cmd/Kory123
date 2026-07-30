@@ -27,7 +27,8 @@
 > ## ✅ PHASE 12 — MAKE THE OBJECTIVE EXACT — is **CLOSED 2026-07-27** and archived at `docs/archive/13-phase12-exact-objective.md`.
 >
 > ## ✅ THE OBJECTIVE IS EXACT, AND THE TREE IS GREEN
-> `simulate()` ranks on the deterministic per-cast sum; gate `tools/self-consistency.mjs` reads
+> ⛔ **CORRECTED 07-30 (§8h): `simulate()` ranks on the rate INTEGRAL; the per-cast sum is reported only.**
+> The line below is kept because the gate reading it quotes is still the standing one. Gate `tools/self-consistency.mjs` reads
 > `0.00e+0` over **3000 generated scorings (460 699 casts, 0.78 s, no cache)** with **0 structural
 > violations**. **Four scoring defects and one transcription defect** were fixed
 > (PHASE12 §6.9 transcription · §6.10 the integral · §6.11 press-anchored windows · §6.12 the single

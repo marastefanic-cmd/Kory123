@@ -32,7 +32,7 @@ diff. It is strictly the better stability instrument and it is already written.
 **⚠⚠ 2. "Concrete examples where I know the answer" needs an ARBITER, and right now there isn't one.**
 This is the load-bearing caution. As of today:
 
-* the per-cast sum ranks the model's layouts first,
+* ⛔ (stale, 07-27 wording) the per-cast sum ranked the model's layouts first — the INTEGRAL ranks since §8h,
 * the retired continuous integral ranks the user's layouts first,
 * **the sim has not ruled on either.**
 

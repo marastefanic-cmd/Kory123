@@ -139,13 +139,34 @@ begins already-buffed. Consequences the model must respect:
 
 ## 4. The driving equation: effective ABs cast
 
-> ## ★★★★ THE OBJECTIVE IS EXACT — ✅ since 2026-07-27 (PHASE12 §6.10/§6.11)
+> ## ★★★★★ THE OBJECTIVE IS AN INTEGRAL, AND IT RANKS — ⚠ CORRECTED 2026-07-30 (MODEL-DEFECTS §8h)
 >
-> Effective ABs cast is a **deterministic per-cast sum**. For each Arcane Blast the model already knows
-> the haste and the stack count (hence the cast time), whether Arcane Power is up (×1.30), which spell
-> power buffs apply (normalizable against a plain cast), and crit as a constant factor that cancels.
-> **There is nothing to approximate**, and since 07-27 `simulate()` accumulates exactly that sum and
-> returns it as `total`/`totalEarly`/`robust` — which are now **one and the same number**. Gate:
+> ⛔⛔ **THIS BANNER SAID THE OPPOSITE FOR THREE DAYS AND THE REVERSAL IS THE POINT.** Phase 12 (07-27)
+> made the per-cast SUM the ranking quantity and retired the rate integral. On 07-30 that was measured
+> against `docs/ESTABLISHED-FACTS.md`'s closed forms and **the sum is the one that is wrong** — it
+> ranked *Berserking with nothing up* (0.7250) ABOVE *Berserking inside Bloodlust* (0.7203) against
+> laws of 0.667 and 0.867, a ~0.15-cast inversion, because moving a haste window shifts the whole
+> downstream lattice and re-prices the terminal cast. The integral hits all three law values to four
+> decimals. ⇒ **the rate integral RANKS; the per-cast sum is REPORTED only.** `simulate()` returns
+> both: `integral` (ranks) and `robust` (reported). If you find a doc claiming otherwise, it predates
+> 07-30.
+>
+> ★ **The user's framing, which is what the engine implements:** the integral of *"the damage a spell
+> would deal right now, divided by the time it would take to cast right now"*. The only thing that has
+> to be modelled dynamically is the **Arcane Blast stack count**, because that is what moves the
+> denominator; every buff is a value overlaid on that curve at a known time.
+>
+> ★ **THE OBJECTIVE IS A PAIR, not a number.** Integral first; inside `TIE_CASTS = 0.002` casts the
+> score is tied and the SHAPE decides — fewest distinct press moments → earliest → the flattened press
+> vector (`rankPair`/`planBetter`). Without the tie-break a search wanders inside a plateau, which is
+> what the 07-28 revert punished.
+>
+> **What is still true from the old banner:** the per-cast sum is EXACT and needs no approximation —
+> for each Arcane Blast the model knows the haste, the stack count (hence the cast time), whether
+> Arcane Power is up (×1.30), which spell power buffs apply, and crit as a constant that cancels. It is
+> simply the wrong thing to rank on, because a plan's value is the area under the rate curve rather
+> than the realized lattice's tally. `simulate()` accumulates it and returns it as `total`/`robust`.
+> Gate:
 > `tools/self-consistency.mjs` reads `0.00e+0` over 3000 generated plan-scorings (460 699 casts) with
 > 0 structural violations, no sim, no cache. ⚠ The `0.00e+0` alone is NOT sufficient — it compares two
 > accounts that both read the same `casts` board, so it passed straight through the PHASE13 §2.5
@@ -232,16 +253,20 @@ integrand by a *plain* AB's damage (`base·crit`, no buffs). Crit cancels; what'
 **`effectiveABs = ∫ [cast_damage(t)/plainAB] / interval(t) dt`.**
 
 This is the **single number the planner maximizes**, and the only one it needs (raw damage is just this
-× a constant). ⚠ **Written as an integral above for derivation only — the quantity is a SUM OVER
-CASTS and must be evaluated as one.** The integral is the continuum limit, i.e. the expectation over a
-uniformly random cast phase; a given plan's phase is *determined*, so for ranking two concrete plans
-the realized per-cast sum is the correct evaluation and the integral is an approximation to it — they
-differ by a median 0.21 % of score, which is why ranking on the integral is retired (banner above). A haste buff raises how *many* casts fit; a damage/SP buff raises what each is *worth*.
+× a constant). ★ **The integral form is the one that RANKS, and that is not a derivation convenience —
+it is the correction of 07-30 (§8h).** The two forms differ by a median 0.21 % of score, and the earlier
+reading of that gap was backwards: it concluded that because a given plan's cast phase is *determined*,
+the realized per-cast sum must be the right evaluation. But a plan's cast phase is determined only
+relative to a lattice the plan itself moves — shift one haste window and every downstream cast
+re-prices, which contaminates the marginal attribution the ranking depends on. Measured against the
+closed forms, the sum misses by up to 0.24 casts where the integral misses by 0.0000.
+A haste buff raises how *many* casts fit; a damage/SP buff raises what each is *worth*.
 The evaluated form is therefore
 **`effectiveABs = Σ_i [cast_damage_i/plainAB] × min(1, (nextCut − start_i)/duration_i)`** — the
 boundary credit of the banner above, which is also the *only* place a fight boundary enters the number.
-`total` (`simulate` in `index.html`) is this SUM up to the constant — ⛔ it was `rateAt`'s integral
-until 07-27; `rateAt` now feeds only the `integral` diagnostic. **Everything the
+`total`/`robust` (`simulate` in `index.html`) is this SUM up to the constant, and it is the **REPORTED**
+number. ⛔ The roles swapped twice: `rateAt`'s integral ranked until 07-27, the sum ranked 07-27→07-30,
+and the **integral ranks again since 07-30** (§8h). `simulate()` returns both on purpose. **Everything the
 planner decides is a *consequence* of maximizing this one quantity — Lust alignment, haste sequencing,
 SP-on-fast-casts are *methods* that usually maximize it, never rules in their own right.** When a
 heuristic and the effective-AB count (or the sim, its ground truth) disagree, the count wins.
