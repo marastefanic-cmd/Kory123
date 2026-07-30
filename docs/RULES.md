@@ -618,6 +618,39 @@ least punished above it.
 way once, on 07-30, and the user corrected it: *"just multiplicative haste no? gotta differentiate
 between flat haste bonus and multiplicative."*
 
+### 7a-ii ★★★ THE MIXED PAIR IS THE MOST POSITION-SENSITIVE OF THE THREE — and under Bloodlust you ALWAYS split *(user, 07-30)*
+
+*"Temporary flat × temporary multiplicative — would you want to stack those or no?"* It has the biggest
+upside of the three pairs **and** the biggest downside, so it is the one worth thinking about. Per
+second, what the SECOND buff adds (Icy Veins ×1.20 · Skull of Gul'dan +175, both 20 s):
+
+| already up | m | Skull ALONE | Skull ON TOP OF IV | verdict over 20 s |
+|---|---|---|---|---|
+| nothing, 0 gear haste | 1.000 | 0.07407 | **0.08889** | **STACK** +0.296 casts |
+| 200 gear haste | 1.127 | 0.08341 | **0.09829** | **STACK** +0.298 casts |
+| 400 gear haste | 1.254 | **0.09308** | 0.00000 | **SPLIT** −1.862 casts |
+| **Bloodlust** | 1.300 | **0.09591** | 0.00000 | **SPLIT** −1.918 casts |
+| Bloodlust + 200 gear haste | 1.465 | **0.02344** | 0.00000 | **SPLIT** −0.469 casts |
+| Bloodlust + Power Infusion | 1.560 | 0.00000 | 0.00000 | neutral — everything is floored |
+
+★★ **Under Bloodlust the crossover is ZERO haste rating: split at any gear.** `1.30 × 1.20 = 1.56` is
+already past the GCD floor at 1.5, so a rating trinket layered on Lust + Icy Veins is worth **exactly
+nothing** — while the same trinket on Lust *alone* (1.30 → 1.444, still under the floor) is worth
+0.0959 casts/s. That is the case that matters in practice, because Lust is when you burst.
+
+**With no raid buffs the crossover is ~228 haste rating** (cap-touch for `1.20 × 1.111 = 1.3332` is
+`(1.5/1.3332 − 1)·1577 ≈ 197`, then ~31 rating of grace while the premium outruns the overcap waste —
+the same shape as §7's IV+Berserking 264). ⇒ **the mixed pair crosses EARLIER than mult × mult**, because
++175 rating (×1.111) is a bigger bump than Berserking's ×1.10 and reaches the floor sooner.
+
+✅ **The planner already does this correctly, and it is a good check that the rule is live.** On
+2:00 · Lust 0:05 with `IV + Icon + Gem + Skull`, it emits Skull at **0:34** — deliberately clear of the
+Lust + Icy-Veins region (where the trinket is worth zero), covering `[34,45]` under Lust alone and
+`[45,54]` under Icy Veins + Berserking *after* Lust has dropped. Both halves sit under the floor with
+headroom; neither is the capped region. ⚠ It only does this since MODEL-DEFECTS §8w — before that fix
+the descent ratcheted Skull back to 0:29, and the gradient it was throwing away is exactly the
+0.0013 casts/s this table prices.
+
 ## 7. Haste-on-haste IS a multiplicative synergy below the floor — the floor decides when to split
 *(REWRITTEN — the old "wash" version was a fixed-rig artifact; see the correction note at the end.)*
 
