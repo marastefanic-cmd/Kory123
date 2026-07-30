@@ -4,6 +4,15 @@
 
 > # ▶ THE LIVE PLAN IS `docs/PHASE13.md` — start there
 >
+> ## ▶▶ NEXT SESSION: PASSIVE GEAR HASTE. The groundwork is in `ESTABLISHED-FACTS` §10.
+> Every declared layout is **h = 0** and nothing in the repo declares a correct plan above it. §10 now
+> carries the DERIVATIVES needed to change that — how each combination reacts to added haste, crit and
+> SP (`node tools/facts-volatility.mjs --md` regenerates). The three that shape the work: haste buffs
+> **converge** at ~600 gear haste (past the floor a buff is worth the remaining distance to the cap,
+> not its own size — so *which* haste cooldown stops mattering, only *when*); Bloodlust **peaks at
+> ~200** and falls after; and every pair inverts from stack to split at a **different** gear level.
+> ⇒ the natural next step is to declare layouts at one or two non-zero haste levels and lock them.
+>
 > ## ⛔⛔ 2026-07-30 — TWO USER DECISIONS RESHAPED THE PROJECT. READ THESE FIRST.
 > **1. The simulator is RETIRED.** *"I actually want you to retire the simming, it's doing more harm
 > than good. I think we have the function/equation locked down and from now on we're better off on our

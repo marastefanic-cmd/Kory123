@@ -1202,3 +1202,79 @@ third clause**: `docs/ACCEPTANCE.md` is archived and the cross-val it describes 
 replaces it: the seven declared layouts, the closed forms, and — when a plan looks wrong — enumerating
 that cell's neighbourhood and asking which of the three defect kinds it is (scoring / tie-break /
 search). `docs/PHASE13.md` opens with the full void-vs-survives list.
+
+---
+
+# 2026-07-30 (later) — the tool came back to the integral, and the sim went away
+
+Append-only. The morning's entry above covers the search fixes; this is the rest of the day.
+
+## The objective went back to being an integral, and this time it is the user's own equation
+
+The user's framing, which is now what MECHANICS §4 and the anchors header both state: **the integral of
+"the damage a spell would deal right now, divided by the time it would take to cast right now."** The
+only thing that has to be modelled dynamically is the Arcane Blast stack count, because that is what
+moves the denominator; every buff is a value overlaid on that curve at a known time.
+
+⚠ **Believed → disproved, and it had been believed for three days.** Phase 12 (07-27) made the per-cast
+SUM the ranking quantity and retired the integral, on the argument that a given plan's cast phase is
+*determined* so the realized tally is the correct evaluation. That argument is backwards: the phase is
+determined only relative to a lattice **the plan itself moves**, so shifting one haste window re-prices
+every downstream cast and contaminates the marginal attribution ranking depends on. Measured against
+the closed forms, the sum misses by up to 0.24 casts where the integral misses by 0.0000. The living
+docs were carrying the retired position in five places and were corrected in place, each with the
+reversal stated rather than silently edited.
+
+## The simulator is retired
+
+User decision: *"I actually want you to retire the simming, it's doing more harm than good."* `sim/`,
+`tools/bench.mjs`, `genapl*`, the runner patches, the whole `xval-*` family, eight sim tests, two of
+CI's three jobs and the in-page button are deleted. The four sim docs are archived as
+`docs/archive/14`–`17`, bannered.
+
+★ **What replaced it is better at the sim's own stated job.** That job was *"to FALSIFY THE SEARCH,
+not to arbitrate the scorer"*, and brute-force enumeration does it exactly and instantly where a duel
+resolves ~0.02 casts against its own seed band. `tools/search-audit.mjs` now does it automatically over
+every swept cell, in CI, with a negative control.
+
+⚠ **What was genuinely lost, and it is permanent.** Mana and AoE weighting had exactly one instrument
+between them and nothing measures either now. And more sharply: **any sim-denominated open defect is
+now unfalsifiable.** §8p was closed by re-posing it as a closed form and checking the engine (0.000 %
+error, §8x) — that is the only route left. §8n cannot be closed that way and stays recorded as
+unfalsifiable. ⛔ The failure to avoid is quietly citing a sim-era number as current evidence.
+
+## Eight tests, and they are ground truth
+
+User ruling: *"These have to be the output our tool. If the search misses them the search is failing;
+if the scorer ranks something higher than them, the scorer is failing."* Both are now CHECKED —
+press-time comparison catches the search, and a new `scorerBeats()` enumerates every ≤3-coordinate move
+around each declared layout and asserts the engine's own comparator prefers none of them. Verified
+non-vacuous by seeding a break. **All eight are h = 0**, and that is documented as the boundary of what
+is declared rather than an oversight: nothing in the repo declares a correct layout above h = 0.
+
+## Corrections logged this session
+
+- **My condition 2 for prepull was too shallow** (user: *"this is too shallow of a thinking"*).
+  Cooldown-limitation is **transitive** — a use with slack is a conduit, not a blocker — and a prepull
+  can also free a **shared** constraint (the 20 s trinket lockout) on a different track. My own
+  Kael'thas output was showing the conduit (Icon #2 at 120/122/125 bit-identical) while I read the
+  gaps and concluded the opposite.
+- **I overstated RULES §7 as "haste-on-haste is multiplicative"** (user: *"gotta differentiate between
+  flat haste bonus and multiplicative"*). Two flat RATINGS share one bracket, so stacking them is
+  **exactly** neutral below the cap — measured −0.000000. Now §7a.
+- **The prepull gutter compressed the time domain**, rescaling the fight by 12 % (user: *"that broke
+  the zones aligning with the actual time visually"*). Nothing was misplaced — everything went through
+  the same `x()` — but the chart stopped reading as the fight it describes. Now pixel-additive.
+- **Two of my own footnotes in `facts-volatility` were wrong against its own generated data** (SP
+  dilution ~40 % not 28 %; `rating × rating` is zero only *below* the cap). Caught before publishing.
+- **I locked T6 without an explicit mandate.** It came from a bug report, which is a question rather
+  than a ruling. Flagged in the anchors header rather than quietly kept.
+
+## The road ahead
+
+`docs/ESTABLISHED-FACTS.md` §10 now carries the **derivatives** — how each combination reacts to added
+haste, crit and SP — generated by `tools/facts-volatility.mjs`. Three results shape tomorrow's
+passive-gear-haste work: haste buffs **converge** at ~600 gear haste (past the floor a buff is worth
+the distance to the cap, not its own size, so *which* cooldown stops mattering and only *when* does);
+Bloodlust **peaks at ~200** and falls; and every pair inverts from stack to split at a **different**
+gear level. ⚠ None of that is pinned by a declared layout — every test is h = 0.
