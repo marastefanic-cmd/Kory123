@@ -64,8 +64,8 @@ second cluster gets popped — IV (Cold Snap), Icon, Gem and Berserking"*, with 
 first cluster because Lust > Berserking. Lust is pinned 0:05 and the third stack lands at 6.498 ⇒ 0:07
 and 2:07. No browser, no rig, no golden file: it runs the real optimizer and compares press times.
 
-⚠ **`2 of 3` — T1 and T2 PASS, T3 (Morogrim) is RED.** ✅ **T1/T2 went green on 07-30 and the CI job is
-BLOCKING again** (`continue-on-error` removed — that
+✅ **`3 of 3` AS OF 2026-07-30 — all three declared layouts are emitted exactly, and the CI job is
+BLOCKING** (`continue-on-error` removed — that
 flag's stated exit condition was *"the day anchors goes green"*). **MODEL-DEFECTS D1 IS CLOSED.** Seven
 defects fell that day, §8h–§8m, and the through-line is one sentence: **the cast lattice had leaked into
 the ranking objective in four separate places.**
@@ -92,6 +92,17 @@ the ranking objective in four separate places.**
    simultaneous move can. The subsets are read off the plan (tracks grouped by press second), not
    guessed.
 7. Plus a GCD-gap sliver containing no cast being priced (§8k) and two differently-rounded lattices.
+8. **★★★ AND THE RAMP WAS THE LAST LEAK (§8q).** Found by writing the objective from scratch as an
+   INDEPENDENT reference — a lattice-walking version failed `ESTABLISHED-FACTS` §5's named values
+   (0.6887 for Berserking in Bloodlust against 0.867, which the sim confirms at +4.1 DPS ± 0.21), a
+   no-lattice one reproduced all three and picked the declared layout. ⇒ **the opener is now a FIXED
+   toll `Σ(C_k − G)/G` spread over the UNHASTED `ΣC_k`**, and both halves matter: *fixed* keeps haste
+   ramp-neutral (§1.2), *spread* makes a value window overlapping the opener pay its share — which is
+   what makes the cluster wait for 3 stacks. ⛔ Do not integrate the ramp region at `1/(cast's own
+   span)`: the span shrinks with haste, compression pays, and Icy Veins goes back to the pull.
+9. **The cluster slide moves PRESSES, not tracks.** Sliding whole tracks dragged a member's *other*
+   uses along and split the cluster it was meant to leave alone. T3's last gap was coupled through
+   **legality**, not score: with the gem used at 0:08 its 2-minute cooldown makes 2:07 illegal.
 
 ⚠ **The band is `TIE_CASTS = 0.002` casts and it is BRACKETED BY MEASUREMENT, not tuned** — 1.8× above
 the measured resolution floor (two layouts provably equal by the closed forms differ by 0.001097) and

@@ -148,8 +148,9 @@ jobs:
         with:
           node-version: '22'
       # No browser, no rig, no golden file — it runs the real optimizer and compares press times.
-      # ⚠ T3 (Morogrim) was declared 07-30 and is RED on a known open defect (MODEL-DEFECTS §8p: the
-      # closed form for `haste × +spellpower` is ~⅓ too generous). T1/T2 are green and MUST stay green.
+      # ✅ All three are GREEN as of 07-30 (§8q). Any red here is a REGRESSION — do not restore
+      # `continue-on-error`; run `node tools/law-check.mjs` first, which is how every scoring defect in
+      # this project was actually found.
       - name: the three declared layouts
         run: node tests/anchors.mjs
 
