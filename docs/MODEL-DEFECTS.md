@@ -2682,3 +2682,72 @@ to 0:10, so **putting Icy Veins at 0:00 inherently costs a press moment**. The t
 
 ⛔ Do not "fix" this by widening `TIE_CASTS`. The two are already at Δ = 0; the band is not what is
 stopping it.
+
+---
+
+## §8w — ✅ THE BANDED COMPARATOR IS A RATCHET, AND THE DESCENT WAS WALKING DOWNHILL (07-30)
+
+Found by the user asking a question no test covers: *"try now with different trinkets and observe how
+the model behaves."* **Every declared test and every swept preset uses the same kit.** The first
+alternative kit tried had a defect.
+
+**2:00 · Lust 0:05 · 1387 SP · 38 % crit · kit `IV + Icon + Gem + Skull + AP + Berserking`.**
+The tool emits Skull at **0:29**. Brute force says **0:35**, worth **+0.007936 casts — 4× the tie
+band** — and it is a **single-coordinate** move, the easiest kind there is.
+
+### The mechanism, and it is general
+
+`planBetter` is a BANDED comparator, and **a banded comparator is not transitive**. Inside `TIE_CASTS`
+the score is declared tied and the SHAPE decides — including *earliest*. So each individually-banded,
+individually-earlier step is individually "better", and the descent takes all of them:
+
+```
+  0:35 → 0:34   −0.001323 casts   inside band → "better" (earlier)   ✓ taken
+  0:34 → 0:33   −0.001323 casts   inside band → "better" (earlier)   ✓ taken
+  …six steps…
+  net           −0.007936 casts   OUTSIDE the band by 4.0×
+  planBetter(0:29, 0:35) = false  ← it arrived at a plan its own comparator calls worse
+```
+
+Confirmed directly: `phaseRerank` started at Skull 0:35 **returns 0:29**, and started at 0:33 returns
+**0:27** — it does not merely fail to improve, it actively degrades a better input.
+
+### ★ Why a TRINKET kit exposed it and the declared tests never could
+
+The ratchet needs a gradient that fits *inside* the band. §7a is why flat-rating trinkets produce
+exactly that: a rating buff riding a multiplier is worth `h(a−1)` per second, and Skull's
+`+175 → h = 0.111` makes each one-second step **0.0013 casts** — comfortably inside 0.002. The
+multiplicative kit (Icon + Gem) moves in steps of ~0.0867 casts/s, **65× the band**, so nothing there
+is ever banded and the ratchet never engages. ⇒ **the defect lives precisely where the gradient is
+shallow, which is precisely the gear the test suite does not cover.**
+
+### The fix: a high-water mark
+
+```js
+let ceiling = val.score;
+…
+if (v.score < ceiling - v.band) return false;      // refuse anything a band below the best seen
+if (planBetter(v, val)) { …; if (v.score > ceiling) ceiling = v.score; return true; }
+```
+
+Drift is now bounded by the band itself — the tolerance the project already accepts as "tied" — instead
+of accumulating without limit. Result: every starting point (29, 33, 35, 60) converges to **0:34**,
+0.0013 casts off the argmax and inside the band, and the descent is no longer path-dependent.
+
+⛔ **Do NOT "fix" this by shrinking `TIE_CASTS`.** The ratchet works at ANY band width, because the step
+that defeats it is whatever sits just inside. And the band is bracketed by measurement (1.8× the
+resolution floor, 5.8× below the smallest verified law step) — it is not free to move.
+
+**Gates after:** `anchors` **7 of 7** · `law-check` 6/6 + control caught · `plan-diff` vs the
+pre-fix sweep **IDENTICAL, 0 of 14 cells changed** · `search-audit` k=3 **14/14 local optima**,
+self-test 14 displaced / 14 caught.
+⇒ the fix is strictly additive: it changes nothing on the kit the suite covers, and repairs the kit it
+does not.
+
+### ⚠ THE STANDING GAP THIS EXPOSES, WHICH IS BIGGER THAN THE BUG
+
+`tests/anchors.mjs` (7 cells), `tools/plan-sweep.mjs` (17 presets) and therefore
+`tools/search-audit.mjs` **all run one kit**: `icyVeins + isc + scb + arcanePower + berserking +
+bloodlust`. Skull, MQG, Drums, Power Infusion and the Ashtongue proc are **completely unaudited**, and
+the first probe outside the covered kit found a 4×-band single-coordinate miss. Widening the sweep to a
+kit × haste matrix is the obvious next gate.

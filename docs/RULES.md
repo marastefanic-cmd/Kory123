@@ -575,6 +575,49 @@ already-early buff has nothing better behind it).
   planner's `maxUses` handles this; when reading a plan, a "missing" gem on some window is the budget,
   not a mistake.
 
+### 7a. ★★★★ FLAT HASTE **RATING** DOES NOT STACK WITH ITSELF — the three composition cases *(user, 07-30; measured)*
+
+§7 below is written entirely for **multiplicative** haste (Icy Veins ×1.20, Bloodlust ×1.30, Berserking
+×1.10, Power Infusion ×1.20), and its "haste buffs MULTIPLY" is true only of those. Flat **haste rating**
+(Skull of Gul'dan +175, Mind Quickening Gem +330, Drums +80) composes differently, because the engine —
+and the game — put every rating into ONE bracket:
+
+```
+m = (Π multiplicative effects) × (1 + Σ rating / (HASTE_RATING_PER_PCT × 100))
+```
+
+Below the GCD floor `rate = m/G`, so for two buffs of duration `D`, stacked vs held apart:
+
+```
+gain from stacking = D · (A − 1)(B − 1) / G
+```
+
+and the whole question is what `A` and `B` are:
+
+| pair | A, B | (A−1)(B−1) | predicted | **measured** |
+|---|---|---|---|---|
+| **mult × mult** — IV ×1.20 · Zerk ×1.10 | 1.20, 1.10 | 0.0200 | +0.133 | **+0.138** |
+| **mult × rating** — IV ×1.20 · Skull +175 | 1.20, 1.111 | 0.0222 | +0.2959 | **+0.2963** |
+| **rating × rating** — Skull +175 · MQG +330 | *one bracket* | **0** | **0** | **−0.000000** |
+
+★ **Two flat-rating buffs are EXACTLY neutral to stack**, and it is not a near-miss: their ratings add
+into a single `(1 + h₁ + h₂)` rather than forming `(1+h₁)(1+h₂)`, so the cross term that makes stacking
+pay does not exist. `(1+h₁+h₂) + 1 = (1+h₁) + (1+h₂)` identically.
+⇒ **Skull and MQG may be placed wherever else wants them** — kill-window, cooldown chain, a value
+cluster — at zero cost to each other. That is a real planning freedom, and it is the reason the
+`Skull + MQG` layouts spread out (`|S| = 5`) where the `Icon + Gem` ones cluster.
+⇒ Conversely a rating buff DOES want to ride a multiplicative one (`h(a−1)` per second, the largest of
+the three gains here), which is the correct reading of "trinket into Lust".
+
+⚠ **All three flip sign at the cap**, which is §7's real subject. Measured with Bloodlust already up
+(m = 1.30, so the floor bites): mult × mult **−0.665**, mult × rating **−1.481**, rating × rating
+**−0.063**. The rating × rating case is *still* the least sensitive — near-neutral below the cap and
+least punished above it.
+
+⛔ Do not restate §7 as "haste-on-haste is multiplicative" without this qualifier. It was stated that
+way once, on 07-30, and the user corrected it: *"just multiplicative haste no? gotta differentiate
+between flat haste bonus and multiplicative."*
+
 ## 7. Haste-on-haste IS a multiplicative synergy below the floor — the floor decides when to split
 *(REWRITTEN — the old "wash" version was a fixed-rig artifact; see the correction note at the end.)*
 

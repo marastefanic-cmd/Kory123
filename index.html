@@ -2490,12 +2490,36 @@ function phaseRerank(s0, cfg) {
     }
     return c;
   };
+  /* ★★★★★ THE RATCHET GUARD — added 07-30 (MODEL-DEFECTS §8w), and without it this descent walks
+     DOWNHILL by an unbounded amount.
+
+     `planBetter` is a BANDED comparator, and a banded comparator is NOT TRANSITIVE. Inside `TIE_CASTS`
+     the score is declared tied and the SHAPE decides — including "earliest". So a chain of steps that
+     are each individually inside the band, each individually earlier, is each individually "better",
+     and the descent takes all of them. Measured on a Skull kit (2:00 · Lust 0:05 · Icon+Gem+Skull):
+
+         0:35 → 0:34   −0.001323 casts   inside band → "better" (earlier)   ✓ taken
+         0:34 → 0:33   −0.001323 casts   inside band → "better" (earlier)   ✓ taken
+         …six steps…
+         net           −0.007936 casts   **4× the band**, and planBetter(0:29, 0:35) is FALSE
+
+     i.e. the descent reached a plan its own comparator says is worse than where it started. The band
+     is bracketed by MEASUREMENT — it exists so two layouts that are provably equal by the closed forms
+     but differ by ~0.0011 of float noise compare equal (CLAUDE.md). It was never meant to let a real
+     gradient be traded away one sub-band slice at a time.
+
+     ⇒ Keep a high-water mark and refuse anything below it by more than one band. Drift is then bounded
+     by the band itself — which is exactly the tolerance the project already accepts as "tied" — instead
+     of accumulating without limit. ⛔ Do NOT "fix" this by shrinking `TIE_CASTS`: the ratchet works at
+     ANY band width, because the step size that defeats it is whatever sits just inside. */
+  let ceiling = val.score;
   const tryCand = cand => {
     if (!cand) return false;
     const rep = repair(cloneS(cand), cfg);
     if (!intact(cand, rep)) return false;
     const v = rankPair(rep, cfg);
-    if (planBetter(v, val)) { val = v; s = rep; return true; }
+    if (v.score < ceiling - v.band) return false;
+    if (planBetter(v, val)) { val = v; s = rep; if (v.score > ceiling) ceiling = v.score; return true; }
     return false;
   };
   /* ⚠ ROUNDS TO A FIXED POINT, not 3 — measured 07-30. With the structural times added below, three
