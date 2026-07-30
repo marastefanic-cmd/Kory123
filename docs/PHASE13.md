@@ -43,11 +43,21 @@ in-page button are **deleted**; the four sim docs are archived as `docs/archive/
   `{pull, raid calls, intermission exits}` ∪ `{anchor + time-to-3-stacks}`, closed under
   `{+dur(k), +cd(k)}` for the ENABLED kit. T6's `[7,27,37]` is `3-stack`, `+IV dur`, `+Zerk dur`;
   T2's `[20,140]` is `Lust call`, `+trinket cd`. ⚠ Three things to settle before building on it:
-  (a) the anchor is **not a constant** — 3 stacks land at 6.498 s unbuffed, 4.998 s under Lust, 3.513 s
-  under Lust+IV at 300 haste — and it is **self-referential** (the anchor depends on which haste buffs
-  are up, which depends on where you press them; a two-pass fixed point settles it);
-  (b) `|S| ≤ 3` is measured on SEVEN cases at ONE haste level with ONE kit, and RULES §5 says the layout
-  SPREADS as gear haste grows, so that is exactly where it should be expected to break first;
+  ✅ **(a) SETTLED, and the first guess was wrong — ESTABLISHED-FACTS §1.2e.** The anchor is NOT the
+  hasted 3-stack time (which walks 7 → 6 → 5 across the haste ladder and is neither constant nor
+  self-referentially resolvable); it is `ceil(ΣC_k)` **unhasted**, i.e. the end of the m-independent
+  opener-toll window — **0:07 at every haste**, measured 0–600. No fixed point, no multiplier union.
+  ⛔ **(b) BROKEN, as predicted — `|S| ≤ 3` does not survive.** Measured over 3 kits × {0, 300} haste on
+  2:00 · Lust 0:05: `|S|` runs **3, 4, 3, 5, 3, 4** — max **5**, and it grows with haste exactly where
+  RULES §5 says the layout spreads. Not fatal, but the enumeration must be sized for `|S| ≤ 5`, not 3.
+  ✅ **G itself is COMPLETE over that matrix — 6 of 6 cells, every press second derivable** from a
+  generator of 40–45 seconds, once three things are right: the §1.2e anchor, hops from **every enabled
+  buff including the PINNED ones** (0:45 is `Lust call + Lust duration`, and excluding it also killed
+  0:65 and 0:75), and **3 rounds** of closure (`75 = 5 + 40 + 20 + 10` is three hops).
+  ⚠ Sizing, honestly: `|G| ≈ 45` and `|S| ≤ 5` makes a naive `C(45,5)` subset enumeration ~1.2 M before
+  any per-track assignment — too many. The cut has to come from the chain law: the first group second is
+  essentially forced (`max(raid call, 7)`), and on a 2:00 fight the 120–180 s cooldowns admit only two or
+  three chain points at all. That pruning is the unbuilt part.
   (c) the naive enumeration (each track takes any subset of `S`) is `2^|S|` per track and blows up —
   the chain law's "press at every group second you are up for, or decline one" is `|S|+1` per track and
   should land at ~10³–10⁴ layouts. Untested.

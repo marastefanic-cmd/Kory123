@@ -185,6 +185,46 @@ shrinking (§1.1). The general form is
 
 *Engine integral reproduces every cell to ≤2e-3 casts.*
 
+## 1.2e ★★★★ THE OPENER ANCHOR IS `ceil(ΣC_k)` UNHASTED — **0:07, at every haste** (07-30)
+
+The value cluster waits for the opener, and *which* opener quantity it waits for is not the obvious one.
+Two things get conflated:
+
+| quantity | h=0 | 300 haste | 600 haste | moves with haste? |
+|---|---|---|---|---|
+| when 3 Arcane Blast stacks are physically LIVE | 6.498 s | 5.459 s | 4.707 s | **yes** |
+| the end of the **opener-toll window**, `ΣC_k` UNHASTED | 6.498 s | 6.498 s | 6.498 s | **no** |
+
+They coincide at h=0 — which is why one hid behind the other for a whole session — and diverge as soon
+as you put haste on. **The second one is the anchor.** §1.2b's ramp-neutrality is *built* by spreading a
+fixed toll `Σ(C_k − G)/G` over exactly that unhasted window; a value window overlapping it pays a share
+of the toll, one starting after it pays none. That is the entire reason the cluster waits, and because
+the window is m-independent by construction, so is the second it waits for.
+
+**Measured by sliding the value cluster and taking the argmax** — 2:00 · Lust 0:05 · 1387 SP · 38 % crit,
+kit IV + Icon + Gem + AP + Berserking:
+
+```
+haste     3 stacks live at        best cluster second
+   0       6.498 s → ceil 7               7
+ 150       5.934 s → ceil 6               7
+ 300       5.459 s → ceil 6               7
+ 450       5.055 s → ceil 6               7
+ 600       4.707 s → ceil 5               7
+```
+
+⇒ **`anchor = max(raid call, ceil(ΣC_k))` and `ceil(ΣC_k) = 7`.** It reproduces every declared layout:
+T1/T2 wait to 0:20 because the Lust call is later; T3–T7 all cluster at 0:07.
+
+⚠ At 300 haste, pressing the cluster at 0:06 instead of 0:07 costs **0.0517 casts** — a real, measurable
+price for 0.498 s of overlap with the toll window, not a rounding artifact. Pressing at 0:08 or 0:09 is
+**exactly tied** (Δ = 0.000000), so 0:07 is the *earliest* member of a tied plateau and the tie-break
+picks it.
+
+⛔ **Do not "improve" this by computing the hasted ramp.** That was tried first, in
+`tools/group-seconds.mjs`, and 0:07 became the single second the generator could not derive — at every
+haste above zero, in every kit. The wrong quantity is the more physical-sounding one.
+
 ## 1.2a ⚠ DO NOT CLUMP IT — the three ramp casts are not interchangeable
 
 **Corrected 07-28 (user).** "1.332 casts" is the right *total* and the wrong *granularity*. The engine
