@@ -1,5 +1,50 @@
 // THE TESTS. There are EIGHT, and they are the layouts the user declared exactly.
 //
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+// ★★★★★★ THESE ARE HARD TESTS. THEY ARE GROUND TRUTH. — user ruling, 2026-07-30, verbatim:
+//
+//   *"These have to be the output our tool. If the search misses them the search is failing; if the
+//    scorer ranks something higher than them, the scorer is failing."*
+//
+// Read that as two SEPARATE failure modes with two different fixes, and this file now checks BOTH:
+//
+//   1. SEARCH FAILURE — `optimizeAsync` emits something other than the declared layout. Caught by
+//      comparing press times. Fix in `phaseRerank`'s move classes or the seed classes; §8j, §8m, §8s
+//      and §8w were all this. ⛔ NEVER by editing the layout.
+//   2. SCORER FAILURE — some layout in the declared one's own neighbourhood RANKS HIGHER. Caught by
+//      `scorerBeats()` below, which enumerates every move of ≤3 coordinates by ≤3 s and asks the
+//      engine's own comparator. If anything wins, the declared layout is not the argmax under the
+//      current objective — and because the layout is ground truth, **that is the objective being
+//      wrong**. Fix in `simulate()`. ⛔ NEVER by editing the layout.
+//
+// ⛔⛔ THERE IS NO THIRD OPTION. A red here is never "the test is too strict" and never "the layout
+// drifted". These eight were each declared by the user after reading the plan, and the contested ones
+// were settled by BRUTE-FORCE ARGMAX rather than by assertion. Adjusting one to match the tool would
+// destroy the only ground truth the project has — which is exactly what killed `exact-match`.
+//
+// ── ⚠⚠ AND THEY ARE ALL h = 0. THIS IS A DELIBERATE, STATED LIMIT. ────────────────────────────────
+// `cfgFor` hardcodes `hasteRating: 0`; every case runs at zero gear haste (T1/T2 at 1000 SP / 25 %
+// crit, T3–T8 at 1387 / 38 %). The user, same ruling: *"make sure that these are noted as h=0
+// examples, figuring out higher haste is trickier."* That is not an oversight to fix by adding haste
+// to these — it is the boundary of what is currently DECLARED. Above h = 0 the GCD cap starts binding
+// and the right answers genuinely change: RULES §5 has Icy Veins sliding out of Lust as gear haste
+// grows, §7 puts the IV+Berserking stack/split crossover at ~264 rating, §7a-ii the IV+Skull one at
+// ~228. None of that is pinned by any test here.
+// ⇒ `tools/kit-sweep.mjs` + `tools/search-audit.mjs` cover h ∈ {0, 200, 400} across seven kits, but
+// they assert only that a plan is not beaten in its neighbourhood — never that it is RIGHT. Nothing
+// declares a correct layout above h = 0. Treat a high-haste plan as unverified.
+//
+// ── ★ WHAT THE EQUATION IS, and it is the reason these eight can be ground truth at all ───────────
+// The user's framing, which the engine implements: **the integral of "the damage a spell would deal
+// right now, divided by the time it would take to cast right now"**, over the fight. The only thing
+// that has to be modelled dynamically is the Arcane Blast stack count, because that is what changes
+// the denominator. Everything else — haste multipliers, +SP, damage multipliers, the raid buffs — is
+// a value overlaid on that curve at a known time. `docs/ESTABLISHED-FACTS.md` §0.1/§0.2.
+// ⇒ Because the objective is an exact integral rather than an estimate, "layout A beats layout B" is
+// ARITHMETIC. So a declared layout being out-ranked is a statement about the arithmetic, never about
+// the layout — which is precisely what makes failure mode 2 above meaningful.
+// ══════════════════════════════════════════════════════════════════════════════════════════════════
+//
 //   node tests/anchors.mjs
 //
 // ── WHY THIS IS THE WHOLE SUITE (user decision, 2026-07-28, restated twice) ───────────────────────
@@ -168,6 +213,66 @@ const BOSS_CASES = [
 const mmss = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
 const fmt = s => Object.keys(s).sort().map(k => `${k}@${s[k].map(mmss).join('/')}`).join('  ');
 
+/* ★★★★★ THE SCORER CHECK — user ruling, 2026-07-30, and it is the OTHER half of what these tests mean:
+   *"These have to be the output our tool. If the search misses them the search is failing; if the
+   scorer ranks something higher than them, the scorer is failing."*
+
+   Those are two DIFFERENT failures with two different fixes, and a test that only compares press times
+   can see one of them. Comparing `got` to `want` catches the SEARCH. This catches the SCORER: it
+   enumerates every move of <=3 coordinates by <=3 s around the DECLARED layout and asserts that the
+   engine's own comparator prefers none of them. If something wins, the declared layout is not the
+   argmax under the current objective — and since the layouts are ground truth, that is the objective
+   being wrong, not the layout.
+
+   ⚠ It grades on the objective PAIR (`rankPair`/`planBetter`), the same comparator the optimizer
+   adopts with — never on `rankScore` alone. Three instruments in this repo have made that mistake in
+   one day (MODEL-DEFECTS §8t, §8u); inside `TIE_CASTS` the score is tied and the SHAPE decides.
+   ⚠ A candidate `repair` had to relegalize is refused rather than scored, so a plan is never judged
+   against a layout nobody could actually press. */
+function scorerBeats(want, cfg) {
+  if (!api.rankPair || !api.planBetter) return null;   // engine predates the comparator export
+  const clone = o => JSON.parse(JSON.stringify(o));
+  const rep = x => api.repair(clone(x), cfg);
+  const basePair = api.rankPair(rep(want), cfg);
+  const coords = [];
+  for (const k of Object.keys(want).sort()) {
+    if (cfg.fixed && cfg.fixed[k]) continue;          // pinned raid calls are not ours to move
+    want[k].forEach((_, i) => coords.push([k, i]));
+  }
+  const D = [-3, -2, -1, 1, 2, 3];
+  let best = null;
+  const walk = (start, depth, acc) => {
+    if (acc.length) {
+      const cand = clone(want);
+      let ok = true;
+      for (const [ci, d] of acc) {
+        const [k, i] = coords[ci];
+        const t = Math.round(cand[k][i]) + d;
+        if (t < -(api.BUFFS[k].dur - 1) || t > cfg.T - 1) { ok = false; break; }
+        cand[k][i] = t;
+      }
+      if (ok) {
+        const r = rep(cand);
+        let intact = true;
+        for (const k in cand) {
+          if (!r[k] || r[k].length !== cand[k].length) { intact = false; break; }
+          for (let j = 0; j < cand[k].length; j++) if (Math.abs(r[k][j] - cand[k][j]) > 1e-9) { intact = false; break; }
+        }
+        if (intact) {
+          const p = api.rankPair(r, cfg);
+          if (api.planBetter(p, basePair) && (!best || api.planBetter(p, best.p))) best = { p, r, acc: acc.slice(), coords };
+        }
+      }
+    }
+    if (depth === 3) return;
+    for (let i = start; i < coords.length; i++) for (const d of D) walk(i + 1, depth + 1, [...acc, [i, d]]);
+  };
+  walk(0, 0, []);
+  if (!best) return null;
+  return { move: best.acc.map(([ci, d]) => `${coords[ci][0]}#${coords[ci][1]}${d > 0 ? '+' : ''}${d}`).join(' & '),
+           gain: (best.p.score - basePair.score) / api.plainCastOf(cfg), plan: best.r };
+}
+
 let failures = 0;
 console.log('# THE TESTS — the layouts declared exactly (user, 2026-07-28 .. 07-30)\n');
 for (const c of CASES) {
@@ -188,6 +293,13 @@ for (const c of CASES) {
   const V = s => api.simulate(api.repair(JSON.parse(JSON.stringify(s)), cfg), cfg).robust;
   const one = (api.GAME.AB.AVG_BASE_DMG + api.GAME.AB.COEF * c.sp) * (1 + (c.crit / 100) * (api.GAME.CRIT_MULT - 1));
   if (diffs.length) console.log(`      Δ (want − got) = ${((V(c.want) - V(got)) / one).toFixed(4)} effective casts on the shipped objective`);
+  const beat = scorerBeats(c.want, cfg);
+  if (beat) {
+    failures++;
+    console.log(`      ⛔⛔ SCORER FAILURE — the declared layout is NOT the argmax of its own neighbourhood.`);
+    console.log(`         beaten by ${beat.gain >= 0 ? '+' : ''}${beat.gain.toFixed(6)} casts via ${beat.move}`);
+    console.log(`         ⇒ the layout is GROUND TRUTH, so this is the OBJECTIVE being wrong. Do not "fix" the layout.`);
+  }
   console.log('');
 }
 
@@ -210,6 +322,13 @@ for (const c of BOSS_CASES) {
   const V = s => api.simulate(api.repair(JSON.parse(JSON.stringify(s)), cfg), cfg).robust;
   const one = (api.GAME.AB.AVG_BASE_DMG + api.GAME.AB.COEF * cfg.sp) * (1 + (cfg.critPct / 100) * (api.GAME.CRIT_MULT - 1)) * (cfg.t5two ? 1.2 : 1);
   if (diffs.length) console.log(`      Δ (want − got) = ${((V(c.want) - V(got)) / one).toFixed(4)} effective casts on the shipped objective`);
+  const beat = scorerBeats(c.want, cfg);
+  if (beat) {
+    failures++;
+    console.log(`      ⛔⛔ SCORER FAILURE — the declared layout is NOT the argmax of its own neighbourhood.`);
+    console.log(`         beaten by ${beat.gain >= 0 ? '+' : ''}${beat.gain.toFixed(6)} casts via ${beat.move}`);
+    console.log(`         ⇒ the layout is GROUND TRUTH, so this is the OBJECTIVE being wrong. Do not "fix" the layout.`);
+  }
   console.log('');
 }
 

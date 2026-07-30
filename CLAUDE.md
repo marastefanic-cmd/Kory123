@@ -71,6 +71,23 @@ Additional payoffs the same engine unlocks (nice-to-haves, not the point):
 ```
 node tests/anchors.mjs
 ```
+**★★★★★★ THESE ARE HARD TESTS AND THEY ARE GROUND TRUTH** — user ruling 07-30: *"These have to be the
+output our tool. If the search misses them the search is failing; if the scorer ranks something higher
+than them, the scorer is failing."* Two failure modes, two different fixes, and `tests/anchors.mjs`
+checks BOTH — press-time comparison catches the SEARCH, and `scorerBeats()` enumerates every ≤3-coordinate
+move around the declared layout to catch the SCORER. ⛔ **There is no third option.** A red here is never
+"the test is too strict"; editing a layout to match the tool destroys the only ground truth the project
+has, which is exactly what killed `exact-match`.
+⚠⚠ **AND THEY ARE ALL h = 0** — a stated limit, not an oversight (*"figuring out higher haste is
+trickier"*). Above h=0 the GCD cap binds and the right answers change (RULES §5, §7, §7a-ii). **Nothing
+declares a correct layout above h = 0**; `kit-sweep` + `search-audit` cover h ∈ {0,200,400} but assert
+only that a plan is not beaten, never that it is right. Treat a high-haste plan as unverified.
+★ **The equation, in the user's own framing:** the integral of *"the damage a spell would deal right
+now, divided by the time it would take to cast right now"*. The only thing modelled dynamically is the
+Arcane Blast stack count, because that is what moves the denominator; everything else is a value
+overlaid on that curve at a known time. Because it is an exact integral, "A beats B" is **arithmetic** —
+which is what makes the scorer failure mode above meaningful.
+
 **★ There are exactly EIGHT tests, and they are the eight layouts the user declared exactly.** T1/T2:
 2:00 and 3:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit, every press time pinned, per their ruling
 *"these two need to always be this way"*. T3 (added 07-30): the **Morogrim Tidewalker preset**, declared as
