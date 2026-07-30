@@ -17,7 +17,19 @@
 // whose score went DOWN is a SEARCH REGRESSION by definition, no sim needed: the optimizer
 // rejected a layout it had previously found and that its own objective prefers. That single case
 // is graded (exit 1, even under --allow-change: that flag means "I expect plans to move", not
-// "I accept worse plans"). Everything else still needs the head-to-head SIM duel of old plan vs
+// "I accept worse plans").
+//
+// ⚠ TWO THINGS ABOUT "ITS OWN OBJECTIVE" THAT WERE WRONG UNTIL 07-30, AND BOTH MADE THIS GATE CRY
+// WOLF (MODEL-DEFECTS §8t):
+//   1. The score it read was `best.val`, which `optimizeAsync` sets to `simulate().robust` — the
+//      per-cast SUM. Since §8h the sum is the REPORTED number and the rate INTEGRAL is what ranks.
+//      So this gate was grading search changes against a retired objective, and it called three
+//      cells regressions when two were improvements of +0.0058 and +0.0392 casts. plan-sweep now
+//      records `rankScore`; `robust` rides along as a diagnostic.
+//   2. The objective is a PAIR, not a number: inside `TIE_CASTS` the integral is tied and the SHAPE
+//      decides (fewest distinct press moments → earliest). A banded move is now reported as
+//      `tieBreak`, and only a banded move that ADDS press moments fails.
+// Everything else still needs the head-to-head SIM duel of old plan vs
 // new plan under ONE harness; a positive ΔScore is still only the model's opinion of itself,
 // and if the scorer moved (a repricing) NO delta is attributable to the search. This tool's
 // output is that duel's work list.
@@ -72,9 +84,16 @@ for (const name of ia.keys()) {
     }
     continue;
   }
+  /* ★ THE OBJECTIVE IS A PAIR (MODEL-DEFECTS §8h): the integral, then the shape tie-break (fewest
+     distinct press moments → earliest). Grading on the integral ALONE reports every legitimate
+     tie-break move as a search regression, which it did on 07-30: Leotheras moved −0.001155 casts —
+     inside `TIE_CASTS`, and from 4 distinct press moments to 3, exactly the move the tie-break is
+     FOR. The band is carried per cell from the engine's own constant, never retyped here. */
+  const band = Math.max(Number.isFinite(a.band) ? a.band : 0, Number.isFinite(b.band) ? b.band : 0);
   changed.push({ name, T: a.T, a: na, b: nb,
                  subsec: flr(a.s) === flr(b.s),         // press moved but not across a second
-
+                 band, banded: Number.isFinite(a.band) && Number.isFinite(b.band),
+                 dDistinct: (Number.isFinite(a.distinct) && Number.isFinite(b.distinct)) ? b.distinct - a.distinct : NaN,
                  dScore: scored ? b.score - a.score : NaN });
 }
 
@@ -96,13 +115,23 @@ console.log(`\nPLAN-DIFF compared=${[...ia.keys()].filter(k => ib.has(k)).length
 if (changed.length) console.log(`DUEL WORK LIST (sim old-vs-new under ONE harness): ${changed.map(c => c.name).join(', ')}`);
 
 // ── the ΔScore sign audit (PHASE9 §5.15 — the rule this gate was missing) ──
-const worse = changed.filter(c => c.dScore < 0);
-const better = changed.filter(c => c.dScore > 0);
-const tie = changed.filter(c => c.dScore === 0);
+// Inside the band the two plans are TIED on the first half of the objective, and the shape decides.
+// A banded move that does not add press moments is the tie-break working, not a regression; one that
+// ADDS them is a real complaint, because it means the tie-break went the wrong way.
+const inBand = c => c.banded && Math.abs(c.dScore) <= c.band;
+const worse = changed.filter(c => c.dScore < 0 && !inBand(c));
+const better = changed.filter(c => c.dScore > 0 && !inBand(c));
+const tieBreak = changed.filter(c => inBand(c) && !(c.dDistinct > 0));
+const tieBad = changed.filter(c => inBand(c) && c.dDistinct > 0);
+const tie = changed.filter(c => c.dScore === 0 && !c.banded);
 const ungraded = changed.filter(c => !Number.isFinite(c.dScore));
 console.log(`SCORE-AUDIT unchangedCells=${sameCells} scorerMoved=${scorerMoved}${unscored ? ` unscored=${unscored}` : ''} ` +
             `movedCells=${changed.length}${ungraded.length ? ` (${ungraded.length} carry no score)` : ''} ` +
-            `→ worse=${worse.length} better=${better.length} tie=${tie.length}`);
+            `→ worse=${worse.length} better=${better.length} tie=${tie.length}` +
+            `${tieBreak.length ? ` tieBreak=${tieBreak.length}` : ''}${tieBad.length ? ` tieBreakWORSESHAPE=${tieBad.length}` : ''}`);
+for (const c of tieBreak) console.log(`   · "${c.name}" is INSIDE the tie band (Δ ${c.dScore.toFixed(6)}, band ±${c.band.toFixed(6)})` +
+                                      `${Number.isFinite(c.dDistinct) ? `, press moments ${c.dDistinct > 0 ? '+' : ''}${c.dDistinct}` : ''} — the shape tie-break, not a score move.`);
+for (const c of tieBad) console.error(`  ⚠ "${c.name}" is inside the tie band but B has ${c.dDistinct} MORE press moment(s) — the tie-break went backwards.`);
 if (scorerMoved) {
   console.log('⚠⚠ THE SCORER CHANGED between A and B (identical plan(s) scored differently) — a REPRICING.');
   console.log('   No ΔScore above is attributable to the search; the sign split is NOT graded.');
@@ -125,5 +154,6 @@ if (changed.length && !allow) { console.error('PLAN-DIFF FAIL — plans changed.
 // The one graded case: scorer pinned + a strictly lower score = a defect by definition, and it
 // fails even under --allow-change (that flag admits movement, not regression).
 if (worse.length && sameCells && !scorerMoved) { console.error('PLAN-DIFF FAIL — search regression.'); process.exit(1); }
+if (tieBad.length && !scorerMoved) { console.error('PLAN-DIFF FAIL — tie-break went backwards.'); process.exit(1); }
 console.log(changed.length ? 'PLAN-DIFF CHANGED (allowed)' : 'PLAN-DIFF IDENTICAL');
 process.exit(0);

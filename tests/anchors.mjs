@@ -1,4 +1,4 @@
-// THE TESTS. There are two, and they are the two layouts the user declared exactly.
+// THE TESTS. There are SEVEN, and they are the layouts the user declared exactly.
 //
 //   node tests/anchors.mjs
 //
@@ -24,29 +24,36 @@
 // none of which is a claim about which layout is best. Deleting those removes the floor this file
 // stands on.
 //
-// ── WHAT THESE TWO ASSERT, AND WHY TIMESTAMPS ARE FAIR GAME HERE ──────────────────────────────────
-// Both pin **every press time**, which is the user's explicit ruling: *"these two examples I sent are
-// genuinely safe to lock even the timestamps on… these two need to always be this way."* It rests on
-// two separate grounds and it matters which one a failure is about:
-//   · the SCORE part — Bloodlust is pinned late (0:20) so no Arcane-Blast-stack cheese is available,
-//     every press follows a law in `docs/ESTABLISHED-FACTS.md`, and wowsims prefers these layouts over
-//     what the optimizer emitted (Example 1: +2.0 DPS ± 0.37 over 5 seeds).
+// ⚠ The ruling above says "the two"; it was made when there WERE two (07-28). The user has declared
+// five more since, each the same way — by reading a plan the tool emitted and saying whether it was
+// right — so the suite grows by declaration and never by recording. T6/T7 arrived as bug reports and
+// are pinned to a BRUTE-FORCE ARGMAX rather than to what the optimizer happened to say, which is the
+// distinction that got `exact-match` deleted.
+//
+// ── WHAT THESE ASSERT, AND WHY TIMESTAMPS ARE FAIR GAME HERE ──────────────────────────────────────
+// All of them pin **every press time**, which is the user's explicit ruling: *"these two examples I
+// sent are genuinely safe to lock even the timestamps on… these two need to always be this way."* It
+// rests on two separate grounds and it matters which one a failure is about:
+//   · the SCORE part — every press follows a law in `docs/ESTABLISHED-FACTS.md`, and where a layout was
+//     contested it was settled by enumeration (T6: the argmax over 373k layouts) or by the sim
+//     (Example 1: +2.0 DPS ± 0.37 over 5 seeds), never by assertion.
 //   · the TIE-BREAK part — where a press sits on a plateau the sim cannot resolve, the exact second is
 //     the STRUCTURAL choice: cluster with the other presses, fewest distinct press moments, most robust
 //     to a press landing late. Same ruling as `docs/MODEL-DEFECTS.md` D2.
 //
-// ✅ BOTH PASS as of 2026-07-30 — `2 of 2` — and the CI job is BLOCKING again. MODEL-DEFECTS D1 is
-// CLOSED. Seven defects fell to get here (§8h-§8m) and the through-line is one sentence: the cast
-// lattice had leaked into the RANKING objective in four separate places. The integral is now pure
+// ✅ ALL SEVEN PASS as of 2026-07-30 — `7 of 7` — and the CI job is BLOCKING again. MODEL-DEFECTS D1 is
+// CLOSED. Seven scoring defects fell to get there (§8h-§8m) and the through-line is one sentence: the
+// cast lattice had leaked into the RANKING objective in four separate places. The integral is now pure
 // window geometry (`∫ rate(m(t)) dt` over press times, durations and wall events), its cooldown chain
 // is geometric too, the objective is a pair (integral, then fewest press moments -> earliest), and the
-// descent can slide a co-pressed cluster as a unit.
+// descent can slide a co-pressed cluster (§8m) or a train of abutting windows (§8s) as a unit.
 // ⛔ IF THIS GOES RED, DO NOT LOOSEN THE ASSERTION AND DO NOT RESTORE `continue-on-error`. Run
 // `node tools/law-check.mjs` first: it asserts the scorer against the closed forms, and every one of
-// the seven defects was found that way rather than by any plan diff. A press OUTSIDE its law is a
+// the scoring defects was found that way rather than by any plan diff. A press OUTSIDE its law is a
 // scoring defect; a press on the wrong member of a plateau is a tie-break defect; a press the search
-// never visited is a search defect. They are fixed in three different places and law-check tells you
-// which. Full record: docs/MODEL-DEFECTS.md §8h-§8m.
+// never visited is a SEARCH defect (§8j, §8m, §8s — and the last two were invisible to every
+// aggregate the project owns). They are fixed in three different places and law-check tells you
+// which. Full record: docs/MODEL-DEFECTS.md §8h-§8t.
 import { loadEngine, ALL_BUFFS, cfgFor as presetCfg } from '../tools/engine-node.mjs';
 
 const api = loadEngine(new URL('../index.html', import.meta.url).pathname);
@@ -66,35 +73,67 @@ const KIT = ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking', 'bloodlust']
 const cfgFor = c => ({
   T: c.T, hasteRating: 0, sp: c.sp, critPct: c.crit,
   enabled: Object.fromEntries(ALL_BUFFS.map(k => [k, KIT.includes(k)])),
-  fixed: { bloodlust: [20] }, warnings: [], coldSnap: true, segments: null,
+  fixed: { bloodlust: [c.lust] }, warnings: [], coldSnap: true,
+  segments: c.intermission
+    ? api.buildSegments([{ from: c.intermission[0], to: c.intermission[1], type: 'intermission', mult: 1, targets: 0 }], c.T)
+    : null,
 });
 
-/* ★ T3 — MOROGRIM, declared 2026-07-30. The user gave the RULE and its consequence, not a timetable:
-   *"Morogrim has to pop the first cluster (everything except Berserking) as soon as a) 3 Arcane Blast
-   stacks are active and b) Lust is active, then exactly 2 minutes after the first cluster the second
-   cluster gets popped — IV (due to Cold Snap resetting the CD), Icon, Gem and Berserking"*, plus
-   *"AP only fits once, and the first cluster gives it more value because Lust > Berserking, so it stays
-   in the first one. Everything else can be used exactly twice."*
-   Bloodlust is pinned 0:05 and the third stack completes at 6.498, so the first legal whole second with
-   both conditions live is 0:07, and the Icon's 2-minute cooldown puts the second cluster at 2:07.
-   ⛔ RED TODAY, and the reason is ONE press. `docs/MODEL-DEFECTS.md` §8p: the model over-credits
-   `haste × +spellpower` by about a third (the closed form, not the code), which pulls Berserking onto the
-   second cluster and — separately — it under-charges haste spent on the opening ramp, so it presses Icy
-   Veins at the pull instead of waiting for 3 stacks. The derivation the user's rule follows from:
-   during a k-stack ramp cast the rate is `m/C_k` (cast-bound, C_k = 2.5 / 2.166 / 1.832) against `m/G`
-   at steady state, so a haste buff gains `(m−1)/2.5 = 0.080` casts per second over the 0-stack cast
-   versus `(m−1)/1.5 = 0.133` at steady state — **~40 % less**. Icy Veins at the pull therefore spends
-   5.4 s of its 20 s on nearly worthless ground.
-   ⚠ The sim currently prefers Berserking in Bloodlust here by 1.2 DPS ± 0.20 while the closed forms
-   prefer the cluster by 1.24 — the disagreement of §8p. The user was told and reaffirmed the layout, so
-   it stands as declared. */
+/* ★ T3 — MOROGRIM, declared 2026-07-30, as a RULE rather than a timetable: *"pop the first cluster
+   (everything except Berserking) as soon as a) 3 Arcane Blast stacks are active and b) Lust is active,
+   then exactly 2 minutes after the first cluster the second cluster gets popped — IV (Cold Snap), Icon,
+   Gem and Berserking"*, plus *"AP only fits once, and the first cluster gives it more value because
+   Lust > Berserking, so it stays in the first one."*
+   Lust is pinned 0:05 and the third stack completes at 6.498, so the first whole second with both
+   conditions live is 0:07, and 2 minutes on is 2:07. ✅ GREEN since §8q.
+
+   ★ T4/T5 — declared 07-30 off the shipped build, at the DEFAULT gear (1387 SP, 38 % crit) with Lust
+   pinned 0:07, which is the first setup family the suite covers besides 1000 SP / Lust 0:20:
+     T4  1:40, no phases      — one cluster on the Lust call, Berserking alone at 0:27, Cold-Snap Icy
+                                Veins at 0:37. The only case where Berserking is NOT co-pressed with a
+                                cluster, so it pins the lone-Berserking placement that nothing else does.
+     T5  2:40, intermission 1:30–2:10 — the RE-RAMP case, and the first test to cover it at all. Casting
+                                resumes at 2:10 and the same rule applies again: the second cluster goes
+                                as soon as a) everything is off cooldown and b) 3 stacks are rebuilt.
+                                The re-ramp runs 130 → 132.5 → 134.666 → 136.498, so 3 stacks are live
+                                from 136.498 and the first whole second is **2:17** — the user's own
+                                stated assumption, and it is derived here rather than copied.
+   ⚠ T5 is the only guard on the re-ramp path, which §8q's opener-toll change made load-bearing (every
+   re-ramp pays the toll again). Do not delete it without replacing that coverage.
+
+   ★★ T6/T7 — declared 07-30 as two REPORTED BUGS, and they are the regression guard for §8s (the
+   abutting-window train slide). Both were emitted wrong by the shipped build and both are now the
+   BRUTE-FORCE ARGMAX, enumerated rather than asserted:
+     T6  2:00, Lust 0:05     — emitted IV[5,35] Zerk 25 (100.7790); argmax IV[7,37] Zerk 27 (100.7849)
+                               over 373k layouts. Gap 0.0058 casts, 2.9× the tie band.
+     T7  1:15, Lust 0:05, intermission 0:50–0:55 — emitted IV[2,55] Zerk 21 (67.3484); argmax
+                               IV[7,55] Zerk 27 (67.4506). Gap 0.1022 casts, and the LARGEST search
+                               miss in the suite. Icy Veins had run off to 0:02, two seconds before the
+                               cluster it should sit on, because the emitted point was a 2-D local
+                               maximum whose only escape moved three coordinates at once.
+   ⚠ T7's second Icy Veins lands ON the intermission end (0:55) rather than after it — the argmax, not
+   a rounding artifact: a press during an intermission is legal and the window is already running when
+   casting resumes. It is the only test that pins that, so a change to the intermission handling shows
+   up here first. */
 const CASES = [
   { name: 'T1 — 2:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit',
-    T: 120, sp: 1000, crit: 25,
+    T: 120, sp: 1000, crit: 25, lust: 20,
     want: { icyVeins: [0, 20], isc: [20], scb: [20], arcanePower: [20], bloodlust: [20], berserking: [40] } },
   { name: 'T2 — 3:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit',
-    T: 180, sp: 1000, crit: 25,
+    T: 180, sp: 1000, crit: 25, lust: 20,
     want: { icyVeins: [20, 140], isc: [20, 140], scb: [20, 140], arcanePower: [20], bloodlust: [20], berserking: [140] } },
+  { name: 'T4 — 1:40, Bloodlust pinned 0:07, h=0, 1387 SP, 38 % crit',
+    T: 100, sp: 1387, crit: 38, lust: 7,
+    want: { icyVeins: [7, 37], isc: [7], scb: [7], arcanePower: [7], bloodlust: [7], berserking: [27] } },
+  { name: 'T5 — 2:40, Bloodlust pinned 0:07, intermission 1:30-2:10, 1387 SP, 38 % crit',
+    T: 160, sp: 1387, crit: 38, lust: 7, intermission: [90, 130],
+    want: { icyVeins: [7, 137], isc: [7, 137], scb: [7, 137], arcanePower: [7], bloodlust: [7], berserking: [137] } },
+  { name: 'T6 — 2:00, Bloodlust pinned 0:05, h=0, 1387 SP, 38 % crit',
+    T: 120, sp: 1387, crit: 38, lust: 5,
+    want: { icyVeins: [7, 37], isc: [7], scb: [7], arcanePower: [7], bloodlust: [5], berserking: [27] } },
+  { name: 'T7 — 1:15, Bloodlust pinned 0:05, intermission 0:50-0:55, 1387 SP, 38 % crit',
+    T: 75, sp: 1387, crit: 38, lust: 5, intermission: [50, 55],
+    want: { icyVeins: [7, 55], isc: [7], scb: [7], arcanePower: [7], bloodlust: [5], berserking: [27] } },
 ];
 
 // T3 uses a real BOSS preset, so its cfg comes from the fight table (sp 1387, crit 38, Lust pinned 0:05)
@@ -109,7 +148,7 @@ const mmss = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2
 const fmt = s => Object.keys(s).sort().map(k => `${k}@${s[k].map(mmss).join('/')}`).join('  ');
 
 let failures = 0;
-console.log('# THE TESTS — the two layouts declared exactly (user, 2026-07-28)\n');
+console.log('# THE TESTS — the layouts declared exactly (user, 2026-07-28 .. 07-30)\n');
 for (const c of CASES) {
   const cfg = cfgFor(c);
   const got = (await api.optimizeAsync(cfg, undefined, () => {})).s;
@@ -156,8 +195,10 @@ for (const c of BOSS_CASES) {
 const N = CASES.length + BOSS_CASES.length;
 console.log(`${N - failures} of ${N} passed.`);
 if (failures) {
-  console.log('\n⛔ T1/T2 went green on 07-30 (D1 closed). A failure here is a REGRESSION unless it is T3, whose');
-  console.log('   open defect is docs/MODEL-DEFECTS.md §8p. Run `node tools/law-check.mjs` first — every');
-  console.log('   scoring defect this project has found was caught by a closed form, never by a plan diff.');
+  console.log('\n⛔ All seven were GREEN on 07-30, so a failure here is a REGRESSION. Run `node tools/law-check.mjs`');
+  console.log('   first — every scoring defect this project has found was caught by a closed form, never by a');
+  console.log('   plan diff. A press OUTSIDE its law is a scoring defect; a press on the wrong member of a');
+  console.log('   plateau is a tie-break defect; a press the search never visited is a SEARCH defect (§8j,');
+  console.log('   §8m, §8s) — three different fixes, and law-check tells you which.');
 }
 process.exit(failures ? 1 : 0);

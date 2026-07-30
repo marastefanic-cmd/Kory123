@@ -400,6 +400,43 @@ as a seed class (`groupSeeds`, `docs/ARCHITECTURE.md`), which is why it is worth
 theorycraft: *given a kit and a fight length, you can write the candidate layout down by hand from the
 cooldown arithmetic alone.*
 
+### 4c. ★★★ THE PACKING LAW — haste windows go BACK TO BACK, and the whole train moves together *(07-30, MODEL-DEFECTS §8s; brute-force verified)*
+
+§4 packs *value* onto haste. This says what the **haste** windows do to each other, and it is the rule
+two shipped plans were violating on 07-30.
+
+Under the GCD cap a second haste buff **inside** the first is worth much less than beside it — §7's
+thresholds, and at high multiplier the cap eats it entirely. So when total haste already sits at or
+near the floor, the optimum **abuts** the haste windows rather than overlapping them:
+
+```
+2:00 · 1387 SP · 38 % crit · Lust 0:05      Icy Veins [7,27] · Berserking [27,37] · Cold-Snap IV [37,57]
+```
+
+Two consequences, and the second is the one that bites:
+
+1. **The cost of a one-second overlap is a full second of the weaker buff's marginal value** — here
+   0.0867 casts, `ESTABLISHED-FACTS` §5.1's Berserking-in-Bloodlust figure. It is not a rounding
+   effect; it is the largest term in the neighbourhood.
+2. **★ Therefore the layout is a rigid TRAIN, and every single-coordinate move off it is downhill.**
+   Slide Icy Veins alone and it eats into Berserking; slide Berserking alone and it runs into the
+   second Icy Veins. Measured on the case above: **zero** improving 1-coordinate moves, **zero**
+   improving 2-coordinate moves, and six improving 3-coordinate moves. A coordinate descent — at any
+   effort — cannot leave a packed train. This is the same structural fact as §4b's chain law, one
+   level down: there, presses collapse onto shared seconds; here, *windows* collapse onto shared edges.
+
+⚠ **The train's own position is then set by the VALUE alignment, and that is what sends it to 3 stacks.**
+Given the packing, the remaining freedom is where the whole train starts, and the answer is the second
+the value cluster wants — the first whole second with 3 Arcane Blast stacks and Lust up (0:07 at
+Lust 0:05) — because Icy Veins' 20 s window then coincides exactly with Icon's, and haste × value
+multiply (§6). On the 2:00 case that alignment is worth 0.0058 casts over starting the train at 0:05,
+which is small but 2.9× the tie band and reproducible by enumeration.
+
+⚠ **A burn-in for whoever reads this next:** the *scorer* had this right all along. Both failures were
+the SEARCH not reaching a layout its own objective preferred. When a plan looks wrong, brute-force the
+cell before touching `simulate()` — §8s and §8m were both search defects that a scoring "fix" would
+have made permanently worse.
+
 ## 5. Icy Veins slides out of Lust as haste gear grows *(now REALIZED in the search, sim-verified)*
 
 At ~0 haste, IV belongs in Lust (packed, per #4). This isn't received mage-forum wisdom taken on faith —

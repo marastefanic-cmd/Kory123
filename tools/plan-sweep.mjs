@@ -63,8 +63,25 @@ if (process.env.SWEEP_CHILD) {
     try {
       const cfg = cfgFor(api, c);
       const best = await api.optimizeAsync(cfg, 14, () => {});
-      cell = { i, name: c.name, T: c.T, ms: Date.now() - t0, score: best.val ?? best.score, s: best.s,
-               bad: illegal(best.s, cfg, api.BUFFS) };
+      /* ⚠ `score` MUST BE THE RANKING QUANTITY, and `best.val` is not it. `optimizeAsync` returns
+         `val = simulate().robust` — the per-cast sum, which since MODEL-DEFECTS §8h is the REPORTED
+         number and no longer the one that ranks (the rate integral does). Recording `val` made
+         plan-diff's SCORE-AUDIT grade every search change against a RETIRED objective, and on
+         2026-07-30 it did exactly that: it called three cells "SEARCH REGRESSION" when, on the
+         integral, two were improvements (+0.0058 Karathress, +0.0392 Solarian) and the third was
+         −0.0012 casts — inside `TIE_CASTS` and won on the shape tie-break (3 distinct press moments
+         against 4). Same stale-premise class as `plan-duel`'s, recorded in §8n.
+         `robust` is kept alongside so the reported number is still diffable, but the audit reads
+         `score`. Falls back for an engine predating `rankScore`; such a sweep is then unscored, which
+         plan-diff already reports rather than silently trusting. */
+      const score = typeof api.rankScore === 'function' ? api.rankScore(best.s, cfg) : undefined;
+      /* The objective is a PAIR, so a diff that reads only the first half misgrades every move that
+         lands inside the band and wins on shape. Carry the other half: `band` is the engine's own
+         TIE_CASTS in this cell's damage units, `distinct` the number of separate press moments. */
+      const band = api.TIE_CASTS !== undefined && api.plainCastOf ? api.TIE_CASTS * api.plainCastOf(cfg) : undefined;
+      const distinct = api.planShape ? api.planShape(best.s).distinct : undefined;
+      cell = { i, name: c.name, T: c.T, ms: Date.now() - t0, score, band, distinct,
+               robust: best.val ?? best.score, s: best.s, bad: illegal(best.s, cfg, api.BUFFS) };
     } catch (e) {
       cell = { i, name: c.name, T: c.T, ms: Date.now() - t0, error: String((e && e.stack) || e) };
     }

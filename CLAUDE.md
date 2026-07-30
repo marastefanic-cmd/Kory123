@@ -18,7 +18,7 @@ You enter a fight (length, Bloodlust
 timing, intermission/AoE phases) and it computes the **optimal moment to press each on-use
 cooldown** (Icy Veins, Arcane Power, Icon of the Silver Crescent, Serpent-Coil gem, Berserking),
 plus a burn timeline, a per-window activation schedule, and a copy-as-text plan. Alongside it:
-`tests/` — **three tests** (`tests/anchors.mjs`): the three layouts the user declared exactly. The goldens
+`tests/` — **seven tests** (`tests/anchors.mjs`): the seven layouts the user declared exactly. The goldens
 and the plan-shape suites are **deleted** (user decision 07-28, restated twice) — everything else in
 `tests/` is a harness-integrity gate, not a claim about which layout is right.
 
@@ -55,16 +55,21 @@ Additional payoffs the same engine unlocks (nice-to-haves, not the point):
 ```
 node tests/anchors.mjs
 ```
-**★ There are exactly THREE tests, and they are the three layouts the user declared exactly.** T1/T2:
+**★ There are exactly SEVEN tests, and they are the seven layouts the user declared exactly.** T1/T2:
 2:00 and 3:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit, every press time pinned, per their ruling
 *"these two need to always be this way"*. T3 (added 07-30): the **Morogrim Tidewalker preset**, declared as
 a RULE rather than a timetable — *"pop the first cluster (everything except Berserking) as soon as a) 3
 Arcane Blast stacks are active and b) Lust is active, then exactly 2 minutes after the first cluster the
 second cluster gets popped — IV (Cold Snap), Icon, Gem and Berserking"*, with Arcane Power once in the
 first cluster because Lust > Berserking. Lust is pinned 0:05 and the third stack lands at 6.498 ⇒ 0:07
-and 2:07. No browser, no rig, no golden file: it runs the real optimizer and compares press times.
+and 2:07. **T4–T7 (added 07-30)** run at the DEFAULT gear (1387 SP, 38 % crit): T4 `1:40 lust 0:07`,
+T5 `2:40 lust 0:07 · intermission 1:30–2:10` (the only re-ramp guard), T6 `2:00 lust 0:05`,
+T7 `1:15 lust 0:05 · intermission 0:50–0:55`. ★ T6/T7 arrived as **bug reports** and are pinned to a
+**brute-force argmax** rather than to what the optimizer happened to say — that distinction is exactly
+what got `exact-match` deleted. No browser, no rig, no golden file: it runs the real optimizer and
+compares press times.
 
-✅ **`3 of 3` AS OF 2026-07-30 — all three declared layouts are emitted exactly, and the CI job is
+✅ **`7 of 7` AS OF 2026-07-30 — every declared layout is emitted exactly, and the CI job is
 BLOCKING** (`continue-on-error` removed — that
 flag's stated exit condition was *"the day anchors goes green"*). **MODEL-DEFECTS D1 IS CLOSED.** Seven
 defects fell that day, §8h–§8m, and the through-line is one sentence: **the cast lattice had leaked into
@@ -103,6 +108,17 @@ the ranking objective in four separate places.**
 9. **The cluster slide moves PRESSES, not tracks.** Sliding whole tracks dragged a member's *other*
    uses along and split the cluster it was meant to leave alone. T3's last gap was coupled through
    **legality**, not score: with the gem used at 0:08 its 2-minute cooldown makes 2:07 illegal.
+10. **★★★ AND THEN THE SAME DEFECT ONE DIMENSION UP (§8s).** Two more plans came back wrong the same
+   day — *"why is the first IV at 0:06 not 0:07 along with the other things?"* — and both were the
+   search again, not the scorer: brute force says the user's layout is the argmax, by **0.0058 casts**
+   on the 2:00 case (over 373k layouts) and **0.1022 casts** on the 1:15 case, the largest miss the
+   suite carries. Cause: under the GCD cap the optimum **packs haste windows back to back** (IV [5,25]
+   · Berserking [25,35] · IV [35,55]), so moving any one alone overlaps its neighbour at −0.0867 casts
+   per second and **every 1-D and 2-D step is downhill** — the only escape moves three coordinates at
+   once. ⇒ move class 3c: link presses whose windows share an EDGE (one's end EXACTLY on another's
+   start), slide each connected component. ⚠ A ±1 s tolerance was tried and makes the move useless —
+   Icon's window ends one second past Berserking's press, so the cluster gets swept into the train.
+   Class 3c is ADDITIVE to the cluster slide; do not merge the two graphs.
 
 ⚠ **The band is `TIE_CASTS = 0.002` casts and it is BRACKETED BY MEASUREMENT, not tuned** — 1.8× above
 the measured resolution floor (two layouts provably equal by the closed forms differ by 0.001097) and
@@ -119,8 +135,10 @@ universal and its R3 rested on a cast count later shown to be ramp-neutral), and
 current reference fights and add these hard tests there instead"*). `GOLDEN_PRESETS` held fifteen plain
 length+Lust cases inherited from the deleted `exact-match` goldens — they asserted nothing after 07-28 and
 they were the first strip a visitor saw, so the tool advertised its own scaffolding. It now holds exactly
-`T1 · 2:00 lust 0:20`, `T2 · 3:00 lust 0:20`, `T3 · Morogrim 2:45 lust 0:05`, and clicking one loads that
-test's own inputs. ⚠ Five code paths defaulted to deleted names and were repointed in the same commit:
+the seven declared tests — `T1 · 2:00 lust 0:20`, `T2 · 3:00 lust 0:20`, `T3 · Morogrim 2:45 lust 0:05`,
+`T4 · 1:40 lust 0:07`, `T5 · 2:40 lust 0:07 · interm 1:30-2:10`, `T6 · 2:00 lust 0:05`,
+`T7 · 1:15 lust 0:05 · interm 0:50-0:55` — and clicking one loads that test's own inputs. **The strip and
+`tests/anchors.mjs` must stay in lockstep**: the strip IS the test list, by user decision. ⚠ Five code paths defaulted to deleted names and were repointed in the same commit:
 `ci.yml`'s bench smoke, `tests/page-equiv.mjs`, `tools/model-audit.mjs`, `tools/window-match.mjs`,
 `tools/sp-sensitivity.mjs`. Docs still quote the old names in examples; treat a `no preset matching…`
 error as a stale doc, not a broken tool.
@@ -151,6 +169,16 @@ node tools/plan-sweep.mjs index.html B.json 3 --max-t=200   # after
 node tools/plan-diff.mjs A.json B.json
 ```
 Full rationale and both instrument controls: `docs/archive/10-phase9-performance.md §5`.
+
+⚠⚠ **IT WAS GRADING AGAINST THE RETIRED OBJECTIVE UNTIL 07-30 — §8t.** `plan-sweep` recorded
+`best.val`, and `optimizeAsync` sets `val = simulate().robust`, the per-cast **sum**. Since §8h the sum
+is REPORTED and the **integral** ranks, so the project's only plan-stability gate was judging search
+changes by the wrong number: it called three cells "SEARCH REGRESSION" when two were **+0.0058** and
+**+0.0392** casts better. And even on the right number the verdict needs BOTH halves of the pair —
+inside `TIE_CASTS` the integral is tied and the SHAPE decides. ⇒ the sweep now records `rankScore`
+plus `band` and `distinct` (all read from the engine, never retyped), and `plan-diff` reports a banded
+move as `tieBreak`, failing only when a banded move ADDS press moments. **Re-sweep both sides after
+this change — an old JSON is denominated in the old number.**
 
 ### The sim gates (added 07-26 — they need no rig)
 
@@ -193,10 +221,17 @@ tag's own text (`runOptimize`; single-file preserved, main thread never computes
 **pool of polish-server workers** sized to the machine's cores with a first-accept-in-order
 reduction — pooled and sequential paths return **byte-identical plans** — while the page keeps its
 engine copy for cheap scoring and the headless tests (which run the sequential path). Core pieces:
-`simulate()` (**the per-cast-sum scorer** — ⛔ it was the cast-rate integral until 07-27; the integral survives only as the `integral` diagnostic and must never rank again, PHASE12 §6.10) · `repair()` (legalizes a schedule: cooldowns, Cold
-Snap, use caps) · `optimizeAsync()` (multi-start search + a stack of finishing passes) ·
-`renderTimeline()` (the SVG burn chart). Displayed plan times are **fire times** (floored seconds),
-not press intents. Full internals + current line ranges in `docs/ARCHITECTURE.md`.
+`simulate()` (returns BOTH: `integral`, the cast-rate integral, which **RANKS**; and `robust`, the
+per-cast sum, which is **REPORTED** — ⛔ they swapped roles on 07-30, §8h, and the sum must not rank
+again) · `repair()` (legalizes a schedule: cooldowns, Cold Snap, use caps) · `optimizeAsync()`
+(multi-start search + a stack of finishing passes) · `renderTimeline()` (the SVG burn chart).
+⛔ **Displayed plan times are PRESS times** — user decision 07-30, *"with our model the trinket and the
+stat changes should apply the moment it's pressed"*. This OVERTURNS the old fire-time display, which
+rendered a press intent of 0:05 as "0:06" and visibly split clusters the optimizer had deliberately
+co-pressed. `shownTimes` is the one accessor; `actEff` no longer feeds any display. **Exactly one
+consumer still needs fire times and must not be "fixed":** `planSpecFor`, which transcribes a plan for
+wowsims, because wowsims cannot press mid-cast. Full internals + current line ranges in
+`docs/ARCHITECTURE.md`.
 
 ## The rules that make it correct
 

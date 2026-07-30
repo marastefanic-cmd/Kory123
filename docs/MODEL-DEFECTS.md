@@ -2434,3 +2434,106 @@ prevailing where the extra casting actually lands, not where the compression hap
 
 Gates after: `anchors` **3 of 3** · `law-check` 6/6 + negative control caught · `self-consistency`
 0.00e+0 / 0 structural · `page-equiv` 2/2 · `sim-request` PASS.
+
+---
+
+## §8s — ✅ THE SEARCH CANNOT SLIDE A TRAIN OF ABUTTING WINDOWS. Two user-reported cells, up to 0.10 casts. (07-30)
+
+Two plans reported wrong by the user on the same day, same shape, same cause:
+
+```
+2:00 · 1387 SP · 38 % crit · Lust 0:05
+  emitted   Icy Veins 0:05 (fires 0:06) · cluster 0:07 · Berserking 0:25 · Cold-Snap IV 0:35
+  user      "why is the first IV at 0:06 not 0:07 along with the other things? And Berserking not 0:27"
+
+1:15 · same gear · Lust 0:05 · intermission 0:50-0:55
+  emitted   Icy Veins 0:02 · cluster 0:07 · Berserking 0:21 · Cold-Snap IV 0:55
+  user      "isn't it much better to do IV@7, Zerking @27?"
+```
+
+The user is right in both, and it is a **search** failure, not a scoring one — brute force over the
+whole neighbourhood says so:
+
+| case | emitted | argmax | gap |
+|---|---|---|---|
+| 2:00 | IV[5,35] Zerk 25 · **100.779046** | IV[7,37] Zerk 27 · **100.784861** | **0.0058 casts** (2.9× the tie band) |
+| 1:15 | IV[2,55] Zerk 21 · **67.348403** | IV[7,55] Zerk 27 · **67.450603** | **0.1022 casts** |
+
+The 2:00 argmax is the max over 373k layouts (IV₁ 0–14 × IV₂ × Berserking × cluster 5–12), and the
+1-D profile in IV₁ with everything else re-optimised at each point is a clean monotone ridge:
+
+```
+IV1  0  100.722680      IV1  4  100.776022      IV1  8  100.784745
+IV1  1  100.746328      IV1  5  100.779046 ←    IV1  9  100.784630
+IV1  2  100.769976      IV1  6  100.781953      IV1 10  100.784514
+IV1  3  100.772999      IV1  7  100.784861 ★    IV1 11  100.716838
+```
+
+There is nothing subtle in the objective. The problem is that the emitted point is a **2-D local
+maximum**:
+
+```
+improving 1-coordinate moves from IV[5,35] Zerk 25:  0
+improving 2-coordinate moves:                        0
+improving 3-coordinate moves:                        6   best `IV1+2 & IV2+2 & Zerk+2`  +0.005815
+```
+
+### Why the three coordinates are welded together
+
+Under the GCD cap a second haste buff **inside** the first is worth far less than beside it
+(ESTABLISHED-FACTS §4), so the optimum **packs the haste windows back to back**: Icy Veins [5,25] ·
+Berserking [25,35] · Icy Veins [35,55]. Move any one alone and it overlaps its neighbour, at
+−0.0867 casts per overlapping second (§5.1's Berserking-in-Bloodlust law). The train has to move as a
+train. The 0.0058 the train is worth is then the **cluster alignment**: at IV₁ = 7 the Icy Veins window
+[7,27] coincides exactly with Icon's [7,27], and haste × value multiply.
+
+⇒ This is `phaseRerank` move class 3 (§8m) one dimension up. Class 3 groups presses that share a
+**second**; the new class 3c groups presses that share an **edge** — link two presses when one
+window's end lands on the other's start, take connected components, slide each as a unit.
+
+⚠ **The tolerance is EXACT equality and that is the whole ballgame.** A ±1 s link was tried first and
+made the move useless: Icon's window ends 0:27, one second past Berserking's 0:26 press, so a ±1 link
+swept Icon into the train and every slide dragged it off the cluster. Measured — with ±1 the descent
+stalled at IV[6,36] Zerk 26 (100.781953, still short); with exact equality it reaches 100.784861.
+
+⚠ **Class 3c is ADDITIVE to class 3, not a replacement, and the two graphs must not be merged.**
+Merging lets a cluster get swallowed by a train it happens to abut, and the pure cluster slide is what
+reaches T2 and T3.
+
+Both cases are now tests (**T6**, **T7**), and T7 is the largest search miss the suite has ever
+carried. `anchors` **7 of 7**.
+
+Gates after: `anchors` **7 of 7** · `law-check` 6/6 + negative control caught · `self-consistency`
+0.00e+0 / 0 structural.
+
+---
+
+## §8t — ⚠ THE PLAN-STABILITY GATE WAS GRADING AGAINST THE RETIRED OBJECTIVE (07-30)
+
+Found while verifying §8s. `plan-diff` reported **three SEARCH REGRESSIONS** on a change that is a
+strict improvement. It was not:
+
+```
+                              Δ integral (RANKS)   Δ robust (what the gate read)
+Leotheras the Blind             -0.001155 casts        -0.099466 casts
+Fathom-lord Karathress          +0.005815 casts        -0.038086 casts
+High Astromancer Solarian       +0.039226 casts        -0.232345 casts
+```
+
+**Two independent bugs, both in the instrument:**
+
+1. `plan-sweep` recorded `best.val`, and `optimizeAsync` sets `val = simulate().robust` — the per-cast
+   **sum**. Since §8h the sum is the REPORTED number and the rate **integral** is what ranks. So the
+   only plan-stability gate in the project was grading every search change against a retired
+   objective. ⇒ it now records `rankScore`, with `robust` alongside as a diagnostic.
+2. Even on the right number the verdict was wrong for Leotheras, because **the objective is a PAIR**.
+   −0.001155 casts is inside `TIE_CASTS = 0.002`; the plans are tied on the integral and the shape
+   decides — and B has **3 distinct press moments against A's 4**, which is exactly the move the
+   tie-break exists for. ⇒ `plan-sweep` now carries `band` (the engine's own `TIE_CASTS` in that
+   cell's damage units, read from the engine, never retyped) and `distinct`; `plan-diff` reports a
+   banded move as `tieBreak`, and fails only when a banded move ADDS press moments.
+
+⛔ **This is the same stale-premise class as §8n** (`plan-duel` assuming `robust` is the objective) and
+as the four §6 instruments that flattered themselves in Phase 12. When the objective moved on 07-30,
+three instruments kept reading the old one; two are now fixed and the standing lesson is unchanged:
+**read what a tool measures, not its verdict line.**

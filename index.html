@@ -1247,10 +1247,10 @@ function simulateRaw(schedule, cfg, collect) {
         // end abuts a hard edge (intermission wall, the kill) has its slipped tail CLAMPED — a
         // real, sim-verified loss the intent-time scoring silently forgave (Al'ar: a stagger
         // sequenced to end flush at the 3:28 wall model-tied the packed layout yet simmed −0.66%,
-        // ≈1s × 4 buffs of clamped slippage). Scoring windows shift by the slip; the DISPLAYED
-        // press times (actEff) stay at the fire/intent convention — pressing at the printed second
-        // still fires at the same boundary. Ramp presses (sparse boundaries) already snap exactly;
+        // ≈1s × 4 buffs of clamped slippage). Ramp presses (sparse boundaries) already snap exactly;
         // gap presses (idle — downtime, GCD-idle remainder) fire at the press moment: both slip 0.
+        // ⚠ `actEff` no longer feeds the DISPLAY — the page prints press times (see `shownTimes`).
+        // Its one remaining consumer is `planSpecFor`, which transcribes a plan for wowsims.
         else if (eff < prevCastEnd - EPS) slip = prevInterval / 2;
       }
       e.fired = true;
@@ -2651,6 +2651,57 @@ function phaseRerank(s0, cfg) {
       const groups = [...bySec.entries()].sort((a, b) => a[0] - b[0])
         .map(([, mem]) => mem).filter(g => g.length > 1 && g.length < keys.length);
       for (const mem of groups) { let hit = false;
+        for (const d of SHIFTS) if (tryCand(shiftedAt(s, mem, d))) { moved = true; hit = true; break; }
+        if (hit) break; }
+    }
+    /* ★★★★★ 3c. A TRAIN OF ABUTTING WINDOWS SLIDES TOGETHER — added 07-30, and it is the SAME defect
+       as move class 3 one dimension up. Class 3 groups presses that share a SECOND; this one groups
+       presses that share an EDGE. Measured on the user's 2:00 · 1387 SP · 38 % crit · Lust 0:05 case,
+       where the emitted plan sat 0.0058 casts under the brute-force argmax over 373k layouts:
+
+           emitted   IV[5,35] Zerk 25   100.779046
+           declared  IV[7,37] Zerk 27   100.784861     ← the brute-force argmax
+           improving 1-coordinate moves: 0
+           improving 2-coordinate moves: 0
+           improving 3-coordinate moves: 6, best `IV1+2 & IV2+2 & Zerk+2`  +0.005815
+
+       The 1-D profile in IV1, with the other tracks re-optimised at each point, rises monotonically
+       0→7 and falls after, so there is nothing subtle about the answer — the emitted point is simply a
+       2-D local maximum and every escape needs all three coordinates at once.
+
+       ⇒ WHY THESE THREE ARE COUPLED, and it is not the cluster's reason. Under the GCD cap a second
+       haste buff inside the first is worth far less than beside it (ESTABLISHED-FACTS §4: `haste ×
+       haste` has two thresholds, and at m ≥ 1.5 the cap eats it entirely), so the optimum PACKS the
+       haste windows back to back: IV₁ [5,25] · Berserking [25,35] · IV₂ [35,55]. Slide any one alone
+       and it overlaps its neighbour — a pure loss of ~0.0867 casts per second of overlap, the §5.1
+       Berserking-in-Bloodlust law. The train has to move as a train.
+       ⇒ Read off the plan, never guessed: link two presses when one window's END lands EXACTLY on the
+       other's START, then slide each connected component. Deterministic, a handful of candidates, and
+       ADDITIVE to class 3 rather than merged with it — fusing the two graphs would let a cluster get
+       swallowed by a train it happens to abut and the pure cluster slide (which is what reaches T2 and
+       T3) would stop being offered.
+       ⚠ EXACTLY, not "within a second" — that tolerance was tried first and it is what makes this move
+       useless. On this very case the Icon window ends 0:27, one second past Berserking's 0:26 press;
+       a ±1 link swept Icon into the train, so every slide dragged Icon off the cluster and every
+       candidate was refused. Press times and durations are both whole seconds here, so equality is the
+       well-defined predicate and a tolerance only invents adjacency that isn't there. */
+    {
+      const press = [];
+      for (const k of keys) (s[k] || []).forEach((t, i) => {
+        const at = Math.round(t);
+        press.push({ k, i, at, end: at + BUFFS[k].dur });
+      });
+      const parent = press.map((_, i) => i);
+      const find = a => { while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; };
+      for (let a = 0; a < press.length; a++) for (let b = 0; b < press.length; b++) {
+        if (a === b || press[a].end !== press[b].at) continue;
+        const ra = find(a), rb = find(b);
+        if (ra !== rb) parent[Math.max(ra, rb)] = Math.min(ra, rb);
+      }
+      const comp = new Map();
+      press.forEach((p, i) => { const r = find(i); if (!comp.has(r)) comp.set(r, []); comp.get(r).push(p); });
+      const trains = [...comp.entries()].sort((a, b) => a[0] - b[0]).map(([, m]) => m).filter(g => g.length > 1);
+      for (const mem of trains) { let hit = false;
         for (const d of SHIFTS) if (tryCand(shiftedAt(s, mem, d))) { moved = true; hit = true; break; }
         if (hit) break; }
     }
@@ -5056,6 +5107,27 @@ function renderTiles({ cfg, baseline, naiveR, optR }) {
      editing — bars become draggable press groups (unlock mode); drag edits the INTENT second,
                bars always render at the engine's actual FIRE times
      illegal — validateCustom() diffs; flags the presses repair() would move/drop */
+/* ★★★★★ DISPLAYED PLAN TIMES ARE **PRESS** TIMES — user decision, 2026-07-30, stated three times:
+   *"with our model the trinket and the stat changes should apply the moment it's pressed. That's what
+   I've been saying the entire time. You're just doing a graph, a mathematical function, onto which you
+   overlay the buffs… at every t you compute the current DPS."*
+
+   ⛔ THIS OVERTURNS THE FIRE-TIME DISPLAY CONVENTION and every doc that quotes it. The page used to
+   print `optR.actEff` — the moment a self-press snaps to the next cast boundary — so a press intent of
+   0:05 rendered as "0:06" and a cluster the optimizer had deliberately co-pressed came apart on screen.
+   That is what the user was looking at when they asked *"why is the first IV at 0:06 not 0:07 along with
+   the other things?"*: the answer was partly a real search miss (§8s) and partly this, the plan lying
+   about its own second.
+   ★ It is not a cosmetic change of mind — it is the display catching up with the MODEL. Since §8l the
+   ranking objective is pure window geometry over PRESS times, and since §8r the cooldown chain the
+   ranking reads is press-chained too. The number the tool optimises has been a function of the press
+   vector for days; printing anything else made the plan un-checkable against its own score.
+   ⚠ EXACTLY ONE CONSUMER STILL NEEDS FIRE TIMES, and it must not be "fixed" to match: `planSpecFor`,
+   which transcribes a plan for wowsims. A real mage presses through a cast macro and wowsims cannot
+   press mid-cast, so the SIM's activation genuinely lands on the next boundary (PHASE12 §6.9). That
+   seam is the model↔sim divergence, priced and deliberate — see `sim/planspec.mjs`. */
+const shownTimes = (run, k) => ((run.best && run.best.s && run.best.s[k]) || []).slice().sort((a, b) => a - b);
+
 function renderTimeline(run, opts) {
   opts = opts || {};
   const { cfg, best, optR } = run;
@@ -5189,9 +5261,8 @@ function renderTimeline(run, opts) {
         const bw = Math.max(3, (Math.min(def.dur, cfg.T - t) / cfg.T) * plotW);
         sv += `<rect x="${x(t).toFixed(1)}" y="${ly + 1}" width="${bw.toFixed(1)}" height="${LANE_H - 2}" fill="${col}" opacity="0.12" stroke="${col}" stroke-width="1.2" stroke-dasharray="4 3" rx="4"><title>Model plan: ${def.name} @ ${fmtT(t)}</title></rect>`;
       }
-      const times = (run.optR.actEff && run.optR.actEff[k]) || best.s[k] || [];
-      // intents pair with fire times by index (both ascend per track) — the drag edits the intent
-      const intents = (best.s[k] || []).slice().sort((a, b) => a - b);
+      const times = shownTimes(run, k);
+      const intents = times;   // the display IS the intent now, so the drag handle needs no pairing
       const pinned = !!(cfg.fixed && cfg.fixed[k]);
       times.forEach((t, j) => {
         const bw = Math.max(3, (Math.min(def.dur, cfg.T - t) / cfg.T) * plotW);
@@ -5238,7 +5309,7 @@ function hookTooltip(run, geo) {
     let s = geo.samples[0];
     for (const c of geo.samples) { if (c.t <= t) s = c; else break; }
     const active = LANE_ORDER.filter(k => cfg.enabled[k] && BUFFS[k].kind !== "proc" &&
-      (((run.optR.actEff && run.optR.actEff[k]) || best.s[k]) || []).some(a => t >= a && t < a + BUFFS[k].dur)).map(k => BUFFS[k].name);
+      shownTimes(run, k).some(a => t >= a && t < a + BUFFS[k].dur)).map(k => BUFFS[k].name);
     tip.innerHTML = `<b>${fmtT(t)}</b> · haste <b>+${s.pct.toFixed(1)}%</b>${s.capped ? ' · <span style="color:var(--warn)">GCD floor</span>' : ""}<br>` +
       (active.length ? active.join(", ") : "no on-use buffs");
     tip.style.display = "block";
@@ -5253,18 +5324,11 @@ function hookTooltip(run, geo) {
 /* schedule table: activations grouped into windows */
 function scheduleRows(run) {
   const { cfg, best, optR } = run;
-  // display the EFFECTIVE press moments (when the macro actually fires on a
-  // cast boundary), keeping the planner's intent time alongside for cd math
-  const eff = optR && optR.actEff;
+  // Rows print the PRESS moment — see `shownTimes` above for the ruling and why it overturned the
+  // fire-time display. `a.sec` is the printed second everywhere below; presses are whole seconds, so
+  // the floor is a no-op that only guards float dust.
   const acts = [];
-  for (const k in best.s) {
-    const intents = best.s[k].slice().sort((a, b) => a - b);
-    intents.forEach((ti, j) => acts.push({ t: eff && eff[k] && eff[k][j] !== undefined ? eff[k][j] : ti, intent: ti, k }));
-  }
-  // rows print (and therefore sort by) the ACTUAL fire time, floored to the whole second — during a
-  // ramp a press snaps to the covering cast's END (user-directed display: intent 0:04 that fires at
-  // 5.4 reads as "activated 0:05", co-rowed with a Lust call at 5.0). At steady state fire == press
-  // moment, so nothing changes there. `a.sec` is the printed second everywhere below.
+  for (const k in best.s) for (const ti of best.s[k].slice().sort((a, b) => a - b)) acts.push({ t: ti, intent: ti, k });
   for (const a of acts) a.sec = Math.floor(a.t + 1e-9);
   acts.sort((a, b) => a.t - b.t || LANE_ORDER.indexOf(a.k) - LANE_ORDER.indexOf(b.k));
   // annotate icy veins activations that need Cold Snap
@@ -5283,7 +5347,7 @@ function scheduleRows(run) {
     else windows.push({ start: a.t, end: a.t, acts: [a] });
   }
   // window stats from cast data
-  const apT = (optR.actEff && optR.actEff.arcanePower) || best.s.arcanePower || [];
+  const apT = best.s.arcanePower || [];
   const apDur = BUFFS.arcanePower.dur;
   const underAP = t => apT.some(s => t >= s - 1e-9 && t < s + apDur);
   for (const w of windows) {
@@ -5550,7 +5614,7 @@ function refreshCustomView() {
   const v = validateCustom(CUSTOM.s, run.cfg);
   CUSTOM.rep = v.rep; CUSTOM.legal = v.legal; CUSTOM.diffs = v.diffs;
   const optR = simulate(CUSTOM.s, run.cfg, true);
-  renderTimeline({ cfg: run.cfg, best: { s: CUSTOM.s }, optR }, { ghost: run.optR.actEff, editing: CUSTOM.editing, illegal: v.diffs });
+  renderTimeline({ cfg: run.cfg, best: { s: CUSTOM.s }, optR }, { ghost: run.best.s, editing: CUSTOM.editing, illegal: v.diffs });
   renderCustomTiles(optR);
   renderEditMsg();
 }
@@ -5572,7 +5636,7 @@ function tryLock() {
   CUSTOM.editing = false; CUSTOM.locked = true;
   const optR = simulate(CUSTOM.s, cfg, true);
   CUSTOM.run = { cfg, baseline: run.baseline, naive: run.naive, naiveR: run.naiveR, best: { s: CUSTOM.s, val: optR.robust }, optR, isCustom: true };
-  renderTimeline(CUSTOM.run, { ghost: run.optR.actEff });
+  renderTimeline(CUSTOM.run, { ghost: run.best.s });
   renderSchedule(CUSTOM.run);
   renderCustomTiles(optR);
   setEditBtn(false);
@@ -5830,7 +5894,7 @@ function debugExportText() {
   } catch (e) {
     L.push(`(transcription unavailable: ${String(e && e.message || e)})`);
   }
-  L.push("", "Notes for whoever debugs this: times are SECONDS from pull. `intents` are press intents (the schedule the engine takes); `fireTimes` are when each press actually fires (displayed plan times = floor(fireTime)). The `evalsched` object is ready to run as  node tests/evalsched.mjs '<that json>'  to score both layouts under the model scorer; to sim-verify a layout, build an APL per docs/TOOLING.md (genapl — keep _prestack:0)." + (cfg.t5two ? " ⚠ Tirisfal-2pc is ON here but evalsched.mjs's harness cfg has no t5 field — compare via the stats above, or add t5two to its cfg." : ""));
+  L.push("", "Notes for whoever debugs this: times are SECONDS from pull. `intents` are press intents (the schedule the engine takes); `fireTimes` are when each press would fire in wowsims, which cannot press mid-cast — they are the SIM transcription only; the page displays press intents. The `evalsched` object is ready to run as  node tests/evalsched.mjs '<that json>'  to score both layouts under the model scorer; to sim-verify a layout, build an APL per docs/TOOLING.md (genapl — keep _prestack:0)." + (cfg.t5two ? " ⚠ Tirisfal-2pc is ON here but evalsched.mjs's harness cfg has no t5 field — compare via the stats above, or add t5two to its cfg." : ""));
   return L.join("\n");
 }
 /* ═══════════════ sim verification (the real wowsims engine, in the page) ═══════════════
@@ -6485,13 +6549,13 @@ const GOLDEN_DEFAULTS = {
    *"remove the current reference fights and add these hard tests there instead."*
    What was here was fifteen plain length+Lust cases inherited from the deleted `exact-match` golden
    suite. They asserted nothing once the goldens went (07-28) and they were the strip a user saw first,
-   so the tool advertised its scaffolding. Now the strip holds exactly the three layouts the user has
-   declared as ground truth, so clicking one loads the test's own inputs and you can see for yourself
-   whether the planner reproduces it.
+   so the tool advertised its scaffolding. Now the strip holds exactly the layouts the user has declared
+   as ground truth, so clicking one loads the test's own inputs and you can see for yourself whether the
+   planner reproduces it.
    ⚠ T1/T2 carry their own `gear` (1000 SP, 25 % crit) because that is what was declared; `cfgFor`
-   merges `gear` over `GOLDEN_DEFAULTS`. T3 is the Morogrim preset's own setup, which already matches
-   the defaults (1387 SP, 38 % crit) — it is deliberately listed here as well as in the boss strip,
-   because the strip is the TEST list and Morogrim is one of the tests.
+   merges `gear` over `GOLDEN_DEFAULTS`. T3-T6 run at the defaults (1387 SP, 38 % crit), which is what
+   they were declared at. T3 is deliberately listed here as well as in the boss strip, because the strip
+   is the TEST list and Morogrim is one of the tests.
    ⛔ Five code paths defaulted to names deleted here (`ci.yml`'s bench smoke, `page-equiv`,
    `model-audit`, `window-match`, `sp-sensitivity`); all five were repointed in the same commit. If you
    add a preset name to a tool, expect to be the one who repoints it next time. */
@@ -6499,6 +6563,12 @@ const GOLDEN_PRESETS = [
   { name: "T1 · 2:00 lust 0:20", T: 120, pins: { bloodlust: [20] }, gear: { sp: 1000, crit: 25 } },
   { name: "T2 · 3:00 lust 0:20", T: 180, pins: { bloodlust: [20] }, gear: { sp: 1000, crit: 25 } },
   { name: "T3 · Morogrim 2:45 lust 0:05", T: 165, pins: { bloodlust: [5] } },
+  { name: "T4 · 1:40 lust 0:07", T: 100, pins: { bloodlust: [7] } },
+  { name: "T5 · 2:40 lust 0:07 · interm 1:30-2:10", T: 160, pins: { bloodlust: [7] },
+    phases: [{ from: 90, to: 130, type: "intermission" }] },
+  { name: "T6 · 2:00 lust 0:05", T: 120, pins: { bloodlust: [5] } },
+  { name: "T7 · 1:15 lust 0:05 · interm 0:50-0:55", T: 75, pins: { bloodlust: [5] },
+    phases: [{ from: 50, to: 55, type: "intermission" }] },
 ];
 window.GOLDEN_PRESETS = GOLDEN_PRESETS;
 

@@ -51,6 +51,14 @@ export function loadEngine(htmlPath) {
     api = new Function('window', 'self', `${eng}\n${bs}\n${presets}\n
       return { optimizeAsync, simulate, repair, buildSegments, naiveSchedule, BUFFS, GAME,
                phaseScore, rankScore, phaseRerank, latticePeriod, PHASE_N,
+               // The SECOND half of the objective pair (MODEL-DEFECTS §8h): the tie band and the
+               // shape that resolves inside it. Exported so an instrument reads the engine's own
+               // constant instead of retyping 0.002 — the same doctrine reference-gear.mjs applies to
+               // GAME. \`typeof\` guarded because this loader is pointed at OLD index.html files too
+               // (plan-sweep A-vs-B), and a bare reference would throw before anything could run.
+               TIE_CASTS:   typeof TIE_CASTS   !== 'undefined' ? TIE_CASTS   : undefined,
+               plainCastOf: typeof plainCastOf !== 'undefined' ? plainCastOf : undefined,
+               planShape:   typeof planShape   !== 'undefined' ? planShape   : undefined,
                cases: [...window.BOSS_PRESETS, ...window.GOLDEN_PRESETS],
                nBoss: window.BOSS_PRESETS.length, nGolden: window.GOLDEN_PRESETS.length,
                defaults: window.GOLDEN_DEFAULTS };`)(win, globalThis);

@@ -231,10 +231,21 @@ different Berserking placements across one 1.5 s cast interval of that same inst
   cast, so "lattice δ later" = every press, pin, segment and `T` moved δ **earlier** (`phaseShift`).
   ⚠ The opposite randomiser — presses against a fixed lattice — is a thing the player controls and
   measures nothing; it scored 0/4 on the ground-truth corpus.
-- `phaseRerank(s, cfg)` — three move classes, up to 3 rounds: whole-plan slide (±8 s), per-track slide
-  (±8 s), per-press move (±12 s). ⚠ **Single-press moves alone are provably not enough** — the phase
-  argmax is usually a different basin, not a neighbour. A candidate `repair` had to relegalize is
-  refused, so a plan is never scored as one layout and adopted as another.
+- `phaseRerank(s, cfg)` — **five move classes**, iterated to a FIXED POINT (24-round runaway cap, not a
+  3-round budget — a cap of 3 was measured short once the structural times went in):
+  1. whole-plan slide (±8 s)  2. per-track slide (±8 s)
+  3. **co-pressed cluster slide** — tracks grouped by the SECOND they are pressed at, slid per-press
+     (MODEL-DEFECTS §8m). Reaches T2/T3, which no single-coordinate step can: every one is downhill
+     because it splits the cluster, and AP ×1.30 × the gem's +225 SP is a cross term.
+  3c. **abutting-window train slide** — presses grouped by shared window EDGE (one window's end lands
+     exactly on another's start), slid per-press (§8s). Reaches T6/T7. The two graphs are kept
+     SEPARATE on purpose; merging lets a cluster be swallowed by a train it abuts.
+  4. per-press move (±12 s) plus the **structural candidate times** — every window edge, cooldown
+     return and raid call already in the plan, which is how a press reaches a time 20-120 s away (§8j).
+  ⚠ **Single-press moves alone are provably not enough**, and neither are single-press plus clusters.
+  Three of the project's four largest misses were coupled coordinates that every 1-D and 2-D step
+  refused. A candidate `repair` had to relegalize is refused, so a plan is never scored as one layout
+  and adopted as another.
 - `phaseStarts(winner, cfg)` — the point winner plus the same structural seeds the main search uses
   (naive, packed, pin-stacked, kill-anchored). One start left an outlier at 1 of 5 pins.
 - `best.val` stays in **point** units so the pooling comparison, `plan-diff` and the UI readout keep
@@ -398,11 +409,14 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
 - **Displayed times are FIRE times, not intents (user-directed — RULES §3).** During the opener cold
   ramp the press boundaries are sparse, so every intent second inside one ramp cast fires at that
   cast's END — a whole band of intents is exactly equivalent, and `slideEarliest` canonicalizes the
-  tie to its *earliest* member ("0:04" for a burst that fires at 5.4s — reads as ramp-blind, which
-  the engine is not). Rather than re-canonicalizing intents, the schedule table, copy-text, and
-  activation schedule both print (and sort/group by) `a.sec = Math.floor(effective fire time)` from `actEff`
-  (`scheduleRows`); the intent stays internal. Pressing at the printed second is exact — any press
-  inside the band fires at the same boundary. Scoped to the opener ramp only (post-intermission presses stay on the phase exit,
+  tie to its *earliest* member.
+  ⛔ **THE DISPLAY NO LONGER SHOWS FIRE TIMES — user decision 07-30** (*"with our model the trinket and
+  the stat changes should apply the moment it's pressed"*). The schedule table, copy-text and
+  activation schedule print `a.sec = Math.floor(PRESS time)` via `shownTimes`; `actEff` no longer feeds
+  any display. The fire-time convention this paragraph used to describe is what made a press intent of
+  0:05 render as "0:06" and visibly split a cluster the optimizer had deliberately co-pressed. It is
+  the display catching up with the model: the ranking objective has been pure window geometry over
+  PRESS times since §8l, and the cooldown chain it reads has been press-chained since §8r. Scoped to the opener ramp only (post-intermission presses stay on the phase exit,
   `dodgeDowntime`'s legible anchor). Runs OUTSIDE the fixpoint so it can't ping-pong with
   `slideEarliest`.
 - **Sequential window-packing** (~1975, the RULES §4/§5 move — LANDED). Runs as the last structural pass
@@ -548,9 +562,9 @@ reads). A fresh "Find optimal overlay" run calls `customReset()`.
   opts ⇒ byte-identical to the old render. The activation schedule dims (`.stale`) until lock.
 - **Drag** (`attachDrag`): pointer-events on the SVG; the bar follows the pointer, a bubble shows the
   whole second the press will snap to, and **release locks the intent to the nearest full second**
-  (the search's own granularity; clamped to `[0, T−1]`). Bars always render at the engine's actual
-  FIRE times (`actEff` of `simulate(CUSTOM.s)`), so an intent that would slip (mid-ramp boundary,
-  cooldown, trinket lockout) visibly lands where it would really fire. Pinned raid calls
+  (the search's own granularity; clamped to `[0, T−1]`). Bars render at the **press** times
+  (`shownTimes`) — see the display ruling above; the drag handle therefore needs no intent/fire
+  pairing, because the bar's position IS the intent. Pinned raid calls
   (`cfg.fixed`) get no `pressg` — not editable, exactly the keys `repair()` would reset anyway.
 - **Live comparison** (`renderCustomTiles`): a second tile row — custom-vs-model Δ% damage headline +
   the four headline metrics (gain vs no-cooldowns / vs mashing / effective casts / GCD-floor time),

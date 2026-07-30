@@ -4,8 +4,8 @@
 # `fast` needs no browser, no Go toolchain and no network beyond the checkout — it is ~40 s and it
 # catches the failure classes this project actually ships: a protocol constant drifting, the wasm not
 # booting, and the engine→planspec→genapl→simreq→wasm chain breaking end to end. `page` adds a browser
-# (~1 min) for the seam nothing else can reach. `the-tests` runs the real optimizer on the two declared
-# layouts — no browser, no golden file — and is non-blocking while D1 is open (see the job).
+# (~1 min) for the seam nothing else can reach. `the-tests` runs the real optimizer on the SEVEN declared
+# layouts — no browser, no golden file — and is BLOCKING (see the job).
 #
 # ── ★ EVERY JOB CARRIES A NEGATIVE CONTROL, AND THAT IS NOT OPTIONAL ─────────────────────────────
 # PHASE11's own rule: *"every new CI job needs a negative control (a deliberately-broken input that
@@ -17,7 +17,9 @@
 # "checked". Where a test ships its own self-test, we run it and require it to FAIL.
 #
 # ── ★★ WHAT COUNTS AS A "TEST" HERE CHANGED ON 07-28 (user decision, restated twice) ─────────────
-# *"I want only the two exactly declared layouts to be tests."* So `exact-match` + `golden.json`,
+# *"I want only the two exactly declared layouts to be tests."* (Two then; SEVEN now — the user has
+# declared five more the same way since, most recently T6/T7 as bug reports on 07-30.) So
+# `exact-match` + `golden.json`,
 # `layout-rules` and `monotonicity` are **deleted** — see `tests/anchors.mjs`'s header for why each one
 # had to go rather than be skipped. What remains in this file is of two kinds and they must not be
 # confused: `the-tests` asserts WHICH LAYOUT IS RIGHT, and everything else asserts THE HARNESS IS NOT
@@ -131,15 +133,18 @@ jobs:
         run: node page-equiv.mjs --self-test
 
   the-tests:
-    name: THE TESTS (the three declared layouts)
+    name: THE TESTS (the seven declared layouts)
     # ✅ BLOCKING as of 2026-07-30. This job carried `continue-on-error: true` with a stated exit
     # condition — *"flip it to false the day anchors goes green"* — because `docs/MODEL-DEFECTS.md` D1
-    # was open and these two layouts were its target. D1 closed (§8h–§8m: the integral ranks, windows
-    # are pure geometry, and the descent got a co-pressed-cluster move), anchors reads **2 of 2**, so
+    # was open and the declared layouts were its target. D1 closed (§8h–§8m: the integral ranks, windows
+    # are pure geometry, and the descent got a co-pressed-cluster move), anchors reads **7 of 7**, so
     # the condition is met and the flag is gone.
     # ⛔ If this goes red again, the correct response is NOT to restore `continue-on-error`. Read
-    # MODEL-DEFECTS §8h–§8m first: every defect that made it red was found by comparing a measured
-    # number to a closed form, and `tools/law-check.mjs` below now does that automatically.
+    # MODEL-DEFECTS §8h–§8t first: every SCORING defect that made it red was found by comparing a
+    # measured number to a closed form, and `tools/law-check.mjs` below now does that automatically.
+    # ⚠ A SEARCH defect (§8j, §8m, §8s) will NOT show up in law-check — the scorer is right and the
+    # descent simply never visits the answer. Those are found by brute-forcing the cell's
+    # neighbourhood and comparing to the emitted plan; T6/T7 are the two that came in that way.
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -148,14 +153,14 @@ jobs:
         with:
           node-version: '22'
       # No browser, no rig, no golden file — it runs the real optimizer and compares press times.
-      # ✅ All three are GREEN as of 07-30 (§8q). Any red here is a REGRESSION — do not restore
+      # ✅ All seven are GREEN as of 07-30 (§8q, §8s). Any red here is a REGRESSION — do not restore
       # `continue-on-error`; run `node tools/law-check.mjs` first, which is how every scoring defect in
       # this project was actually found.
-      - name: the three declared layouts
+      - name: the seven declared layouts
         run: node tests/anchors.mjs
 
       # The SCORER against the algebra, which is prior to any question about layouts. Every one of the
-      # five defects closed on 07-30 was caught this way and none would have been caught by a plan diff.
+      # scoring defects closed on 07-30 was caught this way and none would have been caught by a plan diff.
       - name: the closed forms (law-check)
         run: node tools/law-check.mjs
 
