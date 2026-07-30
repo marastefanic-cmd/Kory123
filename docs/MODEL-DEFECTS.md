@@ -1810,3 +1810,74 @@ a cooldown expires on is exactly the sub-cast lattice phase D1 is about, and a r
 there. This is the one remaining disagreement with the declared layouts and it is a **D1 question, not a
 scoring one**: the fix is to stop resolving which side of a boundary a cooldown lands on, not to reprice
 anything.
+
+---
+
+## §8l — ★★★★★ THE INTEGRAL IS PURE WINDOW GEOMETRY (07-30). The reframing that closed T1 properly.
+
+User: *"since it's an integral can't you just slow down the casting rate once the buff disappears? I
+thought that's essentially what we're doing, calculating the summary of an area under the 'dps in time'
+function, and you're free to calculate that and model the graph as needed."*
+
+They are right, and it reframes three separate patches this file took in one day. The integral is
+`∫ rate(m(t)) dt` — an area under an instantaneous-DPS curve. `m(t)` is fully determined by **window
+geometry**: press times, durations, wall events. A cast lattice has no business in it. Every earlier
+version of `scoreStart` smuggled the lattice in and paid for it:
+
+| `scoreStart` was | what it cost |
+|---|---|
+| `eff + prevInterval/2` (press + expected snap) | two presses firing at the same boundary got different windows ⇒ the 0.0815-cast cluster smear the user reported as nonsense (§8i) |
+| `auraAt` (previous cast's COMPLETION) | under the GCD floor that sits `GCD − castTime` before the next cast starts, so the integral priced a 0.038 s sliver containing no cast (§8k) |
+| `t` (next cast's START) | right about the sliver, but it makes the window edge a function of LATTICE PHASE — the one thing the integral exists to be free of |
+
+⇒ **`scoreStart` is now the legalized press moment and nothing else**: what the player asked for, moved
+only by real legality (cooldown chain, trinket lockout).
+
+### Measured
+
+T1's whole-plan slide, `d = 0…6`:
+
+```
+lattice-snapped  +0.00000  −0.11091  +0.00002  −0.21160  −0.12487  −0.22737  −0.14064
+pure geometry    +0.00000  −0.43956  −0.14650  −0.48795  −0.19490  −0.43824  −0.14519
+```
+
+The declared layout goes from winning by **0.00002** to winning by **0.14650**. The near-ties were the
+lattice leaking in, not real plateaus.
+
+And the integral is now clean in isolation — a lone press slid anywhere in the fight's interior:
+
+```
+icyVeins / isc / scb / arcanePower / berserking, pressed 138…146 on a 180 s fight:  +0.00000 everywhere
+icyVeins slid toward the kill, 160→178:  −0.4000 per 3 s = 0.1333 casts/s, exactly rate(1.2) − rate(1.0)
+```
+
+Flat where nothing changes, and exactly the law where truncation bites. All four law steps still land
+(Berserking adds 0.8674 Lust-only / 0.6647 with nothing / 0.9547 under IV+Icon+gem, against 0.867 /
+0.667 / 0.951).
+
+### ★ The architectural split, now explicit
+
+- **Geometry ranks.** `scoreStart` = legalized press time. Smooth, phase-free, reproduces the closed
+  forms. This is the *expectation*.
+- **The lattice executes.** `start: auraAt` is untouched — press-snapping, cooldown-from-fire, and
+  everything `tools/window-span.mjs` verified against wowsims. `sim/planspec.mjs` transcribes from this,
+  so it must stay sim-faithful. This is the *realization*.
+
+⚠ It prices a bounded, systematic divergence from the sim: where the sim defers a press to the next cast
+boundary, the integral credits from the press — half a cast interval in expectation. **That is the point.**
+The player cannot control which side of a boundary their cooldown expires on, so the ranking must not
+resolve it. This is the D1 answer, arrived at from the user's argument rather than from another patch.
+
+### Status
+
+`node tests/anchors.mjs` → **1 of 2**. T1 emits the declared layout exactly. T2 is now an **exact tie on
+the reported objective** (`Δ = −0.0000`) with the whole plan shifted a few seconds
+(`IV[21,142] isc[21,142] scb[24,145] AP[24] zerk[145]`), so what remains there is which member of a
+value-equivalent class gets emitted — a tie-break question, not a pricing one. The tie band (0.002 casts,
+bracketed in §8k) is narrower than the multi-buff interaction residue that separates them, so the shape
+rule never fires. ⇒ **Next: derive the residue for interacting windows the way §8l derived it for a lone
+one, and widen nothing until that number is known.**
+
+Gates after: `self-consistency` 0.00e+0 / 0 structural · `page-equiv` 2/2 · `sim-request` §0 ·
+`bench --preset "2:00 lust 0:05" --vs naive` **MODEL +1.531 % AGREES with the sim**.

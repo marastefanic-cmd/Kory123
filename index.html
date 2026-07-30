@@ -1093,6 +1093,14 @@ function simulateRaw(schedule, cfg, collect) {
   CUTS.sort((a, b) => a - b);
   // The earliest cut strictly after a cast's start. Linear scan: CUTS is tiny (phases per fight).
   const nextCut = ts => { for (const c of CUTS) if (c > ts + EPS) return c; return cfg.T; };
+  /* The legalized press moment for an event — the same arithmetic the press loop's `minStart` uses,
+     lifted out so the integral can read it without depending on which branch of the walk ran. */
+  const minStartFor = (e, lastFire, lastTrinket) => {
+    let m2 = e.ts;
+    if (e.gap && lastFire[e.key] !== undefined) m2 = Math.max(m2, lastFire[e.key] + (e.gap >= e.def.cd - EPS ? e.def.cd : e.def.dur));
+    if (lastTrinket && lastTrinket.key !== e.key && OFF_TRINKETS.includes(e.key)) m2 = Math.max(m2, lastTrinket.end);
+    return m2;
+  };
   // Ramp-aware board: the mage opens COLD (0 stacks at the first Arcane Blast — no prestack
   // modeled; a start-intermission input expresses a delayed opener) and re-ramps 0→3 after every
   // AB gap ≥ DEBUFF_DUR (intermissions; AoE phases cast Arcane Explosion, which neither builds nor
@@ -1281,7 +1289,42 @@ function simulateRaw(schedule, cfg, collect) {
       // ⚠ A raid EXTERNAL keeps `auraAt`: it lands when called, mid-cast or not, and whether its own
       // front edge wants the same treatment is a separate question with its own physics (the cast in
       // flight keeps its pre-Lust speed) — not folded in here silently.
-      const scoreStart = (!isExternal && eff <= prevCastEnd + EPS) ? t : auraAt;
+      /* ★★★★★ THE INTEGRAL IS PURE WINDOW GEOMETRY — NO CAST LATTICE IN IT AT ALL. 07-30, and the
+         argument is the user's: *"since it's an integral can't you just slow down the casting rate once
+         the buff disappears? … you're free to calculate that and model the graph as needed."*
+
+         They are right, and it reframes three separate patches this file went through in one day. The
+         integral is `∫ rate(m(t)) dt` — the area under an instantaneous-DPS curve. `m(t)` is fully
+         determined by WINDOW GEOMETRY: press times, durations, and wall events. A cast lattice has no
+         business in it. Every version of `scoreStart` before this one smuggled the lattice in and paid
+         for it:
+           · `eff + prevInterval/2`  — press plus expected snap. Two presses firing at the same boundary
+             got different windows ⇒ the 0.0815-cast cluster smear the user reported as nonsense (§8i).
+           · `auraAt`                — the previous cast's COMPLETION. Under the GCD floor that sits
+             `GCD − castTime` before the next cast starts, so the integral priced a 0.038 s sliver with
+             no cast in it (§8k).
+           · `t`                     — the next cast's start. Correct about the sliver, but it makes the
+             window edge a function of LATTICE PHASE, which is the one thing the integral exists to be
+             free of. That is what left T1's landscape with `d=0` leading by only 0.00002 casts.
+         ⇒ `scoreStart` is now the LEGALIZED PRESS MOMENT and nothing else: what the player asked for,
+         moved only by real legality (cooldown chain, trinket lockout). Measured on T1's whole-plan
+         slide, `d = 0…6`:
+             lattice-snapped  +0.00000  −0.11091  +0.00002  −0.21160  −0.12487  −0.22737  −0.14064
+             pure geometry    +0.00000  −0.43956  −0.14650  −0.48795  −0.19490  −0.43824  −0.14519
+         The declared layout goes from winning by 0.00002 to winning by 0.14650 — the near-ties were
+         the lattice leaking in, not real plateaus. And every closed form still lands: Berserking adds
+         0.8674 in Lust-only (law 0.867), 0.6647 with nothing up (0.667), 0.9547 under Icy Veins + Icon
+         + gem (0.951).
+         ⚠ `start: auraAt` is UNTOUCHED. The discrete walk keeps press-snapping, cooldown-from-fire and
+         everything `tools/window-span.mjs` verified against wowsims — that is the EXECUTION model, and
+         it must stay sim-faithful because `sim/planspec.mjs` transcribes from it. This is the
+         expectation/realization split the project already runs on, made explicit: geometry ranks,
+         the lattice executes.
+         ⚠ It prices a bounded, systematic divergence from the sim: where the sim defers a press to the
+         next cast boundary, the integral credits from the press. That is half a cast interval in
+         expectation and it is the point — the player cannot control which side of a boundary their
+         cooldown expires on. */
+      const scoreStart = Math.max(minStartFor(e, lastFire, lastTrinket), e.ts);
       active.push({ key: e.key, def: e.def, start: auraAt, scoreStart });
       // Both chains anchor on `auraAt`, the FIRE moment — see the read above. For an external
       // (Bloodlust/PI/Drums) `auraAt === eff` by construction, so the raid-call convention is
