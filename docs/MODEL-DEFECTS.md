@@ -989,6 +989,40 @@ piecewise-linear with kinks, and evaluating at the mean ≠ the mean of the eval
 **It moved no argmax** — 4/4 on the original sweeps and 3/3 on the external-free re-run. Open, bounded,
 and a different animal from the two terms this section closes.
 
+## ✅ FIXED 07-28 — the Arcane Blast debuff had only TWO cases in the engine; the game has three
+
+**Found by the user, in one sentence:** *"if the intermission, or AoE, or anything that would make you
+stop casting, lasts between 6.5–8 seconds, then the weird rule about Arcane Blasts applies — the first
+one cast will still have the increased casting speed because of the stacks, but won't finish casting
+before the stacks reset."*
+
+Exactly right. The debuff is applied on **completion** and expires `DEBUFF_DUR = 8 s` after the previous
+cast's **start**. With `G` = start→start gap and `ct` = the resuming cast's length:
+
+| | condition | game | engine, before |
+|---|---|---|---|
+| refreshed | `G ≤ 8 − ct` | 3 stacks throughout | 3 ✓ |
+| **mid-cast lapse** | **`8 − ct < G < 8`** | cast is **fast** (snapshot), then **1 stack** | **3 ✗** |
+| cold | `G ≥ 8` | 0 stacks, full re-ramp | 0 ✓ |
+
+The walk had a single binary test at cast start (`if (t − lastCastStart >= DEBUFF_DUR) stacks = 0`), so
+inside the band it reported stacks `[3,3,3]` where the game gives `[3,1,2]`, and charged **zero** for a
+real cost of `d₁ + d₂` = **0.6653 casts** — half the full opener toll, on a gap that looks harmless.
+
+★ **And the user got the haste direction right too**: the band is `(8 − ct, 8)`, so its **width is the
+cast time** and it **shrinks** as haste rises — (6.502, 8) at h=0, (7.001, 8) at the GCD cap.
+
+**Fix:** `lapsedMidCast` in `simulateRaw` — resolved after `castLen` is known, so the cast keeps its fast
+speed and only its *completion* restarts the chain at 1.
+
+**Verified:** the three-way table reproduces `[3,1,2]` across the band; `self-consistency` `0.00e+0` with
+0 structural violations; `plan-diff` **IDENTICAL** on the swept corpus. No preset has a gap in the band
+— the corpus downtimes are 5, 15, 40, 40, 54, 135 and 155 s — so this is **pure correctness with zero
+plan movement**, and it will bite the first encounter with a ~7-second movement or AoE phase.
+
+⚠ Same rule covers an **AoE phase**: Arcane Explosion neither builds nor refreshes the AB debuff, so an
+AoE window is a gap in the AB stream and its exit takes the identical branch.
+
 ## 9. What is still open
 
 1. **Cost.** The phase-mean is N× `simulate()`. It cannot go into the search at N=48 as-is. Two routes:

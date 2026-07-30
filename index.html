@@ -1281,6 +1281,22 @@ function simulateRaw(schedule, cfg, collect) {
     }
     const multUp = atiOn ? multDn + mult * atiScale : multDn;
     const isAoe = !!(seg && seg.type === "aoe");
+    // ★★★ THE ARCANE BLAST DEBUFF, AND ITS THIRD CASE (user, 07-28) — three outcomes, not two.
+    // The debuff is applied on COMPLETION and lasts `DEBUFF_DUR` from the previous cast's START, so with
+    // `G = t − lastCastStart` (start→start) and `ct` = this cast's own length:
+    //   G ≥ DEBUFF_DUR          the debuff is already gone when this cast begins → 0 stacks, full re-ramp
+    //   DEBUFF_DUR − ct < G < DEBUFF_DUR
+    //                           this cast BEGINS with the stacks (so it keeps the fast cast time — the
+    //                           snapshot rule) but the old debuff LAPSES mid-cast, so its own completion
+    //                           lands a FRESH stack: the NEXT cast has 1, not 4-capped-to-3.
+    //   G ≤ DEBUFF_DUR − ct     refreshed in time; nothing happens.
+    // ⛔ This engine modelled only the first and last for the whole project. Inside the middle band it
+    // reported stacks [3,3,3] where the game gives [3,1,2] and charged **0** for a cost of
+    // `d₁ + d₂ = 0.4440 + 0.2213 = 0.6653 casts` (ESTABLISHED-FACTS §1.2a's ladder, minus the 0-stack
+    // cast you legitimately skip).
+    // ⚠ The band is `(DEBUFF_DUR − ct, DEBUFF_DUR)`, so its WIDTH IS THE CAST TIME and it SHRINKS with
+    // haste — (6.502, 8) at h=0, (7.001, 8) at the GCD cap. `lapsed` is resolved after `castLen` is
+    // known, below; here we only handle the already-gone case.
     if (!isAoe && t - lastCastStart >= g.AB.DEBUFF_DUR) stacks = 0; // AB debuff fell off during the gap — re-ramp
     // ★ ROUND TO THE MILLISECOND, because wowsims does and the lattices have to be the same lattice:
     //   sim/core/cast.go:137-138  CurCast.GCD      = ApplyCastSpeed(GCD).Round(time.Millisecond)
@@ -1397,7 +1413,15 @@ function simulateRaw(schedule, cfg, collect) {
     // reads a value buff, §5). Ramp casts are already scored discretely, so they carry no
     // quantization error and are excluded. Gated: zero cost when the charge is off.
     else if (bcOn && !isAoe) bcDone.push(prevCastEnd);
-    if (!isAoe) { lastCastStart = t; if (stacks < g.AB.MAX_STACKS) stacks++; }
+    if (!isAoe) {
+      // The middle band above: the previous debuff expired while THIS cast was in flight, so this
+      // cast's completion starts the stack chain over at 1 instead of refreshing to 3.
+      const lapsedMidCast = t - lastCastStart < g.AB.DEBUFF_DUR &&
+                            prevCastEnd - lastCastStart >= g.AB.DEBUFF_DUR;
+      lastCastStart = t;
+      if (lapsedMidCast) stacks = 1;
+      else if (stacks < g.AB.MAX_STACKS) stacks++;
+    }
     // ★ CANCELLATION AT AN AoE WALL. `frac < 1` above already prices this cast as the expectation
     // over an uncertain wall; here is the other half of the same decision — the cast is CANCELLED, so
     // the Arcane Explosion stream starts at the wall rather than at the Blast's natural end. Without

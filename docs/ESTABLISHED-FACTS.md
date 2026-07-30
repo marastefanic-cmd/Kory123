@@ -403,8 +403,43 @@ Verified — intermission at t = 80, h = 0, first cast after the gap:
 **Sharp at 8.000.** And crossing it costs exactly the opener toll: gap 7.9 s → 8.0 s, downtime-corrected,
 is **−1.3320 casts** — §1.2's number to the digit.
 
-⇒ **Below 8 s a gap is just downtime.** It costs its own seconds and nothing else; the stacks survive,
-so the stream resumes at full speed. There is no re-ramp to plan around and no toll.
+### ★★★ THERE ARE THREE OUTCOMES, NOT TWO — the mid-cast lapse (user, 07-28; engine FIXED the same day)
+
+The debuff is applied on **completion** and expires `DEBUFF_DUR` after the previous cast's **start**. So
+with `G` = the start→start gap and `ct` = the resuming cast's own length, there is a band between "fine"
+and "full re-ramp" that the engine ignored for the whole project:
+
+| | condition | what happens |
+|---|---|---|
+| refreshed | `G ≤ 8 − ct` | nothing. 3 stacks throughout. |
+| **mid-cast lapse** | **`8 − ct < G < 8`** | the cast **begins** with the stacks, so it keeps the fast cast time (snapshot rule) — but the old debuff **lapses while it is in flight**, so its own completion lands a **fresh** stack. The **next** cast has **1**, not 3. |
+| cold | `G ≥ 8` | 0 stacks. Full re-ramp, full 1.332 toll. |
+
+**The band's width IS the cast time, so it SHRINKS with haste** — exactly as the user put it (*"anywhere
+between 8 and 8 − current casting time"*):
+
+| h | 3-stack cast | band in `G` | width |
+|---|---|---|---|
+| 0 | 1.4980 | **(6.502, 8)** | 1.4980 |
+| 200 | 1.3294 | (6.671, 8) | 1.3294 |
+| 400 | 1.1949 | (6.805, 8) | 1.1949 |
+| 788.5 (cap) | 0.9987 | (7.001, 8) | 0.9987 |
+
+**Cost inside the band = `d₁ + d₂` = 0.4440 + 0.2213 = 0.6653 casts** — §1.2a's ladder minus the 0-stack
+cast you legitimately skip. Half the full toll, for a gap that looks harmless.
+
+⛔ **The engine reported `[3,3,3]` where the game gives `[3,1,2]` and charged zero.** Fixed 07-28: the
+walk now resolves all three cases (`lapsedMidCast` in `simulateRaw`). `plan-diff` **IDENTICAL** over the
+swept corpus — **no preset has a gap in the band** (the corpus's downtimes are 5, 15, 40, 40, 54, 135 and
+155 s), so this is pure correctness with zero plan movement. It will bite the first encounter with a
+~7-second movement or AoE phase.
+
+⚠ **Same rule for an AoE phase**, and for the same reason: Arcane Explosion neither builds nor refreshes
+the Arcane Blast debuff, so an AoE window is a gap in the AB stream and its exit goes through the
+identical three-way branch.
+
+⇒ **Below `8 − ct` a gap is just downtime.** It costs its own seconds and nothing else; the stacks
+survive, so the stream resumes at full speed. No re-ramp, no toll.
 
 ⇒ **At or above 8 s, everything in §1.2–§1.2c applies again, from scratch:**
 1. a fresh **1.332-cast** toll, front-loaded `0.6667 / 0.4440 / 0.2213` per cast (§1.2a);
@@ -1028,7 +1063,10 @@ Consequences, each traceable to a line above. None is an axiom.
    **ramp-neutral** there — pressing it before cast 1 or at 0:60 is identical (§1.2b). Above the buff's
    own onset threshold that inverts, and above the steady cap the opener is the *only* place a haste
    cooldown is worth anything at all.
-7. **An intermission ≥ 8 s adds a COLD START and nothing else** (§1.2d): the Arcane Blast debuff drops
+7. **A gap in the Arcane Blast stream has THREE outcomes, not two** (§1.2d): below `8 − ct` nothing
+   happens; in the band `(8 − ct, 8)` the resuming cast is fast but the next one drops to **1 stack**,
+   costing **0.6653 casts**; at or above 8 s it is a full cold start. The band's width is the cast time,
+   so it shrinks with haste. Then: **a cold start adds 1.332 casts and nothing else** (§1.2d): the Arcane Blast debuff drops
    at exactly `DEBUFF_DUR`, so pay 1.332 casts and re-apply rules 1–6 on the far side. Below 8 s it is
    only downtime and nothing resets. ⛔ **It never costs a use** — cooldowns tick through downtime
    (7 of 7 presets, identical counts) — so there is no separate intermission playbook. **Count the cold
