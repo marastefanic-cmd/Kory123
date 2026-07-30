@@ -1637,3 +1637,88 @@ cluster at 2:20 **splits** it: haste 1.5 s ahead of the value buffs. 2:21 keeps 
 ⇒ This is not a defect to fix. It is a real consequence of a rule the project already verified, and it
 means the declared T2 is ~0.029 casts short of its own intent. Worth telling the user rather than
 silently matching.
+
+---
+
+## §8j — ✅ THE SEARCH COULD NOT REACH THE DECLARED LAYOUTS AT ALL (fixed 07-30)
+
+After §8h and §8i the scorer agreed with the user's structure. The plans still did not, and this is why —
+it is the largest single defect of the day and it is not a scoring one.
+
+### The measurement
+
+Descending from the "everything on the pinned raid call" start that `phaseStarts` already builds:
+
+| | descent reaches | the declared layout scores |
+|---|---|---|
+| T=120 | 101.380 | **101.441** |
+| T=180 | 143.407 | **144.080** |
+
+The T=180 miss is **0.67 casts** — an order of magnitude larger than every scoring defect in §8h + §8i
+combined. And the descent's own answer names the cause: it settles on `berserking[10]`.
+
+### The cause
+
+`phaseRerank` moved a single press by at most **±12 s** (`MOVES`) and slid a whole track by at most
+**±8 s** (`SHIFTS`). From a start with Berserking at 0:20, the declared 0:40 is +20 away and T2's 2:20
+is +120. **The neighbourhood does not contain the answer at any effort**, so `berserking[10]` — the best
+point within ±12 s of 20 — was the honest local optimum of a search looking in the wrong place.
+
+### The fix, in three parts
+
+1. **Structural candidate times.** Each press is also offered every window edge already in the plan
+   (`t` and `t + dur` for every track), every cooldown's next availability (`t + cd` — this is where a
+   SECOND use lives, and it is exactly the Icon's `21.5 + 120 = 141.5`), the pull, and
+   `T − dur` (the last moment the buff still runs in full). A few dozen times, not a scan: the
+   interesting positions are sparse and named by `ESTABLISHED-FACTS` §4–§5 — value stacks on value,
+   haste goes where the other haste is not. Deterministic (sorted, deduped, whole seconds).
+2. **Rounds run to a fixed point** (cap 24, a runaway backstop) instead of 3. Measured: feeding the
+   descent its own output escaped `berserking[10]` and gained a further 0.064 casts, so the old cap was
+   truncating a descent that had not converged.
+3. **One cast lattice.** `intervalAt` (the integral's interval) had no millisecond quantisation while
+   the walk's `stepFor` did — two different lattices, which CLAUDE.md forbids. Now both are
+   `msq(max(FLOOR, …))`, rounding OUTSIDE the floor exactly as the walk does. ⚠ This one measured
+   **null** on the residual below (0.003293 → 0.003296); it is kept as a correctness alignment, not as
+   a fix, and that is stated rather than implied.
+
+### Result — and it is a mixed one, which is the honest reading
+
+- **T2 is now an exact tie**: `Δ (want − got) = 0.0000` on the reported objective, down from 0.2281 at
+  the start of the day. Structurally it is the declared layout shifted onto the Icon's real cooldown
+  (`IV[20,141] isc[20,141] scb[22,143] AP[22] zerk[143]`).
+- **T1 REGRESSED in appearance**: `IV[5,27] cluster@27 zerk@47`, `Δ = −0.0607`. The stronger search now
+  *reaches* the residual-artifact basin below, which the ±12 s neighbourhood had been unable to find.
+  A better search over a slightly-wrong objective finds the objective's flaw — that is the regression,
+  and covering it up by re-crippling the search would be trading a real bug for a flattering number.
+- Whole suite now runs in **9.6 s** (was minutes), because the descent converges instead of grinding.
+- Gates: `self-consistency` 0.00e+0 / 0 structural · `page-equiv` 2/2 · `sim-request` §0 PASS.
+
+### ⛔ THE ONE REMAINING DEFECT — an abutment residual of ~0.003–0.008 casts. NOT CRACKED.
+
+Reproduction: kit = Icy Veins + Berserking + Bloodlust, `T=120`, `h=0`, Lust pinned 0:20,
+`icyVeins:[0,20]`, slide Berserking:
+
+```
+zerk@39  92.776366     ← 1 s inside Icy Veins: −0.0867, EXACTLY the law
+zerk@40  92.863104     ← windows abut with MEASURED overlap 0.000 s
+zerk@41  92.866400     ← +0.003296 over @40
+zerk@42  92.866400     ← flat thereafter
+```
+
+What is known:
+- **T-independent**: +0.003293 at T = 100/110/120/130/150/200, identically. Not a fight-end effect.
+- **Needs the abutting window**: with `icyVeins:[0]` (nothing ending at 40) the slide is flat to
+  0.000000. With `icyVeins:[0,25]` (a real 5 s overlap) the step is +0.086667 — one second of overlap,
+  exact to the law. So the model prices a genuine overlap perfectly and a zero overlap as ≈0.038 s of
+  overlap.
+- **Survives the lattice unification** (fix 3 above), so it is not the ms-rounding mismatch.
+- **Not only at the GCD floor.** The same family appears under the cap: Berserking abutting Bloodlust's
+  end reads −0.023387 then −0.007783 per second where the law says a uniform −0.020267.
+- The arithmetic coincidence `0.038 × 0.0866667 = 0.0032933` matches the measured 0.0032930 to four
+  figures, where `0.038 = 1.0 − msq(1.5/1.56)`, but the window geometry has zero overlap by direct
+  measurement, so this is recorded as unexplained rather than as the mechanism.
+
+⇒ **This residual is now the sole thing between the tool and the user's two declared layouts**, and it
+decides T1 outright. It is ~0.003 % of a fight and below anything the sim can resolve, so it cannot be
+graded by duel — it needs the integral's edge terms derived, not measured. ⛔ Do NOT widen `TIE_REL` to
+swallow it: real law steps of 0.0200 casts/s live only 6× above it.

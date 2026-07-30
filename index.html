@@ -1539,9 +1539,18 @@ function simulateRaw(schedule, cfg, collect) {
     else { d = (g.AB.AVG_BASE_DMG + g.AB.COEF * sp2) * critFactor * (dmgMult2 + t5add); if (segB && segB.type === "burn") d *= segB.mult; }
     return d;
   };
+  /* ★★★ ONE LATTICE, ROUNDED THE SAME WAY — fixed 07-30. This was the discrete walk's `stepFor`
+     (:1331) minus its millisecond quantisation, so the integral integrated a rate built on a DIFFERENT
+     cast lattice than the one the board walks. wowsims rounds both clocks to the millisecond
+     (`sim/core/cast.go:137-138`), the walk was fixed to match in PHASE12 §6.14, and this was left
+     behind — harmless while nothing ranked on the integral, load-bearing the moment it did.
+     ⛔ The rounding goes OUTSIDE the floor, exactly as `stepFor` does it: `msq(max(FLOOR, …))`, not
+     `max(FLOOR, msq(…))`. The two differ wherever the hasted GCD is under the floor, which at h=0 is
+     every buffed window, and getting the nesting backwards would reintroduce the mismatch it fixes. */
+  const msqI = x => Math.round(x * 1000) / 1000;
   const intervalAt = (m, aoe, stacks) => {
-    const gcd = Math.max(g.GCD_FLOOR, g.GCD_BASE / m);
-    return aoe ? gcd : Math.max((g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * stacks) / m, gcd);
+    const gcd = msqI(Math.max(g.GCD_FLOOR, g.GCD_BASE / m));
+    return aoe ? gcd : Math.max(msqI((g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * stacks) / m), gcd);
   };
   const rateAt = (tt, segB) => {
     const { multDn2, mult2, dmg2, aoe } = scanAt(tt, segB);
@@ -2298,6 +2307,36 @@ function phaseRerank(s0, cfg) {
   const SHIFTS = [-8, -7, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8];
   const MOVES = [];
   for (let d = -12; d <= 12; d++) if (d) MOVES.push(d);
+  /* ★★★★ STRUCTURAL CANDIDATE TIMES — added 07-30, and this is what was keeping the declared layouts
+     out of reach. `MOVES` is a ±12 s neighbourhood and `SHIFTS` a ±8 s slide, so a press can only ever
+     travel 12 s from wherever a start put it. Measured consequence, from the "everything on the pinned
+     raid call" start that `phaseStarts` builds:
+
+       T=120  descent reaches 101.380   ·  the declared layout scores 101.441   (Berserking 0:20 → 0:40)
+       T=180  descent reaches 143.407   ·  the declared layout scores 144.080   (Berserking 0:20 → 2:20)
+
+     The T=180 miss is 0.67 casts — an order of magnitude larger than every scoring defect this session
+     found put together — and the descent's own answer names the cause: it settles on `berserking[10]`,
+     the best point within ±12 s of 20, because 40 is +20 away and 140 is +120. No amount of effort
+     fixes that; the neighbourhood simply does not contain the answer.
+
+     ⇒ Offer each press the times that MATTER STRUCTURALLY as well: every window edge already in the
+     plan (a buff wants to start where another starts, or where another ends), every pinned raid call
+     and its end, the pull, and the latest moment this cooldown still runs in full. That is a few dozen
+     times, not a scan — the whole point is that the interesting positions are sparse and identifiable,
+     which is exactly what `docs/ESTABLISHED-FACTS.md` §4-§5 say: value stacks on value, and haste goes
+     where the OTHER haste is not. Deterministic (sorted, deduped, whole seconds), so one setup still
+     gives one schedule. */
+  const structural = () => {
+    const out = new Set([0]);
+    const add = t => { const r = Math.round(t); if (r >= 0 && r <= cfg.T - 1) out.add(r); };
+    for (const k of scheduledKeys(cfg)) {
+      const ts = (cfg.fixed[k] || s[k] || []);
+      for (const t of ts) { add(t); add(t + BUFFS[k].dur); add(t + BUFFS[k].cd); }
+      add(cfg.T - BUFFS[k].dur);
+    }
+    return [...out].sort((a, b) => a - b);
+  };
   // Adopt a candidate only if `repair` left it alone. A relegalized candidate would be scored under
   // one layout and adopted as another, which is how a polish pass grows a plan nobody chose.
   const intact = (cand, rep) => {
@@ -2321,7 +2360,12 @@ function phaseRerank(s0, cfg) {
     if (planBetter(v, val)) { val = v; s = rep; return true; }
     return false;
   };
-  for (let round = 0; round < 3; round++) {
+  /* ⚠ ROUNDS TO A FIXED POINT, not 3 — measured 07-30. With the structural times added below, three
+     rounds was demonstrably short: feeding the descent its OWN output escaped `berserking[10]` and
+     gained a further 0.064 casts, so the cap was truncating a descent that had not converged. It is
+     cheap to finish (the whole descent runs in ~0.1 s), and a coordinate descent under a strict total
+     order cannot cycle, so the cap is only a runaway backstop. */
+  for (let round = 0; round < 24; round++) {
     let moved = false;
     // 1. the whole plan slides together — the cluster keeps its shape
     for (const d of SHIFTS) if (tryCand(shifted(s, keys, d))) { moved = true; break; }
@@ -2329,9 +2373,17 @@ function phaseRerank(s0, cfg) {
     for (const k of keys) for (const d of SHIFTS) if (tryCand(shifted(s, [k], d))) { moved = true; break; }
     // 3. one press moves
     for (const k of keys) for (let i = 0; i < (s[k] || []).length; i++) {
+      let hit = false;
       for (const d of MOVES) {
         const t = Math.round(s[k][i]) + d;
         if (t < 0 || t > cfg.T - 1) continue;
+        const cand = cloneS(s); cand[k][i] = t;
+        if (tryCand(cand)) { moved = true; hit = true; break; }
+      }
+      if (hit) continue;
+      // 3b. the structural times — the ones a bounded neighbourhood cannot reach
+      for (const t of structural()) {
+        if (Math.abs(t - Math.round(s[k][i])) <= 12) continue;   // already covered by MOVES
         const cand = cloneS(s); cand[k][i] = t;
         if (tryCand(cand)) { moved = true; break; }
       }
