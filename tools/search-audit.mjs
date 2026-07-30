@@ -9,7 +9,7 @@
 // ── WHY THIS EXISTS, AND WHY IT IS STRONGER THAN ANYTHING ELSE HERE ──────────────────────────────
 // The three defects that produced wrong plans in this project's worst week were ALL search misses —
 // `docs/MODEL-DEFECTS.md` §8j, §8m, §8s — and every one was invisible to every gate the repo owned:
-//   · `tests/anchors.mjs` covers 7 declared cells. §8s was found because the USER read two plans.
+//   · `tests/anchors.mjs` covers 8 declared cells. §8s was found because the USER read two plans.
 //   · `tools/self-consistency.mjs` compares the objective against itself; it cannot see the search.
 //   · `tools/law-check.mjs` asserts the SCORER against the algebra; on all three it stayed green,
 //     correctly — the scorer was right and the descent simply never visited the answer.
@@ -141,7 +141,30 @@ for (const cell of sweep.cells) {
     return true;
   };
 
-  let best = null, probes = 0;
+  /* ★★★★★ THE HIGH-WATER CEILING — added 07-30 (MODEL-DEFECTS §8y), and without it this gate reports
+     as "misses" exactly the moves the ENGINE deliberately refuses.
+
+     `planBetter` is a BANDED comparator and therefore NOT TRANSITIVE (§8w): inside `TIE_CASTS` the
+     score is tied and the SHAPE decides, including "earliest", so each individually-banded,
+     individually-earlier step is individually "better" and a chain of them walks downhill without
+     limit. `phaseRerank` was fixed by keeping a high-water mark and refusing anything more than one
+     band below the best score SEEN. This gate applies `planBetter` to a single step with no such
+     reference — so on the first kit sweep it reported three cells as tie-break misses whose recommended
+     move is a step AWAY from the argmax:
+
+         icon+skull · h0 · 2:00 · Lust 0:05 — skull swept, everything else held
+           …  33: 100.816271   34: 100.817594 (emitted)   35: 100.818916 (argmax)   36: 100.811893 …
+         the gate's advice was `skull#0-1`, i.e. 34 → 33: two bands below the argmax, and the exact
+         step the engine's ceiling exists to refuse.
+
+     ⇒ Grade against the NEIGHBOURHOOD'S OWN best score, which this gate — unlike the descent — can see
+     in full: a candidate counts only if it is within one band of `hiScore`. Conservative for SCORE
+     misses (the argmax always survives, so a real miss is still reported, and if a candidate is tied
+     with the argmax and better-shaped it is the canonical member and still reported) and it removes
+     precisely the downhill advice. ⛔ Do not "fix" this by dropping the shape half instead: that is the
+     §8u mistake, which reported the declared T1 as a miss 5.8× inside the band. */
+  let best = null, probes = 0, hiScore = base;
+  const seen = [];
   const move = deltas => {
     const cand = clone(plan);
     for (const [ci, d] of deltas) {
@@ -154,7 +177,8 @@ for (const cell of sweep.cells) {
     if (!intact(cand, r)) return;
     probes++;
     const p = api.rankPair(r, cfg);
-    if (api.planBetter(p, basePair) && (!best || api.planBetter(p, best.pair))) best = { v: p.score, pair: p, deltas: deltas.slice() };
+    if (p.score > hiScore) hiScore = p.score;
+    if (api.planBetter(p, basePair)) seen.push({ v: p.score, pair: p, deltas: deltas.slice() });
   };
   // every subset of <=K coordinates, every delta assignment
   const walk = (start, depth, acc) => {
@@ -163,6 +187,11 @@ for (const cell of sweep.cells) {
     for (let c = start; c < coords.length; c++) for (const d of DELTAS) walk(c + 1, depth + 1, [...acc, [c, d]]);
   };
   walk(0, 0, []);
+  // Apply the ceiling only now: `hiScore` is not known until the whole neighbourhood has been probed.
+  for (const cnd of seen) {
+    if (cnd.v < hiScore - (cnd.pair.band || 0)) continue;
+    if (!best || api.planBetter(cnd.pair, best.pair)) best = cnd;
+  }
 
   graded++;
   const plain = (api.plainCastOf && api.plainCastOf(cfg)) || 1;

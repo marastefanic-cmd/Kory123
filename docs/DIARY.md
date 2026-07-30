@@ -1278,3 +1278,66 @@ passive-gear-haste work: haste buffs **converge** at ~600 gear haste (past the f
 the distance to the cap, not its own size, so *which* cooldown stops mattering and only *when* does);
 Bloodlust **peaks at ~200** and falls; and every pair inverts from stack to split at a **different**
 gear level. ⚠ None of that is pinned by a declared layout — every test is h = 0.
+
+---
+
+## 2026-07-30 (late) — finishing the kit matrix, and finding that T6 is not the argmax
+
+The kit × haste matrix (§8w's standing gap) was the last thing running when the session broke. Re-run
+from a clean container it reproduced **bit-identically** — 63 cells, same plans — which is worth
+recording on its own: determinism held across a container restart.
+
+**What the matrix found, and what it cost to believe it.**
+
+`search-audit --k=3` read 59 of 63 local optima: one real SCORE miss and three tie-break misses. Only
+one of the four was a defect in the tool.
+
+- The **SCORE miss** was real and is a genuinely new coupling. Two presses can be coupled through a
+  shared second (move class 3), a shared window edge (3c) — and now through **legality**: sliding the
+  gem's first use forward by 1 s puts its second use 119 s later, inside a 120 s cooldown, so `repair`
+  relegalizes the candidate and `intact()` refuses it. Every single coordinate is downhill; the whole
+  move is +0.005892 casts. Move class **3d** closes the chain using `repair` itself rather than a
+  hand-written push (it already knows Cold Snap and the trinket lockout, and re-deriving those inside a
+  move class is the copies-drift defect). With it the matrix reads **63 of 63**.
+- The **three tie-break misses were the instrument, not the tool.** `search-audit` applied the banded
+  `planBetter` to a single step with no reference point — the §8w ratchet, in a gate written *after*
+  §8w. Its advice on all three was a step two bands *below* the argmax, i.e. exactly the move the
+  engine's ceiling guard exists to refuse. Fixed by grading against the neighbourhood's own best score,
+  which the gate can see in full and the descent cannot.
+
+**And then move class 3d broke a declared test, which turned out to be the real finding.**
+
+T6 went red, and `anchors` reported the gap as **−0.1028 effective casts** — a catastrophic-looking
+scoring failure. It was not. `anchors` was computing failure size on `simulate().robust`, the retired
+per-cast sum, under the label *"on the shipped objective"*. The true gap is **+0.000231 casts**, 8.6×
+*inside* the tie band. **That is the fourth instrument in three days to grade against the retired
+objective**, after `plan-sweep`/`plan-diff` (§8t) and `search-audit` (§8u) — and CLAUDE.md already
+carried the instruction that would have prevented it (*"if you write a fourth, import the comparator,
+never re-implement it"*). The lesson that keeps not sticking is narrower than "use the right number":
+it is that **a gap inside the band is not a small score gap, it is a tie-break gap** — a different
+defect with a different fix — so an instrument that prints one number cannot say which it found.
+
+With the arithmetic corrected the question changed completely. Brute force over **1,582,581** legal
+layouts puts T6's declared layout **33rd**, with 3446 layouts inside one band of the argmax. The argmax
+is the plan 3d finds, and it does not merely tie: it wins the tie-break's *first* criterion, **3
+distinct press moments against 4**, because Berserking rides the raid's Bloodlust call. It is coherent
+by the project's own laws — Berserking [5,15] abutting Icy Veins [15,35] abutting [35,55], the packing
+law, with the Berserking sweep reproducing +0.0203/s (outside-Lust → inside-Lust) and −0.0867/s (each
+second of overlap with Icy Veins) to four decimals.
+
+⇒ **Class 3d is not shipped.** Its only user-visible effect today would be to emit, for the very fight
+the user filed a bug report about, a plan they did not ask for, on a difference the model itself calls
+noise. The code is preserved verbatim in `docs/MODEL-DEFECTS.md` §8y and the call goes to the user.
+
+## Corrections logged (late session)
+
+- **"T6 is the verified argmax over 373k layouts" is FALSIFIED.** I wrote that into `tests/anchors.mjs`,
+  CLAUDE.md and §8s earlier the same day. The enumeration was real but its space was too narrow — it
+  never ranged Berserking down onto the Lust call nor the cluster up to 0:15. What survives is the
+  weaker, and still useful, claim: the declared layout beats the plan it replaced by 0.0058 casts.
+  **"Beats what we emitted over the space searched" is not "is the global argmax", and I collapsed
+  them.** All three sites are corrected in place.
+- **My first explanation of the T6 plateau was wrong.** I hypothesised the two layouts tie because the
+  opener ramp is priced haste-neutral (§8q), so Berserking at 0:05 overlapping the ramp costs nothing.
+  Tested: false. The model prices the ramp — `Zerk@0` is −0.101 casts against `Zerk@5`. The plateau is
+  ordinary, not an artifact. Recorded because the hypothesis was plausible enough to have been believed.

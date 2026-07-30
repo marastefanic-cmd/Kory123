@@ -4,7 +4,22 @@
 
 > # ▶ THE LIVE PLAN IS `docs/PHASE13.md` — start there
 >
-> ## ▶▶ NEXT SESSION: PASSIVE GEAR HASTE. The groundwork is in `ESTABLISHED-FACTS` §10.
+> ## ⛔⛔ FIRST, ONE USER CALL IS BLOCKING WORK: **is T6 still a declared test?** (`MODEL-DEFECTS` §8y)
+> T6 (`2:00 · Lust 0:05`) is **not** the objective's answer. Over **1,582,581** legal layouts its
+> declared layout ranks **33rd**; the argmax is `AP/Icon/gem/IV @0:15 · IV @0:35 · Berserking @0:05`,
+> ahead by 0.000231 casts — 8.6× **inside** the tie band, so tied on score — **and ahead on the
+> tie-break's first criterion, 3 distinct press moments against 4**, because Berserking rides the
+> Bloodlust call. T6 passes today only because the SEARCH cannot reach that layout.
+> ⇒ **Two coherent readings, and it is the user's call:** *(a)* T6 stands, and the tie-break needs a
+> rule that anchors the value cluster at 3 stacks — which is exactly the rule the user declared for T3,
+> applied generally; or *(b)* T6 is revised to the objective's answer — which still satisfies the
+> original bug report, since that asked for Icy Veins to be co-pressed *"along with the other things"*,
+> as it is at 0:15. ⚠ Reading (a) changes the crown-jewel objective and ripples through all eight tests.
+> **Blocked on this:** move class **3d** (the cooldown-chain closure), which takes the kit × haste
+> matrix from 59/63 to **63 of 63 local optima** and closes the last known SCORE miss (+0.005892 casts).
+> Its code is preserved verbatim in §8y; it is NOT in `index.html`.
+>
+> ## ▶▶ THEN: PASSIVE GEAR HASTE. The groundwork is in `ESTABLISHED-FACTS` §10.
 > Every declared layout is **h = 0** and nothing in the repo declares a correct plan above it. §10 now
 > carries the DERIVATIVES needed to change that — how each combination reacts to added haste, crit and
 > SP (`node tools/facts-volatility.mjs --md` regenerates). The three that shape the work: haste buffs
@@ -26,7 +41,7 @@
 > changes should apply the moment it's pressed."* The old display rendered a 0:05 intent as "0:06" and
 > visibly split clusters the optimizer had deliberately co-pressed.
 >
-> ## ✅ `7 of 7` — and the two newest tests came in as BUG REPORTS
+> ## ✅ `8 of 8` — and the two newest tests came in as BUG REPORTS
 > T6 (`2:00 lust 0:05`) and T7 (`1:15 lust 0:05 · interm 0:50–0:55`) were plans the user said were
 > wrong. They were: the emitted layouts sat **0.0058** and **0.1022 casts** below the brute-force
 > argmax. Both were SEARCH misses (MODEL-DEFECTS §8s) — the optimum packs haste windows back to back,

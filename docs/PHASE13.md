@@ -34,7 +34,8 @@ in-page button are **deleted**; the four sim docs are archived as `docs/archive/
   paid twice — §8s found a 0.0058-cast and a **0.1022-cast** miss on cells the user reported, both
   invisible to every aggregate the project owns.
   ✅ **Its regression net now EXISTS: `tools/search-audit.mjs` (§8u), in CI, blocking.** Sweep, then
-  enumerate every ≤k-coordinate move against every emitted plan. 14 of 14 local optima today; on the
+  enumerate every ≤k-coordinate move against every emitted plan. 15 of 15 on the preset sweep and 62 of
+  63 on the kit × haste matrix (the miss is §8y's, fix written, blocked on a user call); on the
   pre-fix engine it rediscovers both reported misses to the digit, unprompted. ⚠ That is LOCAL
   optimality — §8j's Berserking sits +120 s away, outside every bounded neighbourhood — so the
   **constructive enumeration below is still the open work**, and now has a net under it.

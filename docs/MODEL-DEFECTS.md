@@ -2802,3 +2802,155 @@ all. ⇒ **Do not reopen a sim-measured defect expecting to resolve it.** Either
 form and check the engine against that — which is what this section did — or leave it recorded as
 unfalsifiable. ⛔ The one thing that is NOT allowed is quietly treating a sim-era number as current
 evidence; that is the stale-premise failure §8t and §8n both punish.
+
+---
+
+## §8y — ⛔ OPEN, AND IT IS A USER CALL: **T6's declared layout is not what the objective picks** (07-30)
+
+Found by finishing the kit × haste matrix (§8w's standing gap). Three things came out of one thread and
+they are separable — two are fixed, the third is a question only the user can settle.
+
+### 1. ✅ The last SCORE miss in the kit matrix, and its move class
+
+`tools/kit-sweep.mjs` + `tools/search-audit.mjs --k=3` read **59 of 63 local optima**, with one real
+SCORE miss:
+
+```
+icon+gem+skull · h200 · 2:40 · Lust 0:07 · intermission 1:30–2:10
+  emitted   AP[15,30]  gem[15,30]  gem[135,150]      115.551159
+  argmax    AP[16,31]  gem[16,31]  gem[136,151]      115.557051    +0.005892 casts  (2.9× the band)
+  AP#0+1 alone −0.016255 · gem#0+1 alone −0.033561 · gem#1+1 alone −0.003175
+```
+
+Every coordinate is downhill and so is the class-3 CLUSTER slide `{AP#0, gem#0}` at −0.0498: the move
+only pays once the gem's **second** use comes along. And it cannot come by itself — the gem's cooldown
+is 120 s and `135 − 16 = 119`, so the pure cluster slide is ILLEGAL, `repair` relegalizes it, and
+`intact()` refuses it. **This is the third distinct way two presses couple**, after a shared second
+(class 3) and a shared window edge (class 3c): they couple through **legality**. Class 3's own header
+already names the shape on T3 — *"coupled through `repair`, not through the score"* — but there the
+sequencing escape worked because the first half of the move was free; here it is −0.0498, so nothing
+lands and the descent stops.
+
+**Move class 3d — the cooldown-chain closure.** Slide the group, then close the chain with `repair`
+ITSELF rather than a hand-written push: `repair` is the forward legalizer, it already knows Cold Snap,
+the trinket lockout and the per-track separation, and re-deriving those rules inside a move class is
+the copies-drift defect this repo tracks. It is idempotent, so the closed candidate satisfies
+`intact()` by construction. Accepted only if every track keeps its press COUNT (`repair` also DROPS a
+press pushed past the kill, and a "slide" that deletes a cooldown use is a different move).
+
+**Measured with 3d in place:** `search-audit --k=3` over the kit matrix goes **59/63 → 63 of 63, SCORE
+misses 1 → 0**. The preset sweep changes **2 of 15 cells**, both the same fight, both inside the tie
+band and both *reducing* distinct press moments. Cost: the 63-cell kit sweep runs roughly **2× longer**.
+
+⛔ **IT IS NOT SHIPPED, AND THE CODE IS PRESERVED IN THIS SECTION FOR WHEN THE CALL BELOW IS MADE.**
+It makes declared test **T6** fail — see part 3.
+
+```js
+    // phaseRerank, immediately after move class 3c
+    {
+      const bySec = new Map();
+      for (const k of keys) (s[k] || []).forEach((t, i) => {
+        const sec = Math.round(t);
+        if (!bySec.has(sec)) bySec.set(sec, []);
+        bySec.get(sec).push({ k, i });
+      });
+      const mems = [...bySec.entries()].sort((a, b) => a[0] - b[0]).map(([, m]) => m)
+        .filter(g => g.length > 1 && g.length < keys.length);
+      for (const k of keys) (s[k] || []).forEach((_, i) => mems.push([{ k, i }]));   // singles too
+      let hit = false;
+      for (const mem of mems) {
+        for (const d of SHIFTS) {
+          const slid = shiftedAt(s, mem, d);
+          if (!slid) continue;
+          const closed = repair(cloneS(slid), cfg);
+          let ok = true, same = true;
+          for (const k in slid) {
+            if (!closed[k] || closed[k].length !== slid[k].length) { ok = false; break; }
+            for (let j = 0; j < slid[k].length; j++) if (Math.abs(closed[k][j] - slid[k][j]) > 1e-9) same = false;
+          }
+          if (!ok || same) continue;
+          if (tryCand(closed)) { moved = true; hit = true; break; }
+        }
+        if (hit) break;
+      }
+    }
+```
+
+### 2. ✅ TWO MORE INSTRUMENTS GRADING ON THE WRONG NUMBER — the fourth and the ratchet
+
+**`tests/anchors.mjs` was reporting failure size on `robust`, the RETIRED per-cast sum**, under the
+label *"on the shipped objective"*. On T6 that turned a gap of **+0.000231 casts** — 8.6× INSIDE the
+tie band, i.e. a dead tie — into a printed **"−0.1028 effective casts"**, which reads as a catastrophic
+scoring failure and would send the next reader into `simulate()` after a plateau. It also re-typed the
+plain-cast normalizer instead of calling `plainCastOf`.
+★ **This is the FOURTH instrument to make that exact mistake in three days** — `plan-sweep`/`plan-diff`
+(§8t), `search-audit` (§8u), now `anchors`. CLAUDE.md already carries the instruction that would have
+prevented it: **import the comparator, never re-implement it.** It now reads `rankPair`/`plainCastOf`/
+`planShape` off the engine and reports BOTH halves of the pair, naming the failure class — a gap inside
+the band is not a score difference at all, it is the SHAPE tie-break, which is a different defect with
+a different fix.
+
+**`tools/search-audit.mjs` had no high-water ceiling**, so it reported as "misses" precisely the moves
+the engine's §8w guard exists to refuse. Three cells, all of this shape:
+
+```
+icon+skull · h0 · 2:00 · Lust 0:05 — skull swept, everything else held
+  … 33: 100.816271   34: 100.817594 (emitted)   35: 100.818916 (argmax)   36: 100.811893 …
+  the gate's advice was `skull#0-1`, i.e. 34 → 33 — two bands BELOW the argmax, walking downhill.
+```
+
+`planBetter` is banded and therefore non-transitive; applying it to a single step with no reference
+point follows the ratchet off a cliff. The gate now grades against the NEIGHBOURHOOD'S OWN best score,
+which it — unlike the descent — can see in full: a candidate counts only if it is within one band of
+`hiScore`. Conservative for SCORE misses (the argmax always survives, so a real miss is still
+reported). **Result: tie-break misses 3 → 0, SCORE misses unchanged at 1**, and the `--self-test`
+negative control still catches **63 of 63** displaced plans.
+⛔ Do NOT "fix" this by dropping the shape half instead — that is the §8u mistake, which reported the
+declared T1 as a miss 5.8× inside the band.
+
+### 3. ⛔ THE OPEN QUESTION — T6 IS NOT THE ARGMAX, AND THE OBJECTIVE PREFERS SOMETHING ELSE
+
+With 3d in place the tool emits, for T6 (2:00, Lust 0:05, 1387 SP, 38 % crit, h = 0):
+
+```
+  declared (T6)   AP[7]  Icon[7]  gem[7]  IV[7,37]   Zerk[27]     100.784861   4 press moments {5,7,27,37}
+  emitted w/ 3d   AP[15] Icon[15] gem[15] IV[15,35]  Zerk[5]      100.785092   3 press moments {5,15,35}
+                                                                  Δ = +0.000231 casts
+```
+
+**Brute force settles it: over 1,582,581 legal cluster-locked layouts, the declared T6 ranks 33rd, and
+the emitted plan IS the score argmax.** 3446 layouts sit within one band of that argmax — the plateau
+is enormous. And the emitted plan does not merely tie: it wins the tie-break's **first** criterion,
+3 distinct press moments against 4, because Berserking rides the raid's Bloodlust call at 0:05.
+
+⚠⚠ **THE "ARGMAX OVER 373k LAYOUTS" CLAIM IN §8s, `tests/anchors.mjs` AND CLAUDE.md IS THEREFORE TOO
+STRONG AND IS CORRECTED HERE.** That enumeration was real but its space was narrower — it did not
+range Berserking down onto the Lust call, nor the cluster up to 0:15. §8s's actual finding stands
+untouched: the *then-emitted* `IV[5,35] Zerk 25` (100.779046) was a genuine search miss worth
++0.0058 casts, and move class 3c fixed it. What does not stand is "and the result is the global argmax".
+
+**It is a coherent plan, not an exploit.** Checked against the project's own laws: Berserking [5,15]
+abuts Icy Veins [15,35] abuts Icy Veins [35,55] — the packing law (RULES §4c), a clean train from the
+Lust call. Sweeping Berserking with everything else held shows the model pricing both effects exactly:
++0.0203/s from 0→5 (converting seconds from outside Lust to inside it — `0.0867 − 0.0667`, the
+ESTABLISHED-FACTS §5 pair values to four decimals) and −0.0867/s after 5 (each second of overlap with
+Icy Veins, the §8s number). ⚠ A first hypothesis — that the plateau is an artifact of the opener ramp
+being priced haste-neutral (§8q) — was tested and is **FALSE**: the model prices the ramp, `Zerk@0` is
+−0.101 casts against `Zerk@5`.
+
+⇒ **THE CALL IS THE USER'S, AND IT IS THE FIRST THING TO SETTLE NEXT SESSION.** Two coherent readings:
+
+- **(a) T6 stands.** Then the objective's tie-break is missing a rule that prefers it — the obvious
+  candidate is anchoring the value cluster at 3 stacks, which is exactly the rule the user declared for
+  T3 (*"pop the first cluster as soon as 3 Arcane Blast stacks are active and Lust is active"*). That
+  is a change to the crown-jewel objective and ripples through all eight tests.
+- **(b) T6 is revised** to the objective's answer. ★ Worth noting that (b) still satisfies the user's
+  ORIGINAL complaint, which was *"why is the first IV at 0:06 not 0:07 **along with the other
+  things**"* — a demand that Icy Veins be co-pressed with the cluster. It is, at 0:15.
+
+⛔ **Until that is answered, class 3d stays out and the last kit-matrix SCORE miss stays open.** Shipping
+3d today would make the tool emit, for the very fight the user filed a bug report about, a plan they
+did not ask for — on a 0.000231-cast difference the model itself declares to be noise.
+⚠ T6 is also the ONE declared test flagged in `tests/anchors.mjs`'s header as having no explicit user
+mandate (it came from a question, and was added on the assistant's initiative). That flag is now
+load-bearing rather than decorative.

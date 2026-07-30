@@ -23,7 +23,7 @@ setup being broken.
 and **brute-forcing a cell's neighbourhood does that job better and instantly**: §8s found a
 0.1022-cast search miss in seconds, where a sim duel resolves ~0.02 casts at best against its own seed
 noise. Ground truth is now `docs/ESTABLISHED-FACTS.md`'s closed forms (checked by
-`tools/law-check.mjs`), the scorer's agreement with itself (`tools/self-consistency.mjs`), and the seven
+`tools/law-check.mjs`), the scorer's agreement with itself (`tools/self-consistency.mjs`), and the eight
 declared layouts (`tests/anchors.mjs`). ⚠ **The one real loss is the model's blind spots — mana and AoE
 weighting — which nothing now measures.** That is a known, accepted gap.
 
@@ -103,6 +103,15 @@ T7 `1:15 lust 0:05 · intermission 0:50–0:55`. ★ T6/T7 arrived as **bug repo
 **brute-force argmax** rather than to what the optimizer happened to say — that distinction is exactly
 what got `exact-match` deleted. No browser, no rig, no golden file: it runs the real optimizer and
 compares press times.
+⛔⛔ **T6's "argmax" IS FALSIFIED — 07-30, MODEL-DEFECTS §8y, and it is the FIRST THING TO SETTLE NEXT
+SESSION.** Over **1,582,581** legal layouts T6's declared layout ranks **33rd**; the argmax is
+`AP/Icon/gem/IV @0:15 · IV @0:35 · Berserking @0:05`, ahead by 0.000231 casts (8.6× INSIDE the tie
+band) **and ahead on the tie-break's first criterion — 3 distinct press moments against 4**, because
+Berserking rides the Bloodlust call. T6 passes today only because the SEARCH cannot reach it. It is a
+coherent plan by the project's own packing law, not an exploit. ⇒ **A USER CALL:** either T6 stands and
+the tie-break needs a cluster-at-3-stacks rule (the T3 rule, applied generally), or T6 is revised — and
+(b) still satisfies the original complaint, which was that Icy Veins be co-pressed *"along with the
+other things"*, as it is at 0:15.
 
 ✅ **`8 of 8` AS OF 2026-07-30 — every declared layout is emitted exactly, and the CI job is
 BLOCKING** (`continue-on-error` removed — that
@@ -145,9 +154,12 @@ the ranking objective in four separate places.**
    **legality**, not score: with the gem used at 0:08 its 2-minute cooldown makes 2:07 illegal.
 10. **★★★ AND THEN THE SAME DEFECT ONE DIMENSION UP (§8s).** Two more plans came back wrong the same
    day — *"why is the first IV at 0:06 not 0:07 along with the other things?"* — and both were the
-   search again, not the scorer: brute force says the user's layout is the argmax, by **0.0058 casts**
-   on the 2:00 case (over 373k layouts) and **0.1022 casts** on the 1:15 case, the largest miss the
-   suite carries. Cause: under the GCD cap the optimum **packs haste windows back to back** (IV [5,25]
+   search again, not the scorer: brute force says the user's layout beats the emitted one by
+   **0.0058 casts** on the 2:00 case (over 373k layouts) and **0.1022 casts** on the 1:15 case, the
+   largest miss the suite carries. ⚠ That is *"beats what we emitted over the space searched"*, **not**
+   *"is the global argmax"* — this line said the latter and §8y falsifies it for the 2:00 case. The
+   search finding stands; the optimality claim did not.
+   Cause: under the GCD cap the optimum **packs haste windows back to back** (IV [5,25]
    · Berserking [25,35] · IV [35,55]), so moving any one alone overlaps its neighbour at −0.0867 casts
    per second and **every 1-D and 2-D step is downhill** — the only escape moves three coordinates at
    once. ⇒ move class 3c: link presses whose windows share an EDGE (one's end EXACTLY on another's
@@ -248,8 +260,9 @@ node tools/search-audit.mjs /tmp/b.json --k=3                    # seconds, re-s
 node tools/search-audit.mjs /tmp/b.json --k=3 --self-test        # displaces a press; must be CAUGHT
 ```
 It does the table above **automatically, on every swept cell**: for each emitted plan it enumerates
-every move of ≤k coordinates by ≤span seconds and asks whether any beats it. Reading **14 of 14 local
-optima** today, and on the pre-fix engine it rediscovers both of the week's reported misses to the digit
+every move of ≤k coordinates by ≤span seconds and asks whether any beats it. Reading **15 of 15 local
+optima** on the preset sweep and **62 of 63** on the kit × haste matrix (`tools/kit-sweep.mjs`) — the one
+miss is §8y's, whose fix is written and blocked on a user call, and on the pre-fix engine it rediscovers both of the week's reported misses to the digit
 (+0.005815 Karathress, +0.030041 Solarian) without being told they exist. CI runs it, blocking.
 ⚠ **`k=3` is the floor that matters.** On the 2:00 cell there were ZERO improving 1- and 2-coordinate
 moves and six 3-coordinate ones — a k≤2 audit calls that plan optimal.
@@ -260,6 +273,18 @@ enumeration (`docs/PHASE13.md` §3) — this gate is that programme's regression
 `rankScore` alone made it report T1 — a declared test, and the argmax — as a miss "beaten by 0.000347
 casts", 5.8× inside the tie band. **Three instruments made that same mistake in one day** (§8t,
 §8u): if you write a fourth, import the comparator, never re-implement it.
+⛔⛔ **A FOURTH DID IT ANYWAY — `tests/anchors.mjs`, found and fixed 07-30 (§8y).** It reported failure
+SIZE as `simulate().robust`, the retired per-cast sum, labelled *"on the shipped objective"*, and
+re-typed the plain-cast normalizer instead of calling `plainCastOf`. On T6 that printed **"−0.1028
+effective casts"** for a real gap of **+0.000231** — inflating a dead tie into a catastrophic scoring
+failure. ⇒ the rule is not advice: **import `rankPair`/`planBetter`/`plainCastOf`, and report BOTH
+halves of the pair**, because a gap inside the band is a TIE-BREAK gap, not a score gap, and they are
+different defects with different fixes.
+⛔ **And it needs the §8w RATCHET CEILING too** (added 07-30, §8y). `planBetter` is banded and
+non-transitive, so applied to a single step with no reference point it recommends walking downhill —
+it reported three kit cells as tie-break misses whose advice was a step two bands BELOW the argmax, the
+exact move the engine's ceiling exists to refuse. It now grades against the neighbourhood's own best
+score, which it can see in full and the descent cannot.
 
 **⚠ The `plan-sweep`/`plan-diff` loop above is the ONLY plan-stability instrument** — `exact-match` is
 deleted and so is the sim. One real loss: the sweep runs the DOM-free engine, so it never touches the
@@ -613,7 +638,9 @@ Treat maintaining them as part of the work, not an afterthought:
   **0.0000**. Never quote a `--score=point` number as a fact. Regenerate with
   `tools/facts-ladder.mjs --score=integral` / `tools/facts-pair.mjs --score=integral`.
 - `docs/MODEL-DEFECTS.md` — where the planner fails to reproduce one of those facts, with size in
-  **casts**, a reproduction, and what has already been falsified. Currently one open defect (D1: the
+  **casts**, a reproduction, and what has already been falsified. ⚠ D1 is CLOSED (§8h–§8m); the open
+  items are **§8y** (a user call blocking move class 3d), §8o, §8r, §8v and the unfalsifiable §8n.
+  The stale line below predates that and is kept only for its list of non-defects (D1: the
   model resolves sub-cast lattice phase as damage — three witnesses, 0.178–0.287 casts) plus a list of
   things that are **not** defects so they are not re-filed.
 - `docs/SOURCES.md` — where WoW facts come from (TBC is a solved game — look up + cite, don't

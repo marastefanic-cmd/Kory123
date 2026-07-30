@@ -76,15 +76,25 @@
 // `exact-match` deleted.
 // ⚠⚠ **T6 IS THE ONE EXCEPTION AND IT IS FLAGGED ON PURPOSE.** It came from a bug report — *"why is the
 // first IV at 0:06 not 0:07"* — which is a question, not a ruling, and it was added on the assistant's
-// initiative. It IS the verified argmax over 373k layouts, so it asserts something true; it simply has
-// no explicit user mandate the way the others do. Remove it if the user says so.
+// initiative. It has no explicit user mandate the way the others do. Remove it if the user says so.
+// ⛔⛔ **AND IT IS NOT THE ARGMAX — CORRECTED 07-30 (MODEL-DEFECTS §8y).** This line used to claim
+// *"it IS the verified argmax over 373k layouts, so it asserts something true"*. A wider enumeration
+// falsifies that: over **1,582,581** legal cluster-locked layouts T6's declared layout ranks **33rd**,
+// and the argmax is `AP/Icon/gem/IV @0:15 · IV @0:35 · Berserking @0:05` at +0.000231 casts — 8.6×
+// INSIDE the tie band, and ahead on the tie-break's first criterion too (3 distinct press moments
+// against 4, Berserking riding the Bloodlust call). The old enumeration was real but its space was
+// narrower: it never ranged Berserking down onto the Lust call nor the cluster up to 0:15.
+// ⇒ T6 currently passes only because the SEARCH cannot reach that layout. Move class 3d (§8y) makes it
+// reachable and T6 goes red. **Whether T6 stands or is revised is an open USER CALL** — see §8y part 3;
+// until it is answered, 3d stays out of `index.html` and one kit-matrix SCORE miss stays open.
 //
 // ── WHAT THESE ASSERT, AND WHY TIMESTAMPS ARE FAIR GAME HERE ──────────────────────────────────────
 // All of them pin **every press time**, which is the user's explicit ruling: *"these two examples I
 // sent are genuinely safe to lock even the timestamps on… these two need to always be this way."* It
 // rests on two separate grounds and it matters which one a failure is about:
 //   · the SCORE part — every press follows a law in `docs/ESTABLISHED-FACTS.md`, and where a layout was
-//     contested it was settled by enumeration (T6: the argmax over 373k layouts) or by the sim
+//     contested it was settled by enumeration (T6: better than the then-emitted plan by 0.0058 casts
+//     over 373k layouts — ⚠ NOT the global argmax, see the correction above) or by the sim
 //     (Example 1: +2.0 DPS ± 0.37 over 5 seeds), never by assertion.
 //   · the TIE-BREAK part — where a press sits on a plateau the sim cannot resolve, the exact second is
 //     the STRUCTURAL choice: cluster with the other presses, fewest distinct press moments, most robust
@@ -151,10 +161,13 @@ const cfgFor = c => ({
    re-ramp pays the toll again). Do not delete it without replacing that coverage.
 
    ★★ T6/T7 — declared 07-30 as two REPORTED BUGS, and they are the regression guard for §8s (the
-   abutting-window train slide). Both were emitted wrong by the shipped build and both are now the
-   BRUTE-FORCE ARGMAX, enumerated rather than asserted:
-     T6  2:00, Lust 0:05     — emitted IV[5,35] Zerk 25 (100.7790); argmax IV[7,37] Zerk 27 (100.7849)
-                               over 373k layouts. Gap 0.0058 casts, 2.9× the tie band.
+   abutting-window train slide). Both were emitted wrong by the shipped build and both were enumerated
+   rather than asserted — ⚠ but read the T6 correction at the top of this file: "enumerated" meant
+   "beats the plan it replaced over the space searched", NOT "is the global argmax", and for T6 the
+   stronger reading is now falsified (§8y):
+     T6  2:00, Lust 0:05     — emitted IV[5,35] Zerk 25 (100.7790); declared IV[7,37] Zerk 27 (100.7849)
+                               over 373k layouts. Gap 0.0058 casts, 2.9× the tie band. ⛔ A 1.58M-layout
+                               enumeration later put the declared layout 33rd; see §8y part 3.
      T7  1:15, Lust 0:05, intermission 0:50–0:55 — emitted IV[2,55] Zerk 21 (67.3484); argmax
                                IV[7,55] Zerk 27 (67.4506). Gap 0.1022 casts, and the LARGEST search
                                miss in the suite. Icy Veins had run off to 0:02, two seconds before the
@@ -273,6 +286,31 @@ function scorerBeats(want, cfg) {
            gain: (best.p.score - basePair.score) / api.plainCastOf(cfg), plan: best.r };
 }
 
+/* ⚠⚠⚠ THE FAILURE SIZE IS REPORTED ON THE OBJECTIVE PAIR — AND IT USED TO BE REPORTED ON `robust`,
+   WHICH IS THE RETIRED PER-CAST SUM. Fixed 07-30 (MODEL-DEFECTS §8y). This file printed
+   `simulate(...).robust` under the label "on the shipped objective", and since §8h that number is
+   REPORTED, not ranked — the rate integral ranks. The consequence was not cosmetic: on T6 it turned a
+   gap of **+0.000231 casts** (8.6× INSIDE the tie band, i.e. a dead tie) into a printed
+   **"−0.1028 effective casts"**, which reads as a catastrophic scoring failure and would send the next
+   reader straight into `simulate()` after a plateau.
+   ★ THIS IS THE FOURTH INSTRUMENT IN THIS REPO TO MAKE THAT EXACT MISTAKE — after `plan-sweep` and
+   `plan-diff` (§8t) and `search-audit` (§8u). CLAUDE.md's standing instruction is the fix: **import the
+   comparator, never re-implement it.** So this reads `rankPair`/`plainCastOf`/`TIE_CASTS` off the
+   engine, and it reports BOTH halves of the pair, because a gap inside the band is not a score
+   difference at all — it is the SHAPE tie-break, and that is a different defect with a different fix. */
+const deltaLine = (want, got, cfg) => {
+  const rep = s => api.repair(JSON.parse(JSON.stringify(s)), cfg);
+  const pw = api.rankPair(rep(want), cfg), pg = api.rankPair(rep(got), cfg);
+  const pc = api.plainCastOf(cfg);
+  const d = (pw.score - pg.score) / pc, band = (pw.band || 0) / pc;
+  const sw = api.planShape(rep(want)).distinct, sg = api.planShape(rep(got)).distinct;
+  const verdict = Math.abs(d) < band
+    ? `TIED on score (|Δ| < band ${band.toFixed(6)}) ⇒ this is a TIE-BREAK gap: want has ${sw} distinct press moments, got has ${sg}`
+    : d < 0 ? 'the emitted plan SCORES HIGHER than the declared layout ⇒ a SCORER failure (see the header)'
+            : 'the declared layout scores higher ⇒ a SEARCH failure (the descent never reached it)';
+  return `      Δ (want − got) = ${d.toFixed(6)} casts on the RANKING integral — ${verdict}`;
+};
+
 let failures = 0;
 console.log('# THE TESTS — the layouts declared exactly (user, 2026-07-28 .. 07-30)\n');
 for (const c of CASES) {
@@ -290,9 +328,7 @@ for (const c of CASES) {
   console.log(`      got   ${fmt(got)}`);
   for (const d of diffs) console.log(`      ⛔ ${d}`);
   // Score both, so a failure carries its SIZE and not only its shape.
-  const V = s => api.simulate(api.repair(JSON.parse(JSON.stringify(s)), cfg), cfg).robust;
-  const one = (api.GAME.AB.AVG_BASE_DMG + api.GAME.AB.COEF * c.sp) * (1 + (c.crit / 100) * (api.GAME.CRIT_MULT - 1));
-  if (diffs.length) console.log(`      Δ (want − got) = ${((V(c.want) - V(got)) / one).toFixed(4)} effective casts on the shipped objective`);
+  if (diffs.length) console.log(deltaLine(c.want, got, cfg));
   const beat = scorerBeats(c.want, cfg);
   if (beat) {
     failures++;
@@ -319,9 +355,7 @@ for (const c of BOSS_CASES) {
   console.log(`      want  ${fmt(c.want)}`);
   console.log(`      got   ${fmt(got)}`);
   for (const d of diffs) console.log(`      ⛔ ${d}`);
-  const V = s => api.simulate(api.repair(JSON.parse(JSON.stringify(s)), cfg), cfg).robust;
-  const one = (api.GAME.AB.AVG_BASE_DMG + api.GAME.AB.COEF * cfg.sp) * (1 + (cfg.critPct / 100) * (api.GAME.CRIT_MULT - 1)) * (cfg.t5two ? 1.2 : 1);
-  if (diffs.length) console.log(`      Δ (want − got) = ${((V(c.want) - V(got)) / one).toFixed(4)} effective casts on the shipped objective`);
+  if (diffs.length) console.log(deltaLine(c.want, got, cfg));
   const beat = scorerBeats(c.want, cfg);
   if (beat) {
     failures++;
