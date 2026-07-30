@@ -455,13 +455,46 @@ above never pressing:
    post-stacks are **exactly tied**, which is §1.2b's ramp-neutrality reappearing on the far side of an
    intermission.
 
-⇒ **The corrected rule.** Fit the whole window before the wall if it fits — that is nearly free. If it
-does not, hold it, and then at the exit apply the ordinary ramp rules unchanged: a **haste** cooldown may
-fire immediately (tied), a **value** buff should **wait for the stacks** — subject to §5.7's ladder, which
-is exactly the constraint that binds here because a post-intermission burn window is short.
+### ★★★★ AND THE WHOLE SECTION IS SECOND-ORDER — the hierarchy, corrected 07-28 (user)
 
-⚠ The cooldown-availability point survives and is unchanged: the downtime spends cooldown time and buys
-nothing, so what you can press on the far side is decided by what came back.
+*"All of these only matter if it actually gets you an extra use of the cooldown, right? Otherwise just
+normal rules apply. The shorter fights we have shouldn't really be influenced by this."* — **both halves
+measured, both hold, and together they demote everything above.**
+
+**1. An intermission NEVER costs a use. Cooldowns tick through downtime.** Legal use counts computed
+with and against the gap on every preset in the corpus that has one:
+
+| preset | T | downtime | ≥8 s | legal uses with gap vs without |
+|---|---|---|---|---|
+| The Lurker Below | 160 | 40 s | yes | **identical** |
+| Leotheras the Blind | 135 | 15 s | yes | **identical** |
+| Lady Vashj | 390 | 155 s | yes | **identical** |
+| Al'ar | 240 | 54 s | yes | **identical** |
+| High Astromancer Solarian | 75 | 5 s | no | **identical** |
+| Kael'thas Sunstrider | 420 | 135 s | yes | **identical** |
+| 2:40 lust 0:07 intermission 1:30–2:10 | 160 | 40 s | yes | **identical** |
+
+**7 of 7.** So the downtime constrains *where* a window may go and never *how many* you get.
+
+**2. On our short fights there is nothing to decide.** Legal uses by fight length, standard kit:
+
+| T | 100 | 120 | 140 – 180 | 200 | 300 | 440 |
+|---|---|---|---|---|---|---|
+| Icy Veins / AP / Berserking | 1 | 1 | 1 | 2 | 2 | 3 |
+| Icon / Serpent-Coil | 1 | 1 | **2** | 2 | 3 | 4 / 3 |
+
+At **T ≤ 120 every cooldown has exactly one use**, so there is no hold-versus-spend question at all —
+you place the single window where it is worth most and stop. The first thing to gain a second use is
+Icon/Gem at T ≈ 140.
+
+⇒ **THE HIERARCHY.** An intermission ≥ 8 s does exactly **one** new thing: it adds a **cold start**, with
+its own 1.332-cast toll and its own ramp rules on the far side (§1.2a–§1.2c). That is the whole of it.
+
+Everything else in this section is the **normal placement rules** (§4, §5) applied to a stretch of fight
+that happens to contain zero casts. *"Do not let a window expire into the empty room"* is not an
+intermission rule — it is *"put the window where the casts are"*, and the empty room simply has none.
+⇒ **Do not carry a separate intermission playbook.** Carry the normal rules, plus: **count the cold
+starts, and pay 1.332 casts for each.**
 
 ## 1.3 What one point of haste rating is worth
 
@@ -995,11 +1028,12 @@ Consequences, each traceable to a line above. None is an axiom.
    **ramp-neutral** there — pressing it before cast 1 or at 0:60 is identical (§1.2b). Above the buff's
    own onset threshold that inverts, and above the steady cap the opener is the *only* place a haste
    cooldown is worth anything at all.
-7. **Treat every intermission ≥ 8 s as a new mini-fight** (§1.2d) — the Arcane Blast debuff drops at
-   exactly `DEBUFF_DUR`, so rules 1–6 all reset. Below 8 s it is only downtime and nothing resets.
-   ⚠ The cooldowns kept ticking through it, so plan the second mini-fight against **availability**.
-   Spend a cooldown before the wall if its **whole window fits** (nearly free, ≤0.15 casts); hold it
-   only to avoid wasting uptime — never "to cover the new ramp", which nothing wants (§1.2d).
+7. **An intermission ≥ 8 s adds a COLD START and nothing else** (§1.2d): the Arcane Blast debuff drops
+   at exactly `DEBUFF_DUR`, so pay 1.332 casts and re-apply rules 1–6 on the far side. Below 8 s it is
+   only downtime and nothing resets. ⛔ **It never costs a use** — cooldowns tick through downtime
+   (7 of 7 presets, identical counts) — so there is no separate intermission playbook. **Count the cold
+   starts; everything else is rules 1–6.** And at `T ≤ 120` every cooldown has exactly one use, so
+   there is nothing to trade at all.
 
 ---
 
