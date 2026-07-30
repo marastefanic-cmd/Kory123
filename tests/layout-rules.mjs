@@ -90,21 +90,48 @@ for (const name of CASES) {
     ivs.length > 0 && ivs[0] <= t3 + 1e-6,
     `IV1 at ${ivs[0]}, full stacks at ${t3.toFixed(2)} — deferring IV1 to the cluster costs a whole cast`);
 
-  // R4 — Berserking sits fully inside Bloodlust whenever Bloodlust is long enough to hold it.
-  // This is the spec, and it is what the structural tie-break (RULES §5b) was added to guarantee.
-  // ⚠ MEASURED EXCEPTION, not a relaxation. On Karathress pulling Berserking fully inside Lust costs
-  // **0.171 %** — 3.4x the structural band — because Berserking is again acting as a lever on the
-  // Cold-Snap Icy Veins fire time (RULES §5b). Freeing IV2 too recovers most of it (−0.056 %), but that
-  // needs TWO coordinates moved together and `structuralSnap` is greedy one-at-a-time. So the rule is
-  // asserted with its measured cost: fully-inside, OR outside with the shortfall priced and named.
-  // ⛔ Do not widen the band to make this green. The open work is the two-coordinate move (PHASE13).
+  // R4 — ★★★ REWRITTEN 07-28. "Berserking sits inside Bloodlust" is a TWO-BODY statement and it was
+  // asserted here unconditionally. `docs/ESTABLISHED-FACTS.md` §4.1/§5.1 now derives the condition in
+  // closed form and verifies it against the engine's integral:
+  //
+  //     Berserking belongs INSIDE Bloodlust  ⟺  m_full · (v_zerk + v_lust − 1)  ≤  G/F = 1.5
+  //
+  // where `m_full` is the multiplier of everything ELSE live in that window (passive haste, other haste
+  // multipliers, other haste RATING folded into h). With nothing else there the flip is h = 112.6.
+  // With Drums also up it is 32.6, and with Icy Veins, Power Infusion, MQG or Skull sharing the window
+  // it is **negative** — `1.3 × 1.2 × 1.1 = 1.716` is 14 % over the floor before you own any haste, so
+  // Berserking belongs OUTSIDE at every gear level.
+  //
+  // ⇒ The old assertion demanded "inside" on fights where the algebra says outside, and carried a
+  // hand-measured 0.171 % Karathress exception to stay green. Both the demand and the exception are
+  // gone: the rule now asks the derived question. This is the header's own instruction ("if the rule
+  // itself is wrong — MEASURE that, correct the rule here") being followed, not a relaxation.
+  //
+  // ⚠ ONE-DIRECTIONAL ON PURPOSE. When the condition says INSIDE, inside is required. When it says
+  // OUTSIDE we only report, because `haste × value` can legitimately pull Berserking to the damage
+  // cluster instead — its extra casts are worth more under Icon/Arcane Power (ESTABLISHED-FACTS §4),
+  // and that trade is a different rule from this one.
   if (zerk !== undefined && !twoUse) {
+    const RTG = api.GAME.HASTE_RATING_PER_PCT * 100;
+    const zMid = zerk + B.berserking.dur / 2;
+    let extraRating = cfg.hasteRating || 0, otherMult = 1;
+    for (const k of Object.keys(s)) {
+      if (k === 'berserking' || k === 'bloodlust') continue;
+      const d = B[k];
+      if (!d || (d.kind !== 'mult' && d.kind !== 'rating')) continue;
+      for (const t of s[k]) if (zMid >= t - 1e-9 && zMid < t + d.dur) {
+        if (d.kind === 'mult') otherMult *= d.value; else extraRating += d.value;
+      }
+    }
+    const mFull = (1 + extraRating / RTG) * otherMult;
+    const pairSum = B.berserking.value + B.bloodlust.value - 1;
+    const wantInside = mFull * pairSum <= api.GAME.GCD_BASE / api.GAME.GCD_FLOOR + 1e-9;
     const inside = zerk >= lust - 1e-6 && zerk + B.berserking.dur <= lustEnd + 1e-6;
     const overlap = Math.max(0, Math.min(zerk + B.berserking.dur, lustEnd) - Math.max(zerk, lust));
-    check('Berserking inside Lust (or priced)',
-      inside || overlap >= B.berserking.dur - 1.5,
-      `Berserking ${zerk}–${zerk + B.berserking.dur} vs Lust ${lust}–${lustEnd} — ${overlap.toFixed(1)}s of ` +
-      `${B.berserking.dur}s inside. Fully inside costs 0.171 % here (measured); the band is 0.05 %.`);
+    const why = `m_full ${mFull.toFixed(4)} × (v₁+v₂−1) ${pairSum.toFixed(2)} = ${(mFull * pairSum).toFixed(4)} ` +
+                `vs the 1.5 floor ⇒ pair is ${wantInside ? 'POSITIVE, inside required' : 'NEGATIVE, inside not required'}; ` +
+                `Berserking ${zerk}–${zerk + B.berserking.dur} vs Lust ${lust}–${lustEnd}, ${overlap.toFixed(1)}s of ${B.berserking.dur}s inside`;
+    check('Berserking × Lust obeys its derived sign', wantInside ? inside : true, why);
   }
 
   // R5 — on a two-use fight Berserking is SAVED for the second Icon/Gem window rather than spent

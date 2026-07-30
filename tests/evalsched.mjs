@@ -18,7 +18,19 @@ import path from 'path';
 import { fileURLToPath } from 'url';
 const __dir = path.dirname(fileURLToPath(import.meta.url));
 const REPO = path.resolve(__dir, '..');
-const IN = JSON.parse(process.argv[2]);
+// ⚠ THIS FILE IS A TOOL, NOT A GATE — it takes a required JSON argument and lives in `tests/` only
+// because the page's Debug export names it. A bare `node evalsched.mjs` used to die on
+// `JSON.parse(undefined)` with a raw stack, which reads like a failing test to any run-everything loop.
+// Exit 2 (= "could not check", this repo's convention) with the usage instead.
+if (!process.argv[2]) {
+  console.error('evalsched.mjs is a TOOL and needs its JSON argument — it is not a pass/fail gate.\n' +
+    "  node tests/evalsched.mjs '{\"case\":{T,pins,phases,gear,kit},\"scheds\":{\"name\":{key:[t,…]}}}'\n" +
+    '  (index.html\'s Debug export emits a ready-to-paste `evalsched` object.)');
+  process.exit(2);
+}
+let IN;
+try { IN = JSON.parse(process.argv[2]); }
+catch (e) { console.error('evalsched.mjs: argument is not valid JSON — ' + e.message); process.exit(2); }
 const ALL_BUFFS = ["ati", "powerInfusion", "drums", "icyVeins", "skull", "isc", "scb", "arcanePower", "berserking", "mqg", "bloodlust"];
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
 const page = await browser.newPage();

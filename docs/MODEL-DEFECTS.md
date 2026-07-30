@@ -929,6 +929,66 @@ still measure UNSTABLE on the one criterion that discriminates. The corrected in
 objective computed exactly and once. ⛔ It is *not* a return to PHASE12 §6.10's rejected quantity —
 that was the integral **as it stands**, with a retired kill window and two missing edge terms.
 
+## 8g. ✅ THE TWO REMAINING EDGE TERMS DO NOT EXIST — measured 07-28, 13/13 rows at 0.00000
+
+Asked to fix them. Measured first, and **neither is a term.** Against an N=96 phase mean of the exact
+per-cast sum — the definition the closed form is graded against — with each buff self-pressed and
+interior on a long fight:
+
+| buff | h | integral | phase-mean N=96 | Δ |
+|---|---|---|---|---|
+| Icy Veins | 0 / 300 | 2.66667 / 3.17396 | 2.66667 / 3.17396 | **0.00000** |
+| Berserking | 0 / 400 | 0.66667 / 0.83576 | 0.66667 / 0.83576 | **0.00000** |
+| Power Infusion | 0 | 2.00000 | 2.00000 | **0.00000** |
+| Mind Quickening Gem | 0 | 2.79011 | 2.79011 | **0.00000** |
+| Skull of Gul'dan | 200 | 1.47960 | 1.47960 | **0.00000** |
+| Drums of Battle | 100 | 1.01458 | 1.01458 | **0.00000** |
+| Icon (value) | 0 / 300 | 1.02922 / 1.22501 | identical | **0.00000** |
+| Serpent-Coil (value) | 0 | 1.12052 | identical | **0.00000** |
+| Arcane Power (value) | 0 / 400 | 3.00000 / 3.76094 | identical | **0.00000** |
+| Icy Veins + Icon together | 0 / 300 | 3.90173 / 4.64397 | identical | **0.00000** |
+
+### Why the haste-edge term I derived is wrong — I double-counted
+
+The derivation was: the cast in flight at a window's leading edge was started at the *old* rate, so the
+new rate does not begin at the edge; correction `½(1 − i_before/i_after)` per transition, netting
+`−(r−1)²/(2r)` per window. For Icy Veins at h = 0 that predicts **−0.0167 casts**. Measured: **0.00000.**
+
+The error: **each buffed cast saves `(i_out − i_in)` of time no matter where in the window it sits**, and
+which casts are buffed is decided by which *start* inside `[a,b]` — the snapshot rule. Phase-averaged,
+`E[casts started inside] = (b−a)/i_in`, so the gain is `(b−a)·(1/i_in − 1/i_out)` exactly. The "late
+start" at the leading edge is already priced by the count; charging for it again is a second bite.
+
+### Why the value back-edge term does not exist either — the two edges cancel identically
+
+At the leading edge the straddling cast **completes inside**, so the discrete truth credits it in full
+while the integral credits the post-edge fraction — expectation **½ a cast**, so discrete − integral =
+**+½**. At the trailing edge the straddling cast **completes outside**, so discrete credits 0 while the
+integral again credits **½** ⇒ **−½**. Both halves are ½ *in cast units*, independent of the local
+interval, so they cancel for every window at every haste.
+
+⇒ **PHASE8 §25's `boundaryCharge` is correcting an error that does not exist in expectation.** It was
+defined against a *realised* completion count (`nSim` = board casts completing inside) versus the
+continuous count — i.e. it drags the integral toward **one lattice phase**. That is the same
+phase-realisation confusion this whole section is about. It stays OFF, now for a derived reason instead
+of "it measured ANTI-B2".
+
+★ **Third time today the correct fix was deletion** (the kill window, §8f; these two). Every one was a
+discreteness artifact wearing a physical interpretation.
+
+### ⚠ What the residual in the SWEEPS actually is — and it is not an edge term
+
+The 0.085–0.34-cast integral-vs-phase-mean spread reported earlier on four *sweeps* survives correct
+pinning and survives removing the external entirely (0.111 with no Bloodlust at all), so it is neither
+the pin nor the call-anchoring. It is the **press-snap Jensen gap**: `scoreStart` evaluates a self-press
+at its *expected* slip, while the phase expectation averages the *value* over the slip distribution. For
+a lone interior window the value is flat in the start position — which is exactly why the table above
+reads 0.00000 — but once a window's edge sweeps across *another* window's edge the covered overlap is
+piecewise-linear with kinks, and evaluating at the mean ≠ the mean of the evaluation.
+
+**It moved no argmax** — 4/4 on the original sweeps and 3/3 on the external-free re-run. Open, bounded,
+and a different animal from the two terms this section closes.
+
 ## 9. What is still open
 
 1. **Cost.** The phase-mean is N× `simulate()`. It cannot go into the search at N=48 as-is. Two routes:
