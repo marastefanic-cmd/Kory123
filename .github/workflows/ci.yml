@@ -131,7 +131,7 @@ jobs:
         run: node page-equiv.mjs --self-test
 
   the-tests:
-    name: THE TESTS (the two declared layouts)
+    name: THE TESTS (the three declared layouts)
     # ✅ BLOCKING as of 2026-07-30. This job carried `continue-on-error: true` with a stated exit
     # condition — *"flip it to false the day anchors goes green"* — because `docs/MODEL-DEFECTS.md` D1
     # was open and these two layouts were its target. D1 closed (§8h–§8m: the integral ranks, windows
@@ -148,7 +148,9 @@ jobs:
         with:
           node-version: '22'
       # No browser, no rig, no golden file — it runs the real optimizer and compares press times.
-      - name: the two declared layouts
+      # ⚠ T3 (Morogrim) was declared 07-30 and is RED on a known open defect (MODEL-DEFECTS §8p: the
+      # closed form for `haste × +spellpower` is ~⅓ too generous). T1/T2 are green and MUST stay green.
+      - name: the three declared layouts
         run: node tests/anchors.mjs
 
       # The SCORER against the algebra, which is prior to any question about layouts. Every one of the

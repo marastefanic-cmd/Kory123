@@ -18,7 +18,7 @@ You enter a fight (length, Bloodlust
 timing, intermission/AoE phases) and it computes the **optimal moment to press each on-use
 cooldown** (Icy Veins, Arcane Power, Icon of the Silver Crescent, Serpent-Coil gem, Berserking),
 plus a burn timeline, a per-window activation schedule, and a copy-as-text plan. Alongside it:
-`tests/` — **two tests** (`tests/anchors.mjs`): the two layouts the user declared exactly. The goldens
+`tests/` — **three tests** (`tests/anchors.mjs`): the three layouts the user declared exactly. The goldens
 and the plan-shape suites are **deleted** (user decision 07-28, restated twice) — everything else in
 `tests/` is a harness-integrity gate, not a claim about which layout is right.
 
@@ -55,12 +55,17 @@ Additional payoffs the same engine unlocks (nice-to-haves, not the point):
 ```
 node tests/anchors.mjs
 ```
-**★ There are exactly TWO tests, and they are the two layouts the user declared exactly** (2:00 and
-3:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit — every press time pinned, per their ruling
-*"these two need to always be this way"*). No browser, no rig, no golden file: it runs the real
-optimizer and compares press times.
+**★ There are exactly THREE tests, and they are the three layouts the user declared exactly.** T1/T2:
+2:00 and 3:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit, every press time pinned, per their ruling
+*"these two need to always be this way"*. T3 (added 07-30): the **Morogrim Tidewalker preset**, declared as
+a RULE rather than a timetable — *"pop the first cluster (everything except Berserking) as soon as a) 3
+Arcane Blast stacks are active and b) Lust is active, then exactly 2 minutes after the first cluster the
+second cluster gets popped — IV (Cold Snap), Icon, Gem and Berserking"*, with Arcane Power once in the
+first cluster because Lust > Berserking. Lust is pinned 0:05 and the third stack lands at 6.498 ⇒ 0:07
+and 2:07. No browser, no rig, no golden file: it runs the real optimizer and compares press times.
 
-✅ **`2 of 2` AS OF 2026-07-30, and the CI job is BLOCKING again** (`continue-on-error` removed — that
+⚠ **`2 of 3` — T1 and T2 PASS, T3 (Morogrim) is RED.** ✅ **T1/T2 went green on 07-30 and the CI job is
+BLOCKING again** (`continue-on-error` removed — that
 flag's stated exit condition was *"the day anchors goes green"*). **MODEL-DEFECTS D1 IS CLOSED.** Seven
 defects fell that day, §8h–§8m, and the through-line is one sentence: **the cast lattice had leaked into
 the ranking objective in four separate places.**

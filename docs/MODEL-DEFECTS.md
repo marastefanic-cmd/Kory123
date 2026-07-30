@@ -2248,3 +2248,34 @@ algebra at all.
 fit it.** If the deficit scales with `duration/fightRemaining` the "extra cast lands at the end" story is
 right and the closed form needs that factor. This needs no new instrument — `bench --char model-ref
 --spec-a/--spec-b` does it, as above.
+
+### §8p addendum — T3 is now a declared test, and the SUM already agrees with the user
+
+User: *"my declared plan has to be the best, I'm certain enough about it to be able to make it into a hard
+test along with the other two examples."* Added as **T3** in `tests/anchors.mjs` (the Morogrim preset,
+cfg from the fight table via `cfgFor` — sp 1387, crit 38, Lust pinned 0:05).
+
+```
+2 of 3 passed.
+FAIL  T3  want  IV@0:07/2:07  Icon@0:07/2:07  Gem@0:07/2:07  AP@0:07  Lust@0:05  Zerk@2:07
+          got   IV@0:00/2:06  Icon@0:06/2:06  Gem@0:06/2:06  AP@0:06  Lust@0:05  Zerk@0:20
+          Δ (want − got) = +0.2185 effective casts on the shipped objective
+```
+
+★ **Read that Δ.** The per-cast sum ranks the user's layout **0.2185 casts ABOVE** what the tool emits, and
+the sim ranks it **+7.5 DPS above** (§8p). So on this case the sum and the sim agree with the user and only
+the **integral** — the quantity that actually ranks — disagrees. That is the sharpest statement of the open
+defect available: two independent arbiters against the ranking objective on a declared case.
+
+⇒ Two things must be true for T3 to go green, and they are separable:
+1. **`haste × +SP` must stop being ~⅓ too generous** (§8p) — that is what puts Berserking at 0:20 instead
+   of 2:07.
+2. **Haste spent on the opening ramp must be charged properly** — that is what puts Icy Veins at 0:00
+   instead of 0:07. The derivation, in the user's own framing: during a k-stack ramp cast the rate is
+   `m/C_k` (cast-bound, `C_k` = 2.5 / 2.166 / 1.832) against `m/G` at steady state, so a haste buff gains
+   `(m−1)/2.5 = 0.080` casts/s over the 0-stack cast versus `(m−1)/1.5 = 0.133` at steady state — **40 %
+   less**. Icy Veins at the pull spends 5.4 s of its 20 s there. ⚠ Note the engine's ramp handling was
+   already probed twice (§8o: integrating the ramp at `1/own duration` moved the ladder 0.008 casts) so the
+   fix is NOT "integrate the ramp" — it is that the compression hand-off credits `1.083 s × the local
+   post-ramp rate` (≈1.08 casts with Lust up) where the true value of finishing the ramp sooner is
+   `1.083 × (rate₃ₛₜₐcₖ − rate₂ₛₜₐcₖ) ≈ 0.157` casts.

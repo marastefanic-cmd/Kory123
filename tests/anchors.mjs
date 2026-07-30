@@ -47,7 +47,7 @@
 // scoring defect; a press on the wrong member of a plateau is a tie-break defect; a press the search
 // never visited is a search defect. They are fixed in three different places and law-check tells you
 // which. Full record: docs/MODEL-DEFECTS.md §8h-§8m.
-import { loadEngine, ALL_BUFFS } from '../tools/engine-node.mjs';
+import { loadEngine, ALL_BUFFS, cfgFor as presetCfg } from '../tools/engine-node.mjs';
 
 const api = loadEngine(new URL('../index.html', import.meta.url).pathname);
 
@@ -69,6 +69,25 @@ const cfgFor = c => ({
   fixed: { bloodlust: [20] }, warnings: [], coldSnap: true, segments: null,
 });
 
+/* ★ T3 — MOROGRIM, declared 2026-07-30. The user gave the RULE and its consequence, not a timetable:
+   *"Morogrim has to pop the first cluster (everything except Berserking) as soon as a) 3 Arcane Blast
+   stacks are active and b) Lust is active, then exactly 2 minutes after the first cluster the second
+   cluster gets popped — IV (due to Cold Snap resetting the CD), Icon, Gem and Berserking"*, plus
+   *"AP only fits once, and the first cluster gives it more value because Lust > Berserking, so it stays
+   in the first one. Everything else can be used exactly twice."*
+   Bloodlust is pinned 0:05 and the third stack completes at 6.498, so the first legal whole second with
+   both conditions live is 0:07, and the Icon's 2-minute cooldown puts the second cluster at 2:07.
+   ⛔ RED TODAY, and the reason is ONE press. `docs/MODEL-DEFECTS.md` §8p: the model over-credits
+   `haste × +spellpower` by about a third (the closed form, not the code), which pulls Berserking onto the
+   second cluster and — separately — it under-charges haste spent on the opening ramp, so it presses Icy
+   Veins at the pull instead of waiting for 3 stacks. The derivation the user's rule follows from:
+   during a k-stack ramp cast the rate is `m/C_k` (cast-bound, C_k = 2.5 / 2.166 / 1.832) against `m/G`
+   at steady state, so a haste buff gains `(m−1)/2.5 = 0.080` casts per second over the 0-stack cast
+   versus `(m−1)/1.5 = 0.133` at steady state — **~40 % less**. Icy Veins at the pull therefore spends
+   5.4 s of its 20 s on nearly worthless ground.
+   ⚠ The sim currently prefers Berserking in Bloodlust here by 1.2 DPS ± 0.20 while the closed forms
+   prefer the cluster by 1.24 — the disagreement of §8p. The user was told and reaffirmed the layout, so
+   it stands as declared. */
 const CASES = [
   { name: 'T1 — 2:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit',
     T: 120, sp: 1000, crit: 25,
@@ -76,6 +95,14 @@ const CASES = [
   { name: 'T2 — 3:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit',
     T: 180, sp: 1000, crit: 25,
     want: { icyVeins: [20, 140], isc: [20, 140], scb: [20, 140], arcanePower: [20], bloodlust: [20], berserking: [140] } },
+];
+
+// T3 uses a real BOSS preset, so its cfg comes from the fight table (sp 1387, crit 38, Lust pinned 0:05)
+// rather than the hand-built one above — `cfgFor` is the same constructor the UI and the sweeps use.
+const BOSS_CASES = [
+  { name: 'T3 — Morogrim Tidewalker (preset): cluster on 3 stacks + Lust, second cluster +2:00',
+    preset: 'Morogrim Tidewalker',
+    want: { icyVeins: [7, 127], isc: [7, 127], scb: [7, 127], arcanePower: [7], bloodlust: [5], berserking: [127] } },
 ];
 
 const mmss = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
@@ -104,9 +131,33 @@ for (const c of CASES) {
   console.log('');
 }
 
-console.log(`${CASES.length - failures} of ${CASES.length} passed.`);
+for (const c of BOSS_CASES) {
+  const row = api.cases.find(x => x.name === c.preset);
+  if (!row) { console.log(`FAIL  ${c.name}\n      ⛔ preset ${JSON.stringify(c.preset)} not in the fight table`); failures++; continue; }
+  const cfg = presetCfg(api, row);
+  const got = (await api.optimizeAsync(cfg, undefined, () => {})).s;
+  const diffs = [];
+  for (const k of Object.keys(c.want)) {
+    const g = (got[k] || []).map(x => +x.toFixed(3)), w = c.want[k];
+    if (g.length !== w.length || g.some((v, i) => Math.abs(v - w[i]) > 1e-6)) diffs.push(`${k}: want [${w}] got [${g}]`);
+  }
+  for (const k of Object.keys(got)) if (!(k in c.want)) diffs.push(`${k}: unexpected, got [${got[k]}]`);
+  if (diffs.length) failures++;
+  console.log(`${diffs.length ? 'FAIL' : 'PASS'}  ${c.name}`);
+  console.log(`      want  ${fmt(c.want)}`);
+  console.log(`      got   ${fmt(got)}`);
+  for (const d of diffs) console.log(`      ⛔ ${d}`);
+  const V = s => api.simulate(api.repair(JSON.parse(JSON.stringify(s)), cfg), cfg).robust;
+  const one = (api.GAME.AB.AVG_BASE_DMG + api.GAME.AB.COEF * cfg.sp) * (1 + (cfg.critPct / 100) * (api.GAME.CRIT_MULT - 1)) * (cfg.t5two ? 1.2 : 1);
+  if (diffs.length) console.log(`      Δ (want − got) = ${((V(c.want) - V(got)) / one).toFixed(4)} effective casts on the shipped objective`);
+  console.log('');
+}
+
+const N = CASES.length + BOSS_CASES.length;
+console.log(`${N - failures} of ${N} passed.`);
 if (failures) {
-  console.log('\n⛔ Expected while docs/MODEL-DEFECTS.md D1 is open — this suite IS the target for that');
-  console.log('   fix, not a regression signal. Read the header before loosening anything.');
+  console.log('\n⛔ T1/T2 went green on 07-30 (D1 closed). A failure here is a REGRESSION unless it is T3, whose');
+  console.log('   open defect is docs/MODEL-DEFECTS.md §8p. Run `node tools/law-check.mjs` first — every');
+  console.log('   scoring defect this project has found was caught by a closed form, never by a plan diff.');
 }
 process.exit(failures ? 1 : 0);
