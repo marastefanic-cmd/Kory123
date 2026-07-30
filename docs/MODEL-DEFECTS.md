@@ -2369,3 +2369,68 @@ and is the reason that one press disagrees.
 
 ⚠ **Open debt:** the full preset corpus has not been re-swept or duelled since this change.
 `docs/ACCEPTANCE.md` still has no current reading.
+
+---
+
+## §8r — cooldowns chain from the PRESS everywhere (07-30), and the one fork it exposed
+
+User: *"with our model the trinket and the stat changes should apply the moment it's pressed. That's what
+I've been saying the entire time."*
+
+### What was wrong
+
+The RANKING was already press-chained (§8m's `lastScore`). **Legality and display were not** — the walk
+still gated on `lastFire`. So on T2: the Icon pressed at 0:20 lands mid-cast and the macro fires at the
+next boundary, 21.498; a fire-chained 2-minute cooldown then reads ready at **141.498**, and the schedule
+printed `2:21` for a plan whose declared rule says `2:20`. Demonstrably that and nothing else — slide the
+first press and the second follows:
+
+```
+press 1st @0:18 → Icon fires 18.000 / 140.000        press 1st @0:20 → 20.000 / 141.496   ⛔
+press 1st @0:19 → Icon fires 19.000 / 140.000        press 1st @0:21 → 21.000 / 141.496
+```
+
+⇒ the walk now uses `lastScore` (press-chained) for legality too, so there is **one chain again**.
+`anchors` stays **3 of 3** and T2 prints `0:20 … 2:20` throughout.
+
+⚠⚠ **A PRICED DIVERGENCE FROM THE SIM, reversing PHASE12 §6.14c on purpose.** wowsims starts a cooldown at
+the CAST, so it fires the second use up to one cast later than this plan prints and `model-audit` WILL show
+a gap. §6.14c measured that as HELD 18 of 196 — but that was when the DISCRETE WALK was also the arbiter.
+Since §8l the ranking is pure press geometry, so the board no longer *scores* a fight the sim cannot
+produce; it transcribes one the sim executes a fraction of a cast later. Deliberate. Do not "fix" it back.
+
+### ⛔ THE FORK: two user statements that the model cannot both honour
+
+Both are true about the game and they pull opposite ways:
+
+1. *"haste over ramp is worth exactly the same as haste after ramp. What's worth more is the alignment
+   with AP and SP buffs."* → the opener is a **fixed** toll; hasting it earns nothing directly.
+2. *"sometimes overlaying the haste buff onto the ramp makes the arcane blast stacks stack quicker, but
+   that's all deterministic math."* → the opener **shortens** with haste, so the steady phase starts
+   sooner.
+
+**With no other buffs up they agree exactly** — that is ramp-neutrality, and it checks out:
+
+```
+20 s window, m=1.0 : 3 + (20 − 6.498)/1.5  = 12.001        gain 2.667
+20 s window, m=1.2 : 3 + (20 − 5.415)/1.25 = 14.668        gain 2.667 — identical to a steady 20 s
+```
+
+**They diverge only when another buff covers the compression window.** On Morogrim, Bloodlust is pinned
+0:05, so the 1.083 s that a hasted opener saves is cashed at the Lust-boosted rate (1.0 casts/s, capped)
+instead of the opener rate — worth ~0.49 casts, which beats the ~0.13 that Icy Veins gains by aligning with
+the cluster. Measured, switching only that:
+
+```
+fixed toll  (statement 1) → Icy Veins #1 argmax 0:07   ✓ the declared layout, anchors 3 of 3
+hasted opener (statement 2) → Icy Veins #1 argmax 0:00  ⛔ anchors 2 of 3
+```
+
+⇒ **Statement 1 is what ships**, because it is what reproduces all three declared layouts. Statement 2 is
+recorded here as the unresolved half: it is a true fact about the game that this objective does not model,
+and the reason is that crediting it at the local (buffed) rate makes covering the ramp a bonus, which
+contradicts statement 1's neutrality. Resolving it properly needs the compression credited at the rate
+prevailing where the extra casting actually lands, not where the compression happens — that is unbuilt.
+
+Gates after: `anchors` **3 of 3** · `law-check` 6/6 + negative control caught · `self-consistency`
+0.00e+0 / 0 structural · `page-equiv` 2/2 · `sim-request` PASS.

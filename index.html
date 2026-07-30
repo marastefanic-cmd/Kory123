@@ -1204,8 +1204,20 @@ function simulateRaw(schedule, cfg, collect) {
         // `fire + cd`, and `innerSpell.IsReady` deferred it a whole cast — so the model could emit a
         // plan the sim cannot execute, and score a fight that never happens (HELD = 18 of 196).
         // A reset-chained use (Cold Snap) still only needs the previous window to finish.
-        if (e.gap && lastFire[e.key] !== undefined) minStart = Math.max(minStart, lastFire[e.key] + (e.gap >= e.def.cd - EPS ? e.def.cd : e.def.dur));
-        if (lastTrinket && lastTrinket.key !== e.key && OFF_TRINKETS.includes(e.key)) minStart = Math.max(minStart, lastTrinket.end);
+        /* ★★★★★ CHAINED FROM THE PRESS — user ruling 07-30: *"with our model the trinket and the stat
+           changes should apply the moment it's pressed."* A macro fires between casts, so a press at
+           0:20 landing mid-cast went off at 21.498 and a FIRE-chained 2-minute cooldown then read ready
+           at 2:21.5 — the tool printed `2:21` for a plan whose rule says `2:20`. That sub-cast slip is
+           the exact thing this model exists not to resolve, so legality now uses the same press-chained
+           clock the ranking does (`lastScore`), and the two are one chain again.
+           ⚠⚠ A PRICED DIVERGENCE FROM THE SIM, and it reverses PHASE12 §6.14c on purpose. wowsims starts
+           a cooldown at the CAST (`ap-cd-at-cast.patch`), so it will fire the second use up to one cast
+           later than this plan prints, and `model-audit` WILL show a gap there. That was measured as
+           HELD 18 of 196 when the DISCRETE WALK was also the arbiter; since §8l the ranking is pure press
+           geometry, so the board no longer scores a fight the sim cannot produce — it only transcribes
+           one the sim executes a fraction of a cast later. Deliberate; do not "fix" it back. */
+        if (e.gap && lastScore[e.key] !== undefined) minStart = Math.max(minStart, lastScore[e.key] + (e.gap >= e.def.cd - EPS ? e.def.cd : e.def.dur));
+        if (lastTrinketScore && lastTrinketScore.key !== e.key && OFF_TRINKETS.includes(e.key)) minStart = Math.max(minStart, lastTrinketScore.end);
         if (minStart > t + EPS) continue; // slipped past this boundary — try again later (EPS: same lattice)
         // Effective start = the PRESS moment (a self-buff macro applies its buff to
         // the same press's Arcane Blast). At STEADY state we deliberately do NOT snap
