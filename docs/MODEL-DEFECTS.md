@@ -2602,3 +2602,83 @@ Two of its three witnesses named presets deleted on 07-30 when `GOLDEN_PRESETS` 
 list, so the gate exited **2** — not passing, not failing, erroring — for as long as that was true.
 ⇒ a witness may now carry an inline `setup` and that is preferred: **a witness is a fact about a FIGHT,
 not about a row in a table.** It was also scoring on `.robust`; fixed to `rankScore` (item 2 again).
+
+---
+
+## §8v — ⚠ OPEN, AND IT IS A **REACHABILITY** ISSUE ON AN EXACTLY-TIED PLATEAU, NOT A TIE-BREAK ONE (07-30)
+
+Reported by the user as *"teeeeeechnically we could improve this layout to uphold the 'earliest possible
+that's samesies' rule — it's more of a showcase of this being a technicality that might help us in the
+future if we catch it now."* They are right, and the reason is more interesting than the case.
+
+**2:00 · 1387 SP · 38 % crit · Lust pinned 0:10.** Two layouts:
+
+```
+emitted     IV[10,40]  cluster 10  Zerk 30     100.785091666 casts   3 press moments {10,30,40}
+user's      IV[0 ,20]  cluster 10  Zerk 40     100.785091666 casts   4 press moments {0,10,20,40}
+                                               Δ = 0.000e+0 — BIT-IDENTICAL, not merely banded
+```
+
+They are exactly tied because the IV split is the same on both: 30 s of Icy Veins inside Bloodlust and
+10 s outside, just arranged differently — and at h=0 a second of Icy Veins is worth 0.13345 casts inside
+Lust and 0.13333 outside, i.e. the same to four figures (one is GCD-capped, the other is not). The
+opener costs nothing either way, because the ramp toll is m-independent (§8q).
+
+### The two hypotheses, and BOTH were wrong
+
+**Hypothesis 1 — "the tie-break ordering is wrong."** The objective's second half is *fewest distinct
+press moments → earliest*, so it never reaches "earliest" here: 3 beats 4 and the comparison stops.
+⇒ **Tested by flipping the order** (earliest before fewest-moments) and re-running everything:
+
+```
+anchors      7 of 7 — the ordering is NOT constrained by any declared layout
+plan-sweep   1 of 14 cells moved: Leotheras the Blind, and it gained a press moment
+             SCORE-AUDIT … tieBreakWORSESHAPE=1  ⚠ "the tie-break went backwards"
+the reported case  UNCHANGED
+```
+
+So the flip costs a cell and does not fix the case. **Reverted.** (★ The `tieBreakWORSESHAPE` line is
+`plan-diff`'s, added hours earlier in §8t — the first time that check earned its keep.)
+
+**Hypothesis 2 — "the search just needs one more move class."** No. Every path between the two layouts
+is a **cliff**, and the numbers are not close:
+
+```
+IV1 10→0                −0.382   IV1→0 & IV2→20        −0.867
+IV2 40→20               −0.866   IV1→0 & Zerk→40       −1.250
+Zerk 30→40              −0.867   IV2→20 & Zerk→40      −0.866
+                    all three simultaneously            ±0.000   ← the only tie
+```
+
+The two layouts are **isolated points of an exactly-tied plateau separated by a valley up to 1.25 casts
+deep**, and the three coordinates move by three DIFFERENT deltas (−10, −20, +10). Every move class the
+descent has — whole-plan slide, per-track slide, co-pressed cluster, abutting train, single press — is
+a *uniform* shift of some subset. **No uniform move connects these two points, at any span.**
+
+### ⇒ Why this is worth having caught, and what actually fixes it
+
+This is a **fourth** defect kind, distinct from the three `tools/search-audit.mjs` classifies:
+
+| kind | symptom | fixed in |
+|---|---|---|
+| scoring | the closed form disagrees | `simulate()` — `law-check` goes red |
+| tie-break | tied, wrong plateau member | `planBetter` / `planShape` |
+| search (reachable) | a small simultaneous move wins | a move class in `phaseRerank` |
+| **search (unreachable tie)** | **an equal-scoring layout no continuous path reaches** | **nothing in a descent — see below** |
+
+A descent can only compare what it holds. A **constructive enumeration** (`docs/PHASE13.md` §3) holds
+both candidates by construction, because both press only on group seconds — `{0, 10, 20, 40}` and
+`{10, 30, 40}` are each a subset of the same derived lattice. ⇒ **the user's technicality is
+automatically resolved by the enumeration, and by nothing short of it.** That is the strongest argument
+yet for building it, and it arrived as a throwaway observation about a plan that is not even wrong.
+
+⚠ **WHAT IS STILL OPEN IS A USER CALL, NOT A BUG.** Once both layouts are in hand the tie-break has to
+choose, and there is no ordering that gets both properties: the Lust pin at 0:10 forces the value cluster
+to 0:10, so **putting Icy Veins at 0:00 inherently costs a press moment**. The trade is exactly:
+
+- **3 press moments, IV at 0:10** (what ships) — fewer separate things to get right.
+- **4 press moments, IV at 0:00** (the user's rule) — the same damage, banked 10 s earlier, and one
+  button pressed alone before the macro rather than inside it.
+
+⛔ Do not "fix" this by widening `TIE_CASTS`. The two are already at Δ = 0; the band is not what is
+stopping it.

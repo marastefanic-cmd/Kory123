@@ -50,7 +50,16 @@ in-page button are **deleted**; the four sim docs are archived as `docs/archive/
   SPREADS as gear haste grows, so that is exactly where it should be expected to break first;
   (c) the naive enumeration (each track takes any subset of `S`) is `2^|S|` per track and blows up —
   the chain law's "press at every group second you are up for, or decline one" is `|S|+1` per track and
-  should land at ~10³–10⁴ layouts. Untested. ⚠ §3.9's open defect (*the model over-values Icy Veins
+  should land at ~10³–10⁴ layouts. Untested.
+  ★★★ **AND §8v IS THE ARGUMENT THAT SETTLES WHY THIS IS WORTH BUILDING.** A user-reported case
+  (2:00 · Lust 0:10) has two layouts that are **bit-identically tied** — Δ = 0.000e+0 — one of which the
+  tool never emits. It is not a tie-break bug (flipping the ordering was tested: 7 of 7 still, but it
+  cost another cell a press moment and did **not** fix the case) and it is not a missing move class:
+  every path between the two is a valley up to **1.25 casts** deep, and the three coordinates move by
+  three *different* deltas (−10, −20, +10). Every move class the descent has is a UNIFORM shift of some
+  subset, so **no descent reaches it at any span or any effort.** An enumeration holds both by
+  construction, because both press only on group seconds. ⇒ this class of miss is fixed by the
+  enumeration **and by nothing short of it**. ⚠ §3.9's open defect (*the model over-values Icy Veins
   pressed BEFORE Bloodlust*) was witnessed by a sim duel; re-pose it against the closed forms before
   citing its size.
 - **§5 — the platform track** (module split, the six `cfgFor` copies, the perf rungs). Untouched by
