@@ -1004,6 +1004,24 @@ function simulateRaw(schedule, cfg, collect) {
   evs.sort((a, b) => a.ts - b.ts);
   let evi = 0;
   const lastFire = Object.create(null);   // per-cooldown FIRE moment of the last use (PHASE12 §3)
+  /* ★★★★★ AND A PARALLEL GEOMETRIC CHAIN FOR THE RANKING — 07-30, the last place the lattice leaked.
+     `lastFire` is the FIRE moment, and legality MUST chain from it: wowsims starts a cooldown at the
+     cast (`ap-cd-at-cast.patch`), so chaining legality from the press legalises a use the sim still has
+     on cooldown (PHASE12 §6.14c, HELD 18 of 196). That stays exactly as it is.
+     But the RANKING is pure window geometry (§8l), and a fire-chained cooldown drags the lattice back
+     into it through the back door. Measured on T2: the Icon pressed at 0:20 FIRES at 20.998 — 0.998 s
+     late purely because that is where the cast boundary fell — so its 2-minute cooldown reads ready at
+     2:21.496 instead of 2:20. The second cluster then cannot be co-pressed at 2:20 at all: Icy Veins and
+     Berserking land on 140.000 while the Icon and gem are stuck at 141.496, and the model correctly
+     prices 1.496 s of split cluster and moves everything to 2:21 to close it.
+     ⇒ That 0.998 s is a wowsims APL artifact, not physics. The Icon is an ON-USE TRINKET: it is off the
+     GCD, and a player pressing it at 20.000 uses it at 20.000. wowsims' APL can only act between casts,
+     so IT slips — and the model must not hand the player advice derived from the harness's scheduling
+     limitation. Geometrically the Icon is ready at 20 + 120 = 140.000 and the cluster co-presses.
+     ⚠ So there are two chains on purpose, and they must not be merged: `lastFire` legalises (what the
+     sim can execute), `lastScore` prices (what the player controls). */
+  const lastScore = Object.create(null); // per-cooldown SCORE start of the last use — the geometric chain
+  let lastTrinketScore = null;
   const active = []; // fired buff windows {key, def, start}
   const actEff = collect ? {} : null;
   let lastTrinket = null;
@@ -1095,10 +1113,10 @@ function simulateRaw(schedule, cfg, collect) {
   const nextCut = ts => { for (const c of CUTS) if (c > ts + EPS) return c; return cfg.T; };
   /* The legalized press moment for an event — the same arithmetic the press loop's `minStart` uses,
      lifted out so the integral can read it without depending on which branch of the walk ran. */
-  const minStartFor = (e, lastFire, lastTrinket) => {
+  const geoStart = e => {
     let m2 = e.ts;
-    if (e.gap && lastFire[e.key] !== undefined) m2 = Math.max(m2, lastFire[e.key] + (e.gap >= e.def.cd - EPS ? e.def.cd : e.def.dur));
-    if (lastTrinket && lastTrinket.key !== e.key && OFF_TRINKETS.includes(e.key)) m2 = Math.max(m2, lastTrinket.end);
+    if (e.gap && lastScore[e.key] !== undefined) m2 = Math.max(m2, lastScore[e.key] + (e.gap >= e.def.cd - EPS ? e.def.cd : e.def.dur));
+    if (lastTrinketScore && lastTrinketScore.key !== e.key && OFF_TRINKETS.includes(e.key)) m2 = Math.max(m2, lastTrinketScore.end);
     return m2;
   };
   // Ramp-aware board: the mage opens COLD (0 stacks at the first Arcane Blast — no prestack
@@ -1324,13 +1342,15 @@ function simulateRaw(schedule, cfg, collect) {
          next cast boundary, the integral credits from the press. That is half a cast interval in
          expectation and it is the point — the player cannot control which side of a boundary their
          cooldown expires on. */
-      const scoreStart = Math.max(minStartFor(e, lastFire, lastTrinket), e.ts);
+      const scoreStart = geoStart(e);
       active.push({ key: e.key, def: e.def, start: auraAt, scoreStart });
       // Both chains anchor on `auraAt`, the FIRE moment — see the read above. For an external
       // (Bloodlust/PI/Drums) `auraAt === eff` by construction, so the raid-call convention is
       // untouched: someone else presses it and its aura starts when they call it.
       lastFire[e.key] = auraAt;
       if (OFF_TRINKETS.includes(e.key)) lastTrinket = { key: e.key, end: auraAt + e.def.dur };
+      lastScore[e.key] = scoreStart;   // the geometric chain advances on the SCORE start (see its declaration)
+      if (OFF_TRINKETS.includes(e.key)) lastTrinketScore = { key: e.key, end: scoreStart + e.def.dur };
       if (actEff) (actEff[e.key] = actEff[e.key] || []).push(eff);
     }
     while (evi < evs.length && evs[evi].fired) evi++;
@@ -2479,7 +2499,37 @@ function phaseRerank(s0, cfg) {
     for (const d of SHIFTS) if (tryCand(shifted(s, keys, d))) { moved = true; break; }
     // 2. one cooldown's whole track slides
     for (const k of keys) for (const d of SHIFTS) if (tryCand(shifted(s, [k], d))) { moved = true; break; }
-    // 3. one press moves
+    /* ★★★★★ 3. A CO-PRESSED CLUSTER SLIDES TOGETHER — added 07-30, and it is what finally reaches the
+       declared T2 layout. The move classes above are "everything" and "one track", and the gap between
+       them is exactly where a mage's plan lives: a value cluster is a SUBSET of tracks sharing a second.
+       Measured on T2, where the emitted plan and the declared one have BIT-IDENTICAL integrals
+       (Δ = −2.8e-14) and the declared has 2 distinct press moments against 4, so the tie-break wants it:
+           slide scb alone  by −2   Δ = −0.067   ⛔
+           slide AP alone   by −2   Δ = −0.067   ⛔
+           slide zerk alone by −2   Δ = −0.018   ⛔
+           slide all three  by −2   Δ = −2.8e-14  ✓ exact tie, and 2 distinct seconds instead of 4
+       Every single-coordinate step is downhill because it SPLITS the cluster — Arcane Power (×1.30) and
+       the gem (+225 SP) multiply each other, so separating them costs the cross term (ESTABLISHED-FACTS
+       §4, `dmg × sp = n·d·s`). A coordinate descent cannot reach a coupled optimum like that at any
+       effort; only the simultaneous move gets there.
+       ⇒ The subsets are not guessed: they are read off the plan itself. Group the tracks by the second
+       they are pressed at, and slide each such group as a unit. That is a handful of candidates, it is
+       deterministic, and it is the same structure `docs/MODEL-DEFECTS.md` D2 calls "cluster with the
+       other presses". */
+    {
+      const bySec = new Map();
+      for (const k of keys) for (const t of (s[k] || [])) {
+        const sec = Math.round(t);
+        if (!bySec.has(sec)) bySec.set(sec, new Set());
+        bySec.get(sec).add(k);
+      }
+      const groups = [...bySec.entries()].sort((a, b) => a[0] - b[0])
+        .map(([, ks]) => [...ks].sort()).filter(g => g.length > 1 && g.length < keys.length);
+      for (const ks of groups) { let hit = false;
+        for (const d of SHIFTS) if (tryCand(shifted(s, ks, d))) { moved = true; hit = true; break; }
+        if (hit) break; }
+    }
+    // 4. one press moves
     for (const k of keys) for (let i = 0; i < (s[k] || []).length; i++) {
       let hit = false;
       for (const d of MOVES) {

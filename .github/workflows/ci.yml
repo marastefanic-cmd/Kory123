@@ -132,13 +132,14 @@ jobs:
 
   the-tests:
     name: THE TESTS (the two declared layouts)
-    # ⚠ NON-BLOCKING BY DESIGN, and that is not the usual excuse. `docs/MODEL-DEFECTS.md` D1 is a KNOWN
-    # OPEN defect with a measured mechanism (§8f) and a cleared scorer (§8g); these two layouts are its
-    # target, so they are red until the objective fix lands. A required check that is known-red blocks
-    # every unrelated merge and trains people to ignore it — which is exactly what happened to the
-    # gates this job replaced. Visible and honest beats required and ignored.
-    # ⇒ Flip `continue-on-error` to false the day anchors goes green. That is the whole exit condition.
-    continue-on-error: true
+    # ✅ BLOCKING as of 2026-07-30. This job carried `continue-on-error: true` with a stated exit
+    # condition — *"flip it to false the day anchors goes green"* — because `docs/MODEL-DEFECTS.md` D1
+    # was open and these two layouts were its target. D1 closed (§8h–§8m: the integral ranks, windows
+    # are pure geometry, and the descent got a co-pressed-cluster move), anchors reads **2 of 2**, so
+    # the condition is met and the flag is gone.
+    # ⛔ If this goes red again, the correct response is NOT to restore `continue-on-error`. Read
+    # MODEL-DEFECTS §8h–§8m first: every defect that made it red was found by comparing a measured
+    # number to a closed form, and `tools/law-check.mjs` below now does that automatically.
     runs-on: ubuntu-latest
     timeout-minutes: 20
     steps:
@@ -149,3 +150,14 @@ jobs:
       # No browser, no rig, no golden file — it runs the real optimizer and compares press times.
       - name: the two declared layouts
         run: node tests/anchors.mjs
+
+      # The SCORER against the algebra, which is prior to any question about layouts. Every one of the
+      # five defects closed on 07-30 was caught this way and none would have been caught by a plan diff.
+      - name: the closed forms (law-check)
+        run: node tools/law-check.mjs
+
+      # NEGATIVE CONTROL: drop the millisecond quantisation from the gate's own law — a 3.6 % error on
+      # the haste × haste line, the scale this gate exists to resolve — and require it to be CAUGHT.
+      # --self-test inverts its exit contract, so green here means the break was seen.
+      - name: '↳ negative control: an unquantised law must be CAUGHT'
+        run: node tools/law-check.mjs --self-test

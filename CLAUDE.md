@@ -60,20 +60,38 @@ node tests/anchors.mjs
 *"these two need to always be this way"*). No browser, no rig, no golden file: it runs the real
 optimizer and compares press times.
 
-⚠ **T1 PASSES as of 07-30; T2 does not — `1 of 2`.** Five defects closed that day (MODEL-DEFECTS
-§8h–§8k): the per-cast sum mispriced a haste buff by ~0.15 casts so **the integral ranks now**, paired
-with a tie-break; the integral scored windows from the press rather than the fire; the search's ±12 s
-neighbourhood could not reach the answer at all (0.67 casts on T2); the two cast lattices were rounded
-differently; and a GCD-gap sliver with no cast in it was being priced.
-⛔ **T2's remaining three presses are D1 proper, and D1 now has an ADDRESS.** It is not the scorer — it
-is the **cooldown-readiness deferral**. The Icon's 2-minute cooldown chains from its fire, so pressed at
-0:20 it is ready at exactly `140.000`, which falls just *after* a cast boundary, and `if (minStart > t +
-EPS) continue;` defers its second use a full 1.496 s; pressed at 0:19 it is ready at `139.000` and lands
-on `140.000`. The model resolves which side of a boundary a cooldown expires on — a sub-cast phase no
-player controls — and prefers the lucky side by 0.029 casts. ⚠ The guard itself must NOT be loosened
-(PHASE12 §6.14c: a relaxed readiness test emits plans the sim cannot execute, HELD 18 of 196). The fix is
-the phase expectation of the deferral, i.e. the unbuilt hybrid. In CI the job is `continue-on-error:
-true`; flip it to `false` the day T2 joins T1.
+✅ **`2 of 2` AS OF 2026-07-30, and the CI job is BLOCKING again** (`continue-on-error` removed — that
+flag's stated exit condition was *"the day anchors goes green"*). **MODEL-DEFECTS D1 IS CLOSED.** Seven
+defects fell that day, §8h–§8m, and the through-line is one sentence: **the cast lattice had leaked into
+the ranking objective in four separate places.**
+
+1. **The per-cast sum mispriced a haste buff by ~0.15 casts** — it ranked *Berserking with nothing up*
+   (0.7250) above *Berserking inside Bloodlust* (0.7203) against laws of 0.667 and 0.867. ⇒ **the
+   integral ranks now**, and the 07-28 revert is explained not contradicted (§8h).
+2. **No tie-break**, so the integral's flat plateaus were resolved arbitrarily — which is exactly what
+   the 07-28 Hydross duel punished. ⇒ the objective is a **pair**: integral, then fewest distinct press
+   moments → earliest → the flattened press vector.
+3. **The search could not reach the answer at all** — a ±12 s per-press neighbourhood, when the declared
+   Berserking is +20 s away on T1 and +120 s on T2. Worth **0.67 casts** (§8j).
+4. **★ `scoreStart` is now PURE WINDOW GEOMETRY** (§8l, from the user's argument): the integral is
+   `∫ rate(m(t)) dt` and `m(t)` is set by press times, durations and wall events — a cast lattice has no
+   business in it. Three earlier versions each smuggled it in and each cost a measurable defect.
+5. **…and so is the cooldown chain the ranking reads.** `lastFire` legalises (wowsims starts a cooldown
+   at the cast, PHASE12 §6.14c — loosening that emits plans the sim cannot execute, HELD 18 of 196);
+   a parallel `lastScore` chain prices. Two chains on purpose; **do not merge them**.
+6. **A co-pressed cluster now slides as a unit.** The last gap was a *coupled* coordinate: on T2 the
+   declared layout and the emitted one had **bit-identical** integrals (Δ = −2.8e-14) and the declared
+   had 2 distinct press moments against 4 — but every single-track step toward it was downhill
+   (−0.067, −0.067, −0.018) because it **split the cluster**, Arcane Power ×1.30 and the gem +225 SP
+   multiplying each other. Coordinate descent cannot reach a coupled optimum at any effort; the
+   simultaneous move can. The subsets are read off the plan (tracks grouped by press second), not
+   guessed.
+7. Plus a GCD-gap sliver containing no cast being priced (§8k) and two differently-rounded lattices.
+
+⚠ **The band is `TIE_CASTS = 0.002` casts and it is BRACKETED BY MEASUREMENT, not tuned** — 1.8× above
+the measured resolution floor (two layouts provably equal by the closed forms differ by 0.001097) and
+5.8× below the smallest verified law step (0.011532). ⛔ Do not raise it: at 0.0115 Berserking starts
+sliding out of Bloodlust for free.
 
 ⛔ **DELETED on 07-28, not disabled** — read `tests/anchors.mjs`'s header before recreating any of them:
 `exact-match.mjs` + `golden.json` (asserted stability, never correctness, and were re-recorded twice
@@ -85,6 +103,18 @@ universal and its R3 rested on a cast count later shown to be ramp-neutral), and
 not lying, never which plan is best: `tests/sim-request.mjs`, `tests/sim-duel.mjs`,
 `tests/page-equiv.mjs`, `tests/press-fire.mjs`, `tools/self-consistency.mjs`. CI runs all of them, and
 those jobs ARE blocking.
+
+★★★★ **AND THE NEWEST ONE IS THE MOST USEFUL: `node tools/law-check.mjs`.** It asserts the SCORER
+against `docs/ESTABLISHED-FACTS.md`'s closed forms — what 10 s of Berserking is worth in three different
+company, the haste × haste cross term, kill truncation, and the invariant that a lone press slid in the
+fight's interior changes **nothing**. ★ Every one of the seven defects closed on 07-30 was found by
+comparing a measured number to a closed form, and **not one of them would have been caught by a plan
+diff or a golden file** — the goldens had absorbed several of them for weeks. Its expectations are
+*derived in the file*, never copied from a run, and it ships a negative control
+(`--self-test` drops the millisecond quantisation, a 3.6 % error, and must be CAUGHT).
+⚠ `self-consistency` and `law-check` answer different questions and you want both: the first asks
+whether the scorer agrees with **itself**, the second whether it agrees with the **algebra**. The first
+printed a clean `0.00e+0` straight through all seven defects.
 
 ⚠ **With the goldens gone, the stability question needs an instrument, and it already exists.** Use
 `plan-sweep` + `plan-diff` before and after an engine change — it reports **Δscore** per cell with a

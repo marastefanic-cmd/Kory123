@@ -1881,3 +1881,94 @@ one, and widen nothing until that number is known.**
 
 Gates after: `self-consistency` 0.00e+0 / 0 structural · `page-equiv` 2/2 · `sim-request` §0 ·
 `bench --preset "2:00 lust 0:05" --vs naive` **MODEL +1.531 % AGREES with the sim**.
+
+---
+
+## §8m — ✅✅ D1 IS CLOSED. `2 of 2`. (07-30)
+
+```
+node tests/anchors.mjs
+PASS  T1 — 2:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit
+PASS  T2 — 3:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit
+2 of 2 passed.
+```
+
+`.github/workflows/ci.yml`'s `the-tests` job has had `continue-on-error` **removed** — its stated exit
+condition was *"the day anchors goes green"*.
+
+### The last defect: a COUPLED coordinate the descent could not reach
+
+After §8l the scorer was right and T2 still emitted `scb[22,142] AP[22] zerk[142]` against the declared
+`[20,140] [20] [140]`. The two are **the same plan in value**:
+
+```
+integral  WANT 144.10964343   GOT 144.10964343   Δ = −2.8e-14      (bit-identical)
+per-cast  WANT 143.930242     GOT 143.930242     Δ =  0.000000      (exact)
+distinct press seconds   WANT 2   GOT 4
+```
+
+So the tie-break wanted the declared layout. It could not get there, because **every single-coordinate
+step toward it is downhill**:
+
+```
+slide scb alone  by −2   Δ = −0.067
+slide AP alone   by −2   Δ = −0.067
+slide zerk alone by −2   Δ = −0.018
+slide all three  by −2   Δ = −2.8e-14   ✓
+```
+
+Each lone step **splits the cluster**, and Arcane Power (×1.30) multiplies the gem (+225 SP) — the
+`dmg × sp = n·d·s` cross term of ESTABLISHED-FACTS §4. A coordinate descent cannot reach a coupled
+optimum like that at any effort or any number of rounds; only the simultaneous move can.
+
+**Fix:** a fourth move class in `phaseRerank` — **a co-pressed cluster slides as a unit**. The subsets
+are not guessed, they are read off the plan: group the planner-controlled tracks by the second they are
+pressed at, and slide each such group together. A handful of candidates, deterministic, and it is the
+same structure D2 calls *"cluster with the other presses"*.
+
+### The through-line for all seven
+
+**The cast lattice had leaked into the ranking objective in four separate places** — `scoreStart` (three
+different wrong values in one day), the cooldown chain the ranking reads, the interval quantisation, and
+a GCD-gap sliver. The integral is `∫ rate(m(t)) dt`; `m(t)` is set by press times, durations and wall
+events; a lattice has no business in it. The split is now explicit and must stay:
+
+| | ranks | executes |
+|---|---|---|
+| window start | `scoreStart` = legalized press moment (geometry) | `start: auraAt` = the real fire boundary |
+| cooldown chain | `lastScore` — press-chained | `lastFire` — fire-chained, as wowsims does |
+| why | the player controls the press, not which side of a boundary it lands on | `sim/planspec.mjs` transcribes this; it must be executable |
+
+⛔ **Do not merge the two chains.** Fire-chaining the ranking is what dragged the lattice back in through
+the back door (the Icon pressed at 0:20 *fires* at 20.998 purely because that is where a boundary fell,
+so its 2-minute cooldown read ready at 2:21.496 and the second cluster could not co-press at all).
+Press-chaining legality is what PHASE12 §6.14c already banned (HELD 18 of 196).
+
+### Verification, in full
+
+| gate | result |
+|---|---|
+| `tests/anchors.mjs` | **2 of 2** |
+| `tools/law-check.mjs` (new) | all 6 closed forms reproduce at ≤5e-4 |
+| `tools/law-check.mjs --self-test` | negative control CAUGHT by 4 lines |
+| `tools/self-consistency.mjs` | 0.00e+0, **0** structural violations |
+| `tests/page-equiv.mjs` + `--self-test` | 2/2, seeded break caught |
+| `tests/sim-request.mjs` | protocol invariants PASS |
+| `tests/sim-duel.mjs` | wasm boots, paired delta 0.710 % |
+| `bench --vs naive`, 4 presets | `2:00` +1.531 % · `3:20` +1.284 % · `2:40 lust 0:07` +1.491 % · `1:40` +1.774 % — **all AGREE with the sim**, +35 to +43 DPS over the control |
+
+⚠ **Blast radius, stated plainly:** `plan-diff` reports **16 of 16** preset plans changed, 15 scoring
+lower on the per-cast sum. That sum is the number §8h proved mispriced, so a drop in it is not evidence
+of harm — but it is not evidence of improvement either, and `plan-diff` says so itself
+(*"scorer identity is UNPROVABLE here — grade these with a duel"*). The four presets sim-checked above
+all agree; **the remaining twelve have not been duelled.** That is the open verification debt from this
+change, and `docs/ACCEPTANCE.md` still has no current reading.
+
+### ★ The lasting lesson, and it is about instruments
+
+Seven defects, and **every single one was found by comparing a measured number to a closed form.** Not
+one would have been caught by a plan diff, a golden file, or `self-consistency` — which printed a clean
+`0.00e+0` straight through all seven, because it asks whether the scorer agrees with *itself*. Two of
+them had been absorbed by the goldens for weeks. `tools/law-check.mjs` now automates the method that
+worked, with its expectations **derived in the file** and a negative control that proves it can resolve
+a 3.6 % error.

@@ -35,15 +35,18 @@
 //     the STRUCTURAL choice: cluster with the other presses, fewest distinct press moments, most robust
 //     to a press landing late. Same ruling as `docs/MODEL-DEFECTS.md` D2.
 //
-// ⚠ T1 PASSES as of 2026-07-30. T2 does not, and its three remaining presses are MODEL-DEFECTS D1
-// proper — now with an address: the COOLDOWN-READINESS DEFERRAL, not the scorer. The Icon's 2-minute
-// cooldown chains from its fire, so pressed at 0:20 it is ready at exactly 140.000, just after a cast
-// boundary, and its second use is deferred a full 1.496 s; pressed at 0:19 it is ready at 139.000 and
-// lands on 140.000. The model resolves which side of a boundary a cooldown expires on and prefers the
-// lucky side by 0.029 casts. ⛔ Do not loosen the readiness guard to fix it (PHASE12 §6.14c: that emits
-// plans the sim cannot execute). And do not loosen this assertion either — a press OUTSIDE its law is a
-// scoring defect, a press on the wrong member of a plateau is a tie-break defect, and they are fixed in
-// different places. Full record: docs/MODEL-DEFECTS.md §8h-§8k.
+// ✅ BOTH PASS as of 2026-07-30 — `2 of 2` — and the CI job is BLOCKING again. MODEL-DEFECTS D1 is
+// CLOSED. Seven defects fell to get here (§8h-§8m) and the through-line is one sentence: the cast
+// lattice had leaked into the RANKING objective in four separate places. The integral is now pure
+// window geometry (`∫ rate(m(t)) dt` over press times, durations and wall events), its cooldown chain
+// is geometric too, the objective is a pair (integral, then fewest press moments -> earliest), and the
+// descent can slide a co-pressed cluster as a unit.
+// ⛔ IF THIS GOES RED, DO NOT LOOSEN THE ASSERTION AND DO NOT RESTORE `continue-on-error`. Run
+// `node tools/law-check.mjs` first: it asserts the scorer against the closed forms, and every one of
+// the seven defects was found that way rather than by any plan diff. A press OUTSIDE its law is a
+// scoring defect; a press on the wrong member of a plateau is a tie-break defect; a press the search
+// never visited is a search defect. They are fixed in three different places and law-check tells you
+// which. Full record: docs/MODEL-DEFECTS.md §8h-§8m.
 import { loadEngine, ALL_BUFFS } from '../tools/engine-node.mjs';
 
 const api = loadEngine(new URL('../index.html', import.meta.url).pathname);
