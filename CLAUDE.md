@@ -18,8 +18,9 @@ You enter a fight (length, Bloodlust
 timing, intermission/AoE phases) and it computes the **optimal moment to press each on-use
 cooldown** (Icy Veins, Arcane Power, Icon of the Silver Crescent, Serpent-Coil gem, Berserking),
 plus a burn timeline, a per-window activation schedule, and a copy-as-text plan. Alongside it:
-`tests/` — a **deterministic exact-match regression suite** (the planner seeds from a fixed PRNG,
-so one setup ⇒ exactly one schedule), each case sim-verified against wowsims.
+`tests/` — **two tests** (`tests/anchors.mjs`): the two layouts the user declared exactly. The goldens
+and the plan-shape suites are **deleted** (user decision 07-28, restated twice) — everything else in
+`tests/` is a harness-integrity gate, not a claim about which layout is right.
 
 ## The end goal (why this exists)
 
@@ -52,16 +53,39 @@ Additional payoffs the same engine unlocks (nice-to-haves, not the point):
 ## How to run the tests
 
 ```
-cd tests && npm install && CHROMIUM=/opt/pw-browsers/chromium node exact-match.mjs
+node tests/anchors.mjs
 ```
-Loads the real `index.html` headless, reads the fight tables from the page (`window.BOSS_PRESETS` — the
-real phase encounters — and `window.GOLDEN_PRESETS` — the abstract **Debugging presets**), runs every
-one through the actual optimizer, compares the copy-as-text plan to `golden.json` (25 cases). `--update`
-regenerates goldens (do this ONLY after an intentional change, and only when each changed plan improves
-the effective-ABs count — sim-verified when a blind spot is in play, per the methodology in
-`docs/TOOLING.md`). The two preset arrays are defined once in `index.html` (`BOSS_PRESETS` +
-`GOLDEN_PRESETS`) and drive both the UI (the "Boss presets" / "Reference fights" strips) and the suite,
-so a preset you confirm in the tool **is** the locked test.
+**★ There are exactly TWO tests, and they are the two layouts the user declared exactly** (2:00 and
+3:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit — every press time pinned, per their ruling
+*"these two need to always be this way"*). No browser, no rig, no golden file: it runs the real
+optimizer and compares press times.
+
+⛔ **They are RED today and that is the correct state.** `docs/MODEL-DEFECTS.md` D1 is open — the
+optimizer resolves a sub-cast lattice phase the player cannot control, so its answer moves with an
+input given only to the second (§8f measured the mechanism; §8g cleared the scorer). These two ARE the
+target of that fix. In CI the job is `continue-on-error: true` so a known-red gate cannot block an
+unrelated merge; flip that to `false` the day it goes green.
+
+⛔ **DELETED on 07-28, not disabled** — read `tests/anchors.mjs`'s header before recreating any of them:
+`exact-match.mjs` + `golden.json` (asserted stability, never correctness, and were re-recorded twice
+this month to accommodate objective changes), `layout-rules.mjs` (asserted a prose paraphrase of rules
+that belong in `docs/ESTABLISHED-FACTS.md` with their algebra — its R4 encoded a two-body rule as
+universal and its R3 rested on a cast count later shown to be ramp-neutral), and `monotonicity.mjs`.
+
+⚠ **The harness-integrity gates STAY and are a different kind of thing** — they assert the harness is
+not lying, never which plan is best: `tests/sim-request.mjs`, `tests/sim-duel.mjs`,
+`tests/page-equiv.mjs`, `tests/press-fire.mjs`, `tools/self-consistency.mjs`. CI runs all of them, and
+those jobs ARE blocking.
+
+⚠ **With the goldens gone, the stability question needs an instrument, and it already exists.** Use
+`plan-sweep` + `plan-diff` before and after an engine change — it reports **Δscore** per cell with a
+regression verdict instead of a text diff, needs no file to maintain, and runs in ~33 s:
+```
+node tools/plan-sweep.mjs index.html A.json 3 --max-t=200   # before
+node tools/plan-sweep.mjs index.html B.json 3 --max-t=200   # after
+node tools/plan-diff.mjs A.json B.json
+```
+Full rationale and both instrument controls: `docs/archive/10-phase9-performance.md §5`.
 
 ### The sim gates (added 07-26 — they need no rig)
 
@@ -77,21 +101,11 @@ request the **website** builds equals the one the **runner** builds, field for f
 loudly** without `RUNNER` rather than passing quietly. Run it after touching anything under `sim/`,
 `tools/genapl-core.mjs`, or a character export.
 
-**⚠ The figure below is `exact-match`'s, not `sim-request`'s** (PHASE9 §5.1) — it sits here
-because the *plan* gate is the one you would otherwise reach for on every edit. **That gate takes
-~6 minutes (348 s at `jobs=3`, measured 07-27; the long-standing "9m07s" predates Phase 12's rewrite
-of the scoring walk — treat EVERY CPU figure in this repo the same way), so it is not the every-edit
-loop.** For that, sweep the same corpus in **bare
-node** (the engine is DOM-free — it already runs in a Web Worker) and diff the two runs at full float
-precision — **~33s for 16 of 25 cases, ~16× faster**:
-```
-node tools/plan-sweep.mjs index.html A.json 3 --max-t=200   # before the change
-node tools/plan-sweep.mjs index.html B.json 3 --max-t=200   # after
-node tools/plan-diff.mjs A.json B.json
-```
-It needs no golden to maintain and prints the **changed-cell work list**. Then run exact-match before
-committing an engine change (it also covers the render path, which the sweep never touches). Full
-rationale, measurements, and both instrument controls: `docs/archive/10-phase9-performance.md §5`.
+**⚠ The `plan-sweep`/`plan-diff` loop above is now the ONLY plan-stability instrument** — the ~6-minute
+`exact-match` gate it used to be paired with is deleted. That is a net gain for the every-edit loop
+(~33 s for 16 of 25 cases) and one real loss: the sweep runs the DOM-free engine, so it never touches
+the render path. If you change `renderTimeline`/`scheduleRows`, the sweep will not see it — open the
+page.
 
 **And when a changed cell needs the SIM, that is one command and no setup:**
 ```
@@ -137,8 +151,8 @@ changing the model or the passes**, and keep it updated as the living theorycraf
   The trap: `tbc-new` declares Go module `github.com/wowsims/tbc`, so deriving the URL from an import
   lands on the dead repo — and on 07-26 the shipped page *linked* to the dead one for the same reason.
   Read the URL, never derive it; check drift with `bash tools/upstream-drift.sh`. Details: TOOLING.
-- **Determinism is a feature.** Any change must keep one-setup-⇒-one-schedule, or the exact-match
-  tests become meaningless. Don't add `Date.now()`/`Math.random()` outside the seeded PRNG.
+- **Determinism is a feature.** Any change must keep one-setup-⇒-one-schedule, or `plan-diff` and the
+  two tests become meaningless. Don't add `Date.now()`/`Math.random()` outside the seeded PRNG.
 - **★★★★ THE OBJECTIVE IS EXACT — ✅ LANDED 07-27, AND IT MUST STAY THAT WAY.**
   Effective ABs cast is a **deterministic per-cast sum**: for each Arcane Blast the model knows the
   haste and stacks (hence cast time), whether AP is up (×1.30), which SP buffs apply (normalized

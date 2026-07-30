@@ -1,131 +1,105 @@
-// ANCHORS — tests that assert what a plan SHOULD be, not what it currently is.
-//
-// `exact-match` + `golden.json` assert **stability**: they lock in whatever the optimizer said the day
-// they were recorded. This file is the other kind — each case asserts a placement that is backed by
-// **two independent sources** and would still be right if the optimizer were rewritten tomorrow:
-//
-//   1. a rule from `docs/ESTABLISHED-FACTS.md`, measured on its own bare-fight corpus, and
-//   2. a wowsims duel, which does not care what proposed the layout.
-//
-// ⚠ AN ANCHOR IS NOT A GOLDEN. It never asserts a whole timeline — only the one property the two
-// sources agree on. Pinning the other presses would smuggle today's answers back in under a better
-// name, which is the exact failure this file exists to escape.
-//
-// ── STATUS 07-28 ──────────────────────────────────────────────────────────────────────────────────
-// ✅ **A1 PASSES.** The D1 fix landed (`phaseFinish` in `index.html`, MODEL-DEFECTS §8e) and the
-// optimizer now puts Berserking inside Bloodlust. The header note that used to sit here — "this suite
-// is expected to fail, A1 is the target" — is discharged for A1.
-//
-// ⛔ **A2 and A3 still FAIL, and the failure has changed in kind.** They lock exact timestamps; the
-// phase-ranked optimizer emits a THIRD layout (A2: Icy Veins 0:06/0:26 · cluster 0:23 · Berserking
-// 0:50) which it scores ABOVE ground truth on the objective it now ranks on. So the diff no longer
-// says "a press is outside its rule" — it says "not these exact seconds". Read the diff before
-// concluding anything: the two mean different things, and only the first is a scoring defect.
+// THE TESTS. There are two, and they are the two layouts the user declared exactly.
 //
 //   node tests/anchors.mjs
+//
+// ── WHY THIS IS THE WHOLE SUITE (user decision, 2026-07-28, restated twice) ───────────────────────
+// *"I think it would be better if we got rid of all the 'goldens' and 'tests' and just established
+// them from the ground up on extremely concrete examples."*  …  *"I want only the two exactly declared
+// layouts to be tests."*
+//
+// So the plan-correctness gates that used to live beside this file are **deleted**, not disabled:
+//   · `exact-match.mjs` + `golden.json` — locked whatever the optimizer said the day they were
+//     recorded. They asserted STABILITY, never correctness, and they were re-recorded twice this month
+//     to accommodate objective changes — a test rewritten whenever it disagrees is not a test.
+//   · `layout-rules.mjs` — asserted plan SHAPE from a prose spec. Its R4 encoded a two-body rule as
+//     universal (the Berserking × Bloodlust sign depends on the FULL multiplier — ESTABLISHED-FACTS
+//     §5.1), and its R3 rested on a per-cast-sum cast count that §1.2b later showed is ramp-NEUTRAL.
+//     Rules belong in the facts doc with their algebra; a paraphrase asserted here aged worse.
+//   · `monotonicity.mjs` — a real invariant, but one `tools/` can sweep on demand.
+//
+// ⚠ **The harness-integrity gates are NOT tests of the plan and they stay**: `sim-request.mjs`
+// (protocol invariants), `sim-duel.mjs` (the wasm boots), `page-equiv.mjs` (page == terminal request),
+// `press-fire.mjs` (transcription grading) and `tools/self-consistency.mjs` (the scorer agrees with its
+// own board). They catch a broken wasm, a drifted protocol constant and a self-contradicting scorer —
+// none of which is a claim about which layout is best. Deleting those removes the floor this file
+// stands on.
+//
+// ── WHAT THESE TWO ASSERT, AND WHY TIMESTAMPS ARE FAIR GAME HERE ──────────────────────────────────
+// Both pin **every press time**, which is the user's explicit ruling: *"these two examples I sent are
+// genuinely safe to lock even the timestamps on… these two need to always be this way."* It rests on
+// two separate grounds and it matters which one a failure is about:
+//   · the SCORE part — Bloodlust is pinned late (0:20) so no Arcane-Blast-stack cheese is available,
+//     every press follows a law in `docs/ESTABLISHED-FACTS.md`, and wowsims prefers these layouts over
+//     what the optimizer emitted (Example 1: +2.0 DPS ± 0.37 over 5 seeds).
+//   · the TIE-BREAK part — where a press sits on a plateau the sim cannot resolve, the exact second is
+//     the STRUCTURAL choice: cluster with the other presses, fewest distinct press moments, most robust
+//     to a press landing late. Same ruling as `docs/MODEL-DEFECTS.md` D2.
+//
+// ⛔ EXPECTED RED TODAY, and the diff says which half broke. MODEL-DEFECTS D1 is open: the optimizer
+// resolves a sub-cast lattice phase the player cannot control, so its answer moves with an input given
+// only to the second. §8f measured the mechanism, §8g cleared the scorer; the objective fix is not
+// built. A press OUTSIDE its law is a scoring defect; a press on the wrong member of a plateau is a
+// tie-break defect. Do not "fix" the second by loosening the assertion.
 import { loadEngine, ALL_BUFFS } from '../tools/engine-node.mjs';
 
 const api = loadEngine(new URL('../index.html', import.meta.url).pathname);
-let failures = 0, ran = 0;
 
+// FALSE-PASS GUARD: an engine without per-cast `frac` predates the boundary-credit board, and every
+// verdict below would be about a scorer that no longer exists.
+{
+  const c = { T: 30, hasteRating: 0, sp: 1000, critPct: 25, enabled: {}, fixed: {}, warnings: [], coldSnap: true, segments: null };
+  const probe = api.simulate(api.repair({}, c), c, true);
+  if (!probe.casts || probe.casts[0].frac === undefined) {
+    console.error('ANCHORS ERROR: this index.html predates the boundary-credit board (casts[].frac).');
+    process.exit(2);
+  }
+}
+
+const KIT = ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking', 'bloodlust'];
 const cfgFor = c => ({
-  T: c.T, hasteRating: c.haste, sp: c.sp, critPct: c.crit,
-  enabled: Object.fromEntries(ALL_BUFFS.map(k => [k, c.kit.includes(k)])),
-  fixed: c.pins || {}, warnings: [], coldSnap: c.coldSnap !== false, segments: null,
+  T: c.T, hasteRating: 0, sp: c.sp, critPct: c.crit,
+  enabled: Object.fromEntries(ALL_BUFFS.map(k => [k, KIT.includes(k)])),
+  fixed: { bloodlust: [20] }, warnings: [], coldSnap: true, segments: null,
 });
 
-// Fire times, not press intents — a press at 39 that fires at 40.4 is a press at 40.4 as far as any
-// statement about buff overlap is concerned.
-function fireTimes(sched, cfg) {
-  const r = api.simulate(api.repair(JSON.parse(JSON.stringify(sched)), cfg), cfg, true);
-  return { casts: r.casts, val: r.robust };
-}
-
-async function anchor({ name, why, sources, c, assert: check }) {
-  ran++;
-  const cfg = cfgFor(c);
-  const out = await api.optimizeAsync(cfg, undefined, () => {});
-  const sched = out.s;
-  const verdict = check(sched, cfg);
-  const ok = verdict === true;
-  if (!ok) failures++;
-  console.log(`${ok ? 'PASS' : 'FAIL'}  ${name}`);
-  console.log(`      why: ${why}`);
-  console.log(`      backed by: ${sources}`);
-  console.log(`      emitted: ${Object.entries(sched).map(([k, v]) => `${k}@${v.map(x => +x.toFixed(2)).join('/')}`).join('  ')}`);
-  if (!ok) console.log(`      ⛔ ${verdict}`);
-  console.log('');
-}
-
-// ── A1 ────────────────────────────────────────────────────────────────────────────────────────────
-// Berserking (×1.10, 10 s) with Bloodlust (×1.30) is ×1.43 — UNDER the 1.5 the GCD floor needs, so
-// nothing is clipped and the full multiplicative cross-term lands. ESTABLISHED-FACTS P4 measures it at
-// +0.2056 casts at h=0. The sim agrees: on this exact fight, Berserking inside Lust scores 193000
-// against 192665 outside it.
-await anchor({
-  name: 'A1 — Berserking sits inside Bloodlust at h=0',
-  why: 'the pair is x1.43, under the GCD floor, so the whole multiplicative bonus lands',
-  sources: 'ESTABLISHED-FACTS P4 (+0.2056 casts) · wowsims (193000 in-Lust vs 192665 out)',
-  c: { T: 120, haste: 0, sp: 1000, crit: 25, coldSnap: true, pins: { bloodlust: [20] },
-       kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking', 'bloodlust'] },
-  assert: (s, cfg) => {
-    const z = s.berserking && s.berserking[0];
-    if (z === undefined) return 'Berserking was not scheduled at all';
-    const dur = api.BUFFS.berserking.dur, lustStart = 20, lustEnd = 20 + api.BUFFS.bloodlust.dur;
-    // its whole window must lie inside Lust's
-    if (z >= lustStart - 1e-9 && z + dur <= lustEnd + 1e-9) return true;
-    return `Berserking fires @${z.toFixed(2)} covering ${z.toFixed(2)}-${(z + dur).toFixed(2)}, ` +
-           `outside Lust's ${lustStart}-${lustEnd}. MODEL-DEFECTS D1.`;
-  },
-});
-
-// ── A2 / A3 — FULL-TIMELINE anchors ───────────────────────────────────────────────────────────────
-// ★ These two lock every press time, not just one property. That is a deliberate exception to the
-// header's rule and it is the user's ruling (2026-07-28): *"these two examples I sent are genuinely
-// safe to lock even the timestamps on… these two need to always be this way."*
-//
-// It is defensible on two separate grounds, and it is worth being clear which is doing the work:
-//   · the SCORE part — Bloodlust is pinned late enough (0:20) that no Arcane-Blast-stack cheese is
-//     available, every cooldown's placement follows a rule in ESTABLISHED-FACTS, and wowsims prefers
-//     these layouts over what the optimizer emits (Example 1: +2.0 DPS ± 0.37 over 5 seeds).
-//   · the TIE-BREAK part — where a press sits on a plateau the sim cannot resolve (Berserking scores
-//     193000 at @40, @45 AND @50 on Example 1), the exact second locked here is the *structural*
-//     choice: cluster with the other presses, fewest distinct press moments, most robust to a press
-//     landing late. That is the same ruling as MODEL-DEFECTS D2.
-// ⚠ So an A2/A3 failure means one of two different things, and the diff will say which: a press
-// OUTSIDE its rule (a real scoring defect) or a press on the wrong member of a plateau (a tie-break
-// defect). Do not "fix" the second by loosening the anchor.
-const FULL = [
-  { name: 'A2 — 2:00, Lust@0:20, h=0, 1000 SP, 25% crit',
-    c: { T: 120, haste: 0, sp: 1000, crit: 25, coldSnap: true, pins: { bloodlust: [20] },
-         kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking', 'bloodlust'] },
+const CASES = [
+  { name: 'T1 — 2:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit',
+    T: 120, sp: 1000, crit: 25,
     want: { icyVeins: [0, 20], isc: [20], scb: [20], arcanePower: [20], bloodlust: [20], berserking: [40] } },
-  { name: 'A3 — 3:00, Lust@0:20, h=0, 1000 SP, 25% crit',
-    c: { T: 180, haste: 0, sp: 1000, crit: 25, coldSnap: true, pins: { bloodlust: [20] },
-         kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking', 'bloodlust'] },
+  { name: 'T2 — 3:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit',
+    T: 180, sp: 1000, crit: 25,
     want: { icyVeins: [20, 140], isc: [20, 140], scb: [20, 140], arcanePower: [20], bloodlust: [20], berserking: [140] } },
 ];
-for (const { name, c, want } of FULL) {
-  ran++;
+
+const mmss = t => `${Math.floor(t / 60)}:${String(Math.floor(t % 60)).padStart(2, '0')}`;
+const fmt = s => Object.keys(s).sort().map(k => `${k}@${s[k].map(mmss).join('/')}`).join('  ');
+
+let failures = 0;
+console.log('# THE TESTS — the two layouts declared exactly (user, 2026-07-28)\n');
+for (const c of CASES) {
   const cfg = cfgFor(c);
-  const out = await api.optimizeAsync(cfg, undefined, () => {});
-  const got = out.s;
+  const got = (await api.optimizeAsync(cfg, undefined, () => {})).s;
   const diffs = [];
-  for (const k of Object.keys(want)) {
-    const g = (got[k] || []).map(x => +x.toFixed(3)), w = want[k];
+  for (const k of Object.keys(c.want)) {
+    const g = (got[k] || []).map(x => +x.toFixed(3)), w = c.want[k];
     if (g.length !== w.length || g.some((v, i) => Math.abs(v - w[i]) > 1e-6)) diffs.push(`${k}: want [${w}] got [${g}]`);
   }
-  for (const k of Object.keys(got)) if (!(k in want)) diffs.push(`${k}: unexpected, got [${got[k]}]`);
+  for (const k of Object.keys(got)) if (!(k in c.want)) diffs.push(`${k}: unexpected, got [${got[k]}]`);
   if (diffs.length) failures++;
-  console.log(`${diffs.length ? 'FAIL' : 'PASS'}  ${name}`);
-  console.log(`      ground truth, user-ruled 07-28; Lust pinned late so no stack cheese is available`);
+  console.log(`${diffs.length ? 'FAIL' : 'PASS'}  ${c.name}`);
+  console.log(`      want  ${fmt(c.want)}`);
+  console.log(`      got   ${fmt(got)}`);
   for (const d of diffs) console.log(`      ⛔ ${d}`);
+  // Score both, so a failure carries its SIZE and not only its shape.
+  const V = s => api.simulate(api.repair(JSON.parse(JSON.stringify(s)), cfg), cfg).robust;
+  const one = (api.GAME.AB.AVG_BASE_DMG + api.GAME.AB.COEF * c.sp) * (1 + (c.crit / 100) * (api.GAME.CRIT_MULT - 1));
+  if (diffs.length) console.log(`      Δ (want − got) = ${((V(c.want) - V(got)) / one).toFixed(4)} effective casts on the shipped objective`);
   console.log('');
 }
 
-console.log(`${ran - failures} passed, ${failures} failed`);
+console.log(`${CASES.length - failures} of ${CASES.length} passed.`);
 if (failures) {
-  console.log('\n⛔ Expected while MODEL-DEFECTS D1 is open. This suite is the target for that fix,');
-  console.log('   not a regression signal — see the header.');
+  console.log('\n⛔ Expected while docs/MODEL-DEFECTS.md D1 is open — this suite IS the target for that');
+  console.log('   fix, not a regression signal. Read the header before loosening anything.');
 }
 process.exit(failures ? 1 : 0);

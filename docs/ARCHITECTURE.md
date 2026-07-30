@@ -584,10 +584,9 @@ Both use the same shape (`{name, T, pins}` + optional `gear`/`kit`/`intermission
 hostId)` → `goldenToState(p)` → `applyState(...)`; **`#preset-strip`** "Custom presets" is the
 localStorage user-saved strip (was "Boss presets"). The user presses "Find optimal overlay" to
 **compute** the plan — presets store setup, never a precomputed answer.
-- **Tests (`tests/`):** `exact-match.mjs` reads **both** `window.BOSS_PRESETS` and
-  `window.GOLDEN_PRESETS` (+ `GOLDEN_DEFAULTS`) headless, runs each through `optimizeAsync`,
-  canonicalizes the plan (setup header + windows + per-press times + Cold-Snap markers, minus cosmetic
-  peak-haste/price tags), diffs vs `golden.json` (25 cases: 10 boss + 15 debug). `--update` regenerates.
-
-So "what you click in the tool" and "what the suite locks" are still the same lists — a confirmed
-preset (boss or debug) is the exact-match test.
+- **Tests (`tests/`):** ⛔ **`exact-match.mjs` + `golden.json` are DELETED (07-28, user decision).** The
+  suite is now `tests/anchors.mjs` — **two** cases, the two layouts the user declared exactly, built
+  from their own cfg rather than from the preset arrays. So the presets no longer double as the test
+  corpus; they are UI setup only. Plan stability is `tools/plan-sweep.mjs` + `tools/plan-diff.mjs`
+  (Δscore per cell with a regression verdict, ~33 s), and the one thing that loop cannot see is the
+  render path — it runs the DOM-free engine.

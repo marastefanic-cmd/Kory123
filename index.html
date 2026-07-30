@@ -2114,6 +2114,8 @@ function phaseShift(s, cfg, d) {
   if (cfg.segments) c2.segments = cfg.segments.map(g => ({ ...g, start: Math.max(0, g.start - d), end: Math.max(0, g.end - d) }));
   return { s: s2, cfg: c2 };
 }
+// The SAMPLED phase mean. Kept as the REFERENCE — it is the definition `rankScore` below is graded
+// against, and `tools/phase-audit.mjs` reads it — but nothing ranks on it any more. See `rankScore`.
 function phaseScore(s, cfg, N) {
   N = N || PHASE_N;
   const P = latticePeriod(cfg);
@@ -2124,6 +2126,56 @@ function phaseScore(s, cfg, N) {
   }
   return acc / N;
 }
+/* ★★★★ THE RANKING QUANTITY — the rate integral, which IS the phase expectation, in closed form.
+   Landed 07-28 replacing a 12-sample average of the same thing. `E[casts in a segment of length L at
+   interval i] = L/i` averaged over phase is *exactly* what the integral computes, so the sampled mean
+   was a Monte-Carlo estimate of a quantity with an analytic answer — 12× the cost and, at N=12, still
+   noisy enough to read UNSTABLE on the anchor slide the fix exists to pass, while the integral reads
+   STABLE (MODEL-DEFECTS §8f).
+
+   Three corrections were hypothesised before this could land; **measurement retired all three**:
+     · the kill window — an integral needs none. It is a DE-QUANTIZER for the per-cast sum's 0/1 cliff
+       at the terminal cast; ∫₀^T has no cliff. Measured: `none`/`sym`/`oneSided` give the same margin
+       to four decimals on every ground-truth case, so it cancels. Default is now `none` (§8f).
+     · the haste-window edge term — 0.00000 against an N=96 mean, 13/13 rows. The derivation
+       double-counted: each buffed cast saves `(i_out − i_in)` wherever it sits, and which casts are
+       buffed is already set by which STARTS land inside the window (§8g).
+     · the value back-edge term (`boundaryCharge`) — the two edges cancel identically, ±½ a cast each,
+       independent of the local interval. It stays OFF, now for a derived reason (§8g).
+   ⇒ nothing is added on top. The integral as it stands is the objective.
+
+   ⚠ `simulate().robust` (the per-cast sum) remains the REPORTED score and every consumer still reads
+   it — the pooling comparison, `plan-diff`, the UI readout, the goldens. Only the CHOICE comes from
+   here, and `cfg.phaseRank === false` restores the pre-07-28 behaviour for A/B measurement. */
+function rankScore(s, cfg) { return simulate(cloneS(s), cfg).integral; }
+
+/* ⛔⛔ AND IT WAS TRIED AS THE RANKING ON 07-28 AND REVERTED THE SAME HOUR — the sim refused it, 137σ.
+   Nothing above is wrong: the integral IS the phase expectation, exactly, and all three hypothesised
+   corrections really are unnecessary. But ranking the finisher on it REGRESSED three sim-backed layout
+   rules at once (`tests/layout-rules.mjs` 15/16 → 13/16: the cluster stopped being co-pressed and the
+   first Icy Veins left the opening ramp), and a head-to-head duel on Hydross measured
+
+       point-ranked plan  2822.4 DPS      integral-ranked plan  2817.0 DPS
+       A − B = +5.4 DPS ± 0.04 over 3 seeds        (10 000 iterations each)
+
+   — the same sign and size layout-rules already cites on three separate bosses (+4.5 / +2.0 / +1.6).
+
+   ★★★★ AND THE REASON IS THE ONE THING THIS SESSION NEVER QUESTIONED: **THE PHASE IS NOT UNIFORM
+   EVERYWHERE. AT THE PULL IT IS KNOWN.** Every pull starts at t≈0 with 0 Arcane Blast stacks, so the
+   cast lattice near the opener is *deterministic*, not uniformly distributed — the accumulated
+   reaction/latency jitter that makes a late-fight phase unknowable has not accumulated yet. So:
+
+     · far from the pull  (Berserking at 0:40+) → phase genuinely uniform → the point score resolves
+       noise and the phase expectation is right. This is D1, and it is real.
+     · at the pull        (Icy Veins at 0:02 vs 0:05) → phase is KNOWN → averaging it away discards
+       information the player actually has, and the point score is right.
+
+   ⇒ The correct objective is a HYBRID: exact near the pull, phase-averaged once the jitter exceeds one
+   cast interval. `phaseScore`'s sampled form survives the duel where the integral does not precisely
+   because it clamps presses at 0 (`Math.max(0, x − d)`), which partly preserves opener structure — an
+   accident, not a design, and the reason it is still what `phaseFinish` ranks on.
+   ⛔ Do not re-point the ranking at `rankScore` without building that crossover first, and without
+   re-running `tests/layout-rules.mjs` AND a Hydross duel. Both caught this in under ten minutes. */
 /* Bounded coordinate descent under `phaseScore`, run ONCE on the search's winner.
    ★ WHY IT IS NOT IN THE SEARCH, which is where an earlier plan put it. The phase term is ~0.2 casts;
    the search's job is finding basins and its discrimination there is far coarser than that. Putting

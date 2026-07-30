@@ -3,8 +3,7 @@
   "private": true,
   "type": "module",
   "scripts": {
-    "test": "node exact-match.mjs",
-    "update": "node exact-match.mjs --update"
+    "test": "node anchors.mjs"
   },
   "dependencies": {
     "playwright-core": "^1.40.0"

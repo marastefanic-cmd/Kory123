@@ -50,7 +50,7 @@ export function loadEngine(htmlPath) {
     // constants table (reference-gear.mjs doctrine: read GAME, never re-type 720 / 2.5÷3.5 / 0.8175).
     api = new Function('window', 'self', `${eng}\n${bs}\n${presets}\n
       return { optimizeAsync, simulate, repair, buildSegments, naiveSchedule, BUFFS, GAME,
-               phaseScore, phaseRerank, latticePeriod, PHASE_N,
+               phaseScore, rankScore, phaseRerank, latticePeriod, PHASE_N,
                cases: [...window.BOSS_PRESETS, ...window.GOLDEN_PRESETS],
                nBoss: window.BOSS_PRESETS.length, nGolden: window.GOLDEN_PRESETS.length,
                defaults: window.GOLDEN_DEFAULTS };`)(win, globalThis);
