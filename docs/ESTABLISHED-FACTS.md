@@ -387,6 +387,48 @@ own — and each intermission re-ramp is another one.
 compressing them, its −2.3 s is haste-blind, and it makes a sim haste sweep non-monotone. The model
 opens cold (RULES §3, TOOLING ★★★).
 
+## 1.2d ★★★★ AN INTERMISSION LONGER THAN 8 s IS A NEW MINI-FIGHT — with the cooldowns still ticking
+
+**User rule, 07-28, and the threshold is not a heuristic — it is `GAME.AB.DEBUFF_DUR = 8 s` exactly.**
+Arcane Blast's own debuff carries the stacks; go 8 s without casting one and it falls off, so you come
+back at 0 stacks and pay the whole opener again.
+
+Verified — intermission at t = 80, h = 0, first cast after the gap:
+
+| gap length | stacks on the first cast after | its interval | cold starts in the fight |
+|---|---|---|---|
+| 4 / 6 / 7 / **7.9** s | **3** | 1.5000 | 1 |
+| **8.0** / 8.1 / 10 / 20 s | **0** | **2.5000** | **2** |
+
+**Sharp at 8.000.** And crossing it costs exactly the opener toll: gap 7.9 s → 8.0 s, downtime-corrected,
+is **−1.3320 casts** — §1.2's number to the digit.
+
+⇒ **Below 8 s a gap is just downtime.** It costs its own seconds and nothing else; the stacks survive,
+so the stream resumes at full speed. There is no re-ramp to plan around and no toll.
+
+⇒ **At or above 8 s, everything in §1.2–§1.2c applies again, from scratch:**
+1. a fresh **1.332-cast** toll, front-loaded `0.6667 / 0.4440 / 0.2213` per cast (§1.2a);
+2. the value buffs are ramp-averse again by `1.332 · s` — **0.40 casts for Arcane Power** (§5.6b);
+3. the wait-or-press-now decision is live again, and it is the *truncated* form that usually binds
+   because a post-intermission burn window is short: **wait one more cast iff the buff still fits
+   afterwards**, and once it does not, each further cast of waiting costs a flat `s` (§5.7);
+4. haste cooldowns are ramp-**neutral** across the new ramp below their own onset threshold and
+   ramp-**preferring** above it (§1.2b) — and **above the steady cap the new opener is the only place
+   they pay anything at all** (§1.1). A fight with three re-ramps has three of those.
+
+⚠⚠ **BUT IT IS NOT A FRESH FIGHT IN THE ONE WAY THAT MATTERS MOST: the cooldowns kept ticking.** The
+downtime spends cooldown time and buys nothing. So the second mini-fight is planned against
+*availability*, not against a fresh budget — Bloodlust (600 s) will not be back, Icy Veins (180 s) and
+Arcane Power (180 s) may or may not be, Icon and Serpent-Coil (120 s) usually are. **A long
+intermission is therefore strictly worse than the same seconds of uptime**, by its own length *plus*
+1.332 casts *plus* whatever cooldown time it wasted — three separate costs, and only the first is
+obvious.
+
+★ Practical consequence, and it is the reverse of the intuition: **the presses you want to fire just
+BEFORE a long intermission are the ones whose cooldown will come back during it.** Anything whose
+cooldown outlasts the downtime should be held for the exit, where it can cover the new ramp's cluster
+instead of expiring into an empty room.
+
 ## 1.3 What one point of haste rating is worth
 
     d(rate)/dh  =  1 / (G · RTG)  =  1 / 2365.5  =  4.2274e-4  casts/s per point       (m < 1.5)
@@ -919,6 +961,11 @@ Consequences, each traceable to a line above. None is an axiom.
    **ramp-neutral** there — pressing it before cast 1 or at 0:60 is identical (§1.2b). Above the buff's
    own onset threshold that inverts, and above the steady cap the opener is the *only* place a haste
    cooldown is worth anything at all.
+7. **Treat every intermission ≥ 8 s as a new mini-fight** (§1.2d) — the Arcane Blast debuff drops at
+   exactly `DEBUFF_DUR`, so rules 1–6 all reset. Below 8 s it is only downtime and nothing resets.
+   ⚠ The cooldowns kept ticking through it, so plan the second mini-fight against **availability**, and
+   hold anything whose cooldown outlasts the downtime for the exit rather than spending it into an
+   empty room.
 
 ---
 
