@@ -70,12 +70,16 @@ const DELTAS = []; for (let d = -SPAN; d <= SPAN; d++) if (d) DELTAS.push(d);
 
 const rows = [];
 const seedNotes = [];
-let bad = 0, graded = 0, skipped = 0;
+let bad = 0, scoreBad = 0, graded = 0, skipped = 0;
 
 for (const cell of sweep.cells) {
   if (cell.error || !cell.s) { skipped++; continue; }
-  const kase = api.cases.find(c => c.name === cell.name);
-  if (!kase) { skipped++; console.error(`  ⚠ skipping "${cell.name}" — not in the current fight table`); continue; }
+  /* ★ A CELL MAY CARRY ITS OWN `setup` — prefer it. `tools/kit-sweep.mjs` emits cells for gear the
+     preset table does not contain at all, and the same lesson applies as to `search-witnesses.json`:
+     a cell is a fact about a FIGHT, not a row in a table. A name-keyed cell is one preset rename from
+     void, which is exactly how the witness gate spent days exiting 2 instead of checking anything. */
+  const kase = cell.setup ? { name: cell.name, ...cell.setup } : api.cases.find(c => c.name === cell.name);
+  if (!kase) { skipped++; console.error(`  ⚠ skipping "${cell.name}" — not in the current fight table and no inline setup`); continue; }
   const cfg = cfgFor(api, kase);
   const clone = o => JSON.parse(JSON.stringify(o));
   const rep = s => api.repair(clone(s), cfg);
@@ -164,15 +168,26 @@ for (const cell of sweep.cells) {
   const plain = (api.plainCastOf && api.plainCastOf(cfg)) || 1;
   const gainCasts = best ? (best.v - base) / plain : 0;
   const kMoved = best ? best.deltas.length : 0;
+  /* ★ TWO KINDS OF MISS, AND THEY ARE NOT THE SAME SEVERITY — separated 07-30 after the first kit
+     sweep reported "beaten by +-0.001323 casts", i.e. a NEGATIVE gain, which reads as nonsense.
+       · SCORE miss   — the candidate scores higher by more than the band. Real lost damage; the
+                        descent could not reach a better plan. §8j/§8m/§8s are all this.
+       · TIE-BREAK miss — the candidate is TIED on score (inside the band) and better on SHAPE, so
+                        `planBetter` prefers it but the descent settled on the other member. Nothing
+                        is lost in damage; the plan is simply not the canonical member of its plateau.
+     Reporting them with one label made a 0.0013-cast canonicalisation look like a scoring defect and
+     would have sent the next reader into `simulate()`. They are fixed in different places. */
+  const scoreMiss = best && gainCasts > (best.pair.band || 0) / plain;
   if (best) bad++;
+  if (scoreMiss) scoreBad++;
   rows.push({
     name: cell.name, T: cell.T, coords: coords.length, probes,
-    optimal: !best, gainCasts, kMoved,
+    optimal: !best, gainCasts, kMoved, scoreMiss: !!scoreMiss,
     move: best ? best.deltas.map(([ci, d]) => `${coords[ci][0]}#${coords[ci][1]}${d > 0 ? '+' : ''}${d}`).join(' & ') : null,
   });
 }
 
-if (JSONOUT) { console.log(JSON.stringify({ k: K, span: SPAN, selfTest: SELFTEST, rows }, null, 1)); process.exit(SELFTEST ? (bad === graded && graded > 0 ? 0 : 1) : (bad ? 1 : 0)); }
+if (JSONOUT) { console.log(JSON.stringify({ k: K, span: SPAN, selfTest: SELFTEST, rows }, null, 1)); process.exit(SELFTEST ? (bad === graded && graded > 0 ? 0 : 1) : (scoreBad ? 1 : 0)); }
 
 if (SELFTEST) {
   console.log(`# SEARCH AUDIT --self-test — every emitted plan was displaced by one press; each must be CAUGHT\n`);
@@ -192,12 +207,18 @@ if (SELFTEST) {
 console.log(`# SEARCH AUDIT — is each emitted plan a ${K}-coordinate local optimum within ±${SPAN}s?`);
 console.log(`#   sweep: ${SWEEP}\n`);
 for (const r of rows) {
-  const tag = r.optimal ? '✓ local-opt' : '⛔ NOT OPT ';
-  console.log(`  ${tag} ${r.name.padEnd(30)} T=${String(r.T).padStart(3)}  ${String(r.coords).padStart(2)} coords · ${String(r.probes).padStart(5)} probes` +
-    (r.optimal ? '' : `\n              → beaten by +${r.gainCasts.toFixed(6)} casts via a ${r.kMoved}-coordinate move: ${r.move}`));
+  const tag = r.optimal ? '✓ local-opt' : r.scoreMiss ? '⛔ SCORE   ' : '· tiebreak ';
+  console.log(`  ${tag} ${r.name.padEnd(38)} T=${String(r.T).padStart(3)}  ${String(r.coords).padStart(2)} coords · ${String(r.probes).padStart(5)} probes` +
+    (r.optimal ? '' : `\n              → ${r.scoreMiss ? `beaten by +${r.gainCasts.toFixed(6)} casts` : `TIED (Δ ${r.gainCasts.toFixed(6)}) but better SHAPE`}` +
+                      ` via a ${r.kMoved}-coordinate move: ${r.move}`));
 }
-console.log(`\nSEARCH-AUDIT k=${K} span=${SPAN} graded=${graded}${skipped ? ` skipped=${skipped}` : ''} localOptima=${graded - bad} MISSES=${bad}`);
-if (bad) {
+console.log(`\nSEARCH-AUDIT k=${K} span=${SPAN} graded=${graded}${skipped ? ` skipped=${skipped}` : ''} ` +
+            `localOptima=${graded - bad} SCORE-MISSES=${scoreBad} tieBreakMisses=${bad - scoreBad}`);
+if (bad - scoreBad) {
+  console.log(`\n· ${bad - scoreBad} cell(s) are TIED but not the canonical member of their plateau. No damage is`);
+  console.log('  lost; the fix is in `planBetter`/`planShape` or in the descent\'s move order, not in the scorer.');
+}
+if (scoreBad) {
   console.error('\n⛔ At least one emitted plan is beaten by a small simultaneous move — a SEARCH defect.');
   console.error('   ⛔ Do NOT "fix" this in `simulate()`. The scorer ranked the better plan correctly, which is');
   console.error('   how the miss was found at all; run `node tools/law-check.mjs` to confirm it is still green.');
@@ -206,6 +227,6 @@ if (bad) {
   console.error('   each was a move the descent could not make rather than a number it got wrong.');
   process.exit(1);
 }
-console.log('✓ every emitted plan survives its neighbourhood. ⚠ That is LOCAL optimality only — a press');
+console.log('✓ no SCORE miss — every emitted plan survives its neighbourhood. ⚠ That is LOCAL optimality only — a press');
 console.log('  120 s from where the descent put it (§8j) is outside every bounded neighbourhood.');
 process.exit(0);

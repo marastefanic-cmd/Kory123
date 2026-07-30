@@ -747,6 +747,54 @@ TOOLING), and var 0's fixed-end quantization masks sub-cast differences anyway (
 shows ~0%, var10 shows the real +0.6%). Yet another old-rig casualty — always cross-check var0 ↔ var10
 on the patched runner.
 
+## 7b. ★★★ PREPULL **ACTIVATION** — legal, occasionally worth it, and much narrower than it looks *(user, 07-30)*
+
+*"We still never precast Arcane Blast, but there's actually no harm in activating an item before the
+fight and having the cooldown start ticking just a little sooner."* Correct, and it is a genuinely
+different thing from the prepull the model bans: **RULES §3 / the cold-open rule is about CASTING**, and
+that stays — a prepull cast is haste-blind and makes a haste sweep non-monotone. Pressing a trinket at
+`−x` costs no cast and breaks nothing.
+
+**The algebra.** Pressing use `k` at `−x` instead of `0`:
+- use `k` loses the **tail** of its window, `[dur−x, dur]`, and gains `[−x, 0]`, which is prepull and
+  therefore worth zero;
+- use `k+1` becomes available `x` seconds earlier.
+
+```
+net = value(x s gained at use k+1) − value(x s lost from the tail of use k)
+```
+
+**Three conditions, and ALL of them must hold** — which is why the user's own instinct that it "makes
+very little sense in normal fights" is right:
+
+1. **The tail must already be dead.** Free only if `[dur−x, dur]` falls inside an intermission or past
+   the kill. Otherwise you are paying full price for it.
+2. **Use `k+1` must be COOLDOWN-LIMITED.** If it was placed by choice rather than by the cooldown, an
+   earlier cooldown changes nothing at all.
+3. **★ Use `k+1`'s window must be TRUNCATED at its far end.** This is the one that is easy to miss: an
+   untruncated 20 s window slid 5 s earlier is still 20 s of the same value. Sliding only *adds*
+   anything when the far end was being cut off — by the kill, or by a wall.
+
+**Measured, in the shape where all three hold** (T=250, Icon cd 120, chain `0:07 → 2:07 → 4:07` with
+the third window cut at the kill):
+
+```
+chain 7 / 127 / 247    193.346582 casts
+chain 2 / 122 / 242    193.420645 casts     +0.074064   ← 37× the tie band
+```
+
+⛔ **AND ON THE FIGHT THAT PROMPTED THE RULE IT IS WORTH EXACTLY ZERO.** Kael'thas 7:00: pressing Icon
+at −5 s is genuinely free (the 0:15 intermission truncates the window anyway, so usable uptime is 15 s
+either way, and the cooldown does come back at 115 instead of 120) — but **no track in that plan is
+cooldown-limited**. Icon's uses sit 125 / 135 / 136 s apart against a 120 s cooldown; every one was
+placed by choice with 5–16 s of slack. Condition 2 fails, so the 5 s of earlier availability buys
+nothing. *Free* there means free of cost **and** free of benefit.
+
+⚠ **NOT IMPLEMENTED.** The model has no negative press times: `repair` clamps to `t ≥ 0` and the search
+never proposes one. Building it means allowing `t ∈ [−dur, 0)` for player-pressed tracks, truncating the
+window at `t = 0`, and chaining the cooldown from the press — all three of which the engine already does
+in every other respect. The gain is real but narrow; it is a candidate, not a debt.
+
 ## 8. Known-kill planning + Cold Snap
 
 > ## ★★★★ THE MECHANISM OF THIS SECTION WAS REPLACED 2026-07-27 (PHASE12 §9, user ruling)
