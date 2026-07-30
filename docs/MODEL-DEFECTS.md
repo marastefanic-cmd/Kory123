@@ -2167,3 +2167,84 @@ is ever revisited, re-derive that line first.
 uniform-slip build ranks Berserking *before* Bloodlust above Berserking *inside* it — a question the
 closed forms answer unambiguously and `tools/law-check.mjs` could gate directly. Add that case to the
 gate first; it will localise the second defect without another sim run.
+
+---
+
+## §8p — ⛔ THE DEFECT, NAMED: haste × **spellpower** is over-credited ~⅓; haste × **damage-mult** is exact
+
+User, correcting the frame — describing the RESULT they expect for Morogrim rather than a new rule:
+*"Morogrim has to pop the first cluster (everything except Berserking) as soon as a) 3 Arcane Blast stacks
+are active and b) Lust is active, then exactly 2 minutes after the first cluster the second cluster gets
+popped — IV (Cold Snap), Icon, Gem and Berserking."* Plus: *"AP only fits once, and the first cluster
+gives it more value because Lust > Berserking, so it stays in the first one."*
+
+Bloodlust is pinned 0:05 on Morogrim and the third stack completes at 6.498, so that rule reads
+`IV[7,127] Icon[7,127] Gem[7,127] AP[7] Berserking[127]`.
+
+### All three plans, sim-arbitrated (6000 iters, wasm, Bloodlust identical)
+
+| plan | integral | per-cast sum | SIM |
+|---|---|---|---|
+| OLD (pre-07-30) | 132.4471 | **132.9709** | **best** |
+| **USER'S RULE** @0:07 / 2:07 | 132.7102 | 132.8547 | −2.4 DPS vs OLD |
+| NEW (what the tool emits) | **132.8244** | 132.6362 | −10.1 vs OLD, **−7.5 vs the user's** |
+
+⇒ **The user's rule beats the shipped output by +7.5 DPS**, and the shipped output is the worst of the
+three. Neither objective picks the user's plan: the sum picks OLD, the integral picks NEW.
+
+### The −2.4 is entirely Berserking, and it inverts the law
+
+Their layout with ONLY Berserking moved — 2:07 (with the second cluster) vs 0:30 (inside Bloodlust):
+
+```
+SIM  A − B = −1.2 DPS ± 0.20 (3 seeds)     law predicted +1.24 DPS for the cluster
+```
+
+Same magnitude, opposite sign. And at the user's OWN declared gear (T2 exactly: 3:00, 1000 SP, 25 % crit,
+Lust 0:20, on `--char model-ref` with injected stats) the same choice is a **dead tie**:
+
+```
+Berserking 2:20 (their rule) − Berserking 0:42 (in Lust) = −0.1 DPS ± 0.01     law predicted +1.4
+```
+
+So their T2 layout is **not penalised at their gear** — the two options really are equivalent there, which
+is why the anchors pass. The model just believes the cluster option is worth +1.4 DPS more than it is, and
+that belief is what pulls Berserking onto the second cluster everywhere, and off Bloodlust on Morogrim
+where the sim wants it in Lust.
+
+### Isolated: the cross term is ~⅓ too big, and ONLY for +SP
+
+Berserking fully inside Icon + gem, nothing else in the fight, 1000 SP / 25 % crit, T=180:
+
+```
+MODEL  +0.1258 casts   (= 0.66471 × (s₁₅₅ + s₂₂₅ = 0.1892) — the closed form, EXACTLY)  ≈ +1.21 DPS
+SIM    +0.8 DPS ± 0.00 (3 seeds)                                                        ⇒ ≈ +0.083 casts
+```
+
+★ **And the same cross term against a DAMAGE MULTIPLIER is exact.** Berserking fully inside Arcane Power
+vs outside: law 0.26 casts ≈ 5 DPS, **SIM +5.0 DPS ± 0.14**. Matched to the decimal.
+
+⇒ **`haste × dmg-multiplier` is right; `haste × +SP` is ~⅓ too generous.** The engine implements
+`s = COEF·ΔSP/(BASE + COEF·SP)` faithfully (0.1892 is the correct per-cast damage ratio, verified by hand),
+so **the closed form in `docs/ESTABLISHED-FACTS.md` §4 is what is wrong**, not its implementation. That is
+the first time this project has found an error in the facts doc itself rather than in the engine.
+
+⚠ **This also invalidates the `law-check` line built on it.** `tools/law-check.mjs`'s "Berserking under
+IV + Icon + gem" case asserts `D × Δrate × (1 + s₁₅₅ + s₂₂₅)` and the engine reproduces it to 5 decimals —
+so the gate is confirming a formula the sim refuses. Exactly the circularity §8n warned about: law-check is
+a doc↔engine consistency gate, never evidence about the world. **Mark that line as unverified until the
+cross term is re-derived.**
+
+### The leading explanation, and how to test it
+
+A haste buff inside a value window makes the casts *within* that window denser — but the net **extra**
+cast materialises at the end of the shifted lattice, where the value buff is long gone. So the gain is
+`Δrate × duration × s` only if the extra casts stay inside the window, and they do not. A damage
+multiplier would show the same effect, so that hypothesis has to explain why Arcane Power matched
+exactly — the most likely difference is that `dmgMult` pools **additively** with the T5-2pc term
+(`(dmgMult + t5add)`, PHASE8 §25) while +SP enters through the coefficient, so the two are not the same
+algebra at all.
+⇒ **Next: sweep the cross term against ΔSP (155, 225, 380, 600) and against buff duration in the sim, and
+fit it.** If the deficit scales with `duration/fightRemaining` the "extra cast lands at the end" story is
+right and the closed form needs that factor. This needs no new instrument — `bench --char model-ref
+--spec-a/--spec-b` does it, as above.
