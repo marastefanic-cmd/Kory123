@@ -31,7 +31,7 @@ You enter a fight (length, Bloodlust
 timing, intermission/AoE phases) and it computes the **optimal moment to press each on-use
 cooldown** (Icy Veins, Arcane Power, Icon of the Silver Crescent, Serpent-Coil gem, Berserking),
 plus a burn timeline, a per-window activation schedule, and a copy-as-text plan. Alongside it:
-`tests/` — **seven tests** (`tests/anchors.mjs`): the seven layouts the user declared exactly. The goldens
+`tests/` — **eight tests** (`tests/anchors.mjs`): the eight layouts the user declared exactly. The goldens
 and the plan-shape suites are **deleted** (user decision 07-28, restated twice); the sim gates are
 **deleted** (07-30, above). What is left beside `anchors` are the two scorer gates —
 `tools/law-check.mjs` (the scorer vs the algebra) and `tools/self-consistency.mjs` (the scorer vs
@@ -71,7 +71,7 @@ Additional payoffs the same engine unlocks (nice-to-haves, not the point):
 ```
 node tests/anchors.mjs
 ```
-**★ There are exactly SEVEN tests, and they are the seven layouts the user declared exactly.** T1/T2:
+**★ There are exactly EIGHT tests, and they are the eight layouts the user declared exactly.** T1/T2:
 2:00 and 3:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit, every press time pinned, per their ruling
 *"these two need to always be this way"*. T3 (added 07-30): the **Morogrim Tidewalker preset**, declared as
 a RULE rather than a timetable — *"pop the first cluster (everything except Berserking) as soon as a) 3
@@ -85,7 +85,7 @@ T7 `1:15 lust 0:05 · intermission 0:50–0:55`. ★ T6/T7 arrived as **bug repo
 what got `exact-match` deleted. No browser, no rig, no golden file: it runs the real optimizer and
 compares press times.
 
-✅ **`7 of 7` AS OF 2026-07-30 — every declared layout is emitted exactly, and the CI job is
+✅ **`8 of 8` AS OF 2026-07-30 — every declared layout is emitted exactly, and the CI job is
 BLOCKING** (`continue-on-error` removed — that
 flag's stated exit condition was *"the day anchors goes green"*). **MODEL-DEFECTS D1 IS CLOSED.** Seven
 defects fell that day, §8h–§8m, and the through-line is one sentence: **the cast lattice had leaked into
@@ -151,7 +151,7 @@ universal and its R3 rested on a cast count later shown to be ramp-neutral), and
 current reference fights and add these hard tests there instead"*). `GOLDEN_PRESETS` held fifteen plain
 length+Lust cases inherited from the deleted `exact-match` goldens — they asserted nothing after 07-28 and
 they were the first strip a visitor saw, so the tool advertised its own scaffolding. It now holds exactly
-the seven declared tests — `T1 · 2:00 lust 0:20`, `T2 · 3:00 lust 0:20`, `T3 · Morogrim 2:45 lust 0:05`,
+the eight declared tests — `T1 · 2:00 lust 0:20`, `T2 · 3:00 lust 0:20`, `T3 · Morogrim 2:45 lust 0:05`,
 `T4 · 1:40 lust 0:07`, `T5 · 2:40 lust 0:07 · interm 1:30-2:10`, `T6 · 2:00 lust 0:05`,
 `T7 · 1:15 lust 0:05 · interm 0:50-0:55` — and clicking one loads that test's own inputs. **The strip and
 `tests/anchors.mjs` must stay in lockstep**: the strip IS the test list, by user decision. ⚠ Five code paths defaulted to deleted names and were repointed in the same commit:

@@ -1,4 +1,4 @@
-// THE TESTS. There are SEVEN, and they are the layouts the user declared exactly.
+// THE TESTS. There are EIGHT, and they are the layouts the user declared exactly.
 //
 //   node tests/anchors.mjs
 //
@@ -17,18 +17,22 @@
 //     Rules belong in the facts doc with their algebra; a paraphrase asserted here aged worse.
 //   · `monotonicity.mjs` — a real invariant, but one `tools/` can sweep on demand.
 //
-// ⚠ **The harness-integrity gates are NOT tests of the plan and they stay**: `sim-request.mjs`
-// (protocol invariants), `sim-duel.mjs` (the wasm boots), `page-equiv.mjs` (page == terminal request),
-// `press-fire.mjs` (transcription grading) and `tools/self-consistency.mjs` (the scorer agrees with its
-// own board). They catch a broken wasm, a drifted protocol constant and a self-contradicting scorer —
-// none of which is a claim about which layout is best. Deleting those removes the floor this file
-// stands on.
+// ⚠ **The harness-integrity gates are NOT tests of the plan and they stay.** Four of the five were sim
+// gates and went with the simulator on 07-30 (`sim-request`, `sim-duel`, `page-equiv`, `press-fire`);
+// `tools/self-consistency.mjs` survives and is the one that matters most, because a scorer that
+// contradicts itself is the failure mode that hides longest. `tools/search-audit.mjs` joined the floor
+// the same day: it asks whether the emitted plan is beaten by a small move, which no layout test can.
 //
 // ⚠ The ruling above says "the two"; it was made when there WERE two (07-28). The user has declared
-// five more since, each the same way — by reading a plan the tool emitted and saying whether it was
-// right — so the suite grows by declaration and never by recording. T6/T7 arrived as bug reports and
-// are pinned to a BRUTE-FORCE ARGMAX rather than to what the optimizer happened to say, which is the
-// distinction that got `exact-match` deleted.
+// six more since, each the same way — by reading a plan the tool emitted and saying whether it was
+// right — so the suite grows by declaration and never by recording. T7 and T8 carry an explicit ruling
+// (*"easily lockable on this one"*, *"then this can get locked"*); they are pinned to a BRUTE-FORCE
+// ARGMAX rather than to what the optimizer happened to say, which is the distinction that got
+// `exact-match` deleted.
+// ⚠⚠ **T6 IS THE ONE EXCEPTION AND IT IS FLAGGED ON PURPOSE.** It came from a bug report — *"why is the
+// first IV at 0:06 not 0:07"* — which is a question, not a ruling, and it was added on the assistant's
+// initiative. It IS the verified argmax over 373k layouts, so it asserts something true; it simply has
+// no explicit user mandate the way the others do. Remove it if the user says so.
 //
 // ── WHAT THESE ASSERT, AND WHY TIMESTAMPS ARE FAIR GAME HERE ──────────────────────────────────────
 // All of them pin **every press time**, which is the user's explicit ruling: *"these two examples I
@@ -41,7 +45,7 @@
 //     the STRUCTURAL choice: cluster with the other presses, fewest distinct press moments, most robust
 //     to a press landing late. Same ruling as `docs/MODEL-DEFECTS.md` D2.
 //
-// ✅ ALL SEVEN PASS as of 2026-07-30 — `7 of 7` — and the CI job is BLOCKING again. MODEL-DEFECTS D1 is
+// ✅ ALL EIGHT PASS as of 2026-07-30 — `8 of 8` — and the CI job is BLOCKING again. MODEL-DEFECTS D1 is
 // CLOSED. Seven scoring defects fell to get there (§8h-§8m) and the through-line is one sentence: the
 // cast lattice had leaked into the RANKING objective in four separate places. The integral is now pure
 // window geometry (`∫ rate(m(t)) dt` over press times, durations and wall events), its cooldown chain
@@ -111,6 +115,20 @@ const cfgFor = c => ({
                                miss in the suite. Icy Veins had run off to 0:02, two seconds before the
                                cluster it should sit on, because the emitted point was a 2-D local
                                maximum whose only escape moved three coordinates at once.
+   ★★★ T8 — THE PREPULL TEST, and it is the only one that asserts a NEGATIVE press time.
+   The user built this fight specifically to make a prepull strictly beneficial, and it is the only
+   case so far where all of RULES §7b's conditions hold at once:
+     · Icon's first window [0,20] has its tail killed by the 0:15–0:20 intermission — so pressing 5 s
+       early costs NOTHING (usable uptime is 15 s either way);
+     · Icon's two uses sit EXACTLY 120 s apart — the cooldown, so use #2 is genuinely blocked;
+     · use #2's window [120,140] is cut by the 135 s kill, so moving it earlier actually ADDS time.
+   Worth **+0.323591 casts, 162× the tie band** over the [0,120] the cooldown used to force. The user's
+   ruling was conditional — *"if you can implement and modify that in this next fight Icon would be
+   popped at -5s, then this can get locked"* — and the optimizer emits `isc:[-5,115]` unprompted.
+   ⚠ It is the regression guard for the whole negative-press-time path: `earliestPress`, repair's
+   floors, the prepull aura branch in `simulate`, and phaseRerank's bounds. If it goes red, prepull is
+   broken somewhere in that chain and no other test covers it.
+
    ⚠ T7's second Icy Veins lands ON the intermission end (0:55) rather than after it — the argmax, not
    a rounding artifact: a press during an intermission is legal and the window is already running when
    casting resumes. It is the only test that pins that, so a change to the intermission handling shows
@@ -134,6 +152,9 @@ const CASES = [
   { name: 'T7 — 1:15, Bloodlust pinned 0:05, intermission 0:50-0:55, 1387 SP, 38 % crit',
     T: 75, sp: 1387, crit: 38, lust: 5, intermission: [50, 55],
     want: { icyVeins: [7, 55], isc: [7], scb: [7], arcanePower: [7], bloodlust: [5], berserking: [27] } },
+  { name: 'T8 — 2:15, Bloodlust pinned 1:35, intermission 0:15-0:20 — THE PREPULL CASE',
+    T: 135, sp: 1387, crit: 38, lust: 95, intermission: [15, 20],
+    want: { isc: [-5, 115], scb: [0, 120], berserking: [0], icyVeins: [95, 115], arcanePower: [120], bloodlust: [95] } },
 ];
 
 // T3 uses a real BOSS preset, so its cfg comes from the fight table (sp 1387, crit 38, Lust pinned 0:05)
@@ -195,7 +216,7 @@ for (const c of BOSS_CASES) {
 const N = CASES.length + BOSS_CASES.length;
 console.log(`${N - failures} of ${N} passed.`);
 if (failures) {
-  console.log('\n⛔ All seven were GREEN on 07-30, so a failure here is a REGRESSION. Run `node tools/law-check.mjs`');
+  console.log('\n⛔ All eight were GREEN on 07-30, so a failure here is a REGRESSION. Run `node tools/law-check.mjs`');
   console.log('   first — every scoring defect this project has found was caught by a closed form, never by a');
   console.log('   plan diff. A press OUTSIDE its law is a scoring defect; a press on the wrong member of a');
   console.log('   plateau is a tie-break defect; a press the search never visited is a SEARCH defect (§8j,');

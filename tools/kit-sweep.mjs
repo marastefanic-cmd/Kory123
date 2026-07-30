@@ -6,7 +6,7 @@
 // Exit: 0 = swept clean · 1 = a plan is ILLEGAL · 2 = could not sweep.
 //
 // ── WHY THIS EXISTS ──────────────────────────────────────────────────────────────────────────────
-// `tests/anchors.mjs` (7 cells), `tools/plan-sweep.mjs` (17 presets) and therefore
+// `tests/anchors.mjs` (8 cells), `tools/plan-sweep.mjs` (17 presets) and therefore
 // `tools/search-audit.mjs` ALL run ONE kit: `icyVeins + isc + scb + arcanePower + berserking +
 // bloodlust`. Skull of Gul'dan, Mind Quickening Gem, Drums and Power Infusion were **never solved for
 // by any gate**, and on 2026-07-30 the very first probe outside the covered kit found a search miss of
@@ -18,7 +18,7 @@
 // ~0.0867 casts/s, 65× the band. Anything whose failure mode needs a shallow gradient is invisible on
 // the kit the suite happens to run.
 //
-// ⛔ THE MATRIX IS NOT A TEST LIST AND MUST NOT BECOME ONE. `GOLDEN_PRESETS` is the seven layouts the
+// ⛔ THE MATRIX IS NOT A TEST LIST AND MUST NOT BECOME ONE. `GOLDEN_PRESETS` is the eight layouts the
 // user declared, by explicit decision; these cells assert no layout is *right*. They exist so
 // `search-audit` can ask a much weaker but much broader question — "is this plan beaten by a small
 // move?" — over gear the declared tests do not reach.
@@ -64,7 +64,12 @@ function illegal(s, cfg, BUFFS) {
   for (const k in s) {
     for (const t of s[k]) {
       if (Math.abs(t - Math.round(t)) > 1e-9) p.push(`${k}@${t} fractional`);
-      if (t < -1e-9) p.push(`${k}@${t} negative`);
+      /* ⚠ A NEGATIVE PRESS IS LEGAL NOW — prepull activation, RULES §7b (07-30). This read
+         `t < -1e-9` and flagged every prepull as an illegal plan, which is the predicate being older
+         than the feature rather than the plan being wrong. The real bound is the same one `repair`
+         enforces: strictly greater than `-dur`, because at `-dur` the whole window is spent before the
+         pull. On the whole-second grid that is `-(dur - 1)`. */
+      if (t < -(BUFFS[k].dur - 1) - 1e-9) p.push(`${k}@${t} deeper than -(dur-1): the whole window is prepull`);
     }
     if (k !== 'icyVeins') for (let i = 1; i < s[k].length; i++)
       if (s[k][i] - s[k][i - 1] < BUFFS[k].cd - 1e-6) p.push(`${k} cd violation ${s[k][i - 1]}->${s[k][i]}`);

@@ -39,7 +39,12 @@ function illegal(s, cfg, BUFFS) {
   for (const k in s) {
     for (const t of s[k]) {
       if (Math.abs(t - Math.round(t)) > 1e-9) p.push(`${k}@${t} fractional`);
-      if (t < -1e-9) p.push(`${k}@${t} negative`);
+      /* ⚠ A NEGATIVE PRESS IS LEGAL NOW — prepull activation, RULES §7b (07-30). This read
+         `t < -1e-9` and flagged every prepull as an illegal plan, which is the predicate being older
+         than the feature rather than the plan being wrong. The real bound is the same one `repair`
+         enforces: strictly greater than `-dur`, because at `-dur` the whole window is spent before the
+         pull. On the whole-second grid that is `-(dur - 1)`. */
+      if (t < -(BUFFS[k].dur - 1) - 1e-9) p.push(`${k}@${t} deeper than -(dur-1): the whole window is prepull`);
     }
     const ts = s[k];
     // Icy Veins is exempt: Cold Snap legitimately re-presses it inside its own cooldown.

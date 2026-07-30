@@ -7,7 +7,7 @@
 # it's doing more harm than good... we have the function/equation locked down and from now on we're
 # better off on our own"*), so `sim/`, the harness tools and those gates are gone from the repo.
 # What remains is the whole of what this project now checks, and it needs no browser, no Go toolchain
-# and no network beyond the checkout: **the seven declared layouts** and **the closed forms**.
+# and no network beyond the checkout: **the eight declared layouts** and **the closed forms**.
 #
 # ── ★ EVERY JOB CARRIES A NEGATIVE CONTROL, AND THAT IS NOT OPTIONAL ─────────────────────────────
 # PHASE11's own rule: *"every new CI job needs a negative control (a deliberately-broken input that
@@ -17,7 +17,7 @@
 # run it and require it to FAIL.
 #
 # ── THE TWO KINDS OF CHECK, AND THEY MUST NOT BE CONFUSED ────────────────────────────────────────
-# `anchors` asserts WHICH LAYOUT IS RIGHT — seven layouts the user declared. `law-check` and
+# `anchors` asserts WHICH LAYOUT IS RIGHT — eight layouts the user declared. `law-check` and
 # `self-consistency` assert something PRIOR: that the scorer agrees with the algebra the whole project
 # is derived from, and with itself. A layout test cannot catch a mispriced buff (the goldens absorbed
 # four for weeks); a closed form cannot tell you which plan a mage should press.
@@ -37,10 +37,10 @@ concurrency:
 
 jobs:
   the-tests:
-    name: THE TESTS (the seven declared layouts) + the closed forms
+    name: THE TESTS (the eight declared layouts) + the closed forms
     # ✅ BLOCKING as of 2026-07-30. This job carried `continue-on-error: true` with a stated exit
     # condition — *"flip it to false the day anchors goes green"* — because `docs/MODEL-DEFECTS.md` D1
-    # was open and the declared layouts were its target. D1 closed (§8h–§8m), anchors reads **7 of 7**,
+    # was open and the declared layouts were its target. D1 closed (§8h–§8m), anchors reads **8 of 8**,
     # so the condition is met and the flag is gone.
     # ⛔ If this goes red, the correct response is NOT to restore `continue-on-error`. Run
     # `law-check` first and read which KIND of defect it is:
@@ -59,7 +59,7 @@ jobs:
           node-version: '22'
 
       # No browser, no rig, no golden file — it runs the real optimizer and compares press times.
-      - name: the seven declared layouts
+      - name: the eight declared layouts
         run: node tests/anchors.mjs
 
       # The SCORER against the algebra, which is prior to any question about layouts. Every scoring
@@ -86,7 +86,7 @@ jobs:
     name: THE SEARCH (is every emitted plan a local optimum?)
     # ★★★★ ADDED 2026-07-30, and it closes the gap every other gate in this repo has.
     # The three defects that shipped WRONG PLANS this week — MODEL-DEFECTS §8j, §8m, §8s — were all
-    # SEARCH misses, and not one was visible to anything above: `anchors` covers 7 declared cells,
+    # SEARCH misses, and not one was visible to anything above: `anchors` covers 8 declared cells,
     # `law-check` stayed correctly green (the scorer was right; the descent never visited the answer),
     # and `self-consistency` cannot see the search at all. §8s was found because the USER read two
     # plans and said they looked wrong. That is not a gate.
