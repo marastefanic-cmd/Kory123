@@ -1972,3 +1972,108 @@ one would have been caught by a plan diff, a golden file, or `self-consistency` 
 them had been absorbed by the goldens for weeks. `tools/law-check.mjs` now automates the method that
 worked, with its expectations **derived in the file** and a negative control that proves it can resolve
 a 3.6 % error.
+
+---
+
+## §8n — ⛔ OPEN: the 07-30 change REGRESSES the preset corpus. 13σ, sim-measured.
+
+**Status: OPEN and unresolved. `docs/ACCEPTANCE.md` still has no current reading and this makes the gap
+worse, not better.** §8m's verification table used the WRONG INSTRUMENT and its conclusion must be
+corrected here.
+
+### ★ THE CORRECTION FIRST
+
+§8m reported `bench --preset X --vs naive` on four presets, all "AGREE with the sim", as if that
+verified the change. **It does not.** `--vs naive` asks *"does this plan beat mashing on cooldown"* — a
+question every remotely sane plan passes. It never compares the NEW plan to the OLD one, which is the
+only question a plan change raises. CLAUDE.md says this in so many words (*"if a plan **did** change,
+DUEL it head-to-head against its previous layout"*) and §8m cited the wrong tool anyway. Corrected
+below with the right one.
+
+### What the right instrument says
+
+`tools/plan-duel.mjs --old <pre-07-30 sweep> --new <current sweep>`: **15 of 16 changed cells flagged
+REGRESSED**, with `scorerMoved` reading FALSE — because the *reported* score (`simulate().robust`) is
+untouched by this change; only the *ranking* quantity moved. ⚠ So `plan-duel`'s confession rule is
+firing on a stale premise (it assumes `robust` is the objective, which was true until §8h) and its
+verdict wording overstates its case. But the underlying number is real and needed a sim.
+
+**Morogrim Tidewalker, head to head on the committed wasm, 6000 iterations, 3 seeds:**
+
+```
+NEW plan  2602.1 DPS · control 2146.2 · value +455.9 ± 1.47
+OLD plan  2612.2 DPS · control 2146.2 · value +466.0 ± 1.46
+SIM  NEW − OLD = −10.1 DPS ± 0.75          ⇒ 13σ. REAL.
+```
+
+Setup audited before believing it, per the standing caution:
+- **Bloodlust transcription ruled out.** `planToSpec` emitted `BL:[4.915]` for NEW and `BL:[5.166]` for
+  OLD off the same pinned 0:05 call. Holding it identical changes nothing (−10.1 either way), and the
+  same plan at BL 4.915 / 5.000 / 5.166 duels to **+0.0 ± 0.00**.
+- **Arm A confirmed.** `bench`'s own fresh solve duels to +0.0 ± 0.00 against the sweep's recorded plan,
+  so the sweep and bench agree on what the model emits.
+
+### ⚠⚠ AND YET THE SIM ALSO CONFIRMS §8h. Both of these are true.
+
+The §8h conviction of the per-cast sum was *not* circular — it was checked against the sim on a clean
+single-coordinate question, and the sum lost:
+
+```
+Berserking inside Bloodlust  vs  Berserking with nothing up   (identical plans otherwise)
+  law:  0.867 vs 0.667        sum: 0.7203 vs 0.7250 (INVERTED)      integral: 0.8667 vs 0.6667
+  SIM:  A − B = +4.1 DPS ± 0.21 (3 seeds, 20σ)  ⇒ the law and the integral are RIGHT, the sum is WRONG
+Icy Veins covering the opening ramp vs 3 s later
+  SIM:  A − B = +3.2 DPS ± 0.51  ⇒ the integral is RIGHT again
+```
+
+⚠ **Methodological note worth keeping:** ESTABLISHED-FACTS' closed forms are derived from a *continuous
+rate* model, which is the integral's own worldview. Convicting the per-cast sum by comparing it to them
+would have been circular — the sim measurements above are what make it a finding. **The converse also
+holds: the closed forms cannot arbitrate the integral either.** `tools/law-check.mjs` is a
+self-consistency gate between the doc and the engine, not evidence about the world.
+
+### Why the 10 DPS could not be attributed
+
+The coordinates are strongly coupled, and single-coordinate bisection gives contradictory answers
+depending on which end you start from:
+
+| move | from OLD | from NEW (reverting) |
+|---|---|---|
+| Berserking 30.309 ↔ 19.915 | **−11.9 DPS** | +0.0 (tie) |
+| Icy Veins [4.166,128] ↔ [0,126] | **−10.9 DPS** | +5.2 (NEW better) |
+
+Both readings are correct: Berserking at 0:20 **overlaps OLD's Icy Veins** (which runs to 24.166) where
+it is worth ~nothing over the GCD floor, and is a free tie against NEW's (which ends at 20.000). So
+neither plan has a single bad press — NEW is 10 DPS worse *as a whole*, and nothing in it is locally
+wrong.
+
+### The one localised model/sim disagreement found
+
+Given NEW's Icy Veins `[0,126]`, Berserking placed at 0:20 / 0:25 / 0:30 / 0:35:
+
+```
+integral  132.8244  132.7581  132.7525  132.7525     ← prefers 0:20 by 0.072 casts
+sum       132.6362  132.6362  132.6362  132.6362     ← exact tie
+SIM       0:20 − 0:30 = +0.0 DPS ± 0.17              ← exact tie
+```
+
+The integral's 0.072 is `Berserking × (Arcane Power + Icon)` — 1 s of AP overlap at ×1.30 plus 6 s of
+Icon at +7.7 %, which is `0.0867 × (0.30 + 6 × 0.077) ≈ 0.066`, the measured step to two figures. **The
+law says the integral is right and the sim says the sum is right**, at ~1.4 model DPS against a sim band
+that excludes anything above ~0.5. That is the smallest, sharpest instance of the disagreement and it is
+where the next attempt should start.
+
+### Where this leaves the change
+
+| verified | result |
+|---|---|
+| the two declared layouts (`tests/anchors.mjs`) | ✅ **2 of 2** |
+| the closed forms (`tools/law-check.mjs`) | ✅ 6/6, negative control caught |
+| single-coordinate buff placement, sim-arbitrated | ✅ integral right on both cases tested (+4.1, +3.2 DPS) |
+| **the preset corpus, sim-arbitrated** | ⛔ **Morogrim −10.1 DPS ± 0.75 (13σ)** |
+| the other 14 changed cells | **UNMEASURED** |
+
+⇒ **Do not treat this as finished.** The change is separable: `cfg.phaseRank === false` restores
+sum-ranking while keeping every SEARCH fix (structural candidate times, fixed-point rounds, the
+co-pressed-cluster move), which are objective-agnostic. That flag is the A/B that decides whether the
+trade is "the anchors" against "the corpus", or whether a variant gets both.
