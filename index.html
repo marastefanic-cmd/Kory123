@@ -1253,7 +1253,36 @@ function simulateRaw(schedule, cfg, collect) {
       // ⚠ NOT the same as deleting the slip. `eff + 0` is still the PRESS time and still separates two
       // presses that fire together — measured, and net worse (it moved T1's cluster off 0:20 entirely).
       // The fix is to score the window where the buff actually IS, which is `auraAt`.
-      active.push({ key: e.key, def: e.def, start: auraAt, scoreStart: auraAt });
+      // ★★★★ THE INTEGRAL'S WINDOW STARTS AT THE CAST, NOT AT THE PREVIOUS CAST'S COMPLETION.
+      // Fixed 07-30; this was the last residual and it decided the T1 anchor outright.
+      // `auraAt` is `max(eff, prevCastEnd)` — the previous cast's COMPLETION. When the interval is
+      // GCD-bound (which at h=0 is every buffed window: a 3-stack Blast is 1.498 s and the floor is
+      // 1.0 s) the cast finishes `GCD − castTime` BEFORE the next one starts, and that gap is dead
+      // time with no cast in it. The discrete walk does not care — it tests each cast's own start
+      // against the window. The integral integrates over the continuum and therefore PRICES the gap.
+      // ⇒ MEASURED. Icy Veins pressed 0:20 and Berserking 0:40, with the real cast lattice at
+      //   20.4150 / 40.4150 (dumped from the board):
+      //     window from auraAt : icyVeins[20.4130, 40.4130]   berserking[40.3750, 50.3750]
+      //   Berserking begins 0.038 s before Icy Veins ends, so the integral emitted a segment
+      //     [40.3750, 40.4130] len 0.0380 → three buffs live, m = 1.716, over the GCD floor
+      //   where Berserking is worth exactly nothing — it lost 0.038 s of its 10 s to a sliver that
+      //   contains no cast. Cost 0.003296 casts, T-independent, and it made 0:41 beat 0:40 when the
+      //   two are the same plan: both give Berserking 10 casts at m = 1.43 with no Icy Veins overlap.
+      // ⇒ THE FIX: for a self-press whose press landed while a cast was in flight, the first cast the
+      // buff can touch is the one starting NOW, at `t`. Snap the integral's window there and keep the
+      // full duration. Verified: the two placements now tie to 1e-5 (37.83879 vs 37.83878 over the
+      // Bloodlust span, by hand-integration and by the engine).
+      // ⚠ `start: auraAt` is UNCHANGED — the discrete walk stays exactly as `tools/window-span.mjs`
+      // verified it against wowsims. Only the integral's edge moves.
+      // ⚠ An IDLE press is excluded on purpose (`eff <= prevCastEnd`): a press during downtime or a
+      // GCD-idle remainder really does start burning its duration before casting resumes, so snapping
+      // it forward would hand it back time it genuinely lost. The condition selects exactly the
+      // in-flight case, where `auraAt` collapsed to `prevCastEnd`.
+      // ⚠ A raid EXTERNAL keeps `auraAt`: it lands when called, mid-cast or not, and whether its own
+      // front edge wants the same treatment is a separate question with its own physics (the cast in
+      // flight keeps its pre-Lust speed) — not folded in here silently.
+      const scoreStart = (!isExternal && eff <= prevCastEnd + EPS) ? t : auraAt;
+      active.push({ key: e.key, def: e.def, start: auraAt, scoreStart });
       // Both chains anchor on `auraAt`, the FIRE moment — see the read above. For an external
       // (Bloodlust/PI/Drums) `auraAt === eff` by construction, so the raid-call convention is
       // untouched: someone else presses it and its aura starts when they call it.
@@ -2239,7 +2268,43 @@ function rankScore(s, cfg) { return simulate(cloneS(s), cfg).integral; }
    The tie order is the user's ruling, restated from MODEL-DEFECTS D2: fewest distinct press moments
    (one macro beats three), then earliest (a press you can make early is robust to making it late),
    then the flattened press vector so the choice is total and deterministic. */
-const TIE_REL = 1e-7;   // float-equality band; see (2) above — the smallest real step is ~2e-2 casts
+/* ★★★★ THE TIE BAND IS THE MODEL'S MEASURED RESOLUTION FLOOR, IN CASTS — set 07-30, and BRACKETED
+   FROM BOTH SIDES BY MEASUREMENT so it can be re-checked rather than trusted.
+
+   It started at `TIE_REL = 1e-7`, float equality, on the belief that every true plateau is algebraically
+   exact. That is true for plateaus on ONE cast lattice (ten Berserking presses tie to the last bit), and
+   false the moment two layouts put the casts in different places. Measured, on T1:
+
+     the declared layout (d=0) and the whole plan slid +9 s (d=9) are PROVABLY EQUAL by the closed
+     forms — Icy Veins × Bloodlust = 0 at h=0 so IV's overlap with Lust is free, the ramp is haste-
+     neutral so covering it is free, and the value cluster and Berserking sit in identical contexts in
+     both. The integral separates them by 0.001097 casts.
+
+   And that 0.001097 is NOT one term to go and fix. Decomposed:
+     move Icy Veins + the value cluster to 0:29     Δ = −0.779542
+     then move Berserking 0:40 → 0:49               Δ = +0.001097   (a +0.780639 move)
+     Berserking 0:40 → 0:49 with Icy Veins at [0,20] Δ = +0.000000   (an exact tie, as the law says)
+   — it is the residue of two ~0.78-cast effects nearly cancelling across two different lattices, i.e.
+   the accumulated millisecond quantisation and fractional back-edge attribution. wowsims rounds every
+   cast and GCD to the millisecond and the model matches it, so a residue at this scale is structural,
+   not a bug with an address.
+
+   ⇒ THE BRACKET, and both numbers are measured in this file's own units:
+     lower — the resolution floor above                                     0.001097 casts
+     THE BAND                                                               0.002    casts   (1.8× above)
+     upper — the SMALLEST verified law step: Berserking's 0.835 s of Icy
+             Veins overlap at h=0, `0.835 × 0.013811`                       0.011532 casts   (5.8× above)
+             (next up: Berserking leaving Bloodlust, 0.020267 casts per
+              second of window = 0.023388 per second of press)
+   ⛔ Do NOT raise it toward the upper bound "a little". At 0.0115 it would start calling a real overlap
+   a tie, and the first thing to go would be Berserking sliding out of Bloodlust for free — the exact
+   error `docs/ESTABLISHED-FACTS.md` §5 exists to prevent. If a future change moves either bound,
+   re-measure BOTH and re-derive; the four law steps are regression-checked in MODEL-DEFECTS §8k. */
+const TIE_CASTS = 0.002;
+// One plain, unbuffed Arcane Blast — the same normalizer `renderTiles` uses for the "effective casts"
+// readout, so the band means the same thing the UI displays. Read from GAME, never re-typed.
+const plainCastOf = cfg => (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) *
+  (1 + Math.min(1, Math.max(0, (cfg.critPct || 0) / 100)) * (GAME.CRIT_MULT - 1)) * (cfg.t5two ? 1.2 : 1);
 function planShape(s) {
   const ts = [];
   for (const k of Object.keys(s).sort()) for (const t of (s[k] || [])) ts.push(t);
@@ -2249,7 +2314,7 @@ function planShape(s) {
 }
 // Strictly-better test under the lexicographic objective. `a`/`b` are {score, shape}.
 function planBetter(a, b) {
-  const band = TIE_REL * Math.max(1, Math.abs(a.score), Math.abs(b.score));
+  const band = Math.max(a.band || 0, b.band || 0);
   if (a.score > b.score + band) return true;
   if (b.score > a.score + band) return false;
   if (a.shape.distinct !== b.shape.distinct) return a.shape.distinct < b.shape.distinct;
@@ -2258,7 +2323,7 @@ function planBetter(a, b) {
   for (let i = 0; i < n; i++) if (Math.abs(a.shape.ts[i] - b.shape.ts[i]) > EPS) return a.shape.ts[i] < b.shape.ts[i];
   return a.shape.ts.length < b.shape.ts.length;
 }
-const rankPair = (s, cfg) => ({ score: rankScore(s, cfg), shape: planShape(s) });
+const rankPair = (s, cfg) => ({ score: rankScore(s, cfg), shape: planShape(s), band: TIE_CASTS * plainCastOf(cfg) });
 
 /* ⛔⛔ AND IT WAS TRIED AS THE RANKING ON 07-28 AND REVERTED THE SAME HOUR — the sim refused it, 137σ.
    Nothing above is wrong: the integral IS the phase expectation, exactly, and all three hypothesised

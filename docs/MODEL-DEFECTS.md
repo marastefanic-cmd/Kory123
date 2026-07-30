@@ -1722,3 +1722,91 @@ What is known:
 decides T1 outright. It is ~0.003 % of a fight and below anything the sim can resolve, so it cannot be
 graded by duel — it needs the integral's edge terms derived, not measured. ⛔ Do NOT widen `TIE_REL` to
 swallow it: real law steps of 0.0200 casts/s live only 6× above it.
+
+---
+
+## §8k — ✅ T1 PASSES. The abutment residual, cracked (07-30)
+
+`node tests/anchors.mjs` → **1 of 2 passed**. T1 emits the declared layout exactly:
+`icyVeins[0,20] isc[20] scb[20] arcanePower[20] bloodlust[20] berserking[40]`.
+
+### The mechanism, and it took an instrumented dump to see
+
+§8j left a 0.003296-cast residual that decided T1. Dumping the integral's own segment table (a
+scratch copy of `index.html` with the window list and every segment pushed to a debug array) showed it
+in one line. The real cast boundaries were **20.4150** and **40.4150**; the windows were:
+
+```
+icyVeins  [20.4130, 40.4130]      berserking [40.3750, 50.3750]
+segment   [40.3750, 40.4130] len 0.0380 rate 1.000000 → 0.038000
+```
+
+`auraAt` is `max(eff, prevCastEnd)` — the previous cast's **completion**. When the interval is GCD-bound
+(at h=0 that is every buffed window: a 3-stack Blast is 1.498 s against a 1.0 s floor) the cast finishes
+`GCD − castTime` **before** the next one starts. At m = 1.56 that is `1.0 − 0.96 = 0.04 s` of dead time
+containing no cast. The discrete walk never notices — it tests each cast's own start against the window.
+The integral integrates the continuum and therefore **prices the gap**: Berserking's window opened 0.038 s
+before Icy Veins' closed, both plus Bloodlust put m at 1.716 (over the floor, so Berserking is worth
+exactly nothing there), and Berserking lost 0.038 s of its 10 s to a sliver with no cast in it.
+
+**Fix:** for a self-press that landed while a cast was in flight, the integral's window starts at the
+cast starting NOW (`t`), full duration preserved. `start: auraAt` is untouched, so the discrete walk stays
+exactly as `tools/window-span.mjs` verified it against wowsims. An idle press is excluded on purpose (a
+press during downtime really does burn duration before casting resumes) and a raid external keeps
+`auraAt` (it lands when called). Verified: `zerk@40 = @41 = @42 = @43 = 92.866400`, so the plateau now
+begins at 0:40 and the earliest tie-break takes it.
+
+### The tie band, re-derived and bracketed
+
+`TIE_REL = 1e-7` (float equality) rested on "every true plateau is algebraically exact". True on ONE
+lattice; false across two. On T1, `d=0` and the whole plan slid `+9 s` are **provably equal by the closed
+forms** (IV × Lust = 0 at h=0, the ramp is haste-neutral, cluster and Berserking sit in identical
+contexts) and the integral separates them by 0.001097 casts — which decomposes as two ~0.78-cast moves
+nearly cancelling (`−0.779542` then `+0.780639`), i.e. accumulated millisecond quantisation, not a term
+with an address.
+
+So the band is now **0.002 casts**, bracketed by measurement on both sides:
+
+| | casts | |
+|---|---|---|
+| resolution floor (two provably-equal layouts) | 0.001097 | — |
+| **the band** | **0.002** | 1.8× above the floor |
+| smallest verified law step (Berserking's 0.835 s of Icy Veins overlap, `0.835 × 0.013811`) | 0.011532 | 5.8× above the band |
+| next law step (Berserking leaving Bloodlust, per second of press) | 0.023388 | — |
+
+⛔ Do not raise it toward the upper bound. At 0.0115 it starts calling a real overlap a tie and the first
+casualty is Berserking sliding out of Bloodlust for free.
+
+### Law regression battery — all four reproduce after the change
+
+```
+Berserking adds:  Lust-only 0.8674 (law 0.867) · nothing 0.6647 (law 0.667) · IV+Icon+gem 0.9547 (law 0.951)
+Berserking leaving Bloodlust: −0.023388 per press-second, uniform = 1.154 s of window × 0.020267  ✓
+Berserking inside Icy Veins (under the cap): 0.011532 = 0.835 s × 0.013811  ✓
+T2 cluster slide: monotone from 0:20, 20 and 21 tie, then −0.028951/s  ✓
+```
+
+Gates: `self-consistency` 0.00e+0 / 0 structural · `page-equiv` 2/2 · `sim-request` §0 PASS.
+
+### ★ T2's last three presses — the model is right again, for a concrete reason
+
+Emitted `icyVeins[19,140] isc[19,140] berserking[141]` against declared `[20,140] [20,140] [140]`, and the
+integral prefers the emitted by **0.028920** — well outside the band, so the shape rule never applies.
+The fire times say why:
+
+```
+declared:  isc@20.000 / 141.496      ← the second Icon slips a whole cast
+emitted :  isc@19.000 / 140.000      ← it lands on the boundary
+```
+
+The Icon's 2-minute cooldown chains from its **fire**. Pressed at 0:20 it is ready at exactly 140.000 —
+which falls just *after* a cast boundary, so the second use is deferred a full 1.496 s to the next one.
+Pressed at 0:19 it is ready at 139.000, comfortably before that boundary, and the second use fires at
+140.000 on the dot.
+
+⇒ Real, and useful advice a player could act on: **press the Icon a second before the Bloodlust call so
+its second use clears the cast boundary at 2:20.** ⚠ But it is also knife-edge — which side of a boundary
+a cooldown expires on is exactly the sub-cast lattice phase D1 is about, and a real pull will not put it
+there. This is the one remaining disagreement with the declared layouts and it is a **D1 question, not a
+scoring one**: the fix is to stop resolving which side of a boundary a cooldown lands on, not to reprice
+anything.
