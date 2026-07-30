@@ -2077,3 +2077,93 @@ where the next attempt should start.
 sum-ranking while keeping every SEARCH fix (structural candidate times, fixed-point rounds, the
 co-pressed-cluster move), which are objective-agnostic. That flag is the A/B that decides whether the
 trade is "the anchors" against "the corpus", or whether a variant gets both.
+
+---
+
+## §8o — the integral charges DEAD TIME inconsistently. Located, not fixed. (07-30)
+
+User, correcting me on the physics and then giving the design principle: *"a real mage can only press it
+between casts using the macro … but that's below the boundary of what's worth trying to follow. For our
+model and for determining the best overlaying of spells ON AVERAGE this approach works"*, and *"even if it
+activates midcast of one fight it will also deactivate in the middle of another, so the haste clipping
+doesn't work there — we actually calculate the value of that buff."*
+
+⛔ **I had this wrong and it matters.** §8l justified pure window geometry partly on *"a real mage presses
+mid-cast; Berserking and the trinkets are off the GCD"*. **False** — presses go through a macro that
+fires between casts. The right justification is the user's: the sub-cast offset is **unresolvable**, so
+the model must average over it, and a window that starts late also *ends* late, so the edge effects
+cancel and what survives is the buff's average value. Same conclusion, sound reason. The §8l entry's
+reasoning is corrected here; its code is unaffected.
+
+### The defect, from the segment dump
+
+The integral charges the dead time between a press and the cast it can affect **inconsistently**:
+
+- **at steady state: ZERO** — a window opens exactly at the press;
+- **on the ramp: the REALIZED amount** — `rate` is forced to a ramp cast's own duration, so Icy Veins
+  pressed at 3.0 loses exactly 1.666 s to the cast running 2.5 → 4.666.
+
+Neither is the average. And the ramp is therefore **the one place the integral resolves the very jitter
+it exists to average away.** Proof, from the instrumented segment table — `IV@3` emits two adjacent
+segments across the press with the *same* rate:
+
+```
+[2.500,3.000] len 0.500 rate 0.461681      ← Icy Veins starts at 3.000 and the rate does not move
+[3.000,4.666] len 1.666 rate 0.461681
+```
+
+That is what produces the period-2 wobble as a press crosses a ramp boundary (0 / 2.5 / 4.666 / 6.498),
+and the wobble is what chooses Icy-Veins-at-the-pull — which the sim says is **10.0 DPS ± 0.97 worse**.
+
+### Charging it uniformly: fixes one thing, breaks another
+
+`scoreStart = geoStart + prevInterval/2` (press-chained AND unconditional — *not* the pre-07-30
+`eff + slip`, which was fire-chained and applied only when the press happened to land mid-cast):
+
+```
+Morogrim, only Icy Veins #1 moving:
+  IV#1@       0        2        3        4        5        6
+  before  132.6935 132.6785 132.4471 132.5892 132.4066 132.5487   ⛔ argmax @0, ±0.14 wobble
+  after   132.7427 133.0044 132.7595 132.9016 132.7441 132.8304   ✓ argmax @2
+  sum     132.6362 133.0063 132.9709 132.9709 132.7039 132.7039   ✓ argmax @2 — and the sim agrees
+```
+
+⛔ **But it introduces a bigger error.** The descent under it emits, on T1,
+`icyVeins[2,23] isc[23] scb[23] arcanePower[23] berserking[2]` scoring **above** the declared layout —
+Berserking pressed at 0:02, *before* the Bloodlust call. Both the closed forms and the sim say that is
+worse (Berserking in Bloodlust adds 0.867 casts, under Icy Veins alone 0.80). Both anchors fail. So the
+dead-time inconsistency is **not the only defect**; something else interacts with it, and reverting is
+the honest call. **Not landed.**
+
+⚠ One law-check line moves under it and the FILE'S OWN HEADER predicted this: *"if a line fails,
+re-derive before you touch the engine."* "Berserking 1.000 s inside Icy Veins" reads 0.00518 against a
+1.000 s expectation. With both windows shifted by *different* expected slips the true overlap is
+`E[max(0, 20 − fire)] = 0.4 s` (Berserking's fire uniform on `[19, 20.25]`), and the engine's 0.375 is
+that expectation's point estimate. The engine was right; the expectation was stale. ⇒ if the uniform slip
+is ever revisited, re-derive that line first.
+
+### Four hypotheses, four falsified — recorded so they are not retried
+
+| hypothesis | how it died |
+|---|---|
+| the integral over-credits haste × value overlap | sim: Berserking fully inside Arcane Power vs outside = **+5.0 DPS ± 0.14** against a law prediction of 5. The continuous model is exact. |
+| the regression is transcription slip | NEW's total press→fire slip is **0.750 s**, OLD's is **1.859 s** — NEW transcribes *better*. |
+| the Bloodlust transcription differs between arms | it does (4.915 vs 5.166 off the same pinned 0:05) and it is worth **+0.0 ± 0.00**. |
+| the flat-ramp substitution is the cause | integrating the ramp continuously (rate = 1/its own duration ⇒ exactly one cast) moved the ladder by **0.008 casts** and changed no argmax. Reverted. |
+
+### What is established and durable
+
+1. **The continuous/average objective is right**, for the user's reason (unresolvable jitter; cancelling
+   edge effects) — not for the wrong one §8l gave.
+2. **The sim confirms the model's pricing on every clean single-coordinate question tested**: Berserking
+   in Bloodlust vs nothing **+4.1 ± 0.21**, Berserking inside Arcane Power vs outside **+5.0 ± 0.14**,
+   Icy Veins on the ramp in isolation **+1.0** (where the per-cast sum's +0.055 casts matches to the
+   decimal and the integral says a flat tie).
+3. **The dead-time inconsistency is real and precisely located** (above), with the segment dump as proof.
+4. **The shipped state passes both anchors and regresses Morogrim by 13σ.** Both are true; neither
+   cancels the other.
+
+⇒ Next: find the second defect that co-occurs with the dead-time one. The sharpest lead is that the
+uniform-slip build ranks Berserking *before* Bloodlust above Berserking *inside* it — a question the
+closed forms answer unambiguously and `tools/law-check.mjs` could gate directly. Add that case to the
+gate first; it will localise the second defect without another sim run.
