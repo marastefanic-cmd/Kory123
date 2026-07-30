@@ -265,7 +265,47 @@ also decides whether its placement relative to the opener matters at all. Below 
 before cast 1, 2, 3 or at 0:60 — **identical to within 7e-4 casts**. Above it, the pull is strictly
 better, and by two orders of magnitude more (0.0118 at h = 400, 0.221 at h = 500).
 
-### ⚠ OPEN — the residual is REAL, LOCALISED TO THE FIRST RAMP CAST, and my closed form is the incomplete one
+### ✅ SOLVED — it is MILLISECOND QUANTISATION of the cast grid; the closed form is the continuum
+
+*User: "since it's deterministic algebra, isn't this a symptom that we've forgotten a factor somewhere?
+Or is it a rounding error? Or is it really better because of the multiplication effect?"*
+
+Read straight off the engine's board at h = 380 — every interval lands on a 1 ms grid:
+
+| | ramp cast starts |
+|---|---|
+| continuum (closed form) | 0 · 2.014563 · 3.759981 · **5.236252** |
+| **engine, no Icy Veins** | 0 · 2.015000 · 3.760000 · **5.236000** |
+| continuum, hasted | 0 · 1.678803 · 3.133317 · **4.363544** |
+| **engine, Icy Veins @0** | 0 · 1.679000 · 3.134000 · **4.364000** |
+
+The model rounds cast times to the millisecond because **wowsims does** (`.Round(time.Millisecond)` on
+every cast) and so does the 2.4.3 client. The two configurations round in **opposite directions**:
+
+| case | ramp-end Δt vs continuum | × its rate | closed form − engine, measured |
+|---|---|---|---|
+| no Icy Veins | **−2.524e-4 s** (lands short) | +2.088e-4 casts | **−2.088e-4** ✓ |
+| Icy Veins @ 0 | **+4.563e-4 s** (lands long) | −4.530e-4 casts | **+4.530e-4** ✓ |
+| | | **sum 6.618e-4** | residual **6.618e-4** ✓ |
+
+**Four significant figures, both signs, no free parameter.** The ramp lands 0.25 ms early in one
+configuration and 0.46 ms late in the other; the steady stream then starts that much earlier or later
+and carries the difference for the rest of the fight.
+
+⇒ **All three candidate explanations were partly right, and the third one loses:**
+* *a forgotten factor* — **yes, in the closed form**: it describes the **continuum**, the engine is on a
+  **millisecond grid**. Neither is wrong; they are different models, by 1 ms.
+* *a rounding error* — **yes, but a deliberate, physical one**, not float slop. My earlier "not
+  rounding" tested *float precision* (2.8e-14) and never tested the quantisation. Wrong test.
+* *really better because of the multiplication effect* — **no.** The direction is set by which way the
+  grid happens to fall, and it **flips sign** between the two cases.
+
+**The bound is now exact rather than empirical:** ≤ 3 ramp casts × 0.5 ms × rate ≤ **1.5e-3 casts**, and
+it appears **only** where two configurations have different ramp lengths. Any two placements sharing a
+ramp agree to **1e-13** (measured). ⇒ `d_k` and ramp-neutrality are **exactly** exact in the continuum;
+the engine adds ≤1.5e-3 casts of the same quantisation the game itself has.
+
+### (superseded) the earlier framing — kept because the wrong test is the instructive part
 
 *User: "since it's deterministic algebra, isn't this a symptom that we've forgotten to include a factor
 somewhere? Or is it a rounding error? Or is it really better because of the multiplication effect?"* —
@@ -505,6 +545,28 @@ From §0.1: `min` is the only non-linearity. Two consequences, and the second on
 *Verified: `mqg × skull = 1.1e-16`, `mqg × drums = 0`, `skull × drums = 0`, and the order-3
 `mqg × skull × drums = −2.2e-16`.*
 
+### ⚠ "If haste × haste is multiplicative, how can that be zero?" (user, 07-28)
+
+**Because only *half* the haste family is multiplicative — and the user's own guess is the answer: some
+buffs add flat rating, some are true multipliers.** From §0:
+
+    m  =  ( 1 + [ h + Σ rating ] / RTG )  ·  Π multipliers
+             └──────── ONE additive pool ────────┘   └── these multiply ──┘
+
+* **rating × rating** — both sit inside the *same linear* bracket, and the second difference of a linear
+  function is **identically zero**. Mind Quickening Gem, Skull of Gul'dan and Drums of Battle therefore
+  have **no interaction with each other, ever** (below the cap). Not a small number — structurally zero.
+* **multiplier × multiplier** — `v₁v₂ ≠ v₁ + v₂ − 1`, so a genuine cross-term. *This* is the family the
+  phrase "haste × haste is multiplicative" is about: Bloodlust, Icy Veins, Power Infusion, Berserking.
+* **rating × multiplier** — the bracket and the product **are** multiplied, so there is a cross-term
+  here too. At h = 0: `MQG × Bloodlust = −0.00617`, `Skull × Bloodlust = +0.02219` — non-zero, and of
+  **opposite sign**, because MQG is large enough to overcap with Lust at zero gear and Skull is not.
+
+⇒ **"Haste stacks multiplicatively" is a statement about the four multipliers only.** Rating is a pool:
+additive with itself, multiplicative with the multipliers. That one asymmetry generates the wall of
+zeros in the matrix, the `sp × sp = 0` law (spell power is a pool for exactly the same reason), and the
+sign flip between the MQG and Skull columns.
+
 ⛔ **The sparsity law holds ONLY below the cap, and I published it once without that clause.** `min` is
 not multilinear, so once the corner is active it manufactures interactions between effects that have no
 business interacting:
@@ -541,6 +603,32 @@ one. "Opportunity cost", "clipping", "wasted buff", "the pair fights itself" are
 ⇒ **Below h ≈ 113, Berserking belongs inside Bloodlust. Above it, outside.** *(Formula vs engine
 integral: agrees to ≤0.005 casts at every row.)*
 
+### ⚠⚠ …AND THAT NUMBER ASSUMES NOTHING ELSE IS IN THE WINDOW (user, 07-28)
+
+**Yes — and it applies to every threshold in this file.** They are all conditions on `m`, the **full**
+multiplier of the state; the tabulated *rating* values are what you get solving them with `m = m_p`
+alone. Put anything else in the window and `m` rises, so the flip arrives **earlier**:
+
+    flip:  m_p · Π v_other · (v₁ + v₂ − 1) = 1.5        other RATING buffs fold into h, not the product
+
+Berserking × Bloodlust, re-solved and engine-verified:
+
+| also active in that window | flip haste | interaction at h = 0 |
+|---|---|---|
+| *(nothing)* | **112.6** | +0.02000 |
+| Drums of Battle (+80) | **32.6** | +0.01932 |
+| Skull of Gul'dan (+175) | **negative at h = 0 — never overlap** | −0.03691 |
+| Mind Quickening Gem (+330) | **negative — never overlap** | −0.08062 |
+| Icy Veins **or** Power Infusion (×1.2) | **negative — never overlap** | −0.08000 |
+
+★ So *"Berserking inside Bloodlust below h ≈ 113"* is a statement about a Lust window with **nothing
+else in it**. Add Icy Veins and Berserking belongs outside at *any* gear level — the three-way product
+`1.3 × 1.2 × 1.1 = 1.716` is **14 % over the floor before you own a single point of haste.**
+
+⇒ **The same caveat governs §5.2, §5.3, §5.6 and the whole matrix: those are TWO-BODY numbers.** For a
+real window, substitute the full `m` and re-solve — one line of arithmetic, and it always moves the
+answer the same way.
+
 ## 5.2 Icy Veins × Bloodlust — **exactly 0.000 at h = 0**, negative everywhere above
 
 `v₁ v₂ = 1.56 > 1.5`: the pair is overcapped *before you have any gear at all*, so the capped branch
@@ -554,9 +642,54 @@ applies from h = 0 — and `v₁ + v₂ − 1 = 1.5` puts h = 0 **precisely on t
 | 50 | −0.634 |
 | 100 | −1.268 |
 
-⇒ **At h = 0 it is exactly irrelevant whether Icy Veins overlaps Bloodlust.** The multiplicative bonus
-and the GCD overcap cancel to the digit. At any gear haste at all, **separate them** — and the cost of
-not doing so grows fast (−1.27 casts by h = 100).
+⇒ **At h = 0 the haste side is exactly indifferent to whether Icy Veins overlaps Bloodlust.** The
+multiplicative bonus and the GCD overcap cancel to the digit. Above h = 0 the haste side turns against
+it fast (−1.27 casts by h = 100).
+
+### ★★★ …AND "IRRELEVANT" IS THE WRONG CONCLUSION AT h = 0 — IT IS FREE, THEREFORE DO IT (user, 07-28)
+
+*"Overlapping them at h=0 costs nothing, therefore it's good to do to max out the potential value of any
+other multiplicative SP / AP buff, and it becomes a question of when it stops being worth it as passive
+haste rises."* — **correct, and it is the sharper reading.** A zero cost is not a reason to be
+indifferent; it is a reason to take the side-effect for free. And the side-effect is that **the
+overlapped window is the fastest window in the fight**:
+
+| window at h = 0 | `m` | rate (casts/s) |
+|---|---|---|
+| Bloodlust alone | 1.30 | 0.86667 |
+| Icy Veins alone | 1.20 | 0.80000 |
+| **Icy Veins + Bloodlust** | 1.56 → **capped** | **1.00000** |
+
+By `haste × value` (§4) that is exactly where Icon, Serpent-Coil and Arcane Power want to be. A value
+buff of duration `D_v` inside the overlap rather than inside Lust alone gains
+`D_v · [rate(1.56m) − rate(1.30m)] · s`. At h = 0 with Icon (20 s, `s` = 7.719 %):
+`20 × 0.13333 × 0.07719` = **+0.206 casts, bought for a haste-side cost of exactly zero.**
+
+### When it stops paying — closed form, engine-verified
+
+While the overlap is capped and Lust alone is not (`rate(1.56m) = 1`, `rate(1.3m) = 1.3m/G`):
+
+    cost(h) = D_IV · (m − 1)                 gain(h) = D_v · (1 − 1.3·m/G) · s
+
+    ⇒  h* = RTG · (D_v/D_IV) · 0.13333 · s  /  ( 1 + (D_v/D_IV) · 0.86667 · s )
+
+| value buff(s) in the window | `s` | **h\*** |
+|---|---|---|
+| Icon alone (20 s) | 0.0772 | **15.2** |
+| Serpent-Coil alone (15 s) | 0.1121 | **16.5** |
+| Icon + Serpent-Coil (SP adds) | 0.1892 | **34.2** |
+| Icon + Serpent-Coil + Arcane Power | 0.5460 | **77.9** |
+
+*(Arcane Power is 15 s against Icy Veins' 20 s, so treat 77.9 as an upper bound — the row assumes full
+coverage.)*
+
+⇒ **The honest rule is two-sided, and it is NOT "always separate them":**
+* **at h ≈ 0 with the value cluster in that window — overlap.** The haste side is free and the value
+  side pays up to ~0.2 casts.
+* **above `h*` (15 with one trinket, ~78 with the whole cluster) — separate them.** The haste cost is
+  now real and grows about 10× faster than the value gain shrinks.
+* the **more value** you stack there, the longer overlapping survives; the **more passive spell power**
+  you have, the shorter, because `s` dilutes (§3.1).
 
 ★ This is the cleanest example of the whole framework: two haste cooldowns, one pairing worth +0.200
 and the other worth 0.000, at the same haste, for one reason — 1.43 is under the floor and 1.56 is over
@@ -693,6 +826,34 @@ yields **1.332 fewer casts** than the same seconds at steady state:
 | 2000 | 0.0686 | **0.06864** |
 
 ⇒ **The pair goes after the ramp — and the reason is Icon, not Icy Veins.**
+
+### ⚠ …but "after the ramp" is THREE decisions, not one (user, 07-28)
+
+`1.332 · s` is the cost of covering the **whole** ramp. The toll is paid per cast (§1.2a), so waiting is
+granular — and **the first cast you wait for is worth as much as the other two together**:
+
+| press the value buff | ramp deficit still paid | Icon (`s`=7.719 %) | Arcane Power (`s`=30 %) | recovered |
+|---|---|---|---|---|
+| before cast 1 | `d₀+d₁+d₂` = 1.3320 | 0.1028 casts | 0.3996 | 0 % |
+| **after cast 1** (1 stack) | `d₁+d₂` = 0.6653 | 0.0514 | 0.1996 | **50.0 %** |
+| **after cast 2** (2 stacks) | `d₂` = 0.2213 | 0.0171 | 0.0664 | **83.4 %** |
+| after cast 3 (3 stacks) | 0 | 0 | 0 | 100 % |
+
+★ **Waiting one cast recovers half the penalty; two recover five sixths.** So the intermission case is
+not "wait 6.5 s or don't" — if a post-intermission burn can spare one cast, take it and you have banked
+half the prize. Each further cast is worth ~⅓ less than the last, exactly as `d_k = (C_k − G)/G` says.
+
+### And in the truncated case, waiting costs exactly `k · s`
+
+Sharpening §1.2c with the per-cast form: if the buff **is** truncated by the window, waiting `k` casts
+saves `Σ_{j<k} d_j · s` and costs `Σ_{j<k} C_j / G · s`, and the two differ by exactly
+
+    cost − saving  =  k · s          casts
+
+— one `s` per cast waited, with **no dependence on haste, on which casts, or on the buff's duration.**
+So the decision is a clean per-cast ladder: **wait one more cast iff the buff still fits afterwards.**
+The moment it does not, each further cast of hesitation costs a flat `s` — and for Arcane Power that is
+**0.30 casts per cast waited**, the most expensive hesitation in the kit.
 
 ### At high haste Icy Veins leaves for the pull, and the pair splits
 
