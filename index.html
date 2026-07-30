@@ -1079,8 +1079,15 @@ function simulateRaw(schedule, cfg, collect) {
       // Raid EXTERNALS are pressed by someone else, so they land when CALLED rather than at one of
       // this mage's cast boundaries. That distinction decides where their aura starts (see `auraAt`).
       const isExternal = e.key === "bloodlust" || e.key === "powerInfusion" || e.key === "drums";
-      if (isExternal) {
-        eff = e.ts; // raid externals: someone ELSE presses these — they land exactly when called
+      /* ★★★★★ PREPULL ACTIVATION — RULES §7b, user-directed 07-30. A press at t < 0 happened BEFORE
+         the pull, so the aura is already running when the fight starts: it does not snap to a cast
+         boundary (there is no cast to snap to) and its window is `[ts, ts + dur]` with only the part
+         after 0 usable. Scoring-wise that makes it behave exactly like a raid external — the aura
+         lands where it was called — which is why it rides the same branch rather than a new one.
+         ⚠ The COOLDOWN also runs from `ts`, which is the entire point: `−5 + 120 = 115`, not 120. */
+      const isPrepull = e.ts < -EPS;
+      if (isExternal || isPrepull) {
+        eff = e.ts; // raid externals and prepulls: not snapped to one of THIS mage's cast boundaries
         // …but a haste external only accelerates the STREAM from the next cast boundary (the
         // in-flight cast keeps its speed — sim-verified: Lust@10 with the boundary at 10.25 vs a
         // compressed ramp whose 9.94→11.19 cast STRANDS 1.19s of the window). The board lattice is
@@ -1164,7 +1171,7 @@ function simulateRaw(schedule, cfg, collect) {
       // A self-press cannot go off while a cast is in flight, so it fires at that cast's end; a raid
       // EXTERNAL is pressed by someone else and lands exactly when called (the branch above sets
       // `eff = e.ts` for precisely that reason), so its aura starts there whatever we are casting.
-      const auraAt = isExternal ? eff : Math.max(eff, prevCastEnd);
+      const auraAt = (isExternal || isPrepull) ? eff : Math.max(eff, prevCastEnd);
       // ★★★★ `scoreStart: auraAt` — the REAL fire boundary, 07-30. It was `eff + slip`, and that is
       // CLAUDE.md's retired approach #2 ("expiring a buff window from the PRESS time") still live in
       // the integral path: the discrete walk was fixed to run each window its full duration from where
@@ -1829,6 +1836,20 @@ function maxUses(key, cfg) {
   const r = trackRule(key, cfg);
   return Math.min(r.maxUses, Math.floor(cfg.T / r.sep) + 1);
 }
+/* ★★★★★ PREPULL ACTIVATION (RULES §7b) — the earliest legal press for a track.
+   User: *"we still never precast Arcane Blast, but there's actually no harm in activating an item
+   before the fight and having the cooldown start ticking just a little sooner."* Two bounds, both his:
+     · **strictly greater than −dur** — at −dur the whole window is spent before the pull and there is
+       nothing left to gain. On the whole-second grid the schedule uses, that is `−(dur − 1)`.
+     · **never a pinned raid call** — Bloodlust/Drums/PI are pressed by someone else at a named time.
+   ⛔ THIS IS NOT THE PREPULL THE MODEL BANS. RULES §3 / the cold-open rule is about CASTING, and it
+   stays: a prepull CAST is haste-blind and makes a haste sweep non-monotone. A prepull PRESS costs no
+   cast. Opt out with `cfg.prepull === false`. */
+function earliestPress(key, cfg) {
+  if (cfg.prepull === false || (cfg.fixed && cfg.fixed[key])) return 0;
+  const def = BUFFS[key];
+  return def ? -(def.dur - 1) : 0;
+}
 function repair(schedule, cfg) {
   const out = {};
   // A press may run into the kill — a ready cooldown near the end is always
@@ -1854,15 +1875,15 @@ function repair(schedule, cfg) {
     for (const k of movable) for (const t of schedule[k]) reqs.push({ k, t });
     reqs.sort((a, b) => a.t - b.t);
     const own = {}, res = {};
-    for (const k of group) own[k] = 0;
+    for (const k of group) own[k] = -Infinity;
     for (const k of movable) res[k] = [];
-    let lock = 0, ai = 0;
+    let lock = -Infinity, ai = 0;
     const commitAnchor = a => {
       lock = Math.max(lock, a.t + BUFFS[a.k].dur);
       own[a.k] = Math.max(own[a.k], a.t + BUFFS[a.k].cd);
     };
     for (const r of reqs) {
-      let t = Math.max(0, r.t, lock, own[r.k]);
+      let t = Math.max(earliestPress(r.k, cfg), r.t, lock, own[r.k]);
       // anchors that fire at/before the candidate happen regardless
       while (ai < anchors.length && anchors[ai].t <= t) { commitAnchor(anchors[ai++]); t = Math.max(t, lock, own[r.k]); }
       // a candidate window may not run into an upcoming anchor's press
@@ -1881,9 +1902,9 @@ function repair(schedule, cfg) {
     const times = [];
     if (key === "icyVeins") {
       const def = BUFFS.icyVeins;
-      let cdReady = 0, csReady = 0, prevEnd = 0;
+      let cdReady = -Infinity, csReady = -Infinity, prevEnd = -Infinity;
       for (const t0 of req) {
-        let t = Math.max(0, t0, prevEnd);
+        let t = Math.max(earliestPress(key, cfg), t0, prevEnd);
         if (t < cdReady) {
           if (cfg.coldSnap && t >= csReady) csReady = t + GAME.COLD_SNAP_CD;
           else t = cdReady;
@@ -1895,10 +1916,10 @@ function repair(schedule, cfg) {
       }
     } else {
       const r = trackRule(key, cfg);
-      let next = 0;
+      let next = -Infinity;
       for (const t0 of req) {
         if (times.length >= r.maxUses) break;
-        const t = Math.max(0, t0, next);
+        const t = Math.max(earliestPress(key, cfg), t0, next);
         if (t > lastFor(key)) continue;
         times.push(t);
         next = t + r.sep;
@@ -2476,7 +2497,7 @@ function phaseRerank(s0, cfg) {
   const shifted = (base, ks, d) => {
     const c = cloneS(base);
     for (const k of ks) c[k] = c[k].map(t => Math.round(t) + d);
-    for (const k of ks) for (const t of c[k]) if (t < 0 || t > cfg.T - 1) return null;
+    for (const k of ks) for (const t of c[k]) if (t < earliestPress(k, cfg) || t > cfg.T - 1) return null;
     return c;
   };
   // Shift only the named PRESSES (key + index), leaving that track's other uses where they are.
@@ -2485,7 +2506,7 @@ function phaseRerank(s0, cfg) {
     for (const { k, i } of mem) {
       if (!c[k] || c[k][i] === undefined) return null;
       const t = Math.round(c[k][i]) + d;
-      if (t < 0 || t > cfg.T - 1) return null;
+      if (t < earliestPress(k, cfg) || t > cfg.T - 1) return null;
       c[k][i] = t;
     }
     return c;
@@ -2629,7 +2650,7 @@ function phaseRerank(s0, cfg) {
       let hit = false;
       for (const d of MOVES) {
         const t = Math.round(s[k][i]) + d;
-        if (t < 0 || t > cfg.T - 1) continue;
+        if (t < earliestPress(k, cfg) || t > cfg.T - 1) continue;
         const cand = cloneS(s); cand[k][i] = t;
         if (tryCand(cand)) { moved = true; hit = true; break; }
       }
@@ -4743,6 +4764,9 @@ function parseLen(v) {
 }
 function fmtT(t) {
   t = Math.round(t);
+  // A prepull press (RULES §7b) is a NEGATIVE second and must not render as "0:-5" or as "0:05".
+  // "-0:05" is the whole point of the feature being visible; a plan that hides it is unusable.
+  if (t < 0) return "-" + Math.floor(-t / 60) + ":" + String(-t % 60).padStart(2, "0");
   return Math.floor(t / 60) + ":" + String(t % 60).padStart(2, "0");
 }
 function parseTimeList(v, T) {
@@ -5068,7 +5092,22 @@ function renderTimeline(run, opts) {
   const shortName = { isc: "Silver Crescent", scb: "Serpent-Coil" }, laneName = k => shortName[k] || BUFFS[k].name;
   const plotW = VW - PADL - PADR;
   const H = PADT + CURVE_H + 22 + lanes.length * (LANE_H + LANE_GAP) + AXIS_H;
-  const x = t => PADL + (t / cfg.T) * plotW;
+  /* ★★★★ THE PREPULL GUTTER — RULES §7b. A press may sit in `(-dur, 0)`, so the chart needs somewhere
+     to draw it and the drag needs somewhere to drop it. The domain becomes `[-PRE, T]` instead of
+     `[0, T]`, and `PRE` is the deepest legal prepull across the ENABLED tracks — read off the kit, not
+     a constant, so a kit with no long window gets a small gutter and one with Icy Veins gets 19 s.
+     ⚠ The gutter appears only when it is USABLE (editing) or USED (the plan has a negative press), so
+     a plain plan renders byte-identically to before — the same discipline the ghost bars follow. */
+  const PRE = (() => {
+    if (cfg.prepull === false) return 0;
+    const used = Object.values((run.best && run.best.s) || {}).some(v => v.some(t => t < 0));
+    if (!used && !opts.editing) return 0;
+    let m = 0;
+    for (const k of lanes) if (!(cfg.fixed && cfg.fixed[k])) m = Math.max(m, BUFFS[k].dur - 1);
+    return Math.min(m, 30);
+  })();
+  const SPAN = cfg.T + PRE;
+  const x = t => PADL + ((t + PRE) / SPAN) * plotW;
   const bandTop = PADT, bandBot = H - AXIS_H;
 
   // theme colours (read the CSS vars so the chart tracks the palette)
@@ -5090,6 +5129,11 @@ function renderTimeline(run, opts) {
   sv += `<defs><pattern id="interHatch" width="8" height="8" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><rect width="8" height="8" fill="${PH.intermission}" opacity="0.09"/><line x1="0" y1="0" x2="0" y2="8" stroke="${PH.intermission}" stroke-width="1.5" opacity="0.55"/></pattern></defs>`;
   // haste-curve backing panel
   sv += `<rect x="${PADL}" y="${PADT}" width="${plotW}" height="${CURVE_H}" fill="${surf}" opacity="0.4" rx="5"/>`;
+  if (PRE > 0) {   // shade the prepull gutter and mark the pull — it is NOT fight time
+    sv += `<rect x="${PADL}" y="${PADT}" width="${(x(0) - PADL).toFixed(1)}" height="${(H - AXIS_H - PADT).toFixed(1)}" fill="${ink2}" opacity="0.07"/>`;
+    sv += `<line x1="${x(0).toFixed(1)}" y1="${PADT}" x2="${x(0).toFixed(1)}" y2="${(H - AXIS_H).toFixed(1)}" stroke="${ink2}" stroke-width="1.5" stroke-dasharray="3 3" opacity="0.8"/>`;
+    sv += `<text x="${(PADL + 4).toFixed(1)}" y="${(PADT - 6)}" fill="${ink2}" font-size="10">pre-pull</text>`;
+  }
 
   // phase bands (behind the grid/curve/lanes)
   if (cfg.segments) {
@@ -5177,14 +5221,14 @@ function renderTimeline(run, opts) {
       // ghost bars first (under the solid ones): the model plan, for visual comparison
       const ghostTimes = (opts.ghost && opts.ghost[k]) || [];
       for (const t of ghostTimes) {
-        const bw = Math.max(3, (Math.min(def.dur, cfg.T - t) / cfg.T) * plotW);
+        const bw = Math.max(3, (Math.min(def.dur, cfg.T - t) / SPAN) * plotW);
         sv += `<rect x="${x(t).toFixed(1)}" y="${ly + 1}" width="${bw.toFixed(1)}" height="${LANE_H - 2}" fill="${col}" opacity="0.12" stroke="${col}" stroke-width="1.2" stroke-dasharray="4 3" rx="4"><title>Model plan: ${def.name} @ ${fmtT(t)}</title></rect>`;
       }
       const times = shownTimes(run, k);
       const intents = times;   // the display IS the intent now, so the drag handle needs no pairing
       const pinned = !!(cfg.fixed && cfg.fixed[k]);
       times.forEach((t, j) => {
-        const bw = Math.max(3, (Math.min(def.dur, cfg.T - t) / cfg.T) * plotW);
+        const bw = Math.max(3, (Math.min(def.dur, cfg.T - t) / SPAN) * plotW);
         const tipTxt = `${def.name} @ ${fmtT(t)}` + (opts.editing ? (pinned ? " · pinned raid call — not editable" : " · drag to move") : "");
         let bar = `<rect x="${x(t).toFixed(1)}" y="${ly}" width="${bw.toFixed(1)}" height="${LANE_H}" fill="${col}" rx="4"><title>${tipTxt}</title></rect>`;
         bar += `<line x1="${x(t).toFixed(1)}" y1="${ly - 1}" x2="${x(t).toFixed(1)}" y2="${ly + LANE_H + 1}" stroke="${ink}" stroke-width="1.5" opacity="0.9"/>`;
@@ -5200,7 +5244,7 @@ function renderTimeline(run, opts) {
   const box = el("chartbox");
   box.querySelectorAll("svg").forEach(s => s.remove());
   box.insertAdjacentHTML("beforeend", sv);
-  lastGeo = { x, PADL, PADR, VW, plotW, H, T: cfg.T };
+  lastGeo = { x, PADL, PADR, VW, plotW, H, T: cfg.T, PRE, SPAN };
   box.classList.toggle("editing", !!opts.editing);
   // The legend paragraph is GONE. Everything it used to spell out is now on the chart itself: the
   // curve and every reference line carry their own gutter label and a hover title, the phase bands
@@ -5223,7 +5267,7 @@ function hookTooltip(run, geo) {
     const r = svg.getBoundingClientRect();
     const vbX = (e.clientX - r.left) / r.width * geo.VW; // rendered px → viewBox units (responsive svg)
     if (vbX < geo.PADL || vbX > geo.VW - geo.PADR) { tip.style.display = "none"; return; }
-    const t = (vbX - geo.PADL) / geo.plotW * cfg.T;
+    const t = (vbX - geo.PADL) / geo.plotW * (geo.SPAN || cfg.T) - (geo.PRE || 0);
     if (!geo.samples.length) { tip.style.display = "none"; return; }
     let s = geo.samples[0];
     for (const c of geo.samples) { if (c.t <= t) s = c; else break; }
@@ -5623,11 +5667,14 @@ function attachDrag(svg, run) {
   });
   svg.addEventListener("pointermove", e => {
     if (!d) return;
-    let dxT = (vbOf(e) - d.x0) / geo.plotW * cfg.T;
-    dxT = Math.max(-d.fire0, Math.min(cfg.T - 1 - d.fire0, dxT)); // keep the bar inside the fight
+    /* the drag maps through the SAME domain the chart drew, gutter included — otherwise the bar
+       tracks the pointer at the wrong rate the moment a prepull gutter exists. */
+    const lo = earliestPress(d.k, cfg);
+    let dxT = (vbOf(e) - d.x0) / geo.plotW * (geo.SPAN || cfg.T);
+    dxT = Math.max(lo - d.fire0, Math.min(cfg.T - 1 - d.fire0, dxT)); // inside [earliest legal, kill]
     if (Math.abs(dxT) > 0.01) d.moved = true;
-    d.g.setAttribute("transform", `translate(${(dxT / cfg.T * geo.plotW).toFixed(2)} 0)`);
-    const snap = Math.max(0, Math.min(Math.floor(cfg.T - 1), Math.round(d.int0 + dxT)));
+    d.g.setAttribute("transform", `translate(${(dxT / (geo.SPAN || cfg.T) * geo.plotW).toFixed(2)} 0)`);
+    const snap = Math.max(lo, Math.min(Math.floor(cfg.T - 1), Math.round(d.int0 + dxT)));
     tip.innerHTML = `<b>${fmtT(snap)}</b> · ${BUFFS[d.k].name} — release snaps here`;
     tip.style.display = "block";
     const bx = box.getBoundingClientRect();
