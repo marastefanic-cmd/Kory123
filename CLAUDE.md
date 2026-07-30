@@ -89,6 +89,18 @@ now, divided by the time it would take to cast right now"*. The only thing model
 Arcane Blast stack count, because that is what moves the denominator; everything else is a value
 overlaid on that curve at a known time. Because it is an exact integral, "A beats B" is **arithmetic** —
 which is what makes the scorer failure mode above meaningful.
+✅ **CHECKED, NOT ASSUMED (07-30, ESTABLISHED-FACTS §11).** `rateAt` is literally `dmg2 / intervalAt(…)`,
+so the framing is a faithful description of the code, and its load-bearing premise is CITED: Arcane
+Blast damage is **stack-independent** in 2.4.3 — only cost and cast time scale per stack (SOURCES,
+wowsims `arcane_blast.go` + `arcane_charge.go`). The empty fight reproduces `T·rate(m) − 1.332` to
+float precision at every haste, SP and crit, and that is now a `law-check` line.
+⚠ **Two honest limits on the framing, neither of them a defect.** (1) The numerator is an
+**expectation** — `critFactor`, `aoeCritAmp` and the Ashtongue term are all steady-state averages — so
+the tool reports a MEAN and says nothing about variance. (2) It is **infinite-mana**: the stack buff
+also raises AB mana cost 75 %/stack, so the stack count drives a sustainability constraint the model
+declines to see (a standing user decision). The one place the continuum idealisation genuinely needs a
+discrete correction — a cast in flight across a cut — is exactly where `cutsAt()` and the credit rule
+already live.
 
 **★ There are exactly EIGHT tests, and they are the eight layouts the user declared exactly.** T1/T2:
 2:00 and 3:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit, every press time pinned, per their ruling

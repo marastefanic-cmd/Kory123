@@ -786,7 +786,7 @@ const TALENTS = { arcaneConcentration: 5, arcanePotency: 3 }; // 5/5 CC = 2%/ran
 function aoeCritAmp(targets, crit) {
   const N = Math.max(1, targets | 0);
   const accProc = 0.02 * TALENTS.arcaneConcentration;         // per-HIT Clearcasting proc chance (0.10 at 5/5)
-  const potencyCrit = 0.10 * TALENTS.arcanePotency;           // +crit on the cast after a Clearcasting proc (0.20 at 2/2)
+  const potencyCrit = 0.10 * TALENTS.arcanePotency;           // +crit on the cast after a Clearcasting proc (0.30 at 3/3)
   const qCC = n => 1 - Math.pow(1 - accProc, n);              // per-CAST Clearcasting rate (any of n hits procs)
   const critMultAt = c => 1 + Math.min(1, c) * (GAME.CRIT_MULT - 1);
   const effCrit = n => crit + qCC(n) * potencyCrit;          // Potency lifts effective crit on ~qCC(n) of casts
@@ -1416,7 +1416,7 @@ function simulateRaw(schedule, cfg, collect) {
       // deterministic (no-Ashtongue) haste for the DISPLAY — the proc is random, so its average is
       // NOT smeared into the trend curve/readouts; ATI is shown only via its own lane + the "if it
       // aligns" cap line (renderTimeline). These are display-only; the OBJECTIVE is `dmg` summed per
-      // cast just below (PHASE12 §6.10) — not the rateAt integral, which no longer ranks anything.
+      // cast just below (PHASE12 §6.10). ⚠ `rateAt` DOES rank again since §8h — see the banner below.
       multNoAti: multDn, capDn: dn.capped, castDn: dn.cast, gcdDn: dn.gcd,
       // ── what the model BELIEVES about this cast, so it can be audited against a combat log ──
       // Display/diagnostic only; nothing scores off these. `tools/model-audit.mjs` compares them
@@ -1459,12 +1459,22 @@ function simulateRaw(schedule, cfg, collect) {
     if (AOE_CUTS.has(cutT) && t + interval > cutT + EPS) { prevCastEnd = Math.min(prevCastEnd, cutT); t = cutT; }
     else t += interval;
   }
-  // ═══════════ continuous cast-rate integral — ⛔ RETIRED AS THE SCORING MODEL (PHASE12 §6.10) ═══════════
-  // Everything from here to the return computes the rate integral. Since 2026-07-27 it is returned as
-  // the `integral` DIAGNOSTIC and nothing ranks on it: the objective is the per-cast sum accumulated in
-  // the board walk above. Kept so the gap stays measurable — it was a median 0.2114 % of score against
-  // ranking margins of ~0.005–0.07 %, i.e. the model disagreeing with itself by ~30x the effect it was
-  // asked to resolve. ⛔ Do not restore it as the arbiter, and do not tune a scorer term against it.
+  // ═══════════ continuous cast-rate integral — ★★★★ THIS IS THE RANKING OBJECTIVE ═══════════
+  // ⚠⚠ THIS BANNER SAID THE OPPOSITE UNTIL 07-30 AND IT WAS THE MOST MISLEADING TEXT IN THE FILE.
+  // It read *"RETIRED AS THE SCORING MODEL … nothing ranks on it"*, which was true for three days
+  // (PHASE12 §6.10, 07-27) and was OVERTURNED by MODEL-DEFECTS §8h: measured against
+  // `docs/ESTABLISHED-FACTS.md`'s closed forms the per-cast SUM is the one that is wrong, and by more
+  // than the margins it was resolving — it ranked *Berserking with nothing up* (0.7250) above
+  // *Berserking inside Bloodlust* (0.7203) against laws of 0.667 and 0.867. The integral hits all
+  // three law values to four decimals. ⇒ **the integral RANKS (`rankScore`), the per-cast sum is
+  // REPORTED (`robust`).** Do not swap them back.
+  // ★ What it computes is exactly the user's framing: the integral of *"the damage a spell would deal
+  // right now, divided by the time it would take to cast right now"* — `rateAt` is literally
+  // `dmg2 / intervalAt(...)`. Arcane Blast damage is stack-INDEPENDENT (docs/SOURCES.md: only cost and
+  // cast time scale per stack), so the stack count moves the DENOMINATOR only, which is why it is the
+  // one thing that has to be modelled dynamically and everything else is a value overlaid at a known
+  // time. Verified end to end: with no buffs the result is `T/G − 1.332` to float precision at every
+  // haste, SP and crit.
   // The discrete loop above fixes WHEN each buff lands (activation boundaries,
   // trinket lockouts, cooldown chains) and builds the press board. DAMAGE is
   // scored separately, as the time-integral of instantaneous DPS =
@@ -1478,9 +1488,10 @@ function simulateRaw(schedule, cfg, collect) {
   //     more — automatically, and at EVERY haste level (as gear haste rises the
   //     floor is closer, an in-lust Icy Veins wins less, and the optimum slides the
   //     haste buff out of lust on its own, no per-haste rule).
-  // A per-cast SUM (the old model) quantised each window to a whole number of casts,
-  // so it couldn't see sub-cast alignment — that blindness produced the phantom
-  // "press 2s before lust" gains and the lust-position-dependent placement.
+  // A per-cast SUM quantises each window to a whole number of casts, so it cannot
+  // see sub-cast alignment — that blindness produced the phantom "press 2s before
+  // lust" gains and the lust-position-dependent placement, and it is why the sum is
+  // REPORTED rather than ranked (§8h). It is still returned as `robust`.
   // ★★★ AN INTEGRAL NEEDS NO FIGHT-END WINDOW AT ALL — user question, 07-28, and they were right.
   // The kill window is a DE-QUANTIZER. The per-cast sum has a 0/1 cliff at the terminal cast (a cast
   // completing at 119.99 counts 1, one at 120.01 counts 0), so it needs a smear, and PHASE12 §9's
@@ -1495,8 +1506,12 @@ function simulateRaw(schedule, cfg, collect) {
   // kill, which the four cases do not cover.
   // (Retained below because `KWD` is still the right width should a window ever be wanted.)
   // This used to be `KW = 0.5`, the SYMMETRIC window PHASE12 §9 retired everywhere else. It survived
-  // here only because nothing ranked on the integral; the moment the integral is a ranking candidate
-  // again, a retired kill rule inside it is a defect, not a curiosity. The credit rule is
+  // here only because nothing ranked on the integral. ⚠ THAT MOMENT HAS ARRIVED (§8h): the integral
+  // ranks, so the kill rule inside it is load-bearing. It is `none` by default — a hard ∫₀^T — which
+  // is NOT the one-sided credit `cutsAt()` applies on the per-cast board. Measured to do no ranking
+  // work (below), but the two halves of the model now use different boundary conventions and only the
+  // integral's is the simple one. ⇒ OPEN: re-measure on the eight declared tests, not the old four.
+  // The credit rule is
   // algebraically `C ~ U[T, T+d]` with `d` the cast's own duration, so the flux at time `t` is worth
   // `P(C ≥ t)` — a linear ramp from 1 at `T` to 0 at `T + KWD`, NOT one centred on T.
   // ⚠ The symmetric form paid a cast completing exactly at T only ½, and at zero haste its width

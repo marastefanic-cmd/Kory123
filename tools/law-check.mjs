@@ -36,8 +36,8 @@ const G = api.GAME;
 const SP = 1000, CRIT = 25;
 const one = (G.AB.AVG_BASE_DMG + G.AB.COEF * SP) * (1 + (CRIT / 100) * (G.CRIT_MULT - 1));
 
-const cfgOf = (T, kit, fixed) => ({
-  T, hasteRating: 0, sp: SP, critPct: CRIT,
+const cfgOf = (T, kit, fixed, haste) => ({
+  T, hasteRating: haste || 0, sp: SP, critPct: CRIT,
   enabled: Object.fromEntries(ALL_BUFFS.map(k => [k, kit.includes(k)])),
   fixed: fixed || {}, warnings: [], coldSnap: true, segments: null,
 });
@@ -219,6 +219,39 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
   chk('AoE: at N=6 crit does NOT cancel', ratio(0.00, 6) - ratio(0.60, 6),
       K * 6 * (amp(6, 0.00) - amp(6, 0.60)), 1e-9,
       'K·N·[amp(N,0) − amp(N,0.6)], amp re-derived from arcaneConcentration/arcanePotency');
+}
+
+/* ═══ THE EFFECTIVE-AB NORMALIZATION ITSELF — added 07-30, answering a direct user question:
+   *"verify the effective ABs cast is getting calculated correctly."*
+   Everything above checks what a BUFF is worth; nothing checked the quantity those worths are
+   denominated in. The empty fight has a closed form with no free parameters at all:
+
+       effective ABs (no buffs) = T · rate(m) − toll,     toll = Σ_k (C_k − G)/G   at m = 1
+
+   ★ AND THE TOLL IS UNHASTED, WHICH IS THE WHOLE POINT (MODEL-DEFECTS §8q). Recomputing it at hasted
+   cast times is the obvious derivation and it is WRONG — it is what makes compression pay and sends
+   Icy Veins back to the pull. A *fixed* toll is what keeps the ramp haste-neutral, so asserting the
+   SAME 1.332 at h = 0 and h = 600 is asserting §8q directly, which nothing else did.
+   ⚠ These lines are not decoration under the negative control: at h ≠ 0 they read the quantised
+   `rate`, so `--self-test`'s unquantised form breaks them. */
+{
+  const G1 = 1 / rate(1);
+  const toll = [0, 1, 2].reduce((a, k) =>
+    a + (Math.max(msq((G.AB.BASE_CAST - G.AB.STACK_CAST_REDUCTION * k) / 1), G1) - G1) / G1, 0);
+  // A cast with nothing up is worth EXACTLY 1 — that is what "effective ABs" means.
+  chk('a plain cast is worth exactly 1', api.plainCastOf(cfgOf(120, [])) / one, 1, 1e-12,
+      'plainCastOf must equal (BASE + COEF·SP)·critFactor — the divisor `I()` uses');
+  for (const T of [120, 300]) {
+    chk(`empty ${T}s fight = T·rate − toll`, I({}, cfgOf(T, [])), T * rate(1) - toll, 1e-9,
+        `${T}·${rate(1).toFixed(6)} − ${toll.toFixed(6)}; the ramp toll is Σ(C_k−G)/G at m=1`);
+  }
+  for (const h of [200, 400, 600]) {
+    const m = 1 + h / (G.HASTE_RATING_PER_PCT * 100);
+    chk(`empty 300s fight at h=${h} (toll still ${toll.toFixed(3)})`, I({}, cfgOf(300, [], null, h)),
+        300 * rate(m) - toll, 1e-9,
+        'the toll is HASTE-INVARIANT (§8q) — if this fails with a smaller toll, the ramp is being ' +
+        'compressed by haste and Icy Veins will drift back to the pull');
+  }
 }
 
 if (SELFTEST) {
