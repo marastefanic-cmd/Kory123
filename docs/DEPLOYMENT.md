@@ -25,25 +25,22 @@ git checkout -b <feature-branch>        # branch off
 
 Config lives in [`netlify.toml`](../netlify.toml) at the repo root.
 
-- **Published:** `index.html` **plus the optional sim verifier's assets** — `sim/sim.wasm`,
-  `sim/wasm_exec.js`, `sim/duel-worker.js`, `sim/simreq.mjs`, `sim/planspec.mjs`,
-  `sim/benchmark.mjs`, `sim/model-ref-request.json` and `tools/genapl-core.mjs`. The build copies exactly those into
-  `./dist` and Netlify serves `./dist` (see `netlify.toml` for the current command).
-  - `tools/genapl-core.mjs` deliberately keeps its repo-relative path in `dist/` so the page's
-    `import("./tools/genapl-core.mjs")` resolves identically locally and deployed. It is the SAME
-    module the terminal sim harness drives — that is the point (`sim/README.md`).
-  - The sim assets are fetched **lazily, on first press of "Check in the benchmark sim"**. A visitor who never
-    presses it downloads `index.html` and nothing more, so the tool's cold-start cost is unchanged.
-  - `sim/sim.wasm` is ~22 MB and needs `Content-Type: application/wasm` (set in `netlify.toml`) or
-    `WebAssembly.instantiateStreaming` refuses it; Netlify compresses it to ~4 MB on the wire.
-    ⛔ It is served **`no-cache`**, NOT `immutable` — and this line said `immutable` long after the
-    change. `immutable` is a promise about a URL, not about a deploy, and this URL is stable while its
-    bytes are not: a returning visitor could hold a stale wasm against a fresh `index.html` forever
-    (PHASE11 §1.1 B3, fixed 07-26). `no-cache` means *revalidate*, not *re-download* — a 304 keeps the
-    22 MB off the wire. `netlify.toml`'s headers are the authority; when this file and it disagree,
-    **it wins**.
-  - **The wasm is committed, not built at deploy time** — the bytes users run are the audited bytes,
-    and a deploy can't break because upstream moved. Rebuild with `bash sim/build-wasm.sh`.
+- **Published:** `index.html`, **and nothing else.** The build copies it into `./dist` and Netlify
+  serves `./dist` (see `netlify.toml` for the current command).
+  ⚠ **That single line was FALSE for four days and is true again as of 2026-07-30.** The optional
+  in-page sim verifier shipped eight more files (`sim/sim.wasm` at ~22 MB, its Go shim, the duel
+  worker, three modules, a reference-character JSON and `tools/genapl-core.mjs`), and this section had
+  to describe them. The **simulator is retired** — user decision, *"it's doing more harm than good"* —
+  so all of it is gone from the repo and the one-file claim is a fact rather than an aspiration again.
+  ★ Two lessons from those four days are kept in `netlify.toml` as comments even though the files they
+  applied to are gone, because both will recur the moment anything else is published:
+  1. **`immutable` is a promise about a URL, not about a deploy.** It was set on `/sim/sim.wasm`, whose
+     URL was stable while its bytes were rebuilt in place — so a returning visitor kept a year-cached
+     engine against a fresh shim, breaking the feature *for returning users only* (PHASE11 §1.1 B3).
+     A mutable artifact at a stable URL needs `no-cache` (revalidate, not re-download) or a
+     content-hashed filename.
+  2. **Write such a policy as a GLOB over the whole bundle, never a list of filenames.** The first
+     draft of that fix enumerated the files and silently omitted one that was published.
 - **NOT published:** `docs/`, `tools/`, `tests/`, `README.md`, `CLAUDE.md`. They stay
   in the repo but are never served — they're internal dev notes, not for public
   browsing. (If you add a new file that *should* be public, it must be copied into
@@ -81,11 +78,9 @@ The live site must not identify the author (see CLAUDE.md "Working conventions")
 
 1. **Add new site → Import an existing project → Deploy with GitHub**, pick this repo.
 2. Settings auto-fill from `netlify.toml`: branch `master`, publish `dist`, and a build command that
-   copies **nine** files — `index.html`, the seven `sim/` assets (`sim.wasm`, `wasm_exec.js`,
-   `duel-worker.js`, `simreq.mjs`, `planspec.mjs`, `benchmark.mjs`, `model-ref-request.json`) and
-   `tools/genapl-core.mjs`. ⚠ This step used to quote it as `mkdir -p dist && cp index.html
-   dist/index.html`, which stopped being true when the sim shipped. Read `netlify.toml`; do not quote
-   it from here. Confirm and **Deploy**.
+   copies **one** file. ⚠ Read `netlify.toml`; do not quote the command from here — this step has been
+   wrong in both directions already (it said one file while the sim shipped eight, then nine after the
+   sim was retired). Confirm and **Deploy**.
 3. **Site configuration → Change site name** → a neutral name.
 
 ## Rollback

@@ -8,19 +8,34 @@ A **TBC 2.4.3 Arcane-mage cooldown-overlay planner**: `index.html` (open it in a
 no deps). The app is still ONE self-contained file **today, but that convention is RETIRED by
 decision** — `docs/PHASE13.md` §5.1 splits it (design in `docs/archive/12-phase11-platform.md` §2),
 gated on plans staying byte-identical. Treat
-"single-file" as a fact about HEAD, not a constraint to defend. Alongside it sits an **optional** in-page
-sim verifier (`sim/`) that lazily loads the real wowsims engine as WebAssembly when the user presses
-"Check in the benchmark sim" — a visitor who never presses it downloads exactly `index.html` and
-nothing else. **`sim/benchmark.mjs` is the single definition of the duel protocol**, imported by the
-page AND by `tools/plan-duel.mjs`/the tests; never retype a protocol constant into a new instrument.
+"single-file" as a fact about HEAD, not a constraint to defend.
+
+⛔ **THE SIMULATOR IS RETIRED (user decision, 2026-07-30)** — *"I actually want you to retire the
+simming, it's doing more harm than good. I think we have the function/equation locked down and from now
+on we're better off on our own."* Deleted from the repo: `sim/` and the in-page "Check in benchmark sim"
+button, `tools/bench.mjs`, `genapl*`, the wowsims runner patches, the whole `xval-*` cross-validation
+family, the sim tests, and two of CI's three jobs. The deploy publishes **`index.html` alone** again.
+⚠ Their reasoning is NOT gone — `docs/BENCH.md`, `GEAR-AGNOSTIC.md`, `TOOLING.md` and `ACCEPTANCE.md`
+are archived whole as `docs/archive/14`–`17`, each bannered. Read them as evidence about a retired
+instrument; **every command in them is dead**, and a `command not found` is the doc being old, not your
+setup being broken.
+★ **What replaced it.** The sim's stated job was *"to FALSIFY THE SEARCH, not to arbitrate the scorer"*,
+and **brute-forcing a cell's neighbourhood does that job better and instantly**: §8s found a
+0.1022-cast search miss in seconds, where a sim duel resolves ~0.02 casts at best against its own seed
+noise. Ground truth is now `docs/ESTABLISHED-FACTS.md`'s closed forms (checked by
+`tools/law-check.mjs`), the scorer's agreement with itself (`tools/self-consistency.mjs`), and the seven
+declared layouts (`tests/anchors.mjs`). ⚠ **The one real loss is the model's blind spots — mana and AoE
+weighting — which nothing now measures.** That is a known, accepted gap.
 
 You enter a fight (length, Bloodlust
 timing, intermission/AoE phases) and it computes the **optimal moment to press each on-use
 cooldown** (Icy Veins, Arcane Power, Icon of the Silver Crescent, Serpent-Coil gem, Berserking),
 plus a burn timeline, a per-window activation schedule, and a copy-as-text plan. Alongside it:
 `tests/` — **seven tests** (`tests/anchors.mjs`): the seven layouts the user declared exactly. The goldens
-and the plan-shape suites are **deleted** (user decision 07-28, restated twice) — everything else in
-`tests/` is a harness-integrity gate, not a claim about which layout is right.
+and the plan-shape suites are **deleted** (user decision 07-28, restated twice); the sim gates are
+**deleted** (07-30, above). What is left beside `anchors` are the two scorer gates —
+`tools/law-check.mjs` (the scorer vs the algebra) and `tools/self-consistency.mjs` (the scorer vs
+itself) — which are not claims about which layout is right.
 
 ## The end goal (why this exists)
 
@@ -40,15 +55,16 @@ levels, not tuned to today's cases.
 Additional payoffs the same engine unlocks (nice-to-haves, not the point):
 - A **haste-agnostic ideal APL** (cooldown usage that adapts to gear).
 - **Setup comparison** — with each setup planned by its *own* ideal cooldown usage, compare them on
-  **absolute at-kill damage** (or each setup's optimal-APL sim DPS) to decide *which trinkets/gear to
+  **absolute at-kill damage** to decide *which trinkets/gear to
   bring* to a fight. ⚠ **NOT on the effective-AB count** — this line used to say exactly that, and it
   contradicted the user-directed ruling in ROADMAP payoff 2 / EP.md. Effective-casts is normalized to
   *each setup's own* plain AB: it divides out flat SP and crit precisely so it can isolate scheduling,
   which makes it the right objective **within** a setup and a blind one **across** setups, where raw
   SP/crit throughput is most of what you are trying to measure. The distinction is the whole reason
   the two currencies exist; do not collapse them (PHASE11 §1.4 item 3).
-- An **EP / stat-weight calculator** that re-optimizes the plan at each `stat±Δ` (correcting wowsims'
-  frozen-rotation EP bias, which undervalues haste once a fixed rotation stops using it well).
+- An **EP / stat-weight calculator** that re-optimizes the plan at each `stat±Δ`. ⚠ Its finite-mana
+  half was wowsims finite-diff and is retired with the sim; the infinite-mana **layout** EP is
+  closed-form model partials and survives (`docs/EP.md`).
 
 ## How to run the tests
 
@@ -140,13 +156,15 @@ the seven declared tests — `T1 · 2:00 lust 0:20`, `T2 · 3:00 lust 0:20`, `T3
 `T7 · 1:15 lust 0:05 · interm 0:50-0:55` — and clicking one loads that test's own inputs. **The strip and
 `tests/anchors.mjs` must stay in lockstep**: the strip IS the test list, by user decision. ⚠ Five code paths defaulted to deleted names and were repointed in the same commit:
 `ci.yml`'s bench smoke, `tests/page-equiv.mjs`, `tools/model-audit.mjs`, `tools/window-match.mjs`,
-`tools/sp-sensitivity.mjs`. Docs still quote the old names in examples; treat a `no preset matching…`
-error as a stale doc, not a broken tool.
+`tools/sp-sensitivity.mjs` — four of which are now DELETED with the sim; only `sp-sensitivity` remains.
+Docs still quote the old names in examples; treat a `no preset matching…` error as a stale doc, not a
+broken tool.
 
-⚠ **The harness-integrity gates STAY and are a different kind of thing** — they assert the harness is
-not lying, never which plan is best: `tests/sim-request.mjs`, `tests/sim-duel.mjs`,
-`tests/page-equiv.mjs`, `tests/press-fire.mjs`, `tools/self-consistency.mjs`. CI runs all of them, and
-those jobs ARE blocking.
+⚠ **The harness-integrity gates are a DIFFERENT KIND OF THING and the survivors stay** — they assert
+the harness is not lying, never which plan is best. Four of the five were sim gates and went with it
+(`sim-request`, `sim-duel`, `page-equiv`, `press-fire`); **`tools/self-consistency.mjs` remains** and CI
+runs it, blocking. ⚠ Deleting the sim did NOT delete this category, and it must not be allowed to: a
+self-contradicting scorer is still the failure mode that hides longest.
 
 ★★★★ **AND THE NEWEST ONE IS THE MOST USEFUL: `node tools/law-check.mjs`.** It asserts the SCORER
 against `docs/ESTABLISHED-FACTS.md`'s closed forms — what 10 s of Berserking is worth in three different
@@ -180,38 +198,34 @@ plus `band` and `distinct` (all read from the engine, never retyped), and `plan-
 move as `tieBreak`, failing only when a banded move ADDS press moments. **Re-sweep both sides after
 this change — an old JSON is denominated in the old number.**
 
-### The sim gates (added 07-26 — they need no rig)
+### ★★★★ WHEN A PLAN LOOKS WRONG, BRUTE-FORCE THE CELL. This replaced the sim.
 
-```
-node tests/sim-duel.mjs                      # the shipped wasm runs; prints a duel
-RUNNER=/path/to/runner node tests/sim-duel.mjs      # + asserts wasm == native runner
-RUNNER=/path/to/runner node tests/sim-request.mjs   # protocol invariants + page == terminal request
-```
-`sim-duel` works from the repo alone (it loads the committed `sim/sim.wasm`). `sim-request` is the
-**anti-drift gate** and needs a native runner — it asserts the protocol *values* (var ≠ 0, cold open,
-seed spacing…), that both committed characters' request templates are fresh `--dumpreq`s, and that the
-request the **website** builds equals the one the **runner** builds, field for field. It **skips
-loudly** without `RUNNER` rather than passing quietly. Run it after touching anything under `sim/`,
-`tools/genapl-core.mjs`, or a character export.
+The sim's job was *"to FALSIFY THE SEARCH, not to arbitrate the scorer"*, and with an exact objective
+the ranking of two plans is arithmetic — so a plan that looks wrong is one of exactly three things, and
+**you can tell which without any simulator**:
 
-**⚠ The `plan-sweep`/`plan-diff` loop above is now the ONLY plan-stability instrument** — the ~6-minute
-`exact-match` gate it used to be paired with is deleted. That is a net gain for the every-edit loop
-(~33 s for 16 of 25 cases) and one real loss: the sweep runs the DOM-free engine, so it never touches
-the render path. If you change `renderTimeline`/`scheduleRows`, the sweep will not see it — open the
-page.
-
-**And when a changed cell needs the SIM, that is one command and no setup:**
+```js
+// enumerate the neighbourhood under the cell's own cfg and compare to what the tool emitted
+const I = s => api.simulate(api.repair(structuredClone(s), cfg), cfg, true).integral / plainCast;
 ```
-node tools/bench.mjs --preset "2:00 lust 0:05" --vs naive     # ~10s, cold, from the repo alone
-```
-It solves with the real engine, transcribes the plan, sims it against a never-press control, and
-prints the sim Δ (with a seed band) **beside the model's Δ**, flagging a sign disagreement. Same
-backbone as the website's button — `docs/BENCH.md §6`.
 
-⚠ **Scope the verification to what CHANGED — and DUEL what did.** If a plan is bit-identical and the sim
-is unchanged, don't re-test it. But if a plan **did** change, sim it head-to-head against its *previous*
-layout at that cell — `monoDip`/`diagWorst`/CLEAN-vs-DEFICIT are **aggregates** and can hold or improve
-while one cell regressed (`docs/TOOLING.md`).
+| the emitted plan… | it is a… | fix it in |
+|---|---|---|
+| scores BELOW a layout you can enumerate | **search** defect | `phaseRerank` / the seed classes |
+| ties it but sits on the wrong plateau member | **tie-break** defect | `planBetter` / `planShape` |
+| scores ABOVE it, and the closed form disagrees | **scoring** defect | `simulate()` — and `law-check` is already red |
+
+★ This is strictly better than the duel it replaced: §8s enumerated 373k layouts in seconds and named a
+**0.1022-cast** miss exactly, where a sim duel resolves ~0.02 casts at best against its own seed noise
+and answers "which is better" rather than "by how much, and why". ⛔ Do NOT reach for a scoring change
+first — §8j, §8m and §8s were all search defects, and a scorer "fix" aimed at one would have been
+permanent damage.
+
+**⚠ The `plan-sweep`/`plan-diff` loop above is the ONLY plan-stability instrument** — `exact-match` is
+deleted and so is the sim. One real loss: the sweep runs the DOM-free engine, so it never touches the
+render path. If you change `renderTimeline`/`scheduleRows`, the sweep will not see it — **open the
+page**, over http (a `file://` origin blocks the Blob worker the optimizer runs in, so the button
+silently does nothing).
 
 ## `index.html` at a glance
 
@@ -229,36 +243,43 @@ again) · `repair()` (legalizes a schedule: cooldowns, Cold Snap, use caps) · `
 stat changes should apply the moment it's pressed"*. This OVERTURNS the old fire-time display, which
 rendered a press intent of 0:05 as "0:06" and visibly split clusters the optimizer had deliberately
 co-pressed. `shownTimes` is the one accessor; `actEff` no longer feeds any display. **Exactly one
-consumer still needs fire times and must not be "fixed":** `planSpecFor`, which transcribes a plan for
-wowsims, because wowsims cannot press mid-cast. Full internals + current line ranges in
-`docs/ARCHITECTURE.md`.
+`shownTimes` is the one accessor, and with the sim retired `actEff` has **no consumer left at all** —
+it stays on `simulate()`'s result as a diagnostic (when a press *would* fire on a cast boundary), not
+as an input to anything. Full internals + current line ranges in `docs/ARCHITECTURE.md`.
 
 ## The rules that make it correct
 
-The planner encodes hard-won, **sim-verified** TBC theorycraft (the GCD floor, buff-into-Lust
-packing, when Icy Veins slides out of Lust with gear, Cold-Snap materiality, known-kill planning,
-etc.). These are the crown jewels and are easy to get subtly wrong — **read `docs/RULES.md` before
-changing the model or the passes**, and keep it updated as the living theorycraft record.
+The planner encodes hard-won TBC theorycraft (the GCD floor, buff-into-Lust packing, the **packing
+law** — haste windows go back to back and the train moves as a unit, §4c — when Icy Veins slides out of
+Lust with gear, Cold-Snap materiality, known-kill planning, etc.). These are the crown jewels and are
+easy to get subtly wrong — **read `docs/RULES.md` before changing the model or the passes**, and keep it
+updated as the living theorycraft record.
+⚠ Many rules there are tagged *sim-verified*. That tag is now **historical provenance**: it records how
+the rule was established, not an instrument you can re-run. New rules are established from
+`docs/MECHANICS.md`'s formulas and checked against `docs/ESTABLISHED-FACTS.md`'s closed forms.
 
 ## Working conventions
 
 - **Never leak identity or model identifiers** into `index.html` or anything the user shares
   publicly (it's a shareable artifact): no real names, emails, usernames, repo names, session ids,
   or model ids. The user's Discord handle is the only acceptable attribution.
-- **★ There are TWO wowsims and we use the NEW one.** `wowsims/tbc-new` → deployed at
-  **https://www.wowsims.com/tbc/** — this is what we build, pin (`ade9f39cc`), patch and **link**.
-  `wowsims/tbc` → `wowsims.github.io/tbc` is **ARCHIVED** (2021, pre-APL) and its own page says so.
-  The trap: `tbc-new` declares Go module `github.com/wowsims/tbc`, so deriving the URL from an import
-  lands on the dead repo — and on 07-26 the shipped page *linked* to the dead one for the same reason.
-  Read the URL, never derive it; check drift with `bash tools/upstream-drift.sh`. Details: TOOLING.
+- **★ THE ENGINE'S PHYSICS CONSTANTS WERE READ OUT OF WOWSIMS' SOURCE, and those citations stay.**
+  `index.html` still cites `sim/core/cast.go:137-138` (both clocks round to the millisecond),
+  `sim/mage/arcane_charge.go:17` (334 ms per stack, **not** 1/3 — the difference COMPOUNDS) and
+  `sim/mage/talents.go`. That is **provenance for a solved game**, exactly what `docs/SOURCES.md` asks
+  for, and it survives the simulator's retirement: we no longer *run* wowsims, we still *cite* what its
+  source says the 2.4.3 client does. ⚠ The live site is `wowsims/tbc-new` →
+  **https://www.wowsims.com/tbc/**; `wowsims/tbc` → `wowsims.github.io/tbc` is ARCHIVED (2021, pre-APL).
+  The trap that caught this project once: `tbc-new` declares Go module `github.com/wowsims/tbc`, so
+  deriving the URL from an import lands on the dead repo. Read the URL, never derive it.
 - **Determinism is a feature.** Any change must keep one-setup-⇒-one-schedule, or `plan-diff` and the
-  two tests become meaningless. Don't add `Date.now()`/`Math.random()` outside the seeded PRNG.
+  seven tests become meaningless. Don't add `Date.now()`/`Math.random()` outside the seeded PRNG.
 - **★★★★ THE OBJECTIVE IS EXACT — ✅ LANDED 07-27, AND IT MUST STAY THAT WAY.**
   Effective ABs cast is a **deterministic per-cast sum**: for each Arcane Blast the model knows the
   haste and stacks (hence cast time), whether AP is up (×1.30), which SP buffs apply (normalized
   against a plain cast), and crit as a constant that cancels. **Nothing needs approximating.** That
   sum is now what `simulate()` accumulates and what `robust`/`total` return.
-  **The standing gate, and it needs no sim:** `node tools/self-consistency.mjs` must read
+  **The standing gate:** `node tools/self-consistency.mjs` must read
   `0.00e+0` **and `0` structural violations**. Run it after ANY change to `simulate()` — it generates
   its own corpus (3000 scorings, 460k casts, 0.78 s, no cache, works from a bare clone).
   ⚠ **The `0.00e+0` alone is NOT sufficient and never was.** It compares the number that RANKS against
@@ -296,8 +317,9 @@ changing the model or the passes**, and keep it updated as the living theorycraf
   2. **Expiring a buff window from the PRESS time.** A self-press fires at the next cast boundary, so
      expiring at `press + duration` made every mid-cast window short by the slip — one whole cast in
      the measured case. Windows run their full duration from when the ability actually FIRES;
-     raid externals (Lust/PI/Drums) are the exception and start when CALLED. Gate:
-     `tools/window-span.mjs` must match wowsims at every probe offset.
+     raid externals (Lust/PI/Drums) are the exception and start when CALLED. ⚠ Its gate was
+     `tools/window-span.mjs`, which probed wowsims at every offset — **deleted with the sim.** The rule
+     stands on what that gate measured; nothing re-checks it now.
   3. **One snapshot rule for both kinds of buff.** ★ **HASTE is fixed at the cast's START; VALUE
      (+SP, damage multipliers) is read at the cast's COMPLETION**, over the window `(start, end]` —
      open left, closed right, both edges measured (`tools/snapshot-rule.mjs`). Deciding everything at
@@ -353,9 +375,10 @@ changing the model or the passes**, and keep it updated as the living theorycraf
      is still TRUE and it is not what decides the question.** The question was never *"does the cast
      land"* but *"what would the player do"* — and no sim measurement can answer that.
      ⚠⚠ **A DELIBERATE, PRICED DIVERGENCE FROM THE SIM.** wowsims' APL cannot cancel a cast: it finishes
-     the Blast and lands it. So `model-audit` **WILL** show a gap at an AoE wall, and that gap is **not a
-     bug** — do not "fix" it back. It is the one place the model models a **player decision** the harness
-     cannot express.
+     the Blast and lands it. So the old `model-audit` **DID** show a gap at an AoE wall, and that gap was
+     **not a bug** — it is the one place the model models a **player decision** the harness could not
+     express. ⚠ With the sim retired nothing measures that gap any more, and the ruling still stands on
+     its own reasoning: the question was never *"does the cast land"* but *"what would the player do"*.
      ⚠⚠ **And an INSTANT cast takes credit 1, not 0.** Arcane Explosion has `cast = 0`; a
      divide-by-zero guard that returned `0` credited **every AE in the corpus at nothing** (Kael'thas
      368,018 vs 524,173 — a 42 % error). The limit is not a matter of taste: as `dur → 0`,
@@ -364,44 +387,32 @@ changing the model or the passes**, and keep it updated as the living theorycraf
      second every pull either**, so modelling it as exact is the same mistake as modelling T as exact.
      ⇒ `total` / `robust` / `totalEarly` are now **one number**, and the board carries `frac` +
      `credited` so the gate can recompute the objective independently. Gate: `tools/wall-credit.mjs`.
-     ⚠ **Consequence for the sim protocol, and it is ✅ SETTLED (07-27, PHASE13 §2.4):** the sim's
-     kill window is now **derived from the model's**. The credit rule is algebraically the one-sided
-     window `U[T, T+d]`, so `encounterFor(T, haste)` gives the sim `duration = T + d/2,
-     variation = d/2` — the same window. `BENCH.variation: 0.5` survives ONLY as a legacy default and
-     as the value every archived corpus was gathered at; it was never the model's width once that
-     constant was deleted, and it was 33 % too narrow at zero haste besides. Measured 7.8× tighter
-     model/sim tracking across a cast boundary (`tools/window-match.mjs`). ⛔ Still never `--var 0`.
+     ⚠ **This had a sim-protocol consequence and it is now moot** (kept because the ALGEBRA is the
+     point): the credit rule is the one-sided window `U[T, T+d]`, so the sim's encounter was derived
+     from the model's as `duration = T + d/2, variation = d/2` rather than the legacy `variation: 0.5`,
+     which was 33 % too narrow at zero haste. That derivation is what tells you the model's kill window
+     **is the cast's own duration**, not a tuned constant — which is still true and still load-bearing.
   Full evidence: `docs/archive/13-phase12-exact-objective.md` §6.10 (the objective), §6.11 (the
   windows), §6.12 (the snapshot rules), §9 (the boundary credit).
-- **The sim's job is to FALSIFY THE SEARCH, not to arbitrate the scorer.** With an exact objective the
-  model's ranking of two plans is arithmetic and cannot be wrong — so when the sim prefers a plan the
-  tool did not emit, **the search failed to find it.** That is the whole point of the cross-val corpus:
-  brute-force regions the search never visits, and generalize each disagreement into a rule or a seed
-  class. Secondary uses: **anchor the physics** (trust-anchor to `wowsimcli`, ~0.4 % absolute
-  agreement); cover genuine **blind spots** (mana, AoE weighting); **build user trust** via the in-page
-  benchmark button, which is the same code path as the internal corpus; and **verify a novel finding**
-  before locking it. It is **not** a routine per-golden gate. ⚠ And the standing caution still holds —
-  when a clean count and a sim number disagree, audit the *setup* first: the sim is rarely wrong, we've
-  usually used it wrong (the Vashj drop bug, the stale unpatched runner, the AP-195 quirk, the
-  **prepull** cast-loss, and now the **press-transcription defect** of PHASE12 §6.9 — `floor(actEff)`
-  put 7.14 % of presses on a cast the model never chose. ⛔ Do **not** cite §6.7's mechanism for it:
-  *"the schedule fires at the first boundary strictly after"* was **falsified by §6.9a** — wowsims'
-  `IsReady` is `>=`, and the real cause was that the sim's boundary sat **2 ms earlier than its own
-  combat log printed it**, because wowsims takes 334 ms per Arcane Blast stack where the model took
-  1/3 s. A fix built on "strictly after" would have bet on the sign of a rounding error, and that sign
-  flips with haste).
-- **★ The model opens COLD — never prepull in a model-compared sim.** `genapl _prestack:0` (default).
-  A prepull's fixed −2.3s time is haste-blind and makes a sim haste sweep non-monotone (more haste
-  → fewer casts), which is physically impossible and silently corrupts any haste comparison. Rule
-  lives in TOOLING (★★★), RULES §3, and PHASE6 §4.7.
+- **★ THE MODEL OPENS COLD, and that is now a property of the MODEL rather than a sim setting.** No
+  prepull, no pre-stacked Arcane Blast: the fight starts at 0 stacks and pays the 1.332-cast opener toll
+  (ESTABLISHED-FACTS §1.2). It began as a sim-protocol rule (`genapl _prestack:0`) with a sharp reason —
+  a prepull's fixed −2.3 s is haste-blind, which made a haste sweep non-monotone (more haste → *fewer*
+  casts), physically impossible and silently corrupting. The reason outlives the instrument. RULES §3.
+- ⚠ **THE OLD SIM CAUTION IS WORTH KEEPING, GENERALISED.** It read: *when a clean count and a sim number
+  disagree, audit the setup first — the sim is rarely wrong, we've usually used it wrong.* Five times
+  that was exactly right (the Vashj drop bug, the stale unpatched runner, the AP-195 quirk, the prepull
+  cast-loss, the press-transcription defect of PHASE12 §6.9). ⇒ **When an instrument and a closed form
+  disagree, suspect the instrument's SETUP before either.** That applies to `plan-sweep`, `law-check`
+  and every brute-force probe you write — §8t is exactly this failure in a sim-free tool, and it
+  produced three confident false regressions.
 - Commit to the designated feature branch provided at session start; follow the session's configured
   commit author/trailers; don't open a PR unless asked.
 - **`master` is the live site.** The tool is deployed as a free static site on Netlify that
   **auto-redeploys on every push/merge to `master`**. So never develop on `master` — branch off it,
-  develop, and merge back via PR (merging *is* shipping). **`index.html` plus the eight lazily-loaded
-  sim files** are published (`netlify.toml`'s build command — the old "only `index.html`" was already
-  false in fact); `docs/`,
-  `tools/`, `tests/`, and the `.md` files are not. Full workflow, headers, and anonymity rules:
+  develop, and merge back via PR (merging *is* shipping). **`index.html` ALONE is published** — true
+  again as of 07-30, the sim's eight lazily-loaded files having gone with it; `docs/`, `tools/`,
+  `tests/`, and the `.md` files are not. Full workflow, headers, and anonymity rules:
   `docs/DEPLOYMENT.md`.
 
 ## Keep this documentation alive (do this, every session)
@@ -410,9 +421,9 @@ These files are the project's memory across context clears — they are only use
 Treat maintaining them as part of the work, not an afterthought:
 
 - **Update in the same commit as the change.** If you add/refine/overturn a rule → edit
-  `docs/RULES.md` (with its sim evidence). If you change the model or pass order → `docs/ARCHITECTURE.md`
+  `docs/RULES.md` (with its algebra). If you change the model or pass order → `docs/ARCHITECTURE.md`
   (re-grep the line ranges; they drift). If work lands or priorities move → `docs/ROADMAP.md`. If the
-  sim workflow changes → `docs/TOOLING.md`. If the goal or conventions shift → this file.
+  goal or conventions shift → this file.
 - **Add or remove docs as the project evolves** — when a new subsystem appears (e.g. the EP
   calculator), give it its own `docs/*.md` and link it below; delete or merge docs that go stale. The
   file list below is not fixed.
@@ -429,41 +440,21 @@ Treat maintaining them as part of the work, not an afterthought:
 
 ## Pointers
 - `docs/DEPLOYMENT.md` — how the tool ships: free Netlify static site, **auto-deploys from `master`**,
-  branch-off-and-merge workflow, what's published (**`index.html` + the eight lazily-loaded sim
-  files** — the old "only `index.html`" was already false in fact), headers, and anonymity rules.
+  branch-off-and-merge workflow, what's published (**`index.html`, alone**), headers, and anonymity.
 - `docs/MECHANICS.md` — **read first.** The verified game formulas (haste, cast time, damage per cast,
   the cast-rate DPS equation) that everything else is derived from.
-- `docs/RULES.md` — the theorycraft rules, each with its sim evidence (derived from MECHANICS.md).
+- `docs/RULES.md` — the theorycraft rules, derived from MECHANICS.md. ⚠ The *sim-verified* tags on the
+  older rules are **provenance, not a re-runnable instrument** (§4c, the packing law, is the first rule
+  established without one — by enumeration).
 - `docs/ARCHITECTURE.md` — `index.html` internals and the optimizer pass order.
-- `docs/TOOLING.md` — the wowsims sim harness (how to verify a plan) and its gotchas.
-- `docs/GEAR-AGNOSTIC.md` — ★★★ **READ BEFORE ANY SIM WORK. The single source of truth for how this
-  project sims.** User decision 07-26: every simulation — the website button *and* the internal
-  model-verification corpus — runs on a character defined **only** by the planner's declared inputs
-  (SP, crit, passive haste, hit hardset at cap, the T5-2pc checkbox). No exported gear file, ever
-  again, because a corpus denominated in one can be voided by re-exporting it — which is exactly what
-  happened on 07-26. Where it disagrees with an older doc, **it wins and the older doc is the
-  remnant.** It also carries the measured trinket passive/active split, the wasm-vs-native-runner
-  numbers, and the freeze rules that gate the implementation.
-- `docs/BENCH.md` — ⚠ **superseded in part by GEAR-AGNOSTIC.md (see its banner)** —
-  **the standing sim practice**, and `tools/bench.mjs`, the tool that implements it.
-  **Reach for `node tools/bench.mjs --preset X --vs naive` before building any rig**: it runs the
-  committed `sim/sim.wasm` (no clone, no protoc, no `go build`, no `RUNNER`/`EXPORT_BASE`), prints the
-  sim Δ with a seed band next to the model's Δ, and shares its whole backbone with the website's
-  verification button — so one change moves both fronts.
-- `sim/README.md` — the **in-page** sim verifier: the shared chain (`planspec` → `genapl-core` →
-  `simreq` → `sim.wasm`), the gear-agnostic reference character, the wasm-equals-native proof, and the
-  rebuild recipe. The terminal harness and the button are ONE code path by construction.
+- `docs/ESTABLISHED-FACTS.md` + `tools/law-check.mjs` — ★★★★ **THE GROUND TRUTH, now that the sim is
+  gone.** Closed forms, each verified against the engine's rate integral to the digit; law-check
+  asserts the scorer against them and ships a negative control.
+- `docs/archive/14`–`17` — the four sim docs (`BENCH`, `GEAR-AGNOSTIC`, `TOOLING`, `ACCEPTANCE`),
+  archived whole on 07-30 and bannered. **Historical evidence about a retired instrument; every command
+  in them is dead.** `docs/archive/README.md` explains what replaced it and what was genuinely lost
+  (mana + AoE weighting are now unmeasured).
 - `docs/ROADMAP.md` — status, current work, and open questions.
-- `docs/ACCEPTANCE.md` — **the standing completion test**: the holdout haste-adaptation cross-val the
-  model must pass FULLY before it's called complete (monoDip=0 everywhere + no length-persistent
-  diagonal deficit). Re-run after every fix/upgrade phase.
-  ⛔ **It has NO CURRENT READING.** Every round in it — gear A *and* the 36/36 gear-B round 1 — was
-  gathered against a scorer PHASE 12 replaced, so its verdicts grade an engine that no longer exists.
-  The tables stay as the append-only evidence trail; **their verdicts must not be cited as the model's
-  status.** ★ Re-gathering is now mostly **arithmetic** — `tools/xval-model.mjs` re-optimizes and
-  cross-scores at every haste with no sim at all (`docs/PHASE13.md` §2.1). ⚠ Re-pose the PASS criterion
-  before grading: the "restate the bar in terms of the ripple floor?" question is **void as posed**,
-  all three of its premises having died with the rate integral.
 - `docs/DIARY.md` — **append-only history** of how the tool evolved: the phase arc + the
   believed→disproved corrections ledger. Read to avoid re-litigating settled mistakes.
 - `docs/archive/` — closed-phase docs, chronological with a README index (`01`–`06` = the per-phase

@@ -3,6 +3,27 @@
 ## Resuming after a context clear (start here)
 
 > # ▶ THE LIVE PLAN IS `docs/PHASE13.md` — start there
+>
+> ## ⛔⛔ 2026-07-30 — TWO USER DECISIONS RESHAPED THE PROJECT. READ THESE FIRST.
+> **1. The simulator is RETIRED.** *"I actually want you to retire the simming, it's doing more harm
+> than good. I think we have the function/equation locked down and from now on we're better off on our
+> own."* `sim/`, `tools/bench.mjs`, `genapl*`, the whole `xval-*` cross-validation family, the sim
+> tests, two of CI's three jobs and the in-page "Check in benchmark sim" button are **deleted**; the
+> four sim docs are archived as `docs/archive/14`–`17`, bannered. `docs/PHASE13.md` opens with the list
+> of items this VOIDS. Ground truth is now `docs/ESTABLISHED-FACTS.md`'s closed forms
+> (`tools/law-check.mjs`), the scorer's self-agreement (`tools/self-consistency.mjs`), and the **seven**
+> declared layouts (`tests/anchors.mjs`). ⚠ Genuinely lost: mana and AoE weighting are now unmeasured.
+> **2. Displayed plan times are PRESS times, not fire times.** *"With our model the trinket and the stat
+> changes should apply the moment it's pressed."* The old display rendered a 0:05 intent as "0:06" and
+> visibly split clusters the optimizer had deliberately co-pressed.
+>
+> ## ✅ `7 of 7` — and the two newest tests came in as BUG REPORTS
+> T6 (`2:00 lust 0:05`) and T7 (`1:15 lust 0:05 · interm 0:50–0:55`) were plans the user said were
+> wrong. They were: the emitted layouts sat **0.0058** and **0.1022 casts** below the brute-force
+> argmax. Both were SEARCH misses (MODEL-DEFECTS §8s) — the optimum packs haste windows back to back,
+> and every 1-D and 2-D move off a packed train is downhill, so `phaseRerank` gained a train slide.
+> ★ The method that found them is the one that replaced the sim: **enumerate the cell's neighbourhood
+> and compare.** It is exact, instant, and says *by how much*.
 > ## ✅ PHASE 12 — MAKE THE OBJECTIVE EXACT — is **CLOSED 2026-07-27** and archived at `docs/archive/13-phase12-exact-objective.md`.
 >
 > ## ✅ THE OBJECTIVE IS EXACT, AND THE TREE IS GREEN

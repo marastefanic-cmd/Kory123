@@ -67,7 +67,7 @@ export function loadEngine(htmlPath) {
     process.exit(2);
   }
   need(typeof api.optimizeAsync === 'function', 'optimizeAsync missing from the engine block.');
-  need(typeof api.naiveSchedule === 'function', 'naiveSchedule missing from the engine block (tools/bench.mjs --vs naive needs it).');
+  need(typeof api.naiveSchedule === 'function', 'naiveSchedule missing from the engine block (the page\'s vs-mashing tile needs it).');
   need(Array.isArray(api.cases) && api.cases.length > 0, 'fight table came out empty.');
   need(api.nBoss > 0 && api.nGolden > 0, `preset arrays look wrong: boss=${api.nBoss} golden=${api.nGolden}`);
   return api;

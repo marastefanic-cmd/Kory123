@@ -172,4 +172,38 @@ noise band but no **resolution floor**, turning `+0.00` vs `−0.00` into a winn
 engine defaulted to a stale blob, reporting a byte-identical "no change" across two consecutive fixes.
 **Read a tool's output, not its verdict line.**
 
+---
+
+## `14`–`17` — THE SIM DOCS, archived 2026-07-30 when the simulator was RETIRED
+
+These four are not phase docs. They are the **living docs of a subsystem that no longer exists**, moved
+here whole rather than deleted, because the project's rule is that living docs must never describe a
+state that is gone while the *reasoning* is never thrown away.
+
+| file | was | why it is here |
+|---|---|---|
+| `14-sim-bench-practice.md` | `docs/BENCH.md` | the standing sim practice + `tools/bench.mjs` |
+| `15-sim-gear-agnostic.md` | `docs/GEAR-AGNOSTIC.md` | how the project simmed: one synthetic character from the planner's own inputs, no gear file ever again |
+| `16-sim-tooling.md` | `docs/TOOLING.md` | the wowsims harness and its gotchas |
+| `17-sim-acceptance-xval.md` | `docs/ACCEPTANCE.md` | the cross-val completion test |
+
+**User decision (07-30):** *"I actually want you to retire the simming, it's doing more harm than good.
+I think we have the function/equation locked down and from now on we're better off on our own."* Deleted
+with them: `sim/`, `tools/bench.mjs`, `genapl*`, the runner patches, the whole `xval-*` family, the sim
+tests, the in-page "Check in benchmark sim" button, and two of CI's three jobs.
+
+⚠ **Every command in all four is dead.** They open with a banner saying so. ⚠ **`17` had NO CURRENT
+READING even before this** — every round in it was gathered against a scorer Phase 12 replaced, so its
+verdicts already graded an engine that did not exist.
+
+★ **What the sim was actually for, and what replaced it.** Its stated job was *"to FALSIFY THE SEARCH,
+not to arbitrate the scorer"* — and that job is now done better and instantly by **brute-forcing a
+cell's neighbourhood** (§8s found a 0.1022-cast miss that way in seconds, where a sim duel would have
+resolved ~0.02 casts at best against its own seed noise). Ground truth is `docs/ESTABLISHED-FACTS.md`'s
+closed forms, checked by `tools/law-check.mjs`, plus the seven declared layouts. The one thing genuinely
+lost is coverage of the model's blind spots — **mana and AoE weighting** — which nothing now measures;
+that is a known, accepted gap, not an oversight.
+
+---
+
 _(In flight: **`docs/PHASE13.md`** — the only live plan doc. Archive it here when it closes.)_

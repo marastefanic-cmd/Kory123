@@ -1,30 +1,16 @@
 # Netlify deploy config for the Arcane Burn Planner.
 #
-# The app is index.html at the repo root — no framework, no dependencies, no real
-# build — PLUS the optional in-page sim verifier, which needs a few more files:
-#
-#   sim/sim.wasm               the patched wowsims engine (~22 MB, ~4 MB gzipped by Netlify)
-#   sim/wasm_exec.js           Go's wasm shim, must match the Go version that built sim.wasm
-#   sim/duel-worker.js         the worker that runs one arm of a duel
-#   sim/simreq.mjs             builds the RaidSimRequest (patches the runner's own dumpreq)
-#   sim/planspec.mjs           plan → genapl spec (the transcription convention)
-#   sim/benchmark.mjs          THE duel protocol — the one the terminal harness imports too
-#   sim/model-ref-request.json the gear-agnostic reference character, as a sim request
-#   tools/genapl-core.mjs      the APL builder — the SAME module the terminal harness drives
-#
-# tools/genapl-core.mjs keeps its repo-relative path on purpose: the page imports
-# "./tools/genapl-core.mjs", which then resolves identically whether you open the
-# repo locally or hit the deployed site. Everything else in docs/, tools/, tests/,
-# README.md and CLAUDE.md stays unpublished — internal dev notes, not for browsing.
-#
-# The sim files are loaded LAZILY, only when a user presses "Verify in the sim".
-# A visitor who never presses it downloads exactly what they did before.
+# The app is index.html at the repo root — no framework, no dependencies, no build.
+# ONE published file, and as of 2026-07-30 that is true again rather than aspirational:
+# the in-page sim verifier is RETIRED (user decision — "I actually want you to retire
+# the simming, it's doing more harm than good"), so `sim/`, `tools/genapl-core.mjs` and
+# the eight lazily-loaded files this config used to copy are gone from the repo.
+# Everything in docs/, tools/, tests/, README.md and CLAUDE.md stays unpublished —
+# internal dev notes, not for browsing.
 
 [build]
   publish = "dist"
-  command = """
-    mkdir -p dist/sim dist/tools &&     cp index.html dist/index.html &&     cp sim/sim.wasm sim/wasm_exec.js sim/duel-worker.js sim/simreq.mjs sim/planspec.mjs sim/benchmark.mjs sim/model-ref-request.json dist/sim/ &&     cp tools/genapl-core.mjs dist/tools/
-  """
+  command = "mkdir -p dist && cp index.html dist/index.html"
 
 # Defense-in-depth response headers. The page loads zero external resources and
 # stores no data, so these are hygiene rather than necessity.
@@ -42,59 +28,10 @@
     Referrer-Policy = "no-referrer"
     Permissions-Policy = "geolocation=(), camera=(), microphone=(), payment=(), usb=()"
 
-# Correct MIME types matter: WebAssembly.instantiateStreaming REQUIRES
-# application/wasm, and a module import of a .mjs served as text/plain is refused.
-#
-# ⚠ `immutable` WAS SET HERE ON /sim/sim.wasm AND IT WAS WRONG (PHASE11 §1.1 B3, fixed 07-26).
-# The old comment read "the sim assets are immutable per deploy", and that is the false premise:
-# `immutable` is a promise about a URL, not about a deploy, and this URL is STABLE while its bytes
-# are rebuilt IN PLACE (`bash sim/build-wasm.sh`, DEPLOYMENT). So after any rebuild — the planned
-# Drums/PI patch is one, PHASE10 §7 — a returning visitor keeps the YEAR-CACHED old engine, while
-# `wasm_exec.js` (which line 7 says "must match the Go version that built sim.wasm") had no
-# Cache-Control at all and updates immediately. That is a version-skew pair that breaks the sim
-# button for returning users only, i.e. invisibly to whoever ships the rebuild.
-#
-# Fixed by making the whole lazily-loaded sim bundle revalidate as a UNIT. `no-cache` does not mean
-# "do not store" — the browser keeps the 22 MB and sends an If-None-Match, so the steady state is a
-# 304 with no body, and the bytes are re-sent only when they actually changed. That is the correct
-# policy for a mutable artifact at a stable URL, and it costs one conditional request per session on
-# a file that is only fetched when the user presses the sim button at all.
-#
-# ☞ The better fix, and the FREEZE HAS LIFTED (07-27): content-hash the published filenames in the
-# build command so the URL changes with the bytes, and `immutable` becomes true instead of merely
-# asserted (archived PHASE11 §2.4, now docs/PHASE13.md §5). That needs the fetch sites to learn the
-# hashed name, which lives in `index.html` — the file the module split exists to break up, which is
-# why it is sequenced behind it rather than done here.
-# ★ ONE POLICY FOR THE WHOLE LAZY BUNDLE, BY GLOB — not by a list of filenames.
-# The files below form one shared chain (planspec → genapl-core → simreq → benchmark → wasm_exec →
-# sim.wasm), and a bundle whose members expire on different schedules can serve a MISMATCHED SET.
-# Writing that as a per-file list is the copies-drift failure this repo keeps paying for: the first
-# draft of this fix enumerated the files and silently omitted `model-ref-request.json`, which is
-# published (see the build command) and is the reference character every duel is built on. A glob
-# cannot forget a file that a later deploy adds. (PHASE11 §1.1 B3 + §1.3 I8.)
-[[headers]]
-  for = "/sim/*"
-  [headers.values]
-    Cache-Control = "public, no-cache"
-
-[[headers]]
-  for = "/tools/*"
-  [headers.values]
-    Cache-Control = "public, no-cache"
-
-# MIME types, kept separate: Netlify merges every matching block, so these add Content-Type to the
-# files that need it without restating the cache policy above.
-[[headers]]
-  for = "/sim/sim.wasm"
-  [headers.values]
-    Content-Type = "application/wasm"
-
-[[headers]]
-  for = "/sim/*.mjs"
-  [headers.values]
-    Content-Type = "text/javascript; charset=utf-8"
-
-[[headers]]
-  for = "/tools/*.mjs"
-  [headers.values]
-    Content-Type = "text/javascript; charset=utf-8"
+# ⚠ THE CACHE-CONTROL SECTIONS ARE GONE WITH THE SIM, AND THE LESSON IN THEM IS NOT.
+# They existed because `immutable` had been set on /sim/sim.wasm — a promise about a URL,
+# on a URL whose bytes were rebuilt IN PLACE — so a returning visitor kept a year-cached
+# engine while its shim updated immediately (PHASE11 §1.1 B3). If a mutable artifact at a
+# stable URL is ever published again, it needs `no-cache` (revalidate, not re-download) or
+# a content-hashed filename, and the policy must be written as a GLOB over the whole bundle:
+# the first draft of that fix enumerated filenames and silently omitted one.

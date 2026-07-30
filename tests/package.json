@@ -5,6 +5,7 @@
   "scripts": {
     "test": "node anchors.mjs"
   },
+  "comment": "playwright-core is for the RENDER PATH only (page-open.mjs + plan.mjs/probe.mjs). It is no longer for page-equiv.mjs, which asserted page-vs-terminal wowsims requests and is deleted with the sim (2026-07-30). Every actual GATE -- anchors, law-check, self-consistency -- runs in bare node with no install.",
   "dependencies": {
     "playwright-core": "^1.40.0"
   }

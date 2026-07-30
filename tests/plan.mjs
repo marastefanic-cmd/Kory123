@@ -1,20 +1,14 @@
 // Dump the canonical copy-as-text plan (the exact string the exact-match suite
 // locks) for arbitrary fight configs — for verifying a plan before locking it.
 //   node plan.mjs '[{name,T,pins,gear,kit,intermission,phases}, ...]'
-import { chromium } from 'playwright-core';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dir = path.dirname(fileURLToPath(import.meta.url));
-const REPO = path.resolve(__dir, '..');
+import { openPage } from './page-open.mjs';
 const CASES = JSON.parse(process.argv[2] || '[]');
 const ALL_BUFFS = ["ati", "powerInfusion", "drums", "icyVeins", "skull", "isc", "scb", "arcanePower", "berserking", "mqg", "bloodlust"];
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
-const page = await browser.newPage();
-let perr = null;
-page.on('pageerror', e => (perr = String(e)));
-await page.goto('file://' + path.join(REPO, 'index.html'));
+// ⚠ Over HTTP, never file:// — a Blob Web Worker cannot start on an opaque origin, so the
+// optimizer silently never runs. See tests/page-open.mjs.
+const { page, errors, close } = await openPage();
+const perrOf = () => (errors.length ? errors[0] : null);
 const defaults = await page.evaluate(() => ({ gear: window.GOLDEN_DEFAULTS.gear, kit: window.GOLDEN_DEFAULTS.kit }));
 
 for (const c of CASES) {
@@ -47,7 +41,8 @@ for (const c of CASES) {
     });
     return L.join('\n');
   }, { c, gear, kit, ALL_BUFFS });
-  if (perr) { console.error('PAGEERROR on', c.name, ':', perr); await browser.close(); process.exit(2); }
+  const perr = perrOf();
+  if (perr) { console.error('PAGEERROR on', c.name, ':', perr); await close(); process.exit(2); }
   console.log(`\n########## ${c.name} ##########\n${text}`);
 }
-await browser.close();
+await close();

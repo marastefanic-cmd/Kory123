@@ -2,20 +2,14 @@
 // schedule (per-key press times) + the copy-as-text windows. Not a test — a
 // development scope for eyeballing what the optimizer actually generates.
 //   node probe.mjs '<json-cfg-overrides>'   (array of {name,T,pins,gear,kit,intermission,phases})
-import { chromium } from 'playwright-core';
-import path from 'path';
-import { fileURLToPath } from 'url';
-
-const __dir = path.dirname(fileURLToPath(import.meta.url));
-const REPO = path.resolve(__dir, '..');
+import { openPage } from './page-open.mjs';
 
 const CASES = JSON.parse(process.argv[2] || '[]');
 
-const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
-const page = await browser.newPage();
-let perr = null;
-page.on('pageerror', e => (perr = String(e)));
-await page.goto('file://' + path.join(REPO, 'index.html'));
+// ⚠ Over HTTP, never file:// — a Blob Web Worker cannot start on an opaque origin, so the
+// optimizer silently never runs. See tests/page-open.mjs.
+const { page, errors, close } = await openPage();
+const perrOf = () => (errors.length ? errors[0] : null);
 
 const defaults = await page.evaluate(() => ({ gear: window.GOLDEN_DEFAULTS.gear, kit: window.GOLDEN_DEFAULTS.kit }));
 const ALL_BUFFS = ["ati", "powerInfusion", "drums", "icyVeins", "skull", "isc", "scb", "arcanePower", "berserking", "mqg", "bloodlust"];
@@ -36,9 +30,10 @@ for (const c of CASES) {
     for (const k in best.s) if (best.s[k].length) sched[k] = best.s[k].map(t => +t.toFixed(2));
     return { sched, robust: +r.robust.toFixed(1), total: +r.total.toFixed(1), val: +best.val.toFixed(1) };
   }, { c, gear, kit, ALL_BUFFS });
-  if (perr) { console.error('PAGEERROR on', c.name, ':', perr); await browser.close(); process.exit(2); }
+  const perr = perrOf();
+  if (perr) { console.error('PAGEERROR on', c.name, ':', perr); await close(); process.exit(2); }
   console.log(`\n=== ${c.name} (T=${c.T}) ===`);
   console.log('  robust=%s total=%s', out.robust, out.total);
   for (const k of ALL_BUFFS) if (out.sched[k]) console.log('  %s: [%s]', k.padEnd(13), out.sched[k].join(', '));
 }
-await browser.close();
+await close();

@@ -8,6 +8,41 @@ archived at `docs/archive/12-phase11-platform.md` and `docs/archive/13-phase12-e
 that is what the archive is for. Each item states, in one line, **why it is open**. If you close one,
 delete it from this file and record the arc in `docs/DIARY.md`.
 
+---
+
+## ⛔⛔ VOIDED IN BULK, 2026-07-30 — THE SIMULATOR IS RETIRED
+
+User decision: *"I actually want you to retire the simming, it's doing more harm than good. I think we
+have the function/equation locked down and from now on we're better off on our own."* `sim/`,
+`tools/bench.mjs`, `genapl*`, the runner patches, the whole `xval-*` family, the sim tests and the
+in-page button are **deleted**; the four sim docs are archived as `docs/archive/14`–`17`.
+
+**These items are VOID — do not work them, and do not treat their absence as a debt:**
+
+| item | why it is void |
+|---|---|
+| **§2.1** re-gather ACCEPTANCE | the cross-val is a sim instrument; `ACCEPTANCE.md` is archived and had no current reading anyway |
+| **§2.2** re-run `model-audit` at scale | the tool is deleted |
+| **§2.3** re-run `scorer-duel` | the tool is deleted |
+| **§4.1–§4.4** the gear-agnostic enforcement track | it existed to stop a *sim corpus* being voided by a re-export; there is no corpus |
+| **§1**'s "price" (§102, the standing divergence from the sim) | still TRUE as a statement about the model; there is no longer an instrument that shows the gap |
+
+**These items SURVIVE and are the live plan:**
+
+- **§3 / §3.1 / §3.9 — the search-optimality programme.** ★ Promoted, not merely surviving: with the
+  sim gone, **brute-forcing a cell's neighbourhood is the whole verification story**, and it has already
+  paid twice — §8s found a 0.0058-cast and a **0.1022-cast** miss on cells the user reported, both
+  invisible to every aggregate the project owns. ⚠ §3.9's open defect (*the model over-values Icy Veins
+  pressed BEFORE Bloodlust*) was witnessed by a sim duel; re-pose it against the closed forms before
+  citing its size.
+- **§5 — the platform track** (module split, the six `cfgFor` copies, the perf rungs). Untouched by
+  this, and §5.1 is *easier* now: `index.html` lost the whole sim-verification block.
+- **§6 — the eight user calls**, except any that name a sim instrument.
+
+⚠ **What was genuinely lost, stated plainly so nobody rediscovers it as a surprise:** the model's two
+acknowledged blind spots — **mana** and **AoE weighting** — had exactly one instrument between them, and
+it is gone. Nothing now measures either. That is accepted, not overlooked.
+
 ## §0 Where the tree stands — the state this phase starts from
 
 The objective is **exact**: for every Arcane Blast the walk knows haste, stacks (⇒ cast time), which

@@ -70,7 +70,7 @@ const die = m => { console.error('ERROR: ' + m); process.exit(2); };
 
 const api = loadEngine(process.env.ENGINE || path.join(REPO, 'index.html'));
 const NAME = flag('preset', '2:40 lust 0:07 intermission 1:30-2:10');
-const kase = api.cases.find(c => c.name === NAME) || die(`no preset "${NAME}" — see tools/bench.mjs --list`);
+const kase = api.cases.find(c => c.name === NAME) || die(`no preset "${NAME}" — see window.BOSS_PRESETS / GOLDEN_PRESETS in index.html`);
 const cfg = cfgFor(api, kase);
 const walls = (cfg.segments || []).filter(s => s.type === 'intermission');
 if (!walls.length) die(`preset "${NAME}" has no intermission — this gate needs a hard wall to test.`);

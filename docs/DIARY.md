@@ -1125,3 +1125,80 @@ negative direction before believing a green run.
 Per user: **next phase = FIX** the recorded debts (starting with the low-haste basin), **then** likely
 **upgrades**, **then another round of the acceptance test** (`docs/ACCEPTANCE.md`), and repeat. Each round
 appends here; the phase docs are kept as the detailed per-round record.
+
+---
+
+# 2026-07-30 — the day the tool stopped needing a simulator
+
+Append-only record. Three things happened, in this order, and the order is the story.
+
+## 1. Two plans came back wrong, and both were the SEARCH
+
+The user pasted a 2:00 plan and asked *"why is the first IV at 0:06 not 0:07 along with the other
+things? And Berserking not 0:27"*, then a 1:15 plan with the same shape. Both were right to ask.
+
+|  | emitted | brute-force argmax | gap |
+|---|---|---|---|
+| 2:00 · Lust 0:05 | IV[5,35] Zerk 25 · 100.779046 | **IV[7,37] Zerk 27** · 100.784861 | 0.0058 casts |
+| 1:15 · Lust 0:05 · interm 0:50–0:55 | IV[2,55] Zerk 21 · 67.348403 | **IV[7,55] Zerk 27** · 67.450603 | **0.1022 casts** |
+
+**The scorer was right both times.** The emitted point was a **2-D local maximum**: zero improving
+1-coordinate moves, zero improving 2-coordinate moves, six improving 3-coordinate moves. Under the GCD
+cap the optimum packs haste windows back to back (IV [7,27] · Berserking [27,37] · IV [37,57]), so
+moving any one alone overlaps its neighbour at −0.0867 casts per second — the whole layout is a rigid
+train. `phaseRerank` gained move class 3c: link presses whose windows share an **edge**, slide each
+component. ⚠ **Exact equality, not a ±1 s tolerance** — with ±1 the Icon window (ending 0:27) is swept
+into the train off Berserking's 0:26 press, every candidate splits the cluster, and the move is dead.
+
+Both are now tests. `anchors` reads **7 of 7**. New rule: `docs/RULES.md` §4c, the packing law.
+
+## 2. Two instruments were found grading against a retired objective
+
+Fixing §8s made `plan-diff` report **three SEARCH REGRESSIONS** on a strict improvement. It was wrong
+twice over: `plan-sweep` recorded `best.val` (= `simulate().robust`, the per-cast sum, which stopped
+ranking on 07-30), and even on the right number a −0.001155-cast move **inside `TIE_CASTS`** that went
+from 4 distinct press moments to 3 is the shape tie-break working, not a regression. Both fixed; the
+sweep now carries `band` and `distinct` read from the engine.
+
+★ **Believed → disproved:** *"the plan-stability gate tells you whether a search change was safe."*
+It told us the opposite of the truth on 3 of 3 changed cells. Same stale-premise class as §8n
+(`plan-duel`) and the four Phase-12 instruments that flattered themselves. **Read what a tool measures,
+not its verdict line** — the third time this project has had to write that sentence.
+
+## 3. The display was lying, and then the simulator was retired
+
+The user, for the third time: *"with our model the trinket and the stat changes should apply the moment
+it's pressed. That's what I've been saying the entire time."* The page printed `actEff` — fire times —
+so a press intent of 0:05 rendered as "0:06" and split a cluster the optimizer had deliberately
+co-pressed. The display now prints press times (`shownTimes`). This was the display catching up with
+the model: the objective has been pure window geometry over press times since §8l, and the cooldown
+chain it reads has been press-chained since §8r.
+
+Then: *"I actually want you to retire the simming, it's doing more harm than good. I think we have the
+function/equation locked down and from now on we're better off on our own."* Deleted — `sim/`,
+`tools/bench.mjs`, `genapl*`, the runner patches, the entire `xval-*` cross-validation family, eight sim
+tests, two of CI's three jobs, and the in-page button. The four sim docs are archived whole as
+`docs/archive/14`–`17`, each bannered; **their reasoning is kept, their commands are dead.**
+
+**Why this is defensible rather than a loss of rigour.** The sim's own stated job was *"to FALSIFY THE
+SEARCH, not to arbitrate the scorer"* — and on the day it was retired, **brute-force enumeration did
+that job twice, better**: exact rather than noisy, instant rather than ~10 s per duel, and it answers
+*by how much* rather than *which one*. A sim duel resolves ~0.02 casts against its own seed band; §8s
+needed to see 0.0058.
+
+⚠ **What was genuinely lost, recorded so nobody rediscovers it as a surprise:** the model's two
+acknowledged blind spots — **mana** and **AoE weighting** — had exactly one instrument between them.
+Nothing measures either now. Accepted, not overlooked.
+
+⚠ **What was NOT lost, and must not be conflated:** the harness-integrity category. Four of its five
+gates happened to be sim gates; `tools/self-consistency.mjs` survives and CI still blocks on it. A
+scorer that contradicts itself remains the failure mode that hides longest — it printed a clean
+`0.00e+0` straight through seven defects.
+
+## The road ahead, restated
+
+The 07-23 plan above — *fix the debts, then upgrades, then another acceptance round* — is **void in its
+third clause**: `docs/ACCEPTANCE.md` is archived and the cross-val it describes cannot be re-run. What
+replaces it: the seven declared layouts, the closed forms, and — when a plan looks wrong — enumerating
+that cell's neighbourhood and asking which of the three defect kinds it is (scoring / tie-break /
+search). `docs/PHASE13.md` opens with the full void-vs-survives list.

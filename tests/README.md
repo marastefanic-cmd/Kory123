@@ -1,173 +1,83 @@
-# Exact-match regression suite
+# `tests/` — what is actually asserted
 
-The planner is **deterministic**: the optimizer seeds from a fixed PRNG, the
-objective is a deterministic per-cast sum, and leftover haste
-snaps to the earliest efficient spot. So one setup produces **exactly one**
-schedule — which means regressions can be caught as exact diffs, not "within
-tolerance" (a tolerance test silently passes when a placement drifts to an
-equally-good alternate spot; an exact test tells you the layout moved).
+Three things are checked in this project, and it is worth being blunt about which is which, because
+they fail for different reasons and are fixed in different places.
 
-## Run it
+| | asserts | needs |
+|---|---|---|
+| `node tests/anchors.mjs` | **WHICH LAYOUT IS RIGHT** — the seven layouts the user declared | bare node |
+| `node tools/law-check.mjs` | the SCORER against `docs/ESTABLISHED-FACTS.md`'s closed forms | bare node |
+| `node tools/self-consistency.mjs` | the SCORER against itself, and the board against the physics | bare node |
 
-```
-cd tests
-npm install                 # playwright-core
-CHROMIUM=/path/to/chromium node exact-match.mjs
-```
+All three run in CI and all three are blocking. Nothing here needs a browser, a Go toolchain, a
+simulator, or a network.
 
-`CHROMIUM` should point at a Chromium/Chrome binary (the harness defaults to
-`/opt/pw-browsers/chromium`). The runner loads the real `../index.html` in a
-headless page, reads the fight table straight from the page
-(`window.GOLDEN_PRESETS` — **the same "Debugging presets" the tool shows**), runs
-every one through the actual optimizer, and compares the resulting plan to
-`golden.json`.
+The planner is **deterministic** — fixed PRNG, an exact objective, no `Date.now()` — so one setup
+produces exactly one schedule, which is what lets `anchors` compare press times rather than tolerances.
+A tolerance test silently passes when a press drifts to an equally-good alternate spot; an exact test
+tells you the layout moved.
 
-- **All green** → no placement changed.
-- **A FAIL** prints a `- expected / + got` diff for that case.
-- **Exit codes:** `0` graded clean · `1` graded and failing · `2` **could not grade**
-  (a case errored, or the slicing left a hole). Could-not-grade beats every other
-  verdict — 24 passes and one error is not "24 passed".
+---
 
-### Parallelism
+## ⛔ What used to be here, and why it is gone
 
-The 25 cases are independent, so they are fanned across `JOBS` browser pages
-(default `cores-1`). This is a **harness** change only — the engine is untouched —
-and `JOBS=1` must produce byte-identical output to `JOBS=N`:
+**The goldens (07-28, user decision.)** `exact-match.mjs` + `golden.json`, `layout-rules.mjs`,
+`monotonicity.mjs`. A golden locks whatever the optimizer said the day it was recorded — it asserts
+**stability**, never correctness, and this repo re-recorded its goldens twice in one month to
+accommodate objective changes. A test rewritten whenever it disagrees is not a test. `anchors.mjs`'s
+header carries the full argument per file.
 
-```
-JOBS=1 node exact-match.mjs            # sequential (the control)
-INDEX=/path/to/scratch.html node …     # point at a scratch copy (used to make the
-                                       # error guards actually fire)
-```
+**The sim gates (07-30, user decision.)** `sim-duel.mjs`, `sim-request.mjs`, `page-equiv.mjs`,
+`press-fire.mjs`, `ep-finite.mjs`, `mana-value.mjs`, `ep-sim.sh`, `simsweep.sh` — deleted along with
+`sim/`, `tools/bench.mjs`, the `genapl*` harness and the whole `xval-*` cross-validation family:
+*"I actually want you to retire the simming, it's doing more harm than good. I think we have the
+function/equation locked down and from now on we're better off on our own."*
+Their reasoning is archived, bannered, in `docs/archive/14`–`17`.
 
-Measured on a 4-core box: **547s sequential → 270–337s at `JOBS=3`.** Two invariants
-keep parallelism safe and are easy to break: results are keyed by name and re-emitted
-in preset order (so neither the console output nor a regenerated `golden.json`
-depends on which page finished first), and a case that throws becomes an ERROR rather
-than a silently absent one.
+⚠ **Deleting the sim did not delete the HARNESS-INTEGRITY category, and it must not.** Four of the five
+gates in that category happened to be sim gates; `tools/self-consistency.mjs` is the survivor and it is
+the one that matters most, because a scorer that contradicts itself is the failure mode that hides
+longest. This repo has shipped **two** gates whose failure mode was a PASS (PHASE11 B7 and B8), which is
+why every remaining gate that can carry a negative control does: `law-check --self-test` seeds a real
+3.6 % error and must be CAUGHT.
 
-### This is not the every-edit loop
+---
 
-At ~5–9 minutes it is the **pre-commit** gate. For the fast loop use the bare-node
-sweep + full-precision differ, which needs no browser and no golden:
+## Dev scopes (not tests — they assert nothing)
 
 ```
-node ../tools/plan-sweep.mjs ../index.html A.json 3 --max-t=200   # before
-node ../tools/plan-sweep.mjs ../index.html B.json 3 --max-t=200   # after
-node ../tools/plan-diff.mjs A.json B.json
+node tests/probe.mjs '[{"name":"anything","T":120,"pins":{"bloodlust":[5]}}]'
+node tests/plan.mjs  '[{"name":"anything","T":120,"pins":{"bloodlust":[5]}}]'
+node tests/evalsched.mjs '{"case":{...},"scheds":{"a":{...},"b":{...}}}'
 ```
 
-~33s for 16 of 25 cases (~16× faster), and it prints the changed-cell work list.
-Exact-match still runs before a commit — it is the only gate that covers the **render
-path**, which the sweep never touches. See `docs/archive/10-phase9-performance.md §5`.
+`probe` dumps the raw schedule the optimizer chose; `plan` dumps the copy-as-text plan a user would
+read; `evalsched` scores explicit hand-built layouts so you can compare two of them under the model.
 
-## Press-fire timing — `press-fire.mjs`
+★ **`probe` and `plan` open the real page, and that is now the ONLY check on the render path.**
+`tools/plan-sweep.mjs` runs the DOM-free engine, so it never touches `renderTimeline`, `scheduleRows`
+or `planText`. On 07-30 that path shipped a real defect no headless gate could see: the plan printed
+FIRE times, so a press intent of 0:05 displayed as "0:06" and visibly split a cluster the optimizer had
+deliberately co-pressed.
 
-```
-node press-fire.mjs                                    # part A: no sim, no browser
-RUNNER=/path/to/runner-ap180 node press-fire.mjs       # + part B: graded on real combat logs
-```
+⚠⚠ **They go through `page-open.mjs`, over HTTP, and the reason is a trap worth naming.** Both scopes
+used `file://`, where the page loads, every function is defined, `#btn-run` clicks — **and nothing
+happens, with no error at all**. Chromium will not start a Blob-URL Web Worker on an opaque origin, and
+the optimizer runs in exactly such a worker. Use `page-open.mjs`; do not reintroduce `file://`.
 
-The gate PHASE12 §6.7 found missing: *"no gate in this repo covers press-fire timing — which is exactly
-why it survived this long."* What survived was a transcription that put **7.14 % of presses on a cast
-the model never chose**.
+They need `playwright-core` (`npm install` in this directory) — the only dependency in the repo, and it
+is for the render path, not for any gate. `page-open.mjs` finds a browser under
+`$PLAYWRIGHT_BROWSERS_PATH` by itself; override with `CHROMIUM=/path/to/chrome`.
 
-- **Part A** (always runs) asserts, per press on every shipped preset, that the schedule value
-  `sim/planspec.mjs` emits still reaches the intended cast after 0.30 s of model-vs-sim cast-lattice
-  drift **in either direction** — the drift's sign flips with haste, so one-sided margin is not enough.
-  Pure arithmetic; this is the half CI can run.
-- **Part B** needs a native `RUNNER` (the committed `sim/sim.wasm` exposes no combat log) and **skips
-  loudly** without one — the `sim-request.mjs` contract, because a gate that silently no-ops is worse
-  than no gate: it reports success.
+## EP (stat weights)
 
-It grades on **which cast each press buffed**, not on the clock — the two lattices drift ~0.35 s by
-t=200, so a correct press can be a third of a second off the model's clock. `HELD` and `LATTICE` rows
-are printed but do not fail: they are the 334 ms / (1/3) s Arcane Blast cast-time mismatch showing
-through (docs/MECHANICS.md §1.1), which no transcription can reach.
+`ep-model.mjs` and `portfolio-ep.mjs` compute the **layout** stat weights by finite-differencing the
+planner's own objective, frozen and re-optimized. ⚠ Their finite-mana counterparts (`ep-finite.mjs`,
+`ep-sim.sh`, `finite-weights.json`) were wowsims finite-diff and are retired; `docs/EP.md` says which
+half survives.
 
-## When a case legitimately changes
+## `cfg-contract.mjs`
 
-After an **intentional** model change, regenerate the baseline and eyeball the
-diff before committing it:
-
-```
-node exact-match.mjs --update
-git diff golden.json          # read every changed line — is each move correct?
-```
-
-The golden is the frozen, sim-validated layout; `--update` should be a deliberate
-act, not a reflex.
-
-## Cases — single source of truth
-
-There is **no** `cases.json`. The case list lives in `../index.html` as
-`GOLDEN_PRESETS` (with `GOLDEN_DEFAULTS` for the shared gear/kit), which is the
-*same* list the tool renders as its **Debugging presets** strip. So "what you
-click in the tool" and "what this suite locks" are literally one array — a preset
-you confirm in the UI **is** the test. To add or change a case, edit
-`GOLDEN_PRESETS` in `index.html`.
-
-Each entry is `{ name, T, pins }`, optionally with `gear`/`kit` overrides, an
-`intermission: [from, to]`, or a full `phases: [{type,from,to,targets}]` list (e.g.
-the real `KaelThas 7:00` fight — early intermissions, a 6-target AoE window, a
-post-Lust intermission). `pins` are the fixed raid-call times in seconds (Bloodlust
-/ Drums / PI). A preset carries only the **input setup** — clicking it loads those
-inputs and the tool computes the plan live; the golden is just the frozen output
-that live result must reproduce.
-
-## Ad-hoc probes (not tests)
-
-Two throwaway scopes drive the optimizer on *arbitrary* configs (not just the
-locked presets), for eyeballing a plan before deciding to lock it:
-
-```
-node plan.mjs  '[{"name":"…","T":135,"pins":{"bloodlust":[25]}}]'   # canonical copy-as-text plan
-node probe.mjs '[{"name":"…","T":135,"pins":{"bloodlust":[25]}}]'   # raw per-key press-time arrays + robust/total
-```
-
-Same case shape as `GOLDEN_PRESETS`. Use `plan.mjs` to check a plan reproduces
-before adding a preset; `probe.mjs` to read the raw schedule when building a
-wowsims APL to sim-verify a change.
-
-For the sim side, `evalsched.mjs` prints the **model** score (`simulate().robust`)
-of explicit schedules, and `simsweep.sh` runs a batch of named APL specs through
-the wowsims runner and prints a DPS table:
-
-```
-RUNNER=/path/to/runner GEAR=/path/to/gear.json ./simsweep.sh <dur> <var> <iter> <seed> specs.tsv
-```
-
-The runner binary + gear export live in the ephemeral session scratchpad (see
-`docs/TOOLING.md`), so both are passed via env vars — nothing session-specific is
-committed. Each spec line is `NAME<TAB>{genapl-json}`; remember the collision
-offsets (TOOLING) so bundled off-GCD presses don't share a tick.
-
-## Stat weights (EP) — two contexts
-
-- **Layout EP (infinite mana)** — `ep-model.mjs "<preset>"` (closed-form partials of
-  the effective-damage integral, on the page) and `ep-sim.sh '<genapl-spec>'` (wowsims
-  finite-diff on the optimal AB-spam schedule); `portfolio-ep.mjs` aggregates over a
-  fight set. See `docs/EP.md`.
-- **Gearing EP (finite mana)** — the **real** weights, on a mana-managed conserve
-  rotation (`../tools/genconserve.mjs`):
-  ```
-  node ep-finite.mjs --dur 300 --iter 45000 --seed 11 --inf   # finite vs infinite ceiling
-  node ep-finite.mjs --dur 300 --iter 18000 --seed 11 --native # x-check: export's own rotation
-  node mana-value.mjs --dur 300                                 # analytic value-of-mana (option C)
-  ```
-  Needs `RUNNER`/`GEAR`/`MYSP` env + the runner rebuilt with `--int/--spirit/--mp5`
-  (`../tools/wowsims-patches/runner-main.go`). Locked numbers: `finite-weights.json`.
-  Result: **SP ≈ Int > Haste > Crit > MP5 > Spirit ≫ Mana** (`docs/EP.md`, RULES §12).
-
-The canonical each case is compared on is the **Copy-as-text plan** — the setup
-header plus the windows with per-press times and Cold Snap markers — minus the
-cosmetic peak-haste line and price tags (those are annotations, not placements).
-
-## Pair it with a DPS check
-
-Exact-match catches *"the layout moved"*. It does **not** tell you whether the new
-layout is better or worse — an equally-good alternate would still fail the exact
-test, and a genuinely-worse layout would too. When a case changes, confirm the
-new plan's **simulated DPS** (against `wowsims/tbc-new`, fixed kill, common random
-numbers, ≥120k iters) is `>=` the old plan's before accepting the `--update`.
-Together: exact-match says *what* moved, the sim says whether it *mattered*.
+Asserts that every hand-retyped `cfg` constructor in the repo still emits what the engine reads. It
+exists because this project keeps paying for copies that drift — the root cause `docs/archive/12` states
+once: **code that cannot be imported gets copied, and copies drift.**
