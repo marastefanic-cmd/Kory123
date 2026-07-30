@@ -169,10 +169,30 @@ changing the model or the passes**, and keep it updated as the living theorycraf
   intermission, and re-deriving the credit must not change it. It reads 167 violations on the engine
   that shipped those defects and 0 after.
   ⛔ **THE TWO RETIRED APPROACHES — do not let either back in.**
-  1. **Ranking on the rate integral.** It differed from the sum by a **median 0.2114 % of score**
-     against ranking margins of ~0.005–0.07 % — the model disagreeing with itself by ~30× the effect
-     it was being asked to resolve. It survives ONLY as the `integral` diagnostic. Never rank on it,
-     and never tune a scorer term against it (§6.1–§6.3 record four terms falsified that way).
+  1. ~~**Ranking on the rate integral.**~~ ★★★★ **OVERTURNED 07-30 — the integral RANKS again, and the
+     per-cast sum is now the REPORTED number only.** The 0.2114 % disagreement was real and is not the
+     point: measured against `docs/ESTABLISHED-FACTS.md`'s closed forms, **the sum is the one that is
+     wrong**, and by more than the margins it was resolving. Sliding only Berserking on T2 and asking
+     what its 10 s adds:
+
+     | Berserking placed… | law | per-cast **sum** | rate **integral** |
+     |---|---|---|---|
+     | inside Bloodlust, no Icy Veins | 0.867 | **0.700 / 0.720** ✗ | 0.8667 ✓ |
+     | with nothing up at all | 0.667 | **0.725** ✗ | 0.6667 ✓ |
+     | under Icy Veins + Icon + gem | 0.951 | 0.928 | 0.9514 ✓ |
+
+     The sum ranked *Berserking with no buffs up* **above** *Berserking inside Bloodlust* — a ~0.15-cast
+     inversion, because moving a haste window shifts the whole downstream lattice and re-prices the
+     terminal cast, contaminating the marginal attribution. The integral hits all three law values to
+     four decimals. **⇒ rank on the integral.** ⚠ And the 07-28 revert (Hydross −5.4 DPS, 137σ) is
+     explained rather than contradicted: its two symptoms were *"the cluster stopped being co-pressed"*
+     and *"the first Icy Veins left the opening ramp"*, which is what a **flat plateau** does to a search
+     with no canonical member to fall to. The integral had made those layouts exactly tied and the
+     search then wandered inside the tie. **The objective is a PAIR** — integral, then the tie-break
+     (fewest distinct press moments, then earliest, then the flattened press vector). `index.html`'s
+     `planBetter` / `rankPair`. The tie band `TIE_REL = 1e-7` is float equality, **not** a tolerance:
+     true plateaus are exact and the smallest real step measured is ~2e-2 casts.
+     ⛔ Still true: never *tune a scorer term* against the integral (§6.1–§6.3 falsified four that way).
   2. **Expiring a buff window from the PRESS time.** A self-press fires at the next cast boundary, so
      expiring at `press + duration` made every mid-cast window short by the slip — one whole cast in
      the measured case. Windows run their full duration from when the ability actually FIRES;

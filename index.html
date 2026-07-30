@@ -2173,6 +2173,63 @@ function phaseScore(s, cfg, N) {
    here, and `cfg.phaseRank === false` restores the pre-07-28 behaviour for A/B measurement. */
 function rankScore(s, cfg) { return simulate(cloneS(s), cfg).integral; }
 
+/* ★★★★ THE OBJECTIVE IS A PAIR, NOT A NUMBER — and that is what the 07-28 revert was missing.
+   (user, 07-30: *"all the buffs are aligned to their maximum potential … this is a good result, just
+   not consistently placed per the earliest rule"*.)
+
+   Two measurements, both against `docs/ESTABLISHED-FACTS.md`'s closed forms, settle the ranking:
+
+   1. THE PER-CAST SUM MISPRICES A HASTE BUFF, and by more than the margins it is asked to resolve.
+      T2 declared, sliding ONLY Berserking, asking what the 10 s adds:
+                                             law      per-cast sum      integral
+        inside Bloodlust, no Icy Veins       0.867     0.700 / 0.720     0.8667
+        with nothing up at all               0.667     0.725             0.6667
+        under Icy Veins + Icon + gem         0.951     0.928             0.9514
+      The sum ranks *Berserking with no buffs at all* (0.7250) ABOVE *Berserking inside Bloodlust*
+      (0.7203). That is not a tie-break failure, it is a ~0.15-cast pricing error — the marginal
+      attribution is contaminated by where the fight ENDS, because moving a haste window shifts the
+      whole downstream lattice and re-prices the terminal cast. The integral hits all three law
+      values to four decimals. ⇒ the integral ranks.
+
+   2. A GENUINE PLATEAU IS ALGEBRAICALLY EXACT, SO THE TIE-BREAK NEEDS NO TUNED TOLERANCE.
+      T1, sliding Berserking through the Lust-no-IV gap: presses 40…49 score IDENTICALLY, and the
+      decline past the Lust edge is exactly −0.0200 casts per second — precisely the law's
+      `rate(1.43) − rate(1.3)` minus `rate(1.1) − rate(1.0)`. So real steps are ~2e-2 casts and true
+      ties are exact to float. `TIE_REL` is a float-equality band 20 000× under the smallest real
+      step, NOT a smoothing constant. ⛔ Do not "widen it a little" — that converts it into one.
+
+   ⇒ WHY THIS RESCUES THE APPROACH THE 07-28 DUEL REJECTED. That attempt pointed the ranking at the
+   integral with NO tie-break, and its two reported symptoms were *"the cluster stopped being
+   co-pressed"* and *"the first Icy Veins left the opening ramp"*. Both are what a flat plateau does
+   to a search that has no canonical member to fall to — the integral had made those layouts exactly
+   tied, and the search then wandered inside the tie. Fixing the score without fixing the tie-break
+   traded a biased ranking for an arbitrary one, which the sim correctly refused (Hydross −5.4 DPS).
+   The plateau is the integral working; the wandering was the missing half.
+
+   The tie order is the user's ruling, restated from MODEL-DEFECTS D2: fewest distinct press moments
+   (one macro beats three), then earliest (a press you can make early is robust to making it late),
+   then the flattened press vector so the choice is total and deterministic. */
+const TIE_REL = 1e-7;   // float-equality band; see (2) above — the smallest real step is ~2e-2 casts
+function planShape(s) {
+  const ts = [];
+  for (const k of Object.keys(s).sort()) for (const t of (s[k] || [])) ts.push(t);
+  ts.sort((a, b) => a - b);
+  return { distinct: new Set(ts.map(t => Math.floor(t + EPS))).size,
+           sum: ts.reduce((a, b) => a + b, 0), ts };
+}
+// Strictly-better test under the lexicographic objective. `a`/`b` are {score, shape}.
+function planBetter(a, b) {
+  const band = TIE_REL * Math.max(1, Math.abs(a.score), Math.abs(b.score));
+  if (a.score > b.score + band) return true;
+  if (b.score > a.score + band) return false;
+  if (a.shape.distinct !== b.shape.distinct) return a.shape.distinct < b.shape.distinct;
+  if (Math.abs(a.shape.sum - b.shape.sum) > EPS) return a.shape.sum < b.shape.sum;
+  const n = Math.min(a.shape.ts.length, b.shape.ts.length);
+  for (let i = 0; i < n; i++) if (Math.abs(a.shape.ts[i] - b.shape.ts[i]) > EPS) return a.shape.ts[i] < b.shape.ts[i];
+  return a.shape.ts.length < b.shape.ts.length;
+}
+const rankPair = (s, cfg) => ({ score: rankScore(s, cfg), shape: planShape(s) });
+
 /* ⛔⛔ AND IT WAS TRIED AS THE RANKING ON 07-28 AND REVERTED THE SAME HOUR — the sim refused it, 137σ.
    Nothing above is wrong: the integral IS the phase expectation, exactly, and all three hypothesised
    corrections really are unnecessary. But ranking the finisher on it REGRESSED three sim-backed layout
@@ -2215,7 +2272,7 @@ function rankScore(s, cfg) { return simulate(cloneS(s), cfg).integral; }
    exactly what §0's five-plan table already showed. Group moves are what reach it. */
 function phaseRerank(s0, cfg) {
   const keys = scheduledKeys(cfg).filter(k => !cfg.fixed[k]);
-  let s = repair(cloneS(s0), cfg), val = phaseScore(s, cfg);
+  let s = repair(cloneS(s0), cfg), val = rankPair(s, cfg);
   // Whole seconds only: the plan a player reads is in whole seconds, and the search already snapped.
   const SHIFTS = [-8, -7, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8];
   const MOVES = [];
@@ -2239,8 +2296,8 @@ function phaseRerank(s0, cfg) {
     if (!cand) return false;
     const rep = repair(cloneS(cand), cfg);
     if (!intact(cand, rep)) return false;
-    const v = phaseScore(rep, cfg);
-    if (v > val + 1e-7) { val = v; s = rep; return true; }
+    const v = rankPair(rep, cfg);
+    if (planBetter(v, val)) { val = v; s = rep; return true; }
     return false;
   };
   for (let round = 0; round < 3; round++) {
@@ -2306,10 +2363,10 @@ async function optimizeAsync(cfg, starts, onProgress) {
 // `cfg.phaseRank === false` turns it off, which is how the A/B that justified it was measured.
 function phaseFinish(best, cfg) {
   if (cfg.phaseRank === false) return best;
-  let bs = repair(cloneS(best.s), cfg), bv = phaseScore(bs, cfg);
+  let bs = repair(cloneS(best.s), cfg), bv = rankPair(bs, cfg);
   for (const start of phaseStarts(best.s, cfg)) {
     const r = phaseRerank(start, cfg);
-    if (r.val > bv + 1e-7) { bv = r.val; bs = r.s; }
+    if (planBetter(r.val, bv)) { bv = r.val; bs = r.s; }
   }
   if (bs === best.s) return best;
   return { ...best, s: bs, val: simulate(cloneS(bs), cfg).robust };

@@ -1275,8 +1275,9 @@ changes. Four cases is a strong prior, not a corpus.
 
 ## ★★★★ REVERSE-ENGINEERED FROM GROUND TRUTH — the objective that produces the wanted layouts is the RETIRED INTEGRAL
 
-**Status: OPEN. The most important open item in this repo. Nothing has been changed on the strength of
-it.**
+**Status: ✅ ACTED ON 07-30 — the integral now ranks, paired with a tie-break. See §8h below for what
+landed, what it fixed, and the two residuals it did not.** (Everything in this section stands as
+written; it was the correct call.)
 
 User, 2026-07-28, supplying two hand-built layouts as ground truth: *"If the lust is pinned at 10 to
 dissolve any possibility of the arcane blast stacks mattering, this is what I'm 100 % sure I want the
@@ -1469,3 +1470,101 @@ D1, which would have made D1 look like it had a sim-confirmed witness. It does n
   cast duration, which is correct, and dividing by the GCD-bound interval instead would be the bug. The
   sim agrees independently (0.00 DPS at every interior placement, 5.20 DPS at the terminal one).
   ESTABLISHED-FACTS rule 4.
+
+---
+
+## §8h — ✅ THE INTEGRAL RANKS, PAIRED WITH A TIE-BREAK (landed 07-30)
+
+The user pasted two plans off the shipped build and said the tool was *"generating nonsense … very
+inconsistent results, though technically correct some of them, it's generating mistrust"*, then diagnosed
+it themselves: *"all the buffs are aligned to their maximum potential … Berserking sits fully inside Lust
+and never overlaps with IV, this is a good result, just not consistently placed per the earliest rule."*
+
+**First, what it is NOT.** Three presses of the page's button on the same inputs returned the identical
+plan, and the pooled path matched the sequential one the tests run. Not nondeterminism.
+
+### The defect: the per-cast sum misprices a haste buff
+
+T2 declared, sliding ONLY Berserking, asking what its 10 s adds — against ESTABLISHED-FACTS §5:
+
+| Berserking placed… | law | per-cast **sum** | rate **integral** |
+|---|---|---|---|
+| inside Bloodlust, no Icy Veins | 0.867 | **0.700 / 0.720** ✗ | 0.8667 ✓ |
+| with nothing up at all | 0.667 | **0.725** ✗ | 0.6667 ✓ |
+| under Icy Veins + Icon + gem (their 2:20) | 0.951 | 0.928 | 0.9514 ✓ |
+
+The sum ranks Berserking-with-nothing-up (0.7250) **above** Berserking-inside-Bloodlust (0.7203). Not a
+tie-break failure — a ~0.15-cast inversion, 2–8× the margins it was resolving. Cause: moving a haste
+window shifts the whole downstream lattice, which re-prices the terminal cast, so the *marginal*
+attribution is contaminated by where the fight ends. The integral matches all three law values to four
+decimals.
+
+### And the plateaus are algebraically exact, which is what makes a tie-break principled
+
+T1, sliding only Berserking through the Lust-no-IV gap: presses **40…49 score identically**, and past
+the Lust edge the decline is exactly **−0.0200 casts per second** — precisely
+`[rate(1.43) − rate(1.3)] − [rate(1.1) − rate(1.0)]`. Real steps are ~2e-2 casts; true ties are exact to
+float. So `TIE_REL = 1e-7` is float equality, not a tolerance. ⛔ Do not widen it.
+
+### What landed
+
+`rankPair` / `planBetter` in `index.html`: rank on `simulate().integral`, then break ties by **fewest
+distinct press moments → earliest → the flattened press vector** (a total order, so determinism holds).
+`phaseFinish` and `phaseRerank` both use it. `simulate().robust` remains the reported number and every
+consumer still reads it. `cfg.phaseRank === false` still restores the pre-07-28 behaviour.
+
+**Why this rescues what the 07-28 duel rejected** (Hydross −5.4 DPS, 137σ): that attempt pointed the
+ranking at the integral with **no tie-break**, and its two symptoms — *"the cluster stopped being
+co-pressed"*, *"the first Icy Veins left the opening ramp"* — are what a flat plateau does to a search
+with no canonical member to fall to. Fixing the score without fixing the tie-break traded a biased
+ranking for an arbitrary one. The plateau is the integral working; the wandering was the missing half.
+
+### Result on the two tests
+
+**T1 went from six presses wrong to one, at an exact tie.** Icy Veins 0:00/0:20, the whole value cluster
+co-pressed on 0:20, Bloodlust 0:20 — the declared layout — with Berserking at 0:41 instead of 0:40 and
+`Δ (want − got) = 0.0000` on the reported objective.
+
+**T2 is still structurally wrong**: Berserking at 0:41 (inside Bloodlust) instead of 2:20 (with the
+second cluster), and the first cluster smeared 0:20 / 0:21 / 0:23.
+
+### The two residuals, both measured
+
+**R1 — T1's last second is a real 0.0108-cast difference, not noise.** Isolated:
+
+```
+Lust + Berserking only     zerk@40 vs @41  Δ = 0.000000   ← a tie, as the law says
+Icy Veins + Lust only      zerk@40 vs @41  Δ = +0.010833  ← the whole effect
+```
+
+Icy Veins pressed at 0:20 is scored starting 0.625 s late (half the 1.25 s cadence it was pressed
+inside); Berserking at 0:40 starts 0.500 s late (half the 1.0 s cadence *it* was pressed inside). Two
+windows that abut at their press times therefore overlap by **0.125 s** in the score, and Berserking is
+worth zero under IV+Lust (m = 1.716, over the GCD floor): 0.125 × 0.0867 = 0.010833, to the digit.
+
+The user's objection is correct in principle — *"the integral equation has to agree with what I'm
+saying"* — and `scoreStart = eff + prevInterval/2` is a point estimate substituted into a nonlinear
+overlap, with both presses drawing on **one** lattice rather than two independent ones. ⛔ **But removing
+it was measured and is NET WORSE**: `slip = 0` makes 40 and 41 tie exactly (101.39909 both) and then
+moves the whole T1 cluster off 0:20 to 0:21 and Berserking to 0:47 — one press wrong becomes four. Left
+in, recorded here, reverted. The right fix prices the clamp **at the clamping edge** (see the Al'ar
+evidence in `index.html`'s firing block) instead of biasing every window; that is unbuilt.
+
+**R2 — T2's first cluster wants 0:21, not 0:20, and every smear is worse than co-pressing.** With
+Berserking held at the declared 2:20, moving one member off 0:20 always loses (isc@21 −0.018,
+scb@23 −0.088, AP@23 −0.039, IV@21 −0.073) — **the user is right that the cluster belongs together** —
+but sliding the whole cluster as a unit reads 0:20 → +0.000, 0:21 → **+0.0815**, 0:22 → +0.052,
+0:23 → +0.023, 0:24 → −0.007. So the co-pressed layout is penalised ~0.08 casts for sitting exactly on
+the pinned 20.000 Bloodlust call, and that penalty is what pays for the smear. Unexplained; it survives
+`slip = 0` (which moves the peak to 0:22), so it is **not** the R1 mechanism. This is the next thing to
+crack.
+
+### Blast radius — not yet graded
+
+`plan-sweep` + `plan-diff` over the 16-cell preset grid: **16 of 16 plans changed**, 13 scoring lower on
+the per-cast sum (which is the mispriced number, so that is expected rather than reassuring) and zero
+cells unchanged — so `plan-diff`'s own note applies: *"scorer identity is UNPROVABLE here — grade these
+with xval-round-diff or a duel, not on this line."* ⚠ **The duel work list is 16 cells and has not been
+run.** Until it is, this change is justified by the closed forms and by T1, not by the sim. Harness
+gates that DID pass after it: `self-consistency` 0.00e+0 / 0 structural, `sim-request` §0,
+`page-equiv` 2/2.
