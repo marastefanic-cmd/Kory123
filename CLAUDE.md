@@ -60,11 +60,20 @@ node tests/anchors.mjs
 *"these two need to always be this way"*). No browser, no rig, no golden file: it runs the real
 optimizer and compares press times.
 
-⛔ **They are RED today and that is the correct state.** `docs/MODEL-DEFECTS.md` D1 is open — the
-optimizer resolves a sub-cast lattice phase the player cannot control, so its answer moves with an
-input given only to the second (§8f measured the mechanism; §8g cleared the scorer). These two ARE the
-target of that fix. In CI the job is `continue-on-error: true` so a known-red gate cannot block an
-unrelated merge; flip that to `false` the day it goes green.
+⚠ **T1 PASSES as of 07-30; T2 does not — `1 of 2`.** Five defects closed that day (MODEL-DEFECTS
+§8h–§8k): the per-cast sum mispriced a haste buff by ~0.15 casts so **the integral ranks now**, paired
+with a tie-break; the integral scored windows from the press rather than the fire; the search's ±12 s
+neighbourhood could not reach the answer at all (0.67 casts on T2); the two cast lattices were rounded
+differently; and a GCD-gap sliver with no cast in it was being priced.
+⛔ **T2's remaining three presses are D1 proper, and D1 now has an ADDRESS.** It is not the scorer — it
+is the **cooldown-readiness deferral**. The Icon's 2-minute cooldown chains from its fire, so pressed at
+0:20 it is ready at exactly `140.000`, which falls just *after* a cast boundary, and `if (minStart > t +
+EPS) continue;` defers its second use a full 1.496 s; pressed at 0:19 it is ready at `139.000` and lands
+on `140.000`. The model resolves which side of a boundary a cooldown expires on — a sub-cast phase no
+player controls — and prefers the lucky side by 0.029 casts. ⚠ The guard itself must NOT be loosened
+(PHASE12 §6.14c: a relaxed readiness test emits plans the sim cannot execute, HELD 18 of 196). The fix is
+the phase expectation of the deferral, i.e. the unbuilt hybrid. In CI the job is `continue-on-error:
+true`; flip it to `false` the day T2 joins T1.
 
 ⛔ **DELETED on 07-28, not disabled** — read `tests/anchors.mjs`'s header before recreating any of them:
 `exact-match.mjs` + `golden.json` (asserted stability, never correctness, and were re-recorded twice

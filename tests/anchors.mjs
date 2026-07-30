@@ -35,11 +35,15 @@
 //     the STRUCTURAL choice: cluster with the other presses, fewest distinct press moments, most robust
 //     to a press landing late. Same ruling as `docs/MODEL-DEFECTS.md` D2.
 //
-// ⛔ EXPECTED RED TODAY, and the diff says which half broke. MODEL-DEFECTS D1 is open: the optimizer
-// resolves a sub-cast lattice phase the player cannot control, so its answer moves with an input given
-// only to the second. §8f measured the mechanism, §8g cleared the scorer; the objective fix is not
-// built. A press OUTSIDE its law is a scoring defect; a press on the wrong member of a plateau is a
-// tie-break defect. Do not "fix" the second by loosening the assertion.
+// ⚠ T1 PASSES as of 2026-07-30. T2 does not, and its three remaining presses are MODEL-DEFECTS D1
+// proper — now with an address: the COOLDOWN-READINESS DEFERRAL, not the scorer. The Icon's 2-minute
+// cooldown chains from its fire, so pressed at 0:20 it is ready at exactly 140.000, just after a cast
+// boundary, and its second use is deferred a full 1.496 s; pressed at 0:19 it is ready at 139.000 and
+// lands on 140.000. The model resolves which side of a boundary a cooldown expires on and prefers the
+// lucky side by 0.029 casts. ⛔ Do not loosen the readiness guard to fix it (PHASE12 §6.14c: that emits
+// plans the sim cannot execute). And do not loosen this assertion either — a press OUTSIDE its law is a
+// scoring defect, a press on the wrong member of a plateau is a tie-break defect, and they are fixed in
+// different places. Full record: docs/MODEL-DEFECTS.md §8h-§8k.
 import { loadEngine, ALL_BUFFS } from '../tools/engine-node.mjs';
 
 const api = loadEngine(new URL('../index.html', import.meta.url).pathname);
