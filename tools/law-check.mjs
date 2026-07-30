@@ -151,6 +151,51 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
               st.map(v => ((v - st[0]) >= 0 ? '+' : '') + (v - st[0]).toFixed(5)).join(' '));
 }
 
+/* ═══ AoE — §9. NEVER CHECKED BEFORE 07-30, and the first law is a genuine simplification ═════════
+   Arcane Explosion is INSTANT (`cast = 0`), so its interval is purely the GCD. Arcane Blast at 3
+   stacks is `max(msq(1.498/m), gcd)` — and the cast term can never win: below m = 1.5 the GCD is the
+   larger of the two (1.5/m > 1.498/m), and above it both sit on the 1.0 s floor.
+   ⇒ **AT 3 STACKS AN AoE PHASE CHANGES ONLY THE DAMAGE PER CAST, NEVER THE RATE.** That is worth
+   knowing before reasoning about AoE: haste is worth exactly the same inside an AoE phase as outside
+   it, and the whole value of the phase is the damage multiple. */
+{
+  const c = cfgOf(120, []);
+  const ivAB = m => 1 / rate(m);
+  const ivAE = m => Math.max(msq(G.GCD_FLOOR), msq(G.GCD_BASE / m)) === msq(Math.max(G.GCD_FLOOR, G.GCD_BASE / m))
+                  ? msq(Math.max(G.GCD_FLOOR, G.GCD_BASE / m)) : msq(Math.max(G.GCD_FLOOR, G.GCD_BASE / m));
+  let worst = 0;
+  for (const m of [1.0, 1.1, 1.2, 1.3, 1.43, 1.5, 1.56, 1.716, 2.0]) worst = Math.max(worst, Math.abs(ivAB(m) - ivAE(m)));
+  chk('AoE: AB and AE intervals identical', worst, 0, 1e-12,
+      'AE interval = gcd; AB = max(msq(1.498/m), gcd) and the gcd always wins at 3 stacks');
+}
+
+/* §9b — CRIT DOES **NOT** CANCEL ONCE AN AoE PHASE EXISTS, and the project has claimed the opposite.
+   `crit is a constant factor and cancels` is true single-target: it multiplies every Arcane Blast
+   equally and divides out of the normalisation. An Arcane Explosion carries an EXTRA crit-dependent
+   term — `aoeCritAmp`, the Clearcasting → Arcane Potency amplification, which rises with the target
+   count and FALLS as base crit rises (Potency has less headroom to add). So the AE/AB damage ratio is
+   a function of crit, and the more crit you have the LESS an AoE phase is worth relative to single
+   target. Measured at 1387 SP, N = 6: 2.6290 at 0 % crit → 2.5600 at 60 %, a 2.6 % swing. */
+{
+  /* ⚠ The expectation is RE-DERIVED from the talent constants, not quoted from a run. A first draft
+     hardcoded 0.0690 — a number measured at 1387 SP while this file runs at 1000 — and it failed at
+     0.07241, which reads exactly like a scorer regression and is not one. That is the failure mode
+     this file's header warns about, caught by its own rule. */
+  const AC = 0.02 * api.TALENTS.arcaneConcentration;    // per-HIT Clearcasting proc chance
+  const POT = 0.10 * api.TALENTS.arcanePotency;         // crit added to the cast after a proc
+  const critMultAt = c => 1 + Math.min(1, c) * (G.CRIT_MULT - 1);
+  const amp = (N, c) => critMultAt(c + (1 - Math.pow(1 - AC, N)) * POT) / critMultAt(c + (1 - Math.pow(1 - AC, 1)) * POT);
+  // critFactor multiplies BOTH an Arcane Explosion and an Arcane Blast, so it divides out; what does
+  // NOT divide out is the amplification, which is why crit stops cancelling the moment N > 1.
+  const K = (G.AE.AVG_BASE_DMG + G.AE.COEF * SP) / (G.AB.AVG_BASE_DMG + G.AB.COEF * SP);
+  const ratio = (crit, N) => K * N * api.aoeCritAmp(N, crit);
+  chk('AoE: single target, crit DOES cancel', ratio(0.60, 1) - ratio(0.00, 1), 0, 1e-12,
+      'at N = 1 the amplification is 1 by construction, so the ratio is crit-independent');
+  chk('AoE: at N=6 crit does NOT cancel', ratio(0.00, 6) - ratio(0.60, 6),
+      K * 6 * (amp(6, 0.00) - amp(6, 0.60)), 1e-9,
+      'K·N·[amp(N,0) − amp(N,0.6)], amp re-derived from arcaneConcentration/arcanePotency');
+}
+
 if (SELFTEST) {
   console.log(`\n${bad ? `SELF-TEST PASS — the seeded break (unquantised rate) was caught by ${bad} line(s).`
                        : 'SELF-TEST FAIL — the gate did NOT notice an unquantised rate. Its tolerances assert nothing.'}`);

@@ -49,7 +49,9 @@ levels, not tuned to today's cases.
   stack-independent, so score each cast by its **multiplier relative to a plain AB** — AP makes a cast
   ≈ ×1.30, spell power adds its coefficient, etc. — and sum that over the fight (a haste buff raises how
   *many* casts you fit; a damage/SP buff raises what each is *worth*). Crit is a constant factor and
-  cancels. Every rule below (Lust alignment, haste sequencing, SP-on-fast-casts) is a **consequence** of
+  cancels — ⚠ **single target only**: an Arcane Explosion carries the Clearcasting → Arcane Potency
+  amplification, which is crit-dependent, so with an AoE phase the SCORE depends on crit (the plan, on
+  the cases tested, does not). ESTABLISHED-FACTS §9.2. Every rule below (Lust alignment, haste sequencing, SP-on-fast-casts) is a **consequence** of
   maximizing this single number — none is an axiom. See `docs/MECHANICS.md`.
 
 Additional payoffs the same engine unlocks (nice-to-haves, not the point):

@@ -1100,6 +1100,18 @@ durations the contained region shrinks to the **intersection** of the constraint
 
 ## 9. Intermissions & AoE
 
+> ### ★★★★ TWO AoE FACTS DERIVED 2026-07-30, and the second corrects a standing claim
+> **(a) At 3 stacks an AoE phase changes only the DAMAGE, never the RATE.** Arcane Explosion is instant,
+> so its interval is the bare GCD; Arcane Blast at 3 stacks is `max(msq(1.498/m), gcd)` and the cast
+> term can never win — below `m = 1.5` the GCD is larger, above it both sit on the floor. They are
+> **identical at every haste**. ⇒ there is no "AoE is more GCD-bound" effect, and no rate-based reason
+> to prefer a haste cooldown inside or outside an AoE window.
+> **(b) Crit does NOT cancel once an AoE phase exists.** `aoeCritAmp` (Clearcasting → Arcane Potency)
+> is crit-dependent and *falls* as base crit rises, so more crit makes an AoE phase **relatively less**
+> valuable — AE/AB at N=6 goes 2.6290 → 2.5600 across 0–60 %. ⚠ The SCORE depends on crit; the emitted
+> PLAN did not change on the cases tested. Full derivation + gates: `docs/ESTABLISHED-FACTS.md` §9.
+
+
 - Intermissions score **zero** (boss untargetable — no casts, no damage), but cooldowns and buff
   durations keep ticking, so the planner holds cooldowns to recover across downtime.
 - **★★★ A WALL IS A CUT, AND SO IS AN AoE PHASE START — BUT NOT FOR THE SAME REASON. A BURN EDGE IS

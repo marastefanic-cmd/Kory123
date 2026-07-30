@@ -60,6 +60,8 @@ export function loadEngine(htmlPath) {
                plainCastOf: typeof plainCastOf !== 'undefined' ? plainCastOf : undefined,
                planShape:   typeof planShape   !== 'undefined' ? planShape   : undefined,
                rankPair:    typeof rankPair    !== 'undefined' ? rankPair    : undefined,
+               aoeCritAmp:  typeof aoeCritAmp  !== 'undefined' ? aoeCritAmp  : undefined,
+               TALENTS:     typeof TALENTS     !== 'undefined' ? TALENTS     : undefined,
                planBetter:  typeof planBetter  !== 'undefined' ? planBetter  : undefined,
                cases: [...window.BOSS_PRESETS, ...window.GOLDEN_PRESETS],
                nBoss: window.BOSS_PRESETS.length, nGolden: window.GOLDEN_PRESETS.length,
