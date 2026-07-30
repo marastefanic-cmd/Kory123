@@ -1644,8 +1644,12 @@ function simulateRaw(schedule, cfg, collect) {
     const gcd = msqI(Math.max(g.GCD_FLOOR, g.GCD_BASE / m));
     return aoe ? gcd : Math.max(msqI((g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * stacks) / m), gcd);
   };
-  const rateAt = (tt, segB) => {
+  const rateAt = (tt, segB, forceInt) => {
     const { multDn2, mult2, dmg2, aoe } = scanAt(tt, segB);
+    // ★ A RAMP CAST'S RATE IS 1/(its own duration) = m/C_k — the true throughput while stacks are still
+    // building. Forcing the interval is what spreads the opener toll over the cast that incurs it, so a
+    // value window overlapping a slow ramp cast is charged for it. See the integral loop's note.
+    if (forceInt) return dmg2 / forceInt;
     if (atiOn) {
       // Ashtongue: blend the proc-up / proc-down haste states by the steady-state
       // probability the proc is up at the local cast rate (E[rate], not rate at E[state])
@@ -1715,7 +1719,43 @@ function simulateRaw(schedule, cfg, collect) {
   }
   // integrate over piecewise-constant segments: buff state changes only at window
   // edges / phase boundaries / the kill window, so a few dozen breakpoints are exact
+  // Per-cast (UNMERGED) ramp spans. `rampSpans` merges adjacent casts; a merged span would integrate
+  // to ONE cast and silently delete the others.
+  /* ★★★★★ THE OPENER TOLL, SPREAD OVER AN **m-INDEPENDENT** WINDOW — the whole no-lattice ramp model.
+     `∫ min(1/F, m/G)·dmg dt` runs 0→T with NO ramp region: the rate is always the steady 3-stack rate.
+     The ramp's entire cost is then one number per ramp, `Σ(C_k − G)/G` casts, which ESTABLISHED-FACTS
+     §1.2 proves is **m-independent** — that IS ramp-neutrality, and the user's correction: *"haste over
+     ramp is worth exactly the same as haste after ramp. What's worth more is the alignment with AP and SP
+     buffs."*
+     ⇒ AND IT MUST BE SPREAD, over `ΣC_k` — the UNHASTED opener length. Both halves are load-bearing and
+       all four combinations were measured on the T3 ladders (declared: cluster 0:07, Icy Veins 0:07):
+         region integrated at `1/(cast's own span)`        → IV#1@0 wins ⛔ (the span shrinks with haste,
+                                                             so compression pays and covering the ramp
+                                                             becomes a bonus — the lattice, readmitted)
+         toll LUMPED at the ramp start                    → cluster@5 wins ⛔ (a value buff pressed 0:05
+                                                             gets full credit for [5, 6.498], casts that
+                                                             the opener never actually makes)
+         toll spread over the HASTED length               → IV#1@0 again ⛔ (same compression leak)
+         toll spread over `ΣC_k`, unhasted                → ✓ both ladders peak where declared
+     ⇒ so: a fixed number of casts, lost over a fixed stretch of time. Haste cannot compress the stretch
+       (ramp-neutral), and a value window overlapping it pays its share (alignment). */
+  const NOMINAL = (() => { let v = 0; for (let k = 0; k < g.AB.MAX_STACKS; k++) v += g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * k; return v; })();
+  const tollWins = [];
+  {
+    let idx = 0, lost = 0, at = -1;
+    const flush = () => { if (at >= 0 && lost > 0) tollWins.push({ a: at, b: at + NOMINAL, r: lost / NOMINAL }); };
+    for (let i = 0; i < boardRamp.length; i++) {
+      if (i > 0 && Math.abs(boardRamp[i].s - boardRamp[i - 1].e) > 1e-9) { flush(); idx = 0; lost = 0; at = -1; }
+      if (at < 0) at = boardRamp[i].s;
+      lost += (g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * idx - g.GCD_BASE) / g.GCD_BASE;
+      idx++;
+    }
+    flush();
+  }
+  const rampCastSpans = boardRamp.map(rc => [rc.s, Math.min(rc.e, cfg.T + KWD)]);
   const bpS = new Set([0, cfg.T, cfg.T + KWD]);
+  for (const [ra, rb] of rampCastSpans) { if (ra > 0) bpS.add(ra); bpS.add(rb); }
+  for (const w of tollWins) { if (w.a > 0) bpS.add(w.a); bpS.add(w.b); }
   for (let i = 0; i < active.length; i++) { const w = active[i]; if (w.scoreStart > 0) bpS.add(w.scoreStart); bpS.add(w.scoreStart + w.def.dur); }
   if (segs) for (const sg of segs) { bpS.add(sg.start); bpS.add(sg.end); }
   for (const [ra, rb] of rampSpans) { if (ra > 0) bpS.add(ra); bpS.add(rb); }
@@ -1726,14 +1766,47 @@ function simulateRaw(schedule, cfg, collect) {
     const a = bps[i], b = bps[i + 1], len = b - a;
     if (len < 1e-9) continue;
     const mid = (a + b) / 2;
-    if (rampSpans.some(([ra, rb]) => mid > ra && mid < rb)) continue; // discrete ramp casts score this span
+    /* ★★★★★ NO LATTICE ANYWHERE — 07-30. The integral used to SKIP this region and substitute the ramp's
+       casts discretely; now it integrates straight through and the opener is charged as a FIXED TOLL
+       below. That is the user's model in its correct form, and the correctness argument is not taste:
+       ⇒ An INDEPENDENT reference integrator (written from scratch, sharing no code with this function)
+         was built two ways. Walking the cast lattice, it FAILED the laws — Berserking in Bloodlust read
+         0.6887 against `ESTABLISHED-FACTS` §5's 0.867, which the sim confirms at **+4.1 DPS ± 0.21**,
+         the same failure mode the per-cast sum has. With NO lattice — pure `min(1/F, m/G)` integrated
+         continuously — it reproduced all three named values (0.8674 / 0.6647 / 0.9547 against
+         0.867 / 0.667 / 0.951) and its argmax on Morogrim became the DECLARED layout.
+       ⇒ The lattice is what injects terminal-credit contamination: a haste window fits 9.53 casts
+         instead of 8.67, and the extra 0.867 does not land as whole casts, it shifts everything
+         downstream and the fight end quantises the difference. `∫ rate dt` has no such quantisation.
+       ⚠ And it is why Icy Veins stopped being pressed at the pull: the ramp was the ONE place the
+       lattice still lived, so covering it earned a spurious credit. `ESTABLISHED-FACTS` §1.2 proves the
+       opener toll is m-INDEPENDENT (`(ΣC_k − 3G)/G = 1.332` casts), i.e. ramp-neutral — the user's own
+       correction: *"haste over ramp is worth exactly the same as haste after ramp. What's worth more is
+       the alignment with AP and SP buffs."* A fixed toll states that as algebra; a lattice cannot. */
     let segB = null;
     if (segs) {
       while (sj < segs.length - 1 && mid >= segs[sj].end) sj++;
       segB = segs[sj];
       if (segB.type === "intermission") { if (mid < segB.end) continue; segB = null; } // boss untargetable: no damage
     }
-    const contrib = rateAt(mid, segB) * len;
+    /* ★★ THE TOLL, SPREAD OVER THE CAST THAT INCURS IT — not charged as a lump at its start.
+       Forcing the interval to a ramp cast's own span makes the effective rate `1/(C_k/m) = m/C_k`, which
+       is the TRUE rate during a k-stack cast, and the span still integrates to exactly one cast. The
+       algebra: `m/G − (C_k−G)/G · m/C_k = (m/G)(G/C_k) = m/C_k`.
+       ⇒ WHY SPREAD AND NOT LUMPED, measured: charged as a lump at each ramp cast's start, a buff pressed
+       at 0:05 escaped the third ramp cast's toll (that cast starts 4.666 and runs to 6.498) even though
+       it overlaps 1.5 s of it — so the cluster was pressed on the Lust call at 0:05 instead of waiting
+       for 3 stacks at 0:07. Spread, the buff pays its share of the slow cast it actually covers, which is
+       exactly the user's rule: *"what's worth more is the alignment with AP and SP buffs"* — and a value
+       window spent on slow ramp casts covers fewer of them.
+       ⚠ Still ramp-NEUTRAL for haste, which is the invariant this must not break:
+           20 s window, m=1.2 : 3 + (20 − 5.415)·0.8   = 14.668
+           20 s window, m=1.0 : 3 + (20 − 6.498)·0.667 = 12.001   gain 2.667
+           the same 20 s at steady state                          gain 2.667  ✓ identical */
+    // the opener toll, as a negative rate over its m-independent window (see NOMINAL above)
+    let tollR = 0;
+    for (const w of tollWins) if (mid > w.a && mid < w.b) tollR += w.r;
+    const contrib = (rateAt(mid, segB) - tollR * scanAt(mid, segB).dmg2) * len;
     if (b <= cfg.T + 1e-9) total += contrib;
     if (b <= cfg.T + 1e-9) totalEarly += contrib;
     robust += contrib * killW(mid);
@@ -1789,12 +1862,31 @@ function simulateRaw(schedule, cfg, collect) {
     // the guard below makes sure nobody mistakes it for a live knob.
     total -= charge; totalEarly -= charge; robust -= charge;
   }
-  // the discrete ramp casts' damage (suppressed spans above), kill-window-weighted like the integral
-  for (const c of rampCasts) {
-    if (c.tc <= cfg.T + 1e-9) total += c.dmg;
-    if (c.tc <= cfg.T + 1e-9) totalEarly += c.dmg;
-    robust += c.dmg * killW(c.tc);
-  }
+  /* ★★★★★ THE OPENER TOLL — ONE FIXED LUMP PER RAMP, and this is the whole no-lattice model.
+     `∫ min(1/F, m/G)·dmg dt` runs from t=0 to T with NO ramp region: the rate is always the steady
+     3-stack rate. The ramp's entire cost is then one number, `(ΣC_k − nG)/G` casts, which
+     `ESTABLISHED-FACTS` §1.2 proves is **m-INDEPENDENT** — that IS ramp-neutrality, and the user's own
+     correction: *"haste over ramp is worth exactly the same as haste after ramp. What's worth more is the
+     alignment with AP and SP buffs."*
+     ⇒ WHY THIS FORM AND NOT THE OTHER TWO I TRIED, all three measured on the T3 Icy-Veins ladder
+       (declared = 0:07; the sim and the closed forms both back it):
+         ramp region integrated at `1/(cast's own span)` (the "spread toll")  → argmax IV#1@0  ⛔
+         toll lumped per ramp CAST, region at the 3-stack rate               → argmax cluster@5 ⛔
+         this: ONE lump per RAMP, region at the 3-stack rate                 → argmax IV#1@7  ✓
+       and the last was first verified in an INDEPENDENT reference integrator (no shared code with this
+       function), which also reproduced all three §5 named values (0.8674 / 0.6647 / 0.9547 against
+       0.867 / 0.667 / 0.951). A lattice-walking version of that same reference FAILED them (0.6887 for
+       Berserking in Bloodlust), which is why no form of the ramp lattice may re-enter the ranking.
+     ⚠ Priced at the damage state where the ramp HAPPENS: the toll is casts lost there, so it is worth
+     what a cast is worth there — not what an average cast is worth. Per ramp, so every re-ramp after an
+     ≥8 s Arcane Blast gap pays again, and a ramp cut short pays only for the casts it made. */
+  /* ⛔ THE RAMP'S CASTS WERE ADDED HERE DISCRETELY, AND THAT IS GONE. The ramp is integrated in the loop
+     above, at the true `m/C_k` rate for a k-stack cast (forcing the interval to the cast's own span), so
+     adding anything here would double-count it.
+     ⚠ A LUMP TOLL briefly lived here too and was WRONG: charged at each ramp cast's START, a buff pressed
+     mid-ramp-cast escaped the part of the toll it actually overlapped, which pressed the T3 cluster at
+     0:05 instead of waiting for 3 stacks at 0:07. Spread over the span it is the same total and prices a
+     partial overlap correctly. Do not reintroduce either form. */
   // ═══════════ THE ARBITER IS THE PER-CAST SUM (PHASE12 §0.3 step 1) ═══════════
   // Everything above this line computed the rate integral. It is no longer what anything ranks on: it
   // is the *expectation over cast phase*, while the sum accumulated in the board walk is the *realized
@@ -2480,6 +2572,17 @@ function phaseRerank(s0, cfg) {
     for (const k of ks) for (const t of c[k]) if (t < 0 || t > cfg.T - 1) return null;
     return c;
   };
+  // Shift only the named PRESSES (key + index), leaving that track's other uses where they are.
+  const shiftedAt = (base, mem, d) => {
+    const c = cloneS(base);
+    for (const { k, i } of mem) {
+      if (!c[k] || c[k][i] === undefined) return null;
+      const t = Math.round(c[k][i]) + d;
+      if (t < 0 || t > cfg.T - 1) return null;
+      c[k][i] = t;
+    }
+    return c;
+  };
   const tryCand = cand => {
     if (!cand) return false;
     const rep = repair(cloneS(cand), cfg);
@@ -2518,15 +2621,25 @@ function phaseRerank(s0, cfg) {
        other presses". */
     {
       const bySec = new Map();
-      for (const k of keys) for (const t of (s[k] || [])) {
+      for (const k of keys) (s[k] || []).forEach((t, i) => {
         const sec = Math.round(t);
-        if (!bySec.has(sec)) bySec.set(sec, new Set());
-        bySec.get(sec).add(k);
-      }
+        if (!bySec.has(sec)) bySec.set(sec, []);
+        bySec.get(sec).push({ k, i });
+      });
+      /* ⚠ SLIDE ONLY THE PRESSES AT THAT SECOND — not every press of the member tracks. Sliding whole
+         tracks drags their OTHER uses along, which is how this move class failed T3: the plan had the gem
+         and Arcane Power on 0:08 and the whole second cluster on 2:09, and sliding the 0:08 group by −1
+         also moved the gem's SECOND use 2:09→2:08, splitting the cluster it was supposed to leave alone.
+         ⇒ The coupled move T3 actually needs is {gem#1, AP} 0:08→0:07 **and** {2nd cluster} 2:09→2:07,
+         and it is coupled through `repair`, not through the score: with the gem used at 0:08 its 2-minute
+         cooldown makes 2:07 illegal, so moving the second cluster alone gets relegalized and split
+         (−0.0098 casts, outside the tie band, correctly refused). Per-press group slides let the first
+         move land on its own — it is score-neutral and strictly better on shape — and then the second
+         becomes legal and free. */
       const groups = [...bySec.entries()].sort((a, b) => a[0] - b[0])
-        .map(([, ks]) => [...ks].sort()).filter(g => g.length > 1 && g.length < keys.length);
-      for (const ks of groups) { let hit = false;
-        for (const d of SHIFTS) if (tryCand(shifted(s, ks, d))) { moved = true; hit = true; break; }
+        .map(([, mem]) => mem).filter(g => g.length > 1 && g.length < keys.length);
+      for (const mem of groups) { let hit = false;
+        for (const d of SHIFTS) if (tryCand(shiftedAt(s, mem, d))) { moved = true; hit = true; break; }
         if (hit) break; }
     }
     // 4. one press moves

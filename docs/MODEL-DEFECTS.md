@@ -2279,3 +2279,93 @@ defect available: two independent arbiters against the ranking objective on a de
    fix is NOT "integrate the ramp" — it is that the compression hand-off credits `1.083 s × the local
    post-ramp rate` (≈1.08 casts with Lust up) where the true value of finishing the ramp sooner is
    `1.083 × (rate₃ₛₜₐcₖ − rate₂ₛₜₐcₖ) ≈ 0.157` casts.
+
+---
+
+## §8q — ✅✅✅ 3 OF 3. The ramp was the last lattice leak. (07-30)
+
+```
+node tests/anchors.mjs
+PASS  T1 — 2:00 · PASS  T2 — 3:00 · PASS  T3 — Morogrim
+3 of 3 passed.
+```
+
+### How it was found: an INDEPENDENT reference integrator
+
+Rather than patch the engine again, the user's model was implemented **from scratch** — no shared code
+with `simulate()` — so it could arbitrate instead of agreeing by construction. Built two ways:
+
+| reference variant | §5 named values (0.867 / 0.667 / 0.951) | Morogrim argmax |
+|---|---|---|
+| walks the cast lattice | **0.6887** / 0.6587 / 0.7442 ⛔ | EMITTED |
+| no lattice: `∫ min(1/F, m/G)·dmg dt` − fixed toll | **0.8674 / 0.6647 / 0.9547** ✓ | **DECLARED** ✓ |
+
+★ The lattice-walking version fails the laws the same way the per-cast sum does, and the sim confirms the
+laws (`+4.1 DPS ± 0.21`). **So no form of the cast lattice may enter the ranking — including in the ramp**,
+which was the one place it still lived.
+
+### The three ramp forms, all measured on the T3 ladders
+
+| ramp model | Icy Veins #1 argmax | why |
+|---|---|---|
+| region integrated at `1/(cast's own span)` | **0:00** ⛔ | the span shrinks with haste, so compression pays and covering the ramp becomes a bonus — the lattice, readmitted |
+| toll LUMPED at the ramp start | 0:07, but cluster **0:05** ⛔ | a value buff pressed 0:05 gets full credit for `[5, 6.498]`, casts the opener never makes |
+| **toll spread over `ΣC_k`, the UNHASTED length** | **0:07** ✓ | a fixed number of casts lost over a fixed stretch of time |
+
+Both halves are load-bearing. **Fixed count** ⇒ haste cannot compress it, so the ramp stays neutral — the
+user's correction: *"haste over ramp is worth exactly the same as haste after ramp. What's worth more is
+the alignment with AP and SP buffs."* **Spread** ⇒ a value window overlapping the opener pays its share,
+which is what makes the cluster wait for 3 stacks. Resulting ladders:
+
+```
+IV#1 alone :  0:−0.179  2:−0.044  4:−0.026  5:−0.017  6:−0.009  7:+0.000  8:−0.068
+joint slide:  4:−0.361   5:−0.155  6:−0.052  7:+0.000  8:+0.000  9:+0.000
+```
+
+The plateau begins at exactly 0:07 — the first whole second with 3 stacks (6.498) **and** Lust (0:05) both
+live — and the earliest tie-break takes it. The user's rule, derived rather than asserted.
+
+### And one more coupled coordinate, through `repair` rather than through the score
+
+With that landed T3 read `IV[7,129] isc[7,129] scb[8,129] AP[8] zerk[129]` — bit-identical integral to the
+declared (133.009593 both) with 4 distinct press moments against 3, so the tie-break wanted the declared
+and could not reach it:
+
+```
+2nd cluster 2:09→2:07 alone   −0.0098 casts   (outside the band, correctly refused)
+then gem/AP 0:08→0:07         +0.0098 casts   (exactly cancelling)
+```
+
+Coupled through **legality**: with the gem used at 0:08 its 2-minute cooldown makes 2:07 illegal, so moving
+the second cluster alone gets relegalized and split. And the co-pressed-cluster move class could not do the
+enabling step, because it slid **every press of a member track** — sliding the 0:08 group by −1 dragged the
+gem's *second* use 2:09→2:08 and split the cluster it was meant to leave alone.
+⇒ **Fix: the cluster slide moves only the presses AT that second** (key + index), not whole tracks. Then
+`{gem#1, AP} 0:08→0:07` lands on its own — score-neutral, strictly better on shape — and the second
+cluster's move becomes legal and free.
+
+### Verification
+
+| gate | result |
+|---|---|
+| `tests/anchors.mjs` | **3 of 3** |
+| `tools/law-check.mjs` + `--self-test` | 6/6; negative control caught by 4 lines |
+| `tools/self-consistency.mjs` | 0.00e+0, **0** structural |
+| `tests/page-equiv.mjs` + `--self-test` | 2/2; seeded break caught |
+| `tests/sim-request.mjs` | protocol invariants PASS |
+| `bench --preset "T1 · 2:00 lust 0:20" --vs naive` | MODEL +1.931 % **AGREES with the sim** |
+
+**Morogrim, sim-duelled head to head (6000 iters, 3 seeds):**
+
+```
+NEW (= declared) − this morning's emitted :  +7.6 DPS ± 0.60      ⇒ a large real gain
+NEW (= declared) − pre-today OLD          :  −2.3 DPS ± 0.24
+```
+
+⚠ **The −2.3 is stated, not hidden.** It is entirely the Berserking placement of §8p — the sim prefers it
+inside Bloodlust, the closed forms prefer it with the second cluster, and the user was told and reaffirmed
+the declared layout, so it stands. §8p (haste × +SP ~⅓ too generous in the closed form) is still **OPEN**
+and is the reason that one press disagrees.
+
+⚠ **Open debt:** the full preset corpus has not been re-swept or duelled since this change.
+`docs/ACCEPTANCE.md` still has no current reading.
