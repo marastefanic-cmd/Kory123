@@ -1232,7 +1232,28 @@ function simulateRaw(schedule, cfg, collect) {
       // EXTERNAL is pressed by someone else and lands exactly when called (the branch above sets
       // `eff = e.ts` for precisely that reason), so its aura starts there whatever we are casting.
       const auraAt = isExternal ? eff : Math.max(eff, prevCastEnd);
-      active.push({ key: e.key, def: e.def, start: auraAt, scoreStart: eff + slip });
+      // ★★★★ `scoreStart: auraAt` — the REAL fire boundary, 07-30. It was `eff + slip`, and that is
+      // CLAUDE.md's retired approach #2 ("expiring a buff window from the PRESS time") still live in
+      // the integral path: the discrete walk was fixed to run each window its full duration from where
+      // the ability actually FIRES, and the integral was left scoring from press + expected slip.
+      // ⇒ THE DEFECT IT CAUSED, measured to three decimals. Bloodlust is pinned at 20.000, a raid
+      // external, so it lands mid-cast; the cast already in flight keeps its un-hasted 1.5 s (haste
+      // snapshots at cast START), ending 21.498. A cluster pressed at 0:20 and one pressed at 0:21
+      // therefore BOTH fire at 21.498 — the same plan, and `auraAt` says so for both. But
+      // `eff + slip` gave them 20.75 and 21.75, and the earlier window spends 0.748 s of itself on
+      // that slow cast: `0.748 × (1/1.5) + … ` costs `0.1496 × s` casts, where `s` is the buff's own
+      // value fraction. Isolated, one cluster member at a time:
+      //     Icy Veins   (pure haste, s = 0)      Δ = +0.00000
+      //     Icon        (+155 SP, s = 0.0772)    Δ = +0.01152   predicted 0.01155
+      //     gem         (+225 SP, s = 0.1120)    Δ = +0.01672   predicted 0.01676
+      //     Arcane Power(×1.30,   s = 0.30)      Δ = +0.04476   predicted 0.04490
+      // — and the whole cluster together read +0.0815, which is what paid for the smeared 0:20/0:21/
+      // 0:23 layout the user reported as nonsense. A pure-haste buff is untouched because `s = 0`;
+      // only VALUE buffs could see it, which is exactly the fingerprint the isolation found.
+      // ⚠ NOT the same as deleting the slip. `eff + 0` is still the PRESS time and still separates two
+      // presses that fire together — measured, and net worse (it moved T1's cluster off 0:20 entirely).
+      // The fix is to score the window where the buff actually IS, which is `auraAt`.
+      active.push({ key: e.key, def: e.def, start: auraAt, scoreStart: auraAt });
       // Both chains anchor on `auraAt`, the FIRE moment — see the read above. For an external
       // (Bloodlust/PI/Drums) `auraAt === eff` by construction, so the raid-call convention is
       // untouched: someone else presses it and its aura starts when they call it.

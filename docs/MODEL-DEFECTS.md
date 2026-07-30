@@ -1568,3 +1568,72 @@ with xval-round-diff or a duel, not on this line."* ⚠ **The duel work list is 
 run.** Until it is, this change is justified by the closed forms and by T1, not by the sim. Harness
 gates that DID pass after it: `self-consistency` 0.00e+0 / 0 structural, `sim-request` §0,
 `page-equiv` 2/2.
+
+---
+
+## §8i — ✅ THE INTEGRAL SCORED EVERY WINDOW FROM THE PRESS, NOT THE FIRE (fixed 07-30)
+
+User: *"crack anything and everything that's not working as expected and what's preventing the model
+from outputting what I want it to."* This is the defect that was producing the smeared clusters they
+reported as nonsense (`0:17 Icon · 0:18 Icy Veins · 0:21 gem · 0:21 Arcane Power`).
+
+### The measurement that found it
+
+With Berserking held at the declared 2:20, sliding the whole first cluster off the 0:20 Bloodlust pin
+*gained* +0.0815 casts. Isolating one cluster member at a time, against each buff's own value fraction
+`s = COEF·ΔSP/(BASE + COEF·SP)` (AP: `s = 0.30`):
+
+| pressed at 0:20 vs 0:21 | s | measured Δ | predicted `0.1496 × s` |
+|---|---|---|---|
+| Icy Veins (pure haste) | 0 | **+0.00000** | 0 |
+| Icon of the Silver Crescent | 0.0772 | +0.01152 | 0.01155 |
+| Serpent-Coil gem | 0.1120 | +0.01672 | 0.01676 |
+| Arcane Power | 0.30 | +0.04476 | 0.04490 |
+
+Three decimals on all three, and **zero** for the pure-haste buff — which is the fingerprint: only a
+VALUE buff could see it.
+
+### The mechanism
+
+Bloodlust is pinned at 20.000 and is a raid external, so it lands mid-cast. The Arcane Blast already in
+flight keeps its un-hasted 1.5 s (haste snapshots at cast START — the rule is right) and ends at 21.498.
+The integral scored each window from `scoreStart = eff + prevInterval/2` — press time plus expected
+slip — so a cluster pressed at 0:20 got windows starting 20.75 and one pressed at 0:21 got 21.75. The
+earlier window spends 0.748 s of itself on that slow cast, which costs `0.1496 × s` casts.
+
+**But both presses fire at 21.498** — `auraAt` says so for both, and the discrete walk scores them as
+the same plan, because they *are* the same plan. Only the integral separated them.
+
+This is CLAUDE.md's **retired approach #2** — *"expiring a buff window from the PRESS time"* — still live
+in the integral path. The discrete walk was fixed in PHASE12 §6.11 to run each window its full duration
+from where the ability actually FIRES; `scoreStart` was left behind because nothing ranked on the
+integral at the time. The moment it ranked again, a retired convention inside it became load-bearing.
+
+### The fix
+
+`scoreStart: auraAt` (index.html, the firing block). One token.
+
+⚠ **NOT the same as deleting the slip**, which was tried first and measured NET WORSE: `eff + 0` is
+still the press time, so it still separates two presses that fire together — it moved T1's cluster off
+0:20 entirely and Berserking to 0:47 (one press wrong became four).
+
+### What it fixed, measured
+
+- Single-buff slides across the pin are now **flat to 0.00000** (were −0.045 at 0:20 for Arcane Power).
+- The whole-cluster slide is **monotone from 0:20**: 0:20 and 0:21 tie exactly, then −0.029 per second.
+- **The integral now prefers Berserking at 2:20 over inside Bloodlust** (144.0797 vs 144.0110) — the
+  user's structural claim, reproduced.
+- T2's Icon lands on 0:20/2:20 and the T2 gap fell 0.2281 → 0.1509 casts.
+- Gates: `self-consistency` 0.00e+0 / 0 structural (the change is confined to `scanAt`/the rate
+  integrand; the discrete walk already used `auraAt`).
+
+### ★ AND ONE PLACE THE MODEL IS RIGHT AND THE DECLARED LAYOUT IS NOT
+
+T2's second cluster prefers **2:21 over 2:20 by +0.029 casts, then goes flat**. Isolated, every buff
+alone ties 140 vs 141. The fire times explain it: pressed at 140, Icy Veins fires 140.00 but the Icon
+and gem fire at **141.50** — the Icon's first use fired at 0:21.5 (its press slipped to the cast
+boundary) and its 2-minute cooldown chains from the FIRE (PHASE12 §6.14c). So pressing the second
+cluster at 2:20 **splits** it: haste 1.5 s ahead of the value buffs. 2:21 keeps it together.
+⇒ This is not a defect to fix. It is a real consequence of a rule the project already verified, and it
+means the declared T2 is ~0.029 casts short of its own intent. Worth telling the user rather than
+silently matching.
