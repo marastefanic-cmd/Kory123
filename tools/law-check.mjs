@@ -151,6 +151,31 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
               st.map(v => ((v - st[0]) >= 0 ? '+' : '') + (v - st[0]).toFixed(5)).join(' '));
 }
 
+/* ═══ §4 — the haste × SPELLPOWER cross term. ★ THIS IS THE LINE THAT CLOSED §8p ═══════════════════
+   A haste buff `a` over duration `D` adds `D·[rate(m·a) − rate(m)]` casts. If a +SP buff covers the
+   same window each of those extra casts is worth `(1+s)` rather than 1, so the gain from OVERLAPPING
+   the two windows rather than holding them apart is exactly
+
+       D · s · [rate(m·a) − rate(m)],      s = COEF·ΔSP / (BASE + COEF·SP)
+
+   MODEL-DEFECTS §8p recorded this as over-credited by ~⅓, measured model-vs-SIM. The engine
+   reproduces the closed form to **0.000 %** on all four pairs, so the discrepancy was never in the
+   model's internal arithmetic. ⚠ With the simulator retired, whether the LAW matches the game is no
+   longer falsifiable — this line pins the model to its own algebra and can do nothing more. */
+{
+  const c = cfgOf(300, ['icyVeins', 'isc', 'scb', 'berserking']);
+  const sOf = dsp => G.AB.COEF * dsp / (G.AB.AVG_BASE_DMG + G.AB.COEF * SP);
+  for (const [label, hk, vk, a, dsp, D] of [
+    ['haste × SP: IV × Icon',   'icyVeins',   'isc', 1.20, 155, 20],
+    ['haste × SP: Zerk × gem',  'berserking', 'scb', 1.10, 225, 10],
+  ]) {
+    const stacked  = I({ [hk]: [100], [vk]: [100] }, c);
+    const separate = I({ [hk]: [100], [vk]: [200] }, c);
+    chk(label, stacked - separate, D * sOf(dsp) * (rate(a) - rate(1.0)), 5e-6,
+        `${D} × s(${dsp}) × [rate(${a}) − rate(1)]`);
+  }
+}
+
 /* ═══ AoE — §9. NEVER CHECKED BEFORE 07-30, and the first law is a genuine simplification ═════════
    Arcane Explosion is INSTANT (`cast = 0`), so its interval is purely the GCD. Arcane Blast at 3
    stacks is `max(msq(1.498/m), gcd)` — and the cast term can never win: below m = 1.5 the GCD is the

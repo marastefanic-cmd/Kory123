@@ -2170,7 +2170,13 @@ gate first; it will localise the second defect without another sim run.
 
 ---
 
-## §8p — ⛔ THE DEFECT, NAMED: haste × **spellpower** is over-credited ~⅓; haste × **damage-mult** is exact
+## §8p — ✅ CLOSED 07-30 BY §8x (was: ⛔ THE DEFECT, NAMED: haste × **spellpower** is over-credited ~⅓)
+
+> ✅ **CLOSED — see §8x at the end of this file.** The engine reproduces the haste × SP cross-term
+> closed form `D·s·[rate(m·a) − rate(m)]` to **0.000 %** on four pairs, so the over-credit is not in
+> the model. It was a model-vs-SIM gap, and with the simulator retired that comparison no longer
+> exists. ⚠ Read §8x before citing anything below as current.
+
 
 User, correcting the frame — describing the RESULT they expect for Morogrim rather than a new rule:
 *"Morogrim has to pop the first cluster (everything except Berserking) as soon as a) 3 Arcane Blast stacks
@@ -2751,3 +2757,48 @@ does not.
 bloodlust`. Skull, MQG, Drums, Power Infusion and the Ashtongue proc are **completely unaudited**, and
 the first probe outside the covered kit found a 4×-band single-coordinate miss. Widening the sweep to a
 kit × haste matrix is the obvious next gate.
+
+---
+
+## §8x — ✅ §8p IS CLOSED, AND THE WAY IT CLOSED MARKS A LIMIT OF THE POST-SIM WORLD (07-30)
+
+§8p stood as *"haste × **spellpower** is over-credited ~⅓; haste × **damage-mult** is exact"*, measured
+model-vs-**sim** (model +0.1258 casts against a sim reading of +0.8 DPS). The simulator is retired, so
+the only way left to settle it is against the algebra — which is also the method that found every
+scoring defect on 07-30.
+
+**The closed form.** A haste buff `a` over duration `D` adds `D·[rate(m·a) − rate(m)]` casts. If a +SP
+buff covers the same window, each of those extra casts is worth `(1+s)` rather than 1, so the gain from
+OVERLAPPING the two windows rather than holding them apart is exactly
+
+```
+D · s · [rate(m·a) − rate(m)],      s = COEF·ΔSP / (BASE + COEF·SP)
+```
+
+**Measured, 300 s fight, h = 0, no other buffs, isolated pairs:**
+
+| pair | measured Δ | closed form | error |
+|---|---|---|---|
+| Icy Veins ×1.20 · Icon +155 | 0.205843 | 0.205843 | **0.00 %** |
+| Icy Veins ×1.20 · gem +225 | 0.224104 | 0.224104 | **0.00 %** |
+| Berserking ×1.10 · Icon +155 | 0.051310 | 0.051310 | **0.00 %** |
+| Berserking ×1.10 · gem +225 | 0.074482 | 0.074482 | **−0.00 %** |
+
+⇒ **There is no ~⅓ over-credit in the model.** The engine reproduces its own cross-term law exactly,
+on every pair, at four decimals. Two new `law-check` lines pin it.
+
+### ⚠⚠ AND HERE IS THE PART THAT MATTERS MORE THAN THE CLOSURE
+
+§8p was never a claim about the model's internal arithmetic — it was a **model-vs-sim disagreement**,
+and only one of those two things still exists. So the honest statement is:
+
+- ✅ **The model is self-consistent with its own laws.** That is now provable and is gated.
+- ⛔ **Whether the LAW matches the game is no longer falsifiable.** The instrument that could have
+  answered it is deleted by decision.
+
+That is a real and permanent limit, not a to-do. Every remaining sim-denominated open item is in the
+same position — **§8n** (*"the 07-30 change REGRESSES the preset corpus, 13σ, sim-measured"*) most of
+all. ⇒ **Do not reopen a sim-measured defect expecting to resolve it.** Either re-pose it as a closed
+form and check the engine against that — which is what this section did — or leave it recorded as
+unfalsifiable. ⛔ The one thing that is NOT allowed is quietly treating a sim-era number as current
+evidence; that is the stale-premise failure §8t and §8n both punish.
