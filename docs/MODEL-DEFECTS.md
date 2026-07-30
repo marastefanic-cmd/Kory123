@@ -2537,3 +2537,68 @@ High Astromancer Solarian       +0.039226 casts        -0.232345 casts
 as the four §6 instruments that flattered themselves in Phase 12. When the objective moved on 07-30,
 three instruments kept reading the old one; two are now fixed and the standing lesson is unchanged:
 **read what a tool measures, not its verdict line.**
+
+---
+
+## §8u — ✅ THE SEARCH NOW HAS A GATE. `tools/search-audit.mjs` (07-30)
+
+Three defects shipped wrong plans this week — §8j, §8m, §8s — and **all three were search misses that
+every gate in the repo was blind to**:
+
+| gate | why it could not see them |
+|---|---|
+| `tests/anchors.mjs` | covers 7 declared cells; §8s was found because the **user** read two plans |
+| `tools/law-check.mjs` | correctly stayed GREEN — the scorer was right, the descent never visited the answer |
+| `tools/self-consistency.mjs` | compares the objective against itself; cannot see the search at all |
+| the deleted `exact-match` | **locked in whatever the search emitted**, so a miss became the golden |
+| `tools/search-witnesses.mjs` | needs someone to have already found a better plan by hand |
+
+⇒ Sweep every preset, then ask the objective directly: **is there a small simultaneous move that beats
+the plan the tool emitted?**
+
+```
+node tools/plan-sweep.mjs index.html /tmp/b.json 3 --max-t=200   # ~30 s, the expensive half
+node tools/search-audit.mjs /tmp/b.json --k=3                    # seconds, re-solves nothing
+node tools/search-audit.mjs /tmp/b.json --k=3 --self-test        # the negative control
+```
+
+**It reproduces the week's misses from the pre-fix engine, to the digit and unprompted:**
+
+```
+⛔ NOT OPT  Fathom-lord Karathress   → +0.005815 casts via berserking#0+2 & icyVeins#0+2 & icyVeins#1+2
+⛔ NOT OPT  High Astromancer Solarian → +0.030041 casts via berserking#0+3 & icyVeins#0+3
+SEARCH-AUDIT k=3 span=3 graded=10 localOptima=8 MISSES=2
+```
+
+`+0.005815` is exactly the 2:00 gap the user reported. On the current engine: **14 of 14 local optima.**
+
+### ⚠ Three things that had to be right, each of which was wrong first
+
+1. **`k=3` is the floor that matters, not `span`.** On the 2:00 cell there were **zero** improving
+   1-coordinate moves, **zero** 2-coordinate, and six 3-coordinate. A k=1 or k=2 audit calls that plan
+   optimal. Cost is `C(n,k)·span^k` ≈ 4.9k scorings at n=6 — under a second, because the sweep already
+   paid for the solving.
+2. **★ It must grade on the objective PAIR, and grading on `rankScore` alone made it lie immediately.**
+   The first version reported **T1 — a declared test, and the argmax — as a search miss**, "beaten by
+   +0.000347 casts": 5.8× INSIDE `TIE_CASTS`, by a layout that shifts every press +3 s and is strictly
+   worse on the `earliest` tie-break. It now uses the engine's own `rankPair`/`planBetter`, so a
+   candidate counts only if the OPTIMIZER would have taken it. ⇒ **that is the THIRD instrument in one
+   day to grade on half the objective** (§8t: `plan-sweep`, `search-witnesses`, and this one). The
+   comparator is now exported rather than re-implemented, which is the only durable fix.
+3. **The self-test had to be unable to seed a tie.** It displaces one press per plan and requires every
+   displacement to be caught; it picks the smallest nudge the *engine's own comparator* calls strictly
+   worse, so it can never seed the false positive of item 2. A plan with no such nudge is reported
+   UNPERTURBABLE, never silently counted as a pass. Result: `displaced=14 caught=14`.
+
+⚠ **A PASS IS NOT OPTIMALITY, and the gate says so in its own output.** It asserts no move of ≤k
+coordinates by ≤span seconds wins. T2's declared Berserking sits **+120 s** from where the descent put
+it (§8j) — outside every bounded neighbourhood at any k. Global optimality needs the constructive
+enumeration (`docs/PHASE13.md` §3); this is that programme's regression net, not its replacement.
+
+### Fixed in the same pass: the witness gate had been ERRORING, not passing
+
+`tools/search-witnesses.mjs` resolved each witness through `api.cases.find(c => c.name === w.case)`.
+Two of its three witnesses named presets deleted on 07-30 when `GOLDEN_PRESETS` became the declared-test
+list, so the gate exited **2** — not passing, not failing, erroring — for as long as that was true.
+⇒ a witness may now carry an inline `setup` and that is preferred: **a witness is a fact about a FIGHT,
+not about a row in a table.** It was also scoring on `.robust`; fixed to `rankScore` (item 2 again).

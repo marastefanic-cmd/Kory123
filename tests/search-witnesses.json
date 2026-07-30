@@ -1,108 +1,289 @@
 {
-  "_README": [
-    "KNOWN SEARCH MISSES — each entry is a LEGAL schedule that the current scorer ranks HIGHER than",
-    "the plan `optimizeAsync` actually emits for that case. They are not bugs in the objective: the",
-    "equation ranks them correctly, which is exactly how they were found. They are failures of the",
-    "SEARCH to reach the argmax.",
-    "",
-    "Why this file exists: a search miss is invisible to every gate the project has. `exact-match`",
-    "locks in whatever the search emits, so a miss becomes the golden. `self-consistency` compares the",
-    "objective against itself. Only a second witness — a plan from a different engine, or a hand-built",
-    "one — can show that a better plan exists. This file is where those witnesses live so they are not",
-    "lost, and so the search work starts with a concrete failing case instead of a hunch.",
-    "",
-    "How to check them:   node tools/search-witnesses.mjs",
-    "How they are found:  node tools/search-miss.mjs <old-sweep.json> <new-sweep.json>",
-    "",
-    "⚠ A witness going green does NOT mean the search is correct at that cell — it means this",
-    "particular better plan is now reached. Optimality is a different and much stronger claim; that is",
-    "what the enumeration/branch-and-bound programme is for.",
-    "",
-    "⚠ A witness is KEPT after it goes green. `reachedOn` below records when, but the live status",
-    "always comes from `tools/search-witnesses.mjs` re-solving — a note in a file cannot notice a",
-    "regression. Both entries went green on 2026-07-28 with the entrant floor + the legibility",
-    "budget retired (PHASE13 §3.1); they stay so the gate keeps proving it."
-  ],
-  "witnesses": [
-    {
-      "case": "1:40 lust 0:05",
-      "found": "2026-07-27",
-      "context": "Surfaced by the boundary-credit repricing: swept plans from the pre-change engine, then scored both sets with the new scorer. Every other moved cell improved or tied; this one lost. Unaffected by the 07-27 EPS fix — this cell did not move.",
-      "schedule": { "isc": [ 4 ], "bloodlust": [ 5 ], "icyVeins": [ 0, 45 ], "arcanePower": [ 4 ], "scb": [ 4 ], "berserking": [ 36 ] },
-      "emitted": { "isc": [ 3 ], "bloodlust": [ 5 ], "icyVeins": [ 0, 38 ], "arcanePower": [ 4 ], "scb": [ 4 ], "berserking": [ 20 ] },
-      "scoreWitness": 196760.5,
-      "scoreEmitted": 196633.2,
-      "shortfallPct": 0.065,
-      "notes": [
-        "The witness is a repair() FIXPOINT, i.e. legal — verified, not assumed.",
-        "★ ROOT-CAUSED 2026-07-27 (PHASE13 §3.1). ⛔ The note that used to sit here — 'the basin is not",
-        "being entered at all' — is RETRACTED. It is entered: the outer search FINDS this witness from 20",
-        "restarts on, and the finishing tail destroys it every single time. That is why 3/8/14/24 restarts",
-        "all return the same emitted plan — more search cannot help when the tail discards the result.",
-        "Mechanism: the no-Cold-Snap sub-solve finds Zerk=36, then a groom pass moves it 36->20 for a -46.4",
-        "loss, admitted because the QTOL legibility band is measured against a STALE HIGH-WATER MARK",
-        "(`val = Math.max(val, pick.v)`) instead of the current plan — the exact defect `challengePass` had",
-        "already fixed for itself. The Cold-Snap comparison then pastes an IV chain onto the groomed plan",
-        "wholesale, inheriting Zerk=20, and -46.4 becomes -127.2. Nothing ever compares finishLine's output",
-        "to its entrant. This is archived PHASE9 §5.17's declined residual coming due.",
-        "The landscape: a 2-cell isolated needle on (IV2 x Zerk) — only (45,36) and (46,36) beat the emitted",
-        "plan, both single-coordinate half-moves are strictly worse, and a full-grid reachability check finds",
-        "NO sequence of single-coordinate moves that reaches it. Both winning regions are genuine 1.0s",
-        "plateaus, not knife edges.",
-        "⚠ NOT FIXED, deliberately. The clean fix (an entrant floor in the tail) is green on every gate",
-        "(search-miss: 9 better, 0 regressions) but makes the QTOL legibility budget unspendable at the top",
-        "level, silently reversing the user-directed ruling that aesthetics may trade up to a full cast of",
-        "expected damage for a pressable line. That is a product decision, not a search fix.",
-        "✅ REACHED 2026-07-28. Root cause fixed, not worked around: `finishLine` now WRAPS in an entrant floor (it may not return worse than it was given) and the legibility budget dropped from a whole cast to a tie tolerance. Emitted score 196760.5 == witness. The 'NOT FIXED, deliberately' note above is retracted: the user ruled that legibility is a display property, so there was never a damage budget to protect (PHASE13 §3.1)."
-      ],
-      "reachedOn": "2026-07-28"
-    },
-    {
-      "case": "Kael'thas Sunstrider",
-      "found": "2026-07-27",
-      "context": "Surfaced by the EPS boundary fix (PHASE13 §2.5): swept all 25 presets on both engines and scored both plan sets with the new scorer. Four cells improved (two by >0.65 %), one tied, and this one lost 50.8. The scorer did not get worse here — the SEARCH landed in a different, slightly worse local optimum once the press loop's boundary test changed which cast a press lands on. Kael'thas is the corpus's only AoE preset and its longest fight (T=420, ~5 min to solve at 3 restarts), so it is also the cell with the most search surface and the least brute-force coverage.",
-      "schedule": { "isc": [ 0, 120, 274, 396 ], "bloodlust": [ 260 ], "icyVeins": [ 107, 127, 396 ], "arcanePower": [ 120, 396 ], "scb": [ 120, 274, 396 ], "berserking": [ 94, 274 ] },
-      "emitted": { "isc": [ 0, 120, 272, 392 ], "bloodlust": [ 260 ], "icyVeins": [ 105, 125, 390 ], "arcanePower": [ 121, 396 ], "scb": [ 121, 276, 396 ], "berserking": [ 116, 406 ] },
-      "scoreWitness": 615370.6,
-      "scoreEmitted": 615319.7,
-      "shortfallPct": 0.008,
-      "notes": [
-        "Both schedules are repair() FIXPOINTS — verified, not assumed (repair(s) == s for each).",
-        "⚠ SMALL, and recorded anyway. 0.008 % is an order of magnitude under the 1:40 witness (0.065 %)",
-        "and two orders under the wins the same change produced (+0.654 % Lurker, +1.091 % Solarian). The",
-        "rule it is recorded under is search-miss's own: 'fix the search, or record it as a known miss —",
-        "but do not re-record goldens over it silently.' A golden WAS re-recorded over this plan, so the",
-        "witness is the record that a better one exists.",
-        "NOT yet root-caused. It may be the same finishLine monotonicity mechanism as the 1:40 witness, or",
-        "it may be ordinary sensitivity to a shifted press lattice; nobody has checked. Checking it is",
-        "expensive — KT solves in ~5 minutes at 3 restarts, so a restart-depth sweep is ~an hour.",
-        "✅ REACHED 2026-07-28, by the same two changes and without ever being root-caused — which is worth recording: it was logged as 'may be the same finishLine mechanism as the 1:40 witness, or ordinary sensitivity to a shifted press lattice; nobody has checked.' Fixing the monotonicity bug closed it too. Emitted score 615370.6 == witness."
-      ],
-      "reachedOn": "2026-07-28"
-    },
-    {
-      "case": "7:20 lust 0:05",
-      "found": "2026-07-28",
-      "context": "Surfaced by retiring the legibility budget (PHASE13 §3.1). Swept all 25 presets before and after and scored both sets with the same scorer: 11 cells better, 8 exact ties, and this one 127.2 worse. ⚠ Its signature is `IV2 38->45, Zerk 20->36` — the IDENTICAL 2-cell needle as the 1:40 witness, on a 440 s fight. That is the tell: the old `QTOL = castVal` was not only buying co-pressed layouts, it was also letting the search TUNNEL through a slightly-worse intermediate into a better basin. Cutting it to a tie tolerance closed that escape route here, while the entrant floor opened the same basin at 1:40 and 2:00.",
-      "schedule": { "isc": [ 3, 123, 243, 418 ], "bloodlust": [ 5 ], "icyVeins": [ 0, 45, 231, 411 ], "arcanePower": [ 4, 243, 423 ], "scb": [ 4, 243, 423 ], "berserking": [ 36, 246, 426 ] },
-      "emitted": { "isc": [ 3, 123, 243, 418 ], "bloodlust": [ 5 ], "icyVeins": [ 0, 38, 231, 411 ], "arcanePower": [ 4, 243, 423 ], "scb": [ 4, 243, 423 ], "berserking": [ 20, 246, 426 ] },
-      "scoreWitness": 751117.3,
-      "scoreEmitted": 750990.1,
-      "shortfallPct": 0.017,
-      "notes": [
-        "✅ REACHED THE SAME DAY IT WAS RECORDED — and it is kept, because what it proved is the point.",
-        "It existed for the length of one configuration: the entrant floor plus a FLAT cut of QTOL to a tie",
-        "tolerance. That cut removed the budget's second, undocumented job — tunnelling through a worse",
-        "intermediate to escape a local optimum — which is what this cell needed and what its `IV2 38->45,",
-        "Zerk 20->36` signature (the 1:40 witness's needle, on a 440 s fight) was pointing at.",
-        "The fix was to stop treating one number as one decision: `finishLine` now runs under BOTH budgets",
-        "and keeps the better, with the entrant flooring both and ties going to the plan with fewer press",
-        "rows. Loose supplies reach, tight supplies tidiness, neither can lose ground. Full corpus after:",
-        "11 better, 7 tie, 0 regressions, and -8 press rows / -7 lone seconds / +6 clustering.",
-        "⚠ The lesson, which is why this entry survives: a single tolerance had been standing in for two",
-        "unrelated policies, and no measurement could separate them until they were separated in the code."
-      ],
-      "reachedOn": "2026-07-28"
+ "_README": [
+  "KNOWN SEARCH MISSES — each entry is a LEGAL schedule that the current scorer ranks HIGHER than",
+  "the plan `optimizeAsync` actually emits for that case. They are not bugs in the objective: the",
+  "equation ranks them correctly, which is exactly how they were found. They are failures of the",
+  "SEARCH to reach the argmax.",
+  "",
+  "Why this file exists: a search miss is invisible to almost every gate the project has.",
+  "`self-consistency` compares the objective against itself and cannot see the search at all, and the",
+  "deleted `exact-match` locked in whatever the search emitted, so a miss BECAME the golden. Only a",
+  "second witness — a plan from a different engine, or a hand-built one — can show a better plan exists.",
+  "",
+  "How to check them:   node tools/search-witnesses.mjs",
+  "How they are found:  node tools/search-miss.mjs <old-sweep.json> <new-sweep.json>",
+  "                     node tools/search-audit.mjs <sweep.json>     <- STRONGER: local optimality, no witness needed",
+  "",
+  "★ RESOLUTION: a witness may carry `setup` ({T, pins, gear?, kit?, phases?}) instead of naming a",
+  "preset in `case`. PREFER `setup`. On 2026-07-30 two of the three witnesses here pointed at presets",
+  "deleted when GOLDEN_PRESETS became the declared-test list, and the gate had been exiting 2 — not",
+  "passing, not failing, just erroring — for as long as that was true. A witness is a fact about a",
+  "FIGHT, not about a row in a table; storing it as the latter made it one rename from void.",
+  "",
+  "⚠ A witness going green does NOT mean the search is correct at that cell — it means this",
+  "particular better plan is now reached. Optimality is a different and much stronger claim, and",
+  "`tools/search-audit.mjs` is the first gate in this repo that makes any part of it: it asserts each",
+  "emitted plan is a k-coordinate LOCAL optimum, which needs no witness and covers every swept cell.",
+  "",
+  "⚠ A witness is KEPT after it goes green. `reachedOn` records when, but the live status always comes",
+  "from re-solving — a note in a file cannot notice a regression."
+ ],
+ "witnesses": [
+  {
+   "case": "1:40 lust 0:05",
+   "found": "2026-07-27",
+   "context": "Surfaced by the boundary-credit repricing: swept plans from the pre-change engine, then scored both sets with the new scorer. Every other moved cell improved or tied; this one lost. Unaffected by the 07-27 EPS fix — this cell did not move.",
+   "schedule": {
+    "isc": [
+     4
+    ],
+    "bloodlust": [
+     5
+    ],
+    "icyVeins": [
+     0,
+     45
+    ],
+    "arcanePower": [
+     4
+    ],
+    "scb": [
+     4
+    ],
+    "berserking": [
+     36
+    ]
+   },
+   "emitted": {
+    "isc": [
+     3
+    ],
+    "bloodlust": [
+     5
+    ],
+    "icyVeins": [
+     0,
+     38
+    ],
+    "arcanePower": [
+     4
+    ],
+    "scb": [
+     4
+    ],
+    "berserking": [
+     20
+    ]
+   },
+   "scoreWitness": 196760.5,
+   "scoreEmitted": 196633.2,
+   "shortfallPct": 0.065,
+   "notes": [
+    "The witness is a repair() FIXPOINT, i.e. legal — verified, not assumed.",
+    "★ ROOT-CAUSED 2026-07-27 (PHASE13 §3.1). ⛔ The note that used to sit here — 'the basin is not",
+    "being entered at all' — is RETRACTED. It is entered: the outer search FINDS this witness from 20",
+    "restarts on, and the finishing tail destroys it every single time. That is why 3/8/14/24 restarts",
+    "all return the same emitted plan — more search cannot help when the tail discards the result.",
+    "Mechanism: the no-Cold-Snap sub-solve finds Zerk=36, then a groom pass moves it 36->20 for a -46.4",
+    "loss, admitted because the QTOL legibility band is measured against a STALE HIGH-WATER MARK",
+    "(`val = Math.max(val, pick.v)`) instead of the current plan — the exact defect `challengePass` had",
+    "already fixed for itself. The Cold-Snap comparison then pastes an IV chain onto the groomed plan",
+    "wholesale, inheriting Zerk=20, and -46.4 becomes -127.2. Nothing ever compares finishLine's output",
+    "to its entrant. This is archived PHASE9 §5.17's declined residual coming due.",
+    "The landscape: a 2-cell isolated needle on (IV2 x Zerk) — only (45,36) and (46,36) beat the emitted",
+    "plan, both single-coordinate half-moves are strictly worse, and a full-grid reachability check finds",
+    "NO sequence of single-coordinate moves that reaches it. Both winning regions are genuine 1.0s",
+    "plateaus, not knife edges.",
+    "⚠ NOT FIXED, deliberately. The clean fix (an entrant floor in the tail) is green on every gate",
+    "(search-miss: 9 better, 0 regressions) but makes the QTOL legibility budget unspendable at the top",
+    "level, silently reversing the user-directed ruling that aesthetics may trade up to a full cast of",
+    "expected damage for a pressable line. That is a product decision, not a search fix.",
+    "✅ REACHED 2026-07-28. Root cause fixed, not worked around: `finishLine` now WRAPS in an entrant floor (it may not return worse than it was given) and the legibility budget dropped from a whole cast to a tie tolerance. Emitted score 196760.5 == witness. The 'NOT FIXED, deliberately' note above is retracted: the user ruled that legibility is a display property, so there was never a damage budget to protect (PHASE13 §3.1)."
+   ],
+   "reachedOn": "2026-07-28",
+   "setup": {
+    "T": 100,
+    "pins": {
+     "bloodlust": [
+      5
+     ]
     }
-  ]
+   },
+   "setupNote": "Carried inline because the preset it was recorded against was deleted on 2026-07-30, when GOLDEN_PRESETS became the declared-test list. The name encodes the whole setup (length + Lust pin, default gear), so nothing is lost — but a witness that can only be resolved through a preset TABLE is one rename away from being silently void, which is what happened here."
+  },
+  {
+   "case": "Kael'thas Sunstrider",
+   "found": "2026-07-27",
+   "context": "Surfaced by the EPS boundary fix (PHASE13 §2.5): swept all 25 presets on both engines and scored both plan sets with the new scorer. Four cells improved (two by >0.65 %), one tied, and this one lost 50.8. The scorer did not get worse here — the SEARCH landed in a different, slightly worse local optimum once the press loop's boundary test changed which cast a press lands on. Kael'thas is the corpus's only AoE preset and its longest fight (T=420, ~5 min to solve at 3 restarts), so it is also the cell with the most search surface and the least brute-force coverage.",
+   "schedule": {
+    "isc": [
+     0,
+     120,
+     274,
+     396
+    ],
+    "bloodlust": [
+     260
+    ],
+    "icyVeins": [
+     107,
+     127,
+     396
+    ],
+    "arcanePower": [
+     120,
+     396
+    ],
+    "scb": [
+     120,
+     274,
+     396
+    ],
+    "berserking": [
+     94,
+     274
+    ]
+   },
+   "emitted": {
+    "isc": [
+     0,
+     120,
+     272,
+     392
+    ],
+    "bloodlust": [
+     260
+    ],
+    "icyVeins": [
+     105,
+     125,
+     390
+    ],
+    "arcanePower": [
+     121,
+     396
+    ],
+    "scb": [
+     121,
+     276,
+     396
+    ],
+    "berserking": [
+     116,
+     406
+    ]
+   },
+   "scoreWitness": 615370.6,
+   "scoreEmitted": 615319.7,
+   "shortfallPct": 0.008,
+   "notes": [
+    "Both schedules are repair() FIXPOINTS — verified, not assumed (repair(s) == s for each).",
+    "⚠ SMALL, and recorded anyway. 0.008 % is an order of magnitude under the 1:40 witness (0.065 %)",
+    "and two orders under the wins the same change produced (+0.654 % Lurker, +1.091 % Solarian). The",
+    "rule it is recorded under is search-miss's own: 'fix the search, or record it as a known miss —",
+    "but do not re-record goldens over it silently.' A golden WAS re-recorded over this plan, so the",
+    "witness is the record that a better one exists.",
+    "NOT yet root-caused. It may be the same finishLine monotonicity mechanism as the 1:40 witness, or",
+    "it may be ordinary sensitivity to a shifted press lattice; nobody has checked. Checking it is",
+    "expensive — KT solves in ~5 minutes at 3 restarts, so a restart-depth sweep is ~an hour.",
+    "✅ REACHED 2026-07-28, by the same two changes and without ever being root-caused — which is worth recording: it was logged as 'may be the same finishLine mechanism as the 1:40 witness, or ordinary sensitivity to a shifted press lattice; nobody has checked.' Fixing the monotonicity bug closed it too. Emitted score 615370.6 == witness."
+   ],
+   "reachedOn": "2026-07-28"
+  },
+  {
+   "case": "7:20 lust 0:05",
+   "found": "2026-07-28",
+   "context": "Surfaced by retiring the legibility budget (PHASE13 §3.1). Swept all 25 presets before and after and scored both sets with the same scorer: 11 cells better, 8 exact ties, and this one 127.2 worse. ⚠ Its signature is `IV2 38->45, Zerk 20->36` — the IDENTICAL 2-cell needle as the 1:40 witness, on a 440 s fight. That is the tell: the old `QTOL = castVal` was not only buying co-pressed layouts, it was also letting the search TUNNEL through a slightly-worse intermediate into a better basin. Cutting it to a tie tolerance closed that escape route here, while the entrant floor opened the same basin at 1:40 and 2:00.",
+   "schedule": {
+    "isc": [
+     3,
+     123,
+     243,
+     418
+    ],
+    "bloodlust": [
+     5
+    ],
+    "icyVeins": [
+     0,
+     45,
+     231,
+     411
+    ],
+    "arcanePower": [
+     4,
+     243,
+     423
+    ],
+    "scb": [
+     4,
+     243,
+     423
+    ],
+    "berserking": [
+     36,
+     246,
+     426
+    ]
+   },
+   "emitted": {
+    "isc": [
+     3,
+     123,
+     243,
+     418
+    ],
+    "bloodlust": [
+     5
+    ],
+    "icyVeins": [
+     0,
+     38,
+     231,
+     411
+    ],
+    "arcanePower": [
+     4,
+     243,
+     423
+    ],
+    "scb": [
+     4,
+     243,
+     423
+    ],
+    "berserking": [
+     20,
+     246,
+     426
+    ]
+   },
+   "scoreWitness": 751117.3,
+   "scoreEmitted": 750990.1,
+   "shortfallPct": 0.017,
+   "notes": [
+    "✅ REACHED THE SAME DAY IT WAS RECORDED — and it is kept, because what it proved is the point.",
+    "It existed for the length of one configuration: the entrant floor plus a FLAT cut of QTOL to a tie",
+    "tolerance. That cut removed the budget's second, undocumented job — tunnelling through a worse",
+    "intermediate to escape a local optimum — which is what this cell needed and what its `IV2 38->45,",
+    "Zerk 20->36` signature (the 1:40 witness's needle, on a 440 s fight) was pointing at.",
+    "The fix was to stop treating one number as one decision: `finishLine` now runs under BOTH budgets",
+    "and keeps the better, with the entrant flooring both and ties going to the plan with fewer press",
+    "rows. Loose supplies reach, tight supplies tidiness, neither can lose ground. Full corpus after:",
+    "11 better, 7 tie, 0 regressions, and -8 press rows / -7 lone seconds / +6 clustering.",
+    "⚠ The lesson, which is why this entry survives: a single tolerance had been standing in for two",
+    "unrelated policies, and no measurement could separate them until they were separated in the code."
+   ],
+   "reachedOn": "2026-07-28",
+   "setup": {
+    "T": 440,
+    "pins": {
+     "bloodlust": [
+      5
+     ]
+    }
+   },
+   "setupNote": "Carried inline because the preset it was recorded against was deleted on 2026-07-30, when GOLDEN_PRESETS became the declared-test list. The name encodes the whole setup (length + Lust pin, default gear), so nothing is lost — but a witness that can only be resolved through a preset TABLE is one rename away from being silently void, which is what happened here."
+  }
+ ]
 }

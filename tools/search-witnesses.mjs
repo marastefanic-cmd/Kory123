@@ -44,20 +44,30 @@ const rows = [];
 let stillMissing = 0, reached = 0;
 
 for (const w of W) {
-  const kase = api.cases.find(c => c.name === w.case);
-  if (!kase) die(`witness names preset "${w.case}", which no longer exists — a renamed preset silently ` +
-    'voids a witness, so this is an error rather than a skip.');
+  /* ★ RESOLVE FROM `setup` FIRST — a witness is a fact about a FIGHT, not about a row in a table.
+     On 2026-07-30 two of three witnesses named presets that had been deleted when GOLDEN_PRESETS
+     became the declared-test list, and this gate had been exiting 2 for as long as that was true:
+     not passing, not failing, ERRORING, which in practice means nobody was checking search misses at
+     all. The `die` below is still right for a witness that names a preset AND has no setup — a
+     silently-skipped witness is worse — but the fix is to stop depending on the name. */
+  const kase = w.setup ? { name: w.case, ...w.setup } : api.cases.find(c => c.name === w.case);
+  if (!kase) die(`witness names preset "${w.case}", which no longer exists, and carries no inline ` +
+    '`setup` — add {T, pins, gear?, kit?, phases?} to the witness rather than re-adding the preset.');
   const cfg = cfgFor(api, kase);
   const clone = o => JSON.parse(JSON.stringify(o));
   const rep = s => api.repair(clone(s), cfg);
+  /* ⛔ `rankScore`, NOT `simulate().robust`. This read `.robust` — the per-cast SUM — which stopped
+     being the ranking quantity on 07-30 (MODEL-DEFECTS §8h; the rate integral ranks). A witness gate
+     denominated in the reported number can call a REACHED witness still-missing and vice versa. Same
+     defect as §8t found in `plan-sweep`; three instruments carried it, and this was the third. */
   const sc = s => {
-    const v = api.simulate(rep(s), cfg).robust;
+    const v = api.rankScore(rep(s), cfg);
     if (!Number.isFinite(v)) die(`non-finite score on "${w.case}"`);
     return v;
   };
   const legal = JSON.stringify(rep(w.schedule)) === JSON.stringify(rep(rep(w.schedule)));
   const best = await api.optimizeAsync(cfg, 14, () => {});
-  const emitted = api.simulate(best.s, cfg).robust;
+  const emitted = api.rankScore(best.s, cfg);
   const witness = sc(w.schedule);
   const gap = witness - emitted;
   const status = !legal ? 'STALE (witness no longer legal)' : gap > 1e-6 ? 'STILL MISSING' : 'reached';

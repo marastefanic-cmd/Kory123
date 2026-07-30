@@ -1,6 +1,6 @@
 # `tests/` — what is actually asserted
 
-Three things are checked in this project, and it is worth being blunt about which is which, because
+Four things are checked in this project, and it is worth being blunt about which is which, because
 they fail for different reasons and are fixed in different places.
 
 | | asserts | needs |
@@ -8,9 +8,16 @@ they fail for different reasons and are fixed in different places.
 | `node tests/anchors.mjs` | **WHICH LAYOUT IS RIGHT** — the seven layouts the user declared | bare node |
 | `node tools/law-check.mjs` | the SCORER against `docs/ESTABLISHED-FACTS.md`'s closed forms | bare node |
 | `node tools/self-consistency.mjs` | the SCORER against itself, and the board against the physics | bare node |
+| `node tools/plan-sweep.mjs …` + `node tools/search-audit.mjs …` | **the SEARCH** — that each emitted plan is a k-coordinate local optimum | bare node |
 
-All three run in CI and all three are blocking. Nothing here needs a browser, a Go toolchain, a
+All four run in CI and all four are blocking. Nothing here needs a browser, a Go toolchain, a
 simulator, or a network.
+
+★ **The fourth one is the newest and it closes the widest hole.** Every gate above it is blind to a
+search miss: `anchors` covers seven cells, `law-check` stays correctly green (the scorer is right; the
+descent just never visited the answer), and `self-consistency` cannot see the search at all. All three
+defects that shipped wrong plans in this project's worst week were search misses, and one was found
+because the **user** read a plan and said it looked wrong. `search-audit` asks the objective directly.
 
 The planner is **deterministic** — fixed PRNG, an exact objective, no `Date.now()` — so one setup
 produces exactly one schedule, which is what lets `anchors` compare press times rather than tolerances.

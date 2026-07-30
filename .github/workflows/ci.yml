@@ -81,3 +81,37 @@ jobs:
       # sides read the same board. The STRUCTURAL line is the one that caught them.
       - name: the scorer against itself (self-consistency)
         run: node tools/self-consistency.mjs
+
+  the-search:
+    name: THE SEARCH (is every emitted plan a local optimum?)
+    # ★★★★ ADDED 2026-07-30, and it closes the gap every other gate in this repo has.
+    # The three defects that shipped WRONG PLANS this week — MODEL-DEFECTS §8j, §8m, §8s — were all
+    # SEARCH misses, and not one was visible to anything above: `anchors` covers 7 declared cells,
+    # `law-check` stayed correctly green (the scorer was right; the descent never visited the answer),
+    # and `self-consistency` cannot see the search at all. §8s was found because the USER read two
+    # plans and said they looked wrong. That is not a gate.
+    # ⇒ Sweep every preset, then ask the objective directly whether a small SIMULTANEOUS move beats the
+    # plan the tool emitted. On the pre-fix engine this independently rediscovers both reported misses,
+    # to the digit (+0.005815 Karathress, +0.030041 Solarian).
+    # ⚠ k=3 is not a luxury: on the 2:00 cell there were ZERO improving 1- and 2-coordinate moves and
+    # six 3-coordinate ones. A k=1 or k=2 audit would have called that plan optimal.
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      # ~30 s across 3 jobs. This is the expensive half; the audit itself is seconds and re-solves nothing.
+      - name: sweep every preset
+        run: node tools/plan-sweep.mjs index.html /tmp/sweep.json 3 --max-t=200
+
+      - name: every emitted plan survives its neighbourhood
+        run: node tools/search-audit.mjs /tmp/sweep.json --k=3
+
+      # NEGATIVE CONTROL: displace one press in every emitted plan — the smallest nudge the engine's own
+      # comparator calls strictly worse — and require EVERY one to be caught. A displaced plan that
+      # audits clean would mean the neighbourhood asserts nothing. Inverts its exit contract.
+      - name: '↳ negative control: a displaced press must be CAUGHT'
+        run: node tools/search-audit.mjs /tmp/sweep.json --k=3 --self-test

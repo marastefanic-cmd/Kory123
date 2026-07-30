@@ -221,6 +221,27 @@ and answers "which is better" rather than "by how much, and why". ⛔ Do NOT rea
 first — §8j, §8m and §8s were all search defects, and a scorer "fix" aimed at one would have been
 permanent damage.
 
+### ★★★★ AND IT IS NOW A GATE — `tools/search-audit.mjs` (§8u)
+
+```
+node tools/plan-sweep.mjs index.html /tmp/b.json 3 --max-t=200   # ~30 s, the expensive half
+node tools/search-audit.mjs /tmp/b.json --k=3                    # seconds, re-solves nothing
+node tools/search-audit.mjs /tmp/b.json --k=3 --self-test        # displaces a press; must be CAUGHT
+```
+It does the table above **automatically, on every swept cell**: for each emitted plan it enumerates
+every move of ≤k coordinates by ≤span seconds and asks whether any beats it. Reading **14 of 14 local
+optima** today, and on the pre-fix engine it rediscovers both of the week's reported misses to the digit
+(+0.005815 Karathress, +0.030041 Solarian) without being told they exist. CI runs it, blocking.
+⚠ **`k=3` is the floor that matters.** On the 2:00 cell there were ZERO improving 1- and 2-coordinate
+moves and six 3-coordinate ones — a k≤2 audit calls that plan optimal.
+⚠ **A pass is LOCAL optimality only.** T2's declared Berserking is +120 s from where the descent put it
+(§8j); no bounded neighbourhood at any k finds that. Global optimality needs the constructive
+enumeration (`docs/PHASE13.md` §3) — this gate is that programme's regression net, not its replacement.
+⛔ **It grades on the objective PAIR**, via the engine's exported `rankPair`/`planBetter`. Grading on
+`rankScore` alone made it report T1 — a declared test, and the argmax — as a miss "beaten by 0.000347
+casts", 5.8× inside the tie band. **Three instruments made that same mistake in one day** (§8t,
+§8u): if you write a fourth, import the comparator, never re-implement it.
+
 **⚠ The `plan-sweep`/`plan-diff` loop above is the ONLY plan-stability instrument** — `exact-match` is
 deleted and so is the sim. One real loss: the sweep runs the DOM-free engine, so it never touches the
 render path. If you change `renderTimeline`/`scheduleRows`, the sweep will not see it — **open the
