@@ -670,7 +670,7 @@
         </div>
         <div class="inline">
           <div class="field">
-            <label for="in-sp">Spell damage</label>
+            <label for="in-sp" title="Your UNBUFFED spell damage, straight off the character sheet — which already includes Mind Mastery's 0.25 per Intellect. The Buffs column adds the raid on top; do not pre-add any of it here.">Spell damage</label>
             <input id="in-sp" type="number" value="1150" min="0" max="3000" step="10">
           </div>
           <div class="field">
@@ -678,7 +678,7 @@
             <input id="in-crit" type="number" value="25" min="0" max="100" step="0.5">
           </div>
           <div class="field">
-            <label for="in-int">Intellect</label>
+            <label for="in-int" title="Your UNBUFFED Intellect. It is used only to price the Intellect-granting buffs — Arcane Brilliance (+40), Elixir of Draenic Wisdom (+30) and Blessing of Kings (×1.10) — which Mind Mastery turns into spell damage at 0.25 per point, plus 0.0125% crit per point. ⚠ Only the buffs' DELTA is converted: your base Intellect's own contribution is assumed to be in the Spell damage number you typed, because the character sheet already includes Mind Mastery. If yours does not, add 0.25 × Intellect to that box yourself.">Intellect</label>
             <input id="in-int" type="number" value="450" min="0" max="2000" step="10">
           </div>
         </div>
@@ -5154,8 +5154,14 @@ function buffedStats(baseSp, baseCrit, baseInt) {
     if (b.intMult) intMult *= b.intMult;
     if (b.dmgMult) dmgMult *= b.dmgMult;
   }
-  // Intellect: flat buffs are lifted by Arcane Mind like the rest of your Intellect, then Kings
-  // multiplies the whole pool. Only the DELTA over your sheet value is new spellpower and crit.
+  /* Intellect: flat buffs are lifted by Arcane Mind like the rest of your Intellect, then Kings
+     multiplies the whole pool. ★ Only the DELTA over your sheet value becomes new spellpower and crit —
+     your BASE Intellect's own Mind Mastery contribution is assumed already present in the spell-damage
+     box, because the in-game character sheet includes it. Converting the base again would add ~113 SP
+     out of nowhere at 450 Int.
+     ⚠ This shortcut is EXACT, not an approximation: `(sheet + flat·1.15)·kings − sheet` equals the real
+     ordering `(sheet/1.15 + flat)·1.15·kings − sheet` identically (both 133.55 at 450 Int + 70 flat),
+     because Arcane Mind distributes over the sum. */
   const dInt = (baseInt + flatInt * ARCANE_MIND) * intMult - baseInt;
   sp += dInt * INT_TO_SP;
   critPct += dInt * INT_TO_CRIT + critRating / CRIT_RATING_PER_PCT;
