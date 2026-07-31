@@ -2986,7 +2986,9 @@ happened to reach. Nothing about damage was overturned: the two layouts are tied
 
 ⇒ **`index.html` ships move class 3d, placed LAST** (§1c — position is load-bearing). Gates after:
 anchors **8/8**, law-check green with its control catching 9 lines, self-consistency `0.00e+0` / 0
-structural, `search-audit` on the preset sweep **no SCORE miss**.
+structural, `search-audit` on the preset sweep **no SCORE miss**, and the **kit × haste matrix
+63 of 63 local optima — SCORE misses 0, tie-break misses 0**, up from 59/63 with one real miss. The
+matrix that opened §8y now closes it.
 ★ And the user's own case is fixed: on the 7:00 Kael'thas cell the shipped engine reaches **254.982121**
 from the old model plan — past both the old model (254.861547) and the hand-edited line (254.975099).
 
