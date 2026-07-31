@@ -80,6 +80,21 @@ checks BOTH — press-time comparison catches the SEARCH, and `scorerBeats()` en
 move around the declared layout to catch the SCORER. ⛔ **There is no third option.** A red here is never
 "the test is too strict"; editing a layout to match the tool destroys the only ground truth the project
 has, which is exactly what killed `exact-match`.
+⛔⛔ **AND SINCE 07-31 THE PAGE AND THE TESTS CAN DISAGREE ON GEAR — read this before comparing them.**
+`index.html` gained a raid-buff panel (Arcane Brilliance, Kings, Wrath of Air, CoE+Malediction, Misery,
+oil/food/elixirs, Molten Armor, Totem of Wrath, …) plus an **Intellect** input that becomes spellpower
+through Mind Mastery. Those fold into `cfg.sp` and `cfg.critPct` **before the engine sees them**, and
+the SP/crit/Int boxes now mean your **UNBUFFED** sheet values, not "fully buffed".
+⇒ `tests/anchors.mjs` and `tools/plan-sweep.mjs` build `cfg` DIRECTLY and never touch that layer, so the
+declared tests are untouched (verified: anchors 8/8, `PLAN-DIFF IDENTICAL`). But **a preset you confirm
+in the tool is the locked test only with the buff boxes OFF** — with them on the page solves at higher
+effective SP and crit than the preset's stored gear. That is not a defect; it is the cost of the panel,
+and it is recorded here rather than left to be rediscovered.
+⚠ Why it is safe: the declared layouts were measured invariant across **crit 0–100 %** and
+**SP 600–2400** (all 7 `CASES`, imported not retyped), and **no TBC raid buff grants spell haste** —
+Wrath of Air is +101 spell damage in 2.4.3. The one contingency: crit cancels only because no declared
+test has an `aoe` phase (`intermission` is not `aoe`, and `aoeCritAmp` is where crit stops dividing out).
+
 ⚠⚠ **AND THEY ARE ALL h = 0** — a stated limit, not an oversight (*"figuring out higher haste is
 trickier"*). Above h=0 the GCD cap binds and the right answers change (RULES §5, §7, §7a-ii). **Nothing
 declares a correct layout above h = 0**; `kit-sweep` + `search-audit` cover h ∈ {0,200,400} but assert
