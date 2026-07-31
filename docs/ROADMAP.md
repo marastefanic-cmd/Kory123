@@ -4,27 +4,14 @@
 
 > # ▶ THE LIVE PLAN IS `docs/PHASE13.md` — start there
 >
-> ## ⛔⛔ FIRST, ONE USER CALL IS BLOCKING WORK: **is T6 still a declared test?** (`MODEL-DEFECTS` §8y)
-> T6 (`2:00 · Lust 0:05`) is **not** the objective's answer. Over **1,582,581** legal layouts its
-> declared layout ranks **33rd**; the argmax is `AP/Icon/gem/IV @0:15 · IV @0:35 · Berserking @0:05`,
-> ahead by 0.000231 casts — 8.6× **inside** the tie band, so tied on score — **and ahead on the
-> tie-break's first criterion, 3 distinct press moments against 4**, because Berserking rides the
-> Bloodlust call. T6 passes today only because the SEARCH cannot reach that layout.
-> ⇒ **Two coherent readings, and it is the user's call:** *(a)* T6 stands, and the tie-break needs a
-> rule that anchors the value cluster at 3 stacks — which is exactly the rule the user declared for T3,
-> applied generally; or *(b)* T6 is revised to the objective's answer — which still satisfies the
-> original bug report, since that asked for Icy Veins to be co-pressed *"along with the other things"*,
-> as it is at 0:15. ⚠ Reading (a) changes the crown-jewel objective and ripples through all eight tests.
-> ⚠ **NO LONGER blocked on this:** move class **3d** was thought to be waiting on the T6 call. It is
-> not — it has its own problem. Swept across the 63-cell kit matrix it changes 13 cells, and one of
-> them **regresses by 0.181543 casts, 90× the tie band** (`drums+icon+gem · h0 · 2:40 interm`) —
-> larger than its largest gain. It emitted a plan its own comparator rejects, which should not be
-> reachable, and **the mechanism is not established** (§8y part 1b). Two candidate causes, both
-> unverified: chain drift in `phaseFinish` (which lacks §8w's ceiling) or cross-cell memo contamination
-> in `kit-sweep`'s single process — and the second would indict the INSTRUMENT, not the move class.
-> ⇒ the decisive probe is solving that one cell ALONE under the 3d engine. It is slow (>9 min) and
-> outran the session; run it first next time.
-> Its code stays preserved verbatim in §8y; it is NOT in `index.html`.
+> ## ✅ CLEARED 07-31 — the T6 call was made, and move class 3d is SHIPPED
+> T6 was **revised** to the objective's answer (`AP/Icon/gem/IV @0:15 · IV @0:35 · Berserking @0:05`)
+> and `index.html` now carries the cooldown-chain closure, placed LAST in the move order (that position
+> is load-bearing — see MODEL-DEFECTS §8y §1c). It repairs a **0.114-cast** miss the user found by hand
+> on a 7:00 Kael'thas fight and the last kit-matrix SCORE miss.
+> ⚠ The precedent is deliberately narrow: a declared layout may be revised only when the disagreement
+> is **inside the tie band**, where the scorer never had the power to separate the two. Editing a test
+> because the tool disagrees on DAMAGE remains forbidden.
 >
 > ## ▶▶ THEN: PASSIVE GEAR HASTE. The groundwork is in `ESTABLISHED-FACTS` §10.
 > Every declared layout is **h = 0** and nothing in the repo declares a correct plan above it. §10 now

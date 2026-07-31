@@ -2727,6 +2727,52 @@ function phaseRerank(s0, cfg) {
         if (tryCand(cand)) { moved = true; break; }
       }
     }
+    /* ★★★★★ 3d. THE COOLDOWN-CHAIN CLOSURE — SHIPPED 07-31 by user ruling, and it runs LAST.
+       Sliding a press can force a LATER use of the same track to move with it: the gem's 120 s cooldown
+       makes 281→285 require 401→405. `repair` legalizes that, `intact()` then refuses the candidate,
+       and the descent never sees the move — so a plan splits its value cluster and stops. Found by the
+       kit matrix (MODEL-DEFECTS §8y) and INDEPENDENTLY by the user on a 7:00 Kael'thas fight, where a
+       hand-edited line beat the tool by 0.113552 casts, 57× the tie band, 0.084 of it this move alone.
+       ⇒ Close the chain with `repair` ITSELF rather than a hand-written push: it already knows Cold
+       Snap, the trinket lockout and the per-track separation, and re-deriving those inside a move class
+       is the copies-drift defect this repo keeps paying for. `repair` is idempotent, so the closed
+       candidate satisfies `intact()` by construction.
+       ⛔⛔ ITS POSITION IS LOAD-BEARING. This sat after class 3c for a day and REGRESSED a cell by 0.18
+       casts, 90× the band. A greedy descent is NOT monotone in its move set: offered a new move early it
+       takes a different locally-better step and converges to a WORSE basin — nothing walks downhill, it
+       arrives elsewhere. Measured on `drums+icon+gem · h0 · 2:40 interm`: 104.143286 without, 103.961744
+       with 3d early, 104.143286 with 3d last. Running last means every older class is exhausted first,
+       so the descent reaches the EXACT fixed point it reached without 3d and 3d can only extend it —
+       strictly ≥ by construction, not by measurement. Do not move it back up the list.
+       ⚠ Accepted only if every track keeps its press COUNT: `repair` also DROPS a press pushed past the
+       kill, and a slide that deletes a cooldown use is a different move than the one proposed. */
+    {
+      const bySec = new Map();
+      for (const k of keys) (s[k] || []).forEach((t, i) => {
+        const sec = Math.round(t);
+        if (!bySec.has(sec)) bySec.set(sec, []);
+        bySec.get(sec).push({ k, i });
+      });
+      const mems = [...bySec.entries()].sort((a, b) => a[0] - b[0]).map(([, m]) => m)
+        .filter(g => g.length > 1 && g.length < keys.length);
+      for (const k of keys) (s[k] || []).forEach((_, i) => mems.push([{ k, i }]));   // singles too
+      let hit = false;
+      for (const mem of mems) {
+        for (const d of SHIFTS) {
+          const slid = shiftedAt(s, mem, d);
+          if (!slid) continue;
+          const closed = repair(cloneS(slid), cfg);
+          let ok = true, same = true;
+          for (const k in slid) {
+            if (!closed[k] || closed[k].length !== slid[k].length) { ok = false; break; }
+            for (let j = 0; j < slid[k].length; j++) if (Math.abs(closed[k][j] - slid[k][j]) > 1e-9) same = false;
+          }
+          if (!ok || same) continue;
+          if (tryCand(closed)) { moved = true; hit = true; break; }
+        }
+        if (hit) break;
+      }
+    }
     if (!moved) break;
   }
   return { s, val };

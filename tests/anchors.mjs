@@ -84,9 +84,10 @@
 // INSIDE the tie band, and ahead on the tie-break's first criterion too (3 distinct press moments
 // against 4, Berserking riding the Bloodlust call). The old enumeration was real but its space was
 // narrower: it never ranged Berserking down onto the Lust call nor the cluster up to 0:15.
-// ⇒ T6 currently passes only because the SEARCH cannot reach that layout. Move class 3d (§8y) makes it
-// reachable and T6 goes red. **Whether T6 stands or is revised is an open USER CALL** — see §8y part 3;
-// until it is answered, 3d stays out of `index.html` and one kit-matrix SCORE miss stays open.
+// ✅ **SETTLED 07-31: T6 WAS REVISED to that argmax and move class 3d SHIPPED** (§8y). The `want` below
+// is the new layout; the old one is recorded at its own entry. The ruling was the user's, on their own
+// statement that the tie-break exists to name THE canonical member of a plateau — and it cost nothing
+// in damage, because the two layouts are tied inside the band.
 //
 // ── WHAT THESE ASSERT, AND WHY TIMESTAMPS ARE FAIR GAME HERE ──────────────────────────────────────
 // All of them pin **every press time**, which is the user's explicit ruling: *"these two examples I
@@ -204,9 +205,27 @@ const CASES = [
   { name: 'T5 — 2:40, Bloodlust pinned 0:07, intermission 1:30-2:10, 1387 SP, 38 % crit',
     T: 160, sp: 1387, crit: 38, lust: 7, intermission: [90, 130],
     want: { icyVeins: [7, 137], isc: [7, 137], scb: [7, 137], arcanePower: [7], bloodlust: [7], berserking: [137] } },
+  /* ⚠⚠ T6 WAS REVISED 07-31 BY USER RULING — it used to declare
+       `icyVeins:[7,37] isc:[7] scb:[7] arcanePower:[7] berserking:[27]`.
+     That layout is NOT what the objective picks. Over 1,582,581 legal layouts it ranks 33rd; the one
+     below is the argmax, and the two are TIED on score (+0.000231 casts, 8.6× INSIDE the tie band) —
+     the model has no power to separate them. The tie-break decides, and it does so on its FIRST
+     criterion, not a tie-breaker of a tie-breaker: **3 distinct press moments against 4**, because
+     Berserking rides the raid's Bloodlust call at 0:05 instead of needing its own at 0:27.
+     ★ The ruling follows the user's own statement of what the tie-break is FOR: *"I expect there will
+     be a lot of plateaus, especially in short fights where you use everything once, that's why we
+     implemented the earliest rule so we always have THE correct answer."* If it is a canonicaliser,
+     the canonical member is the answer, and the old T6 was simply the member the search could reach.
+     ★★ It also still satisfies the bug report that created T6 — *"why is the first IV at 0:06 not 0:07
+     ALONG WITH THE OTHER THINGS?"* asked for Icy Veins to be co-pressed with the cluster. It is, at
+     0:15. Only the absolute second moved.
+     ⇒ This is the ONE declared layout that was ever revised, and it is recorded rather than quietly
+     edited, because "edit the test to match the tool" is what killed `exact-match`. What makes it
+     legitimate here is that the tool did NOT get its way: the two layouts are indistinguishable to the
+     scorer, so no damage claim was overturned — only which member of a plateau is canonical. */
   { name: 'T6 — 2:00, Bloodlust pinned 0:05, h=0, 1387 SP, 38 % crit',
     T: 120, sp: 1387, crit: 38, lust: 5,
-    want: { icyVeins: [7, 37], isc: [7], scb: [7], arcanePower: [7], bloodlust: [5], berserking: [27] } },
+    want: { icyVeins: [15, 35], isc: [15], scb: [15], arcanePower: [15], bloodlust: [5], berserking: [5] } },
   { name: 'T7 — 1:15, Bloodlust pinned 0:05, intermission 0:50-0:55, 1387 SP, 38 % crit',
     T: 75, sp: 1387, crit: 38, lust: 5, intermission: [50, 55],
     want: { icyVeins: [7, 55], isc: [7], scb: [7], arcanePower: [7], bloodlust: [5], berserking: [27] } },

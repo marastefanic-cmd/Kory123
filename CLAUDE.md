@@ -130,7 +130,13 @@ T7 `1:15 lust 0:05 · intermission 0:50–0:55`. ★ T6/T7 arrived as **bug repo
 **brute-force argmax** rather than to what the optimizer happened to say — that distinction is exactly
 what got `exact-match` deleted. No browser, no rig, no golden file: it runs the real optimizer and
 compares press times.
-⛔⛔ **T6's "argmax" IS FALSIFIED — 07-30, MODEL-DEFECTS §8y, and it is the FIRST THING TO SETTLE NEXT
+✅ **T6 WAS REVISED 07-31 (user ruling) and move class 3d SHIPPED.** The old T6 was 33rd of 1,582,581
+layouts; the new one is the argmax, tied on score (+0.000231, inside the band) and ahead on the
+tie-break's FIRST criterion — 3 press moments against 4, Berserking riding the Bloodlust call. ⚠ **The
+precedent is narrow**: a declared layout may be revised ONLY when the disagreement is inside the tie
+band, i.e. when the scorer never had the power to separate the two and the question is merely which
+plateau member is canonical. Editing a test because the tool disagrees on DAMAGE remains forbidden.
+⛔ (historical) **T6's original "argmax" claim IS FALSIFIED — 07-30, MODEL-DEFECTS §8y, and it is the FIRST THING TO SETTLE NEXT
 SESSION.** Over **1,582,581** legal layouts T6's declared layout ranks **33rd**; the argmax is
 `AP/Icon/gem/IV @0:15 · IV @0:35 · Berserking @0:05`, ahead by 0.000231 casts (8.6× INSIDE the tie
 band) **and ahead on the tie-break's first criterion — 3 distinct press moments against 4**, because

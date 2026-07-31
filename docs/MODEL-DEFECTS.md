@@ -2970,7 +2970,33 @@ cooldown makes `285 + 120 = 405`, so its third use must move too: the chain clos
 ⇒ With 3d LAST, `phaseRerank` from the model plan reaches **254.982121** — better than the user's own
 line, additionally finding `isc[-5,115,…]`.
 
-### ⛔ SO 3d IS READY, AND **T6 IS NOW THE ONLY THING BLOCKING IT**
+### ✅✅ RESOLVED 07-31 — T6 REVISED BY USER RULING, 3d SHIPPED
+
+The user ruled: **revise T6, ship 3d.** The reasoning is their own framing of what the tie-break is
+for — *"I expect there will be a lot of plateaus, especially in short fights where you use everything
+once, that's why we implemented the earliest rule so we always have THE correct answer."* If it is a
+canonicaliser, then the canonical member IS the answer, and the old T6 was simply the member the search
+happened to reach. Nothing about damage was overturned: the two layouts are tied at +0.000231 casts,
+8.6× inside the band, so the scorer never had the power to separate them.
+
+```
+  T6 was    icyVeins[7,37]  isc[7]  scb[7]  arcanePower[7]  berserking[27]     4 press moments
+  T6 now    icyVeins[15,35] isc[15] scb[15] arcanePower[15] berserking[5]      3 press moments
+```
+
+⇒ **`index.html` ships move class 3d, placed LAST** (§1c — position is load-bearing). Gates after:
+anchors **8/8**, law-check green with its control catching 9 lines, self-consistency `0.00e+0` / 0
+structural, `search-audit` on the preset sweep **no SCORE miss**.
+★ And the user's own case is fixed: on the 7:00 Kael'thas cell the shipped engine reaches **254.982121**
+from the old model plan — past both the old model (254.861547) and the hand-edited line (254.975099).
+
+⚠ **This is the only declared layout ever revised, and the bar it had to clear is recorded** so the
+precedent is not misread: it was legitimate ONLY because the tool did not get its way on damage. The
+score gap was inside the tolerance the project already calls "tied", so the change settled which member
+of a plateau is canonical, not whose layout does more. **Editing a test because the tool disagrees with
+it remains forbidden** — that is what killed `exact-match`.
+
+### ⛔ (superseded) SO 3d IS READY, AND T6 IS THE ONLY THING BLOCKING IT
 
 With the position fixed, 3d costs nothing on the kit matrix and repairs a 0.114-cast miss on a fight the
 user actually plans. It still makes **T6 fail**, exactly as part 3 describes and for the same reason —
