@@ -6021,53 +6021,57 @@ function debugExportText() {
   const kit = LANE_ORDER.filter(k => cfg.enabled[k]);
   const L = [];
   L.push("=== ARCANE BURN PLANNER — DEBUG EXPORT ===");
-  L.push(`Input: ${fmtT(cfg.T)} fight (${cfg.T}s) · ${cfg.hasteRating} haste rating (+${(cfg.hasteRating / GAME.HASTE_RATING_PER_PCT).toFixed(1)}%) · ${cfg.sp} SP · ${cfg.critPct}% crit · Cold Snap ${cfg.coldSnap ? "on" : "off"} · Tirisfal-2pc ${cfg.t5two ? "on" : "off"}`);
+  /* ★ THE WHOLE INPUT CHAIN, typed → buffs → what the engine got — user request 07-31: *"you might
+     need the raid buffs in there, the whole input chain side of things, then the model's output, and
+     then the user output."* Right: the export used to show only the FINAL 1604 SP / 50.4 % crit, so a
+     mis-ticked buff and a genuine search miss looked identical from here. */
+  L.push(`Fight: ${fmtT(cfg.T)} (${cfg.T}s) · ${cfg.hasteRating} haste rating (+${(cfg.hasteRating / GAME.HASTE_RATING_PER_PCT).toFixed(1)}%) · Cold Snap ${cfg.coldSnap ? "on" : "off"} · Tirisfal-2pc ${cfg.t5two ? "on" : "off"}`);
+  const typedSp = +el("in-sp").value || 0, typedCrit = +el("in-crit").value || 0, typedInt = +el("in-int").value || 0;
+  L.push(`Typed (unbuffed): ${typedSp} SP · ${typedCrit}% crit · ${typedInt} Int`);
+  const onBuffs = RAID_BUFFS.filter(b => buffOn(b.id));
+  L.push(`Buffs on (${onBuffs.length}/${RAID_BUFFS.length}): ${onBuffs.map(b => b.id).join(", ") || "none"}`);
+  L.push(`Buffs off: ${RAID_BUFFS.filter(b => !buffOn(b.id)).map(b => b.id).join(", ") || "none"}`);
+  L.push(`→ engine receives: ${cfg.sp.toFixed(1)} SP · ${cfg.critPct.toFixed(2)}% crit · damage ×${(cfg.raidDmgMult || 1).toFixed(3)}`);
   L.push(`Cooldowns enabled: ${kit.map(k => BUFFS[k].name).join(", ") || "none"}`);
   const pins = Object.entries(cfg.fixed || {}).filter(([, v]) => v && v.length);
   if (pins.length) L.push(`Pinned raid calls: ${pins.map(([k, v]) => `${BUFFS[k].name} @ ${v.map(t => fmtT(t)).join("/")}`).join("; ")}`);
   if (phases.length) L.push(`Phases: ${phases.map(p => `${p.type}${p.type === "burn" ? " x" + p.mult : p.type === "aoe" ? " x" + p.targets : ""} ${fmtT(p.from)}-${fmtT(p.to)}`).join("; ")}`);
   for (const w of cfg.warnings || []) L.push(`input warning: ${w}`);
-  L.push("", "--- MODEL PLAN (optimizer output) ---");
-  L.push(planText(run).trimEnd());
-  L.push(statLine("model", M, run.optR));
+  /* ★★★ THE EXPORT IS AN INSTRUMENT FOR THE ASSISTANT, NOT A REPORT — user ruling 07-31: *"feel free
+     to have this Debug as a tool only for yourself. That's its only use, that I look around, make
+     changes using the lock and validate feature, and debug export it here to you."*
+     ⇒ Optimised for that one job: reproduce the cell, and diff the two press vectors. It used to emit
+     BOTH plans as prose (~40 of its ~80 lines) plus an `evalsched` block that duplicated `input` +
+     `intents` verbatim, plus naive/baseline totals that were never once read. The press vectors side by
+     side are the thing actually diffed, and they are two lines.
+     ⚠ AND IT SHIPPED A CASE THAT DID NOT REPRODUCE: `gear` omitted `t5two`, so a Tirisfal run
+     re-scored without it — then a trailing note blamed `tests/evalsched.mjs` for "having no t5 field",
+     which it has honoured since 07-27. The case now carries it and the false note is gone. */
+  const line = (s) => Object.keys(s).filter(k => (s[k] || []).length)
+    .sort((a, b) => LANE_ORDER.indexOf(a) - LANE_ORDER.indexOf(b))
+    .map(k => `${k}[${s[k].join(",")}]`).join(" ");
   const customR = CUSTOM.s ? (CUSTOM.run ? CUSTOM.run.optR : simulate(CUSTOM.s, cfg, true)) : null;
-  let C = null;
+  const C = customR ? tileStats(run, customR) : null;
+  L.push("");
+  L.push(`MODEL   ${M.effCasts.toFixed(3)} casts   integral ${run.optR.integral.toFixed(1)}   ${run.optR.castCount} real casts`);
+  L.push(`  ${line(run.best.s)}`);
   if (customR) {
-    C = tileStats(run, customR);
-    L.push("", `--- CUSTOM TIMELINE (hand-edited · ${CUSTOM.locked ? "locked & validated" : CUSTOM.legal ? "valid, not locked" : "HAS COOLDOWN VIOLATIONS"}) ---`);
-    L.push(planText(CUSTOM.run || { cfg, best: { s: CUSTOM.s }, optR: customR }).trimEnd());
-    L.push(statLine("custom", C, customR));
-    const dEff = C.effCasts - M.effCasts;
-    L.push(`custom vs model: ${(100 * (customR.integral / run.optR.integral - 1)).toFixed(3)}% damage (on the ranking integral) · ${dEff >= 0 ? "+" : ""}${dEff.toFixed(2)} effective casts · GCD-floor ${(C.capPct - M.capPct).toFixed(1)}pp`);
-    if (!CUSTOM.legal) {
-      L.push("validation — repair() would adjust:");
-      for (const d of CUSTOM.diffs) L.push("  - " + diffText(d));
-    }
+    L.push(`CUSTOM  ${C.effCasts.toFixed(3)} casts   ${C.effCasts >= M.effCasts ? "+" : ""}${(C.effCasts - M.effCasts).toFixed(3)}` +
+           ` (${(100 * (customR.integral / run.optR.integral - 1)).toFixed(3)}%)   ` +
+           `${CUSTOM.locked ? "locked & validated" : CUSTOM.legal ? "valid, not locked" : "⚠ COOLDOWN VIOLATIONS"}`);
+    L.push(`  ${line(CUSTOM.s)}`);
+    if (!CUSTOM.legal) for (const d of CUSTOM.diffs) L.push(`  repair would: ${diffText(d)}`);
   }
-  L.push("", "--- MACHINE-READABLE (JSON) ---");
-  const j = {
-    input: { T: cfg.T, hasteRating: cfg.hasteRating, sp: cfg.sp, critPct: cfg.critPct, coldSnap: cfg.coldSnap, t5two: !!cfg.t5two, kit, pins: cfg.fixed || {}, phases, warnings: cfg.warnings || [] },
-    model: {
-      intents: run.best.s,
-      integral: run.optR.integral, total: run.optR.total, robust: run.optR.robust, castCount: run.optR.castCount, gcdCappedTime: run.optR.gcdCappedTime,
-      effCasts: +M.effCasts.toFixed(3), gainVsNoCooldownsPct: +M.gain.toFixed(3), gainVsNaivePct: +M.vsNaive.toFixed(3),
-      baselineTotal: run.baseline.total, naiveTotal: run.naiveR.total, naiveIntents: run.naive,
-    },
-    custom: customR ? {
-      intents: CUSTOM.s,
-      total: customR.total, robust: customR.robust, castCount: customR.castCount, gcdCappedTime: customR.gcdCappedTime,
-      effCasts: +C.effCasts.toFixed(3), gainVsNoCooldownsPct: +C.gain.toFixed(3), gainVsNaivePct: +C.vsNaive.toFixed(3),
-      vsModelPct: +(100 * (customR.integral / run.optR.integral - 1)).toFixed(4),
-      locked: CUSTOM.locked, legal: CUSTOM.legal,
-      repairWould: CUSTOM.legal ? null : CUSTOM.rep,
-    } : null,
-    evalsched: {
-      case: { T: cfg.T, pins: cfg.fixed || {}, gear: { haste: cfg.hasteRating, sp: cfg.sp, crit: cfg.critPct, coldSnap: cfg.coldSnap }, kit, ...(phases.length ? { phases } : {}) },
-      scheds: { model: run.best.s, ...(CUSTOM.s ? { custom: CUSTOM.s } : {}) },
-    },
-  };
-  L.push(JSON.stringify(j));
-  L.push("", "Notes for whoever debugs this: times are SECONDS from pull, and they are PRESS times — the schedule the engine takes and the schedule the page prints are the same object. The `evalsched` object is ready to run as  node tests/evalsched.mjs '<that json>'  to score both layouts under the model scorer." + (cfg.t5two ? " ⚠ Tirisfal-2pc is ON here but evalsched.mjs's harness cfg has no t5 field — compare via the stats above, or add t5two to its cfg." : ""));
+  L.push("", "--- REPRO ---");
+  L.push(JSON.stringify({
+    case: { T: cfg.T, pins: cfg.fixed || {},
+            gear: { haste: cfg.hasteRating, sp: cfg.sp, crit: cfg.critPct, coldSnap: cfg.coldSnap, t5two: !!cfg.t5two },
+            kit, ...(phases.length ? { phases } : {}) },
+    inputs: { sp: typedSp, crit: typedCrit, int: typedInt,
+              buffsOn: onBuffs.map(b => b.id), raidDmgMult: +(cfg.raidDmgMult || 1).toFixed(5) },
+    scheds: { model: run.best.s, ...(CUSTOM.s ? { custom: CUSTOM.s } : {}) },
+  }));
+  L.push("", "Press times, seconds from pull (negative = prepull). Score both:  node tests/evalsched.mjs '<the json above>'");
   return L.join("\n");
 }
 
