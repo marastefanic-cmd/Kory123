@@ -33,6 +33,40 @@ defined pointwise at every real `t`, and the score is `∫₀ᵀ rate(t) dt`. Th
   stack-independent in 2.4.3, SOURCES). This is the only thing modelled *dynamically*.
 * **Cooldown usage** — every buff is a value overlaid on that curve over a known interval.
 
+> ### ⛔⛔⛔ THIS IS HOW THE **SCORER** WORKS — IT IS NOT A CLAIM ABOUT HOW THE GAME WORKS
+> **User, 07-31:** *"Note that this is how the scorer works, not how it works ingame. Ingame the casting
+> time and activating cooldown inbetween casts is a real thing, but it's unrealistic to follow to the
+> millisecond throughout real gameplay and finnicky stuff comes out. This integral path of calculating is
+> the clean followable pattern recognition that the scorer then can actually work with."*
+>
+> The discrete layer is **real in the game**: casts have durations, cooldowns are pressed between them,
+> boundaries exist. The integral does not deny any of that. What it denies is that **chasing it to the
+> millisecond is useful**, and there are two separate reasons, both earned:
+> 1. **It is not executable.** Nobody plays to the millisecond. A plan whose value depends on which
+>    sub-cast instant you pressed at is advice that cannot be followed, so its extra "precision" is not
+>    precision at all.
+> 2. **It is not even stable.** Resolving that layer makes the objective *finnicky* — knife-edge cliffs
+>    at cast boundaries, flat plateaus resolved by float noise, a score that moves when the lattice
+>    re-phases rather than when the plan gets better. Every one of those pathologies has been measured
+>    here, not theorised: §8i, §8k, §8l, §8q and §8s are all one lattice leaking into a ranking.
+>
+> ⇒ **the integral is chosen for TRACTABILITY AND FOLLOWABILITY, and that is a sufficient justification.**
+> It yields a clean differentiable surface, which is what makes alignment a continuous cost/benefit
+> (RULES §10), the composition laws closed forms (§7a), and *"A beats B"* arithmetic.
+> ⛔ **Two corollaries, and both have been violated before:**
+> * **Do not "improve" the model by making it more literally discrete.** That direction is retired and
+>   was measured: discretizing the scorer is falsified (ROADMAP / PHASE10 §8.23), and it is what the
+>   deleted `exact-match` goldens quietly rewarded.
+> * **Do not justify the model's choices by appeal to in-game execution either.** The integral does not
+>   need the game to cooperate with it; it needs to be tractable, honest about what it averages, and
+>   gated. Reaching for *"but a player could do X in game"* to defend a modelling choice is the same
+>   category error in the opposite direction, and it was made in this repo on 07-31 (RULES §10's first
+>   draft) before being corrected.
+>
+> ⚠ **The honest cost, stated plainly:** the model reports a **MEAN** and says nothing about variance,
+> and it is **infinite-mana**. Those are the prices of this abstraction. They are accepted, standing
+> decisions — not oversights, and not things to fix by adding the discrete layer back.
+
 > ### ★ THE SCORING PART HAS TO BE PERFECTIBLE. THE SEARCH PART DOES NOT.
 > *"This is pretty straight forward by itself and has to be easily perfected, the math scoring part not
 > the search part, that one can be hard."*
