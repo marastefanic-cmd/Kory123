@@ -643,11 +643,18 @@
             <label for="in-crit">Spell crit %</label>
             <input id="in-crit" type="number" value="25" min="0" max="100" step="0.5">
           </div>
+          <div class="field">
+            <label for="in-int">Intellect</label>
+            <input id="in-int" type="number" value="450" min="0" max="2000" step="10">
+          </div>
         </div>
-        <label class="check use" style="margin-top:6px" title="Tirisfal Regalia (Tier 5) 2-piece: Arcane Blast deals 20% more damage and costs 20% more mana. It adds to Arcane Power rather than multiplying with it, so with the set on, an Arcane Power window is worth slightly less relative to your other casts — which mostly matters when a fight has AoE phases."><input id="ck-t5" type="checkbox"> Tirisfal (T5) 2-piece — Arcane Blast +20% damage</label>
-        <label class="check use" title="Applies the damage multipliers a normal raid gives you that your character sheet does NOT show: Arcane Instability (talent, +3% spell damage), Curse of the Elements with Malediction on the boss (+13%), Misery (+5%), and the crit your sheet omits — Arcane Impact (+6%, Arcane Blast and Explosion only) and Clearcasting → Arcane Potency (+3% on ~10% of casts). All five values are read off the wowsims source. ⚠ It does NOT add Totem of Wrath, Moonkin Aura, Wrath of Air or Blessing of Kings — those are spellpower and crit, which you already typed in above, so adding them here would count them twice. Ferocious Inspiration (+3%) is left out: it is party-only and wowsims does not implement it. Affects the damage and DPS readout ONLY — it never touches the plan."><input id="ck-raid" type="checkbox" checked> Raid buffs &amp; debuffs (damage readout only)</label>
-        <span class="hint">Use the numbers you actually have in the raid, fully buffed. Crit is here for two things only:
-        Ashtongue proc uptime and AoE phases — everywhere else it scales every possible plan equally, so it can't change which one wins.</span>
+        <label class="check use" style="margin-top:6px" title="Tirisfal Regalia (Tier 5) 2-piece: Arcane Blast deals 20% more damage and costs 20% more mana. It adds to Arcane Power rather than multiplying with it, so with the set on, an Arcane Power window is worth slightly less relative to your other casts — which mostly matters when a fight has AoE phases."><input id="ck-t5" type="checkbox" checked> Tirisfal (T5) 2-piece — Arcane Blast +20% damage</label>
+        <div id="buffpanel"></div>
+        <span class="hint" id="buffsum"></span>
+        <span class="hint">⚠ Type your <b>UNBUFFED</b> sheet numbers — no raid buffs, no armour spell. The boxes above add
+        those on top, and the line above shows the totals the planner actually uses. Crit and Intellect matter for
+        Ashtongue uptime, AoE phases, and the spellpower Intellect turns into; everywhere else they scale every
+        possible plan equally, so they cannot change which plan wins.</span>
       </div>
 
       <div class="scol">
@@ -4896,11 +4903,18 @@ function readCfg() {
     });
     if (rows.length) segments = buildSegments(rows, T);
   }
+  // ★ The buff panel folds into the stats HERE, so the engine only ever sees final numbers and there is
+  // no second place where "effective spellpower" could be computed differently (the re-typed-formula
+  // defect this file has paid for three times).
+  const bf = buffedStats(Math.max(0, +el("in-sp").value || 0),
+                         Math.min(100, Math.max(0, +el("in-crit").value || 0)),
+                         Math.max(0, +el("in-int").value || 0));
   return {
     T,
     hasteRating: Math.max(0, +el("in-haste").value || 0),
-    sp: Math.max(0, +el("in-sp").value || 0),
-    critPct: Math.min(100, Math.max(0, +el("in-crit").value || 0)),
+    sp: bf.sp,
+    critPct: bf.critPct,
+    raidDmgMult: bf.dmgMult,          // constant ⇒ cancels out of effective casts, shows in damage
     t5two: el("ck-t5").checked,
     enabled: { ...state.enabled },
     fixed, warnings, segments,
@@ -4995,10 +5009,7 @@ let lastRun = null, lastGeo = null;
 /* The raid-realism box changes two tiles and nothing else, so it re-renders rather than re-solving.
    ⚠ It is deliberately NOT part of `cfg` — keeping it out of the object the engine sees is what makes
    "it never touches the plan" a structural guarantee instead of a promise. */
-document.addEventListener("DOMContentLoaded", () => {
-  const b = el("ck-raid");
-  if (b) b.addEventListener("change", () => { if (lastRun) renderTiles(lastRun); });
-});
+document.addEventListener("DOMContentLoaded", renderBuffPanel);
 const colorOf = k => getComputedStyle(document.documentElement).getPropertyValue(BUFFS[k].color.slice(4, -1)).trim() || "#888";
 el("btn-run").addEventListener("click", async () => {
   const cfg = readCfg();
@@ -5043,58 +5054,92 @@ function render(run) {
     block: "start",
   });
 }
-/* ★★★★★ THE RAID-REALISM MULTIPLIER — user request 07-31: *"can we make the number actually realistic?
-   If you consider the talent tree too? And run of the mill average raid buffs/debuffs on the boss."*
-   ★ EVERY VALUE BELOW IS READ OFF THE wowsims SOURCE, not a guide or a memory — user ruling: the sim's
-   CODE is still a valid source of values, it is only its DPS methodology that is retired. That matters,
-   because the web disagreed with itself on two of them and the source settled both.
+/* ★★★★★ RAID BUFFS, DEBUFFS AND CONSUMABLES — user request 07-31, and unlike the first cut these
+   ENTER THE EQUATION rather than decorating the readout: *"add them to the equation as their respective
+   variable… for the future they do affect relative worth of certain buffs so it's better to have them."*
+   ★ Every number is read off the wowsims SOURCE (`sim/core/buffs.go`, `consumes.go`) — the user's ruling
+   is that the sim's CODE stays a valid reference even though its DPS methodology is retired. It earned
+   its keep twice: the open web put Arcane Impact at 4 % (that is rank 2, the source says 2 %/rank ⇒ 6 %)
+   and left CoE × Misery ambiguous (the source shows two separate `ExclusiveEffect`s ⇒ multiplicative).
+   ⚠ Anything that only buys MANA, HEALTH or THREAT is deliberately absent — the model is infinite-mana,
+   so those cannot enter the equation at all. That is why Mage Armor is a no-op below and why there is no
+   flask, no Blessing of Wisdom, no Divine Spirit.
 
-   ⚠⚠ THE MAIN RESULT OF THE RESEARCH IS THAT HALF THE RAID BUFFS MUST **NOT** BE ADDED HERE.
-   · **STAT buffs — already YOUR INPUTS.** Totem of Wrath (+3% crit), Moonkin Aura (+5% crit), Wrath of
-     Air (+101 SP), Improved Divine Spirit, Arcane Intellect / Kings → Int → spellpower. Every one lands
-     on your character sheet, which is where the SP and crit boxes get filled from, so adding them here
-     would DOUBLE-COUNT. ★ And it would not be merely redundant: SP and crit are the two inputs that are
-     NOT plan-neutral (SP moves +SP-buff dilution, crit moves `aoeCritAmp`), so they would change plans.
-   · **DAMAGE MULTIPLIERS — invisible on the sheet, and safe.** A flat ×N on every cast cancels out of
-     effective casts entirely and moves only the damage readout.
-
-   THE TABLE, each line with the wowsims expression it came from:
-     Arcane Instability 3/3   ×1.03   `0.01 * ranks`, SpellMod_DamageDone_Pct, ClassMask MageSpellsAll
-     Curse of the Elements    ×1.13   `1.10 + 0.01*ranks` — the `ranks` ARE Malediction, so 3/3 ⇒ 1.13
-     Misery 5/5               ×1.05   `1.0 + 0.01*ranks`, all six schools including Arcane
-     Arcane Impact 3/3        +6% crit  `2 * ranks` BonusCrit_Percent, ClassMask ArcaneBlast|ArcaneExplosion
-     Clearcasting → Potency   +3% crit  computed from TALENTS — `aoeCritAmp` normalises it away at N=1
-
-   ★ CoE AND MISERY MULTIPLY, they do not add — settled from the source, where each is its own
-   `ExclusiveEffect` ("CurseOfElements", "MiseryBonus") applying its own school multiplier in sequence.
-   Additive would read 1.18; multiplicative reads 1.1865. This was flagged as an assumption before the
-   source was consulted, and the source confirmed it.
-   ★ ARCANE IMPACT IS CRIT, NOT DAMAGE, AND IT IS NOT ON YOUR SHEET — its ClassMask is Arcane Blast and
-   Arcane Explosion specifically, so the general spell-crit number you typed does not contain it. It is
-   applied here as a crit RATIO rather than by touching `cfg.critPct`, which would have moved
-   `aoeCritAmp` and changed AoE plans. ⚠ The web said 4%; the source says 2%/rank ⇒ **6%** at 3/3. The
-   4% figure is rank 2.
-   ⛔ FEROCIOUS INSPIRATION (+3%) IS DELIBERATELY EXCLUDED. wowsims has it as a bare `// TODO`, so it
-   cannot be cited to the standard the others meet, and in TBC it is PARTY-scoped — you only have it
-   with a BM hunter in your group. Add ~3% by hand if that is your raid. The readout is conservative. */
-const RAID_DMG = [
-  { key: "arcaneInstability", mult: 1.03, label: "Arcane Instability 3/3 (+3% spell damage)" },
-  { key: "coe",               mult: 1.13, label: "Curse of the Elements + Malediction (+13%)" },
-  { key: "misery",            mult: 1.05, label: "Misery 5/5 (+5%)" },
+   ⚠⚠ THIS CHANGES WHAT THE SP / CRIT / INT BOXES MEAN. They are now your **UNBUFFED** character sheet;
+   the checkboxes add the raid on top. The totals the engine receives are shown under the panel.
+   ⇒ `tests/anchors.mjs` and `tools/plan-sweep.mjs` build `cfg` DIRECTLY and never touch this layer, so
+   the declared tests are untouched — verified independently: all 7 declared layouts stay the argmax of
+   their neighbourhood across crit 0–100 % and SP 600–2400, and NO TBC raid buff grants spell haste.
+   ⛔ The one documented property this does cost: "a preset you confirm in the tool IS the locked test"
+   now holds only with the buff boxes OFF, because with them on the page solves at higher effective SP
+   and crit than the preset's stored gear. Recorded in CLAUDE.md rather than left to be discovered. */
+const INT_TO_SP   = 0.25;    // Mind Mastery 5/5 — docs/SOURCES.md, wowsims `MindMastery` AddStatDependency
+const INT_TO_CRIT = 0.0125;  // mage int→crit %, `core/mana.go` CritPerIntMaxLevel[Mage]
+const ARCANE_MIND = 1.15;    // Arcane Mind 5/5 MultiplyStat — applies to buffed Intellect too
+const CRIT_RATING_PER_PCT = 22.08;
+/* `int` is FLAT intellect added before Arcane Mind; `intMult` multiplies the total (Kings);
+   `sp`/`critPct`/`critRating` are flat; `dmgMult` is a damage multiplier (constant ⇒ plan-neutral). */
+const RAID_BUFFS = [
+  { id: "arcaneBrilliance", on: 1, label: "Arcane Brilliance",            int: 40 },
+  { id: "kings",            on: 1, label: "Blessing of Kings",            intMult: 1.10 },
+  { id: "wrathOfAir",       on: 1, label: "Wrath of Air Totem",           sp: 101 },
+  { id: "coe",              on: 1, label: "Curse of the Elements + Malediction", dmgMult: 1.13 },
+  { id: "misery",           on: 1, label: "Misery",                       dmgMult: 1.05 },
+  { id: "wizardOil",        on: 1, label: "Brilliant Wizard Oil",         sp: 36, critRating: 14 },
+  { id: "food",             on: 1, label: "Food — Blackened Basilisk",    sp: 23 },
+  { id: "draenicWisdom",    on: 1, label: "Elixir of Draenic Wisdom",     int: 30 },
+  { id: "adeptsElixir",     on: 1, label: "Adept's Elixir",               sp: 24, critRating: 24 },
+  { id: "totemOfWrath",     on: 0, label: "Totem of Wrath",               critPct: 3 },
+  { id: "atieshMage",       on: 0, label: "Atiesh — Mage",                critRating: 28 },
+  { id: "atieshWarlock",    on: 0, label: "Atiesh — Warlock",             sp: 33 },
+  { id: "twilightOwl",      on: 0, label: "Chain of the Twilight Owl",    critPct: 2 },
+  { id: "eyeOfNight",       on: 0, label: "Eye of the Night",             sp: 34 },
+  { id: "jadePendant",      on: 0, label: "Jade Pendant of Blasting",     sp: 15 },
+  { id: "impSoC",           on: 0, label: "Improved Seal of the Crusader", critPct: 3 },
+  // Molten Armor is +3 % spell crit; Mage Armor is mana regen only, so it is a genuine no-op here.
+  { id: "moltenArmor",      on: 1, label: "Molten Armor (vs Mage Armor)", critPct: 3 },
 ];
-/* The crit your sheet does NOT show: Arcane Impact (Arcane Blast / Explosion only) and the
-   Clearcasting → Arcane Potency lift on ~10% of casts. Returned as a ratio against the crit the model
-   actually used, so nothing here can reach `cfg`. */
-function raidCritScale(cfg) {
-  const crit = Math.min(1, Math.max(0, (cfg.critPct || 0) / 100));
-  const impact = 0.02 * TALENTS.arcaneImpact;
-  const potency = (0.02 * TALENTS.arcaneConcentration) * (0.10 * TALENTS.arcanePotency);
-  const cm = c => 1 + Math.min(1, c) * (GAME.CRIT_MULT - 1);
-  return cm(crit + impact + potency) / cm(crit);
+/* Talents every arcane raider has, applied unconditionally — same class as the `TALENTS` ranks the
+   engine already assumes. Arcane Impact is CRIT and its ClassMask is Arcane Blast | Arcane Explosion,
+   which is exactly the two spells this tool models, so it behaves as flat crit here. It is NOT on your
+   character sheet (spell-specific), which is why it is added rather than assumed typed. */
+const TALENT_DMG_MULT = 1 + 0.01 * 3;              // Arcane Instability 3/3, +1 % spell damage per rank
+const TALENT_CRIT_PCT = 2 * TALENTS.arcaneImpact;  // Arcane Impact, 2 %/rank on AB and AE
+const buffOn = id => { const b = el("bf-" + id); return b ? b.checked : !!(RAID_BUFFS.find(x => x.id === id) || {}).on; };
+/* The one place inputs become the numbers the engine sees. Returns the EFFECTIVE sp / critPct plus the
+   constant damage multiplier, so every caller reads one definition. */
+function buffedStats(baseSp, baseCrit, baseInt) {
+  let sp = baseSp, critPct = baseCrit + TALENT_CRIT_PCT, critRating = 0, flatInt = 0, intMult = 1, dmgMult = TALENT_DMG_MULT;
+  for (const b of RAID_BUFFS) {
+    if (!buffOn(b.id)) continue;
+    if (b.sp) sp += b.sp;
+    if (b.critPct) critPct += b.critPct;
+    if (b.critRating) critRating += b.critRating;
+    if (b.int) flatInt += b.int;
+    if (b.intMult) intMult *= b.intMult;
+    if (b.dmgMult) dmgMult *= b.dmgMult;
+  }
+  // Intellect: flat buffs are lifted by Arcane Mind like the rest of your Intellect, then Kings
+  // multiplies the whole pool. Only the DELTA over your sheet value is new spellpower and crit.
+  const dInt = (baseInt + flatInt * ARCANE_MIND) * intMult - baseInt;
+  sp += dInt * INT_TO_SP;
+  critPct += dInt * INT_TO_CRIT + critRating / CRIT_RATING_PER_PCT;
+  return { sp, critPct: Math.min(100, critPct), dmgMult, dInt };
 }
-function raidScale(cfg) {
-  if (!el("ck-raid") || !el("ck-raid").checked) return 1;
-  return RAID_DMG.reduce((a, r) => a * r.mult, 1) * raidCritScale(cfg);
+function renderBuffPanel() {
+  const host = el("buffpanel"); if (!host || host.dataset.built) return;
+  host.dataset.built = "1";
+  host.innerHTML = RAID_BUFFS.map(b =>
+    `<label class="check use"><input id="bf-${b.id}" type="checkbox"${b.on ? " checked" : ""}> ${esc(b.label)}</label>`).join("");
+  host.addEventListener("change", renderBuffSummary);
+  for (const id of ["in-sp", "in-crit", "in-int"]) { const e = el(id); if (e) e.addEventListener("input", renderBuffSummary); }
+  renderBuffSummary();
+}
+function renderBuffSummary() {
+  const s = el("buffsum"); if (!s) return;
+  const b = buffedStats(+el("in-sp").value || 0, +el("in-crit").value || 0, +el("in-int").value || 0);
+  s.innerHTML = `<b>Planner uses:</b> ${Math.round(b.sp)} spell damage · ${b.critPct.toFixed(1)} % crit` +
+    ` · damage ×${b.dmgMult.toFixed(3)}${b.dInt ? ` <span style="opacity:.7">(+${Math.round(b.dInt)} Int → +${Math.round(b.dInt * INT_TO_SP)} SP)</span>` : ""}`;
 }
 function renderTiles({ cfg, baseline, naiveR, optR }) {
   const tiles = el("tiles"); tiles.hidden = false;
@@ -5117,13 +5162,13 @@ function renderTiles({ cfg, baseline, naiveR, optR }) {
   const plainCast = plainCastOf(cfg);
   // The tile labels are unavoidably compact, so each carries the plain-language explanation of what
   // the number means as a tooltip — a first-time reader shouldn't have to infer "effective casts".
-  const rs = raidScale(cfg);   // ⚠ MUST precede TIP — the damage tooltip itemises it
+  const rs = cfg.raidDmgMult || 1;   // ⚠ MUST precede TIP — the damage tooltip itemises it
   const TIP = {
     gain: "How much more damage this plan does than casting Arcane Blast with no cooldowns at all. Your realistic upside from pressing things well.",
     naive: "How much more damage this plan does than firing every cooldown the moment it comes off cooldown. This is the number that says whether planning was worth it.",
     eff: "Your whole fight measured in plain, unbuffed Arcane Blasts. A cast under Arcane Power counts 1.3, a cast under a spellpower trinket a bit more, and so on — so the count goes up both when you cast more and when your casts are worth more. This is the single number the planner maximizes.",
     floor: "How much of the fight your casts were stuck at the 1.0s global-cooldown floor. Haste added there buys nothing — but a little is normal and often correct, since it usually means you were stacking haste on top of your damage window on purpose.",
-    dmg: "Effective casts × the average damage of one of YOUR Arcane Blasts at the spellpower, crit and Tirisfal setting above" + (rs > 1 ? `, × ${rs.toFixed(3)} for raid buffs and debuffs (${RAID_DMG.map(r => r.label).join(", ")}, and the Clearcasting→Arcane Potency crit on ~10% of casts). Your spellpower and crit boxes already carry Totem of Wrath, Moonkin Aura, Wrath of Air and Kings, so those are deliberately NOT applied again here.` : " (raid buffs OFF — this is the bare model number).") + " This is the number to compare two GEAR SETUPS on — effective casts alone cannot, because it is measured against each setup's own Arcane Blast, so it deliberately divides spellpower and crit back out. ⚠ Still not a damage-meter prediction: infinite mana, hit assumed capped, Arcane Blast only.",
+    dmg: `Effective casts × the average damage of one of YOUR Arcane Blasts, at the buffed spellpower and crit shown under the inputs, × ${rs.toFixed(3)} for the damage multipliers no stat box can carry (Arcane Instability, and whichever of Curse of the Elements and Misery you have ticked). This is the number to compare two GEAR SETUPS on — effective casts alone cannot, because it is measured against each setup's own Arcane Blast, so it deliberately divides spellpower and crit back out. ⚠ Not a damage-meter prediction: infinite mana, hit assumed capped, Arcane Blast only, and Ferocious Inspiration (+3%, party-only) is not included.`,
     dps: "The same number divided by the fight length. Useful for comparing setups at a glance; it is not what a damage meter will show, for the reasons in the damage tile.",
   };
   /* ★ EXPECTED DAMAGE — user request 07-31, and deliberately a PURE READOUT: *"I don't want the tool
