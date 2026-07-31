@@ -2,6 +2,26 @@
 
 ## Resuming after a context clear (start here)
 
+> # ✅✅ THE SCORER IS CLOSED (07-31). NEXT SESSION IS THE **SEARCH**.
+> User instruction: *"When I wake up I want to work on the search function and never come back to the
+> scoring function."* Everything the four audits found in the integral is fixed and gated:
+> MODEL-DEFECTS **§9a F1–F4 + the debuff anchor**, all landed with `PLAN-DIFF IDENTICAL`.
+> The scorer now has **seven** blocking gates — `anchors`, `law-check` (+self-test), `self-consistency`,
+> `toll-audit --strict`, `objective-ref`, `constants-cited` (+self-test), `search-audit`.
+> ⛔ **What is deliberately NOT closed, and is NOT the scorer:**
+> · **§9b** — Presence of Mind is unmodelled (0.667–1.004 casts/use) and Clearcasting→Arcane Potency's
+>   single-target +3 pp crit is normalised away (safe without Ashtongue, 3849 rank flips with it). Both
+>   are *new mechanics to model*, not defects in the equation — PoM in particular is an allocation
+>   problem, i.e. **search work**.
+> · `buildSegments` resolves overlapping phases by "last row wins entirely" with no validation, so the
+>   same fight scores 202.40 or 212.00 (4.7 %) depending on **data-entry order**. A UI/validation bug.
+> · `killMode:"oneSided"` books +1.71 casts of phantom Arcane Explosion after the boss dies (latent at
+>   the default), and RULES §9 Correction 3's AoE press-snap has gone inert (it lives on `eff`; the
+>   ranking reads `scoreStart`) — **that one is a search-path item and belongs to next session.**
+> · `rampCasts`/`rampCastDmg` is dead code in the hottest function.
+>
+> ---
+>
 > # ▶▶ USER-REQUESTED, ASKED FOR 07-31 — ANSWER "WHAT'S NEXT?" WITH THIS FIRST
 >
 > Two test-derivation programmes the user asked for by name. Both are about **growing the declared

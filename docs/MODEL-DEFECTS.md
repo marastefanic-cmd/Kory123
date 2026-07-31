@@ -3208,7 +3208,29 @@ above is the ready-made probe.
 
 ---
 
-## §9a — ⛔⛔ THE OPENER TOLL IS WRONG FOUR WAYS, AND THREE INDEPENDENT AUDITS FOUND THE SAME BLOCK (07-31)
+## §9a — ✅✅ CLOSED 07-31. The opener toll was wrong four ways; all four are fixed, plus the debuff anchor.
+
+> **✅ LANDED THE SAME DAY, AND NO PLAN MOVED.** `PLAN-DIFF IDENTICAL` — 15/15 swept cells emit
+> byte-identical plans against the pre-fix engine, with one cell repriced (T8, whose intermission at
+> 0:15-0:20 is exactly F3/F4 territory). anchors **8 of 8**, self-consistency **0.00e+0 / 0 structural**,
+> `toll-audit` **12/12**, `objective-ref` **9/9** against an independent transcription.
+> ★ **F1 and F4 turned out to be ONE fix, and a structural one.** A ramp cast now records its own
+> realised interval `iv` and the steady interval `sv` at the same haste; the rung is `(iv − sv)/sv`.
+> F4 falls out because `interval` was computed from `stacks`, so the rung is automatically indexed by
+> the stack count. F1 falls out because above the floor `sv` pins at 1.0 s while `iv` keeps shrinking.
+> **And §8q survives**: below the floor the `1/m` cancels top and bottom, so every rung is
+> haste-invariant — §8q's ramp-neutrality *is* the sub-floor regime.
+> ⚠ **Six `law-check` expectations were stale, not the engine** — that file's header says to assume
+> exactly this, and it was right again. The important one: `§8r: Icy Veins is exactly ramp-neutral`
+> pinned Bloodlust for a matched control, putting Icy Veins at `m·v = 1.56`, and §1.2b says neutrality
+> holds *exactly while `m·v ≤ 1.5`*. The control had put the buff above its own threshold and asserted
+> neutrality there; it read 0.00000 only because the toll was flat. It now reads **+0.16602** against a
+> closed form of `tollLaw(1.3) − tollLaw(1.56)`, and the gate asserts **both sides** of the threshold.
+> ⛔ **Still open from this section: nothing.** The remaining items are §9b (PoM, Potency) and the
+> "filed separately" list below — none of them is the toll.
+
+### (the original filing follows)
+
 
 Three subagents were briefed separately — one on AoE phases, one on burn/intermission phases, one on the
 integral's exactness — with no shared context beyond `BRIEF.md`. All three converged on the **same
@@ -3336,7 +3358,17 @@ against itself, and `law-check` had no toll line above the floor — so none of 
   runs an O(|active|) Set build + sort + piecewise integration per ramp cast per `simulate()`, and
   `simulate()` is called ~5.7 M times per long-fight optimize.
 
-### ✅ SETTLED AT THE SOURCE — the AB debuff anchors on the last LANDED COMPLETION, and the model is wrong
+### ✅ SETTLED AT THE SOURCE, AND FIXED — the AB debuff anchors on the last LANDED COMPLETION
+
+> **✅ LANDED 07-31.** `lastCastStart` is now `lastCastEnd`, because all three of its uses change meaning:
+> the gap is completion→start and the mid-cast-lapse test is completion→completion. Plans unchanged.
+> ★ **Two instruments had memorised the old anchor**, and both were the instrument being wrong:
+> `law-check` hardcoded "L = 4 / 6 / 8" for the three cases — the right lengths for a START anchor —
+> which encodes the anchor **twice**, so the gate could never say it had moved, only that something
+> broke. It now reads the realised gap off the board and predicts the case from it, sweeping L = 3…11 s
+> plus a line asserting the sweep actually **contains** all three. `toll-audit` had a two-case law and a
+> third case (`3,3,3`, no re-ramp at all) appears once the anchor buys ~1.5 s of headroom.
+
 
 Raised by two audits as an open question, then settled by a third **against wowsims source** rather than
 by argument. `sim/mage/arcane_blast.go` calls `mage.ArcaneChargesAura.Activate(sim); AddStack(sim)`
