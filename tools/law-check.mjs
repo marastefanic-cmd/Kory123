@@ -173,6 +173,89 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
       'no Arcane Blast cast time anywhere inside an AoE phase');
 }
 
+/* ★★★ A PHASE HAS A CLOSED FORM, AND IT IS EXACT — derived and gated 07-31.
+   The phase machinery was the largest block of the scorer with no closed form behind it: everything
+   above prices a BUFF, and RULES §9 states `M(N)` as a ratio without ever pinning what a phase does to
+   the SCORE. It turns out to be exactly what the integral says it should be, with no residual:
+
+       burn:  Δ = L · rate(m) · (mult − 1)                    ← no toll; Arcane Blast never stops
+       aoe:   Δ = L · rate(m) · (M(N) − 1) − toll(L)          ← plus the re-ramp once the debuff drops
+       inter: Δ = −L · rate(m)             − toll(L)          ← M = 0, the same form
+
+   i.e. a phase REPLACES `L · rate` casts with `M ×` as many, and separately pays the Arcane Blast
+   debuff's rebuild if it ran long enough to drop it. `M(N)` is RULES §9's own ratio, re-derived here
+   from GAME rather than quoted. ⛔ The burn line has NO toll term and that is the physics, not an
+   omission: you keep casting Arcane Blast through a burn phase, so the stacks never fall off. If a
+   future edit adds a toll there, this line fails and the reason is already written down.
+   ⚠ `toll(L)` is read from the ENGINE, not asserted — where the debuff expires is the three-case
+   model gated above, and folding it in here would just re-test that. What IS asserted is that once
+   you know the toll, the rest of a phase's cost is exactly the replacement term. */
+{
+  const L = 30, R = rate(1);
+  const critF = 1 + (CRIT / 100) * (G.CRIT_MULT - 1);
+  const seg = (type, extra) => cfgOf(300, [], null, 0, { segments: api.buildSegments(
+    [{ from: 100, to: 100 + L, type, mult: 1, targets: 0, ...extra }], 300) });
+  const none = I({}, cfgOf(300, []));
+  // The re-ramp toll a long phase pays, taken from the engine's own intermission (M = 0 isolates it).
+  const toll = -(I({}, seg('intermission', {})) - none) - L * R;
+
+  chk('a burn phase with mult=1 is a NO-OP', I({}, seg('burn', { mult: 1 })) - none, 0, 1e-9,
+      'a ×1 multiplier changes no damage, and Arcane Blast never stops, so nothing at all happens');
+  for (const mult of [1.5, 2, 3, 5]) {
+    chk(`burn ×${mult} = L·rate·(mult−1), no toll`, I({}, seg('burn', { mult })) - none,
+        L * R * (mult - 1), 1e-9, `${L}·${R.toFixed(4)}·${(mult - 1).toFixed(1)} — stacks never drop through a burn`);
+  }
+  const M = N => ((G.AE.AVG_BASE_DMG + G.AE.COEF * SP) * N * critF * api.aoeCritAmp(N, CRIT / 100))
+               / ((G.AB.AVG_BASE_DMG + G.AB.COEF * SP) * critF);
+  for (const N of [1, 2, 3, 6, 10, 20]) {
+    chk(`aoe N=${N} = L·rate·(M(N)−1) − toll`, I({}, seg('aoe', { targets: N })) - none,
+        L * R * (M(N) - 1) - toll, 1e-9, `M(${N}) = ${M(N).toFixed(4)}, toll = ${toll.toFixed(4)}`);
+  }
+}
+
+/* ★★ PHASES COMPOSE — two abutting segments are one segment, gated 07-31.
+   Splitting a phase at an interior point must not change the score: the two halves cover the same
+   seconds at the same rate, and the split point is not a boundary of anything physical. A failure here
+   means a per-segment fixed cost (an entry ramp, a re-anchor, a double-charged toll) that the single
+   segment does not pay — the exact shape of the "AoE lattice re-anchors" family of bugs. */
+{
+  const S = phases => I({}, cfgOf(300, [], null, 0, { segments: api.buildSegments(phases, 300) }));
+  for (const [type, extra] of [['burn', { mult: 2 }], ['aoe', { targets: 6 }], ['intermission', {}]]) {
+    const split = S([{ from: 100, to: 110, type, mult: 1, targets: 0, ...extra },
+                     { from: 110, to: 120, type, mult: 1, targets: 0, ...extra }]);
+    chk(`two abutting ${type} halves == one whole`, split - S([{ from: 100, to: 120, type, mult: 1, targets: 0, ...extra }]),
+        0, 1e-9, 'an interior split point is not a boundary of anything physical');
+  }
+}
+
+/* ★★ A PHASE SLID IN THE INTERIOR IS FLAT — the phase analogue of §8l, gated 07-31.
+   §8l pins that sliding a lone PRESS inside a uniform region cannot change `∫ rate dt`. The same
+   argument applies to a PHASE: translating a fixed-length segment through a uniform region moves the
+   boundary between two constant-rate regions without changing either one's total length, so the
+   integral is invariant. Nothing asserted it, and it is the sharpest available test of the phase
+   machinery — it fails the instant the cast lattice leaks into phase scoring, which is precisely the
+   defect family §8i / §8k / §8l all came from (each first showed as a boundary priced against the
+   lattice rather than against geometry).
+   ⚠ Deliberately swept across a FULL cast interval (1.6 s > 1.498 s) so the straddling Arcane Blast
+   changes identity mid-sweep — at W ≥ 101.0 the cut lands on the *next* cast. A shorter sweep could sit
+   inside one cast and pass without ever exercising the boundary.
+   ★ Run at BOTH a length that keeps the Arcane Blast debuff and one that drops it, so the re-ramp toll
+   is covered too: the toll must be translation-invariant as well, and only the long case tests that. */
+{
+  for (const [type, L, extra] of [['aoe', 4, { targets: 6 }], ['aoe', 12, { targets: 6 }],
+                                  ['intermission', 4, {}], ['intermission', 12, {}],
+                                  ['burn', 4, { mult: 2 }], ['burn', 12, { mult: 2 }]]) {
+    const v = [];
+    for (let W = 100; W <= 101.6; W += 0.2) {
+      const c = cfgOf(300, [], null, 0, { segments: api.buildSegments(
+        [{ from: +W.toFixed(2), to: +W.toFixed(2) + L, type, mult: 1, targets: 0, ...extra }], 300) });
+      v.push(I({}, c));
+    }
+    chk(`a ${type} (L=${L}) slid in the interior is FLAT`, Math.max(...v) - Math.min(...v), 0, 1e-9,
+        'translating a fixed-length segment through a uniform region cannot change ∫ rate dt');
+  }
+}
+
 /* ═══ UNGATED SURFACE, CLOSED 07-31 — four behaviours nothing asserted ═══════════════════════════
    Audit of what `simulate` DOES against what this file CHECKED found four live behaviours with no
    closed form behind them. Ungated surface is where the next defect hides, and three of these are

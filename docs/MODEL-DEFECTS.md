@@ -3205,3 +3205,238 @@ rank-neutral; the default `none` stays. ⛔ The residual risk is stated precisel
 "probably fine": it is rank-neutral **only** while compared layouts share a cast rate at T. A future
 buff that can run past the kill on one line and not another re-opens it, and the 60 s construction
 above is the ready-made probe.
+
+---
+
+## §9a — ⛔⛔ THE OPENER TOLL IS WRONG FOUR WAYS, AND THREE INDEPENDENT AUDITS FOUND THE SAME BLOCK (07-31)
+
+Three subagents were briefed separately — one on AoE phases, one on burn/intermission phases, one on the
+integral's exactness — with no shared context beyond `BRIEF.md`. All three converged on the **same
+twelve lines**: the toll block at `index.html:1721-1733` and its application at `:1788`. That convergence
+is the finding's main credential; each defect below was independently reproduced with an **exact closed
+form matched to ≥6 decimals**, not a sampled estimate.
+
+Orientation: the toll represents *Arcane Blasts lost while stacks build*. It is computed as a lump
+(`lost`) spread as a negative rate over a fixed unhasted window `NOMINAL = ΣC_k = 6.498 s`, and charged
+as `contrib = (rateAt(mid) − tollR · scanAt(mid).dmg2) · len`.
+
+### F1 — the toll is charged flat at 1.332 casts at EVERY haste, and above the GCD floor that is fiction
+
+`lost` is built from the unhasted ladder `(C_k − G)/G`, which is m-independent **only while the steady
+interval is `G/m`**. Once `m > 1.5` the steady interval pins at the 1.0 s floor while the ramp casts keep
+shrinking, so the true deficit collapses. `ESTABLISHED-FACTS §1.2` already states the general form
+`[Σ max(C_k/m, i) − 3i] / i` and tabulates it; the engine no longer reproduces that table.
+
+| m | 1.0 | 1.2 | 1.5 | **1.56** | 1.716 | 2.0 | 2.5 |
+|---|---|---|---|---|---|---|---|
+| general form | 1.332 | 1.332 | 1.332 | **1.165** | 0.787 | 0.333 | 0.000 |
+| engine ∫ | 1.332 | 1.332 | 1.332 | **1.332** | 1.332 | 1.332 | 1.332 |
+
+★★★ **THIS DOES NOT CONTRADICT §8q — IT SUBSUMES IT, AND THAT IS THE WHOLE REASON THE FIX IS SAFE.**
+§8q rejected recomputing the toll at hasted cast times because it made haste *compress* the ramp and sent
+Icy Veins back to the pull. Below the floor `max(C_k/m, i) = C_k/m` and `i = G/m`, so the `1/m` cancels
+top and bottom and the general form is **identically 1.332 at every m ≤ 1.5** — §8q's haste-invariance is
+exactly the sub-floor regime, which is where §8q was measured. The general form preserves it and adds
+only the above-floor decay. ⇒ `§11`'s flat-form assertion is the special case mistaken for the law.
+⚠ **Reachable at ZERO gear haste**: `Bloodlust ×1.30 × Icy Veins ×1.20 = 1.56`. This is an ordinary raid
+pull, not an exotic corner.
+Measured consequence — the §8o signature, a flat plateau where the truth has a slope: at h=450 with Lust
+pinned and Icy Veins slid 0→20 s, `rankScore` is **bit-identical** across the whole sweep while the
+engine's own realised lattice spreads **0.4807 casts** (240× `TIE_CASTS`). At h=0 on an ordinary
+post-intermission re-ramp the same shape costs 0.1447 casts (72× the band).
+⇒ **The model prices haste coverage of a cold ramp at exactly zero. The truth is 0.14–1.33 casts.**
+
+### F2 — the toll is priced as an ARCANE EXPLOSION when its window overlaps an AoE phase
+
+`tollR · scanAt(mid, segB).dmg2` reads the **local** per-cast damage, which inside an AoE segment is
+`AE × N × aoeCritAmp`. Casts lost to an Arcane Blast ramp are then billed at `M(N)` — and there is no AB
+ramp inside an AoE phase at all (`prevCastRamp = !isAoe && …`, `:1487`). Two audits derived the same
+closed form `lost · (overlap / NOMINAL) · (M(N) − 1)` and matched it to 6 dp:
+
+| N | 1 | 2 | 3 | 4 | 6 | 10 | 20 |
+|---|---|---|---|---|---|---|---|
+| extra toll (casts) | −0.061 | −0.11 | +0.15 | +0.41 | **+0.94** | **+2.05** | +3.5 |
+
+**Decision-relevant, not just a level shift**: sliding Arcane Power across the window, pressing at the
+pull is charged **0.7731 casts** more "opener toll" than pressing at 0:08 (387× the tie band), of which
+0.568 is the spurious AoE-priced portion. It fires on re-ramps too (intermission → adds is the realistic
+shape): with the AoE 4 s after an intermission exit, +1.245 casts.
+
+### F3 — the toll VANISHES where its window meets an intermission or the fight end
+
+The toll rides on `contrib`, so the integral's `if (segB.type === "intermission") … continue` deletes it,
+and `bps` is clipped at `T` with `killW = 0` past it. Neither reduction is declared anywhere — `lost`
+already handles a ramp cut short, so this is a second, silent truncation. Opposite sign to F1/F2:
+
+| fight | declared | charged | lost |
+|---|---|---|---|
+| control | 1.3320 | 1.3320 | 0 |
+| intermission [3,20], T=120 | 2.4427 | 1.8448 | **0.598** |
+| intermission [3,31], T=33 | 1.7773 | 0.7180 | **1.059** |
+
+### F4 — the per-cast cost is indexed by POSITION IN THE GROUP, not by stack count
+
+`:1729` uses `idx`, which restarts at 0 per contiguous ramp group; `boardRamp` never carries `stacks`.
+Those coincide only when a ramp starts cold. They do **not** in the mid-cast-lapse band added 07-28
+(`lapsedMidCast`, `:1496`), where the walk correctly emits stacks `[3,1,2]` so the ramp resumes at **1
+stack**. The engine charges the 0-stack and 1-stack deficits (`0.666667 + 0.444000 = 1.110667`) for casts
+that are actually 1-stack and 2-stack (`0.4440 + 0.2213 = 0.6653`, which is what `ESTABLISHED-FACTS
+§1.2d` and this file's own "✅ FIXED 07-28" entry both state). **Over-charge exactly 0.445333 casts**,
+223× the tie band — reproduced identically by two audits, and confirmed by a one-line corrected copy
+(`boardRamp[i].k = stacks`) that moves **exactly 0.445333** on the affected cases and **exactly 0.000000**
+everywhere else. The 07-28 fix landed in the walk and was never propagated to the toll.
+Second trigger: any phase that *interrupts a ramp in progress* — `flush()` restarts `idx` at 0 regardless
+of the resuming cast's stack count.
+
+### What is NOT wrong — checked hard, and worth not re-checking
+
+* **The breakpoint set is COMPLETE and the midpoint rule is EXACT.** 400 randomised fuzz configs
+  (random T, kits, phase layouts at non-integer times, prepull presses, haste 0–400) under three
+  independent tests — refinement invariance to 32–512×, a bisected discontinuity hunt at 120k–300k
+  samples, and a brute Riemann sum. **Worst relative Δ = 7.0e-16; missed breakpoints = 0.** The defect is
+  in the *integrand*, never in the integration.
+* **Terminal handling at `T` is exact** (`d(score)/dT − rate = 2.5e-13`), and there is no ramp
+  double-count — the "suppression" the comments at `:1646`/`:1690` describe was removed by §8q.
+* **AE damage factors, the AE = GCD interval (0 disagreements over 5607 haste states), `aoeCritAmp`'s
+  algebra (exact to 1e-12), and Tirisfal's exclusion from AE** all verified against SOURCES.
+* **The burn multiplier is a clean OUTER multiplier** on the additive AP+Tirisfal pool — ratio exactly
+  2.000000000 in all four `{t5two} × {AP}` cells, which is the game's bucketing (a target damage-taken
+  debuff is a separate bucket from caster percent-damage-done aura mods).
+* **Intermission accounting is exact**: `(200−30)/1.5 − 2×1.332` to float precision, no credit for dead
+  time and no refund.
+
+### Blast radius, and why no gate caught any of this
+
+**All four are latent on the shipped corpus** — checked against all 18 presets, Δ = 0.000000 on every
+one. No preset has a gap in the mid-cast-lapse band, no preset uses `burn` at all, and Kael'thas (the
+only AoE fight) has every ramp group starting at 0 stacks with no toll window overlapping its AoE phase.
+⇒ they are reachable only through the "Complicated fight" editor and through `m > 1.5`, which is exactly
+the *"correct across **future** phases, trinkets, gear, and spell-haste levels"* property CLAUDE.md sets
+as the goal. `exact-match` locks in whatever the search emits, `self-consistency` compares the objective
+against itself, and `law-check` had no toll line above the floor — so none of the three could see it.
+
+### Also found, filed separately, NOT part of the toll block
+
+* **`buildSegments` resolves an overlap by "last row wins ENTIRELY"** (`:4673`), silently deleting the
+  other phase — and the result depends on **data-entry order**. Same fight, rows reordered: **202.40 vs
+  212.00 effective casts, Δ = 4.7 %**. The phase editor validates only `to > from` and `from < T`; there
+  is no overlap check and no warning. Also: the UI writes `mult` onto every row including AoE rows, and
+  the AoE damage branch ignores `seg.mult` entirely, so a burn can never apply to Arcane Explosion.
+* **`killMode:"oneSided"`** scores `(T, T+KWD]` with the last phase still in force — a fight ending in a
+  10-target AoE phase books **+1.71 casts of phantom Arcane Explosion after the boss is dead**. Latent
+  at the default `killMode:"none"`. `"sym"`'s kinks at `T±0.5` are missing from `bps` (7e-4 casts).
+* **The AoE press-snap (RULES §9 Correction 3) no longer reaches the ranking.** It is implemented at
+  `:1194` on `eff`, which feeds only the discrete walk; since §8l the ranking reads
+  `active[].scoreStart = geoStart(e)`, which has **no AoE branch**. Two presses that fire at the identical
+  instant are separated by 0.05783 casts (29× the band) purely by their raw press second, and `rankScore`
+  is perfectly linear in press time across the phase — so it structurally cannot express "a window ending
+  flush with the wall loses its last AE", which is Correction 3's entire content. A landed, sim-gated
+  correction has become inert.
+* **`rampCasts` / `rampCastDmg` is DEAD CODE in the hottest function** — pushed at `:1697`, never read;
+  runs an O(|active|) Set build + sort + piecewise integration per ramp cast per `simulate()`, and
+  `simulate()` is called ~5.7 M times per long-fight optimize.
+
+### ✅ SETTLED AT THE SOURCE — the AB debuff anchors on the last LANDED COMPLETION, and the model is wrong
+
+Raised by two audits as an open question, then settled by a third **against wowsims source** rather than
+by argument. `sim/mage/arcane_blast.go` calls `mage.ArcaneChargesAura.Activate(sim); AddStack(sim)`
+**inside `ApplyEffects`** — at damage resolution, on cast **completion**, and only `if result.Landed()`.
+`sim/mage/arcane_charge.go` gives that aura `Duration: 8 s`. ⇒ the debuff expires at *(completion of the
+last Blast that RESOLVED) + 8 s*.
+
+`index.html` tests `t − lastCastStart >= DEBUFF_DUR` (and `lapsedMidCast` uses the same anchor), where
+`lastCastStart` is the **start** of the last Blast in the walk — **including a Blast the walk itself
+scored as cut at an intermission or AoE wall** (`frac ≈ 0.001`, no damage, yet it still sets
+`lastCastStart` and increments `stacks`). Two errors in one: start-vs-completion, and counting a
+cancelled cast as one that landed.
+
+⚠ **Why nobody caught it:** the two anchors differ by `interval − cast`, which at h = 0 is **2 ms** — a
+3-stack Blast is 1.498 s against a 1.500 s GCD. It grows to **0.040 s under Lust × IV**, **0.127 s under
+Lust × IV × Berserking**, and to a **whole cast time** whenever the pre-wall Blast actually resolves. And
+it lands on the knife-edge of the 8 s cliff, whose price is 1.332 casts (full re-ramp) or 0.665 (the
+mid-cast-lapse band). A 2 ms error is worth 1.11 casts when it decides which side of a cliff you are on.
+
+**Demonstrated to change the plan, with controls run first.** A patched copy re-anchoring on the last
+landed completion (+147 bytes): **7605 schedules on phase-free fights, 0 differ** — the patch touches
+only gap handling. Then on intermission `[51.8, 58.8]` at m = 1.56, the debuff lapses **21 ms** before
+the next completion: game → resume at 1 stack, model → 3 stacks, and the whole downstream lattice
+re-phases by 0.64 s. On that one fight **423 of 5460 layout pairs genuinely reorder** (both margins above
+`TIE_CASTS`), largest margin **±1.110667 casts = 555× the tie band**; `icyVeins:[39]` beats `[40]` by
+1.11 in the stock model and *loses* by 1.11 under the wowsims anchor, and the top-ranked layout differs
+outright. Breadth: **110 of 707** one-coordinate ladders score differently, and the disagreements run in
+**both directions** — so it cannot be absorbed into a constant.
+
+---
+
+## §9b — TWO MECHANICS THE MODEL DOES NOT HAVE (07-31)
+
+### PoM — Presence of Mind is not modelled at all, and it is worth 0.667–1.004 casts per use
+
+`sim/mage/presence_of_mind.go`: off the GCD (`DefaultCast: {NonEmpty: true}`, no GCD field — exactly the
+"free press" class this tool already schedules), **180 s cooldown**, `SpellMod_CastTime_Pct −1` on the
+next non-instant cast. It is a 15-point Arcane talent **every 40-point Arcane raider has**. The only
+mention anywhere in the repo is one incidental clause in `README.md:68`.
+
+Its valuation is the interesting part, and it is a scheduling decision rather than a constant:
+* **At steady state it is worth exactly ZERO.** A 3-stack Blast is 1.498 s — under the GCD at every
+  haste and every rating tested, so the interval is always GCD-bound and deleting the cast time saves
+  nothing. (Zero cast-bound cases across h ∈ {0…1200} × {bare, Lust, Lust+IV, Lust+IV+Zerk}.)
+* **On a cold ramp it is worth `(2.5 − 1.5)/1.5 = 0.6667` casts, m-independent** — it deletes the
+  largest of the three toll rungs (`1.3320 → 0.6653`, and that 1.3320 matches the documented opener toll
+  exactly, which is the check that the reasoning is sound).
+* **And its value is priced by the damage state over the ramp it covers, exactly like the toll**: on the
+  T=98 / Lust 0:05 cluster ladder it is worth **1.004 casts** with the cluster at 0:00 (Arcane Power over
+  the ramp) and **0.667** at 0:07 and later — a 0.337-cast spread, 168× the tie band. That drops the cost
+  of pressing the opening cluster early by 29 % (1.181 → 0.844 casts), which is precisely the quantity
+  the docs say decides 0:05 vs 0:07.
+
+0.6667 casts is **0.476 % of a 200 s fight** — larger than the entire 0.004–0.380 % cross-val deficit
+range the project is chasing, and 333× `TIE_CASTS`. With a 180 s cooldown and any fight containing
+intermissions there are 2–3 cold ramps and 2 charges, i.e. a genuine allocation problem the tool cannot
+currently express. *(Honest caveat from the audit: the single-coordinate opener ladder above 0:07 is an
+exact plateau, so no argmax FLIP was demonstrated — the evidence is magnitude and schedule-dependence.)*
+
+### Potency — the single-target +3 pp crit is normalised away, and that is only safe WITHOUT Ashtongue
+
+`sim/mage/talents.go`: Arcane Concentration procs `0.02 × ranks` **per landing hit** (10 % at 5/5), and
+the Clearcasting aura carries `ArcanePotency × 10 × SpellCritRatingPerCritPercent` = **+30 % crit**,
+consumed by the next damaging cast. Single target that is exactly **+3.0 pp average Arcane Blast crit,
+permanently**. `aoeCritAmp` is a ratio against the N = 1 Potency baseline, so it returns exactly 1 at
+N = 1 and the +3 pp never reaches `critFactor`; `buffedStats()` adds Arcane Impact's +6 % but no Potency
+term. `SOURCES.md` records this as a *readout* omission. **It is more than that.**
+
+Crit cancels only where it is a constant factor, and it is **not** constant in `qCast = crit ×
+ATI.procChance` — the Ashtongue Talisman's proc rate is a **haste** source, so it interacts with the GCD
+floor and with where every haste buff goes. Measured over 1023 layouts / 522 753 pairs at crit 38 → 41
+(the exact Potency delta):
+
+| kit | genuine rank flips (both margins > `TIE_CASTS`) |
+|---|---|
+| no Ashtongue | **0** |
+| with Ashtongue | **3849** |
+
+Largest: `{IV@20, cluster@20, Zerk@6}` beats `{IV@40, cluster@5, Zerk@42}` by 0.0366 at crit 38 and
+**loses by 0.0389 at crit 41** (18× the tie band). The no-Ashtongue control's max shape difference is
+`3.3e-16` — float noise — which is the clean confirmation that crit really does cancel otherwise. ⇒ the
+AoE channel for crit is already known and flagged in SOURCES; **the Ashtongue channel is not.**
+
+### Verified CLEAN against wowsims source — do not re-derive these
+
+* **Haste pooling is exact.** `core/unit.go:501` — percent buffs multiplicative, all rating sources
+  (gear, Drums 80, Skull 175, MQG 330, Ashtongue 145) additive into one pool; `GCDMin = 1 s`,
+  `GCDDefault = 1500 ms`. The floor-vs-rounding nesting is provably equivalent to wowsims'
+  `max(GCDMin, …Round(ms))`.
+* **Every `BUFFS` row matches the source**, including Berserking's `ShouldActivate: tag == 1` selecting
+  the 10 % rank (the model's full-health assumption), Ashtongue's `ProcChance 0.5` on crit with
+  **genuinely no ICD** (so the per-hit AoE roll `1−(1−crit·0.5)^N` is right), and PI sharing Bloodlust's
+  exclusive category while Icy Veins does not.
+* **Arcane Explosion**: coefficient `0.214`, roll 377–407 → mean 392, GCD-bound and instant, and
+  `CalcAndDealAoeDamage` deals full damage to every target with **no target cap and no total-damage
+  cap** — so the model's linear-in-N is exactly what wowsims does. (A TBC-era AoE damage cap could not
+  be substantiated in the source; flagged so it is not re-derived.)
+* **The AB spellpower coefficient** `2.5/3.5 = 0.7142857` vs wowsims' `0.71399998665` is not a pure
+  constant (it re-prices +SP buffs), so it was measured rather than waved through: max score difference
+  `5.8e-4` casts over 1023 layouts, **0 rank flips**. Immaterial.
+* **The mana gem is off-GCD** in wowsims, so the tool's free-press treatment of the SCB trigger is
+  correct. It does sit on the 2 min `GetCombatConsumableCD` shared with potions — latent only if potions
+  are ever added.
