@@ -2954,3 +2954,45 @@ did not ask for — on a 0.000231-cast difference the model itself declares to b
 ⚠ T6 is also the ONE declared test flagged in `tests/anchors.mjs`'s header as having no explicit user
 mandate (it came from a question, and was added on the assistant's initiative). That flag is now
 load-bearing rather than decorative.
+
+---
+
+## §8z — ✅ THE MEMO KEY OMITTED `killMode`, AND IT CORRUPTED THE MEASUREMENT SENT TO FIND IT (07-31)
+
+Chasing the open item §8y left behind — *the integral RANKS but stops hard at T, while the per-cast
+board applies the one-sided kill credit; two boundary conventions and only the simple one ranks* — the
+first sweep-wide measurement came back **exactly 0.000000 casts of shift in all 15 cells**. That is too
+clean to be a physical result, and it was not one.
+
+**`simMemoCfgSig` listed `boundaryCharge` but not `killMode`.** Two cfgs differing only in the kill rule
+hashed identically, so the second was served the first's cached score. The instrument built to ask
+"does the kill rule move a ranking?" was structurally incapable of seeing the answer.
+⇒ fixed by adding `cfg.killMode || "none"` to the signature. **Plan-neutral by construction** (nothing
+in the product sets `killMode`) and verified so: `PLAN-DIFF IDENTICAL` 15/15, anchors 8/8, law-check green.
+
+⚠ **A SECOND, DEEPER CACHE ASSUMPTION IS UNCHANGED AND IS NOT A BUG: `if (simMemoCfg === cfg) return
+simMemoCfgSig`.** The identity fast path never re-reads the fields, so **mutating a cfg after its first
+`simulate` call silently keeps the old signature** regardless of what the key contains. That is a
+documented design ("one cfg dominates any run"), not a defect — but it means a probe must build a
+FRESH cfg per variant, and a probe that mutates one in place will read stale numbers no matter how
+complete the key is. Both of this session's throwaway probes hit it before the pattern was understood.
+
+### And the answer to the question, now that it can be asked
+
+| | measured |
+|---|---|
+| level shift, `none` → `oneSided` | **+0.499333 casts**, 250× the tie band |
+| …and it is the SAME shift in all 15 corpus cells | yes — `rate_at_kill · KWD/2` = `(1/1.5)·(1.498/2)` |
+| neighbourhood argmax changes | **0 of 15** |
+| margin between two layouts that DIFFER in rate at the kill | moves **0.0999 casts**, 50× the band |
+| argmax over 75,600 layouts on a 60 s fight built so buffs cover the kill | **identical under both modes** |
+
+⇒ **The kill rule is a pure LEVEL SHIFT on this corpus, and a constant cannot change a ranking.** The
+old note guessed the right exposure — *"the case it could bite is two plans differing in RATE at the
+kill, which the four cases do not cover"* — and that case is now covered and does not bite: the tail
+credit favours the layout with the higher rate at the kill, which is already winning on the same
+grounds inside the fight, so the credit **reinforces rather than reverses**. ⇒ §18 CLOSED as measured
+rank-neutral; the default `none` stays. ⛔ The residual risk is stated precisely rather than left as
+"probably fine": it is rank-neutral **only** while compared layouts share a cast rate at T. A future
+buff that can run past the kill on one line and not another re-opens it, and the 60 s construction
+above is the ready-made probe.

@@ -849,7 +849,14 @@ function cfgSigOf(cfg) {
   // ⚠ EVERY cfg field that can change a SCORE must appear here, or SIM_MEMO serves a stale result
   // for the other setting and the two are silently indistinguishable (PHASE8 §25 was measured as a
   // no-op for exactly this reason before `boundaryCharge` was added to the signature).
-  simMemoCfgSig = JSON.stringify([cfg.T, cfg.hasteRating, cfg.sp, cfg.critPct, cfg.coldSnap ? 1 : 0, cfg.t5two ? 1 : 0, cfg.boundaryCharge || 0, cfg.enabled, cfg.fixed, cfg.segments]);
+  /* ⚠⚠ EVERY FIELD `simulate` READS MUST BE IN THIS KEY, or the memo hands back a stale score for a
+     cfg that differs — a FALSE PASS, the defect class this repo tracks. `killMode` was missing until
+     07-31 and it is not a hypothetical: it moves the RANKING integral by **+0.4993 casts on T6**
+     (`oneSided` 101.284194 vs `none` 100.784861, 250× the tie band), and its absence here silently
+     corrupted the first attempt to measure whether it changes any ranking — every cell read a shift of
+     exactly 0.000000 because every probe was served `none`'s cached number. `boundaryCharge` was
+     already here; `killMode` sits in the same class and was simply overlooked. */
+  simMemoCfgSig = JSON.stringify([cfg.T, cfg.hasteRating, cfg.sp, cfg.critPct, cfg.coldSnap ? 1 : 0, cfg.t5two ? 1 : 0, cfg.boundaryCharge || 0, cfg.killMode || "none", cfg.enabled, cfg.fixed, cfg.segments]);
   return simMemoCfgSig;
 }
 function simulate(schedule, cfg, collect) {
