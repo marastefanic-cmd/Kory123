@@ -139,6 +139,28 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
     chk(`${type}: 8 s gap is a full re-ramp`,     seq(8, type) === '0,1,2' ? 0 : 1, 0, 0, `got [${seq(8, type)}], want [0,1,2]`);
   }
 }
+/* ★ THE TWO PHASE TYPES RESUME DIFFERENTLY, AND IT IS NOT A BUG — gated 07-31.
+   An independent reference implementation (`tools/objective-ref.mjs`) showed the re-ramp toll appearing
+   at phase lengths offset by EXACTLY one cast interval between `intermission` and `aoe` (aoe charges it
+   from L=5, intermission only from L=6), which reads like the two anchoring the Arcane Blast debuff on
+   different casts. They do not — the last Arcane Blast is 99.498 in BOTH. The difference is the
+   RESUME: an AoE phase spends its final GCD on an Arcane Explosion, so the first Arcane Blast cannot
+   start until that GCD expires, while an intermission leaves nothing running and resumes AT the wall.
+   The extra 1.5 s of start-to-start gap is what tips the debuff a phase-length earlier. Real physics,
+   and nothing stated it. */
+{
+  const L = 5, END = 100 + L;
+  const firstAB = type => {
+    const c = cfgOf(300, [], null, 0, { segments: api.buildSegments([{ from: 100, to: END, type, mult: 1, targets: 6 }], 300) });
+    const r = api.simulate(api.repair({}, c), c, true);
+    return r.casts.find(x => x.t >= END - 1e-9).t;
+  };
+  chk('an intermission resumes AT the wall', firstAB('intermission'), END, 1e-9,
+      'nothing is casting during an intermission, so no GCD is owed on the way out');
+  // last AE of a 5 s phase is at 100 + 3×1.5 = 104.5; its GCD runs to 106.0.
+  chk('an AoE phase owes its last Explosion’s GCD', firstAB('aoe'), 106.0, 1e-9,
+      'AE lattice 100/101.5/103/104.5 ⇒ the trailing GCD pushes the first Arcane Blast to 106.0');
+}
 {
   // Arcane Explosion is INSTANT, so an AoE phase runs at the bare GCD and fits exactly L/GCD casts.
   const L = 12;
@@ -369,10 +391,8 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
    knowing before reasoning about AoE: haste is worth exactly the same inside an AoE phase as outside
    it, and the whole value of the phase is the damage multiple. */
 {
-  const c = cfgOf(120, []);
   const ivAB = m => 1 / rate(m);
-  const ivAE = m => Math.max(msq(G.GCD_FLOOR), msq(G.GCD_BASE / m)) === msq(Math.max(G.GCD_FLOOR, G.GCD_BASE / m))
-                  ? msq(Math.max(G.GCD_FLOOR, G.GCD_BASE / m)) : msq(Math.max(G.GCD_FLOOR, G.GCD_BASE / m));
+  const ivAE = m => msq(Math.max(G.GCD_FLOOR, G.GCD_BASE / m));
   let worst = 0;
   for (const m of [1.0, 1.1, 1.2, 1.3, 1.43, 1.5, 1.56, 1.716, 2.0]) worst = Math.max(worst, Math.abs(ivAB(m) - ivAE(m)));
   chk('AoE: AB and AE intervals identical', worst, 0, 1e-12,
@@ -404,6 +424,34 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
   chk('AoE: at N=6 crit does NOT cancel', ratio(0.00, 6) - ratio(0.60, 6),
       K * 6 * (amp(6, 0.00) - amp(6, 0.60)), 1e-9,
       'K·N·[amp(N,0) − amp(N,0.6)], amp re-derived from arcaneConcentration/arcanePotency');
+}
+
+/* §9c — AN AoE PHASE IS A **CONSTRAINT**, NOT AN ELECTION, AND BELOW THE CROSSOVER IT COSTS DAMAGE.
+   Probed 07-31 and filed under MODEL-DEFECTS "Not defects". `M(N)` — the per-cast AE/AB ratio — is
+   **below 1** at low target counts, so an `aoe` segment there scores WORSE than the same fight with no
+   phase declared at all. That reads like a missing `max(AE, AB)` per-cast election. It is not: the user
+   DECLARES the phase ("I am AoEing here"), the UI accepts `N ∈ [1,20]` precisely so a weak forced AoE
+   can be priced, and RULES §9 names this case — *"below threshold a weak AoE (N=2, M=0.82) is a dead
+   zone the burst dodges"* — as brute-grid enumerated, sim-gated Phase-5 behaviour. The lower score is
+   the model correctly reporting the COST OF THE CONSTRAINT.
+   ⇒ These two lines exist so that adding such an election, or moving a constant that relocates the
+   crossover, fails HERE with the doctrine attached rather than silently deleting the dodge that §9's
+   placement thresholds are built on. */
+{
+  const K = (G.AE.AVG_BASE_DMG + G.AE.COEF * SP) / (G.AB.AVG_BASE_DMG + G.AB.COEF * SP);
+  const M = N => K * N * api.aoeCritAmp(N, CRIT / 100);
+  // The crossover must bracket N=2 / N=3. If a constant moves it, RULES §9's N*≈2.5 needs re-deriving.
+  chk('AoE: M(2) < 1 < M(3) — the crossover brackets', (M(2) < 1 && M(3) > 1) ? 0 : 1, 0, 0,
+      `M(1)=${M(1).toFixed(4)} M(2)=${M(2).toFixed(4)} M(3)=${M(3).toFixed(4)} — RULES §9 quotes N*≈2.5`);
+  // …and the segment must OBEY it rather than electing the better spell.
+  const phase = N => cfgOf(200, [], null, 0,
+    { segments: api.buildSegments([{ from: 60, to: 90, type: 'aoe', mult: 1, targets: N }], 200) });
+  const none = I({}, cfgOf(200, []));
+  chk('AoE: a weak phase is FORCED, so it costs casts', Math.sign(I({}, phase(2)) - none), -1, 0,
+      `N=2 scores ${I({}, phase(2)).toFixed(4)} vs ${none.toFixed(4)} with no phase — a constraint, ` +
+      'not an election; do NOT "fix" this with a per-cast max(AE, AB)');
+  chk('AoE: a strong phase pays', Math.sign(I({}, phase(6)) - none), 1, 0,
+      `N=6 scores ${I({}, phase(6)).toFixed(4)} vs ${none.toFixed(4)}`);
 }
 
 /* ═══ THE EFFECTIVE-AB NORMALIZATION ITSELF — added 07-30, answering a direct user question:

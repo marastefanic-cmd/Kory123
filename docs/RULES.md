@@ -1231,6 +1231,17 @@ durations the contained region shrinks to the **intersection** of the constraint
     Lust at **M(N) > 1.30** (N*≈3.2 — N=3 stays, N=4 moves). Below threshold a weak AoE (N=2, M=0.82) is
     a **dead zone the burst dodges** (the plain-fight layout squeezed into the non-AoE time). Both
     thresholds were predicted from flux BEFORE enumerating; the N=3 grid runs confirmed both directions.
+    ★ **An AoE phase is a CONSTRAINT you declare, never an election the planner makes** — so below the
+    crossover (`M(1) = 0.40`, `M(2) = 0.82` at sp 1387 / crit 38) a declared phase scores **strictly
+    worse than not declaring one**, and that is the model correctly pricing the cost of the constraint.
+    ⚠ **The Tirisfal 2pc lifts Arcane Blast by +20 % and Arcane Explosion by nothing** (`index.html`
+    `:1475`, `isAoe ? 0 : t5add`), so switching it on divides the whole `M` column by 1.2 —
+    `0.34 / 0.68 / 1.04 / 1.40` — which leaves the crossover in the same bracket but puts **N = 3 within
+    4 % of a wash**. Read that as: the set bonus makes marginal AoE meaningfully worse, and N = 3 stops
+    being a comfortable call. ⛔ Do
+    **not** "fix" it with a per-cast `max(AE, AB)`: it would overrule what the user typed and delete the
+    dead-zone dodge these very thresholds are built on. Gated: `law-check` §9c pins both the crossover
+    bracket and the forced-stream semantics. Full disposition in MODEL-DEFECTS "Not defects".
     **Sim gate** (count-preserving cluster A/Bs, 100k, var0 AND var10 agree): cluster marginal on the
     N-target stream vs the Lust'd AB stream = **0.85 / 1.15 / 1.77** at N=3/4/6 — the sign flips exactly
     at the predicted threshold.

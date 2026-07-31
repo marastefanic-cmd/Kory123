@@ -1471,6 +1471,29 @@ D1, which would have made D1 look like it had a sim-confirmed witness. It does n
   sim agrees independently (0.00 DPS at every interior placement, 5.20 DPS at the terminal one).
   ESTABLISHED-FACTS rule 4.
 
+* **A declared AoE phase at N ≤ 2 scores WORSE than not declaring one, and that is correct.** Probed
+  07-31: an `aoe` segment forces the Arcane Explosion stream unconditionally, and the per-cast ratio
+  `M(N)` is **below 1** there — at sp 1387 / crit 38 % it reads `N=1 0.4026 · N=2 0.8186 · N=3 1.2459`.
+  (With the Tirisfal 2pc on the whole column divides by 1.2 — the set lifts Arcane Blast by +20 % and
+  Arcane Explosion by nothing, `index.html:1475` — giving `0.3355 / 0.6822 / 1.0382`, same bracket but
+  **N = 3 within 4 % of a wash**.) So a 2:00 fight carrying an N=2 AoE window scores **125.83 against 132.00** for the same
+  fight with no phase declared, and the tool "loses" damage by being told about the adds. That looked
+  like an unmodelled `max(AE, AB)` choice. **It is not.** An AoE phase is a **user-declared constraint**
+  — *"I am AoEing here"* — not something the planner elects; the UI accepts `N ∈ [1, 20]` precisely so
+  you can price a weak forced AoE. RULES §9 already carries this case explicitly and by name (*"below
+  threshold a weak AoE (N=2, M=0.82) is a **dead zone the burst dodges** — the plain-fight layout
+  squeezed into the non-AoE time"*), and the dodge behaviour was brute-grid enumerated and sim-gated in
+  Phase 5. The lower score is the model **correctly reporting the cost of the constraint**, which is the
+  answer a planner should give. ⇒ Do not add a `max(AE, AB)` per-cast election to the AoE segment: it
+  would silently overrule a constraint the user typed, and it would delete the dead-zone dodge that §9's
+  placement thresholds are built on.
+  ⚠ The one part that stays genuinely arguable is the **AoE-start cut**, whose stated justification in
+  RULES §9 is the policy *"adds are up, AE is worth several ABs, so you CANCEL the Blast"* — a premise
+  that is false at `M(N) < 1`, where you would not cancel a Blast to start a worse spell. Bounded at
+  `≤ 1 − frac` of one cast (≤ ~0.75 % of a 2:00 fight, once per phase), it needs a **user ruling** on
+  whether a low-N AoE call means *"adds must die now"* (cut stands) or *"AoE if it's up"* (cut should
+  lapse below the crossover). Filed, not fixed — the same shape as §8r.
+
 ---
 
 ## §8h — ✅ THE INTEGRAL RANKS, PAIRED WITH A TIE-BREAK (landed 07-30)
