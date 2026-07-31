@@ -5436,7 +5436,12 @@ function renderTimeline(run, opts) {
   // The chart names its own y-axis, so nothing below it has to. (This replaced the legend paragraph:
   // a caption in the gutter is read once and then ignored, where a legend has to be re-read forever.)
   sv += `<text x="${PADL - 8}" y="${PADT - 6}" fill="${muted}" font-size="10" text-anchor="end" letter-spacing="0.08em">SPELL HASTE</text>`;
-  sv += `<text x="${PADL}" y="${PADT - 6}" fill="${ink2}" font-size="11">gear ${(cfg.hasteRating / GAME.HASTE_RATING_PER_PCT).toFixed(1)}% + cooldowns<title>Your spell haste at each moment: gear plus whatever cooldowns are up. Ashtongue's proc is random, so it is deliberately NOT averaged into this line — you see its effect in its own lane instead.</title></text>`;
+  /* ⚠ THE QUALIFIER SITS AT THE RIGHT EDGE, not next to the axis title. They used to be 8 viewBox px
+     apart — "SPELL HASTE" ending at PADL−8 and this starting at PADL — which survives Chromium's
+     system-ui and collides on a machine whose system-ui is wider; the user saw them overprinting.
+     8px of clearance is not a design, it is a coincidence. The right edge is empty space and cannot
+     collide with anything. */
+  sv += `<text x="${(PADL + GUT + plotW).toFixed(1)}" y="${PADT - 6}" fill="${ink2}" font-size="11" text-anchor="end">gear ${(cfg.hasteRating / GAME.HASTE_RATING_PER_PCT).toFixed(1)}% + cooldowns<title>Your spell haste at each moment: gear plus whatever cooldowns are up. Ashtongue's proc is random, so it is deliberately NOT averaged into this line — you see its effect in its own lane instead.</title></text>`;
   // GCD-floor line at +50% + faint "wasted haste" shading above it
   if (maxPct > 50) {
     const gcdTip = `<title>A 3-stack Arcane Blast is a 1.5s cast and the global cooldown floors at 1.0s, so +50% haste is the ceiling. Haste above this line buys no extra casts in that window — the shading is the part that is wasted.</title>`;

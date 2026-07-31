@@ -2932,7 +2932,55 @@ for exactly this), it changes **13 of 63**:
 largest gain**. Verified by scoring both layouts on ONE engine, so it is a real score difference and
 not an artifact of comparing two builds.
 
-### ⚠ THE MECHANISM IS NOT ESTABLISHED — do not "fix" it until it is
+### ✅ 1c. THE MECHANISM **IS** ESTABLISHED, AND THE FIX IS ONE LINE OF POSITION (07-31)
+
+Both hypotheses below were tested and **hypothesis 2 is FALSIFIED**: solved ALONE under the 3d engine,
+`drums+icon+gem · h0 · 2:40 interm` reads **103.961744**, identical to its in-sweep value. It is not
+cross-cell memo contamination; `kit-sweep` is exonerated and the regression is a real property of 3d.
+
+**Nor is it `phaseRerank` losing monotonicity.** From an identical start, both engines return an
+identical result — A→A and B→B on both. The two layouts are each a local optimum under both move sets.
+
+⇒ **A GREEDY DESCENT IS NOT MONOTONE IN ITS MOVE SET.** Offered a new move *early*, the descent takes a
+different locally-better step and converges to a **worse basin**. Nothing is walking downhill; it is
+simply arriving somewhere else. 3d sat after class 3c, i.e. before the single-press and structural
+classes, so it preempted them.
+
+**The fix is to run 3d LAST**, after every older class. The descent then exhausts exactly the moves it
+had before, reaches exactly the fixed point it reached before, and only then is 3d consulted — where it
+can only extend. **Strictly ≥ by construction, not by measurement.** Verified:
+
+```
+  drums+icon+gem · h0 · 2:40 interm      no 3d 104.143286 · 3d EARLY 103.961744 · 3d LAST 104.143286
+```
+
+### ★★ AND THE USER HIT THIS DEFECT INDEPENDENTLY, ON A REAL FIGHT
+
+07-31, a 7:00 Kael'thas plan hand-edited through lock-and-validate beat the tool by **+0.113552 casts,
+57× the tie band**:
+
+```
+  model   … scb[105,281,401] arcanePower[105,285] berserking[107,287]     254.861547
+  user    … scb[105,285,405] arcanePower[105,285] berserking[110,290]     254.975099
+```
+
+The gem sat at 281 while Arcane Power sat at 285 — **the value cluster was split by 4 seconds**, and
+closing it carries **0.084** of the 0.114 on its own. It could not be closed because the gem's 120 s
+cooldown makes `285 + 120 = 405`, so its third use must move too: the chain closure exactly.
+⇒ With 3d LAST, `phaseRerank` from the model plan reaches **254.982121** — better than the user's own
+line, additionally finding `isc[-5,115,…]`.
+
+### ⛔ SO 3d IS READY, AND **T6 IS NOW THE ONLY THING BLOCKING IT**
+
+With the position fixed, 3d costs nothing on the kit matrix and repairs a 0.114-cast miss on a fight the
+user actually plans. It still makes **T6 fail**, exactly as part 3 describes and for the same reason —
+it makes T6's tied-but-differently-shaped alternative *reachable*. That is unchanged by the
+repositioning, because it is not a search defect at all: it is the plateau ruling.
+⇒ **The T6 call now has a price attached.** It is no longer an abstract question about one declared
+layout; answering it ships a measured improvement on a real user fight. `index.html` stays clean
+(anchors 8/8, `PLAN-DIFF IDENTICAL`) until it is answered.
+
+### ⚠ THE MECHANISM (superseded by 1c above — kept for the reasoning that got there)
 
 This should not be reachable. `phaseRerank` carries the §8w ceiling, and `phaseFinish` seeds `bv` from
 its own input and only adopts on `planBetter`, so both stages are monotone by construction. Two
