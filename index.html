@@ -161,7 +161,8 @@
     outline: 2px solid var(--accent);
     outline-offset: 1px;
   }
-  .inline { display: flex; gap: 10px; }
+  .inline { display: flex; gap: 10px; flex-wrap: wrap; }
+  .inline .field { min-width: 92px; }
   .inline .field { flex: 1; }
 
   /* buff rows: separate toggle target and pin button — no misclicks */
@@ -318,6 +319,30 @@
   .phasecol h2 label.use input { accent-color: var(--accent); width: 15px; height: 15px; }
   .phasecol:not(.on) #phase-editor { opacity: 0.45; }
   .scol h2.stacked { margin-top: 14px; }
+
+  /* ————— buffs & consumables column ————— */
+  .bfgrp { margin-bottom: 9px; }
+  .bfgrp:last-child { margin-bottom: 0; }
+  .bfgrp > b {
+    display: block; font: 11px var(--font-ui); letter-spacing: 0.05em; text-transform: uppercase;
+    color: var(--muted); margin: 0 0 5px;
+  }
+  label.bf {
+    display: flex; align-items: baseline; gap: 7px; cursor: pointer;
+    padding: 1px 0; font-size: 13px; color: var(--ink-2); line-height: 1.4;
+  }
+  label.bf:hover { color: var(--ink); }
+  label.bf input { accent-color: var(--accent); width: 14px; height: 14px; flex: none; position: relative; top: 2px; }
+  label.bf i { font-style: normal; color: var(--muted); font: 11.5px var(--font-mono); white-space: nowrap; }
+  /* The derived totals — the payoff of the whole panel, so it reads as a readout, not a hint. */
+  .bfsum {
+    background: color-mix(in srgb, var(--accent) 7%, transparent);
+    border: 1px solid color-mix(in srgb, var(--accent) 28%, transparent);
+    border-radius: 8px; padding: 8px 11px; margin: 9px 0 7px;
+  }
+  .bfsum b { display: block; font: 11px var(--font-ui); letter-spacing: 0.05em; text-transform: uppercase; color: var(--muted); margin-bottom: 3px; }
+  .bfsum span { font-family: var(--font-mono); font-size: 13px; color: var(--ink); }
+  .bfsum em { font-style: normal; color: var(--muted); font-size: 11.5px; }
 
   /* ————— results ————— */
   .results { display: flex; flex-direction: column; gap: 20px; scroll-margin-top: 12px; }
@@ -649,12 +674,13 @@
           </div>
         </div>
         <label class="check use" style="margin-top:6px" title="Tirisfal Regalia (Tier 5) 2-piece: Arcane Blast deals 20% more damage and costs 20% more mana. It adds to Arcane Power rather than multiplying with it, so with the set on, an Arcane Power window is worth slightly less relative to your other casts — which mostly matters when a fight has AoE phases."><input id="ck-t5" type="checkbox" checked> Tirisfal (T5) 2-piece — Arcane Blast +20% damage</label>
+        <div class="bfsum" id="buffsum"></div>
+        <span class="hint" title="Crit and Intellect matter for Ashtongue proc uptime, AoE phases, and the spellpower Intellect turns into via Mind Mastery. Everywhere else they scale every possible plan equally, so they cannot change which plan wins — which is why the declared tests stay valid at any crit or spellpower.">Type your <b>unbuffed</b> sheet numbers — the Buffs column adds the raid on top.</span>
+      </div>
+
+      <div class="scol">
+        <h2>Buffs &amp; consumables <span class="counter" id="buff-count"></span></h2>
         <div id="buffpanel"></div>
-        <span class="hint" id="buffsum"></span>
-        <span class="hint">⚠ Type your <b>UNBUFFED</b> sheet numbers — no raid buffs, no armour spell. The boxes above add
-        those on top, and the line above shows the totals the planner actually uses. Crit and Intellect matter for
-        Ashtongue uptime, AoE phases, and the spellpower Intellect turns into; everywhere else they scale every
-        possible plan equally, so they cannot change which plan wins.</span>
       </div>
 
       <div class="scol">
@@ -5080,24 +5106,24 @@ const CRIT_RATING_PER_PCT = 22.08;
 /* `int` is FLAT intellect added before Arcane Mind; `intMult` multiplies the total (Kings);
    `sp`/`critPct`/`critRating` are flat; `dmgMult` is a damage multiplier (constant ⇒ plan-neutral). */
 const RAID_BUFFS = [
-  { id: "arcaneBrilliance", on: 1, label: "Arcane Brilliance",            int: 40 },
-  { id: "kings",            on: 1, label: "Blessing of Kings",            intMult: 1.10 },
-  { id: "wrathOfAir",       on: 1, label: "Wrath of Air Totem",           sp: 101 },
-  { id: "coe",              on: 1, label: "Curse of the Elements + Malediction", dmgMult: 1.13 },
-  { id: "misery",           on: 1, label: "Misery",                       dmgMult: 1.05 },
-  { id: "wizardOil",        on: 1, label: "Brilliant Wizard Oil",         sp: 36, critRating: 14 },
-  { id: "food",             on: 1, label: "Food — Blackened Basilisk",    sp: 23 },
-  { id: "draenicWisdom",    on: 1, label: "Elixir of Draenic Wisdom",     int: 30 },
-  { id: "adeptsElixir",     on: 1, label: "Adept's Elixir",               sp: 24, critRating: 24 },
-  { id: "totemOfWrath",     on: 0, label: "Totem of Wrath",               critPct: 3 },
-  { id: "atieshMage",       on: 0, label: "Atiesh — Mage",                critRating: 28 },
-  { id: "atieshWarlock",    on: 0, label: "Atiesh — Warlock",             sp: 33 },
-  { id: "twilightOwl",      on: 0, label: "Chain of the Twilight Owl",    critPct: 2 },
-  { id: "eyeOfNight",       on: 0, label: "Eye of the Night",             sp: 34 },
-  { id: "jadePendant",      on: 0, label: "Jade Pendant of Blasting",     sp: 15 },
-  { id: "impSoC",           on: 0, label: "Improved Seal of the Crusader", critPct: 3 },
-  // Molten Armor is +3 % spell crit; Mage Armor is mana regen only, so it is a genuine no-op here.
-  { id: "moltenArmor",      on: 1, label: "Molten Armor (vs Mage Armor)", critPct: 3 },
+  { id: "arcaneBrilliance", on: 1, g: "Raid",        label: "Arcane Brilliance",     v: "+40 Int",  int: 40 },
+  { id: "kings",            on: 1, g: "Raid",        label: "Blessing of Kings",     v: "×1.10 stats", intMult: 1.10 },
+  { id: "wrathOfAir",       on: 1, g: "Raid",        label: "Wrath of Air", full: "Wrath of Air Totem",    v: "+101 SP",  sp: 101 },
+  { id: "totemOfWrath",     on: 0, g: "Raid",        label: "Totem of Wrath",        v: "+3% crit", critPct: 3 },
+  { id: "coe",              on: 1, g: "On the boss", label: "Curse of the Elements", v: "×1.13", full: "Curse of the Elements with Malediction 3/3", dmgMult: 1.13 },
+  { id: "misery",           on: 1, g: "On the boss", label: "Misery",                v: "×1.05",    dmgMult: 1.05 },
+  { id: "impSoC",           on: 0, g: "On the boss", label: "Imp. Seal of Crusader", full: "Improved Seal of the Crusader", v: "+3% crit", critPct: 3 },
+  { id: "wizardOil",        on: 1, g: "Consumables & self", label: "Wizard Oil", full: "Brilliant Wizard Oil", v: "+36 SP +14 crit", sp: 36, critRating: 14 },
+  { id: "food",             on: 1, g: "Consumables & self", label: "Basilisk food", full: "Blackened Basilisk",   v: "+23 SP",   sp: 23 },
+  { id: "draenicWisdom",    on: 1, g: "Consumables & self", label: "Draenic Wisdom", full: "Elixir of Draenic Wisdom", v: "+30 Int", int: 30 },
+  { id: "adeptsElixir",     on: 1, g: "Consumables & self", label: "Adept's Elixir",       v: "+24 SP +24 crit", sp: 24, critRating: 24 },
+  // Mage Armor is mana regen only — with infinite mana it is a genuine no-op, so this is the whole choice.
+  { id: "moltenArmor",      on: 1, g: "Consumables & self", label: "Molten Armor", v: "+3% crit", full: "Molten Armor — the alternative, Mage Armor, is mana regen only and so is a no-op here", critPct: 3 },
+  { id: "atieshMage",       on: 0, g: "Raid-wide items", label: "Atiesh — Mage",    v: "+28 crit rating", critRating: 28 },
+  { id: "atieshWarlock",    on: 0, g: "Raid-wide items", label: "Atiesh — Warlock", v: "+33 SP",  sp: 33 },
+  { id: "twilightOwl",      on: 0, g: "Raid-wide items", label: "Twilight Owl", full: "Chain of the Twilight Owl", v: "+2% crit", critPct: 2 },
+  { id: "eyeOfNight",       on: 0, g: "Raid-wide items", label: "Eye of the Night", v: "+34 SP",  sp: 34 },
+  { id: "jadePendant",      on: 0, g: "Raid-wide items", label: "Jade Pendant", full: "Jade Pendant of Blasting", v: "+15 SP", sp: 15 },
 ];
 /* Talents every arcane raider has, applied unconditionally — same class as the `TALENTS` ranks the
    engine already assumes. Arcane Impact is CRIT and its ClassMask is Arcane Blast | Arcane Explosion,
@@ -5129,8 +5155,17 @@ function buffedStats(baseSp, baseCrit, baseInt) {
 function renderBuffPanel() {
   const host = el("buffpanel"); if (!host || host.dataset.built) return;
   host.dataset.built = "1";
-  host.innerHTML = RAID_BUFFS.map(b =>
-    `<label class="check use"><input id="bf-${b.id}" type="checkbox"${b.on ? " checked" : ""}> ${esc(b.label)}</label>`).join("");
+  const groups = [];
+  for (const b of RAID_BUFFS) {
+    let g = groups.find(x => x.name === b.g);
+    if (!g) groups.push(g = { name: b.g, rows: [] });
+    g.rows.push(b);
+  }
+  host.innerHTML = groups.map(g =>
+    `<div class="bfgrp"><b>${esc(g.name)}</b>` + g.rows.map(b =>
+      `<label class="bf" title="${esc((b.full || b.label) + " — " + b.v + ". Value read off the wowsims source; see docs/SOURCES.md.")}">` +
+      `<input id="bf-${b.id}" type="checkbox"${b.on ? " checked" : ""}>` +
+      `<span>${esc(b.label)} <i>${esc(b.v)}</i></span></label>`).join("") + `</div>`).join("");
   host.addEventListener("change", renderBuffSummary);
   for (const id of ["in-sp", "in-crit", "in-int"]) { const e = el(id); if (e) e.addEventListener("input", renderBuffSummary); }
   renderBuffSummary();
@@ -5138,8 +5173,10 @@ function renderBuffPanel() {
 function renderBuffSummary() {
   const s = el("buffsum"); if (!s) return;
   const b = buffedStats(+el("in-sp").value || 0, +el("in-crit").value || 0, +el("in-int").value || 0);
-  s.innerHTML = `<b>Planner uses:</b> ${Math.round(b.sp)} spell damage · ${b.critPct.toFixed(1)} % crit` +
-    ` · damage ×${b.dmgMult.toFixed(3)}${b.dInt ? ` <span style="opacity:.7">(+${Math.round(b.dInt)} Int → +${Math.round(b.dInt * INT_TO_SP)} SP)</span>` : ""}`;
+  s.innerHTML = `<b>Planner uses</b><span>${Math.round(b.sp)} spell damage · ${b.critPct.toFixed(1)}% crit · damage ×${b.dmgMult.toFixed(3)}</span>` +
+    (b.dInt ? `<br><em>+${Math.round(b.dInt)} Int from buffs → +${Math.round(b.dInt * INT_TO_SP)} SP, +${(b.dInt * INT_TO_CRIT).toFixed(1)}% crit</em>` : "");
+  const c = el("buff-count");
+  if (c) c.textContent = `${RAID_BUFFS.filter(x => buffOn(x.id)).length}/${RAID_BUFFS.length} on`;
 }
 function renderTiles({ cfg, baseline, naiveR, optR }) {
   const tiles = el("tiles"); tiles.hidden = false;
