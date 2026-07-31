@@ -4944,6 +4944,7 @@ function readCfg() {
   const bf = buffedStats(Math.max(0, +el("in-sp").value || 0),
                          Math.min(100, Math.max(0, +el("in-crit").value || 0)),
                          Math.max(0, +el("in-int").value || 0));
+  renderBuffSummary(bf);   // the readout is the numbers the engine is about to receive, by construction
   return {
     T,
     hasteRating: Math.max(0, +el("in-haste").value || 0),
@@ -5185,9 +5186,17 @@ function renderBuffPanel() {
   for (const id of ["in-sp", "in-crit", "in-int"]) { const e = el(id); if (e) e.addEventListener("input", renderBuffSummary); }
   renderBuffSummary();
 }
-function renderBuffSummary() {
+/* ⚠ TAKES THE cfg's OWN `bf` WHEN THERE IS ONE. Fixed 07-31 after the readout showed 1367 SP / 37.4 %
+   while the boxes said 1387 / 38: `applyPreset` writes `inp.value = …` directly and only dispatches an
+   `input` event for `in-haste`, so a preset load updated the fields and never refreshed this line — it
+   was still showing the page-load defaults (1150 + 217 = 1367, 25 + 12.4 = 37.4). The PLAN was never
+   wrong: `buildCfg` re-reads the inputs at solve time, so the engine had the typed values all along.
+   ⇒ two fixes rather than one, because "remember to call it" is what failed: `applyPreset` now refreshes
+   it, AND `buildCfg` passes the very object it hands the engine, so the readout cannot disagree with
+   what was solved even if some future caller forgets again. */
+function renderBuffSummary(pre) {
   const s = el("buffsum"); if (!s) return;
-  const b = buffedStats(+el("in-sp").value || 0, +el("in-crit").value || 0, +el("in-int").value || 0);
+  const b = pre || buffedStats(+el("in-sp").value || 0, +el("in-crit").value || 0, +el("in-int").value || 0);
   s.innerHTML = `<b>Planner uses</b><span>${Math.round(b.sp)} spell damage · ${b.critPct.toFixed(1)}% crit · damage ×${b.dmgMult.toFixed(3)}</span>` +
     (b.dInt ? `<br><em>+${Math.round(b.dInt)} Int from buffs → +${Math.round(b.dInt * INT_TO_SP)} SP, +${(b.dInt * INT_TO_CRIT).toFixed(1)}% crit</em>` : "");
   const c = el("buff-count");
@@ -6397,6 +6406,7 @@ function applyState(s) {
   }
   buildBuffList();
   el("in-haste").dispatchEvent(new Event("input"));
+  renderBuffSummary();     // a preset writes .value directly, which fires no `input` event
   } finally { applyingPreset = false; }
 }
 let activePreset = "", presetDirty = false, applyingPreset = false;
