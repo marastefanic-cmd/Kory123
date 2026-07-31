@@ -90,14 +90,19 @@ console.log('\n# F4: a mid-cast-lapse re-ramp resumes at 1 STACK — is it bille
     return { score: r.integral / api.plainCastOf(c), stacks: r.casts.filter(x => x.t >= 99 + L - 1e-9).slice(0, 3).map(x => x.stacks) };
   };
   const base = seq(5).score;                       // 6.002 s gap — debuff survives, no toll
-  for (const L of [6, 6.5, 7, 8]) {
+  for (const L of [5, 6, 6.5, 7, 8, 9, 10]) {
     const { score, stacks } = seq(L);
     /* \u26a0 SUBTRACT THE DEAD TIME. A longer intermission removes more casting quite apart from the
        toll, and a first draft of this file booked that as over-charge \u2014 it read L=7 as wrong when
        L=7 is the one case that is RIGHT. */
     const charged = (base - score) - (L - 5) / msq(G.GCD_BASE);
-    // resuming at 1 stack costs the 1- and 2-stack rungs; a cold start costs all three
-    const law = stacks[0] === 3 ? ladder(1) + ladder(2) : ladder(0) + ladder(1) + ladder(2);
+    /* THREE cases, not two — and the third only became visible when the debuff anchor moved to the cast
+       COMPLETION (§9a), which buys ~1.5 s of headroom and pushes the old L=6 case back into "no lapse at
+       all". A two-case law read that as a 0.665-cast over-charge when the engine was right. */
+    const sq = stacks.join(',');
+    const law = sq === '3,3,3' ? 0                                   // debuff survived — no re-ramp
+              : stacks[0] === 3 ? ladder(1) + ladder(2)               // lapsed mid-cast — resumes at 1 stack
+              :                   ladder(0) + ladder(1) + ladder(2);  // cold — all three rungs
     const ok = Math.abs(charged - law) <= 1e-6;
     if (!ok) bad++;
     console.log(`  intermission L=${L}  exit stacks [${stacks}]  charged ${charged.toFixed(6)}   law ${law.toFixed(6)}   ` +

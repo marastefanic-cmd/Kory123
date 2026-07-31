@@ -137,16 +137,36 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
    ★ AoE phases are the sharp test: Arcane Explosion neither builds nor refreshes the debuff, so the
    decay must be measured from the last ARCANE BLAST even though you never stopped casting. */
 {
-  const seq = (L, type) => {
+  /* ⚠ RE-DERIVED 07-31 when the anchor moved to the cast COMPLETION (§9a). The first version hardcoded
+     "L = 4 / 6 / 8" for the three cases, which were the right lengths for a START anchor and the wrong
+     ones after — it failed on 3 of 6 rows and the ENGINE was right, exactly as this file's header says
+     to assume. Hardcoding the length was the mistake: it encodes the anchor twice, once in the engine
+     and once here, so the gate could never tell you the anchor had moved — only that "something broke".
+     ⇒ the gate now READS the realised completion→start gap off the board and predicts the case from it,
+     so it tests the three-case LAW rather than three memorised lengths. It sweeps a range wide enough to
+     contain all three regardless of where the anchor sits. */
+  const probe = (L, type) => {
     const c = cfgOf(300, [], null, 0, { segments: api.buildSegments([{ from: 100, to: 100 + L, type, mult: 1, targets: 6 }], 300) });
     const r = api.simulate(api.repair({}, c), c, true);
-    // stacks of the first three ARCANE BLASTS after the phase ends
-    return r.casts.filter(x => x.t >= 100 + L - 1e-9).slice(0, 3).map(x => x.stacks).join(',');
+    const before = r.casts.filter(x => !x.ae && x.t < 100 - 1e-9);
+    const last = before[before.length - 1];
+    const after = r.casts.filter(x => !x.ae && x.t >= 100 + L - 1e-9).slice(0, 3);
+    return { gap: after[0].t - (last.t + last.cast), ct: after[0].cast, seq: after.map(x => x.stacks).join(',') };
   };
   for (const type of ['intermission', 'aoe']) {
-    chk(`${type}: 4 s gap keeps the debuff`,      seq(4, type) === '3,3,3' ? 0 : 1, 0, 0, `got [${seq(4, type)}], want [3,3,3]`);
-    chk(`${type}: 6 s gap lapses MID-CAST`,       seq(6, type) === '3,1,2' ? 0 : 1, 0, 0, `got [${seq(6, type)}], want [3,1,2] — the third case`);
-    chk(`${type}: 8 s gap is a full re-ramp`,     seq(8, type) === '0,1,2' ? 0 : 1, 0, 0, `got [${seq(8, type)}], want [0,1,2]`);
+    let seen = new Set(), rows = 0;
+    for (let L = 3; L <= 11; L += 0.5) {
+      const { gap, ct, seq } = probe(L, type);
+      // the three cases, predicted from the REALISED gap (RULES §9 / ESTABLISHED-FACTS §1.2d)
+      const want = gap <= G.AB.DEBUFF_DUR - ct + 1e-9 ? '3,3,3'
+                 : gap <  G.AB.DEBUFF_DUR - 1e-9      ? '3,1,2'
+                 :                                      '0,1,2';
+      if (seq !== want) { bad++; rows++; console.log(`  ⛔ ${type} L=${L}  gap ${gap.toFixed(3)}  got [${seq}] want [${want}]`); }
+      seen.add(want);
+    }
+    chk(`${type}: all three debuff cases reproduce`, rows, 0, 0, 'swept L = 3…11 s, case predicted from the realised gap');
+    chk(`${type}: the sweep actually CONTAINS all three`, seen.size, 3, 0,
+        `saw ${[...seen].join(' · ')} — a sweep that misses the middle band asserts nothing about it`);
   }
 }
 /* ★ THE TWO PHASE TYPES RESUME DIFFERENTLY, AND IT IS NOT A BUG — gated 07-31.

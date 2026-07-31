@@ -1076,7 +1076,7 @@ function simulateRaw(schedule, cfg, collect) {
   // ⛔ …that sentence described the RETIRED integral. Since PHASE12 §6.10 every cast — ramp or steady —
   // is scored the same way, by the per-cast sum in the walk below; the ramp's discrete treatment now
   // only feeds the `integral` diagnostic.
-  let t = 0, stacks = 0, lastCastStart = -Infinity, prevCastRamp = false, total = 0, totalEarly = 0, robust = 0, gcdCappedTime = 0, castCount = 0;
+  let t = 0, stacks = 0, lastCastEnd = -Infinity, prevCastRamp = false, total = 0, totalEarly = 0, robust = 0, gcdCappedTime = 0, castCount = 0;
   // The objective, accumulated cast by cast in the board walk below. `total`/`totalEarly`/`robust`
   // are RETURNED from these; the rate integral further down is kept only as a diagnostic (`integral`)
   // and as the input to the default-off boundary charge. PHASE12 §0.1 is why: the integral and this
@@ -1360,7 +1360,7 @@ function simulateRaw(schedule, cfg, collect) {
     const isAoe = !!(seg && seg.type === "aoe");
     // ★★★ THE ARCANE BLAST DEBUFF, AND ITS THIRD CASE (user, 07-28) — three outcomes, not two.
     // The debuff is applied on COMPLETION and lasts `DEBUFF_DUR` from the previous cast's START, so with
-    // `G = t − lastCastStart` (start→start) and `ct` = this cast's own length:
+    // `G = t − lastCastEnd` (completion→start; see the anchor note below) and `ct` = this cast's length:
     //   G ≥ DEBUFF_DUR          the debuff is already gone when this cast begins → 0 stacks, full re-ramp
     //   DEBUFF_DUR − ct < G < DEBUFF_DUR
     //                           this cast BEGINS with the stacks (so it keeps the fast cast time — the
@@ -1374,7 +1374,7 @@ function simulateRaw(schedule, cfg, collect) {
     // ⚠ The band is `(DEBUFF_DUR − ct, DEBUFF_DUR)`, so its WIDTH IS THE CAST TIME and it SHRINKS with
     // haste — (6.502, 8) at h=0, (7.001, 8) at the GCD cap. `lapsed` is resolved after `castLen` is
     // known, below; here we only handle the already-gone case.
-    if (!isAoe && t - lastCastStart >= g.AB.DEBUFF_DUR) stacks = 0; // AB debuff fell off during the gap — re-ramp
+    if (!isAoe && t - lastCastEnd >= g.AB.DEBUFF_DUR) stacks = 0; // AB debuff fell off during the gap — re-ramp
     // ★ ROUND TO THE MILLISECOND, because wowsims does and the lattices have to be the same lattice:
     //   sim/core/cast.go:137-138  CurCast.GCD      = ApplyCastSpeed(GCD).Round(time.Millisecond)
     //                             CurCast.CastTime = ApplyCastSpeedForSpell(...).Round(time.Millisecond)
@@ -1511,9 +1511,22 @@ function simulateRaw(schedule, cfg, collect) {
     if (!isAoe) {
       // The middle band above: the previous debuff expired while THIS cast was in flight, so this
       // cast's completion starts the stack chain over at 1 instead of refreshing to 3.
-      const lapsedMidCast = t - lastCastStart < g.AB.DEBUFF_DUR &&
-                            prevCastEnd - lastCastStart >= g.AB.DEBUFF_DUR;
-      lastCastStart = t;
+      const lapsedMidCast = t - lastCastEnd < g.AB.DEBUFF_DUR &&
+                            prevCastEnd - lastCastEnd >= g.AB.DEBUFF_DUR;
+      /* ★★★ ANCHORED ON THE COMPLETION OF THE LAST BLAST THAT LANDED — corrected 07-31, MODEL-DEFECTS
+         §9a. wowsims `sim/mage/arcane_blast.go` calls `ArcaneChargesAura.Activate(sim); AddStack(sim)`
+         INSIDE `ApplyEffects` — at damage resolution, on cast COMPLETION, and only `if result.Landed()`.
+         `arcane_charge.go` gives that aura an 8 s duration. So the debuff expires at
+         *(completion of the last Blast that resolved) + 8 s*, and this was anchored on the cast's START.
+         ⚠ The gap is 2 ms at h = 0 — a 3-stack Blast is 1.498 s against a 1.500 s GCD — which is why it
+         hid for the whole project. It grows to 0.040 s under Lust × IV and 0.127 s under
+         Lust × IV × Berserking, and it sits on the knife-edge of an 8 s cliff worth 1.332 casts, so a
+         2 ms error is worth a whole re-ramp whenever it decides which side you land on. Measured: 423 of
+         5460 layout pairs genuinely reorder on one fight, largest margin ±1.110667 casts (555× the tie
+         band), and the disagreements run in BOTH directions so it cannot be absorbed into a constant.
+         ⛔ Keep the variable's three uses consistent: it is a COMPLETION now, so `t − lastCastEnd` is a
+         completion→start gap and `prevCastEnd − lastCastEnd` is completion→completion. */
+      lastCastEnd = prevCastEnd;
       if (lapsedMidCast) stacks = 1;
       else if (stacks < g.AB.MAX_STACKS) stacks++;
     }

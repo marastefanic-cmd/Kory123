@@ -88,6 +88,19 @@ jobs:
       # ⚠ The two lines answer different questions and the first alone is not sufficient: it printed a
       # clean 0.00e+0 straight through two defects worth up to 1.47 % of a fight score, because both
       # sides read the same board. The STRUCTURAL line is the one that caught them.
+      # The opener toll against its closed form at every haste and every ramp entry stack. Turned
+      # BLOCKING 07-31 when MODEL-DEFECTS §9a landed — the tool shipped in reporting mode while F1-F4
+      # were open, and its own header names this as the moment to flip it. It is the only gate that
+      # looks above the GCD floor, which is where F1 lived undetected: `law-check` asserted the toll at
+      # h ≤ 600 and Bloodlust × Icy Veins reaches m = 1.56 at ZERO gear haste.
+      - name: the opener toll against its closed form (toll-audit)
+        run: node tools/toll-audit.mjs --strict
+
+      # An INDEPENDENT transcription of the objective, written from the docs rather than the engine.
+      # Shares no code with index.html, so agreement is evidence rather than a tautology.
+      - name: the objective against an independent reference (objective-ref)
+        run: node tools/objective-ref.mjs
+
       - name: the scorer against itself (self-consistency)
         run: node tools/self-consistency.mjs
 
