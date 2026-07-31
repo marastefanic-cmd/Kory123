@@ -2805,7 +2805,7 @@ evidence; that is the stale-premise failure §8t and §8n both punish.
 
 ---
 
-## §8y — ⛔ OPEN, AND IT IS A USER CALL: **T6's declared layout is not what the objective picks** (07-30)
+## §8y — ✅ CLOSED 07-31: T6 revised by user ruling, move class 3d shipped (opened 07-30)
 
 Found by finishing the kit × haste matrix (§8w's standing gap). Three things came out of one thread and
 they are separable — two are fixed, the third is a question only the user can settle.
