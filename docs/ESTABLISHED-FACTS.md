@@ -1366,3 +1366,55 @@ the pull. Nothing gated that until now. The three haste lines also fail under `l
 It is invariant to SP and crit as well, to float precision — both divide out of the normalisation,
 which is the property that makes effective-casts the right currency *within* a setup and the wrong one
 *across* setups (CLAUDE.md).
+
+---
+
+## §11.1 EXPECTED DAMAGE AND DPS — the readout, and what it is honestly for *(added 07-31)*
+
+`simulate().integral` **is absolute expected damage already** — dividing it by `plainCastOf(cfg)` is
+the only thing that turns it into effective casts. So the readout needed no new physics, just the
+multiplication back:
+
+```
+  expected damage = effective casts × plainCastOf(cfg)          e.g. 198.668 × 2242.1 = 445,443
+  expected DPS    = expected damage / T
+```
+
+**It exists because effective casts CANNOT compare two gear setups**, and the user stated the gap
+exactly: *"if I omegamax passive haste I will essentially cast 200 arcane blasts, but if it's better to
+cast 150 with bigger spellpower equipped I can't ever know."* Effective casts is normalised to each
+setup's own Arcane Blast — it divides flat SP and crit out **on purpose**, which is what isolates
+scheduling within a setup and blinds it across setups (CLAUDE.md payoff 2). Multiplying back restores
+the comparison. ⇒ **consistency between setups is the entire claim; matching a damage meter is not.**
+
+### ⚠ THE ABSOLUTE LEVEL IS ~4.9 % LOW, DELIBERATELY, AND IT COSTS THE COMPARISON NOTHING
+
+Going absolute un-cancels constant per-cast factors the ratio was free to ignore. Two are real and
+were **measured, built, and then reverted** on 07-31 by user direction (*"I don't want the tool to
+change or consider it in any ways whatsoever"*):
+
+| omitted factor | size at 38 % crit | why it was absent |
+|---|---|---|
+| Arcane Instability 3/3, +3 % spell damage | ×1.03000 | never modelled — a constant, so it cancels |
+| single-target Clearcasting → Arcane Potency | ×1.01871 | `aoeCritAmp` normalises to N = 1, dividing it out |
+| **combined** | **×1.04927** | |
+
+A constant multiplier applied to every setup **cancels out of every comparison between setups**, which
+is the only thing this number is for — so adding it would change no decision. It would also import
+`arcaneInstability` as a constant with **no `docs/SOURCES.md` row**, since the instrument that could
+have confirmed it is retired. ⇒ left out, recorded here, and one edit away if the number is ever wanted
+to match a log instead of another setup.
+
+⚠ Three further assumptions bite only once the number is absolute, and are NOT corrections that could
+be applied: **infinite mana** (a long fight would really go OOM), **hit hardset at cap**, and **Arcane
+Blast only** — no filler, no free Arcane Missiles off a Clearcasting proc. And `GAME.CRIT_MULT = 1.8175`
+bakes in a Chaotic Skyfire Diamond meta gem, an assumption that was free while it cancelled.
+
+### ⛔ AND ONE DIVERGENCE THIS EXPOSED, NOT YET RESOLVED
+
+The tile reads `optR.total / plainCast` — the **per-cast board sum** — while the tool RANKS on the
+integral (§8h). They differ by **~0.31 casts (0.14 % at T=300, 0.32 % at T=120)**, and the tile's
+tooltip claimed it was *"the single number the planner maximizes"*, which stopped being true on 07-30.
+The wording is corrected; **which of the two the headline should show is a user call** and is left
+alone. The damage tile multiplies whatever the effective-casts tile shows, so the two are always
+consistent with each other on screen.
