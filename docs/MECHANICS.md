@@ -9,6 +9,71 @@ Notation: `m` = total haste multiplier; `SP` = spell power; a "cast" below means
 
 ---
 
+## 0. ★★★★★★ WHAT THE SCORER **IS** — the canonical statement. Read this before changing anything.
+
+**User, 07-31, verbatim — this is the definition of record and it supersedes any looser paraphrase
+elsewhere in the docs:**
+
+> *The scorer is an integral of a function of "momentary dps", not the overall dps throughout the fight
+> at a given moment, but a theoretical momentary dps — "if I started casting the spell right now, how
+> much damage would that spell deal divided by how many seconds it would take to cast" — that is graphed
+> out and the area under that graph is summed. That graph changes based on arcane blast stacks and
+> cooldown usage. The model then finds the cooldown layout that maximizes this function's integral's
+> value.*
+
+⚠ **The word "momentary" is the load-bearing one, and the negation in it is the part that gets lost.**
+It is **not** "the DPS you are doing at time `t`". It is a **counterfactual about a spell you have not
+cast**: *if I began a cast at this instant, what would it be worth per second?* Nothing about the past,
+nothing about what is in flight. That is why the objective needs no cast lattice — the function is
+defined pointwise at every real `t`, and the score is `∫₀ᵀ rate(t) dt`. Three separate versions of
+`scoreStart` smuggled a lattice into it and each cost a measured defect (MODEL-DEFECTS §8l).
+
+**What the graph is a function of** — and it is a short list, which is the point:
+* **Arcane Blast stacks**, because they set the cast time (and only the cast time — AB damage is
+  stack-independent in 2.4.3, SOURCES). This is the only thing modelled *dynamically*.
+* **Cooldown usage** — every buff is a value overlaid on that curve over a known interval.
+
+> ### ★ THE SCORING PART HAS TO BE PERFECTIBLE. THE SEARCH PART DOES NOT.
+> *"This is pretty straight forward by itself and has to be easily perfected, the math scoring part not
+> the search part, that one can be hard."*
+> Keep the two apart when something looks wrong. A plan that looks wrong is a **search** defect, a
+> **tie-break** defect, or a **scoring** defect, and CLAUDE.md's table tells you which by enumerating the
+> neighbourhood. ⛔ Reaching for a scoring change first is how §8j, §8m and §8s would each have become
+> permanent damage — all three were the search.
+
+**The only genuinely tricky parts, named by the user and no others:**
+1. **Arcane Blast stacks.** *"The only thing you have to calculate [is] WHEN the first possible spell at
+   a given arcane blast stacks amount would finish casting, and then shorten the cast time for the next
+   AB accordingly — and that activating haste can make that happen sooner."* That is the whole ramp
+   problem, stated exactly. §1 below is its arithmetic; §1.2 of ESTABLISHED-FACTS is its closed form.
+2. **AoE phases.** RULES §9. Still doable math — and there are tests to gate theories.
+
+> ### ⛔⛔ AND THE STANDING RESULT THE MATH MUST KEEP REPRODUCING
+> *"By itself, there's no innate value in hasting on the ramp. It only comes into play because of other
+> factors, and the math should guide you to that realisation again should you need it."*
+>
+> It does, and here is the derivation so nobody has to rediscover it under pressure. The ramp's cost is
+> `toll(m) = [Σₖ max(C_k/m, i(m)) − 3·i(m)] / i(m)` with `i(m) = max(FLOOR, G/m)`. **Below the GCD floor**
+> `max(C_k/m, i) = C_k/m` and `i = G/m`, so the `1/m` cancels top and bottom and the toll is
+> **exactly 1.332 at every `m`** — haste cannot compress the ramp, because it shortens the ramp casts and
+> the yardstick they are measured against by the identical factor. **No innate value. The algebra says so
+> without being told.**
+>
+> ⚠ **And the one exception is not a counterexample — it is the "other factors" clause.** Above the floor
+> (`m > 1.5`, reachable at zero gear haste via `Bloodlust ×1.30 × Icy Veins ×1.20 = 1.56`) the yardstick
+> `i` pins at 1.0 s while the ramp casts keep shortening, so the toll collapses: `1.165 / 0.787 / 0.333`
+> at `m = 1.56 / 1.716 / 2.0`. That is **not** haste acquiring innate ramp value. It is haste having run
+> out of anywhere else to go — the steady rate is capped, so the ramp is the only place left where a
+> second of haste can still do anything. ESTABLISHED-FACTS §1.2b states the same thing as a threshold:
+> ramp-neutrality holds **exactly while `m·v ≤ 1.5`**, the buff's own onset threshold, and inverts above.
+> ⇒ **the rule is safe to state in the strong form the user does**, provided you remember that "other
+> factors" includes the GCD cap. Gated both ways: `law-check`'s `§8r` pair asserts neutrality below the
+> threshold and the inversion above it; `tools/toll-audit.mjs` asserts the closed form at eight haste
+> levels. History: MODEL-DEFECTS §8q (the ramp was the last lattice leak) and §9a F1 (the toll was flat
+> above the floor, which under-credited nothing and over-charged the ramp by up to 1.33 casts).
+
+---
+
 ## 1. Cast time, Arcane Blast stacks, and the GCD
 
 - **Arcane Blast** base cast = **2.5 s**, reduced by **334 ms per AB debuff stack** (max 3 stacks):

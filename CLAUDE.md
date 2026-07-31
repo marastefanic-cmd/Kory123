@@ -107,8 +107,17 @@ test has an `aoe` phase (`intermission` is not `aoe`, and `aoeCritAmp` is where 
 trickier"*). Above h=0 the GCD cap binds and the right answers change (RULES §5, §7, §7a-ii). **Nothing
 declares a correct layout above h = 0**; `kit-sweep` + `search-audit` cover h ∈ {0,200,400} but assert
 only that a plan is not beaten, never that it is right. Treat a high-haste plan as unverified.
-★ **The equation, in the user's own framing:** the integral of *"the damage a spell would deal right
-now, divided by the time it would take to cast right now"*. The only thing modelled dynamically is the
+★★ **THE CANONICAL STATEMENT OF WHAT THE SCORER IS NOW LIVES IN `docs/MECHANICS.md` §0** (user, 07-31,
+verbatim and expanded) — read it before touching the objective. In one line: the integral of a
+**momentary** DPS, *"if I started casting the spell right now, how much damage would that spell deal
+divided by how many seconds it would take to cast"*, graphed over the fight with the area under it
+summed; the graph moves with Arcane Blast stacks and cooldown usage, and the model picks the layout that
+maximizes the area. ⚠ *Momentary* is a **counterfactual about a spell not yet cast**, not "the DPS you
+are doing at `t`" — which is why the objective needs no cast lattice, and why three versions of
+`scoreStart` that smuggled one in each cost a measured defect. §0 also carries the user's two standing
+rulings: **the scoring part has to be perfectible and the search part does not**, and **haste has no
+innate value on the ramp** (with the algebra that reproduces it, and why the above-the-GCD-cap case is
+the "other factors" clause rather than a counterexample). The only thing modelled dynamically is the
 Arcane Blast stack count, because that is what moves the denominator; everything else is a value
 overlaid on that curve at a known time. Because it is an exact integral, "A beats B" is **arithmetic** —
 which is what makes the scorer failure mode above meaningful.
