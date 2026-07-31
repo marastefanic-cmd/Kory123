@@ -1687,3 +1687,63 @@ gear haste (Lust@0 40s + IV@0, T=60):
 - **≥~200: Icon drifts to the later Lust half** (both halves near-floored; margins are hair-thin ties).
 The general form: **the SP trinket always owns the fastest window; the haste trinket claims the best
 window it doesn't overcap, sliding out of Lust as gear grows** — §5's IV rule replayed through a lockout.
+
+---
+
+## 10. ★ CANCEL-CASTING IS WHY PRESS-TIME SEMANTICS IS LEGITIMATE — and the residual is bounded
+
+**User observation, 07-31:** *"We previously simulated the casts and credited unfinished casts partially
+based on how much of that cast finished. It would essentially be the same thing if we just allowed to
+also do that same thing, ie cancel casting and credit partially, to trigger cooldown at exactly the
+moment we wanted to… though I think the algebra math of the integral says the same thing well enough."*
+
+**It is right, and the last clause is right too — but not for the obvious reason.** Worth writing down,
+because it retires the standing worry that press-time semantics (`scoreStart = geoStart(e)`, pure window
+geometry since §8l) is an idealisation the game cannot execute.
+
+**Three facts, in order.**
+1. **Every on-use cooldown the tool schedules is OFF the GCD** (verified against wowsims: Icy Veins,
+   Arcane Power, Berserking, the trinkets and the mana gem all carry `DefaultCast: {NonEmpty: true}`
+   with no GCD field). So the **press itself** is already legal at any instant, mid-cast included. No
+   cancelling is needed to *press* on time.
+2. What is late is the **effect**, and only for **haste**: haste is snapshotted at a cast's START
+   (MECHANICS), so a haste buff pressed mid-cast buys nothing until the next cast begins. A **value**
+   buff (+SP, +damage) is read at COMPLETION and so applies to the cast already in flight — for those
+   there is no slip at all, and press-time semantics is exact.
+3. ⇒ the only gap is a haste buff's window starting up to one interval late. **And the player has two
+   ways out, so the true cost is the cheaper of them:**
+   * **cancel** the in-flight cast — cost is the elapsed fraction, `x / I` casts, and the press is exact;
+   * **wait** for the next cast — cost is the window arriving `(I − x)` late, worth `(I − x) · Δrate`,
+     **and only at an edge** (§8l: shifting a lone window inside a uniform region changes the integral by
+     exactly nothing, which is a gated law).
+
+   The player takes the minimum, so the worst case is where the two cross, `x* = I²·Δrate / (1 + I·Δrate)`:
+
+   | buff | m | I (s) | Δrate /s | crossover x* | **max unpaid cost (casts)** |
+   |---|---|---|---|---|---|
+   | Berserking | 1.10 | 1.500 | 0.0665 | 0.136 s | **0.0907** |
+   | Icy Veins in Bloodlust | 1.56 | 1.154 | 0.1334 | 0.154 s | **0.1334** |
+   | Icy Veins | 1.20 | 1.500 | 0.1333 | 0.250 s | **0.1667** |
+   | Bloodlust | 1.30 | 1.500 | 0.1999 | 0.346 s | **0.2307** |
+
+★ **The twist: cancelling is worth it precisely when you have barely started the cast.** The naive
+reading — *"cancelling costs a whole cast, so it can never pay"* — is wrong, and it is wrong in the
+direction that helps. Cancel 0.1 s into a Blast and you forfeit 0.067 casts to gain up to 0.187; the
+option is cheap exactly where you need it. That is why the model's *"the press takes effect now"* is a
+**realistic** player line and not a convenient fiction.
+
+⚠ **What the model does NOT charge is that residual**, bounded above by the table's last column. It is
+0.09–0.23 casts at the worst sub-cast phase, **zero in a uniform interior** (§8l), and non-zero only
+where a window edge is load-bearing — a kill truncation, an abutment in the packing train (§4c), or a
+phase wall. So the standing summary is: **press-time semantics is right, its error is one-signed
+(optimistic), bounded, and concentrated at edges.** ⛔ Do not "fix" it by reintroducing fire-time
+snapping — that is the retired approach (CLAUDE.md rule 2), it re-splits co-pressed clusters, and it
+would trade a bounded ≤0.23-cast optimism for a lattice dependence in a scorer that §8l made
+lattice-free on purpose.
+
+★ **Corollary worth keeping — this is the same quantity §9's Correction 3 was about.** Correction 3
+("a value window ending flush with an AoE wall loses its last cast") is exactly an edge case of the slip
+above, and MODEL-DEFECTS records that it has gone **inert** in the ranking since §8l. The cancel option
+is why that is tolerable rather than a regression: a player who wants the window to end flush can cancel
+into the press and pay ≲0.17 casts, which is the same order as the effect Correction 3 was correcting.
+It is a **search-path** question now, not a scorer one.
