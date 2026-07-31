@@ -115,3 +115,47 @@ moves every cast boundary, hence every plan, so it is a standalone commit and no
 Measured cost of leaving it: the two cast lattices drift up to **0.35 s by t=200** on a buffed plan,
 which still denies **26 of 196 presses** the cast the model scored them on even after the transcription
 was fixed (PHASE12 §6.9d).
+
+---
+
+## Raid buffs & debuffs — the damage-readout multiplier *(added 2026-07-31)*
+
+Added for the "expected damage / DPS" tiles. ★ **Every value read off the wowsims SOURCE**, per the
+user ruling that the sim's code remains a valid reference even though its DPS methodology is retired.
+That mattered: the open web disagreed with itself on two of these and the source settled both.
+
+| effect | value | wowsims expression | note |
+|---|---|---|---|
+| Arcane Instability 3/3 | **×1.03** damage | `0.01 * ranks`, `SpellMod_DamageDone_Pct`, `ClassMask MageSpellsAll` | also +1% crit/rank, which DOES appear on the character sheet |
+| Curse of the Elements | **×1.13** | `multiplier := 1.10 + 0.01*float64(ranks)` | the `ranks` are **Malediction**; 3/3 ⇒ 1.13. 2.4.3 extended CoE to Arcane |
+| Misery 5/5 | **×1.05** | `multiplier := 1.0 + 0.01*float64(ranks)` | all six schools incl. Arcane |
+| Arcane Impact 3/3 | **+6 % crit** | `2 * ranks`, `SpellMod_BonusCrit_Percent`, `ClassMask MageSpellArcaneBlast \| MageSpellArcaneExplosion` | ⚠ the web said 4 % — that is **rank 2**. Spell-specific, so NOT on your sheet |
+| Clearcasting → Arcane Potency | **+3 % crit** | from `TALENTS` (5/5 CC × 3/3 Potency) | `aoeCritAmp` normalises it away at N=1, so it is missing from any absolute number |
+
+★ **CoE and Misery MULTIPLY, they do not add** — each is its own `aura.NewExclusiveEffect`
+(`"CurseOfElements"`, `"MiseryBonus"`) applying its own school multiplier in sequence. This had been
+flagged as an unresolved assumption before the source was read; additive would give 1.18, multiplicative
+1.1865. **Total at 38 % crit: ×1.29070.**
+
+⛔ **DELIBERATELY EXCLUDED, and each for a stated reason:**
+- **Ferocious Inspiration (+3 %)** — wowsims has it as a bare `// TODO` (`registerFerociousInspiration`),
+  so it cannot be cited to the standard the rest meet, and in TBC it is **party**-scoped, not raid-wide.
+  Add ~3 % by hand if a BM hunter is in your group. The readout is that much conservative.
+- **Totem of Wrath (+3 % crit), Moonkin Aura (+5 % crit), Wrath of Air (+101 SP), Improved Divine
+  Spirit, Arcane Intellect / Blessing of Kings** — these are STAT buffs and land on your character
+  sheet, which is where the tool's SP and crit inputs come from. Applying them here would
+  **double-count**. ★ And it would not be merely redundant: SP and crit are the two inputs that are NOT
+  plan-neutral (SP moves +SP-buff dilution, crit moves `aoeCritAmp`), so routing them through this
+  multiplier is also the only way to keep them from changing plans.
+
+### ⚠ Why none of this can move a declared test — VERIFIED, not argued
+
+A constant per-cast multiplier scales `integral` and `plainCastOf` identically, so effective casts and
+every ranking are algebraically untouched. Crit and spellpower are not constants in that sense, so they
+were **measured**: all 7 `CASES` layouts (imported from `tests/anchors.mjs`, never retyped) remain the
+argmax of their ≤2-coordinate ±3 s neighbourhood at **crit ∈ {0, 25, 38, 60, 100} %** and
+**SP ∈ {600, 1000, 1387, 1800, 2400}**. And no raid buff in TBC grants spell HASTE — Wrath of Air is
++101 spell damage in 2.4.3, not haste — so the h = 0 tests stay h = 0.
+⚠ The one contingency worth naming: crit cancels **only because no declared test contains an `aoe`
+phase**. `intermission` is not `aoe`, and `aoeCritAmp` is the one place crit does not divide out
+(§9.2). A declared test with a real AoE phase would make crit a plan-relevant input.

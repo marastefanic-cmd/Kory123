@@ -645,6 +645,7 @@
           </div>
         </div>
         <label class="check use" style="margin-top:6px" title="Tirisfal Regalia (Tier 5) 2-piece: Arcane Blast deals 20% more damage and costs 20% more mana. It adds to Arcane Power rather than multiplying with it, so with the set on, an Arcane Power window is worth slightly less relative to your other casts — which mostly matters when a fight has AoE phases."><input id="ck-t5" type="checkbox"> Tirisfal (T5) 2-piece — Arcane Blast +20% damage</label>
+        <label class="check use" title="Applies the damage multipliers a normal raid gives you that your character sheet does NOT show: Arcane Instability (talent, +3% spell damage), Curse of the Elements with Malediction on the boss (+13%), Misery (+5%), and the crit your sheet omits — Arcane Impact (+6%, Arcane Blast and Explosion only) and Clearcasting → Arcane Potency (+3% on ~10% of casts). All five values are read off the wowsims source. ⚠ It does NOT add Totem of Wrath, Moonkin Aura, Wrath of Air or Blessing of Kings — those are spellpower and crit, which you already typed in above, so adding them here would count them twice. Ferocious Inspiration (+3%) is left out: it is party-only and wowsims does not implement it. Affects the damage and DPS readout ONLY — it never touches the plan."><input id="ck-raid" type="checkbox" checked> Raid buffs &amp; debuffs (damage readout only)</label>
         <span class="hint">Use the numbers you actually have in the raid, fully buffed. Crit is here for two things only:
         Ashtongue proc uptime and AoE phases — everywhere else it scales every possible plan equally, so it can't change which one wins.</span>
       </div>
@@ -771,7 +772,7 @@ const GAME = {
   COLD_SNAP_CD: 480,
 };
 // Always-present Arcane raiding talents (a mage always has these; gear is not assumed).
-const TALENTS = { arcaneConcentration: 5, arcanePotency: 3 }; // 5/5 CC = 2%/rank per-HIT proc; 3/3 Potency = +10% crit/rank on the next cast (Anniversary 3-rank → +30%, sim-confirmed)
+const TALENTS = { arcaneConcentration: 5, arcanePotency: 3, arcaneImpact: 3 }; // 5/5 CC = 2%/rank per-HIT proc; 3/3 Potency = +10% crit/rank on the next cast (Anniversary 3-rank → +30%, sim-confirmed)
 // AoE crit amplification — Clearcasting → Arcane Potency. Arcane Concentration procs PER HIT
 // (wowsims sim/mage/talents.go, OnSpellHitDealt), so an N-target Arcane Explosion cast rolls it N times
 // ⇒ Clearcasting uptime, hence Potency's +crit on the *next* cast, rises with the target count. This is
@@ -4991,6 +4992,13 @@ function runOptimize(cfg, starts, onProgress) {
 // The sensitivity panel keeps only the cheap arithmetic banks-on line. Nothing computes after
 // the results render.)
 let lastRun = null, lastGeo = null;
+/* The raid-realism box changes two tiles and nothing else, so it re-renders rather than re-solving.
+   ⚠ It is deliberately NOT part of `cfg` — keeping it out of the object the engine sees is what makes
+   "it never touches the plan" a structural guarantee instead of a promise. */
+document.addEventListener("DOMContentLoaded", () => {
+  const b = el("ck-raid");
+  if (b) b.addEventListener("change", () => { if (lastRun) renderTiles(lastRun); });
+});
 const colorOf = k => getComputedStyle(document.documentElement).getPropertyValue(BUFFS[k].color.slice(4, -1)).trim() || "#888";
 el("btn-run").addEventListener("click", async () => {
   const cfg = readCfg();
@@ -5035,6 +5043,59 @@ function render(run) {
     block: "start",
   });
 }
+/* ★★★★★ THE RAID-REALISM MULTIPLIER — user request 07-31: *"can we make the number actually realistic?
+   If you consider the talent tree too? And run of the mill average raid buffs/debuffs on the boss."*
+   ★ EVERY VALUE BELOW IS READ OFF THE wowsims SOURCE, not a guide or a memory — user ruling: the sim's
+   CODE is still a valid source of values, it is only its DPS methodology that is retired. That matters,
+   because the web disagreed with itself on two of them and the source settled both.
+
+   ⚠⚠ THE MAIN RESULT OF THE RESEARCH IS THAT HALF THE RAID BUFFS MUST **NOT** BE ADDED HERE.
+   · **STAT buffs — already YOUR INPUTS.** Totem of Wrath (+3% crit), Moonkin Aura (+5% crit), Wrath of
+     Air (+101 SP), Improved Divine Spirit, Arcane Intellect / Kings → Int → spellpower. Every one lands
+     on your character sheet, which is where the SP and crit boxes get filled from, so adding them here
+     would DOUBLE-COUNT. ★ And it would not be merely redundant: SP and crit are the two inputs that are
+     NOT plan-neutral (SP moves +SP-buff dilution, crit moves `aoeCritAmp`), so they would change plans.
+   · **DAMAGE MULTIPLIERS — invisible on the sheet, and safe.** A flat ×N on every cast cancels out of
+     effective casts entirely and moves only the damage readout.
+
+   THE TABLE, each line with the wowsims expression it came from:
+     Arcane Instability 3/3   ×1.03   `0.01 * ranks`, SpellMod_DamageDone_Pct, ClassMask MageSpellsAll
+     Curse of the Elements    ×1.13   `1.10 + 0.01*ranks` — the `ranks` ARE Malediction, so 3/3 ⇒ 1.13
+     Misery 5/5               ×1.05   `1.0 + 0.01*ranks`, all six schools including Arcane
+     Arcane Impact 3/3        +6% crit  `2 * ranks` BonusCrit_Percent, ClassMask ArcaneBlast|ArcaneExplosion
+     Clearcasting → Potency   +3% crit  computed from TALENTS — `aoeCritAmp` normalises it away at N=1
+
+   ★ CoE AND MISERY MULTIPLY, they do not add — settled from the source, where each is its own
+   `ExclusiveEffect` ("CurseOfElements", "MiseryBonus") applying its own school multiplier in sequence.
+   Additive would read 1.18; multiplicative reads 1.1865. This was flagged as an assumption before the
+   source was consulted, and the source confirmed it.
+   ★ ARCANE IMPACT IS CRIT, NOT DAMAGE, AND IT IS NOT ON YOUR SHEET — its ClassMask is Arcane Blast and
+   Arcane Explosion specifically, so the general spell-crit number you typed does not contain it. It is
+   applied here as a crit RATIO rather than by touching `cfg.critPct`, which would have moved
+   `aoeCritAmp` and changed AoE plans. ⚠ The web said 4%; the source says 2%/rank ⇒ **6%** at 3/3. The
+   4% figure is rank 2.
+   ⛔ FEROCIOUS INSPIRATION (+3%) IS DELIBERATELY EXCLUDED. wowsims has it as a bare `// TODO`, so it
+   cannot be cited to the standard the others meet, and in TBC it is PARTY-scoped — you only have it
+   with a BM hunter in your group. Add ~3% by hand if that is your raid. The readout is conservative. */
+const RAID_DMG = [
+  { key: "arcaneInstability", mult: 1.03, label: "Arcane Instability 3/3 (+3% spell damage)" },
+  { key: "coe",               mult: 1.13, label: "Curse of the Elements + Malediction (+13%)" },
+  { key: "misery",            mult: 1.05, label: "Misery 5/5 (+5%)" },
+];
+/* The crit your sheet does NOT show: Arcane Impact (Arcane Blast / Explosion only) and the
+   Clearcasting → Arcane Potency lift on ~10% of casts. Returned as a ratio against the crit the model
+   actually used, so nothing here can reach `cfg`. */
+function raidCritScale(cfg) {
+  const crit = Math.min(1, Math.max(0, (cfg.critPct || 0) / 100));
+  const impact = 0.02 * TALENTS.arcaneImpact;
+  const potency = (0.02 * TALENTS.arcaneConcentration) * (0.10 * TALENTS.arcanePotency);
+  const cm = c => 1 + Math.min(1, c) * (GAME.CRIT_MULT - 1);
+  return cm(crit + impact + potency) / cm(crit);
+}
+function raidScale(cfg) {
+  if (!el("ck-raid") || !el("ck-raid").checked) return 1;
+  return RAID_DMG.reduce((a, r) => a * r.mult, 1) * raidCritScale(cfg);
+}
 function renderTiles({ cfg, baseline, naiveR, optR }) {
   const tiles = el("tiles"); tiles.hidden = false;
   if (!optR.castCount) {
@@ -5056,12 +5117,13 @@ function renderTiles({ cfg, baseline, naiveR, optR }) {
   const plainCast = plainCastOf(cfg);
   // The tile labels are unavoidably compact, so each carries the plain-language explanation of what
   // the number means as a tooltip — a first-time reader shouldn't have to infer "effective casts".
+  const rs = raidScale(cfg);   // ⚠ MUST precede TIP — the damage tooltip itemises it
   const TIP = {
     gain: "How much more damage this plan does than casting Arcane Blast with no cooldowns at all. Your realistic upside from pressing things well.",
     naive: "How much more damage this plan does than firing every cooldown the moment it comes off cooldown. This is the number that says whether planning was worth it.",
     eff: "Your whole fight measured in plain, unbuffed Arcane Blasts. A cast under Arcane Power counts 1.3, a cast under a spellpower trinket a bit more, and so on — so the count goes up both when you cast more and when your casts are worth more. This is the single number the planner maximizes.",
     floor: "How much of the fight your casts were stuck at the 1.0s global-cooldown floor. Haste added there buys nothing — but a little is normal and often correct, since it usually means you were stacking haste on top of your damage window on purpose.",
-    dmg: "Effective casts × the average damage of one of YOUR Arcane Blasts at the spellpower, crit and Tirisfal setting above. This is the number to compare two GEAR SETUPS on — effective casts alone cannot, because it is measured against each setup's own Arcane Blast, so it deliberately divides spellpower and crit back out. ⚠ Not a damage-meter prediction: infinite mana, hit assumed capped, Arcane Blast only.",
+    dmg: "Effective casts × the average damage of one of YOUR Arcane Blasts at the spellpower, crit and Tirisfal setting above" + (rs > 1 ? `, × ${rs.toFixed(3)} for raid buffs and debuffs (${RAID_DMG.map(r => r.label).join(", ")}, and the Clearcasting→Arcane Potency crit on ~10% of casts). Your spellpower and crit boxes already carry Totem of Wrath, Moonkin Aura, Wrath of Air and Kings, so those are deliberately NOT applied again here.` : " (raid buffs OFF — this is the bare model number).") + " This is the number to compare two GEAR SETUPS on — effective casts alone cannot, because it is measured against each setup's own Arcane Blast, so it deliberately divides spellpower and crit back out. ⚠ Still not a damage-meter prediction: infinite mana, hit assumed capped, Arcane Blast only.",
     dps: "The same number divided by the fight length. Useful for comparing setups at a glance; it is not what a damage meter will show, for the reasons in the damage tile.",
   };
   /* ★ EXPECTED DAMAGE — user request 07-31, and deliberately a PURE READOUT: *"I don't want the tool
@@ -5080,7 +5142,7 @@ function renderTiles({ cfg, baseline, naiveR, optR }) {
      absolute level omits ~4.9% of always-on constant multipliers (Arcane Instability +3%, single-target
      Clearcasting→Arcane Potency +1.9%) that CANCEL out of any comparison and were left out for exactly
      that reason — see ESTABLISHED-FACTS §11. Consistent between setups is the whole claim. */
-  const expDamage = effCasts * plainCast;
+  const expDamage = effCasts * plainCast * rs;
   const fmtDmg = d => d >= 1e6 ? (d / 1e6).toFixed(2) + "M" : (d / 1e3).toFixed(1) + "k";
   tiles.innerHTML = `
     <div class="tile gain" title="${esc(TIP.gain)}"><div class="k">Damage gain vs no cooldowns</div><div class="v">+${gain.toFixed(1)}<small>%</small></div></div>
