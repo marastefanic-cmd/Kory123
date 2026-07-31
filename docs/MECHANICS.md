@@ -93,12 +93,19 @@ defined pointwise at every real `t`, and the score is `∫₀ᵀ rate(t) dt`. Th
 > the yardstick they are measured against by the identical factor. **No innate value. The algebra says so
 > without being told.**
 >
-> ⚠ **And the one exception is not a counterexample — it is the "other factors" clause.** Above the floor
+> ⚠ **The GCD cap is not an exception to this rule — it is a first-class feature of the model, and of
+> course it applies here too** (user, 07-31). It is not a caveat bolted onto the rule afterwards; it is
+> in the **master law itself** — `rate(m) = min(1/F, m/G)`, where the `min` *is* the cap. Everything this
+> project knows about haste is downstream of that one `min`: the 788.5 rating cap, the **zero** (not
+> "diminishing") value of a point above it, the five onset thresholds, the tent, the packing law.
+> ⇒ so read the rule as scoped rather than qualified: **haste has no innate value on the ramp throughout
+> the regime where the cap is not binding**, which is `m ≤ 1.5` and is where essentially all planning
+> happens. What follows is the same law evaluated on the other side of its own `min`. Above the floor
 > (`m > 1.5`, reachable at zero gear haste via `Bloodlust ×1.30 × Icy Veins ×1.20 = 1.56`) the yardstick
 > `i` pins at 1.0 s while the ramp casts keep shortening, so the toll collapses: `1.165 / 0.787 / 0.333`
 > at `m = 1.56 / 1.716 / 2.0`. That is **not** haste acquiring innate ramp value. It is haste having run
-> out of anywhere else to go — the steady rate is capped, so the ramp is the only place left where a
-> second of haste can still do anything. ESTABLISHED-FACTS §1.2b states the same thing as a threshold:
+> out of anywhere else to go — the steady rate is pinned by the cap, so the ramp is the only place left
+> where a second of haste can still do anything. Same law, same `min`, other branch. ESTABLISHED-FACTS §1.2b states the same thing as a threshold:
 > ramp-neutrality holds **exactly while `m·v ≤ 1.5`**, the buff's own onset threshold, and inverts above.
 > ⇒ **the rule is safe to state in the strong form the user does**, provided you remember that "other
 > factors" includes the GCD cap. Gated both ways: `law-check`'s `§8r` pair asserts neutrality below the
