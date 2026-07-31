@@ -5351,9 +5351,52 @@ function renderTimeline(run, opts) {
   const PH = { intermission: "#b06a95", aoe: "#2ba6a0", burn: "#e0973e" };
   const bandLabel = s => s.type === "intermission" ? "Intermission" : s.type === "burn" ? `Burn ×${s.mult}` : `AoE ×${s.targets}`;
 
-  // haste % samples from the actual cast list — DETERMINISTIC haste only (no averaged Ashtongue proc;
-  // the proc is random, so it's shown via its own lane + the "if it aligns" cap line, not the trend)
-  const samples = optR.casts.map(c => ({ t: c.t, pct: ((c.multNoAti ?? c.mult) - 1) * 100, capped: c.capDn ?? c.capped }));
+  /* ★★★★★ THE HASTE CURVE IS A STEP FUNCTION OVER THE **PRESS WINDOWS**, not a sample per cast.
+     Fixed 07-31 from two user reports about the same line: *"it lags behind the actual press time"* and
+     *"the second IV is activated only after zerking ends and yet the spell haste line seems to think
+     they overlap."* Both were the sampling, not the model.
+
+     It read `optR.casts.map(c => ({ t: c.t, … }))` — ONE POINT PER CAST, taken at the cast's START. So:
+       · a buff pressed mid-cast did not appear until the NEXT cast began — a lag of up to a whole cast
+         interval, which at h = 0 is 1.5 s and is plainly visible against the bar underneath it;
+       · a single cast straddling the Berserking→Icy Veins boundary snapshotted BOTH as up, drawing a
+         one-cast spike over the cap that no press schedule ever contained.
+     ⇒ The bars are drawn from press windows, so the curve must be too — then the two are consistent by
+     construction rather than by luck. Edges are every window start and end; each segment is evaluated
+     at its own midpoint, which is exact for a step function and immune to boundary ties (the very thing
+     that produced the phantom overlap).
+     ⚠ Ashtongue stays OUT, as before: its proc is random, so it has no window to step on. It is shown
+     in its own lane and in the "if it aligns" cap line instead. */
+  const hasteMultAt = tt => {
+    let rating = cfg.hasteRating, mult = 1, blA = false, piA = false;
+    for (const k of LANE_ORDER) {
+      if (!cfg.enabled[k] || k === "ati") continue;
+      const def = BUFFS[k];
+      for (const pr of shownTimes(run, k)) {
+        if (tt < pr || tt >= pr + def.dur) continue;
+        if (k === "powerInfusion") piA = true;
+        else if (def.kind === "mult") { mult *= def.value; if (k === "bloodlust") blA = true; }
+        else if (def.kind === "rating") rating += def.value;
+      }
+    }
+    if (piA && !blA) mult *= BUFFS.powerInfusion.value;   // same exclusivity the engine applies
+    return mult * (1 + rating / (GAME.HASTE_RATING_PER_PCT * 100));
+  };
+  const CAP_M = GAME.GCD_BASE / GAME.GCD_FLOOR;           // the m at which the GCD floor binds
+  const edges = new Set([PRE > 0 ? -PRE : 0, cfg.T]);
+  for (const k of LANE_ORDER) {
+    if (!cfg.enabled[k] || k === "ati") continue;
+    for (const pr of shownTimes(run, k)) {
+      if (pr >= (PRE > 0 ? -PRE : 0) && pr <= cfg.T) edges.add(pr);
+      const e = pr + BUFFS[k].dur;
+      if (e > 0 && e < cfg.T) edges.add(e);
+    }
+  }
+  const eArr = [...edges].sort((a, b) => a - b);
+  const samples = eArr.slice(0, -1).map((tt, i) => {
+    const m = hasteMultAt((tt + eArr[i + 1]) / 2);
+    return { t: tt, pct: (m - 1) * 100, capped: m >= CAP_M - 1e-9 };
+  });
   const maxPct = Math.max(60, Math.ceil((samples.length ? Math.max(...samples.map(s => s.pct)) : 0) / 10) * 10 + 5);
   const y = p => PADT + CURVE_H - (Math.min(p, maxPct) / maxPct) * CURVE_H;
 
