@@ -1410,11 +1410,31 @@ be applied: **infinite mana** (a long fight would really go OOM), **hit hardset 
 Blast only** — no filler, no free Arcane Missiles off a Clearcasting proc. And `GAME.CRIT_MULT = 1.8175`
 bakes in a Chaotic Skyfire Diamond meta gem, an assumption that was free while it cancelled.
 
-### ⛔ AND ONE DIVERGENCE THIS EXPOSED, NOT YET RESOLVED
+### ✅ AND ONE DIVERGENCE THIS EXPOSED — RESOLVED THE SAME DAY, BY USER DIRECTIVE
 
-The tile reads `optR.total / plainCast` — the **per-cast board sum** — while the tool RANKS on the
-integral (§8h). They differ by **~0.31 casts (0.14 % at T=300, 0.32 % at T=120)**, and the tile's
-tooltip claimed it was *"the single number the planner maximizes"*, which stopped being true on 07-30.
-The wording is corrected; **which of the two the headline should show is a user call** and is left
-alone. The damage tile multiplies whatever the effective-casts tile shows, so the two are always
-consistent with each other on screen.
+Every headline number on the page read `r.total`, the **per-cast board sum**, while the tool RANKS on
+the integral (§8h). They differ by **~0.31 casts (0.14 % at T=300, 0.32 % at T=120)**, so the page was
+quoting a gain, a margin and a cast count the optimizer is **not the argmax of** — and the tooltip
+claimed outright to be *"the single number the planner maximizes"*, which stopped being true on 07-30.
+⇒ User directive: *"then the effective casts should also read the integral."* All of them now do —
+`gain`, `vsNaive`, `effCasts`, the custom-vs-model delta, and the Debug export's `vsModelPct`.
+
+⚠ **AND THE FIX FOUND A SECOND COPY.** `renderTiles` and the custom-timeline panel kept **two hand-kept
+copies** of the same four formulas; switching only the visible one would have left the custom panel
+reading `total` and silently disagreeing with the tiles beside it. Both now call `tileStats`, the one
+definition. That is the third re-typed-formula bug this repo has paid for in two days (the other two:
+the plain-cast normalizer, four copies, and `anchors`' re-typed `one`). **Formula duplication is this
+codebase's most reliable defect generator** — when a quantity is redefined, every copy is a site that
+silently keeps the old meaning.
+
+Measured effect on the page (Morogrim 2:45), plans **byte-identical** (`PLAN-DIFF IDENTICAL` 15/15,
+anchors 8/8, law-check green — nothing here feeds the search):
+
+```
+                          before (total)   after (integral)
+  gain vs no cooldowns        +22.3 %          +22.4 %
+  vs mashing on cooldown       +1.7 %           +1.4 %     ← the largest move, as expected:
+  effective casts             132.9            133.0          it is a ratio of two DIFFERENT plans
+  expected damage             297.9k           298.2k
+  expected DPS                1,805            1,807
+```
