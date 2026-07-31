@@ -63,6 +63,9 @@ export function loadEngine(htmlPath) {
                aoeCritAmp:  typeof aoeCritAmp  !== 'undefined' ? aoeCritAmp  : undefined,
                TALENTS:     typeof TALENTS     !== 'undefined' ? TALENTS     : undefined,
                planBetter:  typeof planBetter  !== 'undefined' ? planBetter  : undefined,
+               // phaseFinish's start set — exported so a probe can replay its chain start by start.
+               phaseStarts: typeof phaseStarts !== 'undefined' ? phaseStarts : undefined,
+               phaseFinish: typeof phaseFinish !== 'undefined' ? phaseFinish : undefined,
                cases: [...window.BOSS_PRESETS, ...window.GOLDEN_PRESETS],
                nBoss: window.BOSS_PRESETS.length, nGolden: window.GOLDEN_PRESETS.length,
                defaults: window.GOLDEN_DEFAULTS };`)(win, globalThis);

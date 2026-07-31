@@ -2908,6 +2908,55 @@ negative control still catches **63 of 63** displaced plans.
 ⛔ Do NOT "fix" this by dropping the shape half instead — that is the §8u mistake, which reported the
 declared T1 as a miss 5.8× inside the band.
 
+### 1b. ⛔⛔ AND ON THE FULL KIT MATRIX, 3d REGRESSES A CELL BY 90× THE BAND (measured 07-31)
+
+⚠ **THIS SUPERSEDES PART 1's "strictly additive" reading, and it withdraws a recommendation.** Part 1
+priced move class 3d on the **15-preset** corpus, where it changed 2 cells (one fight), both inside the
+band — which reads as clean. Swept across the **63-cell kit × haste matrix** (`kit-sweep --html=`, added
+for exactly this), it changes **13 of 63**:
+
+| | cells | detail |
+|---|---|---|
+| inside the tie band (canonicalisation) | 9 | 5 of them reduce distinct press moments — 3d doing its job |
+| outside the band, BETTER | 3 | `icon+gem+skull·h200·2:40` **+0.0847** · `pi+icon+gem·h200·3:00` **+0.0143** · `drums+icon+gem·h200·3:00` **+0.0068** |
+| outside the band, **WORSE** | **1** | `drums+icon+gem · h0 · 2:40 interm` **−0.181543 casts, 90× the band** |
+
+```
+  drums+icon+gem · h0 · 2:40 · Lust 0:07 · intermission 1:30–2:10
+    without 3d   AP[20] Zerk[20] drums[0,130] IV[30,140] Icon[20,140] gem[20,140]   104.143286   6 moments
+    with 3d      AP[7]  Zerk[7]  drums[7,130] IV[37,137] Icon[7,137]  gem[7,137]    103.961744   4 moments
+    planBetter(with3d, without3d) = FALSE      planBetter(without3d, with3d) = TRUE
+```
+
+⇒ **3d emitted a plan its OWN comparator rejects**, and the single regression is **larger than the
+largest gain**. Verified by scoring both layouts on ONE engine, so it is a real score difference and
+not an artifact of comparing two builds.
+
+### ⚠ THE MECHANISM IS NOT ESTABLISHED — do not "fix" it until it is
+
+This should not be reachable. `phaseRerank` carries the §8w ceiling, and `phaseFinish` seeds `bv` from
+its own input and only adopts on `planBetter`, so both stages are monotone by construction. Two
+hypotheses, **both unverified**, and the probes for each exceeded the session's runtime (this cell is
+among the slowest in the matrix):
+
+1. **Chain drift in `phaseFinish`.** It has the identical banded-accept structure §8w fixed inside
+   `phaseRerank` and **no ceiling guard** — but ~8 starts caps the drift at ~8 bands ≈ 0.016 casts,
+   an order of magnitude short of 0.18. Insufficient on its own.
+2. **Cross-cell memo contamination.** `kit-sweep` solves all 63 cells in ONE process and `simulate`'s
+   memo is module-level state. §8z found one incomplete memo key the same day; a second would make a
+   later cell read an earlier cell's score, and 3d changes the call ORDER. ⇒ the decisive probe is
+   solving this cell ALONE under the 3d engine: if it emits the good plan, the regression is memo
+   contamination and **not a property of 3d at all** — and, far more seriously, it would mean
+   `kit-sweep` results in general are order-dependent.
+
+⛔ **UNTIL ONE OF THOSE IS CONFIRMED, 3d STAYS OUT** — and note hypothesis 2 would indict the
+instrument rather than the move class, so "ship 3d and fix the cell" is not available either.
+⛔ **The 07-30 recommendation *"on that evidence I'd revise T6 and ship 3d"* is WITHDRAWN.** It rested
+on the 15-preset corpus, which did not contain this cell. The T6 call (part 3) is now **independent**
+of 3d: T6 is a question about the tie-break, 3d is a search change that needs its own clearance.
+
+---
+
 ### 3. ⛔ THE OPEN QUESTION — T6 IS NOT THE ARGMAX, AND THE OBJECTIVE PREFERS SOMETHING ELSE
 
 With 3d in place the tool emits, for T6 (2:00, Lust 0:05, 1387 SP, 38 % crit, h = 0):

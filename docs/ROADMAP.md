@@ -15,9 +15,16 @@
 > applied generally; or *(b)* T6 is revised to the objective's answer — which still satisfies the
 > original bug report, since that asked for Icy Veins to be co-pressed *"along with the other things"*,
 > as it is at 0:15. ⚠ Reading (a) changes the crown-jewel objective and ripples through all eight tests.
-> **Blocked on this:** move class **3d** (the cooldown-chain closure), which takes the kit × haste
-> matrix from 59/63 to **63 of 63 local optima** and closes the last known SCORE miss (+0.005892 casts).
-> Its code is preserved verbatim in §8y; it is NOT in `index.html`.
+> ⚠ **NO LONGER blocked on this:** move class **3d** was thought to be waiting on the T6 call. It is
+> not — it has its own problem. Swept across the 63-cell kit matrix it changes 13 cells, and one of
+> them **regresses by 0.181543 casts, 90× the tie band** (`drums+icon+gem · h0 · 2:40 interm`) —
+> larger than its largest gain. It emitted a plan its own comparator rejects, which should not be
+> reachable, and **the mechanism is not established** (§8y part 1b). Two candidate causes, both
+> unverified: chain drift in `phaseFinish` (which lacks §8w's ceiling) or cross-cell memo contamination
+> in `kit-sweep`'s single process — and the second would indict the INSTRUMENT, not the move class.
+> ⇒ the decisive probe is solving that one cell ALONE under the 3d engine. It is slow (>9 min) and
+> outran the session; run it first next time.
+> Its code stays preserved verbatim in §8y; it is NOT in `index.html`.
 >
 > ## ▶▶ THEN: PASSIVE GEAR HASTE. The groundwork is in `ESTABLISHED-FACTS` §10.
 > Every declared layout is **h = 0** and nothing in the repo declares a correct plan above it. §10 now
