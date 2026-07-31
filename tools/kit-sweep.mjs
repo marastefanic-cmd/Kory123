@@ -31,9 +31,14 @@ import { loadEngine, cfgFor } from './engine-node.mjs';
 
 const die = m => { console.error('KIT-SWEEP ERROR: ' + m); process.exit(2); };
 const OUT = process.argv[2];
-if (!OUT) die('usage: node kit-sweep.mjs <out.json> [jobs]');
-
-const api = loadEngine(new URL('../index.html', import.meta.url).pathname);
+if (!OUT) die('usage: node kit-sweep.mjs <out.json> [--html=path]');
+/* ⚠ --html lets this sweep an ALTERNATIVE engine, which is the only way to measure what a candidate
+   move class changes across the kit matrix (`plan-sweep` has taken an html path since it was written,
+   for the same A-vs-B reason; this file hardcoded `../index.html` and so could only ever describe HEAD).
+   Used to price move class 3d against MODEL-DEFECTS §8y's open user call. */
+const HTML = (process.argv.find(a => a.startsWith('--html=')) || '').split('=')[1]
+          || new URL('../index.html', import.meta.url).pathname;
+const api = loadEngine(HTML);
 
 // The kits. Each names something the covered kit cannot express.
 const KITS = {
@@ -118,6 +123,6 @@ process.stdout.write('\r' + ' '.repeat(70) + '\r');
 if (cells.length !== total) die(`expected ${total} cells, produced ${cells.length}`);
 const errs = cells.filter(c => c.error).length;
 fs.writeFileSync(OUT, JSON.stringify({ kits: Object.keys(KITS), haste: HASTE, shapes: SHAPES.map(s => s.tag), cells }, null, 1));
-console.log(`KIT-SWEEP OK cells=${cells.length} kits=${Object.keys(KITS).length} haste=[${HASTE}] shapes=${SHAPES.length} errors=${errs} illegal=${bad} → ${OUT}`);
+console.log(`KIT-SWEEP OK engine=${HTML.split('/').pop()} cells=${cells.length} kits=${Object.keys(KITS).length} haste=[${HASTE}] shapes=${SHAPES.length} errors=${errs} illegal=${bad} → ${OUT}`);
 if (errs) process.exit(2);
 process.exit(bad ? 1 : 0);
