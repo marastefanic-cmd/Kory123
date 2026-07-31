@@ -108,6 +108,49 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
       `${D} × [rate(1.32) − rate(1.2)] × (1 + s₁₅₅ + s₂₂₅ = ${prem.toFixed(4)})`);
 }
 
+/* ═══ PHASES — THE ARCANE BLAST DEBUFF HAS THREE CASES, AND ALL THREE ARE PHYSICS ════════════════
+   Added 07-31. The phase machinery (AoE / burn / intermission) is the most intricate part of the
+   scorer and NOTHING asserted it. The load-bearing mechanic is the Arcane Blast debuff: applied on
+   COMPLETION, lasting `DEBUFF_DUR` (8 s) from the previous cast's START. With `G` = start→start gap
+   and `ct` this cast's own length there are THREE outcomes, not two:
+
+     G ≤ DEBUFF_DUR − ct     refreshed in time                      → stacks stay 3
+     DEBUFF_DUR − ct < G < DEBUFF_DUR
+                             the cast BEGINS with stacks (snapshot, so it keeps the fast cast time)
+                             but the old debuff lapses mid-cast, so its completion lands a FRESH
+                             stack                                  → 3, then 1, 2, 3
+     G ≥ DEBUFF_DUR          already gone when the cast begins      → 0, then 1, 2, 3
+
+   The middle band is the one an engine forgets — this one modelled only the outer two for most of the
+   project (index.html ~:1362). Gated here on the STACK SEQUENCE itself, which is the physics, rather
+   than on a score, which is a consequence.
+   ★ AoE phases are the sharp test: Arcane Explosion neither builds nor refreshes the debuff, so the
+   decay must be measured from the last ARCANE BLAST even though you never stopped casting. */
+{
+  const seq = (L, type) => {
+    const c = cfgOf(300, [], null, 0, { segments: api.buildSegments([{ from: 100, to: 100 + L, type, mult: 1, targets: 6 }], 300) });
+    const r = api.simulate(api.repair({}, c), c, true);
+    // stacks of the first three ARCANE BLASTS after the phase ends
+    return r.casts.filter(x => x.t >= 100 + L - 1e-9).slice(0, 3).map(x => x.stacks).join(',');
+  };
+  for (const type of ['intermission', 'aoe']) {
+    chk(`${type}: 4 s gap keeps the debuff`,      seq(4, type) === '3,3,3' ? 0 : 1, 0, 0, `got [${seq(4, type)}], want [3,3,3]`);
+    chk(`${type}: 6 s gap lapses MID-CAST`,       seq(6, type) === '3,1,2' ? 0 : 1, 0, 0, `got [${seq(6, type)}], want [3,1,2] — the third case`);
+    chk(`${type}: 8 s gap is a full re-ramp`,     seq(8, type) === '0,1,2' ? 0 : 1, 0, 0, `got [${seq(8, type)}], want [0,1,2]`);
+  }
+}
+{
+  // Arcane Explosion is INSTANT, so an AoE phase runs at the bare GCD and fits exactly L/GCD casts.
+  const L = 12;
+  const c = cfgOf(300, [], null, 0, { segments: api.buildSegments([{ from: 100, to: 100 + L, type: 'aoe', mult: 1, targets: 6 }], 300) });
+  const r = api.simulate(api.repair({}, c), c, true);
+  const inPhase = r.casts.filter(x => x.t >= 100 && x.t < 100 + L);
+  chk('AoE phase fits L / GCD Arcane Explosions', inPhase.length, L / G.GCD_BASE, 0,
+      'instant cast ⇒ GCD-bound ⇒ 12 s / 1.5 s = 8');
+  chk('…every one at the bare GCD', Math.max(...inPhase.map(x => Math.abs(x.interval - G.GCD_BASE))), 0, 1e-9,
+      'no Arcane Blast cast time anywhere inside an AoE phase');
+}
+
 /* ═══ UNGATED SURFACE, CLOSED 07-31 — four behaviours nothing asserted ═══════════════════════════
    Audit of what `simulate` DOES against what this file CHECKED found four live behaviours with no
    closed form behind them. Ungated surface is where the next defect hides, and three of these are
