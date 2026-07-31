@@ -2412,7 +2412,34 @@ and is the reason that one press disagrees.
 
 ---
 
-## §8r — cooldowns chain from the PRESS everywhere (07-30), and the one fork it exposed
+## §8r — ⚖️ CHARACTERISED AND GATED 07-31. The fork stands as a USER CALL, not a defect. (07-30)
+
+> **Measured 07-31 with a proper control** — both placements inside the SAME company (Lust pinned
+> `[0,60]`, buff at 0 vs 20), because comparing 0 against 100 also moves the buff out of Lust and that
+> confound reads as a 0.20-cast "ramp effect" that is nothing of the kind:
+>
+> ```
+>   Icy Veins      ramp 2.668977   clear 2.668977   residual  0.000000
+>   Berserking     ramp 0.867377   clear 0.867377   residual  0.000000
+>   Icon (+SP)     ramp 1.234984   clear 1.337803   residual −0.102819
+>   Arcane Power   ramp 3.499880   clear 3.899480   residual −0.399600
+> ```
+>
+> ⇒ **Statement 1 is implemented EXACTLY, not approximately** — a haste buff over the ramp is worth
+> identically what it is worth after it, to 1e-9, for both haste buffs. And its second half holds too:
+> a VALUE buff correctly prefers to be clear of the ramp, because a value window spent on slow ramp
+> casts covers fewer of them. Four `law-check` lines now gate all of it (§8r block).
+>
+> ⇒ **Statement 2 — the opener COMPRESSING under haste — remains deliberately unmodelled**, and this is
+> a **user call rather than a defect to fix**: §8r measured that adopting it moves Icy Veins #1 to the
+> pull and breaks the declared layouts. Both statements are true about the game; the model can only
+> honour one, and the declared layouts pick statement 1.
+> ⚠ Anyone revisiting it should note the residual is a clean **0.000000**, not a fudge — there is no
+> partial credit hiding in the current build that a compression model would double-count.
+>
+> The original entry follows unchanged.
+
+## (original) §8r — cooldowns chain from the PRESS everywhere (07-30), and the one fork it exposed
 
 User: *"with our model the trinket and the stat changes should apply the moment it's pressed. That's what
 I've been saying the entire time."*

@@ -108,6 +108,33 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
       `${D} × [rate(1.32) − rate(1.2)] × (1 + s₁₅₅ + s₂₂₅ = ${prem.toFixed(4)})`);
 }
 
+/* ═══ §8r — THE RAMP TREATS HASTE AND VALUE BUFFS DIFFERENTLY, AND BOTH ARE ON PURPOSE ═══════════
+   MODEL-DEFECTS §8r records a fork between two user statements that both describe the real game:
+     1. *"haste over ramp is worth exactly the same as haste after ramp. What's worth more is the
+        alignment with AP and SP buffs."*
+     2. *"sometimes overlaying the haste buff onto the ramp makes the arcane blast stacks stack
+        quicker."*
+   Statement 1 is what ships, because it is what reproduces the declared layouts; statement 2 — the
+   opener COMPRESSING under haste — is deliberately unmodelled, and §8r measured that adopting it moves
+   Icy Veins #1 to the pull and breaks anchors. Gated here so neither half drifts silently.
+
+   ⚠ THE CONTROL MATTERS: both placements must sit inside the SAME company. Comparing a buff at 0
+   against one at 100 also moves it out of Bloodlust, and that confound reads as a 0.20-cast "ramp
+   effect" that is nothing of the kind. Lust is pinned [0,60] and the two placements are 0 and 20.
+   ⇒ HASTE: residual exactly 0 — statement 1, and it is exact rather than approximate.
+   ⇒ VALUE: residual NEGATIVE — a value window spent on slow ramp casts covers fewer of them, so it
+     correctly prefers to be clear of the ramp. That is statement 1's own second half. */
+{
+  const c = cfgOf(300, ['icyVeins', 'berserking', 'isc', 'arcanePower', 'bloodlust'], { bloodlust: [0] });
+  const b = I({ bloodlust: [0] }, c);
+  const res = k => (I({ bloodlust: [0], [k]: [0] }, c) - b) - (I({ bloodlust: [0], [k]: [20] }, c) - b);
+  chk('§8r: Icy Veins is exactly ramp-neutral',  res('icyVeins'),   0, 1e-9, 'statement 1: haste over the ramp == haste after it');
+  chk('§8r: Berserking is exactly ramp-neutral', res('berserking'), 0, 1e-9, 'statement 1, second haste buff');
+  // The value buffs must PREFER to be clear of the ramp — sign is the law, magnitude is the record.
+  chk('§8r: Icon prefers to be clear of the ramp',  Math.sign(res('isc')),         -1, 0, `measured ${res('isc').toFixed(6)} casts`);
+  chk('§8r: Arcane Power prefers clear of the ramp', Math.sign(res('arcanePower')), -1, 0, `measured ${res('arcanePower').toFixed(6)} casts`);
+}
+
 /* ═══ §8o — DEAD TIME IS CHARGED CONTINUOUSLY, INCLUDING ACROSS A RAMP BOUNDARY ══════════════════
    MODEL-DEFECTS §8o was "located, not fixed": the integral charged the gap between a press and the
    first cast it can affect as ZERO at steady state but as the REALIZED amount on the ramp, and neither
