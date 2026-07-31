@@ -1223,7 +1223,7 @@ function simulateRaw(schedule, cfg, collect) {
       // `eff = e.ts` for precisely that reason), so its aura starts there whatever we are casting.
       const auraAt = (isExternal || isPrepull) ? eff : Math.max(eff, prevCastEnd);
       // ★★★★ `scoreStart: auraAt` — the REAL fire boundary, 07-30. It was `eff + slip`, and that is
-      // CLAUDE.md's retired approach #2 ("expiring a buff window from the PRESS time") still live in
+      // the orientation doc's retired approach #2 ("expiring a buff window from the PRESS time") still live in
       // the integral path: the discrete walk was fixed to run each window its full duration from where
       // the ability actually FIRES, and the integral was left scoring from press + expected slip.
       // ⇒ THE DEFECT IT CAUSED, measured to three decimals. Bloodlust is pinned at 20.000, a raid
@@ -2644,7 +2644,7 @@ function phaseRerank(s0, cfg) {
 
      i.e. the descent reached a plan its own comparator says is worse than where it started. The band
      is bracketed by MEASUREMENT — it exists so two layouts that are provably equal by the closed forms
-     but differ by ~0.0011 of float noise compare equal (CLAUDE.md). It was never meant to let a real
+     but differ by ~0.0011 of float noise compare equal (orientation doc). It was never meant to let a real
      gradient be traded away one sub-band slice at a time.
 
      ⇒ Keep a high-water mark and refuse anything below it by more than one band. Drift is then bounded
@@ -5207,7 +5207,7 @@ function render(run) {
    their neighbourhood across crit 0–100 % and SP 600–2400, and NO TBC raid buff grants spell haste.
    ⛔ The one documented property this does cost: "a preset you confirm in the tool IS the locked test"
    now holds only with the buff boxes OFF, because with them on the page solves at higher effective SP
-   and crit than the preset's stored gear. Recorded in CLAUDE.md rather than left to be discovered. */
+   and crit than the preset's stored gear. Recorded in the orientation doc, not left to be discovered. */
 const INT_TO_SP   = 0.25;    // Mind Mastery 5/5 — docs/SOURCES.md, wowsims `MindMastery` AddStatDependency
 const INT_TO_CRIT = 0.0125;  // mage int→crit %, `core/mana.go` CritPerIntMaxLevel[Mage]
 const ARCANE_MIND = 1.15;    // Arcane Mind 5/5 MultiplyStat — applies to buffed Intellect too
@@ -5340,7 +5340,7 @@ function renderTiles({ cfg, baseline, naiveR, optR }) {
      objective WITHIN a setup and a blind one ACROSS setups. The user's case is the clean statement of
      that gap: *"if I omegamax passive haste I cast 200 Arcane Blasts, but if it's better to cast 150
      with bigger spellpower I can't ever know."* Multiplying the count back by the cast's own damage is
-     what restores the comparison, and it is CLAUDE.md's payoff 2 ("compare setups on absolute at-kill
+     what restores the comparison, and it is the orientation doc's payoff 2 ("compare setups on absolute at-kill
      damage — NOT on the effective-AB count") arriving as a number on the page.
      ⚠ It is an EXPECTATION under the model's stated assumptions, not a damage-meter prediction:
      infinite mana, hit hardset at cap, Arcane Blast only (no filler, no free Arcane Missiles), and the
