@@ -13,6 +13,26 @@
 > is **inside the tie band**, where the scorer never had the power to separate the two. Editing a test
 > because the tool disagrees on DAMAGE remains forbidden.
 >
+> ## ✅ THE SCORER IS CLOSED OUT (07-31) — every named defect is fixed, characterised, or unfalsifiable
+> · **§8o CLOSED** — the dead-time inconsistency was fixed by §8q the same day and nobody re-checked.
+>   Verified on §8o's own case: 26 samples at 0.1 s across the ramp boundary, every Δ identical to
+>   1e-9, and the ramp sweep monotone with the argmax at 3 stacks (§8o had argmax@0, ±0.14 zigzag).
+> · **§8r CHARACTERISED** — statement 1 is implemented EXACTLY (haste residual 0.000000 with a matched
+>   control), its value half holds (Icon −0.103, AP −0.400, both correctly preferring to be clear of
+>   the ramp). Statement 2 stays a **user call**: adopting it breaks the declared layouts.
+> · **§8n** stays unfalsifiable — sim-denominated, and the sim is gone (§8x).
+> · **5 ungated behaviours gated**: prepull credit, Power Infusion's Bloodlust exclusivity (both
+>   directions), Tirisfal × Arcane Power additivity, intermission cost. Prepull had been shipping since
+>   07-30 with nothing asserting it.
+> · **The circularity is closed at the numbers**: all 14 `GAME` constants trace to a source outside the
+>   model, gated by `tools/constants-cited.mjs` with a redaction control.
+> ⇒ `law-check` **17 → 30 lines**, negative control catching 10. anchors 8/8, self-consistency
+> 0.00e+0 / 0 structural, PLAN-DIFF IDENTICAL throughout — every one of these was a GATE addition, not
+> a model change.
+> ⚠ What remains is **not** scorer work: §8v (reachability on tied plateaus) is search, and the
+> modelling LIMITS — infinite mana, hit at cap, Arcane-Blast-only, expectation-not-variance — are
+> stated choices rather than defects.
+>
 > ## ▶▶ THEN: PASSIVE GEAR HASTE. The groundwork is in `ESTABLISHED-FACTS` §10.
 > Every declared layout is **h = 0** and nothing in the repo declares a correct plan above it. §10 now
 > carries the DERIVATIVES needed to change that — how each combination reacts to added haste, crit and
