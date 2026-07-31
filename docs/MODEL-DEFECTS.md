@@ -2080,7 +2080,41 @@ trade is "the anchors" against "the corpus", or whether a variant gets both.
 
 ---
 
-## §8o — the integral charges DEAD TIME inconsistently. Located, not fixed. (07-30)
+## §8o — ✅ CLOSED 07-31. It was fixed by §8q the same day and nobody re-checked. (opened 07-30)
+
+> ✅ **CLOSED — the symptom AND the mechanism are both gone, and both are now gated.**
+> §8o located a real inconsistency: dead time between a press and the first cast it can affect was
+> charged **zero** at steady state but the **realized** amount on the ramp, and neither is the average.
+> Its proof was a segment dump where Icy Veins pressed at 3.0 gained nothing until the in-flight ramp
+> cast ended at 4.666; the consequence was a period-2 wobble that made Icy-Veins-at-the-pull win.
+>
+> **§8q's fixed ramp toll** — spread over the UNHASTED `ΣC_k`, landed the same day for a different
+> reason — removed it. Re-measured 07-31 on §8o's own case, Morogrim with only Icy Veins #1 moving:
+>
+> ```
+>   sub-second sweep across the 4.666 boundary, 26 samples at 0.1 s
+>     every Δ = 0.000875, identical to 1e-9   ⇒ zero flat steps: the charge is CONTINUOUS
+>   ramp sweep 0→7   132.830712 … 133.009593   monotone, 0 direction changes, argmax @7
+>     §8o measured argmax @0 with a ±0.14 zigzag
+> ```
+>
+> ⇒ Both are now `law-check` lines (`§8o: press response is LINEAR across the ramp`, `§8o: the ramp
+> sweep 0→7 is monotone`), so the fix cannot silently regress. **This is the user's own principle
+> expressed as a gate**: the sub-cast offset is unresolvable, so the model must average over it — and a
+> window that starts late also ends late, so what survives is a constant rate of change, not a
+> staircase.
+>
+> ⚠ **AND §8o's HANDOFF IS DISCHARGED.** It asked for the Berserking-before-vs-inside-Bloodlust ordering
+> to be gated first, to localise a suspected "second defect" without another sim run. That gate is in
+> (`§5b`) and **passes on the shipped engine**, and the candidate uniform-slip build now fails *three*
+> closed forms rather than the one §8o predicted — so the second defect, if it was ever separate from
+> the ramp, is gone with it. ⛔ Do not re-attempt the uniform slip: a pure window shift is already
+> value-neutral here (measured: identical to 6 decimals at every sub-second offset), so there is
+> nothing for it to correct.
+>
+> The original entry follows unchanged, as the record of how it was found.
+
+## (original) §8o — the integral charges DEAD TIME inconsistently. Located, not fixed. (07-30)
 
 User, correcting me on the physics and then giving the design principle: *"a real mage can only press it
 between casts using the macro … but that's below the boundary of what's worth trying to follow. For our

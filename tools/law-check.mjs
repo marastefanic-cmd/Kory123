@@ -28,12 +28,18 @@
 // engine — a stale expectation here looks exactly like a scorer regression.
 import { loadEngine, ALL_BUFFS } from './engine-node.mjs';
 
-const api = loadEngine(new URL('../index.html', import.meta.url).pathname);
+/* --html= targets an ALTERNATIVE engine, like plan-sweep and kit-sweep. Without it a candidate scorer
+   change can only be gated by editing index.html in place, which is exactly how a half-finished fix
+   gets committed by accident. */
+const HTML = (process.argv.find(a => a.startsWith('--html=')) || '').split('=')[1]
+          || new URL('../index.html', import.meta.url).pathname;
+const api = loadEngine(HTML);
 const G = api.GAME;
 
 // One plain, unbuffed Arcane Blast at the reference setup — the unit every law below is quoted in.
 // Read from GAME, never re-typed (reference-gear.mjs doctrine).
 const SP = 1000, CRIT = 25;
+const D5 = 10;   // Berserking duration, used by §5 and §5b
 const one = (G.AB.AVG_BASE_DMG + G.AB.COEF * SP) * (1 + (CRIT / 100) * (G.CRIT_MULT - 1));
 
 const cfgOf = (T, kit, fixed, haste) => ({
@@ -100,6 +106,62 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
   chk('Berserking under IV + Icon + gem', I({ ...base, berserking: [145] }, c) - b,
       D * (rate(1.32) - rate(1.2)) * prem, 0.0005,
       `${D} × [rate(1.32) − rate(1.2)] × (1 + s₁₅₅ + s₂₂₅ = ${prem.toFixed(4)})`);
+}
+
+/* ═══ §8o — DEAD TIME IS CHARGED CONTINUOUSLY, INCLUDING ACROSS A RAMP BOUNDARY ══════════════════
+   MODEL-DEFECTS §8o was "located, not fixed": the integral charged the gap between a press and the
+   first cast it can affect as ZERO at steady state but as the REALIZED amount on the ramp, and neither
+   is the average. Its proof was that Icy Veins pressed at 3.0 gained nothing until the in-flight ramp
+   cast ended at 4.666 — two adjacent segments with the same rate — which produced a period-2 wobble as
+   a press crossed a ramp boundary and made Icy-Veins-at-the-pull win.
+
+   §8q's fixed ramp toll (spread over the UNHASTED ΣC_k) fixed it, and nobody re-checked. Verified
+   07-31 and gated here so it cannot come back:
+     · the response to moving a press across the 4.666 boundary is EXACTLY LINEAR — 26 samples at 0.1 s,
+       every Δ identical to 1e-9. A realized-dead-time charge would show flat steps; an averaged one
+       cannot.
+     · the ramp sweep 0→7 is MONOTONE with no direction change, argmax at the 3-stack moment. §8o
+       measured argmax @0 with a ±0.14 zigzag.
+   ⚠ This is the user's principle expressed as a gate: the sub-cast offset is unresolvable, so the model
+   must AVERAGE over it — and a window that starts late also ends late, so what survives is a constant
+   rate of change, not a staircase. */
+{
+  const c = cfgOf(165, KIT, { bloodlust: [5] });
+  const base = { isc: [7, 127], scb: [7, 127], arcanePower: [7], berserking: [127], bloodlust: [5] };
+  const at = t => I({ ...base, icyVeins: [t, 127] }, c);
+  // linearity across the ramp boundary at 4.666
+  const d0 = at(2.5) - at(2.4);
+  let maxDev = 0;
+  for (let t = 2.5; t < 4.9; t += 0.1) maxDev = Math.max(maxDev, Math.abs((at(+(t + 0.1).toFixed(1)) - at(+t.toFixed(1))) - d0));
+  chk('§8o: press response is LINEAR across the ramp', maxDev, 0, 1e-9,
+      'every 0.1 s step must move the score by the same amount — a flat step is a realized dead-time charge');
+  // and the ramp sweep must be monotone, not a period-2 wobble
+  let flips = 0, p2 = at(0), p1 = at(1);
+  for (let t = 2; t <= 7; t++) { const v = at(t); if (Math.sign(v - p1) !== Math.sign(p1 - p2)) flips++; p2 = p1; p1 = v; }
+  chk('§8o: the ramp sweep 0→7 is monotone', flips, 0, 0,
+      '§8o measured a ±0.14 period-2 zigzag here with the argmax at the pull');
+}
+
+/* ═══ §5b — BERSERKING MUST PREFER **INSIDE** BLOODLUST TO **BEFORE** IT ══════════════════════════
+   Added 07-31 on MODEL-DEFECTS §8o's own handoff: *"the sharpest lead is that the uniform-slip build
+   ranks Berserking BEFORE Bloodlust above Berserking INSIDE it — a question the closed forms answer
+   unambiguously and `tools/law-check.mjs` could gate directly. Add that case to the gate first; it will
+   localise the second defect without another sim run."*
+
+   This is the ordering §8o's candidate fix got WRONG, and it is the reason that fix was reverted rather
+   than landed. Gating it means the next attempt at the dead-time inconsistency fails HERE, on a closed
+   form, in a second — instead of failing as a mysterious 13σ regression on a preset.
+   ⚠ Deliberately an ORDERING assertion, not a magnitude one. The two windows sit in different company
+   (m 1.0 vs m 1.3), so the exact gap depends on where the ramp toll lands; what the closed forms fix
+   beyond argument is the SIGN. ESTABLISHED-FACTS §5: 10 s of Berserking is worth 0.667 casts with
+   nothing up and 0.867 inside Bloodlust. */
+{
+  const c = cfgOf(180, ['berserking', 'bloodlust'], { bloodlust: [40] });
+  const before = I({ berserking: [25], bloodlust: [40] }, c);   // [25,35] — ends before Lust starts
+  const inside = I({ berserking: [45], bloodlust: [40] }, c);   // [45,55] — wholly inside Lust
+  chk('Berserking INSIDE Bloodlust beats BEFORE it', inside - before,
+      D5 * (rate(1.43) - rate(1.3)) - D5 * (rate(1.1) - rate(1.0)), 0.002,
+      'inside − before = 10×[rate(1.43)−rate(1.3)] − 10×[rate(1.1)−rate(1.0)] — the SIGN is the law');
 }
 
 // ═══ §4 — haste × haste under the GCD cap ════════════════════════════════════════════════════════
