@@ -42,10 +42,10 @@ const SP = 1000, CRIT = 25;
 const D5 = 10;   // Berserking duration, used by §5 and §5b
 const one = (G.AB.AVG_BASE_DMG + G.AB.COEF * SP) * (1 + (CRIT / 100) * (G.CRIT_MULT - 1));
 
-const cfgOf = (T, kit, fixed, haste) => ({
+const cfgOf = (T, kit, fixed, haste, extra) => ({
   T, hasteRating: haste || 0, sp: SP, critPct: CRIT,
   enabled: Object.fromEntries(ALL_BUFFS.map(k => [k, kit.includes(k)])),
-  fixed: fixed || {}, warnings: [], coldSnap: true, segments: null,
+  fixed: fixed || {}, warnings: [], coldSnap: true, segments: null, ...(extra || {}),
 });
 // The RANKING quantity, in effective casts. This is what `rankScore` reads.
 const I = (s, c) => api.simulate(api.repair(JSON.parse(JSON.stringify(s)), c), c, true).integral / one;
@@ -106,6 +106,59 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
   chk('Berserking under IV + Icon + gem', I({ ...base, berserking: [145] }, c) - b,
       D * (rate(1.32) - rate(1.2)) * prem, 0.0005,
       `${D} × [rate(1.32) − rate(1.2)] × (1 + s₁₅₅ + s₂₂₅ = ${prem.toFixed(4)})`);
+}
+
+/* ═══ UNGATED SURFACE, CLOSED 07-31 — four behaviours nothing asserted ═══════════════════════════
+   Audit of what `simulate` DOES against what this file CHECKED found four live behaviours with no
+   closed form behind them. Ungated surface is where the next defect hides, and three of these are
+   recent additions (prepull 07-30, the Tirisfal toggle, the buff panel's PI). */
+{
+  // 1. PREPULL — a window pressed before the pull is credited only from t = 0. Icy Veins at −5 with a
+  //    20 s duration must be worth 15 s of haste, not 20. (RULES §7b, added 07-30, never gated.)
+  const c = cfgOf(300, ['icyVeins']);
+  const b = I({}, c);
+  const full = I({ icyVeins: [100] }, c) - b;
+  const pre  = I({ icyVeins: [-5] }, c) - b;
+  chk('prepull is credited only from t=0', pre, full * 15 / 20, 0.002,
+      'Icy Veins at −5 keeps 15 of its 20 s; the 5 s before the pull buy nothing');
+}
+{
+  // 2. POWER INFUSION IS SUPPRESSED UNDER BLOODLUST — same ExclusiveCategory, highest priority wins
+  //    (docs/SOURCES.md, wowsims `core/buffs.go`). Inside Lust, PI must be worth EXACTLY zero.
+  const c = cfgOf(300, ['powerInfusion', 'bloodlust'], { bloodlust: [0] });
+  const b = I({ bloodlust: [0] }, c);
+  chk('Power Infusion inside Bloodlust is worth 0', I({ bloodlust: [0], powerInfusion: [10] }, c) - b, 0, 0.002,
+      'BL (1.3) and PI (1.2) share one MultiplyCastSpeed category — BL wins, PI contributes nothing');
+  chk('Power Infusion outside Bloodlust is worth its own haste',
+      I({ bloodlust: [0], powerInfusion: [100] }, c) - b, 15 * (rate(1.2) - rate(1.0)), 0.002,
+      '15 s × [rate(1.2) − rate(1.0)] once Bloodlust has expired');
+}
+{
+  // 3. TIRISFAL 2pc POOLS ADDITIVELY WITH ARCANE POWER on an Arcane Blast (docs/SOURCES.md, one
+  //    SpellMod_DamageDone_Pct pool). So AP lifts a T5'd cast by 1.5/1.2 = ×1.25, not ×1.30.
+  /* ⚠ RE-DERIVED — the first expectation here was `1.25/1.30` and it FAILED at 0.83333. The engine was
+     right and the expectation was wrong, exactly as this file's header instructs you to assume. In
+     `one` units a plain cast is 1.0 without the set and 1.2 with it, so the ADDITIVE pool makes an AP
+     cast 1.3 and 1.5 respectively:
+         off: rel = (1.3−1.0)·n / N        on: rel = (1.5−1.2)·n / (1.2·N)      ⇒ ratio = 1/1.2
+     The 0.3 numerator is IDENTICAL both ways — the whole effect is the 1.2× larger baseline.
+     ★ And that is precisely what discriminates the two hypotheses: were the pool MULTIPLICATIVE, an AP
+     cast would be 1.2×1.3 = 1.56, giving `(1.56−1.2)·n/(1.2·N) = 0.3n/N` and a ratio of exactly **1.0**.
+     So this line reads 1/1.2 for additive and 1.0 for multiplicative — a clean one-bit test of the
+     SOURCES ruling, which is worth more than the magnitude. */
+  const off = cfgOf(300, ['arcanePower']), on = cfgOf(300, ['arcanePower'], null, 0, { t5two: true });
+  const rel = c => (I({ arcanePower: [100] }, c) - I({}, c)) / I({}, c);
+  chk('Tirisfal + Arcane Power pool ADDITIVELY', rel(on) / rel(off), 1 / 1.2, 0.002,
+      'additive ⇒ 1/1.2 = 0.8333; multiplicative would read exactly 1.0');
+}
+{
+  // 4. AN INTERMISSION REMOVES ITS OWN LENGTH OF CASTING, and then costs a re-ramp on the way out.
+  //    So the loss must EXCEED the bare seconds — that inequality is the law worth pinning.
+  const plain = cfgOf(300, []);
+  const withI = cfgOf(300, [], null, 0, { segments: api.buildSegments([{ from: 100, to: 140, type: 'intermission', mult: 1, targets: 0 }], 300) });
+  const lost = I({}, plain) - I({}, withI);
+  chk('a 40 s intermission costs more than 40 s of casting', Math.sign(lost - 40 * rate(1.0)), 1, 0,
+      `lost ${lost.toFixed(4)} casts vs ${(40 * rate(1.0)).toFixed(4)} bare — the excess is the re-ramp toll`);
 }
 
 /* ═══ §8r — THE RAMP TREATS HASTE AND VALUE BUFFS DIFFERENTLY, AND BOTH ARE ON PURPOSE ═══════════
