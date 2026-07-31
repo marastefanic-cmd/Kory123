@@ -55,7 +55,10 @@
     font: 15px/1.5 var(--font-ui);
     -webkit-font-smoothing: antialiased;
   }
-  .wrap { max-width: 1180px; margin: 0 auto; padding: 28px 20px 64px; }
+  /* 1360 fits FIVE setup columns (Fight · Buffs · Spells · Trinkets · Phases) so the phase editor
+     stops wrapping under the sticky action bar. Prose blocks carry their own ch-based max-widths, so
+     widening the shell does not stretch any paragraph past a readable measure. */
+  .wrap { max-width: 1400px; margin: 0 auto; padding: 28px 20px 64px; }
 
   header.masthead { margin-bottom: 22px; }
   .masthead .mh-row { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; }
@@ -117,8 +120,8 @@
   }
   .setup-grid {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(248px, 1fr));
-    gap: 20px;
+    grid-template-columns: repeat(auto-fit, minmax(215px, 1fr));
+    gap: 16px;
   }
   .scol { min-width: 0; display: flex; flex-direction: column; gap: 8px; }
   .card {
@@ -134,7 +137,7 @@
     letter-spacing: 0.06em;
     text-transform: uppercase;
     margin: 0 0 4px;
-    display: flex; justify-content: space-between; align-items: baseline;
+    display: flex; justify-content: space-between; align-items: baseline; gap: 10px;
   }
   .scol h2 .counter { color: var(--muted); font: 11.5px var(--font-ui); text-transform: none; letter-spacing: 0.02em; }
   .gen-bar {
@@ -561,29 +564,35 @@
   label.check.complicated { display: flex; align-items: center; gap: 8px; font-size: 14px; cursor: pointer; }
   label.check.complicated input { accent-color: var(--accent); width: 15px; height: 15px; }
   #phase-editor { margin-top: 12px; display: flex; flex-direction: column; gap: 8px; }
-  .phase-row { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  /* ⚠ nowrap ON PURPOSE. At the 5-column setup width a phase row is ~282px of content in a ~250px
+     column, so with wrapping the ✕ — and, on a Burn/AoE row, the multiplier or targets field — fell to
+     a second line and the editor read as a broken grid. Everything is fixed-width except the type
+     select, which gets `flex: 1 1 0; min-width: 0` so it absorbs all the shrink and the row always
+     stays on one line; the native control ellipsises its own label, and the open dropdown still shows
+     the full names. */
+  .phase-row { display: flex; gap: 5px; align-items: center; flex-wrap: nowrap; }
   .phase-row select {
     background: var(--panel); border: 1px solid var(--grid); border-radius: 6px;
-    color: var(--ink); font-size: 13px; padding: 6px 26px 6px 8px;
-    flex: 1 1 118px; min-width: 118px;
+    color: var(--ink); font-size: 12px; padding: 5px 19px 5px 7px;
+    flex: 1 1 0; min-width: 0;
     /* native arrow was overlapping the label in a narrow column — draw our own with room reserved */
     appearance: none; -webkit-appearance: none;
     background-image: linear-gradient(45deg, transparent 50%, var(--ink-2) 50%), linear-gradient(135deg, var(--ink-2) 50%, transparent 50%);
-    background-position: right 13px center, right 8px center;
+    background-position: right 11px center, right 6px center;
     background-size: 5px 5px, 5px 5px;
     background-repeat: no-repeat;
   }
-  .phase-row input[type="text"] { width: 58px; padding: 5px 7px; font-size: 13px; }
-  .phase-row input[type="number"] { width: 46px; padding: 5px 7px; font-size: 13px; }
+  .phase-row input[type="text"] { width: 44px; padding: 5px 5px; font-size: 12px; flex: none; }
+  .phase-row input[type="number"] { width: 36px; padding: 5px 4px; font-size: 12px; flex: none; }
   /* the mult / targets field carries its unit inline so the bare number isn't a guess */
   .ph-unit {
-    display: inline-flex; align-items: center; gap: 5px;
-    font-size: 12px; color: var(--ink-2); white-space: nowrap;
+    display: inline-flex; align-items: center; gap: 3px; flex: none;
+    font-size: 11px; color: var(--ink-2); white-space: nowrap;
   }
   .ph-unit .u { color: var(--muted); }
   .phase-row .ph-del {
     background: var(--panel); border: 1px solid var(--grid); color: var(--ink-2);
-    border-radius: 6px; padding: 5px 8px; cursor: pointer; font-size: 13px;
+    border-radius: 6px; padding: 4px 6px; cursor: pointer; font-size: 12px; line-height: 1.1; flex: none;
   }
   .phase-row .ph-del:hover { color: var(--ink); border-color: var(--warn); }
   #phase-add {
@@ -4784,9 +4793,9 @@ function renderPhaseRows() {
       <input type="text" class="ph-from" placeholder="from" value="${esc(p.from)}" aria-label="Phase start">
       <input type="text" class="ph-to" placeholder="to" value="${esc(p.to)}" aria-label="Phase end">
       <label class="ph-unit" title="Arcane Blast damage is multiplied by this for the whole phase" style="display:${p.type === "burn" ? "" : "none"}">
-        <input type="number" class="ph-mult" min="1" max="10" step="0.1" value="${p.mult}" aria-label="Damage multiplier"><span class="u">× damage</span></label>
+        <input type="number" class="ph-mult" min="1" max="10" step="0.1" value="${p.mult}" aria-label="Damage multiplier"><span class="u">×</span></label>
       <label class="ph-unit" title="How many targets your Arcane Explosions hit during the phase" style="display:${p.type === "aoe" ? "" : "none"}">
-        <input type="number" class="ph-targets" min="1" max="20" value="${p.targets}" aria-label="Targets hit"><span class="u">targets</span></label>
+        <input type="number" class="ph-targets" min="1" max="20" value="${p.targets}" aria-label="Targets hit"><span class="u">tgt</span></label>
       <button class="ph-del" title="Remove phase">✕</button>`;
     row.querySelector(".ph-type").addEventListener("change", e => { p.type = e.target.value; renderPhaseRows(); });
     row.querySelector(".ph-from").addEventListener("input", e => p.from = e.target.value);
