@@ -58,12 +58,18 @@ function refScore(plan, kase) {
   let total = 0;
   for (let i = 0; i < es.length - 1; i++) total += rateAt((es[i] + es[i + 1]) / 2) * (es[i + 1] - es[i]);
 
-  // the opener toll: 1.332 casts, charged at the LOCAL damage (ESTABLISHED-FACTS §1.2e, §8q)
-  const G1 = msq(Math.max(G.GCD_FLOOR, G.GCD_BASE));
+  /* The opener toll (ESTABLISHED-FACTS §1.2, MODEL-DEFECTS §9a F1): how much longer each ramp cast takes
+     than a steady cast at the SAME haste, in units of steady casts. Identically 1.332 for every m ≤ 1.5
+     — below the floor the 1/m cancels top and bottom, which is §8q's ramp-neutrality — and collapsing
+     above it as the floor pins the steady interval while the ramp casts keep shortening.
+     ⚠ The SPREAD window `sumC` stays UNHASTED (the engine's `NOMINAL`); only the LUMP is m-dependent.
+     Mixing those up is what §8q rejected. */
+  const m0 = state(0).m;
+  const G1 = msq(Math.max(G.GCD_FLOOR, G.GCD_BASE / m0));
   let sumC = 0, toll = 0;
   for (let k = 0; k < G.AB.MAX_STACKS; k++) {
-    const Ck = Math.max(msq(G.AB.BASE_CAST - G.AB.STACK_CAST_REDUCTION * k), G1);
-    sumC += Ck; toll += (Ck - G1) / G1;
+    sumC += G.AB.BASE_CAST - G.AB.STACK_CAST_REDUCTION * k;
+    toll += (Math.max(msq((G.AB.BASE_CAST - G.AB.STACK_CAST_REDUCTION * k) / m0), G1) - G1) / G1;
   }
   // spread over [0, ΣC_k] as a negative rate scaled by the local damage
   let tollDmg = 0;

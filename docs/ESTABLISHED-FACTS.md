@@ -201,6 +201,25 @@ fixed toll `Σ(C_k − G)/G` over exactly that unhasted window; a value window o
 of the toll, one starting after it pays none. That is the entire reason the cluster waits, and because
 the window is m-independent by construction, so is the second it waits for.
 
+> ### ⚠ CORRECTED 07-31 (MODEL-DEFECTS §9a F1) — the WINDOW is unhasted; the LUMP is not, above the floor
+> The paragraph above is right about the **window** and was read as a claim about the **lump** too, and
+> the engine implemented it that way — charging a flat `1.332` at every haste. That contradicts §1.2's
+> own table two pages up (`1.332 / 1.137 / 0.690 / 0.316`), which the engine's board walk tracked while
+> the ranking integral did not. The general form is
+>
+>     toll(m) = [ Σₖ max(C_k/m, i(m)) − 3·i(m) ] / i(m),      i(m) = max(FLOOR, G/m)
+>
+> ★ **and it SUBSUMES the fixed toll rather than overturning it.** Below the GCD floor
+> `max(C_k/m, i) = C_k/m` and `i = G/m`, so the `1/m` cancels top and bottom and every rung is
+> haste-invariant — §1.2b's ramp-neutrality *is* the sub-floor regime. Above the floor `i` pins at 1.0 s
+> while the ramp casts keep shortening, so the toll collapses and **ramp-neutrality inverts at exactly
+> `m·v = 1.5`, which is §1.2b's own stated threshold** — the doc predicted this and the engine did not do
+> it. ⚠ Reachable at zero gear haste: `Bloodlust ×1.30 × Icy Veins ×1.20 = 1.56`.
+> ⇒ the spreading window stays `ΣC_k` UNHASTED, exactly as above; only the lump moves. Mixing those two
+> up is what §8q rejected and it is still rejected. Gated: `tools/toll-audit.mjs` (12 rows) and
+> `law-check`'s `§8r` pair, which now asserts neutrality *below* the threshold and the inversion *above*
+> it — measured `+0.16602` against a closed form of `tollLaw(1.3) − tollLaw(1.56)`.
+
 **Measured by sliding the value cluster and taking the argmax** — 2:00 · Lust 0:05 · 1387 SP · 38 % crit,
 kit IV + Icon + Gem + AP + Berserking:
 

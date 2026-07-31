@@ -1485,7 +1485,25 @@ function simulateRaw(schedule, cfg, collect) {
     prevCastEnd = t + Math.min(interval, castLen);
     prevInterval = interval;
     prevCastRamp = !isAoe && stacks < g.AB.MAX_STACKS;
-    if (prevCastRamp) boardRamp.push({ s: t, c: prevCastEnd, e: t + interval }); // a true ramp cast — scored discretely
+    /* ★★★ `iv`/`sv` ARE THE TOLL'S TWO NUMBERS, AND RECORDING THEM HERE FIXES §9a F1 **AND** F4 AT ONCE.
+       The toll rung for a ramp cast is "how much longer it took than a steady cast would have, in units
+       of steady casts" = `(iv − sv)/sv`. Reading it off the REALISED interval rather than re-deriving it
+       downstream fixes both defects structurally rather than by arithmetic:
+         · F4 — it is automatically indexed by the cast's own STACK COUNT, because `interval` was
+           computed from `stacks`. The old code walked `idx`, the cast's position in the ramp group,
+           which coincides with the stack count only when a ramp starts cold — never in the
+           `lapsedMidCast` band (below), where the walk correctly resumes at 1 stack.
+         · F1 — it is automatically correct ABOVE THE GCD FLOOR, where `sv` pins at the floor while `iv`
+           keeps shrinking, so the toll collapses (1.165 at m=1.56, 0.333 at m=2.0) exactly as
+           ESTABLISHED-FACTS §1.2's closed form says. The old unhasted ladder charged a flat 1.332 at
+           every haste.
+       ⚠ AND IT KEEPS §8q. Below the floor `iv = C_k/m` and `sv = G/m`, so the `1/m` cancels top and
+       bottom and every rung is haste-INVARIANT — §8q's ramp-neutrality is the sub-floor regime, which is
+       where §8q was measured. This form preserves it and adds only the above-floor decay. ⛔ Do not
+       "simplify" this back to a constant ladder; that is F1. `sv` is the 3-stack steady interval, which
+       is the GCD at every haste (law-check: "AB and AE intervals identical"). */
+    if (prevCastRamp) boardRamp.push({ s: t, c: prevCastEnd, e: t + interval,
+                                       iv: interval, sv: pUp * up.gcd + (1 - pUp) * dn.gcd });
     // PHASE8 §25 — the boundary charge needs each STEADY cast's COMPLETION (the instant wowsims
     // reads a value buff, §5). Ramp casts are already scored discretely, so they carry no
     // quantization error and are excluded. Gated: zero cost when the charge is off.
@@ -1721,15 +1739,30 @@ function simulateRaw(schedule, cfg, collect) {
   const NOMINAL = (() => { let v = 0; for (let k = 0; k < g.AB.MAX_STACKS; k++) v += g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * k; return v; })();
   const tollWins = [];
   {
-    let idx = 0, lost = 0, at = -1;
-    const flush = () => { if (at >= 0 && lost > 0) tollWins.push({ a: at, b: at + NOMINAL, r: lost / NOMINAL }); };
+    let lost = 0, at = -1;
+    const flush = () => { if (at >= 0 && lost > 0) tollWins.push({ a: at, b: at + NOMINAL, lost }); };
     for (let i = 0; i < boardRamp.length; i++) {
-      if (i > 0 && Math.abs(boardRamp[i].s - boardRamp[i - 1].e) > 1e-9) { flush(); idx = 0; lost = 0; at = -1; }
+      if (i > 0 && Math.abs(boardRamp[i].s - boardRamp[i - 1].e) > 1e-9) { flush(); lost = 0; at = -1; }
       if (at < 0) at = boardRamp[i].s;
-      lost += (g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * idx - g.GCD_BASE) / g.GCD_BASE;
-      idx++;
+      lost += (boardRamp[i].iv - boardRamp[i].sv) / boardRamp[i].sv;   // §9a F1+F4 — see the push site
     }
     flush();
+  }
+  /* §9a F3 — THE LUMP MUST NOT EVAPORATE. `lost` is a count of Arcane Blasts actually lost while stacks
+     built; the NOMINAL window is only the DEVICE that spreads it so an overlapping value buff pays its
+     share (§8q). But the integral skips intermission spans and stops at T, so any part of the window
+     landing there silently deleted its share of the charge — measured 0.46–1.06 casts, and it is the
+     opposite sign to F1/F2 so the three did not cancel. Normalising by the window's LIVE measure
+     restores the invariant the spreading device exists to preserve: total charged == lost, always.
+     ⚠ An AoE phase counts as LIVE here (you are casting through it) — what was wrong there was the
+     PRICE, not the presence, and that is F2 below. Only an intermission and the kill remove time. */
+  for (const w of tollWins) {
+    let live = Math.max(0, Math.min(w.b, cfg.T) - w.a);
+    if (segs) for (const sg of segs) {
+      if (sg.type !== "intermission") continue;
+      live -= Math.max(0, Math.min(sg.end, Math.min(w.b, cfg.T)) - Math.max(sg.start, w.a));
+    }
+    w.r = live > 1e-9 ? w.lost / live : 0;
   }
   const rampCastSpans = boardRamp.map(rc => [rc.s, Math.min(rc.e, cfg.T + KWD)]);
   const bpS = new Set([0, cfg.T, cfg.T + KWD]);
@@ -1785,7 +1818,14 @@ function simulateRaw(schedule, cfg, collect) {
     // the opener toll, as a negative rate over its m-independent window (see NOMINAL above)
     let tollR = 0;
     for (const w of tollWins) if (mid > w.a && mid < w.b) tollR += w.r;
-    const contrib = (rateAt(mid, segB) - tollR * scanAt(mid, segB).dmg2) * len;
+    /* §9a F2 — THE TOLL IS ARCANE BLASTS, SO IT IS PRICED AS ONE. `scanAt().dmg2` is the LOCAL cast's
+       damage, which inside an AoE phase is an Arcane Explosion at N targets — so casts lost to an
+       Arcane Blast ramp were billed at `M(N)`, up to +3.5 casts at N=20, and there is no AB ramp inside
+       an AoE phase at all. `dmgOf(..., false)` takes the same state and asks what an ARCANE BLAST is
+       worth there, which is the only thing a lost Arcane Blast can be worth. A burn multiplier still
+       applies (a Blast lost during a burn was a burn-multiplied Blast); the target count does not. */
+    const stT = scanAt(mid, segB);
+    const contrib = (rateAt(mid, segB) - tollR * dmgOf(stT.sp2, stT.dmgMult2, segB, false)) * len;
     if (b <= cfg.T + 1e-9) total += contrib;
     if (b <= cfg.T + 1e-9) totalEarly += contrib;
     robust += contrib * killW(mid);

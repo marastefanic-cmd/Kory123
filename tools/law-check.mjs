@@ -71,6 +71,16 @@ const rate = SELFTEST
   : m => 1 / Math.max(msq(Math.max(G.GCD_FLOOR, G.GCD_BASE / m)),
                       msq((G.AB.BASE_CAST - G.AB.STACK_CAST_REDUCTION * G.AB.MAX_STACKS) / m));
 
+/* The toll's closed form (ESTABLISHED-FACTS §1.2, §9a F1): how much longer each ramp cast takes than a
+   steady cast would at the same haste, in units of steady casts. Millisecond-quantised, like everything
+   else the engine does. Identically 1.332 for every m ≤ 1.5; collapses above the GCD floor. */
+const tollLaw = m => {
+  const i = msq(Math.max(G.GCD_FLOOR, G.GCD_BASE / m));
+  let v = 0;
+  for (let k = 0; k < G.AB.MAX_STACKS; k++) v += Math.max(msq((G.AB.BASE_CAST - G.AB.STACK_CAST_REDUCTION * k) / m), i) - i;
+  return v / i;
+};
+
 let bad = 0;
 const chk = (name, got, want, tol, algebra) => {
   const ok = Math.abs(got - want) <= tol;
@@ -326,14 +336,38 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
    ⇒ VALUE: residual NEGATIVE — a value window spent on slow ramp casts covers fewer of them, so it
      correctly prefers to be clear of the ramp. That is statement 1's own second half. */
 {
-  const c = cfgOf(300, ['icyVeins', 'berserking', 'isc', 'arcanePower', 'bloodlust'], { bloodlust: [0] });
-  const b = I({ bloodlust: [0] }, c);
-  const res = k => (I({ bloodlust: [0], [k]: [0] }, c) - b) - (I({ bloodlust: [0], [k]: [20] }, c) - b);
-  chk('§8r: Icy Veins is exactly ramp-neutral',  res('icyVeins'),   0, 1e-9, 'statement 1: haste over the ramp == haste after it');
-  chk('§8r: Berserking is exactly ramp-neutral', res('berserking'), 0, 1e-9, 'statement 1, second haste buff');
-  // The value buffs must PREFER to be clear of the ramp — sign is the law, magnitude is the record.
-  chk('§8r: Icon prefers to be clear of the ramp',  Math.sign(res('isc')),         -1, 0, `measured ${res('isc').toFixed(6)} casts`);
-  chk('§8r: Arcane Power prefers clear of the ramp', Math.sign(res('arcanePower')), -1, 0, `measured ${res('arcanePower').toFixed(6)} casts`);
+  /* ⚠⚠ RE-DERIVED 07-31, AND THE ENGINE WAS RIGHT — the first version of these two lines pinned Lust
+     [0,60] for a matched control, which makes `m·v = 1.3 × 1.2 = 1.56` for Icy Veins. ESTABLISHED-FACTS
+     §1.2b says ramp-neutrality holds *exactly while `m·v ≤ 1.5`* — the buff's OWN onset threshold — so
+     the control had put Icy Veins ABOVE its threshold and then asserted neutrality there. It read
+     0.00000 only because the toll was flat at every haste (§9a F1); with F1 fixed it reads +0.16602,
+     which is §1.2b's inversion arriving exactly where the doc says it should.
+     ⇒ the gate now asserts BOTH SIDES of the threshold, which is strictly stronger than the neutrality
+     line it replaces: below it haste over the ramp is worth exactly what haste after it is worth; above
+     it the GCD floor pins the steady rate while the ramp casts keep shortening, so covering the ramp
+     genuinely pays. ⛔ A future "fix" that flattens the second row reintroduces F1. */
+  const NEUT = 2e-3;   // ms quantisation makes sub-floor neutrality exact only to ~1e-3 casts, not to 0
+  // BELOW threshold — no Lust, so Icy Veins alone is m·v = 1.20 and Berserking 1.10.
+  {
+    const c = cfgOf(300, ['icyVeins', 'berserking', 'isc', 'arcanePower']);
+    const b = I({}, c);
+    const res = k => (I({ [k]: [0] }, c) - b) - (I({ [k]: [20] }, c) - b);
+    chk('§8r: Icy Veins ramp-neutral BELOW its threshold',  res('icyVeins'),   0, NEUT, 'm·v = 1.20 ≤ 1.5 — §1.2b');
+    chk('§8r: Berserking ramp-neutral BELOW its threshold', res('berserking'), 0, NEUT, 'm·v = 1.10 ≤ 1.5 — §1.2b');
+  }
+  // ABOVE threshold — Lust pinned, so Icy Veins sits at m·v = 1.56 and neutrality must INVERT.
+  {
+    const c = cfgOf(300, ['icyVeins', 'berserking', 'isc', 'arcanePower', 'bloodlust'], { bloodlust: [0] });
+    const b = I({ bloodlust: [0] }, c);
+    const res = k => (I({ bloodlust: [0], [k]: [0] }, c) - b) - (I({ bloodlust: [0], [k]: [20] }, c) - b);
+    // The gain is exactly the toll the ramp no longer pays: toll(m) − toll(m·v).
+    chk('§8r: Icy Veins PAYS on the ramp above threshold', res('icyVeins'), tollLaw(1.3) - tollLaw(1.56), NEUT,
+        'm·v = 1.56 > 1.5 — the GCD floor pins the steady rate while ramp casts keep shortening (§1.2b)');
+    chk('§8r: Berserking still neutral at m·v = 1.43', res('berserking'), 0, NEUT, '1.43 ≤ 1.5 — the other side of the same threshold');
+    // The value buffs must PREFER to be clear of the ramp — sign is the law, magnitude is the record.
+    chk('§8r: Icon prefers to be clear of the ramp',  Math.sign(res('isc')),         -1, 0, `measured ${res('isc').toFixed(6)} casts`);
+    chk('§8r: Arcane Power prefers clear of the ramp', Math.sign(res('arcanePower')), -1, 0, `measured ${res('arcanePower').toFixed(6)} casts`);
+  }
 }
 
 /* ═══ §8o — DEAD TIME IS CHARGED CONTINUOUSLY, INCLUDING ACROSS A RAMP BOUNDARY ══════════════════
@@ -361,7 +395,10 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
   const d0 = at(2.5) - at(2.4);
   let maxDev = 0;
   for (let t = 2.5; t < 4.9; t += 0.1) maxDev = Math.max(maxDev, Math.abs((at(+(t + 0.1).toFixed(1)) - at(+t.toFixed(1))) - d0));
-  chk('§8o: press response is LINEAR across the ramp', maxDev, 0, 1e-9,
+  // ⚠ 1e-3, not 1e-9: since §9a F1 the toll rungs are read off ms-quantised intervals, so the response
+  // is linear up to the lattice's own 1 ms grain. A realized dead-time charge shows as a FLAT STEP,
+  // which is ~0.07 casts here — two orders of magnitude above this tolerance.
+  chk('§8o: press response is LINEAR across the ramp', maxDev, 0, 1e-3,
       'every 0.1 s step must move the score by the same amount — a flat step is a realized dead-time charge');
   // and the ramp sweep must be monotone, not a period-2 wobble
   let flips = 0, p2 = at(0), p1 = at(1);
@@ -551,9 +588,7 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
    ⚠ These lines are not decoration under the negative control: at h ≠ 0 they read the quantised
    `rate`, so `--self-test`'s unquantised form breaks them. */
 {
-  const G1 = 1 / rate(1);
-  const toll = [0, 1, 2].reduce((a, k) =>
-    a + (Math.max(msq((G.AB.BASE_CAST - G.AB.STACK_CAST_REDUCTION * k) / 1), G1) - G1) / G1, 0);
+  const toll = tollLaw(1);
   // A cast with nothing up is worth EXACTLY 1 — that is what "effective ABs" means.
   chk('a plain cast is worth exactly 1', api.plainCastOf(cfgOf(120, [])) / one, 1, 1e-12,
       'plainCastOf must equal (BASE + COEF·SP)·critFactor — the divisor `I()` uses');
@@ -561,12 +596,18 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
     chk(`empty ${T}s fight = T·rate − toll`, I({}, cfgOf(T, [])), T * rate(1) - toll, 1e-9,
         `${T}·${rate(1).toFixed(6)} − ${toll.toFixed(6)}; the ramp toll is Σ(C_k−G)/G at m=1`);
   }
-  for (const h of [200, 400, 600]) {
+  /* ★ THE TOLL IS HASTE-INVARIANT BELOW THE GCD FLOOR AND COLLAPSES ABOVE IT (§9a F1). Both halves are
+     asserted, from ONE closed form — `tollLaw`, which is `[Σ max(C_k/m, i) − 3i]/i`. Below the floor the
+     `1/m` cancels top and bottom, so §8q's ramp-neutrality is that regime and the law returns 1.332
+     there without being told to. ⚠ Only to ~1e-3, not to 0: wowsims rounds both clocks to the
+     millisecond and the engine matches, so the cancellation is exact in the continuum and approximate
+     on the lattice. Asserting 1e-9 here was what made this line look like a regression when F1 landed. */
+  for (const h of [200, 400, 600, 900, 1200, 1600]) {
     const m = 1 + h / (G.HASTE_RATING_PER_PCT * 100);
-    chk(`empty 300s fight at h=${h} (toll still ${toll.toFixed(3)})`, I({}, cfgOf(300, [], null, h)),
-        300 * rate(m) - toll, 1e-9,
-        'the toll is HASTE-INVARIANT (§8q) — if this fails with a smaller toll, the ramp is being ' +
-        'compressed by haste and Icy Veins will drift back to the pull');
+    chk(`empty 300s fight at h=${h} (toll ${tollLaw(m).toFixed(3)})`, I({}, cfgOf(300, [], null, h)),
+        300 * rate(m) - tollLaw(m), 2e-3,
+        `m = ${m.toFixed(3)} ${m <= 1.5 ? '≤ 1.5 ⇒ toll is 1.332, haste-invariant (§8q)'
+                                        : '> 1.5 ⇒ the floor pins the steady rate and the toll COLLAPSES (§9a F1)'}`);
   }
 }
 
