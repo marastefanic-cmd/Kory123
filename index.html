@@ -5571,7 +5571,13 @@ function scheduleRows(run) {
   acts.sort((a, b) => a.t - b.t || LANE_ORDER.indexOf(a.k) - LANE_ORDER.indexOf(b.k));
   // annotate icy veins activations that need Cold Snap
   if (cfg.coldSnap && best.s.icyVeins) {
-    let cdReady = 0, csReady = 0;
+    /* ⚠ −Infinity, NOT 0. With `cdReady = 0` the FIRST Icy Veins of a PREPULL plan (press at, say,
+       −0:11) failed `a.t >= cdReady` simply because it is negative, and got labelled "Cold Snap → Icy
+       Veins" when nothing had been used yet — the user read it straight off a 6:30 plan showing
+       CS→IV at −0:11 and again at 0:09. Same class as the sweeps' `illegal()` predicate: an assumption
+       written before prepull existed (07-30), where "no cooldown has been used" was spelled 0 rather
+       than "never". */
+    let cdReady = -Infinity, csReady = -Infinity;
     for (const a of acts.filter(a => a.k === "icyVeins")) {
       if (a.t >= cdReady - 1e-6) cdReady = a.t + BUFFS.icyVeins.cd;
       else { a.coldSnap = true; csReady = a.t + GAME.COLD_SNAP_CD; cdReady = a.t + BUFFS.icyVeins.cd; }
