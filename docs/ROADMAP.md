@@ -2,6 +2,53 @@
 
 ## Resuming after a context clear (start here)
 
+> # ▶▶ USER-REQUESTED, ASKED FOR 07-31 — ANSWER "WHAT'S NEXT?" WITH THIS FIRST
+>
+> Two test-derivation programmes the user asked for by name. Both are about **growing the declared
+> ground truth**, which is the scarcest thing the project has: there are eight declared layouts, all at
+> `h = 0`, and nothing declares a correct answer above it.
+>
+> ## A. The LENGTH LADDER — simple fights, no intermissions, Lust swept
+> *"derive more tests with simple fights at different lengths. 2:20, 2:40, 3:00, 3:20… with no
+> intermissions and lust at different times."*
+> A clean grid: `T ∈ {2:20, 2:40, 3:00, 3:20, …}` × Lust call time, no phases, default gear. What makes
+> it worth doing is that the existing eight are **scattered** — two at 1000 SP / 25 % crit, five at the
+> default gear, lengths 1:15 to 3:00, chosen because they were reported as bugs. A ladder is
+> *systematic*: it says how the layout **moves** with length and with the Lust call, which is a claim no
+> single case can make, and it is exactly where a search defect shows up as a kink in an otherwise
+> smooth family.
+> ⛔ **The tool cannot declare its own tests** — that is what killed `exact-match`. The workflow is:
+> brute-force each cell's argmax, present it to the user with **the tie plateau alongside it**, and let
+> the user rule. Reporting the plateau is not optional: §8y's precedent is that a declared layout may be
+> revised *only* when the disagreement sits inside the tie band, so a ruling made without seeing the
+> plateau cannot invoke that precedent later.
+> ⚠ Do this **after** MODEL-DEFECTS §9a lands, or do it knowing the answers may move: F1 alone re-prices
+> haste over a cold ramp by 0.14–1.33 casts, and the opening cluster is what these cells are about.
+>
+> ## B. The 12:20 ALIGNMENT STUDY — spam on cooldown, or hold for alignment?
+> *"a hard bruteforced 12:20 fight to see the buffs aligned and their cooldowns coming back at the same
+> time naturally and if it's better to spam them on cooldown or keep the shorter ones for alignment, and
+> if that changes with lust at different times."*
+> ★ **12:20 is a well-chosen length and the arithmetic says why** — record this so nobody "simplifies"
+> it to a round number. The kit has two cooldown families, **120 s** (Icon, gem) and **180 s** (Icy
+> Veins, Arcane Power, Berserking), which re-align only at `lcm(120, 180) = 360 s`. 740 s is **2.06
+> alignment cycles**, so the fight contains the phenomenon twice and cannot be explained by a single
+> lucky coincidence. Uses available: Icon **7**, Arcane Power **5**, Berserking **5**, Icy Veins **5 + 1
+> Cold Snap = 6**, gem **3** (charge-limited, not cooldown-limited — the only member that is), and
+> **Bloodlust twice**, since its 600 s cooldown fits inside 740 s. That second Lust is a structural
+> feature of this length, not a detail.
+> ⇒ the real question underneath: the 120 s family drifts out of phase with the 180 s family after every
+> use, so "on cooldown" and "aligned" genuinely diverge, and the gem being charge-limited means it is the
+> one member with a free choice of *which* alignments to attend.
+> ⚠ **A free-coordinate brute force is hopeless here and starting one would waste a session.** §8y
+> enumerated 1,582,581 layouts for a **2:00** fight with far fewer uses; this space is larger by many
+> orders of magnitude. It needs structure — enumerate *cluster patterns* (which uses co-press) rather
+> than free press seconds, or solve on a coarse lattice and refine. Design the enumeration before
+> running anything.
+> ⚠ Same dependency as A: §9a's F1/F4 both re-price ramps, and a 12:20 fight has many of them.
+>
+> ---
+>
 > # ▶ THE LIVE PLAN IS `docs/PHASE13.md` — start there
 >
 > ## ✅ CLEARED 07-31 — the T6 call was made, and move class 3d is SHIPPED
