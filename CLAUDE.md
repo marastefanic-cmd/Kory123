@@ -24,7 +24,15 @@ and **brute-forcing a cell's neighbourhood does that job better and instantly**:
 0.1022-cast search miss in seconds, where a sim duel resolves ~0.02 casts at best against its own seed
 noise. Ground truth is now `docs/ESTABLISHED-FACTS.md`'s closed forms (checked by
 `tools/law-check.mjs`), the scorer's agreement with itself (`tools/self-consistency.mjs`), and the eight
-declared layouts (`tests/anchors.mjs`). ⚠ **The one real loss is the model's blind spots — mana and AoE
+declared layouts (`tests/anchors.mjs`).
+★ **AND THE CHAIN IS NOT CIRCULAR, WHICH IS WORTH STATING PRECISELY** (07-31). "We check the scorer
+against closed forms we wrote ourselves" would be — except the forms are *algebra over `GAME`*, and
+every one of its **14 constants** traces to a source outside the model (wowsims file+line, a Wowhead
+spell id, or a measured log). `tools/constants-cited.mjs` gates that, reading `GAME` from the engine so
+a new constant automatically creates an obligation, with a negative control that redacts a citation and
+must fail. ⇒ the honest four-link statement: **constants externally sourced → algebra checked against
+the engine → engine checked against itself → which LAYOUT is right is user-declared.** What is genuinely
+gone with the sim is the ability to falsify the *structure* (§8x); the numbers are still anchored. ⚠ **The one real loss is the model's blind spots — mana and AoE
 weighting — which nothing now measures.** That is a known, accepted gap.
 
 You enter a fight (length, Bloodlust

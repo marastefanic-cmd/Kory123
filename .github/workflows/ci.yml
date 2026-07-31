@@ -64,6 +64,15 @@ jobs:
 
       # The SCORER against the algebra, which is prior to any question about layouts. Every scoring
       # defect closed on 07-30 was caught this way and none would have been caught by a plan diff.
+      # The constants the closed forms are algebra OVER — the one guard against post-sim circularity.
+      # law-check confirms the scorer against forms we wrote; this confirms the numbers in them came
+      # from somewhere outside the model. Cheap, and it fails the moment an uncited constant appears.
+      - name: every GAME constant is sourced (constants-cited)
+        run: node tools/constants-cited.mjs
+
+      - name: …and its negative control
+        run: node tools/constants-cited.mjs --self-test
+
       - name: the closed forms (law-check)
         run: node tools/law-check.mjs
 
