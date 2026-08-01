@@ -39,7 +39,7 @@ You enter a fight (length, Bloodlust
 timing, intermission/AoE phases) and it computes the **optimal moment to press each on-use
 cooldown** (Icy Veins, Arcane Power, Icon of the Silver Crescent, Serpent-Coil gem, Berserking),
 plus a burn timeline, a per-window activation schedule, and a copy-as-text plan. Alongside it:
-`tests/` — **eight tests** (`tests/anchors.mjs`): the eight layouts the user declared exactly. The goldens
+`tests/` — **eleven tests** (`tests/anchors.mjs`): the eleven layouts the user declared exactly. The goldens
 and the plan-shape suites are **deleted** (user decision 07-28, restated twice); the sim gates are
 **deleted** (07-30, above). What is left beside `anchors` are the two scorer gates —
 `tools/law-check.mjs` (the scorer vs the algebra) and `tools/self-consistency.mjs` (the scorer vs
@@ -134,7 +134,25 @@ declines to see (a standing user decision). The one place the continuum idealisa
 discrete correction — a cast in flight across a cut — is exactly where `cutsAt()` and the credit rule
 already live.
 
-**★ There are exactly EIGHT tests, and they are the eight layouts the user declared exactly.** T1/T2:
+> ### ★ T9–T11 (added 08-01) — THE LONG FIGHTS, and the first that declare ALIGNMENT rather than a burst
+> All three run the **buffed-stat pipeline** (typed 1387 SP / 38 % crit / 750 Int + 10 raid buffs ⇒
+> 1611.8875 SP / 50.765 % crit, Tirisfal 2pc on) — the first declared cases that are not raw typed gear.
+> · **T9** `6:20, no Bloodlust` — at this length every cooldown returns more than once and the 120 s
+>   (Icon, gem) and 180 s (Icy Veins, AP, Berserking) families drift apart, so it declares a *cadence*.
+>   It closed **§9c**: the second Icy Veins belongs at 3:00, not 3:05, because 3:00 is where it comes off
+>   its own cooldown and the chain then closes with **no Cold Snap**. The two are tied *to the bit*, so
+>   the tie-break decided — and it decided wrong until `planShape.snaps` became its first criterion.
+> · **T10** `6:30, no Bloodlust` — T9 **plus ten seconds**, and the whole shape re-forms: three Icy Veins
+>   become four via a prepull double (`[-10, 10, 190, 370]`) and the entire cluster leaves the pull for
+>   0:10. Passed on the first run; it pins prepull × Cold Snap × cluster placement against each other.
+> · **T11** `6:30, Bloodlust pinned 0:10` — **user-found search miss**, ~0.396 casts (≈200× the tie band)
+>   and the first case the user out-planned the tool by hand. It closed **§9d**: the search had no move
+>   that could RE-SITE a Cold Snap, so `[-8, 172, 192, 372]` was a *true* local optimum 0.42 casts short.
+>   Fixed by a **charge-relocation** move class that proposes the whole chain from an anchor.
+> ⇒ **T10 vs T11 is the corpus's sharpest instrument**: the same fight one pinned press apart, one solved
+> and one missed. Keep them together; that pair is what localised §9d in four measurements.
+
+**★ There are exactly ELEVEN tests, and they are the eleven layouts the user declared exactly.** T1/T2:
 2:00 and 3:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit, every press time pinned, per their ruling
 *"these two need to always be this way"*. T3 (added 07-30): the **Morogrim Tidewalker preset**, declared as
 a RULE rather than a timetable — *"pop the first cluster (everything except Berserking) as soon as a) 3
