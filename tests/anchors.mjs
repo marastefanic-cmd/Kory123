@@ -1,4 +1,4 @@
-// THE TESTS. There are EIGHT, and they are the layouts the user declared exactly.
+// THE TESTS. There are NINE, and they are the layouts the user declared exactly.
 //
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // ★★★★★★ THESE ARE HARD TESTS. THEY ARE GROUND TRUTH. — user ruling, 2026-07-30, verbatim:
@@ -130,10 +130,15 @@ const api = loadEngine(new URL('../index.html', import.meta.url).pathname);
 }
 
 const KIT = ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking', 'bloodlust'];
+/* `kit` / `t5two` / a missing `lust` are all OPTIONAL and default to the original six-cooldown,
+   Bloodlust-pinned, no-set-bonus shape T1-T8 were declared in. Added for T9, the first declared case
+   with no Bloodlust in the raid at all — so there is nothing to pin, and the whole layout is
+   self-chosen rather than hung off an external call. */
 const cfgFor = c => ({
   T: c.T, hasteRating: 0, sp: c.sp, critPct: c.crit,
-  enabled: Object.fromEntries(ALL_BUFFS.map(k => [k, KIT.includes(k)])),
-  fixed: { bloodlust: [c.lust] }, warnings: [], coldSnap: true,
+  enabled: Object.fromEntries(ALL_BUFFS.map(k => [k, (c.kit || KIT).includes(k)])),
+  fixed: c.lust === undefined ? {} : { bloodlust: [c.lust] }, warnings: [], coldSnap: true,
+  t5two: !!c.t5two,
   segments: c.intermission
     ? api.buildSegments([{ from: c.intermission[0], to: c.intermission[1], type: 'intermission', mult: 1, targets: 0 }], c.T)
     : null,
@@ -232,6 +237,29 @@ const CASES = [
   { name: 'T8 — 2:15, Bloodlust pinned 1:35, intermission 0:15-0:20 — THE PREPULL CASE',
     T: 135, sp: 1387, crit: 38, lust: 95, intermission: [15, 20],
     want: { isc: [-5, 115], scb: [0, 120], berserking: [0], icyVeins: [95, 115], arcanePower: [120], bloodlust: [95] } },
+  /* ★ T9 — DECLARED 08-01. The first LONG fight, the first with NO Bloodlust, and the first on the
+     buffed-stat pipeline (typed 1387/38/750 Int + 10 raid buffs -> 1611.8875 SP / 50.765 % crit,
+     Tirisfal 2pc on). At 6:20 every cooldown comes back more than once and the 120 s and 180 s
+     families drift apart, so this is the first case that declares an ALIGNMENT pattern rather than a
+     single burst — Icon on its own 2:00 cadence, everything else clustering on the 180 s beat.
+     ⚠⚠ THE SECOND ICY VEINS IS AT 3:00, NOT 3:05, AND THE TOOL EMITS 3:05. User ruling, 08-01:
+     *"The second iV should be @3:00. It loses absolutely nothing like that and upholds the earliest
+     but same rule."* Verified before locking: the two layouts are **bit-identical** under the
+     objective — `rankScore` returns the same float, `a === b` exactly, 279.886646205 casts either way.
+     So no damage claim is being overturned; this is purely which member of an exact plateau is
+     canonical, exactly like T6.
+     ⛔ BUT IT CONTRADICTS THE TIE-BREAK'S FIRST CRITERION, and that is the point of the case.
+     3:05 co-presses Icy Veins with the scb/AP/Berserking cluster (7 distinct press moments); 3:00
+     gives it its own (8). "Fewest distinct press moments" therefore prefers 3:05 — and that criterion
+     is the one the T6 ruling established. So T9 is RED until the tie-break is reconciled, and it is
+     supposed to be: it is the case that proves the ordering is not yet right.
+     ⇒ Do NOT reconcile by reordering to "earliest first" — that flips T6 straight back to its
+     pre-ruling layout. See MODEL-DEFECTS §9c for the hypothesis that satisfies both. */
+  { name: 'T9 — 6:20, NO Bloodlust, buffed stats, Tirisfal 2pc — the ALIGNMENT case',
+    T: 380, sp: 1611.8875, crit: 50.76538949275363, t5two: true,
+    kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking'],
+    want: { icyVeins: [0, 180, 360], isc: [0, 120, 240, 360],
+            scb: [5, 185, 365], arcanePower: [5, 185, 365], berserking: [5, 185, 365] } },
 ];
 
 // T3 uses a real BOSS preset, so its cfg comes from the fight table (sp 1387, crit 38, Lust pinned 0:05)

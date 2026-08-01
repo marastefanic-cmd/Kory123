@@ -3472,3 +3472,58 @@ AoE channel for crit is already known and flagged in SOURCES; **the Ashtongue ch
 * **The mana gem is off-GCD** in wowsims, so the tool's free-press treatment of the SCB trigger is
   correct. It does sit on the 2 min `GetCombatConsumableCD` shared with potions — latent only if potions
   are ever added.
+
+---
+
+## §9c — ⛔ OPEN: THE TIE-BREAK'S FIRST CRITERION IS WRONG, AND T9 IS THE CASE THAT PROVES IT (08-01)
+
+**T9 is declared RED on purpose.** User ruling, 08-01, on a 6:20 no-Bloodlust fight: *"The second iV
+should be @3:00. It loses absolutely nothing like that and upholds the earliest but same rule."*
+
+Verified before locking, at full float precision: the two layouts are **bit-identical** under the
+objective. `rankScore` returns the same double for both — `a === b` is exactly `true`, 279.886646205
+casts either way. **No damage claim is in dispute**; this is purely which member of an exact plateau is
+canonical, which is the same shape as T6.
+
+**But it contradicts the tie-break's FIRST criterion**, and that is the whole content of the case:
+
+| layout | Icy Veins | distinct press moments | `fewest moments` prefers | `earliest` prefers |
+|---|---|---|---|---|
+| what the tool emits | `[0, 185, 360]` | **7** (IV rides the scb/AP/Zerk cluster at 185) | ✅ | |
+| **T9, declared** | `[0, 180, 360]` | **8** (IV gets its own moment) | | ✅ |
+
+⛔ **The naive fix — reorder to "earliest first" — is FALSIFIED, and cheaply.** It flips T6 straight
+back to its pre-ruling layout: old T6 is `[5,7,7,7,7,27,37]` against new T6's `[5,5,15,15,15,15,35]`,
+so at index 1 the OLD one is earlier and would win. T6's ruling exists precisely because the user chose
+**3 distinct moments over 4** there. Any reordering must keep both.
+
+### ★ The hypothesis that satisfies both — NOT YET TESTED, do not ship it unmeasured
+
+**Count only the press moments the player has to CREATE. Riding an externally-pinned press is free.**
+
+* **T6** — Berserking moves to 0:05 to ride **Bloodlust**, which the *raid* calls and the player does not
+  choose. That is a genuinely free co-press: it removes a separate thing the player must do. New T6 wins
+  on the criterion, as ruled. ✅
+* **T9** — there are **no pins at all** (`"pins":{}`; this is the first declared case with no Bloodlust
+  in the raid). Icy Veins at 3:05 rides only a **self-chosen** cluster, which the optimizer could equally
+  have placed elsewhere — so it earns no legibility credit, criterion 1 ties, and `earliest` decides.
+  3:00 wins, as ruled. ✅
+
+⇒ the criterion becomes *"fewest **self-created** press moments"* rather than *"fewest press moments"*,
+with pinned moments (and anything already fixed by the raid) excluded from the count.
+
+⚠ **Two reasons this is a hypothesis and not a plan.** (1) It is a tie-break redesign, and the tie-break
+is the thing that makes the tool deterministic — one setup ⇒ one schedule — so a change here touches
+every plateau in the corpus, not just these two. (2) It has been checked against exactly **two** cases,
+both of which it was constructed to explain. Before shipping: enumerate the plateau on several corpus
+cells (`tools/plateau-audit.mjs`) and confirm the rule picks a member the user would sign off on, not
+just one that satisfies T6 and T9.
+
+★ **Secondary observation, and it may be the better handle.** 3:00 is *also* where Icy Veins comes off
+its own 180 s cooldown from the 0:00 press — so it is the **earliest legal press**, and the chain
+`0 → 180 → 360` closes with no Cold Snap. The emitted `0 → 185 → 365` needs Cold Snap to reach 360. On a
+6:20 fight that is worth exactly nothing (a fourth use would land at 540, past the kill), which is why
+the score is tied to the bit — but on a longer fight it would not be, and a rule phrased as *"press each
+cooldown at the earliest point its own chain allows, unless moving it later pays"* would get T9 right
+for a reason that generalises. ⚠ It does NOT settle T6 on its own, so it is a complement to the
+self-created-moments rule, not a replacement.
