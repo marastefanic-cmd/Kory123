@@ -96,6 +96,13 @@ for (const host of solved) {
   let bestDonor = null;
   for (const donor of solved) {
     if (donor === host) continue;
+    /* ⛔ NEVER TRANSPLANT ACROSS KITS — the first run's three biggest "misses" were this bug. A
+       no-Lust host scored +8.88 casts from a Lust donor's plan because the transplant carried a
+       `bloodlust` press into a fight that has no Bloodlust, and neither `repair` nor `simulate` strips
+       a press for a disabled cooldown. That is not a search miss, it is a different fight. A transplant
+       is only meaningful between cells whose ENABLED SET matches; the pin may differ (that is the
+       point), the kit may not. */
+    if (JSON.stringify(donor.cfg.enabled) !== JSON.stringify(host.cfg.enabled)) continue;
     const v = score(donor.s, host.cfg);
     if (v > host.own + TIE && (!bestDonor || v > bestDonor.v)) bestDonor = { donor, v };
   }
