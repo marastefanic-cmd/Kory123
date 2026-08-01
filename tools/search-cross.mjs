@@ -44,10 +44,27 @@ const TIE = 0.002;
 
 // One parameter moves per row. Lengths bracket the 120 s / 180 s realignment beat; the Lust column is
 // what exposed §9d, since a pinned call changes which chain origins exist.
+/* ⚠ KEEP THE GRID SMALL. Each cell is a full `optimizeAsync` (~30 s on a 6-minute fight), so the cost
+   is linear in cells while the CHECK is N² — and the N² half is nearly free (repair + simulate). A first
+   run at 24 cells was killed at 15 minutes having solved maybe half. Default to a focused grid and widen
+   deliberately with --cells=. The default sits where §9d lived: long fights, Bloodlust varied, because a
+   pinned call is what changes which chain origins exist. */
 const CELLS = [];
-for (const T of [330, 360, 380, 390, 420, 450]) {
-  CELLS.push({ T, lust: null });
-  for (const lust of [5, 10, 60]) CELLS.push({ T, lust });
+{
+  /* ★ THE LUST AXIS IS THE PRIMARY ONE — user direction 08-01: *"fights such as Leotheras the Blind,
+     where the bloodlust positioning throws a curveball into the natural established patterns."* That is
+     the real stress case and the first grid missed it by only sampling 0:10 and 1:00. On Leotheras the
+     call comes at the permanent-demon phase (15 %), i.e. LATE — five minutes into a seven-minute fight —
+     which lands nowhere near the 120 s / 180 s beats the rest of the layout organises around. A late
+     Lust forces the whole cluster to choose between its own cadence and the raid's call, and §9d showed
+     a pinned call is exactly what redirects the descent into a wrong basin.
+     ⇒ sweep Lust across early / mid / late plus a no-Lust control, on one long fight. */
+  const arg = (process.argv.find(a => a.startsWith('--cells=')) || '').split('=')[1];
+  const Ts = arg ? arg.split(',').map(Number) : [420];
+  for (const T of Ts) {
+    CELLS.push({ T, lust: null });
+    for (const lust of [10, 95, 200, 300, 355]) if (lust < T - 40) CELLS.push({ T, lust });
+  }
 }
 
 const cfgOf = c => ({
