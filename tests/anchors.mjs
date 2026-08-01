@@ -1,4 +1,4 @@
-// THE TESTS. There are TEN, and they are the layouts the user declared exactly.
+// THE TESTS. There are ELEVEN, and they are the layouts the user declared exactly.
 //
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // ★★★★★★ THESE ARE HARD TESTS. THEY ARE GROUND TRUTH. — user ruling, 2026-07-30, verbatim:
@@ -280,6 +280,29 @@ const CASES = [
     kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking'],
     want: { icyVeins: [-10, 10, 190, 370], isc: [10, 130, 250, 370],
             scb: [10, 190, 370], arcanePower: [10, 190, 370], berserking: [10, 190, 370] } },
+  /* ★★★ T11 — DECLARED 08-01 FROM A USER-FOUND SEARCH MISS, and it is T10 with Bloodlust called at
+     0:10. The user built it by hand in Customize and locked-and-validated it; the tool's own answer
+     scores WORSE by ~0.399 casts, which is ~200× `TIE_CASTS` — so unlike T9 this is not a plateau
+     question at all. The scorer already prefers this layout; the search simply never reached it.
+
+         tool emits   icyVeins[0, 180, 360, 380]     isc[6, 126, 246, 366]   cluster 0:06 / 0:186
+         T11          icyVeins[-10, 10, 190, 370]    isc[10, 130, 250, 370]  cluster 0:10 / 0:190
+
+     Confirmed in bare node before locking: both layouts survive `repair` unrewritten, and the gap is
+     +0.399122 casts to T11 — matching the page's own +0.396 to three decimals.
+     ★ WHY IT MATTERS BEYOND ONE CELL: T10 (same fight, no Bloodlust) already declared exactly this
+     shape, and adding a raid Lust ON the cluster's own second should not disturb it. The tool instead
+     abandons the prepull double and drags the whole cluster back to 0:06 to sit under Lust's opening
+     seconds — i.e. the Lust pin *pulls the search into a different basin* and it never climbs out. That
+     is the §8j family (a press far from where the descent put it is outside every bounded
+     neighbourhood), and T10-vs-T11 is the cleanest witness the corpus has: two fights differing by one
+     pinned press, one solved and one missed.
+     ⛔ FIX IN THE SEARCH — seed classes or `phaseRerank`'s move set — NEVER by editing this layout. */
+  { name: 'T11 — 6:30, Bloodlust pinned 0:10 — USER-FOUND SEARCH MISS (~0.399 casts)',
+    T: 390, sp: 1611.8875, crit: 50.76538949275363, t5two: true, lust: 10,
+    kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking', 'bloodlust'],
+    want: { icyVeins: [-10, 10, 190, 370], isc: [10, 130, 250, 370], scb: [10, 190, 370],
+            arcanePower: [10, 190, 370], berserking: [0, 190, 370], bloodlust: [10] } },
 ];
 
 // T3 uses a real BOSS preset, so its cfg comes from the fight table (sp 1387, crit 38, Lust pinned 0:05)
