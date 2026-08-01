@@ -2140,6 +2140,38 @@ function polish(seed, cfg) {
   let s = seed, val = simulate(s, cfg).robust;
   for (let pass = 0; pass < 40; pass++) {
     let improved = false;
+    /* ★★★ CHARGE RELOCATION — rebuild the Cold-Snap track's WHOLE chain from an anchor. Added 08-01.
+       Every other move class perturbs a schedule: `SHIFTS` slides one index or a suffix, 3d closes
+       cooldown chains. None can RE-SITE a Cold Snap, because moving the charge means moving a PAIR of
+       presses from one part of the fight to another while the rest of the chain re-spaces around them —
+       not reachable as any sequence of single-press shifts that each has to improve on the way.
+       T11 is the witness. With an append move the search gets to `[-8, 172, 192, 372]`: right basin,
+       Icon exactly on the declared `[10, 130, 250, 370]` cadence, but the charge spent MID-FIGHT
+       (172 → 192) instead of at the opener (−10 → 10), and it is a true local optimum — every
+       single-press neighbour is worse, and both layouts spend one Cold Snap so §9c's `snaps` cannot
+       separate them either. The deficit was 0.42 casts, ~210× `TIE_CASTS`.
+       ⇒ so propose the chain WHOLE: for each plausible anchor, `[a − dur, a, a + cd, a + 2cd, …]`. The
+       anchors are the pull, the raid calls, and wherever the other tracks already sit — i.e. the seconds
+       a cluster could form on. At `a = 10` this constructs `[-10, 10, 190, 370]` exactly.
+       ⚠ Cheap because it is one candidate per anchor per pass, not per index, and it only runs for the
+       Cold-Snap track. */
+    if (cfg.coldSnap && s.icyVeins && s.icyVeins.length && !cfg.fixed.icyVeins) {
+      const dur = BUFFS.icyVeins.dur, cd = BUFFS.icyVeins.cd, anchors = new Set([0]);
+      for (const ts of Object.values(cfg.fixed)) for (const t of ts) anchors.add(Math.round(t));
+      for (const k2 in s) if (k2 !== "icyVeins") for (const t of s[k2]) if (t >= 0) anchors.add(Math.round(t));
+      outer:
+      for (const a of [...anchors].sort((x, y) => x - y)) {
+        for (const withPre of [true, false]) {
+          const times = [];
+          if (withPre) { const pre = Math.max(a - dur, -(dur - 1)); if (pre < a) times.push(pre); }
+          for (let t = a; t <= cfg.T - 1; t += cd) times.push(t);
+          if (times.length < 2) continue;
+          const cand = cloneS(s); cand.icyVeins = times;
+          const rep = repair(cand, cfg), v = simulate(rep, cfg).robust;
+          if (v > val + 1e-7) { s = rep; val = v; improved = true; break outer; }
+        }
+      }
+    }
     for (const key in s) {
       if (cfg.fixed[key]) continue; // raid-called timings are anchors, not variables
       for (let i = 0; i < s[key].length; i++) {

@@ -3519,7 +3519,27 @@ of the schedule, so one setup still yields one schedule.
 
 ---
 
-## §9d — ⛔ OPEN: T11 IS A **SEEDING** FAILURE, AND THE NUMBERS SAY SO (08-01)
+## §9d — ✅ CLOSED 08-01. T11 needed a CHARGE-RELOCATION move; the search had none.
+
+> **✅ 11 of 11.** Fixed by ONE new move class in `polish`, and none of the three earlier attempts
+> below was needed — all three stay reverted. `law-check` green, `self-consistency` PASS,
+> `plan-sweep`+`plan-diff` **PLAN-DIFF IDENTICAL** with `scorerMoved=0` across 15 cells, so the change
+> is search-only and moved no existing plan.
+>
+> **The move: rebuild the Cold-Snap track's WHOLE chain from an anchor** — `[a − dur, a, a + cd, …]`
+> for each anchor in {the pull, the raid calls, wherever the other tracks already sit}. At `a = 10`
+> that constructs `[-10, 10, 190, 370]` exactly.
+>
+> ★ **Why no existing class could reach it.** Every other move *perturbs*: `SHIFTS` slides one index or
+> a suffix, 3d closes cooldown chains. Re-siting a Cold Snap means relocating a **pair** of presses
+> across the fight while the rest of the chain re-spaces — and every intermediate step is worse, so a
+> greedy descent can never walk there. `[-8, 172, 192, 372]` was a *true* local optimum: every
+> single-press neighbour worse, and both layouts spend one Cold Snap so §9c's `snaps` could not
+> separate them either. ⇒ **the lesson is the shape of the move, not the cell**: when a resource has a
+> placement (not just a time), the search needs a class that proposes placements WHOLE.
+>
+> ### (the original diagnosis, kept — it is what made the fix findable)
+
 
 T11 (6:30, Bloodlust pinned 0:10) declares `icyVeins[-10, 10, 190, 370]` with the cluster on 0:10. The
 tool emits the cluster on 0:06 with `icyVeins[0, 180, 360, 380]`, **0.396459 casts worse** — ~200×
