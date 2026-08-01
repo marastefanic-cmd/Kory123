@@ -3568,3 +3568,39 @@ right one and the descent stumbles into the prepull unaided. Pin Bloodlust at 0:
 hangs off origin 10 with a *negative* first press, outside every bounded neighbourhood of the origin-0
 basin. Two declared fights differing by a single pinned press, one solved and one missed, is a far
 sharper localiser than any single failing cell.
+
+### §9d continued — 08-01: THREE CANDIDATE FIXES, ALL MEASURED, ALL REVERTED
+
+T11 is **not fixed**. Recording the attempts with numbers so none of them is re-tried blind.
+
+| # | change | effect on the seed pool | effect on T11 |
+|---|---|---|---|
+| 1 | `front` seed variant — prepend `G[0] − dur` for the Cold-Snap track | 32 → 56 seeds, 0 → 24 with a prepull; best seed **293.74 → 295.21** | emission **byte-identical** |
+| 2 | stop culling group seeds against `bar` (the 6th-best BASE seed) | — | emission **byte-identical** |
+| 3 | append-a-ready-use move in `polish` | — | basin **changed**, score **296.0706 → 296.0495 (worse by 0.021)** |
+
+★ **THE DECISIVE MEASUREMENT, and it is the one to build on.** The whole deficit is **ONE UNPRESSED
+COOLDOWN**, and nothing in the pipeline can create it:
+
+```
+iv[-10, 10, 250]        --repair-->  unchanged   292.2204 casts
+iv[-10, 10, 190]        --repair-->  unchanged   292.8906
+iv[-10, 10, 190, 370]                            296.4697   <- declared
+```
+`polish` only ever SHIFTS presses; `repair` does not append here. So no reachable sequence of moves
+constructs the declared layout from any seed — which is why fixes 1 and 2 could not possibly have worked,
+and why measuring them was worth more than reasoning about them.
+
+⚠ **But fix 3 shows "add a move that appends" is not sufficient either.** With it the search reaches the
+right *neighbourhood* — Icon lands on `[10, 130, 250, 370]`, **exactly** the declared cadence, and the
+whole cluster moves to 0:10 — yet Icy Veins comes out `[-8, 172, 192, 372]`: it spends Cold Snap in the
+MIDDLE (172 → 192) instead of at the OPENER (−10 → 10), and everything sits ~2 s late. Both layouts spend
+exactly one Cold Snap, so §9c's `snaps` criterion cannot separate them, and the middle placement scores
+marginally *lower* — so this is a genuine local optimum the descent settles into, two seconds and one
+charge-placement away from the answer.
+
+⇒ **the open question is now sharp: what move takes `[-8, 172, 192, 372]` to `[-10, 10, 190, 370]`?** It
+is not a shift of one press (the whole Cold-Snap pair has to relocate from mid-fight to the opener while
+the chain re-spaces). That is a *charge-relocation* move class, and no existing class expresses it —
+`SHIFTS` moves one index or a suffix, and move class 3d closes cooldown chains but does not re-site a
+Cold Snap.
