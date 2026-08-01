@@ -242,19 +242,18 @@ const CASES = [
      Tirisfal 2pc on). At 6:20 every cooldown comes back more than once and the 120 s and 180 s
      families drift apart, so this is the first case that declares an ALIGNMENT pattern rather than a
      single burst — Icon on its own 2:00 cadence, everything else clustering on the 180 s beat.
-     ⚠⚠ THE SECOND ICY VEINS IS AT 3:00, NOT 3:05, AND THE TOOL EMITS 3:05. User ruling, 08-01:
-     *"The second iV should be @3:00. It loses absolutely nothing like that and upholds the earliest
-     but same rule."* Verified before locking: the two layouts are **bit-identical** under the
-     objective — `rankScore` returns the same float, `a === b` exactly, 279.886646205 casts either way.
-     So no damage claim is being overturned; this is purely which member of an exact plateau is
-     canonical, exactly like T6.
-     ⛔ BUT IT CONTRADICTS THE TIE-BREAK'S FIRST CRITERION, and that is the point of the case.
-     3:05 co-presses Icy Veins with the scb/AP/Berserking cluster (7 distinct press moments); 3:00
-     gives it its own (8). "Fewest distinct press moments" therefore prefers 3:05 — and that criterion
-     is the one the T6 ruling established. So T9 is RED until the tie-break is reconciled, and it is
-     supposed to be: it is the case that proves the ordering is not yet right.
-     ⇒ Do NOT reconcile by reordering to "earliest first" — that flips T6 straight back to its
-     pre-ruling layout. See MODEL-DEFECTS §9c for the hypothesis that satisfies both. */
+     ⚠⚠ THE SECOND ICY VEINS IS AT 3:00, NOT 3:05. User ruling, 08-01: *"The second iV should be
+     @3:00. It loses absolutely nothing like that and upholds the earliest but same rule."* Verified
+     before locking: the two layouts are **bit-identical** under the objective — `rankScore` returns the
+     same double, `a === b` exactly, 279.886646205 casts either way. So no damage claim was overturned;
+     it was purely which member of an exact plateau is canonical, like T6.
+     ★ WHAT IT FIXED: the tie-break had no notion of COLD SNAP. 3:00 is where Icy Veins comes off its own
+     180 s cooldown, so `0 → 180 → 360` closes with no Cold Snap, while the emitted `0 → 185 → 365` had
+     to burn one to reach 360. User: *"this is the rare case of Cold Snap literally not gaining any value
+     ever"* — at 6:20 a fourth use lands at 540, past the kill, which is exactly WHY the two tie. Spending
+     a limited resource that buys nothing forecloses an option for no return, so `planShape.snaps` is now
+     the tie-break's FIRST criterion. T6 is untouched because both of ITS candidates spend one Cold Snap,
+     so `snaps` ties there and `distinct` still decides — which is what that ruling requires. */
   { name: 'T9 — 6:20, NO Bloodlust, buffed stats, Tirisfal 2pc — the ALIGNMENT case',
     T: 380, sp: 1611.8875, crit: 50.76538949275363, t5two: true,
     kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking'],

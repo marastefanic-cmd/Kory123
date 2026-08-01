@@ -3475,55 +3475,44 @@ AoE channel for crit is already known and flagged in SOURCES; **the Ashtongue ch
 
 ---
 
-## §9c — ⛔ OPEN: THE TIE-BREAK'S FIRST CRITERION IS WRONG, AND T9 IS THE CASE THAT PROVES IT (08-01)
+## §9c — ✅ CLOSED 08-01. The tie-break had no notion of COLD SNAP; now it is criterion one.
 
-**T9 is declared RED on purpose.** User ruling, 08-01, on a 6:20 no-Bloodlust fight: *"The second iV
-should be @3:00. It loses absolutely nothing like that and upholds the earliest but same rule."*
+**T9 was declared red and is now green, 9 of 9.** The user's 6:20 ruling put the second Icy Veins at
+3:00 against the 3:05 the tool emitted. The two layouts are **bit-identical** under the objective —
+`rankScore` returns the same double, `a === b` exactly — so the scorer had no say and the tie-break
+decided. It decided wrong.
 
-Verified before locking, at full float precision: the two layouts are **bit-identical** under the
-objective. `rankScore` returns the same double for both — `a === b` is exactly `true`, 279.886646205
-casts either way. **No damage claim is in dispute**; this is purely which member of an exact plateau is
-canonical, which is the same shape as T6.
+### The fix, and it is the user's own reasoning
 
-**But it contradicts the tie-break's FIRST criterion**, and that is the whole content of the case:
+3:00 is where Icy Veins comes off its own 180 s cooldown, so `0 → 180 → 360` closes with **no Cold
+Snap**; the emitted `0 → 185 → 365` must burn one to reach 360. User, 08-01: *"this is the rare case of
+Cold Snap literally not gaining any value ever"* — at 6:20 a fourth use would land at 540, past the
+kill, **which is exactly why the two tie**. Spending a limited resource that buys nothing is not
+neutral: it forecloses an option for no return. So among score-tied layouts, prefer the one that keeps
+the charge. `planShape` gains `snaps` (Icy Veins gaps shorter than its cooldown — Cold Snap resets Icy
+Veins and nothing else) and `planBetter` tests it **before** `distinct`.
 
-| layout | Icy Veins | distinct press moments | `fewest moments` prefers | `earliest` prefers |
-|---|---|---|---|---|
-| what the tool emits | `[0, 185, 360]` | **7** (IV rides the scb/AP/Zerk cluster at 185) | ✅ | |
-| **T9, declared** | `[0, 180, 360]` | **8** (IV gets its own moment) | | ✅ |
+⚠ **It has to outrank `distinct`, and T9 is the case that proves it:** 3:05 co-presses Icy Veins with the
+scb/AP/Berserking cluster (**7** distinct press moments) against 3:00 giving it its own (**8**), so
+`distinct` actively prefers the layout that burns the Cold Snap.
+✅ **And T6 is untouched**, which is the constraint that killed the alternatives: both of T6's candidates
+spend one Cold Snap (its two Icy Veins sit 20 s and 30 s apart, far inside the cooldown), so `snaps`
+ties there and `distinct` still decides it — exactly as that ruling requires.
 
-⛔ **The naive fix — reorder to "earliest first" — is FALSIFIED, and cheaply.** It flips T6 straight
-back to its pre-ruling layout: old T6 is `[5,7,7,7,7,27,37]` against new T6's `[5,5,15,15,15,15,35]`,
-so at index 1 the OLD one is earlier and would win. T6's ruling exists precisely because the user chose
-**3 distinct moments over 4** there. Any reordering must keep both.
+### ⛔ Two alternatives, both falsified — do not re-propose them
 
-### ★ The hypothesis that satisfies both — NOT YET TESTED, do not ship it unmeasured
+1. **"Earliest first"** — flips T6 straight back to its pre-ruling layout (`[5,7,7,7,7,27,37]` is earlier
+   than `[5,5,15,15,15,15,35]` at index 1).
+2. **"Count only SELF-CREATED press moments"** (riding an externally-pinned press is free). This was
+   filed here on 08-01 as the promising hypothesis and it is **WRONG** — checked, not assumed. It does
+   explain T6 (Berserking rides the raid's Bloodlust call). It does **nothing** for T9, which has no pins
+   at all, so both candidates' moments are entirely self-created and the count is still 7 against 8 in
+   the wrong direction. ★ Recorded rather than deleted because it was constructed to fit T6 and then
+   asserted to fit T9 without being evaluated against it — the exact failure mode this file exists for.
 
-**Count only the press moments the player has to CREATE. Riding an externally-pinned press is free.**
+### Verification
 
-* **T6** — Berserking moves to 0:05 to ride **Bloodlust**, which the *raid* calls and the player does not
-  choose. That is a genuinely free co-press: it removes a separate thing the player must do. New T6 wins
-  on the criterion, as ruled. ✅
-* **T9** — there are **no pins at all** (`"pins":{}`; this is the first declared case with no Bloodlust
-  in the raid). Icy Veins at 3:05 rides only a **self-chosen** cluster, which the optimizer could equally
-  have placed elsewhere — so it earns no legibility credit, criterion 1 ties, and `earliest` decides.
-  3:00 wins, as ruled. ✅
-
-⇒ the criterion becomes *"fewest **self-created** press moments"* rather than *"fewest press moments"*,
-with pinned moments (and anything already fixed by the raid) excluded from the count.
-
-⚠ **Two reasons this is a hypothesis and not a plan.** (1) It is a tie-break redesign, and the tie-break
-is the thing that makes the tool deterministic — one setup ⇒ one schedule — so a change here touches
-every plateau in the corpus, not just these two. (2) It has been checked against exactly **two** cases,
-both of which it was constructed to explain. Before shipping: enumerate the plateau on several corpus
-cells (`tools/plateau-audit.mjs`) and confirm the rule picks a member the user would sign off on, not
-just one that satisfies T6 and T9.
-
-★ **Secondary observation, and it may be the better handle.** 3:00 is *also* where Icy Veins comes off
-its own 180 s cooldown from the 0:00 press — so it is the **earliest legal press**, and the chain
-`0 → 180 → 360` closes with no Cold Snap. The emitted `0 → 185 → 365` needs Cold Snap to reach 360. On a
-6:20 fight that is worth exactly nothing (a fourth use would land at 540, past the kill), which is why
-the score is tied to the bit — but on a longer fight it would not be, and a rule phrased as *"press each
-cooldown at the earliest point its own chain allows, unless moving it later pays"* would get T9 right
-for a reason that generalises. ⚠ It does NOT settle T6 on its own, so it is a complement to the
-self-created-moments rule, not a replacement.
+`anchors` **9 of 9** · `plan-sweep` + `plan-diff` **PLAN-DIFF IDENTICAL** with `scorerMoved=0` across 15
+cells, so no corpus cell has a score-tied pair that differs in Cold Snap usage and nothing else moved ·
+`law-check` all reproduce · `self-consistency` PASS. Determinism is preserved: `snaps` is a pure function
+of the schedule, so one setup still yields one schedule.
