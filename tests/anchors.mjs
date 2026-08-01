@@ -1,4 +1,4 @@
-// THE TESTS. There are NINE, and they are the layouts the user declared exactly.
+// THE TESTS. There are TEN, and they are the layouts the user declared exactly.
 //
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // ★★★★★★ THESE ARE HARD TESTS. THEY ARE GROUND TRUTH. — user ruling, 2026-07-30, verbatim:
@@ -259,6 +259,27 @@ const CASES = [
     kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking'],
     want: { icyVeins: [0, 180, 360], isc: [0, 120, 240, 360],
             scb: [5, 185, 365], arcanePower: [5, 185, 365], berserking: [5, 185, 365] } },
+  /* ★★ T10 — DECLARED 08-01, and it is T9 PLUS TEN SECONDS. Same gear, same kit, same everything; the
+     fight is 6:30 instead of 6:20 — and the whole layout re-shapes:
+
+         T9  (380 s)   icyVeins[0, 180, 360]        cluster at 0:00 / 0:05   Icon 0/120/240/360
+         T10 (390 s)   icyVeins[-10, 10, 190, 370]  cluster at 0:10          Icon 10/130/250/370
+
+     THREE Icy Veins become FOUR. Ten seconds is exactly what buys the prepull double: open at −0:10,
+     Cold Snap immediately for a second at 0:10, and the remaining chain still closes on the 180 s beat
+     (10 → 190 → 370) with 20 s of fight to spare. At 380 s that fourth use has nowhere to land.
+     ⇒ first declared case where the ENTIRE cluster leaves the pull — everything moves to 0:10 to ride
+     the SECOND Icy Veins rather than the first — so it pins the prepull rule (§7b), Cold Snap, and
+     cluster placement against each other in one layout.
+     ★ Cold Snap arithmetic, and it is why the shape is legal: gaps are 20 / 180 / 180, so the layout
+     spends EXACTLY ONE Cold Snap — the one it has. §9c's `snaps` criterion is satisfied at its minimum
+     here rather than being the discriminator, which is the right way round: the tie-break should only
+     speak when the score cannot. */
+  { name: 'T10 — 6:30, NO Bloodlust, prepull + Cold Snap double, FOUR Icy Veins',
+    T: 390, sp: 1611.8875, crit: 50.76538949275363, t5two: true,
+    kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking'],
+    want: { icyVeins: [-10, 10, 190, 370], isc: [10, 130, 250, 370],
+            scb: [10, 190, 370], arcanePower: [10, 190, 370], berserking: [10, 190, 370] } },
 ];
 
 // T3 uses a real BOSS preset, so its cfg comes from the fight table (sp 1387, crit 38, Lust pinned 0:05)
