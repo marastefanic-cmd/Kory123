@@ -429,6 +429,9 @@
   .chartbox.editing svg { touch-action: none; }
   .chartbox.editing .pressg { cursor: grab; }
   .chartbox.editing .pressg.dragging { cursor: grabbing; }
+  .chartbox.editing .usebtn { cursor: pointer; }
+  .chartbox.editing .usebtn:hover circle { fill: var(--surface2, #2a2f3a); }
+  .chartbox.editing .usebtn.off { cursor: not-allowed; opacity: 0.35; }
   .pressg.illegal rect { stroke: var(--warn); stroke-width: 2; stroke-dasharray: 4 3; }
   #edit-msg { margin: 0 0 10px; }
   #edit-msg .fixbtns { margin-top: 7px; display: flex; gap: 8px; flex-wrap: wrap; }
@@ -5616,6 +5619,24 @@ function renderTimeline(run, opts) {
           sv += `<g class="pressg${bad ? " illegal" : ""}" data-k="${k}" data-j="${j}" data-int="${intents[j] !== undefined ? intents[j] : t}" data-fire="${t}">${bar}</g>`;
         } else sv += bar;
       });
+      /* ★ ADD / REMOVE A USE — added 08-01 on a direct user report: *"into the customize drag and drop
+         function we need to add an option to remove and add a use per line… I literally can't lock and
+         validate, because there's no way for me to set that up."* Dragging could only MOVE presses, so
+         a question like "what if Icon aligned 3 times instead of 4?" was unaskable — the whole
+         lock-and-validate loop was closed to any layout with a different USE COUNT.
+         ⚠ Deliberately NOT cooldown-clamped on insert: `+` drops the new use at the earliest legal
+         point after the last one and lets `validateCustom` flag it if that is illegal, exactly as a
+         drag does. Silently refusing to add would hide the reason. Pinned raid calls have no buttons —
+         you cannot add a Bloodlust the raid did not call. */
+      if (opts.editing && !pinned) {
+        const bx = 8, by = ly + LANE_H / 2, n = times.length;
+        const mk = (cx, act, glyph, on) =>
+          `<g class="usebtn${on ? "" : " off"}" data-k="${k}" data-act="${act}">` +
+          `<circle cx="${cx}" cy="${by}" r="8" fill="${surf}" stroke="${on ? col : muted}" stroke-width="1.2"/>` +
+          `<text x="${cx}" y="${by + 4}" fill="${on ? col : muted}" font-size="13" font-weight="600" text-anchor="middle">${glyph}</text>` +
+          `<title>${act === "del" ? `Remove the last ${def.name} use (${n} now)` : `Add a ${def.name} use (${n} now)`}</title></g>`;
+        sv += mk(bx, "del", "\u2212", n > 0) + mk(bx + 21, "add", "+", true);
+      }
       // (leeway "press anywhere" bands DEFERRED — user-directed; restore from git once the search is airtight)
     }
   });
@@ -6043,6 +6064,18 @@ function attachDrag(svg, run) {
   const cfg = run.cfg, geo = lastGeo, tip = el("tip"), box = el("chartbox");
   let d = null;
   const vbOf = e => { const r = svg.getBoundingClientRect(); return (e.clientX - r.left) / r.width * geo.VW; };
+  /* the use-count buttons ride the same svg listener set as the drag. `click`, not `pointerdown`, so a
+     mis-aimed press that drifts onto a bar does not fire both. */
+  svg.addEventListener("click", e => {
+    const b = e.target.closest ? e.target.closest(".usebtn") : null;
+    if (!b || b.classList.contains("off")) return;
+    e.preventDefault(); e.stopPropagation();
+    const k = b.dataset.k, def = BUFFS[k], cur = (CUSTOM.s[k] || []).slice().sort((a, z) => a - z);
+    if (b.dataset.act === "del") { if (!cur.length) return; cur.pop(); }
+    else cur.push(cur.length ? Math.min(cur[cur.length - 1] + def.cd, cfg.T) : 0);
+    CUSTOM.s[k] = cur;
+    refreshCustomView();
+  });
   svg.addEventListener("pointerdown", e => {
     const g = e.target.closest ? e.target.closest(".pressg") : null;
     if (!g) return;
