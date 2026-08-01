@@ -3516,3 +3516,55 @@ ties there and `distinct` still decides it — exactly as that ruling requires.
 cells, so no corpus cell has a score-tied pair that differs in Cold Snap usage and nothing else moved ·
 `law-check` all reproduce · `self-consistency` PASS. Determinism is preserved: `snaps` is a pure function
 of the schedule, so one setup still yields one schedule.
+
+---
+
+## §9d — ⛔ OPEN: T11 IS A **SEEDING** FAILURE, AND THE NUMBERS SAY SO (08-01)
+
+T11 (6:30, Bloodlust pinned 0:10) declares `icyVeins[-10, 10, 190, 370]` with the cluster on 0:10. The
+tool emits the cluster on 0:06 with `icyVeins[0, 180, 360, 380]`, **0.396459 casts worse** — ~200×
+`TIE_CASTS`, so not a plateau. `tests/anchors.mjs` classifies it **SEARCH failure**, i.e. `scorerBeats()`
+found nothing better in the declared layout's own neighbourhood: the scorer already prefers T11 and the
+descent never visits it.
+
+### Localised to `groupSeeds`, with measurements
+
+| | best seed reachable | target (T11) |
+|---|---|---|
+| shipped | **293.74** casts (32 seeds, **0** with a prepull) | **296.47** |
+
+**No seed is within 2.7 casts of the target basin.** That is the whole defect — this is not a
+move-set/comparator problem, because the declared layout is a local optimum the descent would keep if it
+ever arrived.
+
+`groupSeeds` builds chains from origins `{0} ∪ pinned raid calls`, then derives every track from the
+**same** chain, and spends Cold Snap only as an early repeat *inside* it. Two consequences:
+1. **No seed ever contains a prepull press.** Measured: 0 of 32.
+2. Origin-10 chains *do* exist — some seed puts Icon on the `[10, 130, 250, 370]` cadence — so the
+   origin is reachable. What is missing is the **Icy Veins prepull anchored on that chain**.
+
+### ⚠ An attempted fix, MEASURED NULL and REVERTED — do not re-land it unchanged
+
+A `front` variant was added: for the Cold-Snap track, prepend `G[0] − dur` (clamped to `earliestPress`'s
+`−(dur−1)`), so the chain's first press consumes the charge instead of a later short gap.
+* It **fires**: 56 seeds instead of 32, 24 carrying a prepull.
+* It **raises the best seed 293.74 → 295.21**.
+* It **still falls 1.26 casts short**, every prepull seed anchoring at `−19/1` off the **origin-0**
+  chain rather than `−10/10` off the origin-10 one — and **the emitted plan is byte-identical**, T11
+  still red, 10 of 11.
+⇒ reverted on the project's own pre-registered rule (PHASE9 reverted a change measured null). The idea is
+right and the anchoring is wrong: the prepull must hang off the **pinned-origin** chain, not off 0.
+
+### The next step, stated precisely
+
+Generate, for each chain whose origin is a **pinned raid call** `o`, an Icy Veins variant
+`[o − dur, o, …]`. Then re-measure the best-seed number above; it has to clear **296.47** before the
+descent can matter. `groupSeeds` is now exported from `tools/engine-node.mjs` so this is a two-line probe
+rather than an instrumented rebuild.
+
+★ **Why the pin is what exposed it, and why T10-vs-T11 is the instrument to keep.** T10 is the *same
+fight without the raid Lust* and it **passes** — the only origin is 0, so the origin-0 chain is also the
+right one and the descent stumbles into the prepull unaided. Pin Bloodlust at 0:10 and the good layout
+hangs off origin 10 with a *negative* first press, outside every bounded neighbourhood of the origin-0
+basin. Two declared fights differing by a single pinned press, one solved and one missed, is a far
+sharper localiser than any single failing cell.

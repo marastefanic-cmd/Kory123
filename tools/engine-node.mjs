@@ -49,7 +49,7 @@ export function loadEngine(htmlPath) {
     // GAME is returned so node tools can compute the plain-cast normalizer from the engine's own
     // constants table (reference-gear.mjs doctrine: read GAME, never re-type 720 / 2.5÷3.5 / 0.8175).
     api = new Function('window', 'self', `${eng}\n${bs}\n${presets}\n
-      return { optimizeAsync, simulate, repair, buildSegments, naiveSchedule, BUFFS, GAME,
+      return { optimizeAsync, simulate, repair, buildSegments, naiveSchedule, groupSeeds, BUFFS, GAME,
                phaseScore, rankScore, phaseRerank, latticePeriod, PHASE_N,
                // The SECOND half of the objective pair (MODEL-DEFECTS §8h): the tie band and the
                // shape that resolves inside it. Exported so an instrument reads the engine's own
