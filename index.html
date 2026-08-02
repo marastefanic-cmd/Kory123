@@ -2565,7 +2565,25 @@ function planShape(s) {
   const iv = (s.icyVeins || []).slice().sort((a, b) => a - b);
   let snaps = 0;
   for (let i = 1; i < iv.length; i++) if (iv[i] - iv[i - 1] < BUFFS.icyVeins.cd - EPS) snaps++;
-  return { snaps, distinct: new Set(ts.map(t => Math.floor(t + EPS))).size,
+  /* ★★★ `wastedPre` — A PREPULL THAT FUNDS NO EXTRA USE IS POINTLESS. User ruling 08-02, on the h=900
+     emission `icyVeins[-8]` with no second Icy Veins: *"I understand why you felt like moving it
+     prepull but if there's no second activation it makes no sense to do it."*
+     Pressing before the pull forfeits the window seconds before t=0 (RULES §7b credits only from 0), so
+     it is only ever worth it when starting early is what lets an EXTRA use fit inside the fight. With a
+     single use it is pure loss — and above the GCD cap it is a loss of exactly zero, which is precisely
+     why it survived: measured 0.000000 casts, an exact plateau, so the score could not separate it and
+     `sum` (which prefers earlier press times) reached for the prepull.
+     ⇒ counted as tracks whose first press is prepull while carrying FEWER THAN TWO uses. Ordered right
+     after `snaps`: both say "do not spend something for nothing", and both must outrank `sum`, which is
+     the criterion that was manufacturing the waste.
+     ✅ T8 (THE PREPULL CASE) is untouched — its `isc[-5, 115]` prepull is exactly what makes the second
+     Icon fit (a 120 s cooldown inside a 135 s fight), so it scores 0 here, as it must. */
+  let wastedPre = 0;
+  for (const k of Object.keys(s)) {
+    const ts = s[k] || [];
+    if (ts.length && ts.length < 2 && Math.min(...ts) < -EPS) wastedPre++;
+  }
+  return { snaps, wastedPre, distinct: new Set(ts.map(t => Math.floor(t + EPS))).size,
            sum: ts.reduce((a, b) => a + b, 0), ts };
 }
 // Strictly-better test under the lexicographic objective. `a`/`b` are {score, shape}.
@@ -2574,6 +2592,7 @@ function planBetter(a, b) {
   if (a.score > b.score + band) return true;
   if (b.score > a.score + band) return false;
   if (a.shape.snaps !== b.shape.snaps) return a.shape.snaps < b.shape.snaps;   // keep the charge (T9)
+  if (a.shape.wastedPre !== b.shape.wastedPre) return a.shape.wastedPre < b.shape.wastedPre;  // 08-02
   if (a.shape.distinct !== b.shape.distinct) return a.shape.distinct < b.shape.distinct;
   if (Math.abs(a.shape.sum - b.shape.sum) > EPS) return a.shape.sum < b.shape.sum;
   const n = Math.min(a.shape.ts.length, b.shape.ts.length);
