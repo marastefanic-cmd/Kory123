@@ -94,3 +94,32 @@ for (const b of bands) {
               `${gap.toFixed(4)}${gap < 0.002 ? '  ⚠ INSIDE the 0.002 tie band — tie-break decides, not the score' : ''}`);
 }
 console.log(`\nHASTE-BANDS layouts=${L.length} swept h=0…${HMAX} breakpoints=${bands.length - 1}`);
+
+/* ═══ --assert — THE CHEAP HALF OF THE LADDER GATE ════════════════════════════════════════════════
+   Locks the SCORER's verdict at EVERY haste point, by asserting the argmax over the declared candidate
+   set. It never runs the search, so it costs ~8 × 1201 scores (about a second) instead of ~1200 full
+   solves. That is the whole economy of this gate: a scorer regression that moves any boundary fails
+   here in a second, and only the handful of "does the SEARCH reach it" cases need a real solve.
+   ⚠ Boundaries are asserted with a ±3-rating slack. Three of them (31, 69, ~296, ~719 at the reference
+   SP) sit INSIDE the 0.002-cast tie band, where the tie-break and not the score decides — pinning those
+   to the exact integer would be asserting float noise. Mid-band ownership is the real claim.
+   ⛔ These are SP-SPECIFIC: every rung except the last trades haste against SP buffs and moves with
+   gear (see the --sp header). The table below is the reference SP only. */
+if (process.argv.includes('--assert')) {
+  const WANT = [[0, 'A'], [22, 'D'], [50, 'C'], [97, 'B'], [200, 'E'], [500, 'H'], [900, 'G']];
+  let bad = 0;
+  console.log('\n# --assert · mid-band ownership at the reference SP\n');
+  for (const [h, want] of WANT) {
+    const cfg = cfgAt(h);
+    let best = null;
+    for (let i = 0; i < L.length; i++) { const v = sc(L[i][1], cfg); if (!best || v > best.v) best = { i, v }; }
+    const got = L[best.i][0][0], ok = got === want;
+    if (!ok) bad++;
+    const all = L.map(([n, x]) => sc(x, cfg)).sort((a, z) => z - a);
+    console.log(`  ${ok ? '✓' : '⛔'} h=${String(h).padStart(4)}  winner ${got}${ok ? '' : ` — WANT ${want}`}` +
+                `   ${all[0].toFixed(4)} casts, margin ${(all[0] - all[1]).toFixed(4)}` +
+                `${all[0] - all[1] < 0.002 ? '  ⚠ inside the tie band' : ''}`);
+  }
+  console.log(`\nHASTE-BANDS --assert checked=${WANT.length} failed=${bad}`);
+  process.exit(bad ? 1 : 0);
+}
