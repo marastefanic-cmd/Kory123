@@ -1,4 +1,4 @@
-// THE TESTS. There are ELEVEN, and they are the layouts the user declared exactly.
+// THE TESTS. There are SEVENTEEN, and they are the layouts the user declared exactly.
 //
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // ★★★★★★ THESE ARE HARD TESTS. THEY ARE GROUND TRUTH. — user ruling, 2026-07-30, verbatim:
@@ -22,7 +22,16 @@
 // were settled by BRUTE-FORCE ARGMAX rather than by assertion. Adjusting one to match the tool would
 // destroy the only ground truth the project has — which is exactly what killed `exact-match`.
 //
-// ── ⚠⚠ AND THEY ARE ALL h = 0. THIS IS A DELIBERATE, STATED LIMIT. ────────────────────────────────
+// ── ⚠ THEY WERE ALL h = 0 UNTIL T12 (08-02). THE LIMIT IS NOW PARTLY LIFTED. ─────────────────────
+// T12 is the FIRST declared layout above zero gear haste (h = 22), from the user's haste ladder on a
+// 2:00 fight — a set of hand-declared candidate layouts swept across every haste rating by
+// `tools/haste-bands.mjs` on the ranking integral. That closes, for one gear and one fight shape, the
+// gap the paragraph below describes. It does NOT close it generally: six of the ladder's seven rungs
+// trade haste against SP buffs and therefore MOVE WITH GEAR (measured: the ladder compresses ~20-25 %
+// from 700 to 2200 SP), so T12 is pinned to its spellpower and is not a haste rule. Only the ladder's
+// top boundary is gear-invariant.
+// ⇒ read the paragraph below as still true for every OTHER case, and as the reason the ladder matters.
+//
 // `cfgFor` hardcodes `hasteRating: 0`; every case runs at zero gear haste (T1/T2 at 1000 SP / 25 %
 // crit, T3–T8 at 1387 / 38 %). The user, same ruling: *"make sure that these are noted as h=0
 // examples, figuring out higher haste is trickier."* That is not an oversight to fix by adding haste
@@ -135,7 +144,7 @@ const KIT = ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking', 'bloodlust']
    with no Bloodlust in the raid at all — so there is nothing to pin, and the whole layout is
    self-chosen rather than hung off an external call. */
 const cfgFor = c => ({
-  T: c.T, hasteRating: 0, sp: c.sp, critPct: c.crit,
+  T: c.T, hasteRating: c.haste || 0, sp: c.sp, critPct: c.crit,
   enabled: Object.fromEntries(ALL_BUFFS.map(k => [k, (c.kit || KIT).includes(k)])),
   fixed: c.lust === undefined ? {} : { bloodlust: [c.lust] }, warnings: [], coldSnap: true,
   t5two: !!c.t5two,
@@ -280,6 +289,49 @@ const CASES = [
     kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking'],
     want: { icyVeins: [-10, 10, 190, 370], isc: [10, 130, 250, 370],
             scb: [10, 190, 370], arcanePower: [10, 190, 370], berserking: [10, 190, 370] } },
+  /* ★★★★ T12 — DECLARED 08-02. THE FIRST DECLARED LAYOUT ABOVE ZERO GEAR HASTE.
+     From the user's haste ladder: eight hand-declared candidate layouts for this exact fight, swept at
+     EVERY haste rating by `tools/haste-bands.mjs` on the ranking integral. The winner changes six times
+     as haste rises, and this is band D's member — `h = 16…30` at the reference spellpower, locked
+     mid-band at h = 22 where the margin is 0.0407 casts (20× `TIE_CASTS`, so the score decides it, not
+     the tie-break).
+     ★ The ladder's own shape is the finding: once the structure switches to "IV early + Cold-Snap IV at
+     1:00", the first Icy Veins press slides 10 → 5 → 0 as haste rises. T12 is the FIRST rung of that
+     slide, which is why it is worth locking over its neighbours — it pins where the structure changes,
+     not just a point inside it.
+     ⚠⚠ SP-PINNED, NOT A HASTE RULE. This rung trades haste against the Icon/gem SP buffs, so it moves
+     with gear: `s = COEF·ΔSP/(BASE + COEF·SP)` shrinks as base SP rises, and the whole ladder compresses
+     ~20-25 % from 700 to 2200 SP (the D band starts at 18 / 16 / 14 at SP 700 / 1217 / 2200). Quoting
+     "h = 16" as a threshold without its spellpower is wrong. Only the ladder's top boundary (Berserking
+     leaving the ramp, ~721) is gear-invariant, because the GCD cap and not an SP buff decides it. */
+  { name: 'T12 — 2:00 lust 0:20, h=22 — FIRST DECLARED LAYOUT ABOVE h=0 (ladder band D)',
+    T: 120, sp: 1217.3875, crit: 37.39038949275363, haste: 22, t5two: true, lust: 20,
+    want: { icyVeins: [10, 60], isc: [20], scb: [20], arcanePower: [20],
+            berserking: [30], bloodlust: [20] } },
+  { name: 'T13 — 2:00 lust 0:20, h=50 (ladder band C)',
+    T: 120, sp: 1217.3875, crit: 37.39038949275363, haste: 50, t5two: true, lust: 20,
+    want: { icyVeins: [5, 60], isc: [20], scb: [20], arcanePower: [20], berserking: [25], bloodlust: [20] } },
+  { name: 'T14 — 2:00 lust 0:20, h=97 (ladder band B — IV fully out of Lust)',
+    T: 120, sp: 1217.3875, crit: 37.39038949275363, haste: 97, t5two: true, lust: 20,
+    want: { icyVeins: [0, 60], isc: [20], scb: [20], arcanePower: [20], berserking: [20], bloodlust: [20] } },
+  { name: 'T15 — 2:00 lust 0:20, h=200 (ladder band E — cluster AHEAD of Lust)',
+    T: 120, sp: 1217.3875, crit: 37.39038949275363, haste: 200, t5two: true, lust: 20,
+    want: { icyVeins: [0, 60], isc: [10], scb: [10], arcanePower: [10], berserking: [10], bloodlust: [20] } },
+  /* ★★★★★ T16 / T17 — THE SAME HASTE, DIFFERENT SPELLPOWER, DIFFERENT ANSWER. User design, 08-02, and
+     it is the sharpest pair on the ladder: *"a test of h=33, SP=700 where the expected layout is D, but
+     with h=33 (same) SP=1200 the expected layout is C."*
+     Every other rung pins a POINT. This pair pins the MECHANISM — that the boundary itself is a function
+     of spellpower, via `s = COEF·ΔSP/(BASE + COEF·SP)`: more base SP shrinks what Icon and the gem are
+     relatively worth, so the premium for parking Icy Veins on top of them shrinks, and the buff moves to
+     where it converts instead. Measured, the D→C boundary sits at 35 / 31 / 27 for SP 700 / 1217 / 2200.
+     ⇒ a change that made the ladder SP-invariant would leave every single-point test green and fail
+     exactly here. That is the whole reason to hold the haste fixed and move only the gear. */
+  { name: 'T16 — 2:00 lust 0:20, h=33 · SP 700 → band D',
+    T: 120, sp: 700, crit: 37.39038949275363, haste: 33, t5two: true, lust: 20,
+    want: { icyVeins: [10, 60], isc: [20], scb: [20], arcanePower: [20], berserking: [30], bloodlust: [20] } },
+  { name: 'T17 — 2:00 lust 0:20, h=33 · SP 1217 → band C (same haste, SP alone moves it)',
+    T: 120, sp: 1217.3875, crit: 37.39038949275363, haste: 33, t5two: true, lust: 20,
+    want: { icyVeins: [5, 60], isc: [20], scb: [20], arcanePower: [20], berserking: [25], bloodlust: [20] } },
   /* ★★★ T11 — DECLARED 08-01 FROM A USER-FOUND SEARCH MISS, and it is T10 with Bloodlust called at
      0:10. The user built it by hand in Customize and locked-and-validated it; the tool's own answer
      scores WORSE by ~0.399 casts, which is ~200× `TIE_CASTS` — so unlike T9 this is not a plateau

@@ -6759,7 +6759,7 @@ const GOLDEN_PRESETS = [
      loading it should emit that band's winner. NOT yet locked in `tests/anchors.mjs` — confirm visually
      first. ⚠ The 31, 69 and 305 boundaries fall INSIDE the 0.002-cast tie band, so those edges are soft:
      the tie-break decides there, not the score.
-       h    0– 15   A  IV@0 · CS-IV+cluster in Lust · Zerk@40      (the declared h=0 answer)
+       h    0– 15   A  IV@0 · CS-IV+cluster in Lust · Zerk@40   (no preset — T1 already declares A at h=0)
        h   16– 30   D  IV@10 · cluster@20 · Zerk@30 · CS-IV@60
        h   31– 68   C  IV@5  · cluster@20 · Zerk@25 · CS-IV@60
        h   69–125   B  IV@0  · whole cluster+Zerk in Lust · CS-IV@60
@@ -6772,9 +6772,7 @@ const GOLDEN_PRESETS = [
      ★★ H is the user's own late addition and it owns the widest high band: once IV + passive haste caps
      the GCD, Berserking inside that window converts nothing, so EXILING it to its own late window beats
      stacking it. G only reclaims the top above ~721. */
-  { name: "P1 · 2:00 lust 0:20 · h=0", T: 120, pins: { bloodlust: [20] },
-    gear: { sp: 1217.3875, crit: 37.39038949275363, haste: 0, t5two: true } },
-  { name: "P2 · 2:00 lust 0:20 · h=23", T: 120, pins: { bloodlust: [20] },
+  { name: "P2 · 2:00 lust 0:20 · h=22 ✓ LOCKED as T12", T: 120, pins: { bloodlust: [20] },
     gear: { sp: 1217.3875, crit: 37.39038949275363, haste: 23, t5two: true } },
   { name: "P3 · 2:00 lust 0:20 · h=50", T: 120, pins: { bloodlust: [20] },
     gear: { sp: 1217.3875, crit: 37.39038949275363, haste: 50, t5two: true } },
