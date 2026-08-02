@@ -6738,6 +6738,21 @@ const GOLDEN_PRESETS = [
     phases: [{ from: 50, to: 55, type: "intermission" }] },
   { name: "T8 · 2:15 lust 1:35 · interm 0:15-0:20", T: 135, pins: { bloodlust: [95] },
     phases: [{ from: 15, to: 20, type: "intermission" }] },
+  /* T9–T11 (08-01) — the long fights, on the BUFFED-stat pipeline (typed 1387/38/750 Int + 10 raid
+     buffs ⇒ 1611.8875 SP / 50.765 % crit, Tirisfal 2pc on). They carry their own `gear` and `kit`
+     because they are the first declared cases that are neither raw typed gear nor the six-cooldown
+     Bloodlust kit. ⚠ They were locked in `tests/anchors.mjs` on 08-01 and NOT added here until 08-02 —
+     which broke this file's own invariant that a preset you confirm in the tool IS the locked test, and
+     left three declared layouts unloadable from the UI. */
+  { name: "T9 · 6:20 no-lust · buffed", T: 380,
+    gear: { sp: 1611.8875, crit: 50.76538949275363, t5two: true },
+    kit: ["icyVeins", "isc", "scb", "arcanePower", "berserking"] },
+  { name: "T10 · 6:30 no-lust · buffed", T: 390,
+    gear: { sp: 1611.8875, crit: 50.76538949275363, t5two: true },
+    kit: ["icyVeins", "isc", "scb", "arcanePower", "berserking"] },
+  { name: "T11 · 6:30 lust 0:10 · buffed", T: 390, pins: { bloodlust: [10] },
+    gear: { sp: 1611.8875, crit: 50.76538949275363, t5two: true },
+    kit: ["icyVeins", "isc", "scb", "arcanePower", "berserking", "bloodlust"] },
 ];
 window.GOLDEN_PRESETS = GOLDEN_PRESETS;
 
