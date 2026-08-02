@@ -15,7 +15,26 @@ import { loadEngine, ALL_BUFFS } from './engine-node.mjs';
 const api = loadEngine(new URL('../index.html', import.meta.url).pathname);
 const KIT = ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking', 'bloodlust'];
 const enabled = {}; for (const k of ALL_BUFFS) enabled[k] = KIT.includes(k);
-const cfgAt = h => ({ T: 120, hasteRating: h, sp: 1217.3875, critPct: 37.39038949275363,
+/* ★★ `--sp=` — BECAUSE HALF THESE BOUNDARIES ARE GEAR-DEPENDENT AND HALF ARE NOT. User question,
+   08-02: does more base spellpower move the breakpoints earlier? It does, and the mechanism is
+   `s = COEF·ΔSP / (BASE + COEF·SP)` — more base SP shrinks what Icon and the gem are RELATIVELY worth,
+   so the premium for parking a haste buff on top of them shrinks too and "save the haste where it
+   converts" wins sooner. Measured across 700 → 2200 SP the ladder compresses ~20–25 % at every rung:
+
+     base SP    A→D   D→C   C→B   B→E   E→H   H→G
+        700      18    35    77   131   302   721
+       1217      16    31    69   128   298   721
+       2200      14    27    63   123   293   721
+
+   ⇒ ★ THE LADDER HAS TWO KINDS OF BOUNDARY, and only one generalises:
+     · ALIGNMENT boundaries (A→D→C→B→E→H) trade haste against SP buffs, so they are GEAR-DEPENDENT.
+       Any test pinning one of these must pin SP with it, or it is true only at the gear it was measured
+       at.
+     · CAP boundaries (H→G) are set by the GCD floor deciding whether Berserking converts anything in
+       the ramp. No SP term enters, and it does not move ONE POINT across a 3× SP range. Safe as a rule.
+   ⛔ Do not quote an alignment rung as a haste threshold without its spellpower. */
+const SP = +((process.argv.find(a => a.startsWith('--sp=')) || '').split('=')[1]) || 1217.3875;
+const cfgAt = h => ({ T: 120, hasteRating: h, sp: SP, critPct: 37.39038949275363,
   coldSnap: true, t5two: true, enabled, fixed: { bloodlust: [20] }, warnings: [], segments: null });
 
 const L = [
@@ -44,7 +63,7 @@ const HMAX = +((process.argv.find(a => a.startsWith('--hmax=')) || '').split('='
 const sc = (s, cfg) => api.simulate(JSON.parse(JSON.stringify(s)), cfg, true).integral / api.plainCastOf(cfg);
 
 // legality: `repair` must not rewrite a declared layout, or we are not scoring what was declared
-console.log('# HASTE-BANDS — 2:00, Bloodlust pinned 0:20, buffed gear · scored on `.integral`\n');
+console.log(`# HASTE-BANDS — 2:00, Bloodlust pinned 0:20, sp=${SP} · scored on \`.integral\`\n`);
 for (const [name, s] of L) {
   const r = api.repair(JSON.parse(JSON.stringify(s)), cfgAt(0));
   const bad = Object.keys(s).filter(k => JSON.stringify(s[k]) !== JSON.stringify(r[k]));
