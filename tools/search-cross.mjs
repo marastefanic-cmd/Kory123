@@ -72,9 +72,13 @@ const cfgOf = c => ({
                    gear: GEAR, kit: c.lust === null ? KIT.filter(k => k !== 'bloodlust') : KIT }),
   t5two: true,
 });
-const one = cfg => (G.AB.AVG_BASE_DMG + G.AB.COEF * cfg.sp) *
-  (1 + Math.min(1, cfg.critPct / 100) * (G.CRIT_MULT - 1)) * (cfg.t5two ? 1.2 : 1);
-const score = (s, cfg) => api.simulate(api.repair(JSON.parse(JSON.stringify(s)), cfg), cfg, true).robust / one(cfg);
+/* ⛔⛔ SCORE ON `.integral`, NEVER `.robust` — MODEL-DEFECTS §9e. `robust` is the per-cast board sum;
+   `rankScore` is `.integral`, the rate integral, and they legitimately disagree (§8h retired the
+   per-cast sum as a RANKING quantity because it inverted a closed form). The first version of this file
+   used `.robust` and REPORTED A PHANTOM SEARCH MISS at T=380 lust@60: +0.426 casts on `robust`,
+   −0.163 on `integral` — the sign flips, and the tool's own plan was better all along. Retracted. */
+const score = (s, cfg) => api.simulate(api.repair(JSON.parse(JSON.stringify(s)), cfg), cfg, true).integral
+                        / api.plainCastOf(cfg);
 const label = c => `T=${c.T}${c.lust === null ? ' no-lust' : ' lust@' + c.lust}`;
 
 console.log('# SEARCH-CROSS — can any cell be beaten by a neighbour\'s plan?\n');

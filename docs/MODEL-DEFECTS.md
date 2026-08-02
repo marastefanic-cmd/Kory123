@@ -3672,3 +3672,28 @@ signature (`:905`): `T, hasteRating, sp, critPct, coldSnap, t5two, boundaryCharg
 fixed, segments` — and `cfgFor` silently drops `t5two` (−20% on everything) and `boundaryCharge`.
 ⛔ **Never rank a layout on `.robust` in a probe.** It produced a phantom 0.21-cast gap on the case above
 and is the fifth time this confusion has cost this project real time.
+
+
+---
+
+## §9f — ⚠ RETRACTED 08-02: the `T=380 lust@60` "search miss" was PHANTOM
+
+Reported twice on 08-01/02 as a confirmed search miss worth **+0.426 casts (213× the band)**, with a
+constructive witness. **It is not a miss.** `tools/search-cross.mjs` scored candidates on
+`simulate(...).robust`, and the ranking quantity is `.integral` (§9e). Re-measured correctly:
+
+| | integral (RANKS) | robust (what was used) |
+|---|---|---|
+| witness `icyVeins[-19,1,181,361] scb[6,185,365]` | 287.719130 | 287.360378 |
+| what the tool emits | **287.882025** | 286.934076 |
+| Δ (witness − emitted) | **−0.162894** | +0.426302 |
+
+**The sign flips.** The tool's own plan is better by 0.163 casts on the quantity that decides. The
+instrument is fixed to read `.integral`; the finding is withdrawn.
+
+⇒ **and the same error voids the rest of that run**, including the `T=390 lust@60` +0.0288 hit. Nothing
+`search-cross` reported before 08-02 should be treated as a search defect until re-run.
+★ The one claim that SURVIVES is the cross-kit bug it found in itself (a no-Lust host "beaten" by a
+Lust donor's plan, +8.88 casts) — that was a structural fault, independent of which score was read.
+⚠ Lesson, and it is the fifth time: an instrument that ranks on the wrong quantity does not fail loudly.
+It produces plausible, well-formed, confidently-reported findings that are entirely fictional.
