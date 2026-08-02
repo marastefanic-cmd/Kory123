@@ -3697,3 +3697,41 @@ instrument is fixed to read `.integral`; the finding is withdrawn.
 Lust donor's plan, +8.88 casts) — that was a structural fault, independent of which score was read.
 ⚠ Lesson, and it is the fifth time: an instrument that ranks on the wrong quantity does not fail loudly.
 It produces plausible, well-formed, confidently-reported findings that are entirely fictional.
+
+---
+
+## §9e-b — ⛔ THE `robust`→`integral` RETARGET IS ALL-OR-NOTHING, AND BOTH HALF-MEASURES ARE WORSE (08-02)
+
+§9e named the defect: `polish()` and the inner passes climb `simulate(...).robust` while the answer is
+graded by `rankScore` = `.integral`. **Proven concretely on T12** (2:00, Lust 0:20, h=22), where the two
+quantities point in OPPOSITE directions:
+
+| `icyVeins` | integral (RANKS) | robust (what polish climbs) |
+|---|---|---|
+| `[10, 60]` — declared | **101.250528** | 100.981386 |
+| `[15, 60]` — emitted | 100.823483 | **101.059677** |
+
+So the descent reliably converges on the layout the objective ranks **0.427 casts lower**. That is the
+mechanism, not a hypothesis.
+
+### ⚠ But retargeting is NOT a one-line fix — both attempts measured WORSE
+
+| attempt | anchors |
+|---|---|
+| baseline | **12 of 17** |
+| `polish()` alone → `.integral` (7 climb sites) | **11 of 17** — T17 regressed |
+| + `basinHop` and the challenge pass → `.integral` | **11 of 17** |
+
+Reverted. The reason the half-measure hurts is instructive: with `polish` on `integral` and the later
+passes still on `robust`, the finishing stack actively **pushes polish's answers back** to
+`robust`-optimal ones. **A consistently-wrong objective beats a mixed one.**
+⇒ the retarget has to cover every consumer at once, and `index.html:2477` records that `robust` "remains
+the REPORTED score and every consumer still reads" it — including a quality-tolerance pass (`QTOL`,
+`nulled`, overlap heuristics) whose thresholds are all calibrated in `robust` units. Those constants have
+to be re-derived, not just re-pointed. **This is a phase of work, not a patch.**
+
+★ It also explains §9d's two null results, which were baffling at the time: improving the seed pool
+cannot help when the very first `polish` grades on the wrong quantity and discards the good seed.
+
+⇒ **T12, T13 and T16 are red for this reason** — the scorer ranks the declared layout first at every
+band (`haste-bands --assert` 7/7, mid-band margins 0.04–0.51 casts); only the descent disagrees.

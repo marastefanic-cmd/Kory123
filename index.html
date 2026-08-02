@@ -5597,13 +5597,49 @@ function renderTimeline(run, opts) {
      8px of clearance is not a design, it is a coincidence. The right edge is empty space and cannot
      collide with anything. */
   sv += `<text x="${(PADL + GUT + plotW).toFixed(1)}" y="${PADT - 6}" fill="${ink2}" font-size="11" text-anchor="end">gear ${(cfg.hasteRating / GAME.HASTE_RATING_PER_PCT).toFixed(1)}% + cooldowns<title>Your spell haste at each moment: gear plus whatever cooldowns are up. Ashtongue's proc is random, so it is deliberately NOT averaged into this line — you see its effect in its own lane instead.</title></text>`;
-  // GCD-floor line at +50% + faint "wasted haste" shading above it
+  /* ★★ GCD-floor cap + "wasted haste" shading — STEPPED OVER THE ARCANE BLAST RAMP. Fixed 08-02 on a
+     user report: *"the line of GCD Cap in the haste line graph is static as if we're at 3 AB stacks,
+     but that's not really the case — at the start of the fight the first arcane blast lasts 2.5 s to
+     cast so the GCD cap hastepoint equivalent is much much higher."* Correct, and the drawing was
+     claiming a Lust+IV opener was wasting haste when it converts in full.
+     A 0/1/2-stack Blast casts in 2.5 / 2.166 / 1.832 s — all far ABOVE the 1.5 s GCD — so during the
+     ramp the CAST binds, not the GCD, and haste keeps converting until the cast itself hits the 1.0 s
+     floor: caps of +150 % / +116.6 % / +83.2 % (2365.5 / 1838.8 / 1312.1 rating-equivalent). Only at 3
+     stacks (1.498 s < 1.500 s) does the GCD bind and the cap settle at +50 % (788.5).
+     ⇒ mirrors `stepFor`'s interval law by reading the cast board, so it covers every post-gap re-ramp
+     too, not just the opener. Arcane Explosion is instant and GCD-bound, so AoE casts and no-cast gaps
+     keep the +50 % cap. DISPLAY ONLY — nothing scores off this. */
   if (maxPct > 50) {
-    const gcdTip = `<title>A 3-stack Arcane Blast is a 1.5s cast and the global cooldown floors at 1.0s, so +50% haste is the ceiling. Haste above this line buys no extra casts in that window — the shading is the part that is wasted.</title>`;
-    sv += `<rect x="${PADL}" y="${PADT}" width="${plotW + GUT}" height="${(y(50) - PADT).toFixed(1)}" fill="${warn}" opacity="0.06"/>`;
-    sv += `<line x1="${PADL}" y1="${y(50).toFixed(1)}" x2="${VW2 - PADR}" y2="${y(50).toFixed(1)}" stroke="${warn}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85">${gcdTip}</line>`;
+    const gcdTip = `<title>Where haste stops buying casts. At 3 Arcane Blast stacks the 1.5s GCD binds and floors at 1.0s, so +50% is the steady ceiling — but during the stack ramp the 2.5/2.17/1.83s CAST binds instead, so the cap starts at +150% and steps down as stacks build. Haste above the line buys no extra casts in that window; the shading is the part that is wasted.</title>`;
+    const rampCapPct = st => ((GAME.AB.BASE_CAST - GAME.AB.STACK_CAST_REDUCTION * st) / GAME.GCD_FLOOR - 1) * 100;
+    const t0 = PRE > 0 ? -PRE : 0;
+    const capPts = [];
+    {
+      const emit = (t, pct) => { if (!capPts.length || capPts[capPts.length - 1].pct !== pct) capPts.push({ t: Math.max(t, t0), pct }); };
+      let prevEnd = t0, first = true;
+      for (const c of optR.casts) {
+        if (c.t >= cfg.T) break;
+        const pct = !c.ae && c.stacks < GAME.AB.MAX_STACKS ? rampCapPct(c.stacks) : 50;
+        if (first) { emit(t0, pct); first = false; }
+        else { if (c.t > prevEnd + 1e-9) emit(prevEnd, 50); emit(c.t, pct); }
+        prevEnd = c.t + c.interval;
+      }
+      if (!capPts.length) capPts.push({ t: t0, pct: 50 });
+      emit(Math.min(prevEnd, cfg.T), 50);
+    }
+    const pts = [];
+    capPts.forEach((p, i) => {
+      const px = x(p.t);
+      if (i) pts.push([px, y(capPts[i - 1].pct)]);
+      pts.push([px, y(p.pct)]);
+    });
+    pts.push([x(cfg.T), y(capPts[capPts.length - 1].pct)]);
+    const trace = pts.map(q => `${q[0].toFixed(1)} ${q[1].toFixed(1)}`).join("L");
+    sv += `<path d="M${x(t0).toFixed(1)} ${PADT}L${trace}L${x(cfg.T).toFixed(1)} ${PADT}Z" fill="${warn}" opacity="0.06"/>`;
+    sv += `<path d="M${trace}" fill="none" stroke="${warn}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85">${gcdTip}</path>`;
     sv += `<text x="${PADL - 8}" y="${(y(50) + 4).toFixed(1)}" fill="${warn}" font-size="11" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">GCD cap${gcdTip}</text>`;
   }
+
   // Frostbolt filler soft cap: at +25% passive haste a 2.5s Frostbolt (Imp Frostbolt 5/5) casts in 2.0s,
   // so FOUR Frostbolts exactly fill the 8s Arcane Blast debuff — Arcane's haste soft cap (≈394 gear rating).
   // Informational for gearing/conserve only; the planner never casts Frostbolt. RULES §15, SOURCES.
