@@ -3735,3 +3735,25 @@ cannot help when the very first `polish` grades on the wrong quantity and discar
 
 ⇒ **T12, T13 and T16 are red for this reason** — the scorer ranks the declared layout first at every
 band (`haste-bands --assert` 7/7, mid-band margins 0.04–0.51 casts); only the descent disagrees.
+
+
+---
+
+## §9g — ✅ `wastedPre` VERIFIED ON THE CORPUS (08-02)
+
+The `wastedPre` tie-break criterion (a prepull that funds no extra use is pointless — user ruling on the
+h=900 emission) touches how every PLATEAU resolves, so it needed a corpus check, not just `anchors`.
+
+```
+plan-diff  compared=21  changed=1  scorerMoved=0  movedCells=1 → worse=0 better=0 tie=0 tieBreak=1
+  · "P7 · 2:00 lust 0:20 · h=900" is INSIDE the tie band (Δ 0.000000, band ±4.150877),
+    press moments 0 — the shape tie-break, not a score move.
+```
+
+**Exactly one cell moved, and it is the reported one.** `scorerMoved=0`, so no plan was re-priced;
+`worse=0`, so nothing regressed. The re-solve confirms the emission is now `icyVeins[0] berserking[0]`
+with the cluster at 0:20 — no prepull, and the pointless-prepull count is 0.
+✅ `anchors` 12 of 17, unchanged: T8 (THE PREPULL CASE) keeps its `isc[-5, 115]`, whose prepull is what
+makes the second Icon fit a 120 s cooldown inside a 135 s fight, so it scores 0 on the new criterion.
+⇒ the criterion is doing precisely one thing and nothing else, which is what a tie-break change should
+look like.
