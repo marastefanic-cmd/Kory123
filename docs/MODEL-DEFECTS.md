@@ -3624,3 +3624,51 @@ is not a shift of one press (the whole Cold-Snap pair has to relocate from mid-f
 the chain re-spaces). That is a *charge-relocation* move class, and no existing class expresses it —
 `SHIFTS` moves one index or a suffix, and move class 3d closes cooldown chains but does not re-site a
 Cold Snap.
+
+---
+
+## §9e — ⛔ THE SEARCH CLIMBS `robust` BUT THE RANKING IS `integral` (08-02)
+
+**Found chasing a harness discrepancy that turned out to be a real defect.** A user layout at h=50 tied the
+emitted plan (`102.875414` vs `102.876055`, Δ = **0.000641 casts**, inside the 0.002 band) and WINS the
+tie-break — `snaps` 1 = 1, then `distinct` **4 < 5**, so `planBetter(user, model) = true`. The tool emits
+the model plan anyway.
+
+### The mechanism, and it is structural
+
+* `polish()` and the inner hill-climb passes maximize **`simulate(...).robust`** (`index.html:2466`) — the
+  per-cast board sum.
+* Finalists are ranked by **`rankScore` = `simulate(...).integral`** (`:2469`, marked "THE RANKING
+  QUANTITY") through `planBetter`/`rankPair`, in `phaseFinish`/`phaseRerank` only.
+
+⇒ **the descent climbs one hill and the answer is graded on another.** Anything that is better on
+`integral` but not on `robust` is invisible to every inner pass, and only survives if some *other* pass
+happens to construct it. That is a whole class of search misses, not one cell.
+⚠ It is NOT a scorer defect: `integral` is correct and gated (`law-check`, `objective-ref`,
+`toll-audit`). The two quantities legitimately differ — §8h retired the per-cast sum as a RANKING
+quantity precisely because it inverted "Berserking inside Bloodlust" against a closed form.
+
+### ★ And it retro-explains §9d's failed fixes
+
+§9d's seed variant and cull fix both measured **byte-identical** emissions, which was baffling at the
+time. If the inner passes grade on `robust`, a seed that is better on `integral` is discarded by the very
+first polish — so improving the seed pool cannot help until the objective the descent climbs is the one
+the answer is graded on.
+
+### The fix to evaluate (NOT yet attempted)
+
+Make `polish` climb `rankScore`/`planBetter` instead of `robust`. ⚠ Two reasons to measure rather than
+assume: (1) `robust` is cheaper, and `polish` is the hottest loop in the project — PHASE9 measured it —
+so this is a real CPU question; (2) `planBetter` is a **banded, non-transitive** comparator and a naive
+hill-climb on it needs the §8w high-water ratchet or it walks downhill. Gate on `anchors` 11/11 +
+`plan-sweep`/`plan-diff` before believing it.
+
+### Also settled here — the terminal recipe, which three probes got wrong tonight
+
+The page's headline casts number is `simulate(s, cfg, true).integral / plainCastOf(cfg)`, scored on the
+schedule itself. `tools/engine-node.mjs` **does** export `rankScore`, `plainCastOf`, `planShape`,
+`planBetter`, `rankPair`, `TIE_CASTS`. The score-relevant cfg fields are exactly the engine's own memo
+signature (`:905`): `T, hasteRating, sp, critPct, coldSnap, t5two, boundaryCharge, killMode, enabled,
+fixed, segments` — and `cfgFor` silently drops `t5two` (−20% on everything) and `boundaryCharge`.
+⛔ **Never rank a layout on `.robust` in a probe.** It produced a phantom 0.21-cast gap on the case above
+and is the fifth time this confusion has cost this project real time.
