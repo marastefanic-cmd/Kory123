@@ -6753,6 +6753,39 @@ const GOLDEN_PRESETS = [
   { name: "T11 · 6:30 lust 0:10 · buffed", T: 390, pins: { bloodlust: [10] },
     gear: { sp: 1611.8875, crit: 50.76538949275363, t5two: true },
     kit: ["icyVeins", "isc", "scb", "arcanePower", "berserking", "bloodlust"] },
+  /* ── PRELIMINARY (08-02) — the haste ladder on ONE simple fight, awaiting user confirmation ──────
+     User-declared candidate layouts for 2:00 / Bloodlust 0:20 / buffed gear, swept across EVERY haste
+     rating by `tools/haste-bands.mjs` on the ranking integral. Each preset below sits mid-band, so
+     loading it should emit that band's winner. NOT yet locked in `tests/anchors.mjs` — confirm visually
+     first. ⚠ The 31, 69 and 305 boundaries fall INSIDE the 0.002-cast tie band, so those edges are soft:
+     the tie-break decides there, not the score.
+       h    0– 15   A  IV@0 · CS-IV+cluster in Lust · Zerk@40      (the declared h=0 answer)
+       h   16– 30   D  IV@10 · cluster@20 · Zerk@30 · CS-IV@60
+       h   31– 68   C  IV@5  · cluster@20 · Zerk@25 · CS-IV@60
+       h   69–125   B  IV@0  · whole cluster+Zerk in Lust · CS-IV@60
+       h  128–295   E  IV@0  · cluster+Zerk@10 ahead of Lust · CS-IV@60
+       h  298–718   H  IV@0  · cluster@7 · Zerk EXILED to 1:20 · CS-IV@60
+       h  721+      G  IV+Zerk@0 into the ramp · cluster@7 · CS-IV@60
+     ★ The first IV press slides 10 → 5 → 0 as haste rises, which reverses the user's own C/D ordering —
+     the shape was predicted correctly, the order within the middle stretch was not. One candidate
+     ("Lust alone, cluster at 0:50") never wins at any haste.
+     ★★ H is the user's own late addition and it owns the widest high band: once IV + passive haste caps
+     the GCD, Berserking inside that window converts nothing, so EXILING it to its own late window beats
+     stacking it. G only reclaims the top above ~721. */
+  { name: "P1 · 2:00 lust 0:20 · h=0", T: 120, pins: { bloodlust: [20] },
+    gear: { sp: 1217.3875, crit: 37.39038949275363, haste: 0, t5two: true } },
+  { name: "P2 · 2:00 lust 0:20 · h=23", T: 120, pins: { bloodlust: [20] },
+    gear: { sp: 1217.3875, crit: 37.39038949275363, haste: 23, t5two: true } },
+  { name: "P3 · 2:00 lust 0:20 · h=50", T: 120, pins: { bloodlust: [20] },
+    gear: { sp: 1217.3875, crit: 37.39038949275363, haste: 50, t5two: true } },
+  { name: "P4 · 2:00 lust 0:20 · h=97", T: 120, pins: { bloodlust: [20] },
+    gear: { sp: 1217.3875, crit: 37.39038949275363, haste: 97, t5two: true } },
+  { name: "P5 · 2:00 lust 0:20 · h=200", T: 120, pins: { bloodlust: [20] },
+    gear: { sp: 1217.3875, crit: 37.39038949275363, haste: 200, t5two: true } },
+  { name: "P6 · 2:00 lust 0:20 · h=500", T: 120, pins: { bloodlust: [20] },
+    gear: { sp: 1217.3875, crit: 37.39038949275363, haste: 500, t5two: true } },
+  { name: "P7 · 2:00 lust 0:20 · h=900", T: 120, pins: { bloodlust: [20] },
+    gear: { sp: 1217.3875, crit: 37.39038949275363, haste: 900, t5two: true } },
 ];
 window.GOLDEN_PRESETS = GOLDEN_PRESETS;
 
