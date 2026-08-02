@@ -3757,3 +3757,58 @@ with the cluster at 0:20 — no prepull, and the pointless-prepull count is 0.
 makes the second Icon fit a 120 s cooldown inside a 135 s fight, so it scores 0 on the new criterion.
 ⇒ the criterion is doing precisely one thing and nothing else, which is what a tie-break change should
 look like.
+
+---
+
+## §9h — ⛔⛔ THE SEARCH'S WRONG OBJECTIVE IS MASKING A SCORER DEFECT ON T8 (08-02)
+
+A fully coordinated `robust → integral` retarget was built and measured (~66 sites, every hill-climb
+class; reporting left on `robust`; a pair-climb variant with the §8w ratchet on top). **It scores 10 of
+17 against a baseline of 12** and must not land. But the reason is the finding:
+
+### ★ The integral RANKS A NON-DECLARED LAYOUT ABOVE T8, by 47× the tie band
+
+```
+T8 declared (ground truth)  isc[-5,115] scb[0,120] berserking[0]  icyVeins[95,115] arcanePower[120]
+                              integral 108.732582   robust 108.770745
+the challenger              isc[-5,115] scb[0,120] berserking[95] icyVeins[20,115] arcanePower[120]
+                              integral 108.825901   robust 108.570177
+    Δ integral = +0.093319 casts (47× the 0.002 band)      Δ robust = −0.200568
+```
+
+`tests/anchors.mjs` states the rule: *"if the scorer ranks something higher than them, the scorer is
+failing."* By that rule **the integral is failing on T8** — and it has been all along. T8 is green today
+**only because the descent climbs `robust`, which prefers the declared layout**, so the integral's argmax
+is never proposed. ⇒ **one defect is masking another**, and fixing the search EXPOSES the scorer.
+That is why every retarget attempt loses tests: it is not breaking things, it is revealing them.
+
+### The other blockers, all measured
+
+* **T12 is red at the SCORER level too**, independently of the search: the declared layout is beaten in
+  its own ≤3-coordinate / ≤3-second neighbourhood by `zerk+3 & iv+3` at **+0.006120 casts (3× band)**.
+* **T13 / T16 / T17 sit on integral-EXACT plateaus** (|Δ| ≤ 0.00065 casts) where the declared layout wins
+  only on shape. The emitted members are **fixed points of every move class**, pair-climb included
+  (verified by direct `polish(emission)` probes: zero movement). Escaping needs three press-rows —
+  `isc`, the cluster, and `iv₂` — moved as ONE block, and no move class offers that.
+* ⇒ **ceiling argument: under the current objective even a PERFECT search scores 12/17**, exactly
+  baseline. The retarget cannot beat HEAD, so there is nothing to tune.
+
+### ⛔ And the scale premise in §9e-b was WRONG — corrected here
+
+I assumed `robust` and `integral` were different magnitudes needing re-derived thresholds. Measured
+`integral/robust` on five plans: **0.9996 · 1.0027 · 0.9977 · 1.0027 · 1.0042** — within 0.43 %. Every
+threshold is already cfg-derived and scale-free in casts (`QTOL` = 1.0 cast, `TIE_TOL` = 0.001,
+`MARG` = 0.1) or a float-tie epsilon. **No constant needed rescaling.** What actually differs is
+**plateau STRUCTURE**: the integral has exact plateaus where `robust` has gradients — so the robust
+surface is *navigable* where the integral surface is flat, which is why a descent on it reaches members
+the integral-descent cannot.
+
+### The real work list, in order
+
+1. **Fix the T8 integral mispricing** — the known/unknown-phase crossover at `index.html:2604-2630` is
+   the flagged suspect. Nothing else can proceed past this: T8 is ground truth.
+2. **Reconcile T12/T16** — the declared layouts lose in their own neighbourhoods, so either the scorer is
+   wrong there too or those declarations need a user ruling.
+3. **A coupled multi-row move class**, for the plateau members no single-row move can reach.
+4. Only then retarget the search. ⚠ Corpus check on the best candidate: 4 of 21 plans moved, including
+   T12 flagged **SEARCH REGRESSION** — `PLAN-DIFF FAIL`. Not landable in any form today.
