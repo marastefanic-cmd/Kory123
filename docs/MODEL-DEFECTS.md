@@ -3914,3 +3914,29 @@ canonical statement stands: the objective is unchanged; what changes is evaluati
 the sim just proved necessary. Gates for the implementation, pre-registered: `t8-cell` BOTH lines
 green · `law-check` green (it reads `.integral`, untouched) · anchors lose NO currently-green test ·
 cost measured and acceptable · `plan-diff` with every moved cell explained.
+
+### §9j addendum — ⛔ THE ARCHITECTURE IS REFUTED (08-03). Measured, reverted, nothing landed.
+
+`rankScore = phase-averaged lattice walk` was implemented faithfully (t8-cell's new line read
+**+0.036010 — the §9i instrument's number exactly**) and failed its pre-registered gates:
+
+* **Variant c (walls slide, exit-presses ride):** anchors **15 of 15 graded cases RED** against a
+  baseline of 14 green — regressions of 0.15–0.56 casts (75–280× the band), 13 cells with the declared
+  layout beaten in its own neighbourhood. The walk-mean has its own pathologies on plain fights,
+  dwarfing the +0.13-cast T8 signal it was built to capture.
+* **Variant d (rigid shift):** inverts the **sim-verified** §5 ladder step (in-cluster 0.951 >
+  in-Lust 0.867) on T2 — already refuted by historical sim evidence. Cross-checked against the engine's
+  own `phaseScore` at N=30 (agrees to 4 decimals): the measure itself, not the implementation.
+* **The §9j premise "plain fights agree" does NOT generalize** beyond the calibrated T8 move pair.
+* **The separable hybrid** (`integral + [mean_δ robust − robust@δ=0]`), which preserves every plain
+  anchor by construction, gives the **wrong sign on T8** (−0.258): the T8 verdict lives in the walk's
+  δ=0 baseline account, not in the wall-phase term. ⇒ **the pre-registered gates are mutually
+  unsatisfiable for this whole change family, at any K.** Attempt preserved (report + diff path in the
+  08-03 run log); nothing committed.
+
+**Standing state:** the integral remains the ranking. `t8-cell` line 1 stays pinned red as the
+documented, sim-settled blind spot. The walk cannot rank anything until its own plain-fight mispricing
+(the §8h terminal-credit family) is solved — a model phase with its own sim gates, not a patch.
+**Still actionable without touching the scorer:** T13/T16 are integral-exact plateaus lost to tie-break
+REACHABILITY (a coupled multi-row move class); T12 is a basin miss whose declared layout is itself
++0.006-beaten (3× band) — a user ruling or a sim duel decides that one.
