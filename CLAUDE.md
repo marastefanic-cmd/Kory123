@@ -39,7 +39,7 @@ You enter a fight (length, Bloodlust
 timing, intermission/AoE phases) and it computes the **optimal moment to press each on-use
 cooldown** (Icy Veins, Arcane Power, Icon of the Silver Crescent, Serpent-Coil gem, Berserking),
 plus a burn timeline, a per-window activation schedule, and a copy-as-text plan. Alongside it:
-`tests/` — **eleven tests** (`tests/anchors.mjs`): the eleven layouts the user declared exactly. The goldens
+`tests/` — **seventeen tests** (`tests/anchors.mjs`): the seventeen layouts the user declared exactly. The goldens
 and the plan-shape suites are **deleted** (user decision 07-28, restated twice); the sim gates are
 **deleted** (07-30, above). What is left beside `anchors` are the two scorer gates —
 `tools/law-check.mjs` (the scorer vs the algebra) and `tools/self-consistency.mjs` (the scorer vs
@@ -152,7 +152,10 @@ already live.
 > ⇒ **T10 vs T11 is the corpus's sharpest instrument**: the same fight one pinned press apart, one solved
 > and one missed. Keep them together; that pair is what localised §9d in four measurements.
 
-**★ There are exactly ELEVEN tests, and they are the eleven layouts the user declared exactly.** T1/T2:
+**★ There are exactly SEVENTEEN tests, and they are the seventeen layouts the user declared exactly**
+(T1–T17; T8 the prepull case, T9–T11 the long fights, T12–T17 the haste/SP ladder — T12 was revised to
+iv[15,60]/zerk@35 by explicit user ruling 08-03 with sim evidence, and T16's 10/30 is sim-confirmed at
+23.5σ, MODEL-DEFECTS §9m). The originals: T1/T2:
 2:00 and 3:00, Bloodlust pinned 0:20, h=0, 1000 SP, 25 % crit, every press time pinned, per their ruling
 *"these two need to always be this way"*. T3 (added 07-30): the **Morogrim Tidewalker preset**, declared as
 a RULE rather than a timetable — *"pop the first cluster (everything except Berserking) as soon as a) 3
@@ -250,9 +253,9 @@ universal and its R3 rested on a cast count later shown to be ramp-neutral), and
 current reference fights and add these hard tests there instead"*). `GOLDEN_PRESETS` held fifteen plain
 length+Lust cases inherited from the deleted `exact-match` goldens — they asserted nothing after 07-28 and
 they were the first strip a visitor saw, so the tool advertised its own scaffolding. It now holds exactly
-the eight declared tests — `T1 · 2:00 lust 0:20`, `T2 · 3:00 lust 0:20`, `T3 · Morogrim 2:45 lust 0:05`,
-`T4 · 1:40 lust 0:07`, `T5 · 2:40 lust 0:07 · interm 1:30-2:10`, `T6 · 2:00 lust 0:05`,
-`T7 · 1:15 lust 0:05 · interm 0:50-0:55` — and clicking one loads that test's own inputs. **The strip and
+the seventeen declared tests, T1–T17 (the preliminary "P" presets were destroyed by user ruling 08-02 —
+*"let's destroy the current Ps"* — new ones come only after every lock passes) — and clicking one loads
+that test's own inputs. **The strip and
 `tests/anchors.mjs` must stay in lockstep**: the strip IS the test list, by user decision. ⚠ Five code paths defaulted to deleted names and were repointed in the same commit:
 `ci.yml`'s bench smoke, `tests/page-equiv.mjs`, `tools/model-audit.mjs`, `tools/window-match.mjs`,
 `tools/sp-sensitivity.mjs` — four of which are now DELETED with the sim; only `sp-sensitivity` remains.
