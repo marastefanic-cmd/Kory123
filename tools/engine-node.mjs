@@ -92,6 +92,12 @@ export function cfgFor(api, c) {
   let segments = null;
   if (c.phases) segments = api.buildSegments(c.phases.map(p => ({ from: p.from, to: p.to, type: p.type, mult: p.mult || 1, targets: p.targets || 0 })), c.T);
   else if (c.intermission) segments = api.buildSegments([{ from: c.intermission[0], to: c.intermission[1], type: 'intermission', mult: 1, targets: 0 }], c.T);
+  // The FULL simMemoCfgSig field set (tests/cfg-contract.mjs). This constructor used to drop
+  // t5two/boundaryCharge/killMode/_ideal — inert for default gear, but presets T9–T17 carry
+  // `gear.t5two: true`, so every sweep routed through here solved those cells at the wrong gear
+  // (a silent 20 % SP mis-valuation; the bug class reference-gear.mjs's header warns about).
   return { T: c.T, hasteRating: gear.haste || 0, sp: gear.sp, critPct: gear.crit, enabled,
-           fixed: c.pins || {}, warnings: [], coldSnap: gear.coldSnap !== false, segments };
+           fixed: c.pins || {}, warnings: [], coldSnap: gear.coldSnap !== false, segments,
+           t5two: !!gear.t5two, boundaryCharge: gear.boundaryCharge || 0,
+           killMode: c.killMode || "none", _ideal: false };
 }

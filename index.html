@@ -1611,7 +1611,7 @@ function simulateRaw(schedule, cfg, collect) {
   const KWD = (g.AB.BASE_CAST - g.AB.MAX_STACKS * g.AB.STACK_CAST_REDUCTION) /
               (1 + (cfg.hasteRating || 0) / (GAME.HASTE_RATING_PER_PCT * 100));
   // ⚠ DIAGNOSTIC KNOB (07-28, user question: *"we shouldn't need any variance at fight end no?"*).
-  // `cfg.killMode`: "oneSided" (default) | "sym" (the old symmetric 0.5) | "none" (hard stop at T).
+  // `cfg.killMode`: "none" (DEFAULT — hard stop at T) | "oneSided" | "sym" (the old symmetric 0.5).
   // An integral needs NO window to de-quantize — it is already continuous — so the window's only job
   // here is expressing uncertainty in T itself. Measuring how much it moves a RANKING is the way to
   // find out whether it is doing any work at all.
