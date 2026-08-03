@@ -34,7 +34,7 @@ const enabled = {}; for (const k of ALL_BUFFS) enabled[k] = KIT.includes(k);
        the ramp. No SP term enters, and it does not move ONE POINT across a 3× SP range. Safe as a rule.
    ⛔ Do not quote an alignment rung as a haste threshold without its spellpower. */
 const SP = +((process.argv.find(a => a.startsWith('--sp=')) || '').split('=')[1]) || 1217.3875;
-const cfgAt = h => ({ T: 120, hasteRating: h, sp: SP, critPct: 37.39038949275363,
+const cfgAt = (h, sp = SP) => ({ T: 120, hasteRating: h, sp, critPct: 37.39038949275363,
   coldSnap: true, t5two: true, enabled, fixed: { bloodlust: [20] }, warnings: [], segments: null });
 
 const L = [
@@ -120,6 +120,21 @@ if (process.argv.includes('--assert')) {
                 `   ${all[0].toFixed(4)} casts, margin ${(all[0] - all[1]).toFixed(4)}` +
                 `${all[0] - all[1] < 0.002 ? '  ⚠ inside the tie band' : ''}`);
   }
-  console.log(`\nHASTE-BANDS --assert checked=${WANT.length} failed=${bad}`);
+  /* ★ THE SP-SHIFT PAIRS — same haste, spellpower alone moves the winner (user design, 08-02). One
+     pair per alignment boundary; the H→G edge has no pair because it is gear-invariant (GCD physics).
+     These gate the MECHANISM: a change that made the ladder SP-invariant passes every single-point
+     line above and fails exactly here. All margins verified outside the tie band at add time. */
+  console.log('\n# --assert · the SP-shift pairs (same h, SP moves the winner)\n');
+  for (const [h, sp, want] of [[16, 700, 'A'], [16, 2200, 'D'], [71, 700, 'C'], [71, 1600, 'B'],
+                               [127, 700, 'B'], [127, 2200, 'E'], [297, 700, 'E'], [297, 2200, 'H']]) {
+    const cfg = cfgAt(h, sp);
+    let best = null;
+    for (let i = 0; i < L.length; i++) { const v = sc(L[i][1], cfg); if (!best || v > best.v) best = { i, v }; }
+    const got = L[best.i][0][0], ok = got === want;
+    if (!ok) bad++;
+    const all = L.map(([n, x]) => sc(x, cfg)).sort((a, z) => z - a);
+    console.log(`  ${ok ? '✓' : '⛔'} h=${String(h).padStart(3)} sp=${String(sp).padStart(4)}  winner ${got}${ok ? '' : ` — WANT ${want}`}   margin ${(all[0] - all[1]).toFixed(4)}`);
+  }
+  console.log(`\nHASTE-BANDS --assert checked=${7 + 8} failed=${bad}`);
   process.exit(bad ? 1 : 0);
 }
