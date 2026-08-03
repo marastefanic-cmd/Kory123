@@ -1022,7 +1022,7 @@ function simulateRaw(schedule, cfg, collect) {
   // more uptime ⇒ more haste — and the renewal algebra converges it exactly, no fixed-point
   // iteration. The GCD floor is applied inside each up/down branch (E[max(...)] per state, not
   // max(E[...])), so at the floor a live proc is worth exactly 0 and P becomes inert.
-  // ⛔ Two retired forms, both measured wrong (MODEL-DEFECTS §9m): the integrand's exponent counted
+  // ⛔ Two retired forms, both measured wrong (MODEL-DEFECTS §9n): the integrand's exponent counted
   // the window's attempts on the DOWN lattice (`dur/intDn` — no feedback at all: P .623 vs .690 at
   // buffed crit, ~1 cast underpriced per 6-min fight), and this walk's trailing-TIME window over its
   // own blended lattice, evicted by cast START (mean-field P ≈ .644, plus an off-by-one: the
@@ -1660,7 +1660,7 @@ function simulateRaw(schedule, cfg, collect) {
   const KWD = (g.AB.BASE_CAST - g.AB.MAX_STACKS * g.AB.STACK_CAST_REDUCTION) /
               (1 + (cfg.hasteRating || 0) / (GAME.HASTE_RATING_PER_PCT * 100));
   // ⚠ DIAGNOSTIC KNOB (07-28, user question: *"we shouldn't need any variance at fight end no?"*).
-  // `cfg.killMode`: "oneSided" (default) | "sym" (the old symmetric 0.5) | "none" (hard stop at T).
+  // `cfg.killMode`: "none" (DEFAULT — hard stop at T) | "oneSided" | "sym" (the old symmetric 0.5).
   // An integral needs NO window to de-quantize — it is already continuous — so the window's only job
   // here is expressing uncertainty in T itself. Measuring how much it moves a RANKING is the way to
   // find out whether it is doing any work at all.
@@ -1739,7 +1739,7 @@ function simulateRaw(schedule, cfg, collect) {
       // counted on the UP lattice (that exponent IS the haste→proc→haste feedback, converged exactly
       // by the renewal algebra), and the rate is the cast-weighted interval mix 1/(a·P + b·(1−P)).
       // ⛔ NOT the E[1/i] blend, and NOT dur/intDn in the exponent — both retired 08-03 (MODEL-DEFECTS
-      // §9m; the down-lattice exponent was the whole missing feedback, ~1 cast per 6-min fight).
+      // §9n; the down-lattice exponent was the whole missing feedback, ~1 cast per 6-min fight).
       // The engagement transient is threaded through the integral loop itself (atiAdvance below);
       // this steady form is what any other caller of rateAt gets.
       const p = atiParamsAt(multDn2, mult2, aoe, segB);

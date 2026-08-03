@@ -12,7 +12,7 @@
 > process).
 > ⛔ **What is deliberately NOT closed, and is NOT the scorer:**
 > · **§9b** — Presence of Mind is unmodelled (0.667–1.004 casts/use). ✅ *The other §9b half landed
->   08-03 (§9m):* the Ashtongue channel of the Potency +3 pp now feeds the proc rate (`atiProcQ`),
+>   08-03 (§9n):* the Ashtongue channel of the Potency +3 pp now feeds the proc rate (`atiProcQ`),
 >   with the whole ATI model rebuilt as the exact renewal law — crit-driven, haste-feedback-exact,
 >   engagement-transient-aware (ESTABLISHED-FACTS §12, RULES §14). The damage side stays normalised
 >   away, correctly. PoM remains: an allocation problem, i.e. **search work**.

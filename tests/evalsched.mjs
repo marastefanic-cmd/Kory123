@@ -43,7 +43,7 @@ const out = await page.evaluate(({ c, gear, kit, scheds, ALL_BUFFS }) => {
   const enabled = {}; for (const k of ALL_BUFFS) enabled[k] = kit.includes(k);
   let segments = null;
   if (c.phases) segments = buildSegments(c.phases.map(p => ({ from: p.from, to: p.to, type: p.type, mult: p.mult || 1, targets: p.targets || 0 })), c.T);
-  const cfg = { T: c.T, hasteRating: gear.haste || 0, sp: gear.sp, critPct: gear.crit, enabled, fixed: c.pins || {}, warnings: [], coldSnap: gear.coldSnap !== false, t5two: !!gear.t5two, segments };
+  const cfg = { T: c.T, hasteRating: gear.haste || 0, sp: gear.sp, critPct: gear.crit, enabled, fixed: c.pins || {}, warnings: [], coldSnap: gear.coldSnap !== false, t5two: !!gear.t5two, boundaryCharge: gear.boundaryCharge || 0, killMode: c.killMode || "none", _ideal: false, segments };
   const res = {};
   for (const name in scheds) {
     const rep = repair(scheds[name], cfg);

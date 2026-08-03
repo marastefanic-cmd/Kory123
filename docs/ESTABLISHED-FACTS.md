@@ -1484,7 +1484,7 @@ IS its fixed point. Strict at an integer `dur/a`: a cast starting exactly at exp
 **Why R is `1/E[interval]` (cast-weighted) and not `E[1/interval]`:** casts per cycle = 1/q,
 cycle time = `[a(1−r^n) + b·r^n]/q` — divide.
 
-⛔ **Two forms are RETIRED, both measured wrong (MODEL-DEFECTS §9m):**
+⛔ **Two forms are RETIRED, both measured wrong (MODEL-DEFECTS §9n):**
 - exponent `dur/intDn` (attempts on the DOWN lattice — the integrand until 08-03): NO feedback at
   all; at buffed crit (50.765 %) it read P = 0.623 against the true 0.690 and under-priced the proc
   by 0.00295 casts/s ≈ **1 effective cast per 6-minute fight**;

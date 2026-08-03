@@ -1358,7 +1358,7 @@ trailing window by cast start, an off-by-one. Both replaced; the engagement tran
 start begins proc-cold) added — exact discrete law in the walk, lattice-free age ODE threaded
 through the integrand's breakpoint loop (a t0-anchored discrete transient would be a lattice, §8l).
 Crit now enters the proc rate at the EFFECTIVE crit (the Clearcasting→Arcane Potency mixture),
-closing the Ashtongue half of §9b's 3849-rank-flip finding. Full record: MODEL-DEFECTS §9m; algebra
+closing the Ashtongue half of §9b's 3849-rank-flip finding. Full record: MODEL-DEFECTS §9n; algebra
 and priced non-goals: ESTABLISHED-FACTS §12; mechanics: MECHANICS §6; rules: RULES §14.
 
 **Verification is two-track and the second track is new for this repo:** the closed forms went into

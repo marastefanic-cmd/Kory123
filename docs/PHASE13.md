@@ -1187,7 +1187,7 @@ which is what makes it right *within* a setup and blind *across* setups.
   both characters and compare the argmax plan at each haste. **Agreement** ⇒ the switch was free;
   **divergence** ⇒ the geared operating point was load-bearing and the gear factors come back **as
   model inputs**, which is exactly the escape hatch the user reserved.
-- ✅ **Ashtongue Talisman of Insight — CLOSED 08-03 (MODEL-DEFECTS §9m).** Was: *"a random on-crit
+- ✅ **Ashtongue Talisman of Insight — CLOSED 08-03 (MODEL-DEFECTS §9n).** Was: *"a random on-crit
   proc … needing a stochastic treatment — un-owned since Phase 7 closed without it."* The stochastic
   treatment now exists and is exact-in-expectation: the renewal law (crit-driven proc rate at the
   effective crit, the haste→proc→haste feedback converged in closed form, the engagement transient

@@ -4045,7 +4045,65 @@ once it lands, cluster-placement "ties" like T10's 7-vs-10 and T13's 0-vs-5 are 
 score differences the fixed scorer resolves — at which point `distinct` must be re-tested for removal
 (the user's ruling wins the moment the measurement allows it).
 
-## §9m — ✅ THE ASHTONGUE MODEL REBUILT AS THE EXACT RENEWAL LAW (08-03) — two defects closed, one channel opened
+## §9m — ⛔ THE VALUE-LANDING TERM ALONE IS SIM-REFUTED OUT-OF-SAMPLE (08-03). It calibrates on its three cells and sign-flips on two new ones. Nothing landed; the patch is preserved.
+
+The §9i/§9j landing-snapshot term was implemented in full and run through the whole battery. The
+working form, per qualifying self-pressed value window: **`corr = P · (N − paid)`** — `N` = whole
+completions landing inside the window from a canonical walk anchored at the window's OWN press
+(msq-quantised / `_ideal`-exact via the shared `intervalAt`, walking the board's realised ramp casts
+where the stretch crosses a ramp; translation-invariant, so §8l's lone-slid-press flatness law
+survives), `paid` = the continuous credit the integral already paid (∫dt/i piecewise, minus toll
+share), `P` = the JOINT counterfactual premium of same-(anchor,fade) windows (AP+SCB share one
+straddler; the additive T5 pool makes marginals non-additive). Back-edge-only was tried FIRST and
+rejected by measurement: it manufactures false sub-band ideal slopes on co-pressed trains (a
++0.00116 hump on the T2 family when `repair` moves second uses 140→141 while the game pays the same
+13 casts); the integer-N form makes those exact ties and keeps cluster-monotonicity and §8o's
+linearity. Scope rulings honoured: fades at/past T keep the kill's one-sided credit; fades beyond
+the first cut stay fuzzy-wall phase-averaged; anchors inside intermission/AoE skipped; dmg/sp only —
+haste windows keep §8g's phase account.
+
+**Calibration — all three cells behaved as specified:**
+- T12 pair: Δ(15/35 − 10/30) = +0.0102 → **+0.325635** vs perturbation-averaged sim ≈ +0.255
+  (ratio 1.27), and phase-immune across all six perturbations (+0.3126…+0.3282), mirroring the
+  sim's 48–96σ immunity. The corrected account reproduces the sim log's isc-fade identity.
+- T8: Δ(declared − challenger) = −0.0933 → **−0.0403**, toward the phase-averaged board's −0.036
+  (not flipped: the residue is the §9j haste-window family — T8's value fades sit on the wall and
+  at the kill).
+- The board (`robust`) untouched; value-free configs bit-identical; self-consistency PASS.
+
+**The refutation — two NEW out-of-sample wasm duels** (69f02dd protocol: CRN, spaced seeds, exact
+T5-2pc stat cancellation, derived one-sided kill window, 20k iterations × 5 seeds):
+1. **h=22, A-shape (iv[0,20]+CS, zerk@40) vs the T12 lock (15/35):** sim **LOCK +0.684 DPS
+   (+0.030 %), 6.1σ, every seed**. HEAD model: LOCK +0.0547 ✓. Term model: **A +0.0031 — sign
+   flipped against the sim.**
+2. **T16's cell, D (10/30) vs C (5/25), h=33 sp=700:** sim **D +1.319 DPS (+0.074 %), 23.5σ** —
+   ★ **the T16 lock is sim-CONFIRMED.** HEAD: D +0.0036 ✓. Term: **C +0.106 — sign flipped, ~0.18
+   casts off.**
+
+**Diagnosis.** The value-landing physics is real — the §9i T12 forensics stand untouched. But the
+still-unmodelled §9j haste-window landing residues (face 1: haste start-snapshot; face 2:
+kill-flush) are the SAME ORDER (~0.03–0.13 casts) as the real inter-shape margins, and on the locked
+cells HEAD's two errors currently CANCEL. Landing the value half alone unbalances that cancellation:
+strictly more physics, strictly worse rankings. A face-1 pilot overshoots the other way (+0.14 vs
+sim +0.03) — each face needs its own isolating duels before any composite. Under the term the suite
+confirms the diagnosis mechanically: T13 emits the B-shape (+0.0899 over its lock), T16 emits
+cluster@45/iv[45,65] (+0.3313 over its lock — directly contradicted by duel 2), law-check 4 red,
+haste-bands 8/15.
+
+**Consequences that stand:**
+1. **The T8 revision (iv[20,115]) stays blocked** — the zerk@95 challenger's ideal margin over the
+   revised lock is +0.094 → **+0.0413** under the term: halved, still the wrong sign to land it.
+2. **`distinct` is NOT removable yet** (the §9l re-test, performed): under the term T10's 7-vs-10
+   tie resolves toward the lock (+0.130) but T13's 0-vs-5 resolves AGAINST it (−0.0899) — one
+   resolution goes the wrong way and the resolver itself is refuted. Deprecated stays deprecated.
+3. **The fix is the FULL §9j program or nothing:** value landings + face 1 + face 2, each isolated
+   by its own sim cells before composition. Duels 1 and 2 above are the ready-made gates, alongside
+   T12 and T8.
+
+Artifacts (scratchpad, ⚠ ephemeral — the numbers above are the durable record): the full patch
+against 13a794d, the duel driver, both sweeps, and the original T12 forensics.
+
+## §9n — ✅ THE ASHTONGUE MODEL REBUILT AS THE EXACT RENEWAL LAW (08-03) — two defects closed, one channel opened
 
 User request: *"make sure that crit chance enters the proc rate, that it's not just a flat line of
 average value. Increased local haste also increases the chance of a proc, and that proc increases
