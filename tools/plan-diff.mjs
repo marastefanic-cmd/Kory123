@@ -116,13 +116,39 @@ if (changed.length) console.log(`DUEL WORK LIST (sim old-vs-new under ONE harnes
 
 // ── the ΔScore sign audit (PHASE9 §5.15 — the rule this gate was missing) ──
 // Inside the band the two plans are TIED on the first half of the objective, and the shape decides.
-// A banded move that does not add press moments is the tie-break working, not a regression; one that
-// ADDS them is a real complaint, because it means the tie-break went the wrong way.
+/* ★ §9l — IN-BAND MOVES ARE GRADED BY THE ENGINE'S OWN COMPARATOR, NOT A RE-IMPLEMENTATION.
+   The old rule here ("a banded move that ADDS press moments went backwards") hard-coded `distinct`,
+   which the §9l comparator REMOVED — so the day the comparator changed, this gate started failing
+   the comparator's own legitimate canonicalizations (measured: Leotheras, an EXACT ideal tie at
+   Δideal = −1.3e-14 casts, flagged "backwards" for +1 press moment). That is the fourth instrument
+   to re-implement the comparator and age out of sync (§8t, §8u, anchors' deltaLine — CLAUDE.md's
+   standing instruction exists because of exactly this file). So: load B's engine and ask
+   `planBetter` under each cell's own cfg. A banded move the comparator itself prefers is the
+   tie-break working; one it does not prefer went backwards. The legacy dDistinct heuristic remains
+   ONLY as the fallback for old sweeps whose html predates the comparator export. */
 const inBand = c => c.banded && Math.abs(c.dScore) <= c.band;
+let graded = null;
+try {
+  const { loadEngine, cfgFor } = await import('./engine-node.mjs');
+  const bHtml = process.argv.find(a => a.startsWith('--engine='))?.split('=')[1] || B.html;
+  const api = loadEngine(bHtml);
+  if (api.rankPair && api.planBetter && api.repair) {
+    graded = new Map();
+    for (const c of changed) {
+      if (!inBand(c)) continue;
+      const row = api.cases.find(x => x.name === c.name);
+      if (!row) continue;
+      const cfg = cfgFor(api, row);
+      const rp = s => api.rankPair(api.repair(JSON.parse(JSON.stringify(s)), cfg), cfg);
+      graded.set(c.name, api.planBetter(rp(ib.get(c.name).s), rp(ia.get(c.name).s)));
+    }
+  }
+} catch { /* engine unavailable — legacy heuristic below */ }
 const worse = changed.filter(c => c.dScore < 0 && !inBand(c));
 const better = changed.filter(c => c.dScore > 0 && !inBand(c));
-const tieBreak = changed.filter(c => inBand(c) && !(c.dDistinct > 0));
-const tieBad = changed.filter(c => inBand(c) && c.dDistinct > 0);
+const tieOk = c => graded && graded.has(c.name) ? graded.get(c.name) : !(c.dDistinct > 0);
+const tieBreak = changed.filter(c => inBand(c) && tieOk(c));
+const tieBad = changed.filter(c => inBand(c) && !tieOk(c));
 const tie = changed.filter(c => c.dScore === 0 && !c.banded);
 const ungraded = changed.filter(c => !Number.isFinite(c.dScore));
 console.log(`SCORE-AUDIT unchangedCells=${sameCells} scorerMoved=${scorerMoved}${unscored ? ` unscored=${unscored}` : ''} ` +

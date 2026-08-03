@@ -902,7 +902,10 @@ function cfgSigOf(cfg) {
      corrupted the first attempt to measure whether it changes any ranking — every cell read a shift of
      exactly 0.000000 because every probe was served `none`'s cached number. `boundaryCharge` was
      already here; `killMode` sits in the same class and was simply overlooked. */
-  simMemoCfgSig = JSON.stringify([cfg.T, cfg.hasteRating, cfg.sp, cfg.critPct, cfg.coldSnap ? 1 : 0, cfg.t5two ? 1 : 0, cfg.boundaryCharge || 0, cfg.killMode || "none", cfg.enabled, cfg.fixed, cfg.segments]);
+  // `_ideal` (§9l) is score-changing by construction — it is the quantiser switch. Without it here
+  // the memo would serve the quantised integral to the ideal twin (or vice versa): a FALSE TIE/SPLIT
+  // in every planBetter call, the exact poisoning the killMode note above records.
+  simMemoCfgSig = JSON.stringify([cfg.T, cfg.hasteRating, cfg.sp, cfg.critPct, cfg.coldSnap ? 1 : 0, cfg.t5two ? 1 : 0, cfg._ideal ? 1 : 0, cfg.boundaryCharge || 0, cfg.killMode || "none", cfg.enabled, cfg.fixed, cfg.segments]);
   return simMemoCfgSig;
 }
 function simulate(schedule, cfg, collect) {
@@ -925,6 +928,12 @@ function simulate(schedule, cfg, collect) {
 }
 function simulateRaw(schedule, cfg, collect) {
   const g = GAME;
+  /* §9l — THE IDEAL TWIN. `cfg._ideal` drops the millisecond quantisation EVERYWHERE (`stepFor` and
+     `intervalAt` become the exact rate law that `law-check --self-test` carries: min(1/F, m/G) with no
+     rounding). It is a PARALLEL quantity for TIE DETECTION only (`idealScore`, consumed by
+     `planBetter`); the quantised `.integral` stays the reported score and the law-check number.
+     ⚠ `cfgSigOf` includes `_ideal` — omitting it there poisons SIM_MEMO across the two forms. */
+  const msq = cfg._ideal ? (x => x) : (x => Math.round(x * 1000) / 1000);
   const crit = Math.min(1, Math.max(0, cfg.critPct / 100));
   const critFactor = 1 + crit * (g.CRIT_MULT - 1);
   // Tirisfal 2-piece (T5): Arcane Blast ONLY, +20% damage (and +20% mana — the chip handles that).
@@ -1388,7 +1397,6 @@ function simulateRaw(schedule, cfg, collect) {
     // fixing STACK_CAST_REDUCTION alone moved the bare lattice by exactly nothing — measured, not
     // assumed. Go's Duration.Round is half-away-from-zero, which for positives is Math.round.
     const stepFor = m => {
-      const msq = x => Math.round(x * 1000) / 1000;
       const gcd = msq(Math.max(g.GCD_FLOOR, g.GCD_BASE / m));
       if (isAoe) return { cast: 0, gcd, interval: gcd, capped: g.GCD_BASE / m <= g.GCD_FLOOR };
       const cast = msq((g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * stacks) / m);
@@ -1652,7 +1660,7 @@ function simulateRaw(schedule, cfg, collect) {
      ⛔ The rounding goes OUTSIDE the floor, exactly as `stepFor` does it: `msq(max(FLOOR, …))`, not
      `max(FLOOR, msq(…))`. The two differ wherever the hasted GCD is under the floor, which at h=0 is
      every buffed window, and getting the nesting backwards would reintroduce the mismatch it fixes. */
-  const msqI = x => Math.round(x * 1000) / 1000;
+  const msqI = msq;   // §9l — one quantiser for both clocks; identity under cfg._ideal
   const intervalAt = (m, aoe, stacks) => {
     const gcd = msqI(Math.max(g.GCD_FLOOR, g.GCD_BASE / m));
     return aoe ? gcd : Math.max(msqI((g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * stacks) / m), gcd);
@@ -2467,6 +2475,21 @@ function phaseScore(s, cfg, N) {
    it — the pooling comparison, `plan-diff`, the UI readout, the goldens. Only the CHOICE comes from
    here, and `cfg.phaseRank === false` restores the pre-07-28 behaviour for A/B measurement. */
 function rankScore(s, cfg) { return simulate(cloneS(s), cfg).integral; }
+/* ★★★ §9l — THE IDEAL-LAW SCORE: the same integral with the millisecond quantisation REMOVED
+   (`cfg._ideal` makes `msq`/`msqI` identity — the exact `min(1/F, m/G)` rate form `law-check
+   --self-test` carries). It exists because the TIE TEST cannot be a magnitude band on the quantised
+   score: the ms-clock hair on T8's iv@95-vs-@20 flip identity (quantised +0.0023, ideally EXACTLY 0,
+   `1.3 + 1.2 − 1 = 1.5`) is BIGGER than T16's real slope (0.0007/step, which must NOT tie). So the
+   ideal form detects ties: a real ideal-law difference decides, however small — which removes the
+   fuel for §9l's 8/28 sub-band drift — and only an ideal difference at the float floor falls through
+   to the shape hierarchy. The quantised `.integral` stays the REPORTED score and the law-check
+   quantity. Twin cfgs are cached per cfg object so SIM_MEMO keys stay stable across calls. */
+const IDEAL_TWIN = new WeakMap();
+function idealScore(s, cfg) {
+  let ic = cfg._ideal ? cfg : IDEAL_TWIN.get(cfg);
+  if (!ic) { ic = { ...cfg, _ideal: true }; IDEAL_TWIN.set(cfg, ic); }
+  return simulate(cloneS(s), ic).integral;
+}
 
 /* ★★★★ THE OBJECTIVE IS A PAIR, NOT A NUMBER — and that is what the 07-28 revert was missing.
    (user, 07-30: *"all the buffs are aligned to their maximum potential … this is a good result, just
@@ -2558,7 +2581,7 @@ const plainCastOf = cfg => (GAME.AB.AVG_BASE_DMG + GAME.AB.COEF * cfg.sp) *
    one Cold Snap (its two Icy Veins are 20 s and 30 s apart, far inside the cooldown), so `snaps` ties
    there and `distinct` still decides it, exactly as that ruling requires.
    Cold Snap resets Icy Veins and nothing else, so this counts Icy Veins gaps alone. */
-function planShape(s) {
+function planShape(s, cfg) {
   const ts = [];
   for (const k of Object.keys(s).sort()) for (const t of (s[k] || [])) ts.push(t);
   ts.sort((a, b) => a - b);
@@ -2583,23 +2606,131 @@ function planShape(s) {
     const ts = s[k] || [];
     if (ts.length && ts.length < 2 && Math.min(...ts) < -EPS) wastedPre++;
   }
-  return { snaps, wastedPre, distinct: new Set(ts.map(t => Math.floor(t + EPS))).size,
+  /* §9l — the two cfg-dependent shape criteria. `cfg` is optional: rankPair always passes it, and an
+     external caller that only reads snaps/wastedPre/distinct/sum/ts keeps working without one. */
+  let offGrid = 0, invalid = 0;
+  if (cfg) {
+    const ctx = shapeCtxOf(cfg);
+    for (const t of ts) if (!ctx.classes.has(((Math.round(t) % 5) + 5) % 5)) offGrid++;
+    for (const k of Object.keys(s)) {
+      const kind = BUFFS[k] && BUFFS[k].kind;
+      if (kind !== "sp" && kind !== "dmg") continue;   // pure haste may ride a call through the ramp
+      for (const t of (s[k] || [])) {
+        const r = Math.round(t);
+        if (r < 0) continue;                           // prepull presses are wastedPre's domain
+        if (r === 0 || ctx.chainSecs.has(r)) continue; // anchored on the pull / a kill-cooldown chain
+        for (const rp of ctx.ramps) if (r >= rp.s0 && r < rp.F) { invalid++; break; }
+      }
+    }
+  }
+  return { snaps, wastedPre, offGrid, invalid, distinct: new Set(ts.map(t => Math.floor(t + EPS))).size,
            sum: ts.reduce((a, b) => a + b, 0), ts };
 }
-// Strictly-better test under the lexicographic objective. `a`/`b` are {score, shape}.
+/* ★★★ §9l — THE GRID AND THE RAMP FLOORS, derived per cfg and cached by cfg identity.
+   The grid is NOT multiples-of-5: it is the set of STRUCTURAL ANCHORS closed under ±5s offsets and
+   the (all-multiple-of-5) cooldown/duration chains — equivalently, the mod-5 residue classes of the
+   anchors. Anchors: the pull (0), the kill (T), every pinned raid call and its window end, every
+   phase edge, and every ramp end (the first whole second with MAX_STACKS live, at PASSIVE haste —
+   6.498 → 7 at h=0, which is what puts 7/27/37/127/137 on-grid for T3–T7). Verified at land time:
+   every press of every declared lock classifies ON-grid (offGrid = 0), which is the §9l precondition
+   for the criterion existing at all — "never ever is it 13,33".
+   `ramps` carries the same ramp spans for the EARLIEST-VALID criterion: a VALUE press (sp/dmg) that
+   sits inside a ramp span does not do full work yet (*"@5 the ramp isn't built… you'd be popping the
+   first thing @7"*) — counted `invalid` — UNLESS it anchors on a structural point: the pull itself
+   (T8's scb@0, forced by the wall), or a KILL-COOLDOWN CHAIN second `T − dur − j·cd` of any enabled
+   track (T9's scb/AP@5 = 380 − 15 − 2·180: pressing @7 pushes the chain and clips the last window by
+   a REAL 0.041 casts, so 5 IS that fight's structural point). ⚠ Deliberately NOT exempt: pinned call
+   seconds and re-ramp starts — the user's ruling is precisely that a value press on an early call
+   must wait out the ramp, and the same holds after an intermission (T3/T5: cluster at the re-ramp
+   END). Prepull presses are `wastedPre`'s domain, not this one. A re-ramp exists only where a non-AB
+   phase is long enough to drop the AB debuff (≥ DEBUFF_DUR). */
+const SHAPE_CTX = new WeakMap();
+function shapeCtxOf(cfg) {
+  let ctx = SHAPE_CTX.get(cfg);
+  if (ctx) return ctx;
+  const g = GAME;
+  const q = x => Math.round(x * 1000) / 1000;
+  const ceilS = x => Math.ceil(x - 1e-9);
+  const m0 = 1 + (cfg.hasteRating || 0) / (g.HASTE_RATING_PER_PCT * 100);
+  const gcd0 = q(Math.max(g.GCD_FLOOR, g.GCD_BASE / m0));
+  let rampLen = 0;
+  for (let k = 0; k < g.AB.MAX_STACKS; k++)
+    rampLen += Math.max(q((g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * k) / m0), gcd0);
+  const anchors = new Set([0, Math.round(cfg.T)]);
+  const ramps = [{ s0: 0, F: ceilS(rampLen) }];
+  for (const k of Object.keys(cfg.fixed || {})) for (const t of (cfg.fixed[k] || [])) {
+    const r = Math.round(t);
+    anchors.add(r);
+    if (BUFFS[k]) anchors.add(r + BUFFS[k].dur);
+  }
+  if (cfg.segments) for (const sg of cfg.segments) {
+    const a = Math.round(sg.start), b = Math.round(sg.end);
+    anchors.add(a); anchors.add(b);
+    if (sg.type !== "intermission" && sg.type !== "aoe") continue;
+    if (sg.end - sg.start >= g.AB.DEBUFF_DUR - 1e-9) {
+      ramps.push({ s0: b, F: b + ceilS(rampLen) });
+      anchors.add(b + ceilS(rampLen));
+    }
+  }
+  anchors.add(ramps[0].F);
+  // kill-cooldown chain seconds, per enabled track: T − dur − j·cd (the "latest full run" family)
+  const chainSecs = new Set();
+  const Tr = Math.round(cfg.T);
+  for (const k of Object.keys(BUFFS)) {
+    if (!cfg.enabled || !cfg.enabled[k]) continue;
+    const def = BUFFS[k];
+    if (!def.cd) continue;
+    for (let x = Tr - def.dur; x >= 0; x -= def.cd) chainSecs.add(x);
+  }
+  ctx = { classes: new Set([...anchors].map(a => ((a % 5) + 5) % 5)), ramps, chainSecs };
+  SHAPE_CTX.set(cfg, ctx);
+  return ctx;
+}
+/* ★★★★★ §9l — THE COMPARATOR, REWRITTEN 08-03 FROM USER RULINGS. Strictly-better test; `a`/`b` are
+   rankPair objects. The ordering, each clause a user ruling (MODEL-DEFECTS §9l):
+     1. the IDEAL-LAW score decides, however small the difference — *"the scorer has to be flawless…
+        it's just math"*. NOT the quantised score with a band: the ms-clock hair on T8's flip identity
+        (+0.0023, ideally EXACTLY 0) is bigger than T16's real slope (0.0007/step, ideally
+        0.0012/step), so a magnitude band cannot be the tie test. A real ideal difference decides —
+        which kills the §9l sub-band drift (8/28) at its fuel source: every −1s drift step has real
+        ideal loss and is refused. The floor below is float discrimination only, NOT a band.
+     2. fewest Cold Snaps spent (T9);
+     3. no prepull that funds no extra use (P7);
+     4. ON-grid beats off-grid — *"never ever is it 13,33"* (see `shapeCtxOf`);
+     5. fewest distinct press moments — ⚠ RETAINED, measured 08-03: removing it (the §9l batch's
+        as-specified design) breaks two standing locks that sit on EXACT ideal ties against
+        lex-earlier members — T10 (Δideal = 0.000000: lex walks the value cluster 10→7 into iv#0's
+        tail, off the declared iv#2-riding member, 6 moments → 7) and T13 (the §9e user-tie, 4 → 5) —
+        and it is ALSO the criterion that keeps the iv@95-vs-@20 flip tie on T8 at @95, which keeps
+        the descent OUT of the §9i-mispriced challenger basin (zerk-in-Lust over-credit, +0.0956,
+        sim-refuted at 62σ). The user-issued T8 revision to iv[20,115] requires earliest to outrank
+        distinct and is therefore DEFERRED until the §9i scorer fix lands; landing it under the
+        current scorer emits the sim-worse challenger (measured: berserking[95]).
+     6. EARLIEST-VALID, read LEXICOGRAPHICALLY on the sorted press vector: fewest not-yet-doing-full-
+        work value presses first (*"@5 the ramp isn't built… you'd be popping the first thing @7"*;
+        pure-haste presses may ride a call through the ramp), then earliest press decides, on equality
+        the next-earliest, and so on (replaces the press-time SUM). */
 function planBetter(a, b) {
-  const band = Math.max(a.band || 0, b.band || 0);
-  if (a.score > b.score + band) return true;
-  if (b.score > a.score + band) return false;
+  const fl = Math.max(a.ifloor || 0, b.ifloor || 0);
+  if (a.ideal > b.ideal + fl) return true;
+  if (b.ideal > a.ideal + fl) return false;
   if (a.shape.snaps !== b.shape.snaps) return a.shape.snaps < b.shape.snaps;   // keep the charge (T9)
   if (a.shape.wastedPre !== b.shape.wastedPre) return a.shape.wastedPre < b.shape.wastedPre;  // 08-02
-  if (a.shape.distinct !== b.shape.distinct) return a.shape.distinct < b.shape.distinct;
-  if (Math.abs(a.shape.sum - b.shape.sum) > EPS) return a.shape.sum < b.shape.sum;
+  if (a.shape.offGrid !== b.shape.offGrid) return a.shape.offGrid < b.shape.offGrid;          // §9l
+  if (a.shape.distinct !== b.shape.distinct) return a.shape.distinct < b.shape.distinct;      // T6/T10/T13
+  if (a.shape.invalid !== b.shape.invalid) return a.shape.invalid < b.shape.invalid;          // §9l
   const n = Math.min(a.shape.ts.length, b.shape.ts.length);
   for (let i = 0; i < n; i++) if (Math.abs(a.shape.ts[i] - b.shape.ts[i]) > EPS) return a.shape.ts[i] < b.shape.ts[i];
   return a.shape.ts.length < b.shape.ts.length;
 }
-const rankPair = (s, cfg) => ({ score: rankScore(s, cfg), shape: planShape(s), band: TIE_CASTS * plainCastOf(cfg) });
+/* §9l — THE IDEAL FLOOR IS FLOAT DISCRIMINATION, NOT A BAND. Measured on the §8l-invariant pairs
+   (T1 declared vs slid+9 · T1 zerk@40 vs @49 · T9 iv@180 vs @185): the ideal form compares
+   bit-identical or within 2 ulps — max |Δ| 2.6e-14 casts. The smallest REAL slope this must resolve
+   is T16's 1.2e-3 casts/step. 1e-9 casts sits ≥10× above the measured noise (by ~4×10⁴) and 10⁶
+   below the slope. ⛔ Do not widen it toward TIE_CASTS — a band here re-admits the drift. */
+const IDEAL_TIE_CASTS = 1e-9;
+const rankPair = (s, cfg) => ({ score: rankScore(s, cfg), ideal: idealScore(s, cfg), shape: planShape(s, cfg),
+  band: TIE_CASTS * plainCastOf(cfg), ifloor: IDEAL_TIE_CASTS * plainCastOf(cfg) });
 
 /* ⛔⛔ AND IT WAS TRIED AS THE RANKING ON 07-28 AND REVERTED THE SAME HOUR — the sim refused it, 137σ.
    Nothing above is wrong: the integral IS the phase expectation, exactly, and all three hypothesised
@@ -2726,14 +2857,20 @@ function phaseRerank(s0, cfg) {
      by the band itself — which is exactly the tolerance the project already accepts as "tied" — instead
      of accumulating without limit. ⛔ Do NOT "fix" this by shrinking `TIE_CASTS`: the ratchet works at
      ANY band width, because the step size that defeats it is whatever sits just inside. */
-  let ceiling = val.score;
+  /* §9l — the ratchet now tracks the IDEAL quantity, the same one the comparator's first criterion
+     reads, so the two can never disagree about what "below the high-water mark" means. With the tie
+     test exact (a real ideal difference decides, however small), the drift the ratchet was built for
+     has no fuel left — each §9l 8/28-style step has real ideal loss and is refused by planBetter
+     itself — but the ratchet stays: it is the guard's guard, it bounds any future criterion the same
+     way, and it costs one comparison. */
+  let ceiling = val.ideal;
   const tryCand = cand => {
     if (!cand) return false;
     const rep = repair(cloneS(cand), cfg);
     if (!intact(cand, rep)) return false;
     const v = rankPair(rep, cfg);
-    if (v.score < ceiling - v.band) return false;
-    if (planBetter(v, val)) { val = v; s = rep; if (v.score > ceiling) ceiling = v.score; return true; }
+    if (v.ideal < ceiling - v.ifloor) return false;
+    if (planBetter(v, val)) { val = v; s = rep; if (v.ideal > ceiling) ceiling = v.ideal; return true; }
     return false;
   };
   /* ⚠ ROUNDS TO A FIXED POINT, not 3 — measured 07-30. With the structural times added below, three

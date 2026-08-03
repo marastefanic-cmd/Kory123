@@ -4016,3 +4016,28 @@ of 1,582,581 — so its +0.000231 over cluster@7 may be REAL ideal-law slope, no
 consistent under one ordering — ideal-law decides above noise → snaps → wastedPre → grid →
 earliest-valid — with `distinct`/fewest-moments needed NOWHERE. If Δideal = 0 exactly, earliest picks
 @7 ≠ lock and the ordering needs a T6 carve-out: measure first, design second.
+
+### §9l — ✅ LANDED as variant A′ (08-03), and the `distinct` criterion is DEPRECATED BY RULING
+
+**Landed:** the ideal-law tie detector (float floor 2.6e-14, ten orders below the smallest real slope),
+ordering ideal-score → snaps → wastedPre → grid → distinct → lex-earliest, ratchet on the ideal
+quantity, plan-diff's grader now imports the engine comparator. **T16 green — the §9k drift is
+structurally impossible** (each 8/28 step has real ideal loss 1.2e-3 → refused). anchors 16/17 cases,
+T12 the only red (bit-unchanged, exempt pending its sim evidence); plan-sweep 21/21 byte-identical —
+the quantized scorer is provably untouched. Wall 1.11×.
+
+**The directed design (distinct removed, T8 revised) failed its gates for measured reasons:**
+1. ⛔ **The T8 revision cannot land before the §9i scorer fix.** With iv@20 resolving the flip-tie,
+   Bloodlust is vacated and Δideal(zerk@95 challenger − revised lock) = **+0.094 casts, a REAL
+   ideal-law difference** — so "score decides" MUST emit the sim-refuted §9i layout. Under the current
+   scorer, "the lock and the ruleset agree" is unsatisfiable. The revision stays queued behind the fix.
+2. T10 and T13 went red under lex-earliest: their locks are the LATER members of exact ideal ties, so
+   today their greens depend on `distinct`.
+
+**User ruling (08-03, verbatim):** *"[clumping] is a bonus when it's a simple to follow plan, it
+shouldn't need a rule on its own, as the 'earliest possible' tiebreaker should take care of the very
+same thing."* ⇒ `distinct` is retained ONLY as a measured necessity for T10/T13's current exact ties,
+and is marked DEPRECATED: the §9i landing-snapshot term is precisely about window-edge landings, so
+once it lands, cluster-placement "ties" like T10's 7-vs-10 and T13's 0-vs-5 are expected to become REAL
+score differences the fixed scorer resolves — at which point `distinct` must be re-tested for removal
+(the user's ruling wins the moment the measurement allows it).
