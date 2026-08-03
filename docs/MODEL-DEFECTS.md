@@ -4183,3 +4183,32 @@ the proc model (matching the MC's window starts to the scorer's press-time geome
 cell from +0.33 casts to +0.06). The one MC disagreement is on the AoE cell and reproduces with the
 proc DISABLED (scorer +0.673 casts vs MC +0.085), so it is the known continuous-vs-discrete AoE-wall
 divergence, not an Ashtongue defect.
+
+## §9o — ⛔ A SHAPE-SPECIFIC SEARCH MISS AT `h400 · 3:00 lust 0:20`, PRE-EXISTING (found 08-03 by the widened kit sweep)
+
+`kit-sweep` gained an `ati+icon+gem` kit (8 kits × 3 haste × 3 shapes = 72 cells) and `search-audit
+--k=3` came back **69/72**. All three misses are the SAME 3-coordinate move on the SAME shape —
+`arcanePower#0+2 & scb#0+2 & scb#1+2` at `h400 · 3:00 lust 0:20`, worth **+0.013…+0.020 casts**
+(6–10× the tie band) — and one of them is the CONTROL kit `icon+gem`, which contains neither
+Ashtongue nor Drums.
+
+**Attributed by measurement, not by argument.** Both engines score the emitted plan and the improved
+plan bit-identically (173.788238 → 173.808314, Δ +0.020077 under `d43054e` and under HEAD alike), and
+a full base-engine kit sweep reads **68/72** — the same `icon+gem` and `pi+icon+gem` misses, plus a
+tie-break miss HEAD does not have:
+
+| engine | localOptima | SCORE misses | tieBreak misses |
+|---|---|---|---|
+| base (`d43054e`) | 68/72 | icon+gem h400·3:00 · pi+icon+gem h400·3:00 · ati+icon+gem h0·2:40 | 1 |
+| HEAD (renewal ATI) | **69/72** | icon+gem h400·3:00 · pi+icon+gem h400·3:00 · ati+icon+gem **h400·3:00** | **0** |
+
+⇒ the ATI kit's miss MOVED rather than appeared — off the old model's `h0 · 2:40 interm` cell and onto
+the same `h400 · 3:00` shape every other kit misses, which is what a changed proc model should do to
+an ATI-kit landscape. The renewal model is net **neutral-to-better** on this matrix.
+
+★ **The finding is the SHAPE, not the kit.** Three unrelated kits fail identically at h=400 on the
+3:00 Lust-0:20 fight, which says the defect is in the SEARCH's reachability on that geometry (above
+the GCD cap, where §7's crossovers live), not in any cooldown's model. It is a **search** item —
+`phaseRerank`'s move classes or the seed classes — and per the standing rule it must NOT be answered
+in `simulate()`: the scorer ranks the better plan correctly, which is the only reason the miss is
+visible at all (`law-check` green throughout).
