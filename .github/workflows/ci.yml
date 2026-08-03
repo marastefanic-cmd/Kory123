@@ -104,6 +104,26 @@ jobs:
       - name: the scorer against itself (self-consistency)
         run: node tools/self-consistency.mjs
 
+      # The one stochastic mechanic against a direct seeded simulation of its own process — the
+      # Ashtongue renewal law's falsifier now that the sim is retired (ESTABLISHED-FACTS §12).
+      # Steady rates at MC tolerance; full fights (real ramp lattice) within the documented budget.
+      - name: the Ashtongue proc against the real process (ati-mc)
+        run: node tools/ati-mc.mjs
+
+      # NEGATIVE CONTROL: swap the reference for the RETIRED down-lattice form (the pre-08-03
+      # integrand, ~6× this gate's tolerance) and require it to be CAUGHT.
+      - name: '↳ negative control: the retired proc model must be CAUGHT'
+        run: node tools/ati-mc.mjs --self-test
+
+      # Every cfg constructor emits the engine's full memo-signature field set. The engine reads
+      # `cfg.t5two ? 1.2 : 1`, so an ABSENT key and an explicit `false` are indistinguishable — an
+      # incomplete constructor is a SILENT 20 % mis-valuation of the whole fight. Not hypothetical:
+      # presets T9–T17 carry `gear.t5two: true`, and until 2026-08-03 the shared `cfgFor` dropped it,
+      # so the sweep below solved those cells at the WRONG GEAR. Strict went green that day; keep it
+      # strict. (The test carries its own positive and negative synthetic controls.)
+      - name: every cfg constructor is complete (cfg-contract --strict)
+        run: node tests/cfg-contract.mjs --strict
+
   the-search:
     name: THE SEARCH (is every emitted plan a local optimum?)
     # ★★★★ ADDED 2026-07-30, and it closes the gap every other gate in this repo has.

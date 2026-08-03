@@ -49,6 +49,11 @@ const KITS = {
   'icon+gem+skull':  ['icyVeins', 'isc', 'scb', 'skull', 'arcanePower', 'berserking', 'bloodlust'],
   'drums+icon+gem':  ['icyVeins', 'isc', 'scb', 'drums', 'arcanePower', 'berserking', 'bloodlust'],
   'pi+icon+gem':     ['icyVeins', 'isc', 'scb', 'powerInfusion', 'arcanePower', 'berserking', 'bloodlust'],
+  // ati is never a press (kind "proc"), but it CHANGES the landscape every press is placed on: the
+  // proc's renewal-law haste (ESTABLISHED-FACTS §12) shifts local rates and the GCD-cap margin, so
+  // the argmax can move. Added 08-03 with the exact model, so search-audit sweeps at least one
+  // proc-on kit. (Cells at crit 38 via the shape's own gear — the proc is crit-driven.)
+  'ati+icon+gem':    ['icyVeins', 'isc', 'scb', 'ati', 'arcanePower', 'berserking', 'bloodlust'],
 };
 /* ⚠ HASTE LADDER — 0 / 200 / 400 is chosen against the CROSSOVERS, not spaced for tidiness. RULES §7
    puts the IV+Berserking stack/split crossover at ~264 rating and §7a-ii puts the IV+Skull one at

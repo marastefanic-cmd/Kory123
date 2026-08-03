@@ -6,13 +6,16 @@
 > User instruction: *"When I wake up I want to work on the search function and never come back to the
 > scoring function."* Everything the four audits found in the integral is fixed and gated:
 > MODEL-DEFECTS **§9a F1–F4 + the debuff anchor**, all landed with `PLAN-DIFF IDENTICAL`.
-> The scorer now has **seven** blocking gates — `anchors`, `law-check` (+self-test), `self-consistency`,
-> `toll-audit --strict`, `objective-ref`, `constants-cited` (+self-test), `search-audit`.
+> The scorer now has **eight** blocking gates — `anchors`, `law-check` (+self-test), `self-consistency`,
+> `toll-audit --strict`, `objective-ref`, `constants-cited` (+self-test), `search-audit`, and since
+> 08-03 `ati-mc` (+self-test — the Ashtongue renewal law against a seeded simulation of the proc
+> process).
 > ⛔ **What is deliberately NOT closed, and is NOT the scorer:**
-> · **§9b** — Presence of Mind is unmodelled (0.667–1.004 casts/use) and Clearcasting→Arcane Potency's
->   single-target +3 pp crit is normalised away (safe without Ashtongue, 3849 rank flips with it). Both
->   are *new mechanics to model*, not defects in the equation — PoM in particular is an allocation
->   problem, i.e. **search work**.
+> · **§9b** — Presence of Mind is unmodelled (0.667–1.004 casts/use). ✅ *The other §9b half landed
+>   08-03 (§9n):* the Ashtongue channel of the Potency +3 pp now feeds the proc rate (`atiProcQ`),
+>   with the whole ATI model rebuilt as the exact renewal law — crit-driven, haste-feedback-exact,
+>   engagement-transient-aware (ESTABLISHED-FACTS §12, RULES §14). The damage side stays normalised
+>   away, correctly. PoM remains: an allocation problem, i.e. **search work**.
 > · `buildSegments` resolves overlapping phases by "last row wins entirely" with no validation, so the
 >   same fight scores 202.40 or 212.00 (4.7 %) depending on **data-entry order**. A UI/validation bug.
 > · `killMode:"oneSided"` books +1.71 casts of phantom Arcane Explosion after the boss dies (latent at
@@ -479,8 +482,10 @@ that changed.
   so loudly, in effective casts, and asks for the Debug export — which now carries the sim
   transcription and a ready-to-run `tools/bench.mjs` command. This is `plan-duel.mjs`'s confession
   rule in the UI: no repricing can manufacture that direction, so it is gradeable with no sim at all.
-  **Still open:** a Drums press needs an upstream `SpellFlagAPL` patch (see below); a multi-seed error
-  bar in the page would double the ~10s wall clock, so the fixed tie band stays for now.
+  **Still open:** ~~a Drums press needs an upstream `SpellFlagAPL` patch (see below)~~ — **formally
+  closed 08-03 as MOOT**: the sim is retired, so the patch has no engine to land in; Drums' standing
+  coverage is law-check's Drums block + kit-sweep's `drums+icon+gem` cells (RULES §13). A multi-seed
+  error bar in the page would double the ~10s wall clock, so the fixed tie band stays for now.
 - 📝 **COPY AUDIT of everything the user reads (07-26, user-directed; engine untouched, exact-match
   25/25).** `index.html` + `README.md` verified claim-by-claim against the engine. **README carried the
   same disproven ramp claim in three places**, two deleted features (press price tags, clipped-press

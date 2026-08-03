@@ -631,6 +631,74 @@ console.log(`#   h=0, ${SP} SP, ${CRIT}% crit · one plain Arcane Blast = ${one.
   }
 }
 
+/* ═══ ASHTONGUE — the renewal law (ESTABLISHED-FACTS §12, added 08-03) ═══════════════════════════════
+   The proc's steady state has a closed form with the haste→proc→haste feedback already converged:
+
+       a = up interval (quantised, floored)   b = down interval   n = ceil(dur/a)   ← the UP lattice
+       q = per-completion proc chance at the EFFECTIVE crit (crit + qCC·0.30 — the Potency lift, §9b)
+       P = 1 − (1−q)^n                        R = 1 / (a·P + b·(1−P))    casts per second
+
+   Asserted by DIFFERENCING two fight lengths — I(300) − I(150) = 150·R — which cancels the opener
+   toll AND the engagement transient, isolating the steady law exactly. Tolerance 1e-6 against a lift
+   effect of ~0.34 casts and a feedback effect of ~0.44 casts over the window: a wrong exponent
+   lattice (dur/b — the retired integrand form) or a dropped Potency lift both fail loudly.
+   ⚠ These lines read the quantised `rate` via aOf/bOf, so `--self-test`'s unquantised form breaks
+   them too — they contribute to the negative control, not just ride along. */
+{
+  const RTG = G.HASTE_RATING_PER_PCT * 100;
+  const aOf = m => 1 / rate(m + G.ATI.RATING / RTG);   // up interval: +145 rating in the one pool
+  const bOf = m => 1 / rate(m);
+  const qEff = c => {                                   // atiProcQ's N=1 mixture, re-derived from TALENTS
+    const f = 1 - Math.pow(1 - 0.02 * api.TALENTS.arcaneConcentration, 1);
+    const pot = 0.10 * api.TALENTS.arcanePotency;
+    return f * Math.min(1, c + pot) * G.ATI.PROC_CHANCE + (1 - f) * c * G.ATI.PROC_CHANCE;
+  };
+  const Rof = (m, c) => {
+    const a = aOf(m), b = bOf(m), q = qEff(c);
+    const raw = G.ATI.DUR / a, rd = Math.round(raw);
+    const n = Math.abs(raw - rd) < 1e-9 ? rd : Math.floor(raw) + 1;
+    const P = 1 - Math.pow(1 - q, n);
+    return 1 / (a * P + b * (1 - P));
+  };
+  const dI = (kit, h, extra) => I({}, cfgOf(300, kit, null, h, extra)) - I({}, cfgOf(150, kit, null, h, extra));
+  // steady law at the reference crit: n = 4 on the up lattice — dur/b would give exponent 3.33 and a
+  // rate 0.0029/s lower; the E[1/i] blend would differ too. One line pins exponent lattice AND mix.
+  chk('ATI steady law (crit 25): ΔI/150s = R', dI(['ati'], 0) / 150, Rof(1, 0.25), 1e-6,
+      'R = 1/(a·P + b·(1−P)), P = 1−(1−q)^ceil(dur/a) — the feedback exponent counts on the UP lattice');
+  // the crit channel, exactly — two more crits, each its own closed value (monotonicity follows)
+  chk('ATI steady law at crit 40', I({}, cfgOf(300, ['ati'], null, 0, { critPct: 40 })) -
+      I({}, cfgOf(150, ['ati'], null, 0, { critPct: 40 })), 150 * Rof(1, 0.40) * ((1 + 0.40 * (G.CRIT_MULT - 1)) / (1 + 0.25 * (G.CRIT_MULT - 1))), 1e-6,
+      'crit scales every cast\'s damage (critFactor ratio vs the 25%-crit unit) AND lifts q — both exact');
+  chk('ATI steady law at crit 80', I({}, cfgOf(300, ['ati'], null, 0, { critPct: 80 })) -
+      I({}, cfgOf(150, ['ati'], null, 0, { critPct: 80 })), 150 * Rof(1, 0.80) * ((1 + 0.80 * (G.CRIT_MULT - 1)) / (1 + 0.25 * (G.CRIT_MULT - 1))), 1e-6,
+      'same law at high crit — q = 0.415, P = 0.883: the proc rate is anything but a flat line in crit');
+  // above the GCD cap a live proc buys nothing: a = b = floor ⇒ R = 1/floor regardless of P
+  chk('ATI steady value above the cap (h=900) = 0', dI(['ati'], 900) - dI([], 900), 0, 1e-9,
+      'both branches floored ⇒ the mix is inert; differencing cancels the ramp-compression term, which is real and stays');
+}
+
+/* ═══ DRUMS — rating-pool laws (ESTABLISHED-FACTS §0/§4; SOURCES spell 35476) ════════════════════════
+   Drums is +80 haste RATING for 30 s: additive into the one `(1 + rating/1577)` pool, multiplied by
+   any live percent windows, floored at the GCD like everything else. Windows placed clear of the
+   opener ramp on an otherwise empty fight, so each law is pure window geometry. */
+{
+  const RTG = G.HASTE_RATING_PER_PCT * 100;
+  const D = 30, mD = 1 + 80 / RTG;
+  const base = I({}, cfgOf(180, ['drums']));
+  chk('Drums alone = 30·[rate(1+80/1577) − rate(1)]', I({ drums: [20] }, cfgOf(180, ['drums'])) - base,
+      D * (rate(mD) - rate(1)), 5e-4, `${D} × [rate(${mD.toFixed(4)}) − rate(1)] — rating adds, nothing else moves`);
+  const cL = cfgOf(180, ['drums', 'bloodlust'], { bloodlust: [20] });
+  chk('Drums inside Bloodlust = 30·[rate(1.3·mD) − rate(1.3)]',
+      I({ drums: [20], bloodlust: [20] }, cL) - I({ bloodlust: [20] }, cL),
+      D * (rate(1.3 * mD) - rate(1.3)), 5e-4,
+      'rating pools first, percent windows multiply on top — Drums stacks with Lust (unlike PI)');
+  chk('two Tinnitus-legal Drums count twice', I({ drums: [20, 140] }, cfgOf(180, ['drums'])) - base,
+      2 * D * (rate(mD) - rate(1)), 5e-4, 'disjoint steady windows are additive; 120s spacing is legal');
+  chk('Drums above the cap (h=800) = 0', I({ drums: [20] }, cfgOf(180, ['drums'], null, 800)) -
+      I({}, cfgOf(180, ['drums'], null, 800)), 0, 1e-9,
+      'm already ≥ 1.5: the floor pins the rate and 80 more rating buys exactly nothing (708.5 onset)');
+}
+
 if (SELFTEST) {
   console.log(`\n${bad ? `SELF-TEST PASS — the seeded break (unquantised rate) was caught by ${bad} line(s).`
                        : 'SELF-TEST FAIL — the gate did NOT notice an unquantised rate. Its tolerances assert nothing.'}`);

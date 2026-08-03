@@ -1457,3 +1457,154 @@ anchors 8/8, law-check green — nothing here feeds the search):
   expected damage             297.9k           298.2k
   expected DPS                1,805            1,807
 ```
+
+## §12 ★★★★ THE ASHTONGUE PROC LAW — the exact renewal steady state, its transient, and what is priced but not modeled *(added 08-03)*
+
+The one stochastic mechanic in the model, made exact-in-expectation. Constants: `GAME.ATI`
+(145 rating · 50 % per crit · 5.0 s · **no ICD** — SOURCES "Ashtongue Talisman"). Everything below is
+verified two independent ways: against the engine (law-check's ATI block, to 1e-6) and against a
+seeded Monte Carlo of the true process (`tools/ati-mc.mjs`; design-phase run: 2e7 casts × 9 states,
+worst deviation **2.45e-4**, MC-noise scale).
+
+### §12.1 The steady state — the feedback loop, converged in closed form
+
+Per piecewise-constant buff state, with `a` = up interval and `b` = down interval (both
+millisecond-quantised and GCD-floored — the floor is applied INSIDE each branch):
+
+    q = per-completion proc chance at the EFFECTIVE crit          (§12.2)
+    n = ceil(dur / a)          ← attempts counted on the UP lattice — THIS is the feedback
+    P = 1 − (1−q)^n            (probability a cast starts with the proc up)
+    R = 1 / (a·P + b·(1−P))    casts per second (cast-weighted interval mix)
+
+**Why n sits on the up lattice, exactly:** the process RENEWS at each proc. Casts started while the
+buff lives run at `a`, so after an unrefreshed proc exactly `ceil(dur/a)` casts start buffed — and
+the buff is up at a cast's start iff one of the last `n` completions procced, each an independent
+`q`-roll. The user's "proc → faster casts → more procs" cascade is not iterated; the renewal cycle
+IS its fixed point. Strict at an integer `dur/a`: a cast starting exactly at expiry is unbuffed.
+**Why R is `1/E[interval]` (cast-weighted) and not `E[1/interval]`:** casts per cycle = 1/q,
+cycle time = `[a(1−r^n) + b·r^n]/q` — divide.
+
+⛔ **Two forms are RETIRED, both measured wrong (MODEL-DEFECTS §9n):**
+- exponent `dur/intDn` (attempts on the DOWN lattice — the integrand until 08-03): NO feedback at
+  all; at buffed crit (50.765 %) it read P = 0.623 against the true 0.690 and under-priced the proc
+  by 0.00295 casts/s ≈ **1 effective cast per 6-minute fight**;
+- the walk's trailing-TIME window over its own blended lattice, evicted by cast START: mean-field
+  P ≈ 0.644, plus an off-by-one (the completion straddling t−5 s was dropped).
+
+Named values at h = 0 (b = 1.5, a = 1.374, n = 4): crit 25 % → q = 0.140, P = 0.453, R = 0.69304;
+crit 50.765 % → q = 0.269, P = 0.714, R = 0.70921; above the GCD cap a = b = 1.0 ⇒ the mix is inert
+and a live proc is worth **exactly 0**. The "cap if Ashtongue" line: 788.5 − 145 ≈ **643.5 rating**.
+
+### §12.2 Crit enters the proc rate — at the EFFECTIVE crit, and it does not cancel
+
+`q = f·qAt(crit + 0.30) + (1−f)·qAt(crit)` with `f = qCC(N) = 1−(1−0.10)^N` (Clearcasting per hit)
+and `qAt(c) = 1−(1−c·½)^N` (any of N hits' crits can trigger the 50 % roll — no ICD). Single target
+this is exactly `½·(crit + 0.03)` — the Potency +3 pp lift, linear, mixture-exact. ⚠ The DAMAGE side
+of Potency stays normalised away (a constant factor cancels out of every comparison, §11); the PROC
+side is a haste source and does not cancel — §9b measured 0 rank flips without ATI and **3849 with
+it** over exactly that +3 pp. The law-check differencing line pins the lift at 1e-6 against a lift
+effect of ~0.34 casts per 150 s.
+
+### §12.3 The engagement transient — every cold start begins proc-cold
+
+Exact discrete law (MC-verified): the k-th cast of an engagement is up with
+`P_k = 1 − (1−q)^min(k−1, n)`. The board walk carries this form natively (its history product only
+has k−1 entries). The integrand carries the lattice-free continuous form — an age ODE
+`dν/dt = 1/(a + (b−a)·r^min(ν,n))`, `P(t) = 1−r^min(ν,n)`, with `t(ν) = aν + (b−a)(1−r^ν)/(−ln r)`
+closed-form and `∫ rate dt = Δν` — threaded through the breakpoint loop, advanced NET of the opener
+toll (toll casts never happened, so they rolled no procs), and reset across intermissions by
+`ν ← min(ν, max(0, (dur−gap)/a))`.
+Priced by MC (T=180 plain fight): steady-state-everywhere errs **+0.130 casts**; the ν-threaded
+continuous form leaves the deliberate discrete-vs-continuous residual, because the discrete-exact
+transient is a t0-anchored cast lattice and a lattice may not re-enter the integrand (§8l).
+⚠ **That residual is +0.05…+0.07 casts per engagement, not the +0.030 first recorded here** — the
+lone-window ladder (`ati-ramp-ladder`, 15 000 MC runs/arm) reads +0.0668 on an 80 s fight and +0.0540
+on a 300 s one, i.e. a roughly CONSTANT per-engagement charge, which is what a start-up transient
+should look like. Corrected 08-03 on measurement; the original figure was taken from a single
+T=180 cell.
+
+### §12.4 Priced and NOT modeled — the honest edges
+
+- **Window-edge P-memory:** proc history crossing a buff edge re-equilibrates instantly in the
+  integrand (the walk's product handles it naturally). MC-priced at ±0.05–0.15 casts per edge pair,
+  second-order between plans, and smaller than the pre-existing accepted in-flight-straddle
+  convention at every window edge (the boundary-charge story, PHASE8 §25).
+- **Gap < 5 s memory** across an intermission: linear `(dur−gap)/a` remnant, an approximation
+  (real intermissions are ≥ 20 s, where it is exact — full reset).
+- **q → 1 limit:** the continuous transient loses the one down-speed first cast, ≤ (b−a) once per
+  engagement, reachable only at extreme-crit AoE.
+- **Variance:** the model reports a MEAN (standing project limit — CLAUDE.md).
+- End-to-end budget, asserted by `tools/ati-mc.mjs` on every run: steady rates match the true
+  process at MC tolerance (8e-4); full fights (real ramp + transient vs toll + ν) within **0.25
+  casts**, measured 0.05–0.08 — against ~1 cast for the retired model.
+
+### §12.5 ★★★★ VERIFIED AGAINST wowsims — the proc model against the simulator that implements it *(08-03, user-requested)*
+
+⛔⛔ **THE NUMBERS BELOW ARE THE RECORD OF A CLOSED, ONE-OFF EVENT. THE HARNESS IS DELETED AND MUST
+NOT BE REBUILT.** User ruling, 08-03, on being offered the harness: *"throw away the sim harness, we
+have learned that it being in the repo is a bad idea because you cling too much to it and this was
+the only use for it I have."* Both halves are findings, not preferences:
+- **The clinging is a measured failure mode, not a worry.** This very session paid for it three
+  times (the traps at the end of this section), and the project's ledger already carries five
+  earlier cases of *"the sim is rarely wrong, we've usually used it wrong"*. A tool that is
+  expensive to use correctly and always available gets reached for before the cheap correct thing.
+- **The residual use is smaller than it looks.** What only a foreign implementation can give is
+  independence of *premises* — an MC written from the same docs as the engine shares its
+  assumptions. But the one premise question that arose here (*does the talisman really proc at 0.5
+  on every crit with no ICD?*) was settled by **READING** `sim/mage/items.go`, not by running
+  anything. ⇒ **When a physics premise is in doubt, read wowsims' source and cite it** (SOURCES
+  doctrine, and it needs no build, no gear matching, no mana regime, no seeds). For everything else
+  the sim-free instruments are strictly better: `tools/ati-mc.mjs` for the stochastic half,
+  brute-force enumeration for the search, `law-check` for the algebra.
+
+This section stays because the MEASUREMENTS are durable evidence about the model. It deliberately
+does **not** carry a rebuild recipe.
+
+★ **wowsims implements the talisman exactly as `GAME.ATI` states** (`sim/mage/items.go:119-145`):
+`duration := time.Second * 5`, `value := 145.0` `stats.SpellHasteRating`, `ProcChance: 0.5`,
+`Outcome: core.OutcomeCrit`, `Callback: CallbackOnSpellHitDealt`, **no ICD field at all**. The
+constants are not merely cited, they are the same numbers the referee runs on.
+
+**1. The parameter-free test — crit saturated past 100 %, so `q = 0.5` by construction, h = 0:**
+
+| | sim | model (closed form) |
+|---|---|---|
+| proc uptime | 89.54 % | **90.97 %** |
+| mean cast interval | 1.403 s | **1.3819 s** |
+
+Both residuals are ~1.5 % and have one cause: §12.1 is the STEADY state, while the sim's fight
+carries the opening ramp (~2 casts) and the proc's cold start (uptime builds from 0). §12.3's
+transient models exactly that, and its size is the right order.
+
+**2. Crit really does drive the proc rate — measured through two independent channels.** Inverting
+the measured uptime through §12.1 (bias-corrected by the 1.43 pp above) implies an effective crit of
+**39.60 %**; solving the sim's crit from DPS ratios instead — a completely different physical
+channel, through `critFactor` — gives **39.34 %**. They agree to **0.26 pp**, which simultaneously
+confirms the proc rate is `q = crit_eff / 2`, that the effective crit is the Potency-lifted one
+(§12.2), and `CRIT_MULT = 1.8175`.
+
+**3. End-to-end, at the sim's own gear (h ≈ 0, measured from its cast rate: 218 casts in 330 s
+against the ideal 220 — the 2-cast deficit IS the opener toll):** equipping the talisman is worth
+**+73.63 DPS** in the sim and **+76.79** in the model, 4.3 % high — the same direction and roughly
+the same size as the uptime bias above.
+
+**4. Plan RANKING, which is what the tool actually sells.** Three random fights (1:20 / 3:00 / 5:30)
+× 5 random legal layouts each, scored by the engine and then duelled in the sim at 8 000 iterations
+× 3 seeds with common random numbers: **28 of 29 resolvable pairs agree on order.** The single miss
+is a 2.3-DPS predicted margin (0.11 % of the fight) that the sim reads 1.3 ± 0.7 DPS the other way.
+⚠ **The magnitudes are NOT confirmed to the same standard**: the sim/predicted ratio has median 0.88
+but runs 0.07–0.44 on the long fight, i.e. the model over-states some long-fight margins. Cold Snap
+transcription was verified not to be the cause (with it stated, Icy Veins reads exactly 40 s of aura
+and 2 procs). **That gap is open and unexplained** — recorded here rather than smoothed over.
+
+⚠⚠ **Three harness traps, each of which produced a wrong number before it was caught** — they belong
+here because anyone re-running this will hit them:
+- **`mp5` was silently discarded.** The runner mapped it to stat index 33, which is `Health`; MP5 is
+  35. A mana lever that does nothing looks exactly like "mana is not binding".
+- **`secondsOomAvg = 0` does NOT mean the mage is casting continuously.** It reports time at
+  literally zero mana; a mage that stalls waiting to afford the next Blast reads 0 and still drops
+  ~10 % of its casts.
+- **A two-point DPS solve for HASTE is not identifiable when anything else binds.** It returned
+  "gear haste 265.6" for a mage whose true gear haste is ~0; subtracting that put the sim at NEGATIVE
+  haste and manufactured a 7 pp uptime "disagreement" that did not exist. The reliable read is the
+  CAST COUNT (`casts[spellId 30451]`), which is mana- and crit-independent.

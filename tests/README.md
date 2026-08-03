@@ -1,16 +1,17 @@
 # `tests/` — what is actually asserted
 
-Four things are checked in this project, and it is worth being blunt about which is which, because
+Five things are checked in this project, and it is worth being blunt about which is which, because
 they fail for different reasons and are fixed in different places.
 
 | | asserts | needs |
 |---|---|---|
-| `node tests/anchors.mjs` | **WHICH LAYOUT IS RIGHT** — the seven layouts the user declared | bare node |
+| `node tests/anchors.mjs` | **WHICH LAYOUT IS RIGHT** — the layouts the user declared (seventeen as of 08-03) | bare node |
 | `node tools/law-check.mjs` | the SCORER against `docs/ESTABLISHED-FACTS.md`'s closed forms | bare node |
 | `node tools/self-consistency.mjs` | the SCORER against itself, and the board against the physics | bare node |
+| `node tools/ati-mc.mjs` | the one STOCHASTIC mechanic (the Ashtongue proc) against a direct seeded simulation of its own process (ESTABLISHED-FACTS §12) | bare node |
 | `node tools/plan-sweep.mjs …` + `node tools/search-audit.mjs …` | **the SEARCH** — that each emitted plan is a k-coordinate local optimum | bare node |
 
-All four run in CI and all four are blocking. Nothing here needs a browser, a Go toolchain, a
+All five run in CI and all five are blocking. Nothing here needs a browser, a Go toolchain, a
 simulator, or a network.
 
 ★ **The fourth one is the newest and it closes the widest hole.** Every gate above it is blind to a

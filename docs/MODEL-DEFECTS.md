@@ -3451,6 +3451,9 @@ Largest: `{IV@20, cluster@20, Zerk@6}` beats `{IV@40, cluster@5, Zerk@42}` by 0.
 **loses by 0.0389 at crit 41** (18× the tie band). The no-Ashtongue control's max shape difference is
 `3.3e-16` — float noise — which is the clean confirmation that crit really does cancel otherwise. ⇒ the
 AoE channel for crit is already known and flagged in SOURCES; **the Ashtongue channel is not.**
+✅ **CLOSED 08-03 (§9m):** the Ashtongue channel now feeds the proc rate — `atiProcQ` reads the
+effective crit (the exact Potency mixture), the constants moved into `GAME.ATI` with a SOURCES row,
+and the law-check ATI block pins the lift at 1e-6. The PoM half of this section stays open.
 
 ### Verified CLEAN against wowsims source — do not re-derive these
 
@@ -4041,3 +4044,186 @@ and is marked DEPRECATED: the §9i landing-snapshot term is precisely about wind
 once it lands, cluster-placement "ties" like T10's 7-vs-10 and T13's 0-vs-5 are expected to become REAL
 score differences the fixed scorer resolves — at which point `distinct` must be re-tested for removal
 (the user's ruling wins the moment the measurement allows it).
+
+## §9m — ⛔ THE VALUE-LANDING TERM ALONE IS SIM-REFUTED OUT-OF-SAMPLE (08-03). It calibrates on its three cells and sign-flips on two new ones. Nothing landed; the patch is preserved.
+
+The §9i/§9j landing-snapshot term was implemented in full and run through the whole battery. The
+working form, per qualifying self-pressed value window: **`corr = P · (N − paid)`** — `N` = whole
+completions landing inside the window from a canonical walk anchored at the window's OWN press
+(msq-quantised / `_ideal`-exact via the shared `intervalAt`, walking the board's realised ramp casts
+where the stretch crosses a ramp; translation-invariant, so §8l's lone-slid-press flatness law
+survives), `paid` = the continuous credit the integral already paid (∫dt/i piecewise, minus toll
+share), `P` = the JOINT counterfactual premium of same-(anchor,fade) windows (AP+SCB share one
+straddler; the additive T5 pool makes marginals non-additive). Back-edge-only was tried FIRST and
+rejected by measurement: it manufactures false sub-band ideal slopes on co-pressed trains (a
++0.00116 hump on the T2 family when `repair` moves second uses 140→141 while the game pays the same
+13 casts); the integer-N form makes those exact ties and keeps cluster-monotonicity and §8o's
+linearity. Scope rulings honoured: fades at/past T keep the kill's one-sided credit; fades beyond
+the first cut stay fuzzy-wall phase-averaged; anchors inside intermission/AoE skipped; dmg/sp only —
+haste windows keep §8g's phase account.
+
+**Calibration — all three cells behaved as specified:**
+- T12 pair: Δ(15/35 − 10/30) = +0.0102 → **+0.325635** vs perturbation-averaged sim ≈ +0.255
+  (ratio 1.27), and phase-immune across all six perturbations (+0.3126…+0.3282), mirroring the
+  sim's 48–96σ immunity. The corrected account reproduces the sim log's isc-fade identity.
+- T8: Δ(declared − challenger) = −0.0933 → **−0.0403**, toward the phase-averaged board's −0.036
+  (not flipped: the residue is the §9j haste-window family — T8's value fades sit on the wall and
+  at the kill).
+- The board (`robust`) untouched; value-free configs bit-identical; self-consistency PASS.
+
+**The refutation — two NEW out-of-sample wasm duels** (69f02dd protocol: CRN, spaced seeds, exact
+T5-2pc stat cancellation, derived one-sided kill window, 20k iterations × 5 seeds):
+1. **h=22, A-shape (iv[0,20]+CS, zerk@40) vs the T12 lock (15/35):** sim **LOCK +0.684 DPS
+   (+0.030 %), 6.1σ, every seed**. HEAD model: LOCK +0.0547 ✓. Term model: **A +0.0031 — sign
+   flipped against the sim.**
+2. **T16's cell, D (10/30) vs C (5/25), h=33 sp=700:** sim **D +1.319 DPS (+0.074 %), 23.5σ** —
+   ★ **the T16 lock is sim-CONFIRMED.** HEAD: D +0.0036 ✓. Term: **C +0.106 — sign flipped, ~0.18
+   casts off.**
+
+**Diagnosis.** The value-landing physics is real — the §9i T12 forensics stand untouched. But the
+still-unmodelled §9j haste-window landing residues (face 1: haste start-snapshot; face 2:
+kill-flush) are the SAME ORDER (~0.03–0.13 casts) as the real inter-shape margins, and on the locked
+cells HEAD's two errors currently CANCEL. Landing the value half alone unbalances that cancellation:
+strictly more physics, strictly worse rankings. A face-1 pilot overshoots the other way (+0.14 vs
+sim +0.03) — each face needs its own isolating duels before any composite. Under the term the suite
+confirms the diagnosis mechanically: T13 emits the B-shape (+0.0899 over its lock), T16 emits
+cluster@45/iv[45,65] (+0.3313 over its lock — directly contradicted by duel 2), law-check 4 red,
+haste-bands 8/15.
+
+**Consequences that stand:**
+1. **The T8 revision (iv[20,115]) stays blocked** — the zerk@95 challenger's ideal margin over the
+   revised lock is +0.094 → **+0.0413** under the term: halved, still the wrong sign to land it.
+2. **`distinct` is NOT removable yet** (the §9l re-test, performed): under the term T10's 7-vs-10
+   tie resolves toward the lock (+0.130) but T13's 0-vs-5 resolves AGAINST it (−0.0899) — one
+   resolution goes the wrong way and the resolver itself is refuted. Deprecated stays deprecated.
+3. **The fix is the FULL §9j program or nothing:** value landings + face 1 + face 2, each isolated
+   by its own sim cells before composition. Duels 1 and 2 above are the ready-made gates, alongside
+   T12 and T8.
+
+Artifacts (scratchpad, ⚠ ephemeral — the numbers above are the durable record): the full patch
+against 13a794d, the duel driver, both sweeps, and the original T12 forensics.
+
+## §9n — ✅ THE ASHTONGUE MODEL REBUILT AS THE EXACT RENEWAL LAW (08-03) — two defects closed, one channel opened
+
+User request: *"make sure that crit chance enters the proc rate, that it's not just a flat line of
+average value. Increased local haste also increases the chance of a proc, and that proc increases
+haste further etc, so the math might be complicated, so do it properly."* The math turned out to have
+an exact closed form — the renewal steady state — and BOTH shipped accounts disagreed with it.
+
+**Defect 1 — the integrand had no feedback at all.** `rateAt`'s exponent was `dur/intDn`: attempts
+counted on the DOWN lattice, so a live proc's faster casts never fed back into the refresh chance.
+Exact law: `n = ceil(dur/a)` on the UP lattice, `P = 1−(1−q)^n`, `R = 1/(aP + b(1−P))` — the renewal
+cycle IS the fixed point of the proc→haste→proc cascade. Size at buffed crit (50.765 %, h=0):
+P 0.623 vs 0.690 true, R 0.70484 vs 0.70779 ⇒ **~1 effective cast per 6-minute ATI fight**, 500× the
+tie band. (The old E[1/i] blend was also wrong-shaped: casts/cycle ÷ time/cycle gives the
+cast-weighted 1/E[i], not E[1/i].)
+
+**Defect 2 — the walk's trailing window was off by one cast and mean-field.** It evicted history by
+cast START (`recentT[ri] <= t − dur`), dropping the completion whose proc still covers this cast
+(worth ≈ (1−P)·q of uptime), and counted attempts on its own blended lattice (self-consistent
+mean-field P ≈ 0.644 — closer than the integrand but still 4.6 pp short). Replaced by the
+counterfactual-age product (age = k·a + deadTime < dur), which is the exact discrete law in steady
+state AND in the engagement transient, and ages correctly across intermissions.
+
+**Also closed here:** the §9b Ashtongue channel — `q` now reads the EFFECTIVE crit (the
+Clearcasting→Arcane Potency mixture, `atiProcQ`), so the +3 pp that produced 3849 rank flips is in
+the proc rate (and only there — the damage side still cancels and stays normalised away). ATI's
+constants moved into `GAME.ATI` with a SOURCES row (they were uncited and invisible to
+constants-cited — the §9b caveat). The engagement transient (every cold start begins proc-cold) is
+new modeling, threaded through the integrand as a lattice-free age ODE and carried natively by the
+walk; MC-priced at +0.130 casts against steady-state-everywhere, of which +0.100 is recovered.
+
+**Verification** (all green, all in the tree): law-check ATI block — the steady law by length
+differencing (cancels toll AND transient; tolerance 1e-6 against a 0.34-cast Potency-lift effect and
+a 0.44-cast feedback effect over the window), exact values at crits 25/40/80, above-cap zero;
+`tools/ati-mc.mjs` — the engine against a direct seeded simulation of the true process (steady to
+2e-5 casts/s at four states; full fights incl. the REAL ramp lattice within 0.05–0.08 casts against
+a 0.25 budget; `--self-test` seeds the retired down-lattice form and it is caught by 3 lines);
+self-consistency's new ati-on corpus cells (0 mismatches, 0 structural); kit-sweep's new
+`ati+icon+gem` kit. Full algebra and the priced non-goals (window-edge P-memory ±0.05–0.15,
+continuous-transient residual 0.030, gap<5s linear remnant, q→1 first-cast loss): ESTABLISHED-FACTS
+§12. ⚠ ati/drums stay OFF in every declared test and preset, and the whole change is gated behind
+`enabled.ati` — plan-sweep A/B reads IDENTICAL on the preset corpus.
+
+**What remains open on ATI:** no declared layout runs with the proc enabled — kit-sweep asserts
+local optimality only. Deriving ati-on test cells for user ruling is the length-ladder workflow
+(ROADMAP ▶▶ A), unchanged.
+
+### §9n addendum — the renewal model arbitrated against wowsims (08-03, user-requested)
+
+The user asked for the obvious test: *"seed some random fights with ashtongue talisman, predict their
+rankings, and sim to verify."* Done, plus two sharper single-number tests. Full protocol, numbers and
+harness traps: ESTABLISHED-FACTS §12.5. Headline:
+
+- **Ranking: 28 of 29 resolvable pairs agree** (3 random fights × 5 random legal layouts, CRN duels).
+- **Proc physics, parameter-free** (crit saturated ⇒ `q = 0.5` exactly): uptime 89.54 % sim vs
+  90.97 % closed form; mean interval 1.403 s vs 1.3819 s. Residual ~1.5 %, fully attributable to the
+  ramp + cold start the closed form excludes and §12.3 models.
+- **The crit channel, confirmed twice over**: crit inferred from the proc uptime (39.60 %) matches
+  crit solved from DPS ratios (39.34 %) to 0.26 pp. That is the user's actual question —
+  *"make sure that crit chance enters the proc rate"* — answered by measurement, through the proc.
+- **wowsims' own implementation matches `GAME.ATI` exactly** (`sim/mage/items.go:119-145`: 5 s, 145
+  spell haste rating, ProcChance 0.5, crit outcome, no ICD).
+
+⚠ **OPEN, and deliberately not smoothed over: the long-fight MAGNITUDE gap.** Order is right, size is
+not — the sim/predicted DPS ratio is ~0.9 on short fights but 0.07–0.44 on several 5:30 pairs, i.e.
+the model over-states some long-fight margins. Ruled out: dropped presses (the sim's `casts`/aura
+uptimes confirm every scheduled press fires), Cold Snap transcription (with it stated, Icy Veins
+reads exactly 40 s / 2 procs), mana (cast count is flat in `mp5`), and gear mismatch (the sim's gear
+haste is ~0, measured from its cast count). Not yet ruled out: the press-snap seam (the sim's APL
+cannot press mid-cast, and the model's ranking is press-time geometry), and the model's own
+long-fight window accounting. **This is a scorer-side question and it is the next thing to pull on
+if ATI work resumes.**
+
+★ **AND IT IS NOT AN ASHTONGUE QUESTION — that is the most useful thing about it.** The gap is in
+what a HASTE WINDOW is worth, and it splits by fight length, not by kit: ratios sit near 1.0 on the
+1:20 cells and collapse on the 5:30 ones. The leading hypothesis is the **standing infinite-mana
+decision** (CLAUDE.md, user ruling): the model buys `dur × Δrate` extra casts from a haste window
+unconditionally, while a real 5:30 mage pays for those casts out of a finite pool and gives some
+back later — which would look exactly like this, and would be a known accepted limitation surfacing
+rather than a defect. ⚠ Not confirmed: `secondsOomAvg` reads 0 on these cells, but that metric only
+counts time at literally zero mana and this session proved it does not detect a mage stalling to
+afford its next cast (§12.5's second trap). **The discriminating measurement is a CAST COUNT, not a
+DPS number**: press one haste window on a long fight, with and without, and ask whether the sim's
+Arcane Blast count rises by the `dur × Δrate` the model charges for. If it does, the model's window
+valuation is right and the DPS gap is elsewhere; if it does not, this is the mana seam and the
+honest fix is a documented limit, not a scorer term. ⛔ That test needs the sim, which is deleted by
+ruling — so it is a question to POSE before any future arbitration, not a reason to rebuild one.
+
+⚠ An INDEPENDENT full-fight Monte Carlo (no shared code with the engine, real proc rolls) was run
+alongside as a sim-free control: **53 of 54 pairs agree** on margins over 0.3 casts, and the
+per-layout Ashtongue INCREMENT — the difference that cancels everything the two accounts share —
+agrees to a few percent, with the largest deviations tracking the WINDOW-START CONVENTION rather than
+the proc model (matching the MC's window starts to the scorer's press-time geometry moves the worst
+cell from +0.33 casts to +0.06). The one MC disagreement is on the AoE cell and reproduces with the
+proc DISABLED (scorer +0.673 casts vs MC +0.085), so it is the known continuous-vs-discrete AoE-wall
+divergence, not an Ashtongue defect.
+
+## §9o — ⛔ A SHAPE-SPECIFIC SEARCH MISS AT `h400 · 3:00 lust 0:20`, PRE-EXISTING (found 08-03 by the widened kit sweep)
+
+`kit-sweep` gained an `ati+icon+gem` kit (8 kits × 3 haste × 3 shapes = 72 cells) and `search-audit
+--k=3` came back **69/72**. All three misses are the SAME 3-coordinate move on the SAME shape —
+`arcanePower#0+2 & scb#0+2 & scb#1+2` at `h400 · 3:00 lust 0:20`, worth **+0.013…+0.020 casts**
+(6–10× the tie band) — and one of them is the CONTROL kit `icon+gem`, which contains neither
+Ashtongue nor Drums.
+
+**Attributed by measurement, not by argument.** Both engines score the emitted plan and the improved
+plan bit-identically (173.788238 → 173.808314, Δ +0.020077 under `d43054e` and under HEAD alike), and
+a full base-engine kit sweep reads **68/72** — the same `icon+gem` and `pi+icon+gem` misses, plus a
+tie-break miss HEAD does not have:
+
+| engine | localOptima | SCORE misses | tieBreak misses |
+|---|---|---|---|
+| base (`d43054e`) | 68/72 | icon+gem h400·3:00 · pi+icon+gem h400·3:00 · ati+icon+gem h0·2:40 | 1 |
+| HEAD (renewal ATI) | **69/72** | icon+gem h400·3:00 · pi+icon+gem h400·3:00 · ati+icon+gem **h400·3:00** | **0** |
+
+⇒ the ATI kit's miss MOVED rather than appeared — off the old model's `h0 · 2:40 interm` cell and onto
+the same `h400 · 3:00` shape every other kit misses, which is what a changed proc model should do to
+an ATI-kit landscape. The renewal model is net **neutral-to-better** on this matrix.
+
+★ **The finding is the SHAPE, not the kit.** Three unrelated kits fail identically at h=400 on the
+3:00 Lust-0:20 fight, which says the defect is in the SEARCH's reachability on that geometry (above
+the GCD cap, where §7's crossovers live), not in any cooldown's model. It is a **search** item —
+`phaseRerank`'s move classes or the seed classes — and per the standing rule it must NOT be answered
+in `simulate()`: the scorer ranks the better plan correctly, which is the only reason the miss is
+visible at all (`law-check` green throughout).

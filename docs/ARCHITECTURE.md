@@ -188,21 +188,24 @@ bit-equal to recomputation; collect=true always computes fresh.
   compares it against the sim's own damage line. `frac` is the boundary credit it earned and
   `credited = dmg × frac` is the product the objective summed. **Anything recomputing the objective
   from this board must use `credited`, not `dmg`.**
-- **⛔ RETIRED, kept only as the `integral` diagnostic — cast-rate integral + discrete ramp casts**
-  (~1436–1650; re-grepped 07-27). Nothing ranks on any of it, and `cfg.boundaryCharge` (which is defined against it) now
-  THROWS rather than silently doing nothing. It reads: `rateAt(t)` = `dmg2 /
-  intervalAt(multDn2)` integrated over piecewise-constant breakpoints (buff-window edges, phase edges,
-  T±KW, ramp-span edges) — but each `boardRamp` span is EXCLUDED from the integral and scored as its
-  discrete cast instead: `rampCastDmg(ts, tc)` — buff/SP **state** jitter-averaged ±½ GCD around the
-  cast **START** `ts` (RULES §3b.3; ⚠ the *fix* is right, its old *mechanism* is not — wowsims reads a
-  value buff at cast **completion**, so start-sampling is exact at a window's front edge and
-  over-credits its back edge by `frac(D/Δ)×premium`, the known unimplemented PHASE8 term), damage
-  **time** (the local `KW` taper, wall/AoE gating) at the completion `tc` (Phase 4's rule). `scanAt` is the shared deterministic buff-state scan; `intervalAt` applies
-  the **GCD floor** `max(cast/m, 1.0)` statelessly. ⛔ This bullet used to end *"`total` counts casts
-  COMPLETING ≤ T; `robust` tapers the last half-cast — the optimizer maximizes `robust`"*. **Retired
-  twice over:** the taper is gone (PHASE12 §9) and the integral stopped ranking anything (§6.10). What
-  the two locals still compute here is only ever published as `integralTotal` / `integral`; the
-  returned `total`/`robust` are overwritten by the per-cast sum.
+- **★ THE RANKING — the cast-rate integral** (this bullet said "RETIRED, kept only as a diagnostic"
+  until 08-03, which had been false since §8h on 07-30: `rankScore` reads `simulate().integral`, so
+  the integral RANKS and the per-cast sum above is the REPORTED number). It reads `rateAt(t)` =
+  `dmg2 / intervalAt(multDn2)` integrated over piecewise-constant breakpoints (buff-window
+  `scoreStart` edges, phase edges, T/T+KWD, toll-window and ramp-span edges), integrating straight
+  through the ramp at the steady rate with the opener charged as the m-independent toll (`tollWins`,
+  §8q/§9a). `scanAt` is the shared deterministic buff-state scan; `intervalAt` applies the **GCD
+  floor** `max(cast/m, 1.0)` statelessly, millisecond-quantised (`msqI`; identity under
+  `cfg._ideal`, the §9l tie-detection twin). `cfg.boundaryCharge` THROWS (defined against a retired
+  arbiter). `rampCastDmg`/`rampCasts` in this region are dead code (filed).
+- **The Ashtongue account, both halves (08-03 — ESTABLISHED-FACTS §12, RULES §14):** the WALK carries
+  the exact discrete law — `atiHist` (a bounded completion history with per-cast `atiProcQ`, aged by
+  counterfactual up-lattice age + `atiDead` intermission time) yields `pUp` per cast, blended into
+  `interval`/`tcVal`/`dur` with the floor inside each branch. The INTEGRAND carries the renewal
+  steady state (`atiParamsAt` → `P = 1−(1−q)^n`, rate `1/(aP+b(1−P))` in `rateAt`) plus the
+  engagement transient threaded through the breakpoint loop (`atiAdvance`, an age ν advanced in
+  closed form per slice, net of the toll, reset across intermissions). Everything is gated on
+  `cfg.enabled.ati` — ati-off paths are byte-identical (plan-diff IDENTICAL, 21/21).
 - AoE segments: `dmg` uses AE base × `targets` × `aoeCritAmp`, interval = GCD only.
 
 > ### ★★★★ THE FINISHING TAIL IS MONOTONE, AND ITS BUDGET IS A TIE-BREAK (user ruling 07-28)
@@ -555,8 +558,10 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   lives only in git history. Do not restore.
 - **`renderAssumptions()`** (~5256): the "Model assumptions" footer — **static** (no `run` argument), so it
   renders at page load and the masthead's `#btn-assump` link always has a scroll target. Sectioned by
-  subject with per-claim `sim-verified` / `beta` / `not modeled` verdict chips; the `beta` chips match
-  `BETA_KEYS` (Ashtongue, Drums, Power Infusion) in the setup UI. Keep it in sync with RULES/MECHANICS —
+  subject with per-claim `sim-verified` / `law-checked` / `beta` / `not modeled` verdict chips; the
+  `beta` chips match `BETA_KEYS` — **Power Infusion only since 08-03**: Ashtongue and Drums were
+  de-beta'd when they gained closed-form law coverage (law-check's ATI/Drums blocks) and, for the
+  proc, the `tools/ati-mc.mjs` process-simulation gate. Keep it in sync with RULES/MECHANICS —
   it is the user-facing statement of the model.
 
 ## Timeline customization — unlock → drag → lock → validate (+ debug export)

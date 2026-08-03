@@ -1341,3 +1341,102 @@ noise. The code is preserved verbatim in `docs/MODEL-DEFECTS.md` §8y and the ca
   opener ramp is priced haste-neutral (§8q), so Berserking at 0:05 overlapping the ramp costs nothing.
   Tested: false. The model prices the ramp — `Zerk@0` is −0.101 casts against `Zerk@5`. The plateau is
   ordinary, not an artifact. Recorded because the hypothesis was plausible enough to have been believed.
+
+# 2026-08-03 — Ashtongue rebuilt as the exact renewal law; Drums finished and de-beta'd
+
+User: *"finish implementing Ashtongue talisman and Drums properly … make sure that crit chance enters
+the proc rate, that it's not just a flat line of average value. Increased local haste also increases
+the chance of a proc, and that proc increases haste further etc, so the math might be complicated, so
+do it properly and think about all the pitfalls beforehand."*
+
+**The math had an exact closed form, and both shipped accounts disagreed with it.** The proc process
+renews at each proc, so the steady state is `P = 1−(1−q)^n` with `n = ceil(dur/a)` counted on the UP
+lattice — the feedback loop the user named, converged by the renewal algebra with no iteration. The
+integrand had NO feedback (exponent `dur/intDn`, the down lattice — ~1 effective cast per 6-minute
+ATI fight, 500× the tie band); the walk was mean-field on its own blended lattice AND evicted its
+trailing window by cast start, an off-by-one. Both replaced; the engagement transient (every cold
+start begins proc-cold) added — exact discrete law in the walk, lattice-free age ODE threaded
+through the integrand's breakpoint loop (a t0-anchored discrete transient would be a lattice, §8l).
+Crit now enters the proc rate at the EFFECTIVE crit (the Clearcasting→Arcane Potency mixture),
+closing the Ashtongue half of §9b's 3849-rank-flip finding. Full record: MODEL-DEFECTS §9n; algebra
+and priced non-goals: ESTABLISHED-FACTS §12; mechanics: MECHANICS §6; rules: RULES §14.
+
+**Verification is two-track and the second track is new for this repo:** the closed forms went into
+law-check (ATI block — the steady law by length differencing, which cancels the toll and the
+transient in one move; exact values at three crits; above-cap zero), and the whole model was checked
+against a direct seeded Monte Carlo of the proc process — `tools/ati-mc.mjs`, now a CI gate with a
+negative control that seeds the retired form and must catch it. The MC is the stochastic mechanic's
+falsifier now that the sim is retired: steady rates matched to 2e-5 casts/s, full fights (real ramp
+lattice) to 0.05–0.08 casts. Design-phase MC (2e7 casts × 9 states): worst closed-form deviation
+2.45e-4.
+
+**Drums:** already-correct physics gained its own law block (rating additivity alone and inside
+Lust, Tinnitus-legal doubling, the 708.5-onset zero), RULES §13's stale exact-match "lock" reference
+was corrected (those goldens died 07-28), the pin-vs-search prepull asymmetry was documented as
+deliberate, the upstream `SpellFlagAPL` patch was formally closed as moot, and the dead write-only
+`slip` bookkeeping in the firing block was deleted. **Ashtongue and Drums left `BETA_KEYS`** — the
+badge's stated finish line ("certified against the sim") became unreachable when the sim retired;
+the replacement finish line (law + MC gates) is crossed. Power Infusion keeps the badge (no declared
+layout, spot-check coverage only).
+
+Constants: `GAME.ATI` (145 / 0.5 / 5.0 s) — previously an uncited standalone const invisible to
+constants-cited — now gated, with a SOURCES row (Wowhead item 32488 / spell 40482; wowsims
+`ProcChance 0.5`, no ICD, additive rating `core/unit.go:501`).
+
+Acceptance: anchors 17/17 untouched, plan-sweep A/B **PLAN-DIFF IDENTICAL 21/21** (ati/drums off in
+every preset — the whole change is behind `enabled.ati`), law-check 75 ✓ (+self-test now caught by
+16 lines), self-consistency 0 mismatches / 0 structural incl. the new ati-on corpus cells,
+constants-cited 17/17 (+self-test), toll-audit --strict, objective-ref, ati-mc (+self-test).
+
+## Corrections logged
+
+- **The stale 07-28 `docs/PLAN.md` ("replace the goldens with an anchored correctness suite") was
+  still in the tree** while CLAUDE.md said "no plan in flight" — that programme landed weeks ago
+  (anchors are the gate, the goldens are deleted, the corrected integral ranks). Deleted per the
+  house rule; its durable evidence was already in MODEL-DEFECTS §8d/§8f and this diary.
+- **ARCHITECTURE's integral bullet still said "RETIRED, nothing ranks on it"** — false since §8h
+  (07-30). Corrected in place while touching the region.
+
+## 08-03 (later) — the Ashtongue model arbitrated against wowsims, once, on request
+
+User: *"seed some random fights with ashtongue talisman, predict their rankings, and sim to verify …
+That should be a good first test, do you agree?"* Agreed and done — with two sharper tests added,
+because a ranking test only checks SIGN and the interesting claim here is a magnitude.
+
+The simulator stays retired; this was a one-off arbitration, justified by the ATI rebuild being the
+first post-retirement change whose central claim is probabilistic. A small `cmd/runsim` was built
+against `wowsims/tbc-new`, used, and then **DELETED — by user ruling the same day**: *"throw away the
+sim harness, we have learned that it being in the repo is a bad idea because you cling too much to
+it."* ⛔ It is not to be rebuilt, and ESTABLISHED-FACTS §12.5 deliberately carries no recipe — only
+the measurements, plus the three traps that each produced a wrong number before being caught (a
+silently-discarded `mp5` stat index, `secondsOomAvg = 0` not meaning "casting continuously", and a
+two-point DPS solve for haste being unidentifiable — it claimed 265.6 rating for a mage at ~0 and
+manufactured a 7 pp uptime disagreement that did not exist). ★ The residual need the sim was covering
+— *is this premise about the GAME true?* — is met by READING wowsims' source and citing it, which is
+how the one premise question here (ProcChance 0.5, no ICD) was actually settled.
+
+Results: **28/29 resolvable ranking pairs agree**; the proc's physics reproduces parameter-free
+(crit saturated ⇒ q = 0.5: uptime 89.54 % sim vs 90.97 % closed form, residual = the ramp and cold
+start the closed form excludes); and the crit channel is confirmed **twice over** — crit read back
+out of the proc uptime (39.60 %) matches crit solved from DPS ratios (39.34 %) to 0.26 pp, which is
+the direct answer to the user's *"make sure that crit chance enters the proc rate"*. wowsims'
+own implementation matches `GAME.ATI` to the field.
+
+**Left open, on purpose:** the long-fight magnitude gap (order right, size over-stated — sim/predicted
+ratio 0.07–0.44 on several 5:30 pairs). Dropped presses, Cold Snap transcription, mana and gear
+mismatch are all ruled out by measurement; the press-snap seam and the model's long-fight window
+accounting are not. Filed in MODEL-DEFECTS §9n addendum as the next thing to pull on.
+
+## Corrections logged
+
+- **The transient residual figure in ESTABLISHED-FACTS §12.4 was wrong when first written** — I
+  recorded +0.030 casts/engagement from a single T=180 cell; the lone-window ladder measures
+  +0.054…+0.067, roughly constant per engagement, which is the shape a start-up transient should
+  have. Corrected in place the same day.
+- **My first "matched-haste" sim arm was the artifact, not the finding.** A two-point DPS solve said
+  the sim's gear haste was 265.6 rating; subtracting it drove the mage to NEGATIVE haste and produced
+  a 45.4 % measured uptime against a 52.7 % prediction — a 7 pp "disagreement" I nearly wrote up. The
+  cast count says the sim's gear haste is ~0 all along (218 casts in 330 s against an ideal 220, the
+  2-cast deficit being the opener toll), so the ORIGINAL unadjusted duels were correctly matched.
+  ⇒ The project's standing caution generalises again: when an instrument and a closed form disagree,
+  suspect the instrument's SETUP first. It was the setup, twice in one session.
