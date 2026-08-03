@@ -304,25 +304,24 @@ const CASES = [
      ~20-25 % from 700 to 2200 SP (the D band starts at 18 / 16 / 14 at SP 700 / 1217 / 2200). Quoting
      "h = 16" as a threshold without its spellpower is wrong. Only the ladder's top boundary (Berserking
      leaving the ramp, ~721) is gear-invariant, because the GCD cap and not an SP buff decides it. */
-  /* ⛔⛔ T12'S LOCK WAS OVERWRITTEN 08-03 AND REVERTED THE SAME DAY — READ THIS BEFORE EVER TOUCHING A `want`.
-     I changed this lock to the scorer's preferred iv[15,60]/zerk@35 after the user said *"the math
-     should tell you which is better."* That was NOT authorization — it was the user declining to
-     arbitrate, which is what the locks exist to make unnecessary. Their standing rule, verbatim, 08-03:
-     *"those were not meant to be overwritten, those were meant as a hardcore standing ground rules
-     where after any batch of changes to the model you see if the model still upholds these tests and
-     if not then you keep working until it does."*
-     ⇒ A lock changes ONLY on the user's explicit instruction naming the test (T6 was an answered
-     question; T9's 3:00 was their own text). Scorer preference is NEVER grounds — the scorer can carry
-     a defect (§9i proved one at 62σ), and revising locks to match it launders defects into ground truth.
-     ★ The open QUESTION the overwrite buried, correctly stated: the scorer prefers 15/35 over this lock
-     by 0.0102 (5× band, both accounts, structurally sane grid) — so by this file's own doctrine the
-     SCORER IS FAILING on this cell until the model upholds 10/30, same category as t8-cell. The
-     instrument that settles which physics is missing is the SIM (duel 10/30 vs 15/35); if the sim backs
-     15/35, that evidence goes TO THE USER as ground truth and the decision is theirs alone. */
-  { name: 'T12 — 2:00 lust 0:20, h=22 — FIRST DECLARED LAYOUT ABOVE h=0 (ladder band D)',
+  /* ★★★ T12 REVISED TO 15/35 — 08-03, BY EXPLICIT USER RULING NAMING THE TEST, WITH GROUND TRUTH IN HAND.
+     The full chain, because this lock moved TWICE and the difference between the two moves is the lock
+     doctrine itself: (1) I overwrote it to 15/35 on scorer preference alone — ILLEGITIMATE, reverted,
+     the "hardcore standing ground rules" ruling recorded. (2) Then the evidence was assembled: wowsims
+     duel 15/35 over 10/30 by +5.8 DPS = +0.26 casts at 100σ, every seed, both kill windows, character
+     PROVEN to carry h=22 + Tirisfal 2pc, every press verified on its exact cast; forensics named the
+     mechanism (the AP-fade landing cliff: IV@15's capped lattice lands its 15th cast 53 ms BEFORE the
+     fade at full value, IV@10's decompressed lattice lands it 137 ms AFTER — one ×1.45 cast collapses),
+     and six phase perturbations proved it systematic (never below 48σ). The user ruled: "then yeah its
+     supposed to be 15 35". The layout was the user's own predicted candidate before any sweep ran.
+     ★ The scorer ALWAYS preferred 15/35 (+0.0102) — right order, 25× too small a margin: the landing-
+     snapshot term (MODEL-DEFECTS §9i/§9j, fix in flight) is the missing magnitude, not a sign error.
+     ⚠ The band-D ladder's original candidate set simply lacked 15/35; the h-ladder breakpoints gate the
+     STRUCTURE and survive, but the ladder is due a re-sweep once the landing term lands. */
+  { name: 'T12 — 2:00 lust 0:20, h=22 — FIRST DECLARED LAYOUT ABOVE h=0 (ladder band D, x=15)',
     T: 120, sp: 1217.3875, crit: 37.39038949275363, haste: 22, t5two: true, lust: 20,
-    want: { icyVeins: [10, 60], isc: [20], scb: [20], arcanePower: [20],
-            berserking: [30], bloodlust: [20] } },
+    want: { icyVeins: [15, 60], isc: [20], scb: [20], arcanePower: [20],
+            berserking: [35], bloodlust: [20] } },
   { name: 'T13 — 2:00 lust 0:20, h=50 (ladder band C)',
     T: 120, sp: 1217.3875, crit: 37.39038949275363, haste: 50, t5two: true, lust: 20,
     want: { icyVeins: [5, 60], isc: [20], scb: [20], arcanePower: [20], berserking: [25], bloodlust: [20] } },
