@@ -1540,13 +1540,25 @@ T=180 cell.
 
 ### §12.5 ★★★★ VERIFIED AGAINST wowsims — the proc model against the simulator that implements it *(08-03, user-requested)*
 
-⛔ **The simulator is still retired** (user decision 07-30) and nothing in `tools/` depends on it. What
-follows is a one-off arbitration of the stochastic model, run because the ATI rebuild is the first
-change since the retirement whose central claim is *probabilistic* — and the project's own rule is
-that when an instrument and a closed form disagree you suspect the instrument's SETUP first, which
-means a stochastic claim wants an outside referee at least once. The harness was rebuilt from
-`github.com/wowsims/tbc-new` (⚠ NOT `wowsims/tbc`, which is the 2021 archive — the Go module path
-lies about this, SOURCES) as a small headless runner, `cmd/runsim`, built with `-tags with_db`.
+⛔⛔ **THE NUMBERS BELOW ARE THE RECORD OF A CLOSED, ONE-OFF EVENT. THE HARNESS IS DELETED AND MUST
+NOT BE REBUILT.** User ruling, 08-03, on being offered the harness: *"throw away the sim harness, we
+have learned that it being in the repo is a bad idea because you cling too much to it and this was
+the only use for it I have."* Both halves are findings, not preferences:
+- **The clinging is a measured failure mode, not a worry.** This very session paid for it three
+  times (the traps at the end of this section), and the project's ledger already carries five
+  earlier cases of *"the sim is rarely wrong, we've usually used it wrong"*. A tool that is
+  expensive to use correctly and always available gets reached for before the cheap correct thing.
+- **The residual use is smaller than it looks.** What only a foreign implementation can give is
+  independence of *premises* — an MC written from the same docs as the engine shares its
+  assumptions. But the one premise question that arose here (*does the talisman really proc at 0.5
+  on every crit with no ICD?*) was settled by **READING** `sim/mage/items.go`, not by running
+  anything. ⇒ **When a physics premise is in doubt, read wowsims' source and cite it** (SOURCES
+  doctrine, and it needs no build, no gear matching, no mana regime, no seeds). For everything else
+  the sim-free instruments are strictly better: `tools/ati-mc.mjs` for the stochastic half,
+  brute-force enumeration for the search, `law-check` for the algebra.
+
+This section stays because the MEASUREMENTS are durable evidence about the model. It deliberately
+does **not** carry a rebuild recipe.
 
 ★ **wowsims implements the talisman exactly as `GAME.ATI` states** (`sim/mage/items.go:119-145`):
 `duration := time.Second * 5`, `value := 145.0` `stats.SpellHasteRating`, `ProcChance: 0.5`,

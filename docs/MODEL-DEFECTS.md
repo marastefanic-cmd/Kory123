@@ -4175,6 +4175,21 @@ cannot press mid-cast, and the model's ranking is press-time geometry), and the 
 long-fight window accounting. **This is a scorer-side question and it is the next thing to pull on
 if ATI work resumes.**
 
+★ **AND IT IS NOT AN ASHTONGUE QUESTION — that is the most useful thing about it.** The gap is in
+what a HASTE WINDOW is worth, and it splits by fight length, not by kit: ratios sit near 1.0 on the
+1:20 cells and collapse on the 5:30 ones. The leading hypothesis is the **standing infinite-mana
+decision** (CLAUDE.md, user ruling): the model buys `dur × Δrate` extra casts from a haste window
+unconditionally, while a real 5:30 mage pays for those casts out of a finite pool and gives some
+back later — which would look exactly like this, and would be a known accepted limitation surfacing
+rather than a defect. ⚠ Not confirmed: `secondsOomAvg` reads 0 on these cells, but that metric only
+counts time at literally zero mana and this session proved it does not detect a mage stalling to
+afford its next cast (§12.5's second trap). **The discriminating measurement is a CAST COUNT, not a
+DPS number**: press one haste window on a long fight, with and without, and ask whether the sim's
+Arcane Blast count rises by the `dur × Δrate` the model charges for. If it does, the model's window
+valuation is right and the DPS gap is elsewhere; if it does not, this is the mana seam and the
+honest fix is a documented limit, not a scorer term. ⛔ That test needs the sim, which is deleted by
+ruling — so it is a question to POSE before any future arbitration, not a reason to rebuild one.
+
 ⚠ An INDEPENDENT full-fight Monte Carlo (no shared code with the engine, real proc rolls) was run
 alongside as a sim-free control: **53 of 54 pairs agree** on margins over 0.3 casts, and the
 per-layout Ashtongue INCREMENT — the difference that cancels everything the two accounts share —

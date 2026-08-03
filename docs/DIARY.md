@@ -1404,13 +1404,16 @@ That should be a good first test, do you agree?"* Agreed and done — with two s
 because a ranking test only checks SIGN and the interesting claim here is a magnitude.
 
 The simulator stays retired; this was a one-off arbitration, justified by the ATI rebuild being the
-first post-retirement change whose central claim is probabilistic. The harness was rebuilt from
-`wowsims/tbc-new` as a small `cmd/runsim` (the archived §16 protocol was the recipe), lives in the
-session scratchpad, and is **not** committed — recreating it is documented in ESTABLISHED-FACTS
-§12.5, which also carries the three traps that each produced a wrong number before being caught (a
+first post-retirement change whose central claim is probabilistic. A small `cmd/runsim` was built
+against `wowsims/tbc-new`, used, and then **DELETED — by user ruling the same day**: *"throw away the
+sim harness, we have learned that it being in the repo is a bad idea because you cling too much to
+it."* ⛔ It is not to be rebuilt, and ESTABLISHED-FACTS §12.5 deliberately carries no recipe — only
+the measurements, plus the three traps that each produced a wrong number before being caught (a
 silently-discarded `mp5` stat index, `secondsOomAvg = 0` not meaning "casting continuously", and a
 two-point DPS solve for haste being unidentifiable — it claimed 265.6 rating for a mage at ~0 and
-manufactured a 7 pp uptime disagreement that did not exist).
+manufactured a 7 pp uptime disagreement that did not exist). ★ The residual need the sim was covering
+— *is this premise about the GAME true?* — is met by READING wowsims' source and citing it, which is
+how the one premise question here (ProcChance 0.5, no ICD) was actually settled.
 
 Results: **28/29 resolvable ranking pairs agree**; the proc's physics reproduces parameter-free
 (crit saturated ⇒ q = 0.5: uptime 89.54 % sim vs 90.97 % closed form, residual = the ramp and cold
