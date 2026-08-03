@@ -4007,3 +4007,12 @@ remains the reported score and the law-check quantity; only TIE DETECTION consul
   self-consistency, haste-bands --assert, t8-cell, plan-sweep/plan-diff with every moved cell
   classified. The §9k band-shrink mission is DEAD (T6's true tie sits below any workable shrunken
   band; the ideal-law detector replaces it).
+
+### §9l closure — T6 ANSWERED (08-03): the lock stands as-is (user pasted the exact plan)
+T6 = the current file lock: Berserking@5 riding the call, cluster+IV@15, CS-IV@35. No edit.
+★ THE RECONCILING HYPOTHESIS, the batch's FIRST measurement: §8y's brute force ranked this member #1
+of 1,582,581 — so its +0.000231 over cluster@7 may be REAL ideal-law slope, not ms residue. If
+Δideal(15 vs 7) > 0: the score itself decides T6 (no tie-break involved) and EVERY ruling becomes
+consistent under one ordering — ideal-law decides above noise → snaps → wastedPre → grid →
+earliest-valid — with `distinct`/fewest-moments needed NOWHERE. If Δideal = 0 exactly, earliest picks
+@7 ≠ lock and the ordering needs a T6 carve-out: measure first, design second.
