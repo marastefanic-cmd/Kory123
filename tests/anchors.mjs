@@ -12,7 +12,9 @@
 //      comparing press times. Fix in `phaseRerank`'s move classes or the seed classes; §8j, §8m, §8s
 //      and §8w were all this. ⛔ NEVER by editing the layout.
 //   2. SCORER FAILURE — some layout in the declared one's own neighbourhood RANKS HIGHER. Caught by
-//      `scorerBeats()` below, which enumerates every move of ≤3 coordinates by ≤3 s and asks the
+//      `scorerBeats()` below, which enumerates every move of ≤3 coordinates over the fine ±1..3 s
+//      reach (the slope alarm) AND the natural 5 s lattice (±5, plus the lust-anchored lattice when
+//      Bloodlust is pinned off the 5 s grid — user design, 08-03) and asks the
 //      engine's own comparator. If anything wins, the declared layout is not the argmax under the
 //      current objective — and because the layout is ground truth, **that is the objective being
 //      wrong**. Fix in `simulate()`. ⛔ NEVER by editing the layout.
@@ -388,7 +390,8 @@ const fmt = s => Object.keys(s).sort().map(k => `${k}@${s[k].map(mmss).join('/')
 
    Those are two DIFFERENT failures with two different fixes, and a test that only compares press times
    can see one of them. Comparing `got` to `want` catches the SEARCH. This catches the SCORER: it
-   enumerates every move of <=3 coordinates by <=3 s around the DECLARED layout and asserts that the
+   enumerates every move of <=3 coordinates around the DECLARED layout — over the fine ±1..3 s reach
+   AND the natural 5 s lattice (see `deltasFor` below) — and asserts that the
    engine's own comparator prefers none of them. If something wins, the declared layout is not the
    argmax under the current objective — and since the layouts are ground truth, that is the objective
    being wrong, not the layout.
@@ -408,7 +411,26 @@ function scorerBeats(want, cfg) {
     if (cfg.fixed && cfg.fixed[k]) continue;          // pinned raid calls are not ours to move
     want[k].forEach((_, i) => coords.push([k, i]));
   }
-  const D = [-3, -2, -1, 1, 2, 3];
+  /* Probe reach (user design, 08-03): two arms with two different jobs.
+       — the fine ±1..3 s arm is the SLOPE ALARM: it detects "the declared layout is not even a local
+         argmax" wherever the true beater sits, but its report can name a mid-slope waypoint (the
+         "beaten by 13/33" reading, which was the upslope toward 15/35, not a real rival);
+       — the ±5 s arm lands on the NATURAL LATTICE: every buff duration is a multiple of 5 s, so real
+         rival layouts live on the 5 s grid and the report names an actual candidate layout.
+     When Bloodlust is pinned OFF that grid (lust at an uneven second), the lust-aligned buffs' rivals
+     live on the lust-anchored lattice (lust+5k — the 2/7/12/17 family) while the haste buffs stay on
+     the absolute grid, so each coordinate ALSO probes the deltas that snap it onto the lust lattice.
+     Probing the UNION for every coordinate avoids hard-classifying which buff anchors where — the
+     comparator decides what wins. */
+  const lustAt = cfg.fixed && cfg.fixed.bloodlust && cfg.fixed.bloodlust[0];
+  const deltasFor = t => {
+    const s = new Set([-5, -3, -2, -1, 1, 2, 3, 5]);
+    if (lustAt !== undefined && ((lustAt % 5) + 5) % 5 !== 0) {
+      const up = ((lustAt - t) % 5 + 5) % 5;              // smallest move UP onto the lust lattice
+      for (const d of [up - 5, up, up + 5]) if (d !== 0 && Math.abs(d) <= 7) s.add(d);
+    }
+    return [...s];
+  };
   let best = null;
   const walk = (start, depth, acc) => {
     if (acc.length) {
@@ -434,7 +456,10 @@ function scorerBeats(want, cfg) {
       }
     }
     if (depth === 3) return;
-    for (let i = start; i < coords.length; i++) for (const d of D) walk(i + 1, depth + 1, [...acc, [i, d]]);
+    for (let i = start; i < coords.length; i++) {
+      const [k, ii] = coords[i];
+      for (const d of deltasFor(Math.round(want[k][ii]))) walk(i + 1, depth + 1, [...acc, [i, d]]);
+    }
   };
   walk(0, 0, []);
   if (!best) return null;
