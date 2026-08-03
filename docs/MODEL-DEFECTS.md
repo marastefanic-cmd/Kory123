@@ -3940,3 +3940,28 @@ documented, sim-settled blind spot. The walk cannot rank anything until its own 
 **Still actionable without touching the scorer:** T13/T16 are integral-exact plateaus lost to tie-break
 REACHABILITY (a coupled multi-row move class); T12 is a basin miss whose declared layout is itself
 +0.006-beaten (3× band) — a user ruling or a sim duel decides that one.
+
+---
+
+## §9k — ⛔ T16'S RESIDUAL IS THE COMPARATOR ROUNDING A REAL SLOPE (08-03) — pending a user decision
+
+The band-structure re-anchor move class (landed with this entry) turned T13 green and transformed T16:
+the emission improved +0.0352 casts to `iv[8,60]/zerk@28`, an in-band tie with the declared
+`iv[10,60]/zerk@30` — and the agent PROVED no move class can close the rest:
+
+* `planBetter` itself prefers 8/28: class 3c walks declared → 8/28 in steps of **−0.000724 casts each**
+  — real, resolvable slope (the measurement floor is 0.0011... per *pair* of steps: the full walk loses
+  0.00145, above the floor) — but each step is inside `TIE_CASTS = 0.002`, so the band calls it a tie
+  and `sum` (earliest-first) accepts. The canonical plateau member under today's comparator IS 8/28.
+* So T16 stays red regardless of search: `scorerBeats` flags the in-band beat at HEAD, emission or not.
+
+**The user's principle, stated the same hour (verbatim):** *"only way it can lie is if you're rounding
+something too strictly."* That is this defect exactly: the band rounds a measurable 0.0015-cast
+difference to zero, then a tie-breaker buys earliness with it. Two exits, both user-level:
+1. **Rule T16's declared to the canonical member** `iv[8,60]/zerk@28` (T6-precedent, in-band).
+2. **Shrink `TIE_CASTS`** so the tie-break decides only genuine plateaus. ★ The 0.002 band was sized
+   against a 0.0011 noise floor measured BEFORE §8l made the ranking pure window geometry — post-§8l,
+   provably-equal layouts compare **bit-identical** (T9's tie: `a === b` exactly), so the floor may now
+   be ~1e-12 and the band ~2000× too wide. Re-measure the floor, then shrink; §8w's ratchet and every
+   in-band canonicalization (T1/T6/T9) must be re-verified under the new band. A comparator phase with
+   its own gates — NOT a quick constant change.

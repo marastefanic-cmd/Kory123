@@ -304,10 +304,22 @@ const CASES = [
      ~20-25 % from 700 to 2200 SP (the D band starts at 18 / 16 / 14 at SP 700 / 1217 / 2200). Quoting
      "h = 16" as a threshold without its spellpower is wrong. Only the ladder's top boundary (Berserking
      leaving the ramp, ~721) is gear-invariant, because the GCD cap and not an SP buff decides it. */
-  { name: 'T12 — 2:00 lust 0:20, h=22 — FIRST DECLARED LAYOUT ABOVE h=0 (ladder band D)',
+  /* ⚠ T12 REVISED 08-03 — BY THE MATH, AT THE USER'S DIRECTION. The original declaration was
+     iv[10,60]/zerk@30, band D's member from the 8-candidate ladder. The user challenged the ±3s
+     neighbourhood beat ("there's no way iv13/zerk33 is EVER the answer... possible answers are iv15
+     zerk35, iv10 zerk30, iv5 zerk25...") and named the structural family: the coupled slide
+     iv@x/zerk@x+20 whose GEOMETRIC breakpoints are x ∈ {0,5,10,15,20} (zerk-end × scb/AP-end at 5,
+     zerk-end × isc-end at 10, iv-end × scb-end at 15). Swept on the integral: argmax x = 15, ON the
+     user's grid, +0.0102 over x=10 (5× the band), kinks only at the geometric breakpoints — no
+     off-grid structure outside the deliberate discrete ramp. The user's ruling: *"The math should
+     tell you which is better."* Both the integral and the execution board concur (t5 on AND off), so
+     the math has told us: x = 15. The ladder's original candidate set simply never contained 15/35.
+     ★ x*(h,sp) slides 15 → 10 → 5 as haste or spellpower rise (T12 vs T16 vs T13/T17) — the band
+     structure REFINES inside band D; the SP mechanism of T16/T17 shows up within a single band. */
+  { name: 'T12 — 2:00 lust 0:20, h=22 — FIRST DECLARED LAYOUT ABOVE h=0 (ladder band D, x=15)',
     T: 120, sp: 1217.3875, crit: 37.39038949275363, haste: 22, t5two: true, lust: 20,
-    want: { icyVeins: [10, 60], isc: [20], scb: [20], arcanePower: [20],
-            berserking: [30], bloodlust: [20] } },
+    want: { icyVeins: [15, 60], isc: [20], scb: [20], arcanePower: [20],
+            berserking: [35], bloodlust: [20] } },
   { name: 'T13 — 2:00 lust 0:20, h=50 (ladder band C)',
     T: 120, sp: 1217.3875, crit: 37.39038949275363, haste: 50, t5two: true, lust: 20,
     want: { icyVeins: [5, 60], isc: [20], scb: [20], arcanePower: [20], berserking: [25], bloodlust: [20] } },

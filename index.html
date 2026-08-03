@@ -2901,6 +2901,71 @@ function phaseRerank(s0, cfg) {
         if (hit) break;
       }
     }
+    /* ★★★★★ 5. THE BAND-STRUCTURE RE-ANCHOR — added 08-03 (MODEL-DEFECTS §9h → §9k). T13's declared
+       layout and the plan the descent emitted are BOTH fixed points of every class above — two members
+       of an integral-exact plateau (|Δ| = 0.000641 casts, inside the band) separated by THREE press
+       rows that have to move as ONE rewrite: the value cluster onto the pinned call, Icy Veins to
+       call − g with its second use on the call-window's END, Berserking onto Icy Veins' tail. No
+       single-row or suffix shift composes there; every intermediate loses outside the band (§9h
+       verified the emitted members against every class, pair-climb included). So propose the WHOLE
+       structure the declared haste-ladder band layouts share (T12/T13/T16/T17 — the C/D family), and
+       let `tryCand` judge it. Everything is derived, not enumerated:
+         · value singles → the call `c` (value stacks on value — ESTABLISHED-FACTS §4);
+         · iv#0 → c − g, g ∈ {5, 10, 15} (the ladder's own lead grid: 10 at band D, 5 at band C);
+         · iv#1 → the pinned window's end `e` (haste OUT of the raid haste, packed flush on its edge);
+         · Berserking → iv#0 + dur(iv) — the §3c train: haste beside haste, never inside.
+       ⚠⚠ FIRES ONLY AT THE OLD MOVE SET'S FIXED POINT (`!moved`) — the 3d lesson one level stronger,
+       and it was MEASURED, not assumed: run merely last-in-the-round, this class still interleaves
+       with the older classes' walk (each class takes one step per round) and REROUTED two h=0
+       plateaus — T1 emitted a score-tied member with a HIGHER press-time sum, T6 fell back to its
+       pre-§8y 4-distinct member. Gated on `!moved`, the descent first converges fully under the old
+       classes — so every previously-reachable fixed point is REACHED and RANKED before this class
+       speaks, and a cell where every pattern candidate is refused is byte-identical by construction.
+       ⚠ When the pinned window's end has no room to run (e > T−1) the candidate is skipped WHOLE, not
+       degraded — the pattern is "Icy Veins rides the pinned window's edges", and a window flush with
+       the kill has no free edge (this is also what keeps it out of T8's kill-flush geometry, where
+       §9h documents the integral mispricing that must not be handed to the search).
+       Deterministic: pins ascending, g ascending, one adoption per round like every class above. */
+    if (!moved) {
+      const ivK = "icyVeins", zkK = "berserking";
+      if (keys.includes(ivK) && (s[ivK] || []).length) {
+        const pins = [];
+        for (const pk of Object.keys(cfg.fixed || {}))
+          for (const t of (cfg.fixed[pk] || [])) pins.push({ c: Math.round(t), e: Math.round(t) + BUFFS[pk].dur });
+        pins.sort((a, b) => a.c - b.c || a.e - b.e);
+        let hit = false;
+        for (const { c, e } of pins) {
+          for (const g of [5, 10, 15]) {
+            const cand = cloneS(s);
+            cand[ivK] = cand[ivK].map(t => Math.round(t));
+            cand[ivK][0] = c - g;
+            if (cand[ivK].length > 1) {
+              if (e > cfg.T - 1) continue;   // the pattern's late edge has no room — not this shape
+              cand[ivK][1] = e;
+            }
+            cand[ivK].sort((a, b) => a - b);
+            if (keys.includes(zkK) && (cand[zkK] || []).length) {
+              cand[zkK] = cand[zkK].map(t => Math.round(t));
+              cand[zkK][0] = (c - g) + BUFFS[ivK].dur;
+              cand[zkK].sort((a, b) => a - b);
+            }
+            for (const k of keys) {
+              if (k === ivK || k === zkK) continue;
+              const kind = BUFFS[k].kind;
+              if ((kind === "sp" || kind === "dmg") && (cand[k] || []).length === 1) cand[k] = [c];
+            }
+            let legal = true;
+            for (const k of [ivK, zkK]) {
+              for (const t of (cand[k] || [])) if (t < earliestPress(k, cfg) || t > cfg.T - 1) { legal = false; break; }
+              if (!legal) break;
+            }
+            if (!legal) continue;
+            if (tryCand(cand)) { moved = true; hit = true; break; }
+          }
+          if (hit) break;
+        }
+      }
+    }
     if (!moved) break;
   }
   return { s, val };
