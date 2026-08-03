@@ -1515,9 +1515,13 @@ closed-form and `∫ rate dt = Δν` — threaded through the breakpoint loop, a
 toll (toll casts never happened, so they rolled no procs), and reset across intermissions by
 `ν ← min(ν, max(0, (dur−gap)/a))`.
 Priced by MC (T=180 plain fight): steady-state-everywhere errs **+0.130 casts**; the ν-threaded
-continuous form leaves **+0.030** — the deliberate discrete-vs-continuous residual, because the
-discrete-exact transient is a t0-anchored cast lattice and a lattice may not re-enter the integrand
-(§8l).
+continuous form leaves the deliberate discrete-vs-continuous residual, because the discrete-exact
+transient is a t0-anchored cast lattice and a lattice may not re-enter the integrand (§8l).
+⚠ **That residual is +0.05…+0.07 casts per engagement, not the +0.030 first recorded here** — the
+lone-window ladder (`ati-ramp-ladder`, 15 000 MC runs/arm) reads +0.0668 on an 80 s fight and +0.0540
+on a 300 s one, i.e. a roughly CONSTANT per-engagement charge, which is what a start-up transient
+should look like. Corrected 08-03 on measurement; the original figure was taken from a single
+T=180 cell.
 
 ### §12.4 Priced and NOT modeled — the honest edges
 
@@ -1533,3 +1537,62 @@ discrete-exact transient is a t0-anchored cast lattice and a lattice may not re-
 - End-to-end budget, asserted by `tools/ati-mc.mjs` on every run: steady rates match the true
   process at MC tolerance (8e-4); full fights (real ramp + transient vs toll + ν) within **0.25
   casts**, measured 0.05–0.08 — against ~1 cast for the retired model.
+
+### §12.5 ★★★★ VERIFIED AGAINST wowsims — the proc model against the simulator that implements it *(08-03, user-requested)*
+
+⛔ **The simulator is still retired** (user decision 07-30) and nothing in `tools/` depends on it. What
+follows is a one-off arbitration of the stochastic model, run because the ATI rebuild is the first
+change since the retirement whose central claim is *probabilistic* — and the project's own rule is
+that when an instrument and a closed form disagree you suspect the instrument's SETUP first, which
+means a stochastic claim wants an outside referee at least once. The harness was rebuilt from
+`github.com/wowsims/tbc-new` (⚠ NOT `wowsims/tbc`, which is the 2021 archive — the Go module path
+lies about this, SOURCES) as a small headless runner, `cmd/runsim`, built with `-tags with_db`.
+
+★ **wowsims implements the talisman exactly as `GAME.ATI` states** (`sim/mage/items.go:119-145`):
+`duration := time.Second * 5`, `value := 145.0` `stats.SpellHasteRating`, `ProcChance: 0.5`,
+`Outcome: core.OutcomeCrit`, `Callback: CallbackOnSpellHitDealt`, **no ICD field at all**. The
+constants are not merely cited, they are the same numbers the referee runs on.
+
+**1. The parameter-free test — crit saturated past 100 %, so `q = 0.5` by construction, h = 0:**
+
+| | sim | model (closed form) |
+|---|---|---|
+| proc uptime | 89.54 % | **90.97 %** |
+| mean cast interval | 1.403 s | **1.3819 s** |
+
+Both residuals are ~1.5 % and have one cause: §12.1 is the STEADY state, while the sim's fight
+carries the opening ramp (~2 casts) and the proc's cold start (uptime builds from 0). §12.3's
+transient models exactly that, and its size is the right order.
+
+**2. Crit really does drive the proc rate — measured through two independent channels.** Inverting
+the measured uptime through §12.1 (bias-corrected by the 1.43 pp above) implies an effective crit of
+**39.60 %**; solving the sim's crit from DPS ratios instead — a completely different physical
+channel, through `critFactor` — gives **39.34 %**. They agree to **0.26 pp**, which simultaneously
+confirms the proc rate is `q = crit_eff / 2`, that the effective crit is the Potency-lifted one
+(§12.2), and `CRIT_MULT = 1.8175`.
+
+**3. End-to-end, at the sim's own gear (h ≈ 0, measured from its cast rate: 218 casts in 330 s
+against the ideal 220 — the 2-cast deficit IS the opener toll):** equipping the talisman is worth
+**+73.63 DPS** in the sim and **+76.79** in the model, 4.3 % high — the same direction and roughly
+the same size as the uptime bias above.
+
+**4. Plan RANKING, which is what the tool actually sells.** Three random fights (1:20 / 3:00 / 5:30)
+× 5 random legal layouts each, scored by the engine and then duelled in the sim at 8 000 iterations
+× 3 seeds with common random numbers: **28 of 29 resolvable pairs agree on order.** The single miss
+is a 2.3-DPS predicted margin (0.11 % of the fight) that the sim reads 1.3 ± 0.7 DPS the other way.
+⚠ **The magnitudes are NOT confirmed to the same standard**: the sim/predicted ratio has median 0.88
+but runs 0.07–0.44 on the long fight, i.e. the model over-states some long-fight margins. Cold Snap
+transcription was verified not to be the cause (with it stated, Icy Veins reads exactly 40 s of aura
+and 2 procs). **That gap is open and unexplained** — recorded here rather than smoothed over.
+
+⚠⚠ **Three harness traps, each of which produced a wrong number before it was caught** — they belong
+here because anyone re-running this will hit them:
+- **`mp5` was silently discarded.** The runner mapped it to stat index 33, which is `Health`; MP5 is
+  35. A mana lever that does nothing looks exactly like "mana is not binding".
+- **`secondsOomAvg = 0` does NOT mean the mage is casting continuously.** It reports time at
+  literally zero mana; a mage that stalls waiting to afford the next Blast reads 0 and still drops
+  ~10 % of its casts.
+- **A two-point DPS solve for HASTE is not identifiable when anything else binds.** It returned
+  "gear haste 265.6" for a mage whose true gear haste is ~0; subtracting that put the sim at NEGATIVE
+  haste and manufactured a 7 pp uptime "disagreement" that did not exist. The reliable read is the
+  CAST COUNT (`casts[spellId 30451]`), which is mana- and crit-independent.

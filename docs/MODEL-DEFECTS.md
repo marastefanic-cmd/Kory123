@@ -4148,3 +4148,38 @@ continuous-transient residual 0.030, gap<5s linear remnant, q→1 first-cast los
 **What remains open on ATI:** no declared layout runs with the proc enabled — kit-sweep asserts
 local optimality only. Deriving ati-on test cells for user ruling is the length-ladder workflow
 (ROADMAP ▶▶ A), unchanged.
+
+### §9n addendum — the renewal model arbitrated against wowsims (08-03, user-requested)
+
+The user asked for the obvious test: *"seed some random fights with ashtongue talisman, predict their
+rankings, and sim to verify."* Done, plus two sharper single-number tests. Full protocol, numbers and
+harness traps: ESTABLISHED-FACTS §12.5. Headline:
+
+- **Ranking: 28 of 29 resolvable pairs agree** (3 random fights × 5 random legal layouts, CRN duels).
+- **Proc physics, parameter-free** (crit saturated ⇒ `q = 0.5` exactly): uptime 89.54 % sim vs
+  90.97 % closed form; mean interval 1.403 s vs 1.3819 s. Residual ~1.5 %, fully attributable to the
+  ramp + cold start the closed form excludes and §12.3 models.
+- **The crit channel, confirmed twice over**: crit inferred from the proc uptime (39.60 %) matches
+  crit solved from DPS ratios (39.34 %) to 0.26 pp. That is the user's actual question —
+  *"make sure that crit chance enters the proc rate"* — answered by measurement, through the proc.
+- **wowsims' own implementation matches `GAME.ATI` exactly** (`sim/mage/items.go:119-145`: 5 s, 145
+  spell haste rating, ProcChance 0.5, crit outcome, no ICD).
+
+⚠ **OPEN, and deliberately not smoothed over: the long-fight MAGNITUDE gap.** Order is right, size is
+not — the sim/predicted DPS ratio is ~0.9 on short fights but 0.07–0.44 on several 5:30 pairs, i.e.
+the model over-states some long-fight margins. Ruled out: dropped presses (the sim's `casts`/aura
+uptimes confirm every scheduled press fires), Cold Snap transcription (with it stated, Icy Veins
+reads exactly 40 s / 2 procs), mana (cast count is flat in `mp5`), and gear mismatch (the sim's gear
+haste is ~0, measured from its cast count). Not yet ruled out: the press-snap seam (the sim's APL
+cannot press mid-cast, and the model's ranking is press-time geometry), and the model's own
+long-fight window accounting. **This is a scorer-side question and it is the next thing to pull on
+if ATI work resumes.**
+
+⚠ An INDEPENDENT full-fight Monte Carlo (no shared code with the engine, real proc rolls) was run
+alongside as a sim-free control: **53 of 54 pairs agree** on margins over 0.3 casts, and the
+per-layout Ashtongue INCREMENT — the difference that cancels everything the two accounts share —
+agrees to a few percent, with the largest deviations tracking the WINDOW-START CONVENTION rather than
+the proc model (matching the MC's window starts to the scorer's press-time geometry moves the worst
+cell from +0.33 casts to +0.06). The one MC disagreement is on the AoE cell and reproduces with the
+proc DISABLED (scorer +0.673 casts vs MC +0.085), so it is the known continuous-vs-discrete AoE-wall
+divergence, not an Ashtongue defect.

@@ -1396,3 +1396,44 @@ constants-cited 17/17 (+self-test), toll-audit --strict, objective-ref, ati-mc (
   house rule; its durable evidence was already in MODEL-DEFECTS §8d/§8f and this diary.
 - **ARCHITECTURE's integral bullet still said "RETIRED, nothing ranks on it"** — false since §8h
   (07-30). Corrected in place while touching the region.
+
+## 08-03 (later) — the Ashtongue model arbitrated against wowsims, once, on request
+
+User: *"seed some random fights with ashtongue talisman, predict their rankings, and sim to verify …
+That should be a good first test, do you agree?"* Agreed and done — with two sharper tests added,
+because a ranking test only checks SIGN and the interesting claim here is a magnitude.
+
+The simulator stays retired; this was a one-off arbitration, justified by the ATI rebuild being the
+first post-retirement change whose central claim is probabilistic. The harness was rebuilt from
+`wowsims/tbc-new` as a small `cmd/runsim` (the archived §16 protocol was the recipe), lives in the
+session scratchpad, and is **not** committed — recreating it is documented in ESTABLISHED-FACTS
+§12.5, which also carries the three traps that each produced a wrong number before being caught (a
+silently-discarded `mp5` stat index, `secondsOomAvg = 0` not meaning "casting continuously", and a
+two-point DPS solve for haste being unidentifiable — it claimed 265.6 rating for a mage at ~0 and
+manufactured a 7 pp uptime disagreement that did not exist).
+
+Results: **28/29 resolvable ranking pairs agree**; the proc's physics reproduces parameter-free
+(crit saturated ⇒ q = 0.5: uptime 89.54 % sim vs 90.97 % closed form, residual = the ramp and cold
+start the closed form excludes); and the crit channel is confirmed **twice over** — crit read back
+out of the proc uptime (39.60 %) matches crit solved from DPS ratios (39.34 %) to 0.26 pp, which is
+the direct answer to the user's *"make sure that crit chance enters the proc rate"*. wowsims'
+own implementation matches `GAME.ATI` to the field.
+
+**Left open, on purpose:** the long-fight magnitude gap (order right, size over-stated — sim/predicted
+ratio 0.07–0.44 on several 5:30 pairs). Dropped presses, Cold Snap transcription, mana and gear
+mismatch are all ruled out by measurement; the press-snap seam and the model's long-fight window
+accounting are not. Filed in MODEL-DEFECTS §9n addendum as the next thing to pull on.
+
+## Corrections logged
+
+- **The transient residual figure in ESTABLISHED-FACTS §12.4 was wrong when first written** — I
+  recorded +0.030 casts/engagement from a single T=180 cell; the lone-window ladder measures
+  +0.054…+0.067, roughly constant per engagement, which is the shape a start-up transient should
+  have. Corrected in place the same day.
+- **My first "matched-haste" sim arm was the artifact, not the finding.** A two-point DPS solve said
+  the sim's gear haste was 265.6 rating; subtracting it drove the mage to NEGATIVE haste and produced
+  a 45.4 % measured uptime against a 52.7 % prediction — a 7 pp "disagreement" I nearly wrote up. The
+  cast count says the sim's gear haste is ~0 all along (218 casts in 330 s against an ideal 220, the
+  2-cast deficit being the opener toll), so the ORIGINAL unadjusted duels were correctly matched.
+  ⇒ The project's standing caution generalises again: when an instrument and a closed form disagree,
+  suspect the instrument's SETUP first. It was the setup, twice in one session.
