@@ -6808,7 +6808,12 @@ const GOLDEN_PRESETS = [
   { name: "T11 · 6:30 lust 0:10 · buffed", T: 390, pins: { bloodlust: [10] },
     gear: { sp: 1611.8875, crit: 50.76538949275363, t5two: true },
     kit: ["icyVeins", "isc", "scb", "arcanePower", "berserking", "bloodlust"] },
-  /* ── THE HASTE LADDER (08-02) — T12–T17 are LOCKED (user-confirmed); P6/P7 still preliminary ─────
+  /* ── THE HASTE LADDER (08-02) — T12–T17 are LOCKED (user-confirmed) ──────────────────────────────
+     ⚠ The preliminary P6–P15 presets were REMOVED 08-02 by user ruling: *"the current P6-P15 came too
+     early, we're not there yet... T16 and T17 already do that."* The search cannot yet emit the band
+     argmax in this region (MODEL-DEFECTS §9e/§9j), so a preset the user cannot confirm visually is
+     noise. Re-derive band-H/G and any further SP pairs AFTER the ranking/search chain is fixed and the
+     locked tests pass — the band data lives in tools/haste-bands.mjs, nothing is lost. ──────────────
      User-declared candidate layouts for 2:00 / Bloodlust 0:20 / buffed gear, swept across EVERY haste
      rating by `tools/haste-bands.mjs` on the ranking integral. Each preset below sits mid-band, so
      loading it should emit that band's winner. NOT yet locked in `tests/anchors.mjs` — confirm visually
@@ -6839,33 +6844,6 @@ const GOLDEN_PRESETS = [
     gear: { sp: 700, crit: 37.39038949275363, haste: 33, t5two: true } },
   { name: "T17 · 2:00 lust 0:20 · h=33 sp1217", T: 120, pins: { bloodlust: [20] },
     gear: { sp: 1217.3875, crit: 37.39038949275363, haste: 33, t5two: true } },
-  /* ── P8–P15 (08-02): the SP-SHIFT pairs, awaiting visual confirmation ─────────────────────────────
-     User design, generalising T16/T17 to every ladder boundary: SAME haste, different spellpower,
-     different expected layout — because every alignment boundary moves with gear via
-     `s = COEF·ΔSP/(BASE + COEF·SP)` (the D→C edge sits at 35/31/27 for SP 700/1217/2200). Each pair
-     pins the MECHANISM at one boundary; a change that made the ladder SP-invariant would leave every
-     single-point test green and fail exactly here. All eight verified against the engine argmax over
-     the candidate set, margins 0.006–0.047 casts — outside the tie band. Expected winners in names. */
-  { name: "P8 · h=16 sp700 → A", T: 120, pins: { bloodlust: [20] },
-    gear: { sp: 700, crit: 37.39038949275363, haste: 16, t5two: true } },
-  { name: "P9 · h=16 sp2200 → D", T: 120, pins: { bloodlust: [20] },
-    gear: { sp: 2200, crit: 37.39038949275363, haste: 16, t5two: true } },
-  { name: "P10 · h=71 sp700 → C", T: 120, pins: { bloodlust: [20] },
-    gear: { sp: 700, crit: 37.39038949275363, haste: 71, t5two: true } },
-  { name: "P11 · h=71 sp1600 → B", T: 120, pins: { bloodlust: [20] },
-    gear: { sp: 1600, crit: 37.39038949275363, haste: 71, t5two: true } },
-  { name: "P12 · h=127 sp700 → B", T: 120, pins: { bloodlust: [20] },
-    gear: { sp: 700, crit: 37.39038949275363, haste: 127, t5two: true } },
-  { name: "P13 · h=127 sp2200 → E", T: 120, pins: { bloodlust: [20] },
-    gear: { sp: 2200, crit: 37.39038949275363, haste: 127, t5two: true } },
-  { name: "P14 · h=297 sp700 → E", T: 120, pins: { bloodlust: [20] },
-    gear: { sp: 700, crit: 37.39038949275363, haste: 297, t5two: true } },
-  { name: "P15 · h=297 sp2200 → H", T: 120, pins: { bloodlust: [20] },
-    gear: { sp: 2200, crit: 37.39038949275363, haste: 297, t5two: true } },
-  { name: "P6 · 2:00 lust 0:20 · h=500", T: 120, pins: { bloodlust: [20] },
-    gear: { sp: 1217.3875, crit: 37.39038949275363, haste: 500, t5two: true } },
-  { name: "P7 · 2:00 lust 0:20 · h=900", T: 120, pins: { bloodlust: [20] },
-    gear: { sp: 1217.3875, crit: 37.39038949275363, haste: 900, t5two: true } },
 ];
 window.GOLDEN_PRESETS = GOLDEN_PRESETS;
 

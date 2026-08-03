@@ -3871,3 +3871,46 @@ per-move phase means:  IV 95→20 = −0.0548 (integral −0.0023) · zerk 0→9
 **plain fights** — so the missing term involves T8's structure: an interior intermission, a kill-flush
 Lust block, a capped (GCD-floor) window inside it, and value windows flush with the kill. Which of those
 ingredients breaks the composition is exactly the isolation now running.
+
+---
+
+## §9j — ✅ ISOLATED (08-02): the integral's missing structure is LATTICE-LOCK, and it has NO smooth fix
+
+Five ablations (plain control · +kill-flush · +intermission · capped-window · value-overlap), each
+scored as Δ(phase-averaged board) vs Δ(integral) on the disputed T8 moves. Calibration reproduced §9i's
+per-move numbers exactly, and the **plain control validates §8f** (gap −0.008 ≈ 0 — the integral is
+right on plain fights, which is why this hid for weeks).
+
+**The mechanism, one sentence:** the board's windows are *lattice-locked* — a press fires on a cast
+boundary and haste snapshots at cast start — so every window realizes a WHOLE number of buffed
+intervals and an INTEGER number of boosted completions, while the integral credits fractional `D/i`
+from the press moment.
+
+Three faces, on T8 all at once:
+1. **The ceil-sawtooth on every haste window — EXACT closed form, confirmed:**
+   `Δ = (ceil(D/i_in)·i_in − D) · (1/i_in − 1/i_out)`, periodic in window length with period `i_in`.
+   It vanishes when `D` divides evenly (a 20 s window over 1.0 s capped casts: residue 0) — **which is
+   exactly why 20 s windows hid the defect** and why the bare kill-flush IV probe measured 0.000.
+2. **Kill-flush tail clip:** windows ending flush at T lose their press→fire snap outright, and the
+   snap is smaller on a GCD-capped stream than a 1.154 stream. Expectation form predicts +0.044 where
+   the realization is +0.110 — 2.5× — so **no phase-free closed form**.
+3. **Integer value completions:** the board credits N∈ℤ extra boosted completions (measured: exactly
+   1× premium for isc, exactly 0× for scb on the same fight); the integral credits the continuous
+   (1+s) law.
+
+**Non-additive:** a wall re-anchors the downstream lattice (deleting zerk@0 from the wall-swept fight
+leaves the IV gap unchanged to 4 decimals — the wall wipes upstream phase). Back-prediction of both T8
+per-move gaps from measured components: **+0.0525 and +0.0768, exact**.
+
+### ⇒ The fix architecture (decided here, implementation next)
+
+*"The sim-confirmed T8 verdict is reachable only by walking the lattice, not by adding a smooth term
+to the integral."* So the ranking must EVALUATE by walking: **`rankScore` becomes the lattice walk
+phase-averaged over the model's own declared uncertainties** (walls one-sided `U[W, W+1.498]`; the
+kill's one-sided credit already averages the kill; exit-presses ride the exit, per `dodgeDowntime`'s
+own semantics and the §9i confound lesson). The `integral` stays in the return — it is the law-check
+quantity and the reported score, and on plain fights the two agree (ablation 1). MECHANICS §0's
+canonical statement stands: the objective is unchanged; what changes is evaluating it at the fidelity
+the sim just proved necessary. Gates for the implementation, pre-registered: `t8-cell` BOTH lines
+green · `law-check` green (it reads `.integral`, untouched) · anchors lose NO currently-green test ·
+cost measured and acceptable · `plan-diff` with every moved cell explained.
