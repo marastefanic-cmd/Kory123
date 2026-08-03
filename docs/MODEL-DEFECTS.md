@@ -3965,3 +3965,45 @@ difference to zero, then a tie-breaker buys earliness with it. Two exits, both u
    be ~1e-12 and the band ~2000× too wide. Re-measure the floor, then shrink; §8w's ratchet and every
    in-band canonicalization (T1/T6/T9) must be re-verified under the new band. A comparator phase with
    its own gates — NOT a quick constant change.
+
+---
+
+## §9l — THE COMPARATOR REDESIGN, ASSEMBLED FROM USER RULINGS (08-03) — the next gated batch
+
+### The 8/28 drift mechanism, answered exactly (user: *"understand why and make sure it's never harmful"*)
+Class 3c slides the {IV, zerk} pair −1s at a time. Each step loses 0.000724 REAL casts — inside the
+0.002 band ⇒ `planBetter` calls it a tie ⇒ `sum` (earliest) rewards the step ⇒ adopted. The walk rides
+the sub-band slope until the §8w ratchet refuses cumulative loss > one band: 8/28 IS the ratchet
+boundary, not a structure. Harm bounded (≤ 0.002 casts anywhere, by the ratchet) but the output is
+off-grid junk. General law: **a banded comparator + a directional tie-break + iterative adoption =
+drift down any sub-band real slope.** Any future tie-break criterion must be checked against this.
+
+### Why magnitude cannot be the tie test
+The ms-clock hair (iv@95-vs-@20 at the h=0 flip: quantized +0.0023, MUST tie — user ruling, the flip
+identity `1.3+1.2−1 = 1.5` makes the ideal difference EXACTLY 0) is BIGGER than T16's real slope
+(0.0007/step, must NOT tie). ⇒ **the tie detector must be the IDEAL (unquantized) law** — the exact
+rate form `law-check --self-test` already carries. Real ideal-law difference → score decides, however
+small (kills all drift fuel). Ideal difference ≡ 0 → true tie → the hierarchy. Quantized `.integral`
+remains the reported score and the law-check quantity; only TIE DETECTION consults the ideal form.
+
+### The full ordering (each clause a user ruling, cited)
+1. real (ideal-law) score difference decides — *"the scorer has to be flawless… it's just math"*;
+2. fewest Cold Snaps spent (T9);
+3. no prepull that funds no extra use (P7);
+4. on-grid beats off-grid — *"never ever is it 13,33"*, 8/28 same class;
+5. **earliest-valid** — *"the earliest possible rule"*, where valid = the press does full work:
+   value presses anchor no earlier than ramp end / next structural point (*"@5 the ramp isn't built…
+   you'd be popping the first thing @7"*); pure-haste presses may ride a call through the ramp.
+(`distinct` demoted below all of the above or removed — pending T6's A/B outcome.)
+
+### Standing instructions captured
+* **T8's lock: user-issued revision** (08-03, named the test): canonical member is the `iv[20,115]`
+  form — lands WITH this batch, not before it.
+* **T6: A (current @15 lock) or B (original @7)** — the user's ramp reasoning derives B; explicit
+  A-or-B word still required by lock protocol before the file changes.
+* T12 lock restored to 10/30 and IMMUTABLE; the scorer-prefers-15/35 question is a **sim duel**, and
+  its evidence goes to the user alone.
+* Gates for the batch: full anchors suite (work-until-green on every lock), law-check + self-test,
+  self-consistency, haste-bands --assert, t8-cell, plan-sweep/plan-diff with every moved cell
+  classified. The §9k band-shrink mission is DEAD (T6's true tie sits below any workable shrunken
+  band; the ideal-law detector replaces it).
