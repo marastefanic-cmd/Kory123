@@ -432,3 +432,26 @@ Directly from §4, each **sim-corroborated**:
 The strategic rules in `docs/RULES.md` (buff-into-Lust packing, align-vs-twice, known-kill planning,
 placement/containment, etc.) are these consequences applied to real fights and pinned down by sim. If a
 rule ever seems to contradict §1–§4, re-derive from here and re-check against wowsims.
+
+## 6. The Ashtongue proc — the one stochastic mechanic, and its exact expectation *(added 08-03)*
+
+**The game facts** (`GAME.ATI`, SOURCES "Ashtongue Talisman"): a spell critical strike has a **50 %**
+chance to grant **+145 spell haste rating for 5.0 s**, refresh-on-proc, **no internal cooldown**. The
+rating lands additively in the one `(1 + rating/1577)` pool (wowsims `sim/core/unit.go:501`), so a
+live proc multiplies through every percent window exactly like gear rating. Haste is snapshotted at
+a cast's START (§2's rule), so a proc landing mid-cast speeds the next cast, not the one in flight,
+and a proc expiring mid-cast does not slow it.
+
+**Why this is the one place crit is load-bearing** (single target): crit is a constant factor on
+every cast's damage and cancels out of every plan comparison (§4) — but the PROC RATE is `crit × ½`
+per completion, and what the proc grants is *haste*, which interacts with the GCD floor and with
+where every haste window sits. So with the talisman equipped, crit changes which plan wins
+(MODEL-DEFECTS §9b: 3849 rank flips over +3 pp). The proc rate reads the **effective** crit — sheet
+crit plus the Clearcasting→Arcane Potency lift (+3 pp single target, more on AoE where Clearcasting
+procs per hit) — while the damage side of that same lift stays normalised away because it cancels.
+
+**The expectation the model computes** is the exact renewal steady state of the proc's feedback
+loop — a live proc speeds casting, faster casting rolls more procs into the same 5 s window — plus
+the exact ramp-up from every cold start. Algebra, verification (closed forms to 1e-6 against the
+engine; a seeded Monte Carlo of the true process to 2e-4), and the priced non-goals:
+ESTABLISHED-FACTS §12. Instruments: law-check's ATI block and `tools/ati-mc.mjs`.

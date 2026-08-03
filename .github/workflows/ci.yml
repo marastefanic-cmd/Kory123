@@ -104,6 +104,17 @@ jobs:
       - name: the scorer against itself (self-consistency)
         run: node tools/self-consistency.mjs
 
+      # The one stochastic mechanic against a direct seeded simulation of its own process — the
+      # Ashtongue renewal law's falsifier now that the sim is retired (ESTABLISHED-FACTS §12).
+      # Steady rates at MC tolerance; full fights (real ramp lattice) within the documented budget.
+      - name: the Ashtongue proc against the real process (ati-mc)
+        run: node tools/ati-mc.mjs
+
+      # NEGATIVE CONTROL: swap the reference for the RETIRED down-lattice form (the pre-08-03
+      # integrand, ~6× this gate's tolerance) and require it to be CAUGHT.
+      - name: '↳ negative control: the retired proc model must be CAUGHT'
+        run: node tools/ati-mc.mjs --self-test
+
   the-search:
     name: THE SEARCH (is every emitted plan a local optimum?)
     # ★★★★ ADDED 2026-07-30, and it closes the gap every other gate in this repo has.

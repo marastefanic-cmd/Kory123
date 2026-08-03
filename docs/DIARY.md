@@ -1341,3 +1341,58 @@ noise. The code is preserved verbatim in `docs/MODEL-DEFECTS.md` §8y and the ca
   opener ramp is priced haste-neutral (§8q), so Berserking at 0:05 overlapping the ramp costs nothing.
   Tested: false. The model prices the ramp — `Zerk@0` is −0.101 casts against `Zerk@5`. The plateau is
   ordinary, not an artifact. Recorded because the hypothesis was plausible enough to have been believed.
+
+# 2026-08-03 — Ashtongue rebuilt as the exact renewal law; Drums finished and de-beta'd
+
+User: *"finish implementing Ashtongue talisman and Drums properly … make sure that crit chance enters
+the proc rate, that it's not just a flat line of average value. Increased local haste also increases
+the chance of a proc, and that proc increases haste further etc, so the math might be complicated, so
+do it properly and think about all the pitfalls beforehand."*
+
+**The math had an exact closed form, and both shipped accounts disagreed with it.** The proc process
+renews at each proc, so the steady state is `P = 1−(1−q)^n` with `n = ceil(dur/a)` counted on the UP
+lattice — the feedback loop the user named, converged by the renewal algebra with no iteration. The
+integrand had NO feedback (exponent `dur/intDn`, the down lattice — ~1 effective cast per 6-minute
+ATI fight, 500× the tie band); the walk was mean-field on its own blended lattice AND evicted its
+trailing window by cast start, an off-by-one. Both replaced; the engagement transient (every cold
+start begins proc-cold) added — exact discrete law in the walk, lattice-free age ODE threaded
+through the integrand's breakpoint loop (a t0-anchored discrete transient would be a lattice, §8l).
+Crit now enters the proc rate at the EFFECTIVE crit (the Clearcasting→Arcane Potency mixture),
+closing the Ashtongue half of §9b's 3849-rank-flip finding. Full record: MODEL-DEFECTS §9m; algebra
+and priced non-goals: ESTABLISHED-FACTS §12; mechanics: MECHANICS §6; rules: RULES §14.
+
+**Verification is two-track and the second track is new for this repo:** the closed forms went into
+law-check (ATI block — the steady law by length differencing, which cancels the toll and the
+transient in one move; exact values at three crits; above-cap zero), and the whole model was checked
+against a direct seeded Monte Carlo of the proc process — `tools/ati-mc.mjs`, now a CI gate with a
+negative control that seeds the retired form and must catch it. The MC is the stochastic mechanic's
+falsifier now that the sim is retired: steady rates matched to 2e-5 casts/s, full fights (real ramp
+lattice) to 0.05–0.08 casts. Design-phase MC (2e7 casts × 9 states): worst closed-form deviation
+2.45e-4.
+
+**Drums:** already-correct physics gained its own law block (rating additivity alone and inside
+Lust, Tinnitus-legal doubling, the 708.5-onset zero), RULES §13's stale exact-match "lock" reference
+was corrected (those goldens died 07-28), the pin-vs-search prepull asymmetry was documented as
+deliberate, the upstream `SpellFlagAPL` patch was formally closed as moot, and the dead write-only
+`slip` bookkeeping in the firing block was deleted. **Ashtongue and Drums left `BETA_KEYS`** — the
+badge's stated finish line ("certified against the sim") became unreachable when the sim retired;
+the replacement finish line (law + MC gates) is crossed. Power Infusion keeps the badge (no declared
+layout, spot-check coverage only).
+
+Constants: `GAME.ATI` (145 / 0.5 / 5.0 s) — previously an uncited standalone const invisible to
+constants-cited — now gated, with a SOURCES row (Wowhead item 32488 / spell 40482; wowsims
+`ProcChance 0.5`, no ICD, additive rating `core/unit.go:501`).
+
+Acceptance: anchors 17/17 untouched, plan-sweep A/B **PLAN-DIFF IDENTICAL 21/21** (ati/drums off in
+every preset — the whole change is behind `enabled.ati`), law-check 75 ✓ (+self-test now caught by
+16 lines), self-consistency 0 mismatches / 0 structural incl. the new ati-on corpus cells,
+constants-cited 17/17 (+self-test), toll-audit --strict, objective-ref, ati-mc (+self-test).
+
+## Corrections logged
+
+- **The stale 07-28 `docs/PLAN.md` ("replace the goldens with an anchored correctness suite") was
+  still in the tree** while CLAUDE.md said "no plan in flight" — that programme landed weeks ago
+  (anchors are the gate, the goldens are deleted, the corrected integral ranks). Deleted per the
+  house rule; its durable evidence was already in MODEL-DEFECTS §8d/§8f and this diary.
+- **ARCHITECTURE's integral bullet still said "RETIRED, nothing ranks on it"** — false since §8h
+  (07-30). Corrected in place while touching the region.

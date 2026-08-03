@@ -815,6 +815,13 @@ const GAME = {
   // produce byte-identical schedules and identical gain tiles.
   CRIT_MULT: 1.8175,
   COLD_SNAP_CD: 480,
+  // Ashtongue Talisman of Insight (item 32488): spell crits have a 50% chance to grant +145 spell
+  // haste rating for 5.0 s (buff spell 40482, "Insight of the Ashtongue"), NO internal cooldown.
+  // wowsims-verified (MODEL-DEFECTS §9b "Verified CLEAN"): `ProcChance 0.5` on crit with genuinely no
+  // ICD, and the 145 lands ADDITIVELY in the one rating pool (`sim/core/unit.go:501`) like every other
+  // rating source. In GAME (not just BUFFS) so `tools/constants-cited.mjs` gates the citations —
+  // SOURCES.md "Ashtongue Talisman" row.
+  ATI: { RATING: 145, PROC_CHANCE: 0.5, DUR: 5 },
 };
 // Always-present Arcane raiding talents (a mage always has these; gear is not assumed).
 const TALENTS = { arcaneConcentration: 5, arcanePotency: 3, arcaneImpact: 3 }; // 5/5 CC = 2%/rank per-HIT proc; 3/3 Potency = +10% crit/rank on the next cast (Anniversary 3-rank → +30%, sim-confirmed)
@@ -841,7 +848,7 @@ function aoeCritAmp(targets, crit) {
 const BUFFS = {
   bloodlust:     { name: "Bloodlust",            kind: "mult",   value: 1.30, dur: 40, cd: 600, color: "var(--c-bloodlust)",   stat: "+30% haste · 40s", src: "shaman" },
   icyVeins:      { name: "Icy Veins",            kind: "mult",   value: 1.20, dur: 20, cd: 180, color: "var(--c-icyveins)",    stat: "+20% haste · 20s · 3m" },
-  drums:         { name: "Drums of Battle",      kind: "rating", value: 80,   dur: 30, cd: 120, color: "var(--c-drums)",       stat: "+80 haste · 30s · 2m" },
+  drums:         { name: "Drums of Battle",      kind: "rating", value: 80,   dur: 30, cd: 120, color: "var(--c-drums)",       stat: "+80 haste · 30s · 2m", src: "party leatherworker" },
   ati:           { name: "Ashtongue Talisman",   kind: "proc",   value: 145,  dur: 5,  cd: 0,   color: "var(--c-ati)",         stat: "145 haste proc on crit", src: "Ashtongue Deathsworn revered" },
   skull:         { name: "Skull of Gul’dan",     kind: "rating", value: 175,  dur: 20, cd: 120, color: "var(--c-skull)",       stat: "+175 haste · 20s · 2m", src: "Illidan Stormrage" },
   arcanePower:   { name: "Arcane Power",         kind: "dmg",    value: 1.30, dur: 15, cd: 180, color: "var(--c-arcanepower)", stat: "+30% dmg · 15s · 3m" },
@@ -875,7 +882,29 @@ const GROUPS = [
 // SCHEDULE: pinning it fights the optimizer, so the tool owns its timing. Matches the
 // "Raid externals" group.
 const RAID_PINNABLE = new Set(["bloodlust", "drums", "powerInfusion"]);
-const ATI = { rating: 145, dur: 5, procChance: 0.5 };
+// Alias over GAME.ATI (the cited home of these numbers) — kept because the engine and the UI both
+// read the lowercase names in ~20 places and the alias is zero-risk.
+const ATI = { rating: GAME.ATI.RATING, dur: GAME.ATI.DUR, procChance: GAME.ATI.PROC_CHANCE };
+/* ★★ THE ASHTONGUE PROC CHANCE PER CAST — and crit here is the EFFECTIVE crit, not the sheet crit.
+   MODEL-DEFECTS §9b: Clearcasting (2%/rank per HIT, 10% at 5/5) makes the NEXT cast carry Arcane
+   Potency's +30% crit, so the average per-cast crit that feeds the proc roll is `crit + qCC(N)·0.30`
+   — +3.0 pp single target, permanently. The DAMAGE side of that lift stays deliberately normalised
+   away (a constant factor cancels out of every plan comparison, ESTABLISHED-FACTS §11) — but the PROC
+   side is a HASTE source and does not cancel: §9b measured 0 rank flips without Ashtongue and 3849
+   with it over the exact +3 pp delta. Implemented as the exact two-state mixture (the Potency-lifted
+   cast and the plain cast), not `qAt(averaged crit)` — identical at N=1 (linear), and at N>1 the
+   mixture is the exact expectation where the averaged form has a Jensen gap.
+   AoE: any of the N hits' crits can trigger the 50% roll (no ICD — wowsims-verified, §9b), and
+   Clearcasting itself procs per hit, so `f = qCC(N)` rises with the target count. */
+function atiProcQ(crit, targets) {
+  const N = Math.max(1, targets | 0);
+  const accProc = 0.02 * TALENTS.arcaneConcentration;
+  const potencyCrit = 0.10 * TALENTS.arcanePotency;
+  const f = 1 - Math.pow(1 - accProc, N);        // chance the PREVIOUS cast procced Clearcasting
+  const pc = GAME.ATI.PROC_CHANCE;
+  const qAt = c => { c = Math.min(1, Math.max(0, c)); return N > 1 ? 1 - Math.pow(1 - c * pc, N) : c * pc; };
+  return f * qAt(crit + potencyCrit) + (1 - f) * qAt(crit);
+}
 
 /* ═══════════════ engine ═══════════════ */
 /* simulate() memo — the innermost hot function (~5.7M calls per long-fight optimize, ~46µs each,
@@ -983,15 +1012,31 @@ function simulateRaw(schedule, cfg, collect) {
   const actEff = collect ? {} : null;
   let lastTrinket = null;
   let prevCastEnd = 0, prevInterval = 0;
-  // Ashtongue Talisman: discrete 145-rating / 5s procs, 50% per spell crit,
-  // no ICD. Modeled per cast as the probability the proc is CURRENTLY up,
-  // derived from the actual casts of the last 5s — so procs cluster where
-  // cast rate is high, and the GCD floor is applied inside each up/down
-  // branch (E[max(...)] per state, not max(E[...])).
+  // ═══════ Ashtongue Talisman — the EXACT renewal model (08-03; MC-verified, ESTABLISHED-FACTS §12) ═══════
+  // Discrete 145-rating / 5.0s procs, 50% per spell crit (EFFECTIVE crit — atiProcQ folds the
+  // Clearcasting→Arcane Potency +3pp lift, MODEL-DEFECTS §9b), no ICD. The process renews at each
+  // proc: casts started while the buff lives run at the UP interval `a`, so exactly n = ceil(dur/a)
+  // casts start buffed after an unrefreshed proc, and the buff is up at a cast's start iff one of the
+  // last n completions procced ⇒ P = 1 − (1−q)^n, cast rate 1/(a·P + b·(1−P)). That `a` in the
+  // exponent IS the feedback loop the user named — more local haste ⇒ more attempts per 5s window ⇒
+  // more uptime ⇒ more haste — and the renewal algebra converges it exactly, no fixed-point
+  // iteration. The GCD floor is applied inside each up/down branch (E[max(...)] per state, not
+  // max(E[...])), so at the floor a live proc is worth exactly 0 and P becomes inert.
+  // ⛔ Two retired forms, both measured wrong (MODEL-DEFECTS §9m): the integrand's exponent counted
+  // the window's attempts on the DOWN lattice (`dur/intDn` — no feedback at all: P .623 vs .690 at
+  // buffed crit, ~1 cast underpriced per 6-min fight), and this walk's trailing-TIME window over its
+  // own blended lattice, evicted by cast START (mean-field P ≈ .644, plus an off-by-one: the
+  // completion straddling t−5s was dropped).
+  // The walk carries the exact DISCRETE form: product of (1−q_j) over past completions at
+  // counterfactual up-lattice age k·a + deadTime < dur (k = completions back, 0 = the cast ending at
+  // this boundary — a proc landing there IS seen by the cast starting there; deadTime = intermission
+  // gaps, where nothing casts and procs only expire). Steady state: exactly 1−(1−q)^n. Cold start /
+  // re-engage: exactly the engagement law P_k = 1−(1−q)^min(k−1,n). Per-completion q is kept, so AoE
+  // phases (higher q, GCD lattice) ride through naturally.
   const atiOn = !!cfg.enabled.ati;
   const atiScale = ATI.rating / (g.HASTE_RATING_PER_PCT * 100);
-  const recentT = [], recentNoQ = []; // cast starts + per-cast no-proc probability
-  let ri = 0;
+  const atiHist = []; // per completed cast: {noQ, dead: atiDead at its completion}; bounded at 16
+  let atiDead = 0;    // cumulative no-cast (intermission) time — ages the history across gaps
   const segs = cfg.segments || null; // "complicated fight" phases; null = plain fight, identical to the old model
   let si = 0;
   // ══════════ BOUNDARY CREDIT — one rule at every cut (PHASE12 §9, user ruling 07-27) ══════════
@@ -1119,7 +1164,10 @@ function simulateRaw(schedule, cfg, collect) {
     if (segs) {
       while (si < segs.length - 1 && t >= segs[si].end - EPS) si++;   // EPS: the clock lands a hair SHORT of a wall
       seg = segs[si];
-      if (seg.type === "intermission" && t < seg.end) { t = seg.end; continue; } // boss untargetable: wait it out
+      if (seg.type === "intermission" && t < seg.end) {           // boss untargetable: wait it out
+        if (atiOn) atiDead += seg.end - t; // no casts in the gap: the proc history only AGES (procs expire, none roll)
+        t = seg.end; continue;
+      }
       if (seg.type === "intermission") seg = null; // past the last defined phase: plain casting
     }
     // Is this AoE phase's AE lattice EXACT? It is when the phase's first cast boundary IS the
@@ -1137,7 +1185,7 @@ function simulateRaw(schedule, cfg, collect) {
       // EPS, and it is load-bearing: `sim/planspec.mjs` asks `starts[i] >= fire - EPS`, so without the
       // same tolerance here the model and its own transcriber pick DIFFERENT casts for the same press.
       if (e.ts > t + EPS) break;
-      let eff, slip = 0;
+      let eff;
       // Raid EXTERNALS are pressed by someone else, so they land when CALLED rather than at one of
       // this mage's cast boundaries. That distinction decides where their aura starts (see `auraAt`).
       const isExternal = e.key === "bloodlust" || e.key === "powerInfusion" || e.key === "drums";
@@ -1157,7 +1205,8 @@ function simulateRaw(schedule, cfg, collect) {
         // lattice boundary, not the call. This also balances the ramp-compression credit: pressing
         // IV earlier still shortens the ramp, but the model now charges the phase it imposes on a
         // near-pull raid call (the VR −0.18% phantom; RULES §3's compression bullet, re-derived).
-        if (e.ts < prevCastEnd - EPS) slip = prevCastEnd - e.ts;
+        // (the old `slip = prevCastEnd - e.ts` bookkeeping here was write-only since scoreStart became
+        // pure geometry (§8l) and was deleted 08-03 — the convention it described lives at `auraAt`)
       } else {
         let minStart = e.ts;
         // ★ CHAINED FROM THE FIRE, NOT THE PRESS (PHASE12 §3, fixed 07-27). `lastFire` holds the
@@ -1203,19 +1252,12 @@ function simulateRaw(schedule, cfg, collect) {
         // cancels (what the start loses the end regains) but a window ending flush with the phase
         // wall has its slipped tail CLAMPED and loses its last AE outright — the whole of the KT
         // AoE ranking error (RULES §9 Correction 3). t ≥ minStart is guaranteed by the guard above.
-        else if (seg && seg.type === "aoe") { if (aoeExact) eff = t; else slip = prevInterval / 2; }
-        // Expected press-snap SLIPPAGE (closes the §4.3 phase blind spot where it bites). A press
-        // landing mid-cast at STEADY state fires at that cast's END; phase is uniform, so the
-        // expected slip is half the local interval. Interior windows are slip-invariant (what the
-        // start loses the end regains — the phase-average argument, unchanged), but a window whose
-        // end abuts a hard edge (intermission wall, the kill) has its slipped tail CLAMPED — a
-        // real, sim-verified loss the intent-time scoring silently forgave (Al'ar: a stagger
-        // sequenced to end flush at the 3:28 wall model-tied the packed layout yet simmed −0.66%,
-        // ≈1s × 4 buffs of clamped slippage). Ramp presses (sparse boundaries) already snap exactly;
-        // gap presses (idle — downtime, GCD-idle remainder) fire at the press moment: both slip 0.
-        // ⚠ `actEff` no longer feeds the DISPLAY — the page prints press times (see `shownTimes`).
-        // Its one remaining consumer is `planSpecFor`, which transcribes a plan for wowsims.
-        else if (eff < prevCastEnd - EPS) slip = prevInterval / 2;
+        else if (seg && seg.type === "aoe" && aoeExact) eff = t;
+        // ⚠ The expected-slippage bookkeeping that used to follow (`slip = prevInterval / 2` here and
+        // in the non-exact AoE arm above) was WRITE-ONLY since scoreStart became pure geometry (§8l)
+        // and was deleted 08-03. Its physics is not lost: the phase-average argument and the
+        // clamped-tail loss it priced (Al'ar −0.66%) are recorded at the `scoreStart` block below,
+        // and the one consumer that still needs fire-time semantics is `planSpecFor` via `actEff`.
       }
       e.fired = true;
       // ★★★ WHEN THE BUFF ACTUALLY STARTS — and it is NOT always the press moment.
@@ -1361,14 +1403,7 @@ function simulateRaw(schedule, cfg, collect) {
     }
     if (piActive && !blActive) mult *= BUFFS.powerInfusion.value; // PI is overridden while Bloodlust runs
     const multDn = mult * (1 + rating / (g.HASTE_RATING_PER_PCT * 100));
-    let pUp = 0;
-    if (atiOn) {
-      while (ri < recentT.length && recentT[ri] <= t - ATI.dur) ri++;
-      let noProc = 1;
-      for (let k = ri; k < recentT.length; k++) noProc *= recentNoQ[k];
-      pUp = 1 - noProc;
-    }
-    const multUp = atiOn ? multDn + mult * atiScale : multDn;
+    const multUp = atiOn ? multDn + mult * atiScale : multDn;   // pUp itself is computed below, after stepFor
     const isAoe = !!(seg && seg.type === "aoe");
     // ★★★ THE ARCANE BLAST DEBUFF, AND ITS THIRD CASE (user, 07-28) — three outcomes, not two.
     // The debuff is applied on COMPLETION and lasts `DEBUFF_DUR` from the previous cast's START, so with
@@ -1403,7 +1438,20 @@ function simulateRaw(schedule, cfg, collect) {
       return { cast, gcd, interval: Math.max(cast, gcd), capped: cast < gcd };
     };
     const dn = stepFor(multDn);
-    const up = atiOn && pUp > 0 ? stepFor(multUp) : dn;
+    const up = atiOn ? stepFor(multUp) : dn;
+    // P(proc up at THIS cast's start) — walk the history newest-first; the entry k completions back
+    // sits at counterfactual up-lattice age k·(this cast's own up interval) plus the real dead time
+    // between it and now. Ages are monotone going back, so the first too-old entry ends the walk.
+    // Strict `< dur` matches n = ceil(dur/a): an attempt at exactly the expiry instant is spent.
+    let pUp = 0;
+    if (atiOn && atiHist.length) {
+      let noProc = 1;
+      for (let j = atiHist.length - 1, k = 0; j >= 0; j--, k++) {
+        if (k * up.interval + (atiDead - atiHist[j].dead) >= ATI.dur - EPS) break;
+        noProc *= atiHist[j].noQ;
+      }
+      pUp = 1 - noProc;
+    }
     const interval = pUp * up.interval + (1 - pUp) * dn.interval;
     // ── the VALUE pass: read `dmg`/`sp` windows at this cast's COMPLETION, not at its start ──
     // It has to come after `stepFor`, because the completion time depends on the haste the START pass
@@ -1486,9 +1534,10 @@ function simulateRaw(schedule, cfg, collect) {
       sp, dmgMult: dmgMult + (isAoe ? 0 : t5add),
     });
     if (atiOn) {
-      // proc chance of THIS cast: any target's crit can trigger the 50% roll
-      const qCast = isAoe ? 1 - Math.pow(1 - crit * ATI.procChance, seg.targets) : crit * ATI.procChance;
-      recentT.push(t); recentNoQ.push(1 - qCast);
+      // this cast's completion is one proc attempt — effective crit incl. the Potency lift, and on
+      // AoE any of the N hits' crits can trigger the 50% roll (atiProcQ; no ICD, §9b)
+      atiHist.push({ noQ: 1 - atiProcQ(crit, isAoe ? seg.targets : 1), dead: atiDead });
+      if (atiHist.length > 16) atiHist.shift(); // bounded: only the last ceil(dur/a) ≤ 6 entries can ever count
     }
     // casting blocks presses only while the cast is in flight; the GCD-idle
     // remainder (and all of an instant AE's interval) is free press time
@@ -1665,6 +1714,20 @@ function simulateRaw(schedule, cfg, collect) {
     const gcd = msqI(Math.max(g.GCD_FLOOR, g.GCD_BASE / m));
     return aoe ? gcd : Math.max(msqI((g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * stacks) / m), gcd);
   };
+  // Ashtongue slice parameters for the INTEGRAND: up/down intervals (msq'd, floored — the GCD cap
+  // lives inside each branch), effective-crit proc chance, and n = ceil(dur/a), the number of casts
+  // that start inside an unrefreshed proc window ON THE UP LATTICE (strict at an integer dur/a: a
+  // cast starting exactly at expiry is unbuffed — same convention as the walk's age window). `q` is
+  // clamped a hair under 1 so ln(1−q) stays finite; reachable only at extreme-crit AoE, where the
+  // clamp is ~1e-9 of probability.
+  const atiNOf = a2 => { const raw = ATI.dur / a2, rd = Math.round(raw);
+    return Math.abs(raw - rd) < 1e-9 ? rd : Math.floor(raw) + 1; };
+  const atiParamsAt = (multDn2, mult2, aoe, segB) => {
+    const b2 = intervalAt(multDn2, aoe, g.AB.MAX_STACKS);
+    const a2 = intervalAt(multDn2 + mult2 * atiScale, aoe, g.AB.MAX_STACKS);
+    const q = Math.min(1 - 1e-9, atiProcQ(crit, aoe ? segB.targets : 1));
+    return { a: a2, b: b2, q, r: 1 - q, n: atiNOf(a2) };
+  };
   const rateAt = (tt, segB, forceInt) => {
     const { multDn2, mult2, dmg2, aoe } = scanAt(tt, segB);
     // ★ A RAMP CAST'S RATE IS 1/(its own duration) = m/C_k — the true throughput while stacks are still
@@ -1672,15 +1735,46 @@ function simulateRaw(schedule, cfg, collect) {
     // value window overlapping a slow ramp cast is charged for it. See the integral loop's note.
     if (forceInt) return dmg2 / forceInt;
     if (atiOn) {
-      // Ashtongue: blend the proc-up / proc-down haste states by the steady-state
-      // probability the proc is up at the local cast rate (E[rate], not rate at E[state])
-      const intDn = intervalAt(multDn2, aoe, g.AB.MAX_STACKS);
-      const q = aoe ? 1 - Math.pow(1 - crit * ATI.procChance, segB.targets) : crit * ATI.procChance;
-      const pUp2 = 1 - Math.pow(1 - q, ATI.dur / intDn);
-      const intUp = intervalAt(multDn2 + mult2 * atiScale, aoe, g.AB.MAX_STACKS);
-      return dmg2 * (pUp2 / intUp + (1 - pUp2) / intDn);
+      // Ashtongue STEADY STATE — the exact renewal law (ESTABLISHED-FACTS §12): P = 1−(1−q)^n with n
+      // counted on the UP lattice (that exponent IS the haste→proc→haste feedback, converged exactly
+      // by the renewal algebra), and the rate is the cast-weighted interval mix 1/(a·P + b·(1−P)).
+      // ⛔ NOT the E[1/i] blend, and NOT dur/intDn in the exponent — both retired 08-03 (MODEL-DEFECTS
+      // §9m; the down-lattice exponent was the whole missing feedback, ~1 cast per 6-min fight).
+      // The engagement transient is threaded through the integral loop itself (atiAdvance below);
+      // this steady form is what any other caller of rateAt gets.
+      const p = atiParamsAt(multDn2, mult2, aoe, segB);
+      const P = 1 - Math.pow(p.r, p.n);
+      return dmg2 / (p.a * P + p.b * (1 - P));
     }
     return dmg2 / intervalAt(multDn2, aoe, g.AB.MAX_STACKS);
+  };
+  /* ★★ THE ASHTONGUE ENGAGEMENT TRANSIENT — closed-form age advance (ESTABLISHED-FACTS §12.3). After
+     a cold start (the pull, or an intermission long enough to spend the history) the proc has no
+     attempts behind it: exactly, the k-th cast is up with P_k = 1−(1−q)^min(k−1,n). The lattice-free
+     continuous form is an age ODE, dν/dt = 1/(a + (b−a)·r^min(ν,n)) with P(t) = 1−r^min(ν,n) — and
+     both of its integrals are closed-form: t(ν) = a·ν + (b−a)(1−r^ν)/(−ln r) inverts by Newton
+     (monotone increasing, concave ⇒ the under-shooting initial guess converges from below), and
+     ∫ rate dt over a slice is just Δν, because the rate IS dν/dt. Below ν=n the slice is transient,
+     above it steady (linear); a slice straddling ν=n splits exactly at t(n).
+     ⚠ Deliberately CONTINUOUS: the discrete-exact transient is a t0-anchored cast lattice, and a
+     lattice may not re-enter the integrand (§8l — three versions of scoreStart each paid for that).
+     Priced by MC (PLAN §2): ν-threading recovers +0.100 of the +0.130-cast cold-start error; the
+     +0.030 residual is this continuous smoothing, accepted and documented. */
+  const atiAdvance = (nu, len, p) => {
+    const R = 1 / (p.a + (p.b - p.a) * Math.pow(p.r, p.n));
+    if (nu >= p.n) return { nu: nu + len * R, casts: len * R };
+    const lnr = Math.log(p.r);
+    const tOf = x => p.a * (x - nu) + (p.b - p.a) * (Math.pow(p.r, nu) - Math.pow(p.r, x)) / (-lnr);
+    const tToN = tOf(p.n);
+    if (len >= tToN - 1e-12) { const extra = (len - tToN) * R; return { nu: p.n + extra, casts: (p.n - nu) + extra }; }
+    let x = nu + len / (p.a + (p.b - p.a) * Math.pow(p.r, nu));
+    for (let it = 0; it < 24; it++) {
+      const f = tOf(x) - len, fp = p.a + (p.b - p.a) * Math.pow(p.r, x);
+      const nx = x - f / fp;
+      if (Math.abs(nx - x) < 1e-12) { x = nx; break; }
+      x = nx;
+    }
+    return { nu: x, casts: x - nu };
   };
   // ═══════════ exact discrete ramp — the opener & every post-gap re-engage ═══════════
   // The first MAX_STACKS Arcane Blasts after every cold start (the pull at 0 stacks — no prestack
@@ -1798,6 +1892,7 @@ function simulateRaw(schedule, cfg, collect) {
   const bps = [...bpS].filter(x => x >= 0 && x <= cfg.T + KWD).sort((a, b) => a - b);
   total = 0; totalEarly = 0; robust = 0;
   let sj = 0;
+  let atiNu = 0, atiLiveEnd = 0; // engagement age + last live-slice end, threaded through the loop (atiOn only)
   for (let i = 0; i < bps.length - 1; i++) {
     const a = bps[i], b = bps[i + 1], len = b - a;
     if (len < 1e-9) continue;
@@ -1849,7 +1944,22 @@ function simulateRaw(schedule, cfg, collect) {
        worth there, which is the only thing a lost Arcane Blast can be worth. A burn multiplier still
        applies (a Blast lost during a burn was a burn-multiplied Blast); the target count does not. */
     const stT = scanAt(mid, segB);
-    const contrib = (rateAt(mid, segB) - tollR * dmgOf(stT.sp2, stT.dmgMult2, segB, false)) * len;
+    let liveRate;
+    if (atiOn) {
+      // Thread the Ashtongue engagement age through the loop: slices arrive in time order and
+      // intermission slices `continue` above, so a gap between this slice's start and the last live
+      // end is dead time. The history survives it only partially — ν ← min(ν, (dur − gap)/a), the
+      // linear remnant of a 5s memory (gap ≥ dur ⇒ full reset, matching the walk's atiDead aging).
+      // The advance runs NET of the opener toll: toll casts never happened, so they rolled no procs.
+      const p = atiParamsAt(stT.multDn2, stT.mult2, stT.aoe, segB);
+      const gap = a - atiLiveEnd;
+      if (gap > EPS) atiNu = Math.min(atiNu, Math.max(0, (ATI.dur - gap) / p.a));
+      const adv = atiAdvance(atiNu, len, p);
+      liveRate = stT.dmg2 * adv.casts / len;
+      atiNu = Math.max(0, adv.nu - tollR * len);
+      atiLiveEnd = b;
+    } else liveRate = rateAt(mid, segB);
+    const contrib = (liveRate - tollR * dmgOf(stT.sp2, stT.dmgMult2, segB, false)) * len;
     if (b <= cfg.T + 1e-9) total += contrib;
     if (b <= cfg.T + 1e-9) totalEarly += contrib;
     robust += contrib * killW(mid);
@@ -5058,12 +5168,16 @@ function refreshPinBadge(key) {
   btn.classList.toggle("haspins", n > 0);
   btn.querySelector("b").textContent = n || "";
 }
-// Cooldowns whose MODEL is not yet sim-certified end-to-end the way the core kit is: the
-// Ashtongue proc (a folded-in uptime average, never a scheduled press) and the two raid
-// externals (source-verified stacking, but no full APL sim gate). Flagged in the UI so a
-// first-time user knows which numbers to trust least. See docs/RULES.md §13–§14.
-const BETA_KEYS = { ati: 1, drums: 1, powerInfusion: 1 };
-const BETA_TIP = "Beta — this cooldown's model is the least tested part of the tool: the physics is source-verified but its placement has not been certified end-to-end against the sim. Treat its timing as a strong suggestion, not gospel.";
+// Cooldowns whose MODEL has weaker gate coverage than the core kit. ⚠ De-beta'd 08-03: Ashtongue
+// (now the exact renewal law — law-check's ATI block, tools/ati-mc.mjs's seeded process simulation,
+// self-consistency's ati-on corpus cells, a kit-sweep kit) and Drums (law-check's Drums block:
+// rating additivity in/out of Lust, the 708.5 cap, Tinnitus-legal doubling; kit-sweep's
+// drums+icon+gem cells). The old badge text promised certification "against the sim", which is
+// retired — the finish line moved to the law/MC gates, and both crossed it. Power Infusion keeps the
+// badge: its physics is source-verified (the Bloodlust exclusive category) but its PLACEMENT has only
+// kit-sweep local-optimality behind it, and no declared layout covers it. See docs/RULES.md §13–§14.
+const BETA_KEYS = { powerInfusion: 1 };
+const BETA_TIP = "Beta — this cooldown's placement has the least gate coverage in the tool: the physics is source-verified, but no declared test layout covers it and only local-optimality sweeps check where the planner puts it. Treat its timing as a strong suggestion, not gospel.";
 function buildBuffList() {
   const hosts = { spells: el("grp-spells"), trinkets: el("grp-trinkets"), ext: el("grp-ext") };
   for (const h of Object.values(hosts)) h.innerHTML = "";
@@ -6636,7 +6750,8 @@ function renderCapSheet(cfg) {
 // Every claim below is checked against the engine it describes; the sources are docs/MECHANICS.md
 // (physics), docs/RULES.md (strategy, with the sim evidence) and docs/SOURCES.md (constants).
 const V = { sim: `<span class="verdict sim" title="Verified against the wowsims simulator">sim-verified</span>`,
-            beta: `<span class="verdict beta" title="Physics is source-verified, but this part has not been certified end-to-end against the sim">beta</span>`,
+            beta: `<span class="verdict beta" title="Physics is source-verified, but this part's placement has only spot-check coverage">beta</span>`,
+            law: `<span class="verdict sim" title="Held to closed-form laws checked on every change (tools/law-check.mjs); the Ashtongue model is additionally checked against a direct seeded simulation of the proc process (tools/ati-mc.mjs)">law-checked</span>`,
             out: `<span class="verdict out" title="Deliberately outside the model">not modeled</span>` };
 function renderAssumptions() {
   const a = el("assump"); a.hidden = false;
@@ -6662,9 +6777,12 @@ function renderAssumptions() {
       <li><b>Same inputs, same plan, every time.</b> There is no randomness in the search, and the
       copy-as-text plan carries the setup that produced it — so a plan you paste in Discord can be
       reproduced exactly.</li>
-      <li><b>Three cooldowns are less tested than the rest</b> — Ashtongue Talisman, Drums and Power
-      Infusion, marked <span class="beta">Beta</span> in the setup. Their game mechanics are verified;
-      where the planner chooses to <i>place</i> them has not been checked end-to-end against the sim.</li>
+      <li><b>One cooldown is less tested than the rest</b> — Power Infusion, marked
+      <span class="beta">Beta</span> in the setup. Its game mechanics are verified (it does not stack
+      with Bloodlust); where the planner chooses to <i>place</i> it has only spot-check coverage.
+      Ashtongue Talisman and Drums used to share the badge and no longer do: both are now held to
+      closed-form laws checked on every change, and the Ashtongue model is additionally checked
+      against a direct simulation of the proc process.</li>
     </ul>
   </section>
 
@@ -6733,9 +6851,13 @@ function renderAssumptions() {
     <ul>
       <li><b>Ashtongue Talisman is never given a press</b> — you can't pool a proc. Its haste is counted into
       every window instead, and the chart shows it as its own lane plus a second cap line rather than
-      averaging a random proc into your haste curve.<span class="deep"> 145 haste for 5s, ~50% per spell
-      crit, tracked per cast from your real casts over the previous 5s so procs cluster where you cast
-      fastest; the GCD floor is applied separately to the proc-up and proc-down cases before averaging.</span> ${V.beta}</li>
+      averaging a random proc into your haste curve.<span class="deep"> 145 haste for 5s, 50% per spell
+      crit — and "per crit" uses your effective crit including the Clearcasting→Arcane Potency lift.
+      The math is the exact steady state of the proc's feedback loop: a live proc speeds your casts,
+      faster casts roll more procs into the same 5s window, so uptime compounds — the model solves that
+      renewal loop exactly per buff window, tracks the ramp-up from every cold start, and applies the
+      GCD floor separately to the proc-up and proc-down cases (at the floor a proc is worth exactly
+      zero). Checked against a direct simulation of the proc process on every change.</span> ${V.law}</li>
       <li><b>Skull of Gul'dan, Mind Quickening Gem and Icon of the Silver Crescent lock each other out.</b>
       Using one blocks the others for that buff's duration, so a burst has to sequence them — and the
       order the lockout forces turns out to be the one you want anyway: <b>spellpower first, haste
@@ -6748,7 +6870,7 @@ function renderAssumptions() {
       per fight, 2 minutes apart. Re-conjuring mid-fight isn't modelled.</li>
       <li><b>Anniversary raid rules apply:</b> one Drums buff per 2 minutes (Tinnitus) and one Bloodlust per
       10 minutes of a pull (Sated, raid-wide, resets on a kill). Drums are haste <i>rating</i>, so they stack
-      with everything. ${V.beta}</li>
+      with everything. ${V.law}</li>
       <li><b>Cold Snap is spent whenever it buys anything real</b> — including an Icy Veins that only gets
       half its duration before the boss dies, since a ready cooldown near the kill is free damage. It is held
       only when the extra window wouldn't clear a full cast. ${V.sim}</li>

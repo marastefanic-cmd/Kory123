@@ -205,10 +205,15 @@ for (const kase of api.cases) {
   for (const dh of HASTE_DELTAS) {
     const cfg0 = { ...base, hasteRating: (base.hasteRating || 0) + dh };
     const family = scheduleFamily(cfg0);
-    // The shipped cfg, then the same fight with a wall parked on one of its own lattice points.
+    // The shipped cfg, then the same fight with a wall parked on one of its own lattice points,
+    // then the shipped cfg with the Ashtongue proc ON — no preset kit carries `ati`, so without this
+    // variant the walk's whole proc path (blended intervals, the counterfactual-age window, the
+    // dead-time aging across intermissions) would run in ZERO corpus cells and a green here would
+    // say nothing about it (added 08-03 with the renewal model).
     const probes = wallProbes(cfg0, api.simulate(clone(family[0].s), cfg0, true).casts);
     probeCfgs += probes.length;
-    for (const cfg of [cfg0, ...probes]) {
+    const cfgAti = { ...cfg0, enabled: { ...cfg0.enabled, ati: true } };
+    for (const cfg of [cfg0, ...probes, cfgAti]) {
       const cuts = cutsOf(cfg);
       for (const { s } of family) {
         const r = api.simulate(clone(s), cfg, true);
@@ -219,7 +224,9 @@ for (const kase of api.cases) {
           if (Math.abs((x.credited ?? NaN) - x.dmg * f) > 1e-9) boardCreditBad++;
         }
         castsGraded += r.casts.length;
-        const tag = cfg === cfg0 ? kase.name : `${kase.name} [wall probe @ ${cfg.segments.find(g => g.type === 'intermission').start}]`;
+        const tag = cfg === cfg0 ? kase.name
+                  : cfg === cfgAti ? `${kase.name} [ati on]`
+                  : `${kase.name} [wall probe @ ${cfg.segments.find(g => g.type === 'intermission').start}]`;
         for (const v of structuralViolations(cfg, r.casts, cuts))
           struct.push({ ...v, name: tag, dh, T: cfg.T });
         const gapPct = 100 * (r.robust - counted) / r.robust;

@@ -127,8 +127,11 @@ Blast damage is **stack-independent** in 2.4.3 — only cost and cast time scale
 wowsims `arcane_blast.go` + `arcane_charge.go`). The empty fight reproduces `T·rate(m) − 1.332` to
 float precision at every haste, SP and crit, and that is now a `law-check` line.
 ⚠ **Two honest limits on the framing, neither of them a defect.** (1) The numerator is an
-**expectation** — `critFactor`, `aoeCritAmp` and the Ashtongue term are all steady-state averages — so
-the tool reports a MEAN and says nothing about variance. (2) It is **infinite-mana**: the stack buff
+**expectation** — `critFactor` and `aoeCritAmp` are steady-state averages, and the Ashtongue term is
+the exact renewal expectation (since 08-03 the proc is modeled by its closed-form steady state with
+the haste→proc→haste feedback converged and the per-engagement ramp-in threaded — ESTABLISHED-FACTS
+§12, MODEL-DEFECTS §9m, gated by law-check's ATI block + `tools/ati-mc.mjs`'s seeded
+process-simulation in CI) — so the tool reports a MEAN and says nothing about variance. (2) It is **infinite-mana**: the stack buff
 also raises AB mana cost 75 %/stack, so the stack count drives a sustainability constraint the model
 declines to see (a standing user decision). The one place the continuum idealisation genuinely needs a
 discrete correction — a cast in flight across a cut — is exactly where `cutsAt()` and the credit rule

@@ -3451,6 +3451,9 @@ Largest: `{IV@20, cluster@20, Zerk@6}` beats `{IV@40, cluster@5, Zerk@42}` by 0.
 **loses by 0.0389 at crit 41** (18× the tie band). The no-Ashtongue control's max shape difference is
 `3.3e-16` — float noise — which is the clean confirmation that crit really does cancel otherwise. ⇒ the
 AoE channel for crit is already known and flagged in SOURCES; **the Ashtongue channel is not.**
+✅ **CLOSED 08-03 (§9m):** the Ashtongue channel now feeds the proc rate — `atiProcQ` reads the
+effective crit (the exact Potency mixture), the constants moved into `GAME.ATI` with a SOURCES row,
+and the law-check ATI block pins the lift at 1e-6. The PoM half of this section stays open.
 
 ### Verified CLEAN against wowsims source — do not re-derive these
 
@@ -4041,3 +4044,49 @@ and is marked DEPRECATED: the §9i landing-snapshot term is precisely about wind
 once it lands, cluster-placement "ties" like T10's 7-vs-10 and T13's 0-vs-5 are expected to become REAL
 score differences the fixed scorer resolves — at which point `distinct` must be re-tested for removal
 (the user's ruling wins the moment the measurement allows it).
+
+## §9m — ✅ THE ASHTONGUE MODEL REBUILT AS THE EXACT RENEWAL LAW (08-03) — two defects closed, one channel opened
+
+User request: *"make sure that crit chance enters the proc rate, that it's not just a flat line of
+average value. Increased local haste also increases the chance of a proc, and that proc increases
+haste further etc, so the math might be complicated, so do it properly."* The math turned out to have
+an exact closed form — the renewal steady state — and BOTH shipped accounts disagreed with it.
+
+**Defect 1 — the integrand had no feedback at all.** `rateAt`'s exponent was `dur/intDn`: attempts
+counted on the DOWN lattice, so a live proc's faster casts never fed back into the refresh chance.
+Exact law: `n = ceil(dur/a)` on the UP lattice, `P = 1−(1−q)^n`, `R = 1/(aP + b(1−P))` — the renewal
+cycle IS the fixed point of the proc→haste→proc cascade. Size at buffed crit (50.765 %, h=0):
+P 0.623 vs 0.690 true, R 0.70484 vs 0.70779 ⇒ **~1 effective cast per 6-minute ATI fight**, 500× the
+tie band. (The old E[1/i] blend was also wrong-shaped: casts/cycle ÷ time/cycle gives the
+cast-weighted 1/E[i], not E[1/i].)
+
+**Defect 2 — the walk's trailing window was off by one cast and mean-field.** It evicted history by
+cast START (`recentT[ri] <= t − dur`), dropping the completion whose proc still covers this cast
+(worth ≈ (1−P)·q of uptime), and counted attempts on its own blended lattice (self-consistent
+mean-field P ≈ 0.644 — closer than the integrand but still 4.6 pp short). Replaced by the
+counterfactual-age product (age = k·a + deadTime < dur), which is the exact discrete law in steady
+state AND in the engagement transient, and ages correctly across intermissions.
+
+**Also closed here:** the §9b Ashtongue channel — `q` now reads the EFFECTIVE crit (the
+Clearcasting→Arcane Potency mixture, `atiProcQ`), so the +3 pp that produced 3849 rank flips is in
+the proc rate (and only there — the damage side still cancels and stays normalised away). ATI's
+constants moved into `GAME.ATI` with a SOURCES row (they were uncited and invisible to
+constants-cited — the §9b caveat). The engagement transient (every cold start begins proc-cold) is
+new modeling, threaded through the integrand as a lattice-free age ODE and carried natively by the
+walk; MC-priced at +0.130 casts against steady-state-everywhere, of which +0.100 is recovered.
+
+**Verification** (all green, all in the tree): law-check ATI block — the steady law by length
+differencing (cancels toll AND transient; tolerance 1e-6 against a 0.34-cast Potency-lift effect and
+a 0.44-cast feedback effect over the window), exact values at crits 25/40/80, above-cap zero;
+`tools/ati-mc.mjs` — the engine against a direct seeded simulation of the true process (steady to
+2e-5 casts/s at four states; full fights incl. the REAL ramp lattice within 0.05–0.08 casts against
+a 0.25 budget; `--self-test` seeds the retired down-lattice form and it is caught by 3 lines);
+self-consistency's new ati-on corpus cells (0 mismatches, 0 structural); kit-sweep's new
+`ati+icon+gem` kit. Full algebra and the priced non-goals (window-edge P-memory ±0.05–0.15,
+continuous-transient residual 0.030, gap<5s linear remnant, q→1 first-cast loss): ESTABLISHED-FACTS
+§12. ⚠ ati/drums stay OFF in every declared test and preset, and the whole change is gated behind
+`enabled.ati` — plan-sweep A/B reads IDENTICAL on the preset corpus.
+
+**What remains open on ATI:** no declared layout runs with the proc enabled — kit-sweep asserts
+local optimality only. Deriving ati-on test cells for user ruling is the length-ladder workflow
+(ROADMAP ▶▶ A), unchanged.

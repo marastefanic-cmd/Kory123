@@ -1457,3 +1457,79 @@ anchors 8/8, law-check green — nothing here feeds the search):
   expected damage             297.9k           298.2k
   expected DPS                1,805            1,807
 ```
+
+## §12 ★★★★ THE ASHTONGUE PROC LAW — the exact renewal steady state, its transient, and what is priced but not modeled *(added 08-03)*
+
+The one stochastic mechanic in the model, made exact-in-expectation. Constants: `GAME.ATI`
+(145 rating · 50 % per crit · 5.0 s · **no ICD** — SOURCES "Ashtongue Talisman"). Everything below is
+verified two independent ways: against the engine (law-check's ATI block, to 1e-6) and against a
+seeded Monte Carlo of the true process (`tools/ati-mc.mjs`; design-phase run: 2e7 casts × 9 states,
+worst deviation **2.45e-4**, MC-noise scale).
+
+### §12.1 The steady state — the feedback loop, converged in closed form
+
+Per piecewise-constant buff state, with `a` = up interval and `b` = down interval (both
+millisecond-quantised and GCD-floored — the floor is applied INSIDE each branch):
+
+    q = per-completion proc chance at the EFFECTIVE crit          (§12.2)
+    n = ceil(dur / a)          ← attempts counted on the UP lattice — THIS is the feedback
+    P = 1 − (1−q)^n            (probability a cast starts with the proc up)
+    R = 1 / (a·P + b·(1−P))    casts per second (cast-weighted interval mix)
+
+**Why n sits on the up lattice, exactly:** the process RENEWS at each proc. Casts started while the
+buff lives run at `a`, so after an unrefreshed proc exactly `ceil(dur/a)` casts start buffed — and
+the buff is up at a cast's start iff one of the last `n` completions procced, each an independent
+`q`-roll. The user's "proc → faster casts → more procs" cascade is not iterated; the renewal cycle
+IS its fixed point. Strict at an integer `dur/a`: a cast starting exactly at expiry is unbuffed.
+**Why R is `1/E[interval]` (cast-weighted) and not `E[1/interval]`:** casts per cycle = 1/q,
+cycle time = `[a(1−r^n) + b·r^n]/q` — divide.
+
+⛔ **Two forms are RETIRED, both measured wrong (MODEL-DEFECTS §9m):**
+- exponent `dur/intDn` (attempts on the DOWN lattice — the integrand until 08-03): NO feedback at
+  all; at buffed crit (50.765 %) it read P = 0.623 against the true 0.690 and under-priced the proc
+  by 0.00295 casts/s ≈ **1 effective cast per 6-minute fight**;
+- the walk's trailing-TIME window over its own blended lattice, evicted by cast START: mean-field
+  P ≈ 0.644, plus an off-by-one (the completion straddling t−5 s was dropped).
+
+Named values at h = 0 (b = 1.5, a = 1.374, n = 4): crit 25 % → q = 0.140, P = 0.453, R = 0.69304;
+crit 50.765 % → q = 0.269, P = 0.714, R = 0.70921; above the GCD cap a = b = 1.0 ⇒ the mix is inert
+and a live proc is worth **exactly 0**. The "cap if Ashtongue" line: 788.5 − 145 ≈ **643.5 rating**.
+
+### §12.2 Crit enters the proc rate — at the EFFECTIVE crit, and it does not cancel
+
+`q = f·qAt(crit + 0.30) + (1−f)·qAt(crit)` with `f = qCC(N) = 1−(1−0.10)^N` (Clearcasting per hit)
+and `qAt(c) = 1−(1−c·½)^N` (any of N hits' crits can trigger the 50 % roll — no ICD). Single target
+this is exactly `½·(crit + 0.03)` — the Potency +3 pp lift, linear, mixture-exact. ⚠ The DAMAGE side
+of Potency stays normalised away (a constant factor cancels out of every comparison, §11); the PROC
+side is a haste source and does not cancel — §9b measured 0 rank flips without ATI and **3849 with
+it** over exactly that +3 pp. The law-check differencing line pins the lift at 1e-6 against a lift
+effect of ~0.34 casts per 150 s.
+
+### §12.3 The engagement transient — every cold start begins proc-cold
+
+Exact discrete law (MC-verified): the k-th cast of an engagement is up with
+`P_k = 1 − (1−q)^min(k−1, n)`. The board walk carries this form natively (its history product only
+has k−1 entries). The integrand carries the lattice-free continuous form — an age ODE
+`dν/dt = 1/(a + (b−a)·r^min(ν,n))`, `P(t) = 1−r^min(ν,n)`, with `t(ν) = aν + (b−a)(1−r^ν)/(−ln r)`
+closed-form and `∫ rate dt = Δν` — threaded through the breakpoint loop, advanced NET of the opener
+toll (toll casts never happened, so they rolled no procs), and reset across intermissions by
+`ν ← min(ν, max(0, (dur−gap)/a))`.
+Priced by MC (T=180 plain fight): steady-state-everywhere errs **+0.130 casts**; the ν-threaded
+continuous form leaves **+0.030** — the deliberate discrete-vs-continuous residual, because the
+discrete-exact transient is a t0-anchored cast lattice and a lattice may not re-enter the integrand
+(§8l).
+
+### §12.4 Priced and NOT modeled — the honest edges
+
+- **Window-edge P-memory:** proc history crossing a buff edge re-equilibrates instantly in the
+  integrand (the walk's product handles it naturally). MC-priced at ±0.05–0.15 casts per edge pair,
+  second-order between plans, and smaller than the pre-existing accepted in-flight-straddle
+  convention at every window edge (the boundary-charge story, PHASE8 §25).
+- **Gap < 5 s memory** across an intermission: linear `(dur−gap)/a` remnant, an approximation
+  (real intermissions are ≥ 20 s, where it is exact — full reset).
+- **q → 1 limit:** the continuous transient loses the one down-speed first cast, ≤ (b−a) once per
+  engagement, reachable only at extreme-crit AoE.
+- **Variance:** the model reports a MEAN (standing project limit — CLAUDE.md).
+- End-to-end budget, asserted by `tools/ati-mc.mjs` on every run: steady rates match the true
+  process at MC tolerance (8e-4); full fights (real ramp + transient vs toll + ν) within **0.25
+  casts**, measured 0.05–0.08 — against ~1 cast for the retired model.

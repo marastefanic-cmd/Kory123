@@ -1187,9 +1187,14 @@ which is what makes it right *within* a setup and blind *across* setups.
   both characters and compare the argmax plan at each haste. **Agreement** ⇒ the switch was free;
   **divergence** ⇒ the geared operating point was load-bearing and the gear factors come back **as
   model inputs**, which is exactly the escape hatch the user reserved.
-- **Ashtongue Talisman of Insight.** *Why open:* a random on-crit proc, outside every cross-val kit,
-  needing a stochastic treatment — and **un-owned since Phase 7 closed without it**. RULES §14 folds it
-  into passive haste, which is the *modelling* answer, not the *cross-val* one.
+- ✅ **Ashtongue Talisman of Insight — CLOSED 08-03 (MODEL-DEFECTS §9m).** Was: *"a random on-crit
+  proc … needing a stochastic treatment — un-owned since Phase 7 closed without it."* The stochastic
+  treatment now exists and is exact-in-expectation: the renewal law (crit-driven proc rate at the
+  effective crit, the haste→proc→haste feedback converged in closed form, the engagement transient
+  threaded through both accounts), gated by law-check's ATI block, `tools/ati-mc.mjs` (+self-test, in
+  CI), self-consistency's ati-on cells and kit-sweep's `ati+icon+gem` kit. ESTABLISHED-FACTS §12,
+  RULES §14. What the sim's absence still means here: no ati-on layout is user-declared — that is the
+  length-ladder workflow's job, not a modelling gap.
 - **`tools/lattice-ripple.mjs` / `tools/ripple-audit.mjs` need RE-DECIDING, not re-wording.** *Why
   open:* both still describe the model as computing *"the CONTINUUM LIMIT of the same taper — the
   widths match"*, which is false at every word since the objective went exact. ⚠ **Do not simply

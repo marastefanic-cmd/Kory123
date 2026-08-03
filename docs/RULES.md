@@ -1492,20 +1492,53 @@ differently, and that difference is **source-verified against wowsims**, not ass
   just legal: at the opener PI@0 rides the AP burst even though its 180cd forces it to overlap BL for a few
   seconds (dropping it loses ~1.6k; the overlap is intrinsic to also catching the next AP burst); when the
   cd allows, PI lands **just after** BL (5:00 case: PI@0:45). Drums rides bursts for flux even when
-  near-floored (beats a bare-window Drums), and sequences off the floor at high gear haste. Locked as
-  exact-match cases **"3:20 lust 0:05 drums"** and **"3:20 lust 0:05 PI"**. No blind spot is in play on a
-  plain single-target fight, so the model's cast-count is the arbiter (MECHANICS §3) — a fresh end-to-end
-  APL sim wasn't required to certify these (the physics is anchored by the rating trust-anchor + the PI
-  source read above).
+  near-floored (beats a bare-window Drums), and sequences off the floor at high gear haste.
+  ⚠ This used to end *"Locked as exact-match cases '3:20 lust 0:05 drums' and '3:20 lust 0:05 PI'"* —
+  those goldens were **deleted 07-28** with the exact-match suite, so that lock had been void for a
+  week. Since 08-03 the standing coverage is: **law-check's Drums block** (window value =
+  `30·[rate(1+80/1577) − rate(1)]` alone and `30·[rate(1.3·mD) − rate(1.3)]` inside Lust; two
+  Tinnitus-legal uses count exactly twice; above the 708.5 onset a Drums adds exactly 0) plus
+  **kit-sweep's `drums+icon+gem` cells** (k≤3 local optimality at h∈{0,200,400} × 3 shapes). No blind
+  spot is in play on a plain single-target fight, so the model's cast-count is the arbiter
+  (MECHANICS §3) — a fresh end-to-end APL sim wasn't required to certify these (the physics is
+  anchored by the rating trust-anchor + the PI source read above).
+- **Prepull asymmetry, documented (08-03):** the PLANNER may propose an unpinned Drums press in
+  `(-29, 0)` — §7b's prepull rule excludes only *pinned* raid calls (`cfg.fixed`), and a drummer
+  pre-drumming is real practice; the credit rule already pays only the part of the window after 0.
+  The PIN inputs, by contrast, accept only times inside the fight (`parseTimeList` rejects
+  negatives) — a pinned call is a named in-fight second by definition. Asymmetric on purpose.
 
-## 14. Ashtongue Talisman (passive proc: fold into the haste, don't schedule it) *(decided this project; the leeway-zone UI half is DEAD — see the end of the section)*
+## 14. Ashtongue Talisman (passive proc: the exact renewal law — never scheduled) *(rebuilt 08-03; the leeway-zone UI half is DEAD — see the end of the section)*
 
-The Ashtongue Talisman of Insight (145 haste rating, 5s, ~50% on a spell crit) is modeled as **steady-state
-proc-uptime folded into every window's haste** (`simulate` `atiOn`, ~662) — real DPS, in the effective-AB
-count and setup comparison. It is **not** given a scheduled press: the scorer averages the proc into a
-constant haste bump, so there is nothing to align a press *against* in the model, and you can't pool a proc.
-Excluding it from *scoring* was also rejected (biases the effective-AB count + every setup comparison by a
-real, always-present contribution).
+The Ashtongue Talisman of Insight (145 haste rating, 5.0s, 50% on a spell crit, no ICD — `GAME.ATI`,
+SOURCES) is modeled by the **exact steady state of its own feedback loop**, per piecewise-constant
+buff state, with the engagement transient threaded on top (ESTABLISHED-FACTS §12 for the algebra and
+its verification; MECHANICS §6 for the mechanics):
+
+- **Crit drives the proc rate** — `q` per completion at the **effective** crit, including the
+  Clearcasting→Arcane Potency +3 pp lift (`atiProcQ`; the damage side of that lift stays normalised
+  away because it cancels — the proc side does not, MODEL-DEFECTS §9b: 0 rank flips without ATI, 3849
+  with). On AoE any of the N hits' crits can trigger the roll, and Clearcasting itself procs per hit,
+  so q rises steeply with target count.
+- **Haste feeds back** — a live proc shortens casts, so more completions (= more proc rolls) fit in
+  the same 5s window: `n = ceil(dur/a)` counts attempts on the **UP** lattice, `P = 1−(1−q)^n`, rate
+  `= 1/(a·P + b·(1−P))`. The renewal cycle converges the proc→haste→proc cascade exactly — no
+  fixed-point iteration, no approximation at steady state (MC-verified to 2e-4).
+- **The GCD floor is applied inside each branch** (`E[max(...)]` per state): at the floor a live proc
+  buys exactly 0, and above the 788.5−145 ≈ 643.5 rating line procs are partly wasted (the "cap if
+  Ashtongue" timeline line, §15).
+- **Every engagement starts proc-cold** — P builds over the first window exactly as
+  `P_k = 1−(1−q)^min(k−1,n)` (the walk carries the discrete law; the integrand its lattice-free
+  continuous form, threaded through the breakpoint loop and reset across intermissions).
+
+It is **not** given a scheduled press: you can't pool a proc, and the scorer prices it as the exact
+expectation, so there is nothing to align a press *against* in the model. Excluding it from *scoring*
+was also rejected (biases the effective-AB count + every setup comparison by a real, always-present
+contribution). Gates: law-check's ATI block (the steady law by differencing, pinning both the
+exponent lattice and the Potency lift; exact values at three crits; above-cap zero),
+`tools/ati-mc.mjs` (the engine against a direct seeded simulation of the proc process — the
+stochastic model's falsifier now that the sim is retired), self-consistency's ati-on corpus cells,
+and kit-sweep's `ati+icon+gem` cells.
 
 **What the tool surfaces instead is LEEWAY (user-directed).** Many presses are *freely movable across an
 interval for the same effective-AB result* — the position-independent ones (§3): a lone haste/utility press
