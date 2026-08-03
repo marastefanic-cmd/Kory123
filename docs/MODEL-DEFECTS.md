@@ -3812,3 +3812,62 @@ the integral-descent cannot.
 3. **A coupled multi-row move class**, for the plateau members no single-row move can reach.
 4. Only then retarget the search. ⚠ Corpus check on the best candidate: 4 of 21 plans moved, including
    T12 flagged **SEARCH REGRESSION** — `PLAN-DIFF FAIL`. Not landable in any form today.
+
+---
+
+## §9i — ⛔⛔ THE T8 MISPRICING IS REAL AND SIM-CONFIRMED; §9h's "robust is the refuted lattice error" was WRONG (08-02)
+
+**The duel ran** — the retired sim tooling survives (`sim/sim.wasm` + `benchmark.mjs` protocol, extracted
+read-only at rev `69f02dd`), and the T8 disagreement was simmed head-to-head, common random numbers,
+derived one-sided kill window, both seed sets:
+
+| run | Δ (declared − challenger) | seed band | σ |
+|---|---|---|---|
+| 5 seeds × 10k | **+4.21 DPS (+0.217 %)** | ±0.068 | **62σ** |
+| 3 disjoint seeds × 20k | **+4.30 DPS (+0.222 %)** | ±0.022 | **200σ** |
+
++0.22 % of ≈90 effective casts ≈ **+0.20 casts — landing on the per-cast board's +0.2006 almost
+exactly**, while the integral's −0.0933 (challenger preference) is **sign-wrong**. Every seed prefers
+declared. (One common-mode transcription deviation, labeled: the chain cannot express the isc prepull,
+so isc moved −5→0 in BOTH arms; the arms' tails are identical, cannot flip a 4-DPS sign.)
+
+### ⛔ My §9h interpretation is retracted
+
+§9h/§9i-draft framed robust's declared-preference as "the documented sim-refuted lattice failure" and the
+integral's challenger-preference as "sim-anchored law composition." **The sim just refuted that framing at
+62σ.** The law composition (+0.203 zerk-in-Lust − 0.105 forfeited overlap) is built from laws that are
+each individually true and gated — but their COMPOSITION on this fight misses ~0.29 casts of real
+structure. Laws verified in isolation do not compose freely across company this complex. That sentence is
+the §9i lesson.
+
+### But the sim's 62σ is also not the last word — the wall-phase audit
+
+The duel's protocol pins the intermission at exactly 15.000 with a fully deterministic cast lattice
+(no procs in kit ⇒ cast timing identical every iteration; σ is over damage rolls only). The model treats
+walls as fuzzy **by user ruling** (*"an intermission does not land on the same second every pull"* —
+RULES §9). The board reproduces the sim's account (Δ matches to 0.0006 casts at the pinned phase), so the
+board was swept over wall phase δ ∈ [0, 1.45] with the challenger's exit-press riding the exit (the first
+sweep parked IV at fixed 20 and measured its head falling into the dead zone — a confound worth
+recording: it read as a perfect −0.1333·δ linear drift, the IV rate gain):
+
+```
+Δ(challenger − declared), robust, per wall phase:  min −0.29 · max +0.52 · SIGN FLIPS (19/30 declared)
+phase MEAN:  −0.036 declared    ·    integral (phase-flat control): +0.093 challenger
+per-move phase means:  IV 95→20 = −0.0548 (integral −0.0023) · zerk 0→95 = +0.0188 (integral +0.0956)
+```
+
+⇒ three findings, in order of importance:
+1. **The mispricing is REAL, not a phase artifact**: even under the model's own fuzzy-wall semantics the
+   phase-averaged truth prefers DECLARED, and the integral sits **~0.13 casts** off it on this one cell —
+   65× the tie band. Both moves contribute (IV-in-Lust under-credited ~0.05; the zerk move over-credited
+   ~0.08).
+2. **The sim's 62σ overstates the margin**: one phase realization of a ±0.4-cast knife-edge. The honest
+   sim-side margin is the phase mean, ≈ −0.04, not −0.20. A future re-duel should jitter the wall.
+3. **The integral is exactly phase-flat** — as designed. The defect is not noise; it is a missing term.
+
+### Where it does NOT reproduce
+
+§8f measured the pure integral reproducing the named §5 values AND the declared Morogrim argmax on
+**plain fights** — so the missing term involves T8's structure: an interior intermission, a kill-flush
+Lust block, a capped (GCD-floor) window inside it, and value windows flush with the kill. Which of those
+ingredients breaks the composition is exactly the isolation now running.
