@@ -512,13 +512,20 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
   header's job now, so don't reintroduce "Phase N" into `src`.
 
 ## Phases & rendering
-- `buildSegments(rows, T)` (~3702): turns phase rows into `{start,end,type,mult,targets}` segments;
+- `buildSegments(rows, T)` (~4792): turns phase rows into `{start,end,type,mult,targets}` segments;
   types `normal | intermission | burn | aoe`. Consumed by `simulate` and the renderer.
-- `renderTimeline(run)` (~4199): one inline SVG (fluid `width:100%`, no page horizontal scroll) —
+- `renderTimeline(run)` (~5464): one inline SVG (fluid `width:100%`, no page horizontal scroll) —
   **deterministic** haste step-curve (`multNoAti` — no averaged Ashtongue proc, RULES §14) + area fill,
-  three reference lines (**+50% GCD cap**, **"cap if Ashtongue" ≈ +40.8%** when ATI on, **+25% "4× FB"**
+  three reference lines (the **GCD cap**, **"cap if Ashtongue" ≈ +40.8%** when ATI on, **+25% "4× FB"**
   filler soft cap — RULES §15), phase bands (intermission hatched, AoE/burn tinted with ×N badges),
   buff-uptime lanes with press ticks.
+  **The GCD-cap line is STEPPED over the Arcane Blast ramp** (08-02): it reads the cast board
+  (`optR.casts`) and draws the per-cast conversion ceiling — +150 / +116.6 / +83.2 % while a 0/1/2-stack
+  Blast's CAST binds, settling at +50 % once the 3-stack GCD binds — so every re-ramp (opener, post-gap,
+  and the 3→1 mid-cast-lapse resume, which starts at +116.6) shows its drops; AoE casts and no-cast gaps
+  stay at +50 %. ⚠ The step series is built **before** the y-scale and `maxPct` includes its peak
+  (fix 08-03): `y()` clamps at `maxPct`, and with a haste-only scale every ramp level above it flattened
+  into one chart-top plateau — the user saw a single drop. Display only; nothing scores off it.
   **The chart is self-describing — there is NO legend paragraph** (deleted 2026-07-26, user decision).
   Everything the old `#viz-note` legend spelled out now lives on the drawing: a `SPELL HASTE — gear
   X% + cooldowns` caption in the gutter above the curve panel, a gutter label **and** an

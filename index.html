@@ -5571,7 +5571,39 @@ function renderTimeline(run, opts) {
     const m = hasteMultAt((tt + eArr[i + 1]) / 2);
     return { t: tt, pct: (m - 1) * 100, capped: m >= CAP_M - 1e-9 };
   });
-  const maxPct = Math.max(60, Math.ceil((samples.length ? Math.max(...samples.map(s => s.pct)) : 0) / 10) * 10 + 5);
+  /* ★★ THE CAP STEP SERIES IS BUILT *BEFORE* THE Y-SCALE, AND THE SCALE INCLUDES ITS PEAK — fixed
+     08-03 on a user report: *"the GCD cap line has only one drop in it, but it should have 3 drops
+     (0->1, 1->2, 2->3 stacks), and it should have it after every long enough intermission."*
+     The cast board and the step series were both already correct (stacks 0,1,2 on every re-ramp, the
+     3→1 mid-cast-lapse case included) — the drops vanished in `y()`, whose clamp maps every level
+     above `maxPct` to the SAME chart-top pixel. `maxPct` was computed from the HASTE samples alone
+     (typically 60–105), so the +150/+116.6/+83.2 ramp levels all flattened into one plateau and only
+     the final drop to +50 survived. Verified in a live render: path y-levels [20, 20, 20, 37.3] —
+     one visible drop. ⇒ Build the series first and fold its peak into the scale, so every level the
+     line draws has its own y. The whole chart shares the one honest axis — compressing the haste
+     curve is the price of showing the ramp truthfully, and it is what the 08-02 report asked to see.
+     `capDrawn` keeps the OLD gate's denomination (haste-only maxPct > 50), not the expanded scale's,
+     so the decision to draw is unchanged. */
+  const hastePeakPct = samples.length ? Math.max(...samples.map(s => s.pct)) : 0;
+  const capDrawn = Math.max(60, Math.ceil(hastePeakPct / 10) * 10 + 5) > 50;
+  const rampCapPct = st => ((GAME.AB.BASE_CAST - GAME.AB.STACK_CAST_REDUCTION * st) / GAME.GCD_FLOOR - 1) * 100;
+  const capT0 = PRE > 0 ? -PRE : 0;
+  const capPts = [];
+  if (capDrawn) {
+    const emit = (t, pct) => { if (!capPts.length || capPts[capPts.length - 1].pct !== pct) capPts.push({ t: Math.max(t, capT0), pct }); };
+    let prevEnd = capT0, first = true;
+    for (const c of optR.casts) {
+      if (c.t >= cfg.T) break;
+      const pct = !c.ae && c.stacks < GAME.AB.MAX_STACKS ? rampCapPct(c.stacks) : 50;
+      if (first) { emit(capT0, pct); first = false; }
+      else { if (c.t > prevEnd + 1e-9) emit(prevEnd, 50); emit(c.t, pct); }
+      prevEnd = c.t + c.interval;
+    }
+    if (!capPts.length) capPts.push({ t: capT0, pct: 50 });
+    emit(Math.min(prevEnd, cfg.T), 50);
+  }
+  const capPeakPct = capPts.length ? Math.max(...capPts.map(p => p.pct)) : 0;
+  const maxPct = Math.max(60, Math.ceil(Math.max(hastePeakPct, capPeakPct) / 10) * 10 + 5);
   const y = p => PADT + CURVE_H - (Math.min(p, maxPct) / maxPct) * CURVE_H;
 
   let sv = `<svg viewBox="0 0 ${VW2} ${H}" width="100%" preserveAspectRatio="xMidYMid meet" font-family="system-ui,-apple-system,sans-serif" role="img" aria-label="Buff timeline and haste curve" style="display:block">`;
@@ -5627,25 +5659,11 @@ function renderTimeline(run, opts) {
      stacks (1.498 s < 1.500 s) does the GCD bind and the cap settle at +50 % (788.5).
      ⇒ mirrors `stepFor`'s interval law by reading the cast board, so it covers every post-gap re-ramp
      too, not just the opener. Arcane Explosion is instant and GCD-bound, so AoE casts and no-cast gaps
-     keep the +50 % cap. DISPLAY ONLY — nothing scores off this. */
-  if (maxPct > 50) {
+     keep the +50 % cap. DISPLAY ONLY — nothing scores off this.
+     ⚠ The series itself (`capPts`) is built ABOVE `maxPct`, because the y-scale must include its peak
+     or the ramp levels clamp into one plateau — see the 08-03 note at the `maxPct` definition. */
+  if (capDrawn) {
     const gcdTip = `<title>Where haste stops buying casts. At 3 Arcane Blast stacks the 1.5s GCD binds and floors at 1.0s, so +50% is the steady ceiling — but during the stack ramp the 2.5/2.17/1.83s CAST binds instead, so the cap starts at +150% and steps down as stacks build. Haste above the line buys no extra casts in that window; the shading is the part that is wasted.</title>`;
-    const rampCapPct = st => ((GAME.AB.BASE_CAST - GAME.AB.STACK_CAST_REDUCTION * st) / GAME.GCD_FLOOR - 1) * 100;
-    const t0 = PRE > 0 ? -PRE : 0;
-    const capPts = [];
-    {
-      const emit = (t, pct) => { if (!capPts.length || capPts[capPts.length - 1].pct !== pct) capPts.push({ t: Math.max(t, t0), pct }); };
-      let prevEnd = t0, first = true;
-      for (const c of optR.casts) {
-        if (c.t >= cfg.T) break;
-        const pct = !c.ae && c.stacks < GAME.AB.MAX_STACKS ? rampCapPct(c.stacks) : 50;
-        if (first) { emit(t0, pct); first = false; }
-        else { if (c.t > prevEnd + 1e-9) emit(prevEnd, 50); emit(c.t, pct); }
-        prevEnd = c.t + c.interval;
-      }
-      if (!capPts.length) capPts.push({ t: t0, pct: 50 });
-      emit(Math.min(prevEnd, cfg.T), 50);
-    }
     const pts = [];
     capPts.forEach((p, i) => {
       const px = x(p.t);
@@ -5654,7 +5672,7 @@ function renderTimeline(run, opts) {
     });
     pts.push([x(cfg.T), y(capPts[capPts.length - 1].pct)]);
     const trace = pts.map(q => `${q[0].toFixed(1)} ${q[1].toFixed(1)}`).join("L");
-    sv += `<path d="M${x(t0).toFixed(1)} ${PADT}L${trace}L${x(cfg.T).toFixed(1)} ${PADT}Z" fill="${warn}" opacity="0.06"/>`;
+    sv += `<path d="M${x(capT0).toFixed(1)} ${PADT}L${trace}L${x(cfg.T).toFixed(1)} ${PADT}Z" fill="${warn}" opacity="0.06"/>`;
     sv += `<path d="M${trace}" fill="none" stroke="${warn}" stroke-width="1.2" stroke-dasharray="5 4" opacity="0.85">${gcdTip}</path>`;
     sv += `<text x="${PADL - 8}" y="${(y(50) + 4).toFixed(1)}" fill="${warn}" font-size="11" text-anchor="end" paint-order="stroke" stroke="${page}" stroke-width="3">GCD cap${gcdTip}</text>`;
   }
