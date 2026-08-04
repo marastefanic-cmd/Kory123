@@ -113,6 +113,29 @@ defined pointwise at every real `t`, and the score is `∫₀ᵀ rate(t) dt`. Th
 > levels. History: MODEL-DEFECTS §8q (the ramp was the last lattice leak) and §9a F1 (the toll was flat
 > above the floor, which under-credited nothing and over-charged the ramp by up to 1.33 casts).
 
+> ### ★★ THE RAMP, RESTATED BY THE USER (08-04) — and why the "toll" IS that restatement, rearranged
+> User, reviewing the Ashtongue rebuild: *"we just have a different variable for the damage divided by
+> casting time, then the number that's the divider, the casting time, just changes after the first cast
+> finished … you know what haste is there at t=0, so you know how long the first cast will take, so for
+> the duration of the first cast you just divide damage … by the casting time at 0 AB stacks given
+> current haste, after that time subsides, you repeat."* — i.e. the momentary-rate graph of §0 with the
+> divisor stepping at each ramp cast's (haste-dependent) completion.
+> **The engine agrees with this in BOTH accounts, and the totals are one identity apart:**
+> · the BOARD WALK implements the description literally — cast by cast, each ramp cast at its own
+>   `C_k/m` with the local `m` (cooldowns, procs) read at that cast's start;
+> · the INTEGRAL books the identical total, because the user's form and the toll form are the same
+>   expression rearranged: `3 + (T − ΣC_k/m)·rate(m)` `=` `T·rate(m) − Σ(C_k − G)/G` (expand ΣC_k/m·m/G
+>   = ΣC_k/G and collect). ⇒ **the subtracted "toll" is not an estimated cast count — it is the user's
+>   own equation solved for the empty fight**, and CI asserts exactly that number at h = 0…1600
+>   (law-check's empty-fight lines, toll-audit).
+> ⚠ **The one thing the totals leave open is WHERE in time the slowness is booked**, which matters only
+> when a VALUE window partially overlaps the opener. Booking it inside each cast's own hasted span —
+> the literal reading of the description — was measured on the T3 Icy-Veins ladder and moves IV#1 to
+> 0:00 against the user's own declared 0:07 (the compression leak: the span shrinks with haste, so
+> covering the ramp becomes a bonus, violating the ramp-neutrality ruling quoted above). Booked over
+> the unhasted `ΣC_k` window, both ladders peak where declared. Same totals, different overlap pricing;
+> the declared tests chose. Reversible only as a user call, knowing T3's Icy Veins moves with it.
+
 ---
 
 ## 1. Cast time, Arcane Blast stacks, and the GCD

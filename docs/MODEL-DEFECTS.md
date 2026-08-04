@@ -4270,6 +4270,11 @@ ruling, and order — the thing the tool ranks plans by — is right at 28/29. S
 the infinite-mana decision's other costs live: the tool reports a MEAN under infinite mana, and
 long-fight haste-window MARGINS (not orderings) are overstated by an amount nothing can now measure.
 Reopen only alongside a user decision to revisit infinite mana itself.
+✅ **And the user sealed exactly that, 08-04, reviewing this walkthrough:** *"the scoring the way we
+have shouldn't care about mana so why is this an issue?"* — it isn't one, inside the model's own
+terms. The gap was only ever a statement about sim-vs-model comparability, and the sim is deleted by
+ruling. This entry is the record of having observed the infinite-mana limit quantitatively once, not
+an invitation to fix it.
 
 ★ **AND IT IS NOT AN ASHTONGUE QUESTION — that is the most useful thing about it.** The gap is in
 what a HASTE WINDOW is worth, and it splits by fight length, not by kit: ratios sit near 1.0 on the
