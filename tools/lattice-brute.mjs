@@ -135,17 +135,32 @@ function sweep(from, to) {
    to catch are COUPLED moves where every single-coordinate step is downhill (§8m, §8s, §9o). For a
    5-track single-use layout that is 11⁵ ≈ 161k evaluations, ~6 s — affordable per candidate, which
    is what makes `--top` polishing viable at all. */
+/* ⛔⛔ AND IT RETURNS A TOP-K BAND, NOT AN ARGMAX — the defect T1 exposed (08-04, fixed the same day).
+   The polish maximises the QUANTISED integral, but the engine's comparator ranks on the IDEAL
+   (unquantised) score FIRST and only falls to shape when that ties exactly (§9l). Millisecond
+   quantisation residue is ~0.001 casts — LARGER than the ideal-law differences the comparator is
+   built to resolve — so a quantised argmax can walk away from the canonical answer and never offer
+   it for comparison. Measured on T1: the declared layout `iv[0,20]` and the polish's `iv[20,50]`
+   have IDENTICAL ideal scores (101.444195, gap 0.0e0 — provably the same value under the exact law)
+   and differ by 0.001155 quantised, which is the documented resolution floor (0.001097). Returning
+   only the quantised max reported `iv[20,50]` as "best" when `planBetter` prefers the declared one
+   on the earliest-press rule. ⇒ hand the parent a BAND and let the real comparator choose. */
 function polish(s0) {
   const coords = [];
   for (const k of TRACKS) (s0[k] || []).forEach((t, j) => coords.push([k, j]));
-  if (!coords.length) return { v: score(s0), s: s0 };
-  let best = { v: score(s0), s: s0 };
+  if (!coords.length) return [{ v: score(s0), s: s0 }];
+  const KEEP = 64;
+  const band = [];
+  let worst = -Infinity;
   const cur = JSON.parse(JSON.stringify(s0));
   const rec = d => {
     if (d === coords.length) {
       for (const k of TRACKS) if (cur[k]) for (let i = 1; i < cur[k].length; i++) if (cur[k][i] <= cur[k][i - 1]) return;
       const v = score(cur);
-      if (v > best.v) best = { v, s: JSON.parse(JSON.stringify(cur)) };
+      if (band.length < KEEP * 4 || v > worst) {
+        band.push({ v, s: JSON.parse(JSON.stringify(cur)) });
+        if (band.length > KEEP * 8) { band.sort((a, b) => b.v - a.v); band.length = KEEP * 4; worst = band[band.length - 1].v; }
+      }
       return;
     }
     const [k, j] = coords[d], t0 = s0[k][j];
@@ -158,7 +173,8 @@ function polish(s0) {
     cur[k][j] = t0;
   };
   rec(0);
-  return best;
+  band.sort((a, b) => b.v - a.v);
+  return band.slice(0, KEEP);
 }
 
 // ── child mode: sweep one slice, return its top band ─────────────────────────────────────────────
@@ -174,7 +190,7 @@ if (process.env.LB_CHILD) {
    It is embarrassingly parallel over candidates, so it forks like the sweep does. */
 if (process.env.LB_POLISH) {
   process.on('message', m => {
-    process.send({ done: m.list.map(s => { const p = polish(s); return { v: p.v, s: p.s }; }) });
+    process.send({ done: m.list.flatMap(s => polish(s)) });
     process.exit(0);
   });
   // ⚠ and BLOCK — a bare handler registration falls straight through into the parent's sweep below,
@@ -234,19 +250,31 @@ const polished = (await Promise.all(batches.filter(b => b.length).map(list => ne
   c.on('error', rej);
   c.send({ list });
 })))).flat();
-const topV = polished.reduce((m, p) => Math.max(m, p.v), -Infinity);
+/* ★ SELECT WITH THE ENGINE'S COMPARATOR, ON THE IDEAL SCORE — not the quantised max (see polish()).
+   The candidate pool is the union of every polished band, deduped; each gets a real `rankPair`, the
+   winner is the `planBetter` reduction (ideal score → snaps → wastedPre → offGrid → distinct →
+   earliest press vector), and the PLATEAU is everything whose IDEAL score ties the winner's to the
+   float floor — i.e. layouts the exact law cannot separate at all, which is the only honest meaning
+   of "tied" and the set a §8y revision ruling has to see. */
 const bandAbs = api.TIE_CASTS * PLAIN;
-const plateau = polished.filter(p => topV - p.v <= bandAbs)
-                        .filter((p, i, a) => a.findIndex(q => keyOf(q.s) === keyOf(p.s)) === i);
-let best = plateau[0];
-for (const p of plateau) if (api.planBetter(api.rankPair(p.s, cfg), api.rankPair(best.s, cfg))) best = p;
+const uniq = polished.filter((p, i, a) => a.findIndex(q => keyOf(q.s) === keyOf(p.s)) === i)
+                     .filter(p => polished[0] && true);
+const pairs = uniq.map(p => ({ ...p, pair: api.rankPair(p.s, cfg) }));
+let best = pairs[0];
+for (const p of pairs) if (api.planBetter(p.pair, best.pair)) best = p;
+const ifloor = best.pair.ifloor;
+const plateau = pairs.filter(p => Math.abs(p.pair.ideal - best.pair.ideal) <= ifloor);
 const polishSecs = (Date.now() - t1) / 1000;
-console.log(`polish: ${cands.length} structures × ±${POLISH}s in ${polishSecs.toFixed(1)}s`);
-console.log(`  POLISHED BEST ${(best.v / PLAIN).toFixed(4)} casts   ${JSON.stringify(best.s)}`);
-console.log(`  polish gain   ${((best.v - all[0].v) / PLAIN).toFixed(4)} casts over the grid winner`);
-console.log(`  plateau       ${plateau.length} layout(s) within ${api.TIE_CASTS} casts; canonical member chosen by planBetter`);
+console.log(`polish: ${cands.length} structures × ±${POLISH}s in ${polishSecs.toFixed(1)}s → ${pairs.length} distinct candidates`);
+console.log(`  BEST (planBetter) ${(best.pair.score / PLAIN).toFixed(6)} quant · ${(best.pair.ideal / PLAIN).toFixed(6)} ideal`);
+console.log(`                    ${JSON.stringify(best.s)}`);
+const qmax = pairs.reduce((m, p) => Math.max(m, p.pair.score), -Infinity);
+if (qmax > best.pair.score + 1e-9)
+  console.log(`  ⚠ a layout scores ${((qmax - best.pair.score) / PLAIN).toFixed(6)} casts HIGHER on the quantised`
+            + ` integral but LOSES on the pair — that gap is ms-quantisation residue (floor ~0.0011), not value.`);
+console.log(`  plateau       ${plateau.length} layout(s) the EXACT law cannot separate (ideal ties to the float floor)`);
 for (const p of plateau.slice(0, 8)) if (keyOf(p.s) !== keyOf(best.s))
-  console.log(`     Δ${((p.v - best.v) / PLAIN).toFixed(4)}  ${JSON.stringify(p.s)}`);
+  console.log(`     quantΔ${((p.pair.score - best.pair.score) / PLAIN).toFixed(6)}  ${JSON.stringify(p.s)}`);
 
 const band = api.TIE_CASTS;
 /* ── THE DECLARED-LAYOUT CHECK — the primary use (`--check`) ──────────────────────────────────────
@@ -261,12 +289,19 @@ const CHECK = arg('check', null);
 if (CHECK) {
   const want = {}; CHECK.split('/').forEach((part, i) => { if (part) want[TRACKS[i]] = part.split(',').map(Number); });
   if (LUST !== undefined) want.bloodlust = [LUST];
-  const wv = api.simulate(want, cfg, false).integral;
-  const d = (best.v - wv) / PLAIN;
-  console.log(`\n  --check layout ${(wv / PLAIN).toFixed(4)} casts   ${JSON.stringify(want)}`);
-  console.log(`  brute − check  ${d >= 0 ? '+' : ''}${d.toFixed(4)} casts ⇒ ${
-    d > band ? '⛔ the checked layout is BEATEN by brute force' : '✓ the checked layout survives the sweep'}`);
-  if (d > band) process.exit(1);
+  const wp = api.rankPair(want, cfg);
+  const dIdeal = (best.pair.ideal - wp.ideal) / PLAIN, dQuant = (best.pair.score - wp.score) / PLAIN;
+  const tiedExactly = Math.abs(best.pair.ideal - wp.ideal) <= wp.ifloor;
+  const beatsIt = api.planBetter(best.pair, wp);
+  console.log(`\n  --check layout ${(wp.score / PLAIN).toFixed(6)} quant · ${(wp.ideal / PLAIN).toFixed(6)} ideal`);
+  console.log(`                 ${JSON.stringify(want)}`);
+  console.log(`  vs brute best  idealΔ ${dIdeal >= 0 ? '+' : ''}${dIdeal.toFixed(6)} · quantΔ ${dQuant >= 0 ? '+' : ''}${dQuant.toFixed(6)} casts`);
+  console.log(`  ⇒ ${
+    !beatsIt ? '✅ THE CHECKED LAYOUT IS THE GLOBAL OPTIMUM of the lattice (nothing found beats it on the pair)'
+    : tiedExactly ? '⚖️ exact-law TIE, but the comparator prefers the brute-force member (a TIE-BREAK finding, not a scoring one)'
+    : dIdeal > bandAbs / PLAIN ? '⛔ BEATEN — brute force found a strictly better layout under the exact law'
+    : '⚠ beaten inside the tie band — see the plateau above'}`);
+  if (beatsIt && !tiedExactly && dIdeal > bandAbs / PLAIN) process.exit(1);
 }
 
 /* ── OPTIONAL: what the SEARCH would have emitted (`--vs-tool`) ───────────────────────────────────
