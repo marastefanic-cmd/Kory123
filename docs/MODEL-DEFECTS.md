@@ -4408,6 +4408,20 @@ neighbourhood size or effort, can prefer the canonical member, because nothing i
 first component distinguishes them. The move is 3 coordinates and 22 seconds (`zerk 27→5` together
 with `cluster 7→15` and `iv#1 7→15`), so it is outside every bounded neighbourhood as well.
 
+✅ **T7's revised layout re-certified 08-04 under the alias-fixed instrument** (below): brute force
+over all 12,976,848 legal grid layouts returns *"THE CHECKED LAYOUT IS THE GLOBAL OPTIMUM of the
+lattice"* for `iv[15,55] · cluster@15 · zerk@5`. The ruling rests on a clean measurement.
+
+⚠⚠ **AND THE INSTRUMENT HAD TO BE FIXED FIRST — the near-miss is worth recording.** The same tool
+briefly reported that `iv[15,30]` beat the declared T6 layout `iv[15,35]`. It did not: `simulate`
+legalises internally, so a press scheduled before its cooldown is ready simply FIRES when it is, and
+the two are the SAME PLAN scoring identically (100.785092). Only their press VECTORS differ, so the
+earliest-press tie-break preferred the illegal spelling. ⇒ `lattice-brute` now refuses any candidate
+`repair` rewrites (the `intact` discipline `tests/anchors.mjs`'s `scorerBeats` already used, for
+exactly this reason — it drops ~25 % of polished candidates). **T6 needed no revision; T7's survived
+the fix.** The lesson generalises: an instrument that proposes layouts must prove they are what they
+claim to be before its verdict means anything.
+
 ⇒ **The fix is a CANONICALISATION pass, not a better search.** After the score is settled, propose
 plateau-preserving restructurings and accept on `planBetter` alone: merge a press moment into another
 (especially onto a pinned raid call), then re-slide the remaining cluster. The user's own statement of
