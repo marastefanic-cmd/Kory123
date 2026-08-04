@@ -1605,3 +1605,23 @@ the ledger carries NO open work for the first time in its existence.
 **Archived:** the old ROADMAP, verbatim, as `docs/archive/19-roadmap-record-through-0804.md`; the
 living ROADMAP is now a lean status-rulings-registers doc. Two decision packages await the user;
 everything else is either shipped, gated, or a register entry saying exactly why it never will be.
+
+# 2026-08-04 (cont.) — the edge-memory ± eliminated, on a one-line user challenge
+
+Walking the user through the session's decisions, they stopped at the priced ±0.05–0.15 edge-memory
+term: *"can't you average out the values? why do you need +-?"* The honest answer was that the ± was
+a shortcut dressed as a limitation — the integrand snapped to the new state's steady average at a
+buff edge while the true average transitions over one 5s window. The transition average has the same
+closed-form structure as everything else, so it is now computed: outgoing attempts become strata
+that drain out of the trailing window as new attempts displace them (gaps ride the same list as
+procless strata, making the old linear gap remnant exact too), and the walk's aging became
+per-cast-exact (`atiUpAcc`). Plain fights bit-identical (all ATI laws to the digit); ati-off
+plan-diff IDENTICAL 21/21 vs master; anchors 17/17; new windowed `ati-mc` check green with
+engine−truth +0.102 → +0.079 at lust@30 (both edge biases removed — the plan-differential half is
+what matters). Remaining, both pre-decided: the +0.03 cold-start continuous smoothing (§8l's lattice
+ban) and the all-buffs straddle convention (PHASE8 §25). MODEL-DEFECTS §9m addendum.
+
+Lesson worth the ink: the user's question was better than my pricing. I had measured the term,
+called it second-order, and documented it — all true — but "documented and small" is not "necessary",
+and this codebase's whole method is that exactness is cheaper than error bookkeeping wherever the
+algebra allows it. It allowed it.

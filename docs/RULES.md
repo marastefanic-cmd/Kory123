@@ -1550,9 +1550,12 @@ its verification; MECHANICS §6 for the mechanics):
 - **The GCD floor is applied inside each branch** (`E[max(...)]` per state): at the floor a live proc
   buys exactly 0, and above the 788.5−145 ≈ 643.5 rating line procs are partly wasted (the "cap if
   Ashtongue" timeline line, §15).
-- **Every engagement starts proc-cold** — P builds over the first window exactly as
-  `P_k = 1−(1−q)^min(k−1,n)` (the walk carries the discrete law; the integrand its lattice-free
-  continuous form, threaded through the breakpoint loop and reset across intermissions).
+- **Every engagement starts proc-cold, and every buff edge is a transition, not a snap** — P builds
+  over the first window exactly as `P_k = 1−(1−q)^min(k−1,n)`, and at a state edge the old state's
+  history drains out of the 5s window as new attempts displace it (the strata machinery, 08-04 —
+  user: *"can't you average out the values?"*). The walk carries the discrete law with per-cast-exact
+  aging; the integrand its lattice-free continuous form, threaded through the breakpoint loop, with
+  intermission gaps riding the same window as procless time.
 
 It is **not** given a scheduled press: you can't pool a proc, and the scorer prices it as the exact
 expectation, so there is nothing to align a press *against* in the model. Excluding it from *scoring*

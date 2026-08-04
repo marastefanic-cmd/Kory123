@@ -1036,8 +1036,11 @@ function simulateRaw(schedule, cfg, collect) {
   // phases (higher q, GCD lattice) ride through naturally.
   const atiOn = !!cfg.enabled.ati;
   const atiScale = ATI.rating / (g.HASTE_RATING_PER_PCT * 100);
-  const atiHist = []; // per completed cast: {noQ, dead: atiDead at its completion}; bounded at 16
+  const atiHist = []; // per completed cast: {noQ, u: up-age accumulator, dead}; bounded at 16
   let atiDead = 0;    // cumulative no-cast (intermission) time — ages the history across gaps
+  let atiUpAcc = 0;   // cumulative counterfactual up-interval of every completed cast (08-04): each
+                      // past attempt ages by the intervening casts' OWN up intervals, not the current
+                      // cast's — exact across haste edges, identical in a homogeneous stretch
   const segs = cfg.segments || null; // "complicated fight" phases; null = plain fight, identical to the old model
   let si = 0;
   // ══════════ BOUNDARY CREDIT — one rule at every cut (PHASE12 §9, user ruling 07-27) ══════════
@@ -1440,15 +1443,16 @@ function simulateRaw(schedule, cfg, collect) {
     };
     const dn = stepFor(multDn);
     const up = atiOn ? stepFor(multUp) : dn;
-    // P(proc up at THIS cast's start) — walk the history newest-first; the entry k completions back
-    // sits at counterfactual up-lattice age k·(this cast's own up interval) plus the real dead time
-    // between it and now. Ages are monotone going back, so the first too-old entry ends the walk.
-    // Strict `< dur` matches n = ceil(dur/a): an attempt at exactly the expiry instant is spent.
+    // P(proc up at THIS cast's start) — walk the history newest-first; each entry's counterfactual
+    // age is the sum of the intervening casts' OWN up intervals (the atiUpAcc accumulator — exact
+    // across haste edges) plus the real dead time between it and now. Ages are monotone going back,
+    // so the first too-old entry ends the walk. Strict `< dur` matches n = ceil(dur/a): an attempt
+    // at exactly the expiry instant is spent.
     let pUp = 0;
     if (atiOn && atiHist.length) {
       let noProc = 1;
-      for (let j = atiHist.length - 1, k = 0; j >= 0; j--, k++) {
-        if (k * up.interval + (atiDead - atiHist[j].dead) >= ATI.dur - EPS) break;
+      for (let j = atiHist.length - 1; j >= 0; j--) {
+        if (atiUpAcc - atiHist[j].u + (atiDead - atiHist[j].dead) >= ATI.dur - EPS) break;
         noProc *= atiHist[j].noQ;
       }
       pUp = 1 - noProc;
@@ -1537,7 +1541,8 @@ function simulateRaw(schedule, cfg, collect) {
     if (atiOn) {
       // this cast's completion is one proc attempt — effective crit incl. the Potency lift, and on
       // AoE any of the N hits' crits can trigger the 50% roll (atiProcQ; no ICD, §9b)
-      atiHist.push({ noQ: 1 - atiProcQ(crit, isAoe ? seg.targets : 1), dead: atiDead });
+      atiUpAcc += up.interval;
+      atiHist.push({ noQ: 1 - atiProcQ(crit, isAoe ? seg.targets : 1), u: atiUpAcc, dead: atiDead });
       if (atiHist.length > 16) atiHist.shift(); // bounded: only the last ceil(dur/a) ≤ 6 entries can ever count
     }
     // casting blocks presses only while the cast is in flight; the GCD-idle
@@ -1749,33 +1754,82 @@ function simulateRaw(schedule, cfg, collect) {
     }
     return dmg2 / intervalAt(multDn2, aoe, g.AB.MAX_STACKS);
   };
-  /* ★★ THE ASHTONGUE ENGAGEMENT TRANSIENT — closed-form age advance (ESTABLISHED-FACTS §12.3). After
-     a cold start (the pull, or an intermission long enough to spend the history) the proc has no
-     attempts behind it: exactly, the k-th cast is up with P_k = 1−(1−q)^min(k−1,n). The lattice-free
-     continuous form is an age ODE, dν/dt = 1/(a + (b−a)·r^min(ν,n)) with P(t) = 1−r^min(ν,n) — and
-     both of its integrals are closed-form: t(ν) = a·ν + (b−a)(1−r^ν)/(−ln r) inverts by Newton
-     (monotone increasing, concave ⇒ the under-shooting initial guess converges from below), and
-     ∫ rate dt over a slice is just Δν, because the rate IS dν/dt. Below ν=n the slice is transient,
-     above it steady (linear); a slice straddling ν=n splits exactly at t(n).
-     ⚠ Deliberately CONTINUOUS: the discrete-exact transient is a t0-anchored cast lattice, and a
-     lattice may not re-enter the integrand (§8l — three versions of scoreStart each paid for that).
-     Priced by MC (PLAN §2): ν-threading recovers +0.100 of the +0.130-cast cold-start error; the
-     +0.030 residual is this continuous smoothing, accepted and documented. */
-  const atiAdvance = (nu, len, p) => {
-    const R = 1 / (p.a + (p.b - p.a) * Math.pow(p.r, p.n));
-    if (nu >= p.n) return { nu: nu + len * R, casts: len * R };
-    const lnr = Math.log(p.r);
-    const tOf = x => p.a * (x - nu) + (p.b - p.a) * (Math.pow(p.r, nu) - Math.pow(p.r, x)) / (-lnr);
-    const tToN = tOf(p.n);
-    if (len >= tToN - 1e-12) { const extra = (len - tToN) * R; return { nu: p.n + extra, casts: (p.n - nu) + extra }; }
-    let x = nu + len / (p.a + (p.b - p.a) * Math.pow(p.r, nu));
-    for (let it = 0; it < 24; it++) {
-      const f = tOf(x) - len, fp = p.a + (p.b - p.a) * Math.pow(p.r, x);
-      const nx = x - f / fp;
-      if (Math.abs(nx - x) < 1e-12) { x = nx; break; }
-      x = nx;
+  /* ★★ THE ASHTONGUE TRANSIENT **AND WINDOW MEMORY** — closed-form, exact-in-expectation
+     (ESTABLISHED-FACTS §12.3; rebuilt 08-04 on a direct user challenge — *"can't you average out the
+     values? why do you need ±?"* — the ± was the integrand snapping to the NEW state's steady average
+     at a buff edge while the true average transitions over one 5s window as the OLD state's history
+     drains out. That was a shortcut, not a necessity: the transition average has the same closed-form
+     structure, so it is now computed. The board walk always had this exactly; the two accounts now
+     agree at edges too.)
+     STATE, threaded through the breakpoint loop in time order:
+       nu      — attempts made in the CURRENT haste/q state (the age ODE, as before)
+       strata  — older attempts still inside the trailing 5s window, newest→oldest, each {r, a, cnt}:
+                 cnt attempts of per-attempt no-proc factor r at counterfactual up-spacing a. An
+                 intermission gap rides the same list as a PROCLESS stratum {r:1, a:1, cnt:gap} — it
+                 occupies window and ages out with it, which is exactly what a gap does to memory.
+     P_down at any instant = r^min(nu,n) × Π strata r_s^(surviving_s), survivors filling the window
+     budget dur − nu·a newest-first — history drains exactly as new attempts displace it, across any
+     number of state changes. Within an advance segment P_down(d) = P0·ρ^d with
+     ρ = r · r_part^(−a/a_part) (only the one partially-expelled stratum decays), so
+     t(d) = a·d + (b−a)·P0·(ρ^d − 1)/ln ρ stays invertible (bisection-safeguarded Newton; the rate is
+     bounded in [1/b, 1/a], which brackets d) and ∫ rate dt over the advance is just d — the rate IS
+     dν/dt. Structural kinks (a stratum exhausting; nu reaching n, where the window saturates into
+     steady state) are crossed exactly, one at a time — a handful per fight.
+     ⚠ Still deliberately CONTINUOUS in nu: the discrete-exact law is a t0-anchored cast lattice, and
+     a lattice may not re-enter the integrand (§8l). The +0.030-cast/engagement continuous-smoothing
+     residual remains the one accepted approximation; the ±0.05–0.15 edge-memory term is GONE. */
+  const atiSt = { nu: 0, strata: [] };
+  const atiFold = (r0, a0, cnt) => { if (cnt > 1e-12) atiSt.strata.unshift({ r: r0, a: a0, cnt }); };
+  const atiTrim = aCur => {
+    let budget = ATI.dur - atiSt.nu * aCur;
+    for (let i = 0; i < atiSt.strata.length; i++) {
+      if (budget <= 1e-12) { atiSt.strata.length = i; return; }
+      budget -= atiSt.strata[i].cnt * atiSt.strata[i].a;
     }
-    return { nu: x, casts: x - nu };
+  };
+  const atiSlice = (p, len) => {   // advance the state through a live slice; returns E[casts made]
+    let made = 0, left = len;
+    for (let guard = 0; left > 1e-12 && guard < 64; guard++) {
+      if (atiSt.nu >= p.n - 1e-9) {                       // window saturated by current-state attempts
+        const R = 1 / (p.a + (p.b - p.a) * Math.pow(p.r, p.n));
+        made += left * R; atiSt.nu += left * R; return made;
+      }
+      // survivors of the trailing window right now; the first stratum that does not fully fit is the
+      // one draining (deeper ones are already fully outside and can never return — drop them)
+      let budget = ATI.dur - atiSt.nu * p.a, P0 = Math.pow(p.r, atiSt.nu), partial = -1, partFit = 0;
+      for (let i = 0; i < atiSt.strata.length; i++) {
+        const s = atiSt.strata[i], fit = Math.min(s.cnt, Math.max(0, budget) / s.a);
+        P0 *= Math.pow(s.r, fit);
+        budget -= s.cnt * s.a;
+        if (fit < s.cnt - 1e-12) { partial = i; partFit = fit; break; }
+      }
+      if (partial >= 0) atiSt.strata.length = partial + 1;
+      const rho = partial >= 0 ? p.r * Math.pow(atiSt.strata[partial].r, -p.a / atiSt.strata[partial].a) : p.r;
+      const lnrho = Math.log(rho);
+      const tOf = d => Math.abs(lnrho) < 1e-12
+        ? (p.a + (p.b - p.a) * P0) * d
+        : p.a * d + (p.b - p.a) * P0 * (Math.pow(rho, d) - 1) / lnrho;
+      const kCap = p.n - atiSt.nu;
+      const kStr = partial >= 0 ? partFit * atiSt.strata[partial].a / p.a : Infinity;
+      const kink = Math.min(kCap, kStr);
+      const tKink = tOf(kink);
+      if (tKink <= left + 1e-12) {                        // cross the kink exactly and re-derive
+        made += kink; atiSt.nu += kink; left -= Math.max(0, tKink);
+        if (kStr <= kCap && partial >= 0) atiSt.strata.pop();
+        continue;
+      }
+      let lo = left / p.b, hi = left / p.a, d = left / (p.a + (p.b - p.a) * P0);
+      for (let it = 0; it < 48; it++) {
+        if (!(d >= lo && d <= hi)) d = (lo + hi) / 2;
+        const f = tOf(d) - left;
+        if (Math.abs(f) < 1e-12 || hi - lo < 1e-13) break;
+        if (f > 0) hi = d; else lo = d;
+        d -= f / (p.a + (p.b - p.a) * P0 * Math.pow(rho, d));
+      }
+      d = Math.min(Math.max(d, lo), hi);
+      made += d; atiSt.nu += d; left = 0;
+    }
+    return made;
   };
   // ═══════════ exact discrete ramp — the opener & every post-gap re-engage ═══════════
   // The first MAX_STACKS Arcane Blasts after every cold start (the pull at 0 stacks — no prestack
@@ -1860,7 +1914,7 @@ function simulateRaw(schedule, cfg, collect) {
   const bps = [...bpS].filter(x => x >= 0 && x <= cfg.T + KWD).sort((a, b) => a - b);
   total = 0; totalEarly = 0; robust = 0;
   let sj = 0;
-  let atiNu = 0, atiLiveEnd = 0; // engagement age + last live-slice end, threaded through the loop (atiOn only)
+  let atiPrevP = null, atiLiveEnd = 0; // previous live slice's ATI params + end, threaded through the loop (atiOn only)
   for (let i = 0; i < bps.length - 1; i++) {
     const a = bps[i], b = bps[i + 1], len = b - a;
     if (len < 1e-9) continue;
@@ -1921,18 +1975,25 @@ function simulateRaw(schedule, cfg, collect) {
     const stT = scanAt(mid, segB);
     let liveRate;
     if (atiOn) {
-      // Thread the Ashtongue engagement age through the loop: slices arrive in time order and
+      // Thread the Ashtongue window memory through the loop: slices arrive in time order and
       // intermission slices `continue` above, so a gap between this slice's start and the last live
-      // end is dead time. The history survives it only partially — ν ← min(ν, (dur − gap)/a), the
-      // linear remnant of a 5s memory (gap ≥ dur ⇒ full reset, matching the walk's atiDead aging).
+      // end is dead time — folded into the strata as a PROCLESS entry that occupies window and ages
+      // out naturally. A state change folds the outgoing state's attempts into a stratum the same
+      // way, so the old average drains over one window instead of snapping (the 08-04 rebuild).
       // The advance runs NET of the opener toll: toll casts never happened, so they rolled no procs.
       const p = atiParamsAt(stT.multDn2, stT.mult2, stT.aoe, segB);
       const gap = a - atiLiveEnd;
-      if (gap > EPS) atiNu = Math.min(atiNu, Math.max(0, (ATI.dur - gap) / p.a));
-      const adv = atiAdvance(atiNu, len, p);
-      liveRate = stT.dmg2 * adv.casts / len;
-      atiNu = Math.max(0, adv.nu - tollR * len);
-      atiLiveEnd = b;
+      const edged = atiPrevP && (atiPrevP.a !== p.a || atiPrevP.b !== p.b || atiPrevP.q !== p.q);
+      if ((gap > EPS || edged) && atiPrevP) {
+        atiFold(atiPrevP.r, atiPrevP.a, Math.min(atiSt.nu, atiPrevP.n));
+        atiSt.nu = 0;
+        if (gap > EPS) atiFold(1, 1, gap);
+      }
+      atiTrim(p.a);
+      const madeCasts = atiSlice(p, len);
+      liveRate = stT.dmg2 * madeCasts / len;
+      atiSt.nu = Math.max(0, atiSt.nu - tollR * len);
+      atiLiveEnd = b; atiPrevP = p;
     } else liveRate = rateAt(mid, segB);
     const contrib = (liveRate - tollR * dmgOf(stT.sp2, stT.dmgMult2, segB, false)) * len;
     if (b <= cfg.T + 1e-9) total += contrib;

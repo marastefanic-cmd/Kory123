@@ -1526,12 +1526,19 @@ T=180 cell.
 
 ### §12.4 Priced and NOT modeled — the honest edges
 
-- **Window-edge P-memory:** proc history crossing a buff edge re-equilibrates instantly in the
-  integrand (the walk's product handles it naturally). MC-priced at ±0.05–0.15 casts per edge pair,
-  second-order between plans, and smaller than the pre-existing accepted in-flight-straddle
-  convention at every window edge (the boundary-charge story, PHASE8 §25).
-- **Gap < 5 s memory** across an intermission: linear `(dur−gap)/a` remnant, an approximation
-  (real intermissions are ≥ 20 s, where it is exact — full reset).
+- ✅ **Window-edge P-memory — MODELED EXACTLY since 08-04** (user challenge: *"can't you average out
+  the values? why do you need ±?"* — the ± was a shortcut, not a necessity). The integrand now
+  carries the transition average: at a state edge the outgoing attempts become a STRATUM that drains
+  out of the trailing 5 s window exactly as new attempts displace it, each advance segment still
+  closed-form (`P_down(d) = P0·ρ^d`, the same Newton inversion). The walk's history aging became
+  per-cast-exact in the same change (each past attempt ages by the intervening casts' OWN up
+  intervals — the `atiUpAcc` accumulator). Measured on the windowed MC check (`ati-mc`, lust@30
+  T=120): engine−truth +0.102 → +0.079, the removed part being both edge biases; what remains is the
+  cold-start smoothing (+0.03, §12.3) plus the pre-existing all-buffs in-flight-straddle convention
+  (the boundary-charge story, PHASE8 §25 — not an ATI term).
+- ✅ **Gap < 5 s memory** across an intermission — also exact since 08-04, by the same device: a gap
+  rides the strata list as a PROCLESS entry `{r:1, a:1, cnt:gap}` that occupies window and ages out
+  naturally (the walk's `atiDead` aging was already exact).
 - **q → 1 limit:** the continuous transient loses the one down-speed first cast, ≤ (b−a) once per
   engagement, reachable only at extreme-crit AoE.
 - **Variance:** the model reports a MEAN (standing project limit — CLAUDE.md).

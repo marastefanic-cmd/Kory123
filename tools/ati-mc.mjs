@@ -49,14 +49,18 @@ const ivOf = (m, stacks) => {
 
 // ── the true process, from a cold pull: real ramp lattice, proc rolls at completions ─────────────
 // Returns expected effective casts by T (continuous credit for the straddling cast, the engine's own
-// convention) averaged over `runs` seeded runs.
-function mcFight(T, h, crit, runs, seed) {
+// convention) averaged over `runs` seeded runs. `wins` = raid-external haste windows [start, end,
+// mult] (aura at the CALL, both accounts agree on that geometry — no press-snap seam in this check);
+// haste snapshots at cast START, exactly the engine's rule.
+function mcFight(T, h, crit, runs, seed, wins) {
   const rnd = mulberry32(seed), q = qOf(crit);
   let acc = 0;
   for (let rr = 0; rr < runs; rr++) {
     let t = 0, rem = 0, stacks = 0, casts = 0;
     while (t < T) {
-      const m = 1 + (h + (rem > 0 ? G.ATI.RATING : 0)) / RTG;
+      let mult = 1;
+      if (wins) for (const [ws, we, wm] of wins) if (t >= ws && t < we) mult *= wm;
+      const m = mult * (1 + (h + (rem > 0 ? G.ATI.RATING : 0)) / RTG);
       const i = ivOf(m, stacks);
       casts += Math.min(1, (T - t) / i);
       t += i;
@@ -86,13 +90,14 @@ function mcSteadyRate(h, crit, nCasts, seed) {
 }
 
 // ── the engine side ──────────────────────────────────────────────────────────────────────────────
-const cfgOf = (T, h, critPct) => ({
+const cfgOf = (T, h, critPct, lust) => ({
   T, hasteRating: h, sp: 1000, critPct,
-  enabled: Object.fromEntries(ALL_BUFFS.map(k => [k, k === 'ati'])),
-  fixed: {}, warnings: [], coldSnap: true, segments: null,
+  enabled: Object.fromEntries(ALL_BUFFS.map(k => [k, k === 'ati' || (lust !== undefined && k === 'bloodlust')])),
+  fixed: lust !== undefined ? { bloodlust: [lust] } : {}, warnings: [], coldSnap: true, segments: null,
 });
 const one = critPct => (G.AB.AVG_BASE_DMG + G.AB.COEF * 1000) * (1 + (critPct / 100) * (G.CRIT_MULT - 1));
-const casts = (T, h, critPct) => api.simulate({}, cfgOf(T, h, critPct), true).integral / one(critPct);
+const casts = (T, h, critPct, lust) => api.simulate(lust !== undefined ? { bloodlust: [lust] } : {},
+  cfgOf(T, h, critPct, lust), true).integral / one(critPct);
 
 /* ⚠ NEGATIVE CONTROL — `--self-test` replaces the ENGINE's steady reading with the RETIRED model's:
    attempts counted on the DOWN lattice (`dur/b` exponent) and the E[1/i] blend — the exact pre-08-03
@@ -128,6 +133,18 @@ for (const { T, h, crit } of [{ T: 120, h: 0, crit: 50.765 }, { T: 180, h: 0, cr
   const eng = casts(T, h, crit);
   const mc = mcFight(T, h, crit / 100, 200000, 424242);
   chk(`full fight T=${T} h=${h} crit=${crit}`, eng, mc, 0.25);
+}
+// WINDOWED full fight — the edge-memory check (08-04). A Bloodlust pinned mid-fight puts two haste
+// edges in the proc's path; the true average transitions over one 5s window at each. The engine
+// carries that transition exactly (the strata machinery) — the residual here is the pre-existing
+// in-flight-straddle convention at the edges plus the continuous-transient smoothing, both priced
+// in ESTABLISHED-FACTS §12.3/§12.4. Pinned externals only: their aura starts at the CALL in both
+// accounts, so this check has no press-snap seam.
+console.log('\nWINDOWED (a pinned Bloodlust mid-fight — proc memory crossing haste edges):');
+for (const { T, h, crit, lust } of [{ T: 120, h: 0, crit: 50.765, lust: 30 }, { T: 150, h: 0, crit: 38, lust: 60 }]) {
+  const eng = casts(T, h, crit, lust);
+  const mc = mcFight(T, h, crit / 100, 200000, 91919, [[lust, lust + 40, 1.3]]);
+  chk(`lust@${lust} T=${T} crit=${crit}`, eng, mc, 0.15);
 }
 
 if (SELFTEST) {

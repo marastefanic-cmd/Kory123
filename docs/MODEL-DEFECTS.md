@@ -4365,3 +4365,22 @@ the GCD cap, where §7's crossovers live), not in any cooldown's model. It is a 
 `phaseRerank`'s move classes or the seed classes — and per the standing rule it must NOT be answered
 in `simulate()`: the scorer ranks the better plan correctly, which is the only reason the miss is
 visible at all (`law-check` green throughout).
+
+### §9m addendum — ✅ THE EDGE-MEMORY ± ELIMINATED (08-04, user challenge)
+
+Reviewing the decision walkthrough the user asked, of §12.4's priced ±0.05–0.15 edge-memory term:
+*"can't you average out the values? why do you need +-?"* — and the honest answer was that the ± was
+a CHOICE (the integrand snapping to the new steady average at a buff edge) dressed as a limitation.
+The transition average has the same closed-form structure as everything else: the outgoing state's
+attempts become a stratum that drains out of the trailing window as new attempts displace it,
+`P_down(d) = P0·ρ^d` per advance segment, same Newton inversion, structural kinks crossed exactly.
+Intermission gaps ride the same list as procless strata (making the old linear `(dur−gap)/a` remnant
+exact too), and the walk's aging became per-cast-exact (`atiUpAcc` — each attempt ages by the
+intervening casts' own up intervals). Plain-fight numbers are BIT-IDENTICAL (no edges ⇒ no strata ⇒
+same algebra: all ATI law lines unchanged to the digit); windowed fights move ≤0.03 casts; ati-off
+paths untouched (plan-diff IDENTICAL). New windowed `ati-mc` check (pinned Bloodlust — externals
+share exact window geometry, no press-snap seam): engine−truth +0.102 → +0.079 at lust@30, the
+removed part being both edge biases (which partially cancel in totals but NOT in plan differentials —
+the ranking-relevant half). What remains in the budget: the +0.03 cold-start continuous smoothing
+(§8l's lattice ban, accepted) and the pre-existing all-buffs straddle convention (PHASE8 §25, not an
+ATI term).

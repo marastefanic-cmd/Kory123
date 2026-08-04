@@ -205,9 +205,11 @@ bit-equal to recomputation; collect=true always computes fresh.
   counterfactual up-lattice age + `atiDead` intermission time) yields `pUp` per cast, blended into
   `interval`/`tcVal`/`dur` with the floor inside each branch. The INTEGRAND carries the renewal
   steady state (`atiParamsAt` → `P = 1−(1−q)^n`, rate `1/(aP+b(1−P))` in `rateAt`) plus the
-  engagement transient threaded through the breakpoint loop (`atiAdvance`, an age ν advanced in
-  closed form per slice, net of the toll, reset across intermissions). Everything is gated on
-  `cfg.enabled.ati` — ati-off paths are byte-identical (plan-diff IDENTICAL, 21/21).
+  engagement transient AND the window memory threaded through the breakpoint loop (`atiSlice` +
+  `atiSt.strata`, 08-04: an age ν advanced in closed form per slice, net of the toll, with state
+  edges folding the outgoing attempts into strata that drain out of the 5s window — gaps ride the
+  same list as procless strata). Everything is gated on `cfg.enabled.ati` — ati-off paths are
+  byte-identical (plan-diff IDENTICAL, 21/21).
 - AoE segments: `dmg` uses AE base × `targets` × `aoeCritAmp`, interval = GCD only.
 
 > ### ★★★★ THE FINISHING TAIL IS MONOTONE, AND ITS BUDGET IS A TIE-BREAK (user ruling 07-28)
