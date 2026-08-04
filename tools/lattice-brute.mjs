@@ -54,11 +54,16 @@ const SP = +arg('sp', 1387), CRIT = +arg('crit', 38), HASTE = +arg('haste', 0);
 const T5 = flag('t5two'), ATI = flag('ati');
 const KIT = (arg('kit', 'icyVeins,isc,scb,arcanePower,berserking')).split(',').filter(Boolean);
 
+/* `--interm=from,to` — the declared corpus needs it (T5 1:30–2:10, T7 0:50–0:55, T8 0:15–0:20), and
+   the phase shape is built by the ENGINE's own `buildSegments`, the same call `tests/anchors.mjs:154`
+   makes, so a cell here is the identical fight the test asserts rather than a re-typed approximation. */
+const INTERM = arg('interm', null);
 const cfg = {
   T, hasteRating: HASTE, sp: SP, critPct: CRIT, coldSnap: true, t5two: T5, warnings: [],
   enabled: Object.fromEntries(ALL_BUFFS.map(k => [k, KIT.includes(k) || (ATI && k === 'ati') || (LUST !== undefined && k === 'bloodlust')])),
   fixed: LUST === undefined ? {} : { bloodlust: [LUST] },
-  segments: null,
+  segments: INTERM ? api.buildSegments([{ from: +INTERM.split(',')[0], to: +INTERM.split(',')[1],
+                                          type: 'intermission', mult: 1, targets: 0 }], T) : null,
 };
 const PLAIN = api.plainCastOf(cfg);
 
@@ -213,7 +218,7 @@ if (TOTAL > 4e8) die(`${TOTAL.toLocaleString()} layouts is beyond the raw regime
    key is already present exits immediately. A batch is then just a shell loop that can be
    interrupted and restarted at will. */
 const OUT = arg('out', null);
-const CELLKEY = JSON.stringify({ T, LUST, SP, CRIT, HASTE, T5, ATI, KIT: KIT.join(','), STEP, POLISH, TOPN });
+const CELLKEY = JSON.stringify({ T, LUST, SP, CRIT, HASTE, T5, ATI, KIT: KIT.join(','), STEP, POLISH, TOPN, INTERM });
 if (OUT) {
   try {
     const prior = (await import('node:fs')).readFileSync(OUT, 'utf8').split('\n').filter(Boolean);
@@ -333,7 +338,7 @@ if (OUT) {
   const fs = await import('node:fs');
   fs.appendFileSync(OUT, JSON.stringify({
     cell: CELLKEY, T, lust: LUST, sp: SP, crit: CRIT, haste: HASTE, t5two: T5, ati: ATI, kit: KIT.join(','),
-    layouts: TOTAL, sweepSecs: +sweepSecs.toFixed(1), polishSecs: +polishSecs.toFixed(1),
+    interm: INTERM, layouts: TOTAL, sweepSecs: +sweepSecs.toFixed(1), polishSecs: +polishSecs.toFixed(1),
     best: best.s, quant: best.pair.score / PLAIN, ideal: best.pair.ideal / PLAIN,
     plateau: plateau.length, plateauSample: plateau.slice(0, 6).map(p => p.s),
     check: CHECK || null,
