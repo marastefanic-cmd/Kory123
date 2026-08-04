@@ -7,7 +7,7 @@
 # it's doing more harm than good... we have the function/equation locked down and from now on we're
 # better off on our own"*), so `sim/`, the harness tools and those gates are gone from the repo.
 # What remains is the whole of what this project now checks, and it needs no browser, no Go toolchain
-# and no network beyond the checkout: **the eight declared layouts** and **the closed forms**.
+# and no network beyond the checkout: **the seventeen declared layouts** and **the closed forms**.
 #
 # ── ★ EVERY JOB CARRIES A NEGATIVE CONTROL, AND THAT IS NOT OPTIONAL ─────────────────────────────
 # PHASE11's own rule: *"every new CI job needs a negative control (a deliberately-broken input that
@@ -37,7 +37,7 @@ concurrency:
 
 jobs:
   the-tests:
-    name: THE TESTS (the eight declared layouts) + the closed forms
+    name: THE TESTS (the seventeen declared layouts) + the closed forms
     # ✅ BLOCKING as of 2026-07-30. This job carried `continue-on-error: true` with a stated exit
     # condition — *"flip it to false the day anchors goes green"* — because `docs/MODEL-DEFECTS.md` D1
     # was open and the declared layouts were its target. D1 closed (§8h–§8m), anchors reads **8 of 8**,
@@ -59,7 +59,7 @@ jobs:
           node-version: '22'
 
       # No browser, no rig, no golden file — it runs the real optimizer and compares press times.
-      - name: the eight declared layouts
+      - name: the seventeen declared layouts
         run: node tests/anchors.mjs
 
       # The SCORER against the algebra, which is prior to any question about layouts. Every scoring
@@ -157,3 +157,98 @@ jobs:
       # audits clean would mean the neighbourhood asserts nothing. Inverts its exit contract.
       - name: '↳ negative control: a displaced press must be CAUGHT'
         run: node tools/search-audit.mjs /tmp/sweep.json --k=3 --self-test
+
+      # ★ ADDED 2026-08-04 (PHASE13 §5.5's third owed job). The page runs every REAL solve through a
+      # worker pool; every test above runs the sequential path. This reproduces the page's exact pool
+      # protocol in node (worker_threads polish servers over transferred MessagePorts, adopted via the
+      # engine's own poolInit) and asserts the two paths return byte-identical plans — with a vacuity
+      # guard (zero jobs crossing a port is a FAILURE, not a pass).
+      - name: pooled == sequential, byte for byte (pool-equiv)
+        run: node tools/pool-equiv.mjs
+
+      # NEGATIVE CONTROL: corrupt every pooled polish result (press displaced, val inflated so the
+      # corruption wins the reduction) and require the equality check to CATCH the divergence.
+      - name: '↳ negative control: a corrupted pool result must be CAUGHT'
+        run: node tools/pool-equiv.mjs --self-test
+
+  plan-stability:
+    name: PLAN STABILITY (A/B vs the merge-base engine)
+    # ★ ADDED 2026-08-04 — the job PHASE13 §5.5 said CI still owed. `anchors` asserts the 17 declared
+    # cells and `the-search` asserts local optimality of whatever HEAD emits — neither notices when a
+    # change quietly moves a plan on the OTHER presets, which is exactly the hole PHASE9 §5.15 closed
+    # by hand and nothing has watched since the goldens were deleted. This job solves every preset on
+    # the merge-base engine AND on HEAD, then grades the movement with `plan-diff --allow-change`:
+    # intended movement passes (an improvement is the point of a search change), but a SCORER-PINNED
+    # REGRESSION or a backwards tie-break fails — the same comparator the engine itself adopts with,
+    # loaded from HEAD's html, never re-implemented here (the §8t/§8u/§8y lesson, four instruments deep).
+    # ⚠ A deliberate REPRICING (identical plan, different score) is reported as scorerMoved and the
+    # sign split is NOT graded — that case is the law gates' job, not this one's.
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: resolve the base engine
+        run: |
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            BASE="${{ github.event.pull_request.base.sha }}"
+          else
+            BASE="$(git rev-parse HEAD^)"
+          fi
+          echo "base = $BASE"
+          git show "$BASE:index.html" > /tmp/base-index.html
+
+      - name: sweep the BASE engine
+        run: node tools/plan-sweep.mjs /tmp/base-index.html /tmp/base.json 3 --max-t=200
+
+      - name: sweep HEAD
+        run: node tools/plan-sweep.mjs index.html /tmp/head.json 3 --max-t=200
+
+      # Presets added or removed between base and HEAD would exit 2 as PLAN-DIFF-INCOMPLETE — but a
+      # PR that ADDS a declared test is routine and must not red this job. Reduce both sweeps to the
+      # shared cells, saying what was dropped; the shared cells are still fully graded.
+      - name: reduce to the shared corpus
+        run: |
+          node -e '
+            const fs = require("fs");
+            const A = JSON.parse(fs.readFileSync("/tmp/base.json", "utf8"));
+            const B = JSON.parse(fs.readFileSync("/tmp/head.json", "utf8"));
+            const an = new Set(A.cells.map(c => c.name)), bn = new Set(B.cells.map(c => c.name));
+            const onlyA = A.cells.filter(c => !bn.has(c.name)).map(c => c.name);
+            const onlyB = B.cells.filter(c => !an.has(c.name)).map(c => c.name);
+            if (onlyA.length) console.log("dropped (base only):", onlyA.join(", "));
+            if (onlyB.length) console.log("dropped (HEAD only):", onlyB.join(", "));
+            A.cells = A.cells.filter(c => bn.has(c.name));
+            B.cells = B.cells.filter(c => an.has(c.name));
+            fs.writeFileSync("/tmp/base.json", JSON.stringify(A));
+            fs.writeFileSync("/tmp/head.json", JSON.stringify(B));
+          '
+
+      - name: no regression, no backwards tie-break (plan-diff --allow-change)
+        run: node tools/plan-diff.mjs /tmp/base.json /tmp/head.json --allow-change
+
+      # NEGATIVE CONTROL: seed a search regression — one press displaced, that cell's recorded score
+      # lowered by 3 bands — and require plan-diff to fail on it. A gate that cannot see a seeded
+      # regression is decoration (PHASE11's B7/B8 rule: no green is believed until its break is seen).
+      - name: '↳ negative control: a seeded regression must be CAUGHT'
+        run: |
+          node -e '
+            const fs = require("fs");
+            const B = JSON.parse(fs.readFileSync("/tmp/head.json", "utf8"));
+            const c = B.cells.find(c => c.s && !c.error && Object.keys(c.s).some(k => Array.isArray(c.s[k]) && c.s[k].length));
+            const k = Object.keys(c.s).find(k => Array.isArray(c.s[k]) && c.s[k].length);
+            c.s[k] = c.s[k].slice(); c.s[k][0] = Math.round(c.s[k][0]) + 3;
+            c.score = c.score - 3 * (c.band || 1);
+            fs.writeFileSync("/tmp/corrupt.json", JSON.stringify(B));
+            console.log("seeded: " + k + "#0+3 with a 3-band score drop at \"" + c.name + "\"");
+          '
+          if node tools/plan-diff.mjs /tmp/head.json /tmp/corrupt.json --allow-change; then
+            echo "⛔ the seeded regression was NOT caught — the gate is decoration"; exit 1
+          else
+            echo "✓ caught"
+          fi

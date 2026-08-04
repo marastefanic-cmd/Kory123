@@ -1057,16 +1057,20 @@ flips 1e-7 accepts and is the falsified-by-construction branch. Gate: full sweep
 ⛔ **Planner-to-WASM stays rejected**: non-correctly-rounded `Math.pow`/libm means no bit-identical
 promise; it would be a deliberate re-golden major version, a project decision rather than a perf item.
 
-### 5.5 What CI still owes
+### 5.5 What CI still owes — ✅ SETTLED 08-04, all three accounted for
 
-**Why it is open:** CI exists (`.github/workflows/ci.yml` — `fast`, `page`, `plans`) but three jobs from
-the original scope are not in it: the **`plan-sweep` A/B-vs-merge-base + `plan-diff`** job (catches
-unintended plan movement *and* scorer-pinned score regressions — the gate hole PHASE9 §5.15 closed by
-hand), the **cached native-runner build** keyed on `pin+patches-hash+go-version` that would make the
-full anti-drift matrix CI-able, and the **pooled-vs-sequential byte-equality** assertion that would turn
-F11's *"verified"* claim into a standing gate. ⚠ Every new job needs a **negative control** before its
-green is believed — two of the three existing jobs carry one, which is the only reason they are
-evidence.
+**Was:** three jobs from the original scope missing. **Now:**
+- ✅ **`plan-sweep` A/B-vs-merge-base + `plan-diff`** — LANDED 08-04 as the `plan-stability` job:
+  sweeps the merge-base engine and HEAD, reduces to the shared corpus (so adding a declared test stays
+  routine), grades with `--allow-change` (intended movement passes; a scorer-pinned regression or a
+  backwards tie-break fails), and carries a negative control (a seeded 3-band regression must be
+  caught — verified locally before landing).
+- ⛔ **the cached native-runner build** — VOID: the runner was deleted with the sim (07-30); there is
+  no anti-drift matrix left to make CI-able.
+- ✅ **pooled-vs-sequential byte-equality** — LANDED 08-04 as `tools/pool-equiv.mjs` + its CI step
+  (see the commit); the F11 *"verified"* claim is a standing gate now, with its own negative controls
+  (a corrupted pool result must be caught, and a run where no job crossed a port must fail rather
+  than pass vacuously).
 
 ### 5.6 Product routes (archived PHASE11 §4)
 

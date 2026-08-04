@@ -66,6 +66,12 @@ export function loadEngine(htmlPath) {
                // phaseFinish's start set — exported so a probe can replay its chain start by start.
                phaseStarts: typeof phaseStarts !== 'undefined' ? phaseStarts : undefined,
                phaseFinish: typeof phaseFinish !== 'undefined' ? phaseFinish : undefined,
+               // The pool plumbing, for tools/pool-equiv.mjs: polish is what a pool worker serves,
+               // poolInit is how the orchestrating engine instance adopts a set of ports. Exported
+               // rather than re-implemented — a re-typed polish server would be the copies-drift
+               // defect this loader exists to prevent. typeof-guarded like everything above.
+               polish:      typeof polish      !== 'undefined' ? polish      : undefined,
+               poolInit:    typeof poolInit    !== 'undefined' ? poolInit    : undefined,
                cases: [...window.BOSS_PRESETS, ...window.GOLDEN_PRESETS],
                nBoss: window.BOSS_PRESETS.length, nGolden: window.GOLDEN_PRESETS.length,
                defaults: window.GOLDEN_DEFAULTS };`)(win, globalThis);
