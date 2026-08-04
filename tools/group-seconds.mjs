@@ -5,7 +5,7 @@
 //   node tools/group-seconds.mjs --T=120 --lust=5
 //
 // ── WHAT THIS IS FOR ─────────────────────────────────────────────────────────────────────────────
-// `docs/PHASE13.md` §3 wants to replace the descent with a CONSTRUCTIVE enumeration: derive the few
+// `docs/archive/18-phase13-post-exact-objective.md` §3 wants to replace the descent with a CONSTRUCTIVE enumeration: derive the few
 // seconds a press could sensibly sit on, then enumerate assignments. Two claims have to hold for that
 // to be worth building, and both were measured on 2026-07-30 at **one haste level with one kit**:
 //

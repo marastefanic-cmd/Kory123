@@ -6,9 +6,9 @@ Read this first. It orients you on the project; the `docs/` files hold the detai
 
 A **TBC 2.4.3 Arcane-mage cooldown-overlay planner**: `index.html` (open it in a browser — no build,
 no deps). The app is still ONE self-contained file **today, but that convention is RETIRED by
-decision** — `docs/PHASE13.md` §5.1 splits it (design in `docs/archive/12-phase11-platform.md` §2),
-gated on plans staying byte-identical. Treat
-"single-file" as a fact about HEAD, not a constraint to defend.
+decision** — the module split (PHASE13 §5.1, carried by `docs/ROADMAP.md` §0d since PHASE13 archived
+08-04) splits it (design in `docs/archive/12-phase11-platform.md` §2), gated on plans staying
+byte-identical. Treat "single-file" as a fact about HEAD, not a constraint to defend.
 
 ⛔ **THE SIMULATOR IS RETIRED (user decision, 2026-07-30)** — *"I actually want you to retire the
 simming, it's doing more harm than good. I think we have the function/equation locked down and from now
@@ -343,7 +343,8 @@ miss is §8y's, whose fix is written and blocked on a user call, and on the pre-
 moves and six 3-coordinate ones — a k≤2 audit calls that plan optimal.
 ⚠ **A pass is LOCAL optimality only.** T2's declared Berserking is +120 s from where the descent put it
 (§8j); no bounded neighbourhood at any k finds that. Global optimality needs the constructive
-enumeration (`docs/PHASE13.md` §3) — this gate is that programme's regression net, not its replacement.
+enumeration (PHASE13 §3, carried by ROADMAP §0d) — this gate is that programme's regression net, not
+its replacement.
 ⛔ **It grades on the objective PAIR**, via the engine's exported `rankPair`/`planBetter`. Grading on
 `rankScore` alone made it report T1 — a declared test, and the argmax — as a miss "beaten by 0.000347
 casts", 5.8× inside the tie band. **Three instruments made that same mistake in one day** (§8t,
@@ -596,7 +597,9 @@ Treat maintaining them as part of the work, not an afterthought:
   archived whole on 07-30 and bannered. **Historical evidence about a retired instrument; every command
   in them is dead.** `docs/archive/README.md` explains what replaced it and what was genuinely lost
   (mana + AoE weighting are now unmeasured).
-- `docs/ROADMAP.md` — status, current work, and open questions.
+- `docs/ROADMAP.md` — ▶▶ **THE LIVE PLAN** (since PHASE13 archived, 08-04): status, current work, and
+  open questions. Its §0d carries PHASE13's inheritance — the enumeration programme, the platform
+  track, the seven live user calls, the traps.
 - `docs/DIARY.md` — **append-only history** of how the tool evolved: the phase arc + the
   believed→disproved corrections ledger. Read to avoid re-litigating settled mistakes.
 - `docs/archive/` — closed-phase docs, chronological with a README index (`01`–`06` = the per-phase
@@ -644,7 +647,7 @@ Treat maintaining them as part of the work, not an afterthought:
   plan-neutral by the engine block being **byte-identical**, not by assertion). ✅ **The §1.4 doc sweep
   landed. ✅ CI came up** (`.github/workflows/ci.yml`: `fast`, `page`, `plans` — two carrying negative
   controls). ⛔ **The module split, the perf ladder and the product routes were NEVER STARTED**, and
-  the eight §8 user calls are unanswered — all inherited by `docs/PHASE13.md` §5/§6.
+  the eight §8 user calls are unanswered — inherited by PHASE13 §5/§6, now carried by ROADMAP §0d.
   ⚠ **Its own header claimed "not started, nothing has changed" while all four named directories had
   changed**; the archived doc opens with a banner saying so, and six blocks inside it are bannered
   false in place (its "no CI exists" line, F9's retired constant pairing, §3.3's rate-integral-era
@@ -658,25 +661,27 @@ Treat maintaining them as part of the work, not an afterthought:
   defect (§6.9), and the cast lattice (§6.14: `STACK_CAST_REDUCTION 1/3 → 334 ms` **plus** millisecond
   rounding) all closed; cooldowns now chain from the **fire** (§6.14c, HELD 18 → 1 of 196).
   `exact-match` **25/25**, `self-consistency` **0.00e+0**.
-  ⚠ **CLOSED, NOT FINISHED** — §7's search-optimality proof programme and the acceptance re-gather are
-  `docs/PHASE13.md`'s.
+  ⚠ **CLOSED, NOT FINISHED** — §7's search-optimality proof programme went to PHASE13 §3 (now
+  ROADMAP §0d); the acceptance re-gather was voided with the sim.
   ⛔ **Six of its blocks are live-sounding instructions that later sections falsified** and are
   bannered in place; the dangerous one is **§6.11e's *"`exact-match` WILL FAIL … do NOT `--update`"***,
   which was true for a few hours on 07-27 and is false now. **§6.6/§6.7's mechanism is falsified by
   §6.9a.** ⚠ Cite the cooldown-chain fix as **§6.14c**, never "§3" (§3 is the debts table).
   ★ Its durable payload is §6's **four instruments that flattered or blinded themselves in one phase** —
   read a tool's output, not its verdict line.
-- `docs/PHASE13.md` — ▶▶ **THE LIVE PLAN, AND THE ONLY ONE.** Everything in it is genuinely open, each
-  item with one line on why, and **nothing in it changes a number the tool prints today**. §1 (the AoE
-  edge) is ✅ **decided and landed** — and it flipped **twice** in one day (shipped as a cut → removed
-  on physics → **restored on policy**, which is where it stands): an AoE phase **start IS a cut**,
-  because the Blast lands but you would **cancel** it for Arcane Explosion; a burn edge is not, because
-  you would not. ⚠ It prices a deliberate divergence from the sim (§2.2).
-  Then §2 re-measures what Phase 12 voided (ACCEPTANCE has **no current reading**; `model-audit` at
-  scale; `scorer-duel` now that its prerequisite landed; the model↔sim boundary reconciliation — ⛔ not
-  to be "fixed" by setting `--var 0`), §3 the search-optimality programme, §4 the gear-agnostic
-  enforcement (fold the import closure into `ENGINE_ID`), §5 the platform track inherited from
-  Phase 11, §6 the eight user calls **verbatim**, §7 nice-to-haves, §8 traps, §9 standing rejections.
+- `docs/archive/18-phase13-post-exact-objective.md` — **Phase 13, CLOSED 08-04.** The
+  post-exact-objective phase, and the last numbered phase doc: **`docs/ROADMAP.md` is the live plan
+  now** (its §0d carries what PHASE13 left open — the constructive-enumeration programme, the
+  platform track, the seven live user calls, the traps). Its §1 AoE-edge ruling (a cut, by policy —
+  flipped twice in one day) lives on here and in RULES §9; its §2 re-measurements and §4 enforcement
+  track were VOIDED with the sim; §3.1/§3.2/§3.3 closed 07-28 (the two-regime tail), **§3.9 closed
+  08-04 by re-measurement** (the IV-before-Lust wrong-sign preference inverted with §8h/§8q — model,
+  closed form and the sim's recorded verdict now agree); §5.2 closed 08-03 (cfg-contract --strict
+  blocking), §5.5 closed 08-04 (the plan-stability and pool-equiv CI gates), §5.7 re-cut and acted
+  on 08-04 (the unrunnable ripple chain deleted). Its closure banner maps every section;
+  "PHASE13 §x" citations resolve there forever. ⚠ Like every archived phase doc it carries
+  bannered-false blocks — the §9 "never rank on the rate integral" line (overturned 07-30) and the
+  §7 press-second item (superseded by the press-time display ruling) are the dangerous two.
 - `docs/archive/10-phase9-performance.md` — **Phase 9, CLOSED 07-27** (performance / refactor, under a
   byte-identical-plans constraint). Measure-first: baseline profile, call census, hypothesis table with
   verdicts, refactor catalogue landed cheapest-first. Four changes landed (groom exit, `groupSeeds`,
@@ -684,10 +689,11 @@ Treat maintaining them as part of the work, not an afterthought:
   rule after measuring null**. **§5 is the phase's larger contribution and is STILL LIVE GUIDANCE: the
   FAST ITERATION GATE** (`plan-sweep` + `plan-diff` + `plan-duel`) that replaced "re-run everything after
   every edit" — read it before designing any verification.
-  ⚠ **Closed, not finished:** the unfinished §4 reclaim rungs passed to PHASE11 §3.1, which closed
-  without starting them either — they are **`docs/PHASE13.md` §5.3's now**, unblocked (no freeze is in
-  effect) but needing a **fresh CPU baseline and content re-anchoring**: Phase 12 rewrote the very
-  scoring walk that dominates the profile, so the rungs are intact and the prices are not.
+  ⚠ **Closed, not finished:** the unfinished §4 reclaim rungs passed to PHASE11 §3.1, then PHASE13
+  §5.3, and are **ROADMAP §0d's now**, unblocked (no freeze is in effect) but needing a **fresh CPU
+  baseline and content re-anchoring**: Phase 12 rewrote the very scoring walk that dominates the
+  profile (and 08-04's dead-code removal moved it again), so the rungs are intact and the prices are
+  not.
 - `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
   into ROADMAP). **No plan in flight. Phase 5 (AoE phases) is COMPLETE** — verdict: an AoE phase is a

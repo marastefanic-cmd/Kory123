@@ -1161,7 +1161,7 @@ durations the contained region shrinks to the **intersection** of the constraint
   has no way to cancel a cast: it will finish the Blast and land it. So `tools/model-audit.mjs` **WILL**
   report a gap at an AoE wall, and any duel across one carries it. **Do not "fix" it back.** It is the
   one place the model deliberately models a **player decision the harness cannot express** — see
-  `docs/TOOLING.md` (model-audit) and `docs/PHASE13.md` §1/§2.2.
+  `docs/TOOLING.md` (model-audit) and `docs/archive/18-phase13-post-exact-objective.md` §1/§2.2.
 
   ⚠ *(A footnote worth keeping from step 2: the probe that first said the cast did **not** land had a
   regex requiring `Crit|Hit for` while the log read `Hit (25% Resist) for` — the third parse bug of that

@@ -2683,7 +2683,7 @@ SEARCH-AUDIT k=3 span=3 graded=10 localOptima=8 MISSES=2
 ⚠ **A PASS IS NOT OPTIMALITY, and the gate says so in its own output.** It asserts no move of ≤k
 coordinates by ≤span seconds wins. T2's declared Berserking sits **+120 s** from where the descent put
 it (§8j) — outside every bounded neighbourhood at any k. Global optimality needs the constructive
-enumeration (`docs/PHASE13.md` §3); this is that programme's regression net, not its replacement.
+enumeration (`docs/archive/18-phase13-post-exact-objective.md` §3); this is that programme's regression net, not its replacement.
 
 ### Fixed in the same pass: the witness gate had been ERRORING, not passing
 
@@ -2756,7 +2756,7 @@ This is a **fourth** defect kind, distinct from the three `tools/search-audit.mj
 | search (reachable) | a small simultaneous move wins | a move class in `phaseRerank` |
 | **search (unreachable tie)** | **an equal-scoring layout no continuous path reaches** | **nothing in a descent — see below** |
 
-A descent can only compare what it holds. A **constructive enumeration** (`docs/PHASE13.md` §3) holds
+A descent can only compare what it holds. A **constructive enumeration** (`docs/archive/18-phase13-post-exact-objective.md` §3) holds
 both candidates by construction, because both press only on group seconds — `{0, 10, 20, 40}` and
 `{10, 30, 40}` are each a subset of the same derived lattice. ⇒ **the user's technicality is
 automatically resolved by the enumeration, and by nothing short of it.** That is the strongest argument

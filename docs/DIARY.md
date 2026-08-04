@@ -1548,3 +1548,27 @@ the honest state, just not the written one.
 - **ROADMAP presented `tools/xval-results/` as holding "36/36 tables certified by
   xval-stamp-audit (exit 0)"** — the directory holds 6 boss transcripts and the stamp-audit tool is
   deleted. Corrected to point at the archived record.
+
+## PHASE13 is CLOSED and ARCHIVED — the roadmap is the live plan now
+
+The user asked for whatever was left in PHASE13 that made sense to do, until the doc could join the
+archive. The session's second half did that: §3.9 re-posed against the current engine and CLOSED (the
+IV-before-Lust wrong-sign preference inverted with §8h/§8q — the emitted plan now puts Icy Veins at
+0:15 with the value cluster, the in-band near-tie resolving to the call exactly as the user's rate
+argument says it should; the mechanism, in hindsight, was the §8q ramp-compression leak); §5.5's two
+owed CI gates landed with negative controls; §5.2 confirmed closed since 08-03; §5.7 re-cut against
+the post-sim tree and acted on; §6.6 voided (it named the sim's wasm); §7's press-second item
+bannered SUPERSEDED (it proposed the fire-time display the 07-30 press-time ruling overturned), the
+transfer test recorded as answered two-sidedly (h=0 layouts are SP/crit-invariant; above h=0 the
+operating point is load-bearing — T16/T17 prove SP alone moves the band), and the ripple tools
+retired. What is genuinely long-horizon moved to ROADMAP §0d, owned rather than orphaned: the
+constructive-enumeration programme (the engine both declared-test programmes need), the platform
+track, the seven live user calls, and the §8 traps. `docs/PHASE13.md` is now
+`docs/archive/18-phase13-post-exact-objective.md`, with a closure banner mapping every section and
+two stale blocks bannered false in place (§9's rate-integral ban, overturned 07-30; §7's
+press-second item). Every path reference in the living docs and tools was re-pointed; "PHASE13 §x"
+citations resolve to the archive forever, per the convention.
+
+For the first time since Phase 1, no phase doc is in flight. That is not "done" — ROADMAP §0d and
+the two user-requested test-derivation programmes are the work — but the memory is consolidated:
+one live plan, one defects ledger, one history.

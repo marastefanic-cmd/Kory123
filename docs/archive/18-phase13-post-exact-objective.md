@@ -1,10 +1,38 @@
 # PHASE 13 — the open work, after the objective was made exact
 
-**Status: OPEN (written 2026-07-27).** This is the project's only in-flight plan doc. It promotes
-`docs/PHASE12-RESUME.md` (deleted) and inherits the un-started work of Phases 11 and 12, which are now
-archived at `docs/archive/12-phase11-platform.md` and `docs/archive/13-phase12-exact-objective.md`.
+> # ✅ CLOSED 2026-08-04 AND ARCHIVED — read this banner before believing any block below
+>
+> **This phase closed the way phases close here: everything doable was done, everything void was
+> named void, and the genuinely long-horizon work moved to the living docs.** The doc is a snapshot;
+> `docs/ROADMAP.md` is the live plan now. What settled it, item by item:
+> · **§1** decided and landed 07-27 (in its own text). **§2** all closed or voided in its own text
+>   (2.4/2.5/2.6 closed 07-27; 2.1/2.3 void with the sim). **§4** void in bulk (07-30, no sim corpus
+>   left to protect).
+> · **§3.1/§3.2/§3.3** closed 07-28 (in text). **§3.9 CLOSED 08-04 by re-measurement** — see its
+>   banner: the sign inverted with §8h/§8q, the model now agrees with the user's rate argument AND
+>   the sim's recorded verdict, and the complaint's symptom (IV at 0:00) is gone from emissions.
+>   **§3's constructive-enumeration programme stays open ON ROADMAP** — it is the engine both
+>   user-requested test-derivation programmes need, and `search-audit` is its regression net.
+> · **§5.2 closed 08-03** (cfgFor completed + `cfg-contract --strict` blocking in CI). **§5.5 closed
+>   08-04** (plan-stability + pool-equiv landed with negative controls; the runner job void).
+>   **§5.7 re-cut and acted on 08-04** (see its banner). **§5.1/§5.3/§5.4/§5.6 → ROADMAP** (never
+>   started; the split is blocked on user calls, the perf ladder needs a fresh baseline).
+> · **§6's seven live user calls → ROADMAP verbatim** (§6.6 is void — it names the sim's wasm).
+> · **§7** each item annotated in place: press-second SUPERSEDED, transfer test ANSWERED, Ashtongue
+>   closed 08-03, ripple tools DELETED 08-04, the pipeline-script item already moot.
+> · **§8 traps → ROADMAP** (still live, all of them). **§9** stands, with two stale lines bannered
+>   in place (the rate-integral ban was overturned 07-30; two of the three cited gates are deleted).
+>
+> ⚠ Like every archived phase doc, blocks below can contradict later reality — they are bannered
+> where they sit. Section numbers stay; **"PHASE13 §x" citations resolve here forever.**
 
-**Everything in this file is genuinely open.** Nothing here is a finished item kept for its reasoning —
+**Status: ~~OPEN (written 2026-07-27)~~ CLOSED 08-04.** This was the project's only in-flight plan
+doc. It promotes `docs/PHASE12-RESUME.md` (deleted) and inherits the un-started work of Phases 11 and
+12, which are archived at `docs/archive/12-phase11-platform.md` and
+`docs/archive/13-phase12-exact-objective.md`.
+
+~~**Everything in this file is genuinely open.**~~ (True when written; see the closure banner above.)
+Nothing here is a finished item kept for its reasoning —
 that is what the archive is for. Each item states, in one line, **why it is open**. If you close one,
 delete it from this file and record the arc in `docs/DIARY.md`.
 
@@ -886,7 +914,28 @@ will reset it's cooldown back to 3 minutes"* — line for line. Verified against
 
 ---
 
-## §3.9 ⛔ OPEN DEFECT — the model over-values Icy Veins pressed BEFORE Bloodlust
+## §3.9 ~~⛔ OPEN DEFECT~~ ✅ CLOSED 08-04 — the sign inverted with §8h/§8q; re-measured on the current engine
+
+> **✅ RE-POSED AND CLOSED 08-04, as the 07-30 void header instructed** (*"re-pose it against the
+> closed forms before citing its size"* — the witness was sim-denominated and measured through the
+> pre-§8h engine). Same isolation, current engine (T=120 · h=0 · 1387 SP · 38 % · Lust@5, IV the
+> only planner track):
+>
+> | placement | Δ vs IV@0, in casts | |
+> |---|---|---|
+> | IV@7 (fully inside Lust) | **+0.000578** | the SIGN the sim recorded, restored |
+> | IV@5 (on the call) | +0.000578, and `planBetter` prefers it | the canonical member |
+> | IV@45 (packed on Lust's end) | −0.001733 | |
+>
+> The +0.23 % wrong-sign preference for IV@0 is **gone**; what remains is an in-band near-tie —
+> exactly the user's own rate argument (*20 s of IV buys 2.6667 casts inside Lust and 2.6667 outside*)
+> — resolved by the shape tie-break toward the call, and on the full kit the tool now EMITS Icy Veins
+> at 0:15 **with the value cluster**, not at 0:00–0:02. The mechanism, in hindsight, was §8q's: the
+> old engine integrated the ramp region at `1/(cast's own span)`, so compression paid and *"Icy Veins
+> goes back to the pull"* — the very failure §8q's design note names. Fixed by the fixed/spread toll
+> (07-30); this cell just was never re-measured until now. The sim half of the witness is
+> unfalsifiable (retired instrument, §8x) — but model, closed form, and the sim's recorded verdict
+> now all agree, which is as closed as a sim-denominated item can get. **Historical text follows.**
 
 **Found 2026-07-28 by a user argument, confirmed against the sim, mechanism not yet known.** This is a
 scorer defect with the **wrong sign**, not a search miss, and it is the reason the tool emits
@@ -999,7 +1048,16 @@ No perf edit rides the split commit.
 
 ⚠ Blocked on user calls §6.1 (`file://` fate) and §6.2 (toolchain).
 
-### 5.2 Converge the six preset→cfg copies onto ONE `cfgFor()` — and fix `cfgFor` in the same move
+### 5.2 ✅ CLOSED 08-03 — converge the preset→cfg copies onto ONE `cfgFor()`, and fix `cfgFor` in the same move
+
+> **✅ The defect this section is about was fixed 08-03** (the chore-branch landing, merge e5c3160):
+> `tools/engine-node.mjs`'s `cfgFor` now emits the FULL `simMemoCfgSig` field set (t5two,
+> boundaryCharge, killMode, _ideal included — and presets T9–T17 carry `gear.t5two`, so the fix was
+> load-bearing, not cosmetic), and **`tests/cfg-contract.mjs --strict` is BLOCKING in CI** — exactly
+> the "last step of the convergence" this section prescribed. The sim-era copies among the "six" went
+> with the 07-30 deletion; what remains is `cfgFor` (canonical for every tool and test), `evalsched`'s
+> inline constructor (contract-checked, complete), and the page's `readCfg` (the UI-side origin, which
+> stays separate until the §5.1 module split makes it importable). **Historical text follows.**
 
 **Why it is open:** the preset→cfg constructor is retyped in at least six places, and measuring every
 copy against the engine's own declared field set (`simMemoCfgSig`) shows **`tools/engine-node.mjs`'s
@@ -1084,7 +1142,22 @@ the Drums/PI upstream patch) are gated on §6's user calls.
 
 ---
 
-### 5.7 THE INSTRUMENT-AUDIT RESIDUE — real, tracked, and none of it can make a gate lie
+### 5.7 THE INSTRUMENT-AUDIT RESIDUE — ✅ RE-CUT AND ACTED ON 08-04
+
+> **✅ The list below was written for the pre-deletion tree; on 08-04 it was re-verified claim by
+> claim against the post-sim tree and the survivors acted on.** Most named files (the planspec
+> copies, the `BENCH.manaInject` retype sites, `genae`/`genconserve`, the gear-export dependents,
+> GEAR-AGNOSTIC's absolutes) went with the 07-30 sim deletion. What survived and was done: the
+> ripple chain (`lattice-ripple`, `ripple-audit`, `floor-plateau`, plus their dependents
+> `ambient-gap`/`unexplained-gap`) **deleted** — unrunnable since `xval-collect` went, premises
+> bannered dead in RULES §8, ripple-audit failing its own self-checks; the `tools/ladders` orphans
+> **deleted**; the three `ALL_BUFFS` copies in the Playwright scopes **converged** onto
+> `engine-node`'s export; `tests/README.md` **rewritten** to the real gate set; the deleted-gate
+> citations in the living docs (window-span, snapshot-rule, credit-check, model-audit) **marked
+> deleted-with-the-sim**; the stale timings updated. Two of the audit's own claims were FALSE against
+> the tree and are recorded as corrections in DIARY: neither `tests/README.md` nor CLAUDE.md ever
+> carried the "9m07s" figure, and `tests/README.md` carried no timings at all. **Historical text
+> follows.**
 
 §2.6 fixed everything from the 07-27 audit that could produce a **wrong verdict**. What is left is
 listed here rather than lost. Each entry is a fact that was checked, not a suspicion.
@@ -1159,11 +1232,15 @@ supplies **10 of the 25 cases** — lists two files that do not exist, and omits
    all?
 3. **Precomputed preset plans**: accept shipping golden-derived plans as data (instant presets)
    under the anti-drift gate, or keep every render solver-fresh?
+   *(⚠ 08-04: needs RE-POSING before it can be put to the user — "golden-derived" names the goldens
+   deleted 07-28; the question is now "precomputed preset plans as data under an anti-drift gate,
+   or solver-fresh". ROADMAP carries the re-posed form.)*
 4. **Setup-comparison view**: reopen the "no dedicated feature" ruling? (Absolute-damage currency
    per the existing ruling if yes.)
 5. **EP route in the tool**: reopen "two lightweight routes, no bespoke calculator"?
-6. **On the first wasm rebuild**: keep the wasm in git (+~4–5 MB pack per rebuild) or move to
-   release-asset + committed sha256?
+6. ~~**On the first wasm rebuild**: keep the wasm in git (+~4–5 MB pack per rebuild) or move to
+   release-asset + committed sha256?~~ *(⛔ VOID 08-04 — it names the sim's wasm, deleted 07-30
+   with the harness; there is no wasm to rebuild and nothing to keep in git.)*
 7. **Research mode**: wanted at all, and if so its cell-budget/UX guardrails.
 8. **COOP/COEP**: accept the (no-op today) embedding restriction to get instant cancellation?
 
@@ -1175,22 +1252,22 @@ which is what makes it right *within* a setup and blind *across* setups.
 
 ## §7 NICE-TO-HAVES — real, small, and not blocking anything
 
-- **The printed press second is wrong on 1.8 % of presses.** *Why open:* explicitly deferred by user
-  ruling — *"the model itself and the calculations and correct activations come first… we then just
-  round the shown number to be human readable, but that's secondary."* The plan prints
-  `floor(actEff)` — the **press** moment — while the assumptions panel promises *"press at the second
-  shown"* and the buff is up at the **boundary after** it; when flooring walks back past a cast
-  boundary the macro fires a whole cast early. Measured: 3005/3060 presses correct, **55 wrong**, and
-  **0** presses for which no whole second can name the scored window. Fix: print **`floor(auraAt)`**,
-  introduced as its **own field** rather than by redefining `actEff` under its other callers (the
-  transcription, the timeline and the custom-plan editor all read it). Display-only; touches neither
-  scorer nor search. Archived PHASE12 §6.13.
-- **The stat-distribution transfer test.** *Why open:* it is the **first** piece of gear-agnostic work
-  and it has never been run. *"Do scheduling conclusions transfer across stat distributions?"* decides
-  whether the new corpus measures the same thing the old one did. Cheap: solve one fight family on
-  both characters and compare the argmax plan at each haste. **Agreement** ⇒ the switch was free;
-  **divergence** ⇒ the geared operating point was load-bearing and the gear factors come back **as
-  model inputs**, which is exactly the escape hatch the user reserved.
+- ~~**The printed press second is wrong on 1.8 % of presses.**~~ *(⛔ SUPERSEDED 08-04 — the proposed
+  fix, print `floor(auraAt)` i.e. a FIRE time, is exactly what the 07-30 user ruling overturned:
+  "with our model the trinket and the stat changes should apply the moment it's pressed" — displayed
+  times are PRESS times, `shownTimes` is the one accessor, and `actEff` feeds no display. The 1.8 %
+  measurement described the retired fire-time display. Do not resurrect.)* Original text: explicitly
+  deferred by user ruling — *"the model itself and the calculations and correct activations come
+  first… we then just round the shown number to be human readable, but that's secondary."* The plan
+  printed `floor(actEff)` — the **press** moment — while the assumptions panel promised *"press at
+  the second shown"*; measured 3005/3060 presses correct, 55 wrong. Archived PHASE12 §6.13.
+- ✅ **The stat-distribution transfer test — SUBSTANTIALLY ANSWERED (07-31 + 08-02/03), and the
+  answer is two-sided.** At h = 0 the declared layouts are INVARIANT across crit 0–100 % and
+  SP 600–2400 (all 7 CASES, measured 07-31 — scheduling conclusions transfer freely there). Above
+  h = 0 they are NOT SP-invariant: T16 vs T17 hold haste at 33 and move the band with SP alone, and
+  six of the haste ladder's seven rungs shift ~20–25 % across 700→2200 SP. So the geared operating
+  point IS load-bearing above h = 0, and the gear factors are model inputs — which is the escape
+  hatch the user reserved, and is exactly how the tool now works (typed gear + the buff panel).
 - ✅ **Ashtongue Talisman of Insight — CLOSED 08-03 (MODEL-DEFECTS §9n).** Was: *"a random on-crit
   proc … needing a stochastic treatment — un-owned since Phase 7 closed without it."* The stochastic
   treatment now exists and is exact-in-expectation: the renewal law (crit-driven proc rate at the
@@ -1199,19 +1276,19 @@ which is what makes it right *within* a setup and blind *across* setups.
   CI), self-consistency's ati-on cells and kit-sweep's `ati+icon+gem` kit. ESTABLISHED-FACTS §12,
   RULES §14. What the sim's absence still means here: no ati-on layout is user-declared — that is the
   length-ladder workflow's job, not a modelling gap.
-- **`tools/lattice-ripple.mjs` / `tools/ripple-audit.mjs` need RE-DECIDING, not re-wording.** *Why
-  open:* both still describe the model as computing *"the CONTINUUM LIMIT of the same taper — the
-  widths match"*, which is false at every word since the objective went exact. ⚠ **Do not simply
-  reword them:** `ripple-audit` already **fails two of its own pre-registered self-checks** (P3, P5 —
-  archive/11 §8.30), so no ripple decomposition was quotable even on the round it was built for, and
-  its `mono=0` stamp means **FAILURE** beside a `vacuous=0` that means success. Decide whether either
-  tool still has a question to answer; retire them if not.
+- ✅ **`tools/lattice-ripple.mjs` / `tools/ripple-audit.mjs` — DECIDED AND RETIRED 08-04.** The
+  decision this item asked for was made: neither had a question left to answer (the cross-val corpus
+  their question was about is retired; their premises are bannered dead in RULES §8; ripple-audit
+  failed two of its own pre-registered self-checks, so nothing it printed was quotable), and both
+  were unrunnable from a clean tree since 07-30 took `xval-collect`, their input producer. Deleted,
+  along with the dependent `floor-plateau` / `ambient-gap` / `unexplained-gap`. The findings stay in
+  RULES/ROADMAP/archive; the source stays in git history.
 - **Retired instruments now labelled, no action needed unless they mislead:** `tail-phase-probe` exits
   2 (its `robust − totalEarly` is identically 0), and `p8-round10`'s F3 degeneracy guard reports
   permanently vacuous.
-- **`tools/xval-round-pipeline.sh` and friends carry a hardcoded session-scratchpad `SP=` path**, so
-  `xval-boss-warm.sh`'s wait-loop polls a log a future session will never create and would hang
-  forever. *Why open:* "promoted into the repo" and "reproducible" are not the same property.
+- ~~**`tools/xval-round-pipeline.sh` and friends carry a hardcoded session-scratchpad `SP=` path**~~
+  *(✅ MOOT 08-04 — the script and its friends no longer exist; the whole `xval` family went with the
+  07-30 deletion. No `.sh` file remains under `tools/`.)*
 
 ---
 
@@ -1251,7 +1328,14 @@ also the fence around §3); the finite-mana model (the per-window mana-cost chip
 UX); the boundary charge ON; any computation after the results render; any prepull in a model-compared
 sim; legend/Pressboard resurrections. The haste-graph reference lines stay.
 
-⛔ And the three retired scoring approaches must never return: ranking on the **rate integral**;
+⛔ And the three retired scoring approaches must never return: ~~ranking on the **rate integral**~~;
 expiring a buff window from the **press** time; **one snapshot rule** for both kinds of buff. Their
 evidence is archived PHASE12 §6.10, §6.11 and §6.12; their gates are `tools/self-consistency.mjs`,
 `tools/window-span.mjs`, and `tools/snapshot-rule.mjs` + `tools/credit-check.mjs`.
+> ⚠⚠ **TWO STALE CLAIMS IN THE PARAGRAPH ABOVE, bannered 08-04 rather than silently rewritten.**
+> (1) *"Ranking on the rate integral must never return"* was **OVERTURNED 07-30** (MODEL-DEFECTS
+> §8h): measured against the closed forms, the integral is the one that is RIGHT and it RANKS again;
+> the per-cast sum is the reported number and must not rank. CLAUDE.md carries the ruling and the
+> Berserking table that decided it. The other two retirements stand.
+> (2) Of the cited gates, `window-span`, `snapshot-rule` and `credit-check` were **deleted with the
+> sim** (07-30) — the rules stand on what they measured; `self-consistency` survives and is blocking.
