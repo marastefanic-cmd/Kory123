@@ -4384,3 +4384,37 @@ removed part being both edge biases (which partially cancel in totals but NOT in
 the ranking-relevant half). What remains in the budget: the +0.03 cold-start continuous smoothing
 (§8l's lattice ban, accepted) and the pre-existing all-buffs straddle convention (PHASE8 §25, not an
 ATI term).
+
+## §9p — ⛔ PLATEAU CANONICALISATION: the search settles on the member it reached, not the canonical one (08-04, T7)
+
+Found by `tools/lattice-brute.mjs` while reaffirming the declared corpus, and it is a NEW defect class
+— not a scoring error and not a §8j-style unreachable-optimum, but a third thing: **on an exact
+plateau the search has no gradient, so it keeps whichever member it happened to land on.**
+
+T7 (1:15, Lust 0:05, intermission 0:50–0:55), all 12,976,848 legal grid layouts enumerated:
+
+| layout | ideal casts | snaps | wastedPre | offGrid | invalid | distinct |
+|---|---|---|---|---|---|---|
+| what the search emits (= old T7) | 67.452203 | 1 | 0 | 0 | 0 | **4** |
+| `iv[15,55] · cluster@15 · zerk@5` | 67.452203 | 1 | 0 | 0 | 0 | **3** |
+
+Identical under the ideal law to every digit, so `planBetter` falls through to `distinct` and prefers
+the second — Berserking rides the Bloodlust call instead of taking its own press. The user ruled the
+revision in (*"I agree with the revision to T7"*); the test is now RED by design, exactly as T11 is.
+
+★ **Why it is NOT the §8j family.** §8j/§9d misses are SCORE misses — a better layout the descent
+cannot reach, worth 0.005–0.4 casts. Here the score gap is **exactly zero**: no hill-climb, at any
+neighbourhood size or effort, can prefer the canonical member, because nothing in the objective's
+first component distinguishes them. The move is 3 coordinates and 22 seconds (`zerk 27→5` together
+with `cluster 7→15` and `iv#1 7→15`), so it is outside every bounded neighbourhood as well.
+
+⇒ **The fix is a CANONICALISATION pass, not a better search.** After the score is settled, propose
+plateau-preserving restructurings and accept on `planBetter` alone: merge a press moment into another
+(especially onto a pinned raid call), then re-slide the remaining cluster. The user's own statement of
+what the tie-break is FOR is the specification: *"I expect there will be a lot of plateaus, especially
+in short fights where you use everything once, that's why we implemented the earliest rule so we
+always have THE correct answer."* A canonicaliser is what makes that true; today the rule only decides
+between members the search happens to visit.
+⚠ It must accept ONLY on a strict `planBetter` improvement with the ideal score tied — a pass that can
+move the score is a scorer change wearing a finishing-pass costume, and this project has paid for that
+shape twice (§8y part 1b, the `finishLine` floor).

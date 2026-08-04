@@ -242,9 +242,31 @@ const CASES = [
   { name: 'T6 — 2:00, Bloodlust pinned 0:05, h=0, 1387 SP, 38 % crit',
     T: 120, sp: 1387, crit: 38, lust: 5,
     want: { icyVeins: [15, 35], isc: [15], scb: [15], arcanePower: [15], bloodlust: [5], berserking: [5] } },
+  /* ★★★★ T7 REVISED 08-04 BY USER RULING — *"I agree with the revision to T7"* — and it is the SECOND
+     revision in the corpus, made for exactly the reason the FIRST one was (T6, 07-31). Both are the
+     same shape: Berserking stops needing its own press and rides the raid's Bloodlust call, the
+     cluster slides onto the 5s grid with it, and the layout loses a distinct press moment.
+
+         was   icyVeins[7,55]  cluster@7   zerk@27     4 distinct press moments (5, 7, 27, 55)
+         now   icyVeins[15,55] cluster@15  zerk@5      3 distinct press moments (5, 15, 55)
+
+     ⚖️ LEGITIMACY, against the §8y precedent (revision allowed ONLY inside the tie band): the two are
+     not merely inside the band, they are EXACTLY EQUAL under the ideal law — both 67.452203 casts,
+     `snaps` 1 = 1, `wastedPre` 0 = 0, `offGrid` 0 = 0, `invalid` 0 = 0. The scorer has no power at all
+     to separate them, so no damage claim was overturned; only which member of an exact plateau is
+     canonical, decided by `distinct` — the same criterion, at the same position in the hierarchy,
+     that decided T6.
+     ★ FOUND BY BRUTE FORCE, not by the tool preferring itself: `tools/lattice-brute.mjs` enumerated
+     all 12,976,848 legal grid layouts of this fight and the comparator picked this member out of a
+     490-layout exact-tie plateau. The 0.1022-cast claim that CREATED T7 is untouched and confirmed —
+     67.450603 quantised IS the global optimum of the lattice; only the plateau member moved.
+     ⛔⛔ THIS TEST IS EXPECTED TO BE **RED** UNTIL THE SEARCH LEARNS THE MOVE, and that is the point,
+     exactly as with T11: the search emits the OLD layout (verified), because the two are score-tied
+     so there is no gradient to climb — reaching the canonical member is a PLATEAU-CANONICALISATION
+     problem, not a scoring one. ⛔ Fix it in the search/finishing passes. NEVER by reverting this. */
   { name: 'T7 — 1:15, Bloodlust pinned 0:05, intermission 0:50-0:55, 1387 SP, 38 % crit',
     T: 75, sp: 1387, crit: 38, lust: 5, intermission: [50, 55],
-    want: { icyVeins: [7, 55], isc: [7], scb: [7], arcanePower: [7], bloodlust: [5], berserking: [27] } },
+    want: { icyVeins: [15, 55], isc: [15], scb: [15], arcanePower: [15], bloodlust: [5], berserking: [5] } },
   { name: 'T8 — 2:15, Bloodlust pinned 1:35, intermission 0:15-0:20 — THE PREPULL CASE',
     T: 135, sp: 1387, crit: 38, lust: 95, intermission: [15, 20],
     want: { isc: [-5, 115], scb: [0, 120], berserking: [0], icyVeins: [95, 115], arcanePower: [120], bloodlust: [95] } },
