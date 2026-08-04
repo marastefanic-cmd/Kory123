@@ -1809,3 +1809,26 @@ residual, recorded: PoM cheapens an EARLY opening cluster (1.181 → 0.844 casts
 0:07 with AP down), which could in principle move a knife-edge opener — no argmax flip was
 demonstrated on the ladders (the region is a plateau), and the effect is bounded by the 0.337-cast
 spread. If a future declared test sits on that knife edge, this is the paragraph to reopen.
+
+## 16. Spam vs hold — the 12:20 alignment verdict *(recorded 08-04; REVISIT-LATER by ruling — no test declared)*
+
+The user's question (07-31): the 120 s family (Icon, gem) and the 180 s family (IV, AP, Berserking)
+re-align every `lcm = 360 s`; over 12:20 (~2.06 cycles), *spam on cooldown or hold for alignment,
+and does Lust timing change it?* Answered by exact arithmetic over constructed strategy families
+(DECISION-PACKAGES §B carries the tables; every number is a `rankPair` score, not a simulation):
+
+1. **Hold beats spam, mildly and consistently** (+0.05 to +0.77 casts at every Lust timing tested):
+   Icon every 180 s — 5 aligned uses — beats every-120 s — 7 unaligned uses. **One aligned use beats
+   two unaligned**, which closes the old "align-vs-twice breakpoint" question at this length.
+2. **Neither pure policy is the answer**: the tool's free search beats the best family by +3.6 to
+   +4.4 casts — an order of magnitude above every alignment delta — by mixing policies per segment
+   (180 s chains as the backbone, Icon spammed OR held per segment, gem split opener/terminal, Cold
+   Snap spent on a mid-fight re-align, full kill burst at ~12:05).
+3. **The Lust schedule itself is the biggest lever measured**: calls at 3:00 & 9:00 — landing on the
+   360 s re-alignment points — beat both other schedules by more than every spam/hold delta combined.
+4. ⇒ the playable rule: **structure first (Lust coverage, Cold Snap placement, the terminal
+   cluster); plan with the tool; when in doubt between spam and hold — hold.**
+
+⚠ Status: a RECORDED FINDING, not ground truth — the tool's own 12:20 answers are uncertified at
+that size (no k=3 audit was run over ~30 presses) and the user ruled "just record, revisit later"
+(08-04). No 12:20 cell is declared; the family numbers ARE exact.

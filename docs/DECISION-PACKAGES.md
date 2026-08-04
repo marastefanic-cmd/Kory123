@@ -1,5 +1,12 @@
 # DECISION PACKAGES — awaiting your rulings (prepared 2026-08-04)
 
+> ⚖️ **RULED ON 08-04, ALL FOUR "NOT YET" — the packages stay OPEN as candidates.** Presented as four
+> questions; the user answered: ladder cells (all 12, incl. the red 3:20·0:40) — **not yet, "I have
+> an idea im writing"**; the 12:20 study — **record the verdict, revisit later** (now RULES §16);
+> ati-on anchor candidates — **skip for now**. ⛔ Nothing below is declared; do not move any cell
+> into `tests/anchors.mjs` without a fresh ruling, and expect the user's incoming idea to reshape
+> what gets declared and how.
+
 The two test-derivation programmes you asked for by name on 07-31, **executed to the line the
 project cannot cross for you**: the tool may never declare its own tests (that is what killed
 `exact-match`), and the §8y revision precedent requires a ruling to have SEEN the tie plateau. So
