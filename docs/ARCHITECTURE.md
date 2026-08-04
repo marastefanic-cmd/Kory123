@@ -245,8 +245,8 @@ different Berserking placements across one 1.5 s cast interval of that same inst
   cast, so "lattice δ later" = every press, pin, segment and `T` moved δ **earlier** (`phaseShift`).
   ⚠ The opposite randomiser — presses against a fixed lattice — is a thing the player controls and
   measures nothing; it scored 0/4 on the ground-truth corpus.
-- `phaseRerank(s, cfg)` — **five move classes**, iterated to a FIXED POINT (24-round runaway cap, not a
-  3-round budget — a cap of 3 was measured short once the structural times went in):
+- `phaseRerank(s, cfg)` — **eight move classes**, iterated to a FIXED POINT (24-round runaway cap, not
+  a 3-round budget — a cap of 3 was measured short once the structural times went in):
   1. whole-plan slide (±8 s)  2. per-track slide (±8 s)
   3. **co-pressed cluster slide** — tracks grouped by the SECOND they are pressed at, slid per-press
      (MODEL-DEFECTS §8m). Reaches T2/T3, which no single-coordinate step can: every one is downhill
@@ -256,6 +256,18 @@ different Berserking placements across one 1.5 s cast interval of that same inst
      SEPARATE on purpose; merging lets a cluster be swallowed by a train it abuts.
   4. per-press move (±12 s) plus the **structural candidate times** — every window edge, cooldown
      return and raid call already in the plan, which is how a press reaches a time 20-120 s away (§8j).
+  3d. **cooldown-chain closure** (§8y, user-ratified 07-31) — a slide whose chain push `repair` itself
+     legalizes, accepted only count-preserving. ⛔ Runs LAST of the per-round classes; run earlier it
+     rerouted a basin by 0.18 casts (greedy descent is not monotone in its move set).
+  5. **band-structure re-anchor** (§9h→§9k) — the whole C/D-family rewrite (value on the call, IV at
+     call−g / window end, Berserking on IV's tail), proposed ONLY at the older classes' joint fixed
+     point (`!moved`). Reaches T13.
+  6. **chain-dragged cluster** (§9o, 08-04) — for a single-press slide whose `repair` closure MOVES
+     other presses, offer each co-pressed partner of a dragged press riding the same slide (each
+     alone, then all together). Also gated on `!moved`, after class 5, so every cell where its
+     candidates are refused is byte-identical by construction. Closes the h400 · 3:00 kit-sweep
+     misses: three coordinates coupled through repair legality AND the value cross term at once,
+     invisible to 3d (chain, no partner) and to class 3 (cluster, no chain).
   ⚠ **Single-press moves alone are provably not enough**, and neither are single-press plus clusters.
   Three of the project's four largest misses were coupled coordinates that every 1-D and 2-D step
   refused. A candidate `repair` had to relegalize is refused, so a plan is never scored as one layout

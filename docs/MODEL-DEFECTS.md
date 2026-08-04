@@ -4199,7 +4199,44 @@ cell from +0.33 casts to +0.06). The one MC disagreement is on the AoE cell and 
 proc DISABLED (scorer +0.673 casts vs MC +0.085), so it is the known continuous-vs-discrete AoE-wall
 divergence, not an Ashtongue defect.
 
-## §9o — ⛔ A SHAPE-SPECIFIC SEARCH MISS AT `h400 · 3:00 lust 0:20`, PRE-EXISTING (found 08-03 by the widened kit sweep)
+## §9o — ✅ CLOSED 08-04 — a shape-specific search miss at `h400 · 3:00 lust 0:20`, pre-existing (found 08-03 by the widened kit sweep)
+
+> **✅ FIXED by `phaseRerank` move class 6, THE CHAIN-DRAGGED CLUSTER — a search fix, as the entry
+> below demanded; `simulate()` untouched and `law-check` green throughout.** Decomposed by
+> measurement before designing the move (the `icon+gem` cell; every number from `rankPair` on the
+> cell's own cfg):
+>
+> | move | Δ casts | |
+> |---|---|---|
+> | `scb#0`+2 alone (chain pushes `scb#1` to 127, splitting it from AP) | −0.036 | ⛔ |
+> | `{AP, scb#1}`+2 alone (the 125-cluster's placement is a flat plateau) | 0.000 | tie, refused |
+> | whole 125-cluster +2 (isc#1 iv#1 AP scb#1) | 0.000 | tie, refused |
+> | **all three together** — the audit's move | **+0.020** | ✓ |
+>
+> The three coordinates are coupled through TWO mechanisms at once: `scb[5,125]` is cooldown-FLUSH
+> (gap = cd = 120 s), so buying scb#0 two more seconds under the pinned Bloodlust *forces* scb#1 out
+> of the 125 value cluster through `repair`'s chain — and the §4 cross term makes relocating scb#1
+> without Arcane Power a pure loss. Class 3d sees the chain but not the cluster partner; class 3
+> sees the cluster but not the chain. Neither can compose the move, and every 1- and 2-coordinate
+> component is downhill — the §8m/§8s signature one coupling deeper.
+> ⇒ **Class 6**: slide each single press; where `repair`'s closure MOVES other presses, offer each
+> co-pressed partner of a dragged press riding the same slide (each alone, then all together).
+> Everything derived (the chain from `repair` itself, partners from the plan's own press seconds),
+> deterministic, and **gated on `!moved` after class 5** — the 3d position lesson at full strength:
+> every previously-reachable fixed point is reached and ranked first, so a cell where every
+> chain-dragged candidate is refused is byte-identical by construction.
+> ★ **Verified 08-04**: kit-sweep **68 of 72 cells byte-identical**, the four changed all improved —
+> and the descent, offered the coupled move, walks BEYOND the audit's bounded recommendation into a
+> better basin (the whole value cluster leaves 0:05 for 0:10, Arcane Power joins the OPENER, the
+> 120 s chains re-site at 2:10): `icon+gem` **+0.0339** casts (audit saw +0.0201), `pi+icon+gem`
+> **+0.0219** (+0.0130), `ati+icon+gem` **+0.0322** (+0.0191), plus `icon+mqg · h400 · 3:00`
+> **+0.0138** — a cell the k=3 audit had called a local optimum, i.e. a real miss *invisible to the
+> gate* that the move class caught anyway. `search-audit --k=3` now reads **72/72 local optima**
+> (was 69/72), its `--self-test` catches 72/72 displacements, anchors **17/17**, preset plan-sweep
+> `PLAN-DIFF IDENTICAL` (21/21), and the full scorer battery (law-check ± self-test,
+> self-consistency, constants-cited ± self-test, toll-audit --strict, objective-ref, ati-mc ±
+> self-test, cfg-contract --strict) is green — the scorer never moved, which is what "a search
+> defect" was supposed to mean.
 
 `kit-sweep` gained an `ati+icon+gem` kit (8 kits × 3 haste × 3 shapes = 72 cells) and `search-audit
 --k=3` came back **69/72**. All three misses are the SAME 3-coordinate move on the SAME shape —

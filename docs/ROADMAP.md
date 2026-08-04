@@ -10,6 +10,10 @@
 > `toll-audit --strict`, `objective-ref`, `constants-cited` (+self-test), `search-audit`, and since
 > 08-03 `ati-mc` (+self-test — the Ashtongue renewal law against a seeded simulation of the proc
 > process).
+> ✅ *Search work landed 08-04:* **§9o is CLOSED** — `phaseRerank` move class 6 (the chain-dragged
+> cluster) composes the repair-chain push with the co-pressed partners it would split; kit-sweep
+> `search-audit --k=3` reads **72/72** (was 69/72), 68 cells byte-identical, the four changed all
+> improved, anchors 17/17, preset sweep IDENTICAL. MODEL-DEFECTS §9o has the decomposition.
 > ⛔ **What is deliberately NOT closed, and is NOT the scorer:**
 > · **§9b** — Presence of Mind is unmodelled (0.667–1.004 casts/use). ✅ *The other §9b half landed
 >   08-03 (§9n):* the Ashtongue channel of the Potency +3 pp now feeds the proc rate (`atiProcQ`),

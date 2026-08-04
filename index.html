@@ -3213,6 +3213,84 @@ function phaseRerank(s0, cfg) {
         }
       }
     }
+    /* ★★★★★ 6. THE CHAIN-DRAGGED CLUSTER — added 08-04 (MODEL-DEFECTS §9o), and it is the SAME
+       lesson as 3d one coupling deeper. 3d closes the cooldown chain when a slide FORCES a later use
+       of the same track to move; what it cannot see is that the forced press may be a MEMBER OF A
+       VALUE CLUSTER, so the closed candidate splits a cluster the plan deliberately built and scores
+       downhill — the move the descent actually needs brings a cluster partner along. Measured on
+       `icon+gem · h400 · 3:00 lust 0:20` (and identically on pi+ / ati+, +0.013…+0.020 casts,
+       6–10× the band):
+           emitted   scb[5,125] · AP@125 · {isc#1,iv#1} also @125     (scb gap = cd, FLUSH)
+           argmax    scb[7,127] · AP@127 · {isc#1,iv#1} stay
+           scb#0+2 alone            −0.036   (chain pushes scb#1 to 127, splitting it from AP)
+           {AP, scb#1}+2 alone       0.000   (the cluster's placement is a flat plateau)
+           all three together       +0.020   ✓ — and zero improving 1- or 2-coordinate moves exist
+       The +2 buys scb#0 two more seconds under the pinned Bloodlust (value stacks on haste), the
+       chain makes that inseparable from relocating scb#1, and the AP cross term makes relocating
+       scb#1 without AP a pure loss — three coordinates coupled through TWO different mechanisms at
+       once (repair legality + the §4 cross term), which is why neither 3d (chain, no partner) nor
+       class 3 (cluster, no chain) can compose the move.
+       ⇒ So: slide each single press; where `repair`'s closure MOVES other presses, read those
+       presses' co-pressed partners off the CURRENT plan and offer each partner riding the same
+       slide (each alone, then all together). Everything is derived — the chain from `repair`
+       itself, the partners from the plan's own press seconds — and deterministic (keys order,
+       SHIFTS order, one adoption per round).
+       ⚠⚠ GATED ON `!moved`, AFTER class 5 — the 3d position lesson at full strength: the descent
+       first converges under every older class, so every previously-reachable fixed point is REACHED
+       and RANKED before this class speaks, and a cell where every chain-dragged candidate is
+       refused stays byte-identical by construction.
+       ⚠ Count-preserving like 3d: `repair` also DROPS presses, and a slide that deletes a use is a
+       different move than the one proposed. A closure that moves nothing is skipped — a plain slide
+       is class 2/3/4's job, and re-offering it here would only re-rank refused moves. */
+    if (!moved) {
+      const singles = [];
+      for (const k of keys) (s[k] || []).forEach((_, i) => singles.push([{ k, i }]));
+      let hit = false;
+      for (const mem of singles) {
+        for (const d of SHIFTS) {
+          const slid = shiftedAt(s, mem, d);
+          if (!slid) continue;
+          const closed = repair(cloneS(slid), cfg);
+          let ok = true;
+          const dragged = [];
+          for (const k in slid) {
+            if (!closed[k] || closed[k].length !== slid[k].length) { ok = false; break; }
+            for (let j = 0; j < slid[k].length; j++)
+              if (Math.abs(closed[k][j] - slid[k][j]) > 1e-9) dragged.push({ k, j });
+          }
+          if (!ok || !dragged.length) continue;
+          // partners: presses sharing a dragged press's second in the CURRENT plan — the cluster
+          // the closure is about to split — excluding the mover and the dragged presses themselves
+          const partners = [];
+          for (const dp of dragged) {
+            const sec = Math.round(s[dp.k][dp.j]);
+            for (const k of keys) (s[k] || []).forEach((t, i) => {
+              if (Math.round(t) !== sec) return;
+              if ((k === dp.k && i === dp.j) || mem.some(m => m.k === k && m.i === i)) return;
+              if (dragged.some(q => q.k === k && q.j === i)) return;
+              if (!partners.some(p => p.k === k && p.i === i)) partners.push({ k, i });
+            });
+          }
+          if (!partners.length) continue;
+          const variants = partners.map(p => [p]);
+          if (partners.length > 1) variants.push(partners);
+          for (const extra of variants) {
+            const slid2 = shiftedAt(s, [...mem, ...extra], d);
+            if (!slid2) continue;
+            const closed2 = repair(cloneS(slid2), cfg);
+            let ok2 = true, same2 = true;
+            for (const k in slid2) {
+              if (!closed2[k] || closed2[k].length !== slid2[k].length) { ok2 = false; break; }
+              for (let j = 0; j < slid2[k].length; j++) if (Math.abs(closed2[k][j] - slid2[k][j]) > 1e-9) same2 = false;
+            }
+            if (!ok2 || same2) continue;
+            if (tryCand(closed2)) { moved = true; hit = true; break; }
+          }
+          if (hit) break;
+        }
+        if (hit) break;
+      }
+    }
     if (!moved) break;
   }
   return { s, val };

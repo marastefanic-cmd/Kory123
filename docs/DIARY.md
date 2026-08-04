@@ -1440,3 +1440,31 @@ accounting are not. Filed in MODEL-DEFECTS §9n addendum as the next thing to pu
   2-cast deficit being the opener toll), so the ORIGINAL unadjusted duels were correctly matched.
   ⇒ The project's standing caution generalises again: when an instrument and a closed form disagree,
   suspect the instrument's SETUP first. It was the setup, twice in one session.
+
+# 2026-08-04 — the search session's leftovers: §9o closed by move class 6, and the small honest fixes
+
+The 08-03 session left four named items on ROADMAP's ledger, and this session worked through them in
+the priority order set at its start. The headline is the first: **MODEL-DEFECTS §9o — the
+3-coordinate search miss at `h400 · 3:00 lust 0:20` that hit three different kits — is CLOSED**, by a
+new `phaseRerank` move class and nothing else. `simulate()` was not touched, which is the whole point
+of the standing rule: the scorer ranked the better plan correctly all along, and `law-check` stayed
+green from first measurement to final commit.
+
+## §9o — the chain-dragged cluster (move class 6)
+
+Decomposed before designing anything: the emitted plan's `scb[5,125]` is cooldown-FLUSH (gap = the
+120 s cooldown exactly), so the improving `+2` on scb#0 — two more seconds of the gem under the
+pinned Bloodlust — *forces* scb#1 out of the 125 value cluster through `repair`'s chain, and the
+Arcane Power cross term makes relocating scb#1 without AP a pure loss (−0.036 / 0.000-tie / +0.020
+casts for the components vs the composed move). Three coordinates coupled through TWO mechanisms at
+once — repair legality AND the §4 cross term — which is exactly the gap between class 3d (chain, no
+partner) and class 3 (cluster, no chain). Class 6 composes them: slide each single press, and where
+repair's closure drags other presses, offer each co-pressed partner of a dragged press riding the
+same slide. Gated on `!moved` after class 5 (the 3d position lesson at full strength), so 68 of 72
+kit-sweep cells are byte-identical by construction. The four that changed all improved — including
+`icon+mqg · h400 · 3:00` at +0.0138 casts, a cell the k=3 audit had certified as a local optimum,
+i.e. a real miss invisible to the gate that the move class caught anyway. And the descent walks
+BEYOND the audit's bounded move on all three reported cells (+0.034/+0.022/+0.032 vs
++0.020/+0.013/+0.019): offered the coupled step, it re-forms the whole opening — value cluster to
+0:10, Arcane Power to the opener, chains at 2:10. `search-audit --k=3` reads 72/72 with a clean
+self-test; anchors 17/17; preset sweep PLAN-DIFF IDENTICAL.
