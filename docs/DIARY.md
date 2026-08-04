@@ -1468,3 +1468,14 @@ BEYOND the audit's bounded move on all three reported cells (+0.034/+0.022/+0.03
 +0.020/+0.013/+0.019): offered the coupled step, it re-forms the whole opening — value cluster to
 0:10, Arcane Power to the opener, chains at 2:10. `search-audit --k=3` reads 72/72 with a clean
 self-test; anchors 17/17; preset sweep PLAN-DIFF IDENTICAL.
+
+## buildSegments: overlap resolution is order-independent now, and the UI says so
+
+The second ledger item was a plain user-facing bug: overlapping phase rows resolved by "last row wins
+entirely", so the same fight scored 202.40 or 212.00 effective casts (4.7 %) depending on nothing but
+data-entry order. The winner of each elementary interval is now chosen by a total order — physics >
+policy > value (intermission > aoe > burn), then the more specific row inside a type — so permuting
+the rows cannot change the segments, and the phase editor warns on every overlap, naming the rows,
+the interval, and which one applies. Non-overlapping input (every preset, every declared test)
+provably resolves identically to the old rule; the preset sweep is byte-identical across the change,
+anchors 17/17, all scorer gates green.

@@ -5178,18 +5178,42 @@ const state = {
   complicated: false,
   phases: [], // {type:'intermission'|'burn'|'aoe', from:'1:30', to:'2:00', mult:2, targets:4}
 };
-// Paint phase rows over a "normal" base fight; later rows win on overlap.
+// Paint phase rows over a "normal" base fight.
+// ⚠ OVERLAPS RESOLVE BY PRECEDENCE, NOT BY DATA-ENTRY ORDER (fixed 08-04; MODEL-DEFECTS' "Also
+// found" ledger). The old rule was "last row wins entirely", so the SAME fight scored 202.40 or
+// 212.00 effective casts (4.7 %) depending on which order the user typed the rows in — a scoring
+// input silently keyed to entry order. Now the winning row for each elementary interval is chosen
+// by a TOTAL order, so permuting the rows cannot change the segments:
+//   1. physics > policy > value: intermission (boss untargetable) > aoe > burn;
+//   2. inside a type, the later-STARTING row (a narrower window nested inside a broader one is
+//      the more specific instruction — the "execute burn inside a whole-fight burn" idiom);
+//   3. then the earlier-ENDING (again: more specific), then the stronger (mult, then targets).
+// Non-overlapping rows — every preset and declared test — have one covering row per interval, so
+// this resolves identically to the old rule there (verified: 27/27 presets carry zero overlaps,
+// and the preset plan-sweep is byte-identical across the change). Detected overlaps are reported
+// on the returned array (`.overlaps`) so the UI can warn; headless callers just ignore it.
 function buildSegments(rows, T) {
   const pts = new Set([0, T]);
   for (const r of rows) { pts.add(r.from); pts.add(r.to); }
   const xs = [...pts].filter(x => x >= 0 && x <= T).sort((a, b) => a - b);
+  const RANK = { intermission: 3, aoe: 2, burn: 1 };
+  const beats = (r, s) => {
+    if (!s) return true;
+    const tr = RANK[r.type] || 0, ts = RANK[s.type] || 0;
+    if (tr !== ts) return tr > ts;
+    if (r.from !== s.from) return r.from > s.from;
+    if (r.to !== s.to) return r.to < s.to;
+    if ((r.mult || 1) !== (s.mult || 1)) return (r.mult || 1) > (s.mult || 1);
+    return (r.targets || 0) > (s.targets || 0);
+  };
   const segs = [];
   for (let i = 0; i < xs.length - 1; i++) {
     const a = xs[i], b = xs[i + 1];
     if (b - a < 1e-9) continue;
-    let seg = { start: a, end: b, type: "normal", mult: 1, targets: 0 };
-    for (const r of rows) if (r.from <= a + 1e-9 && r.to >= b - 1e-9) seg = { start: a, end: b, type: r.type, mult: r.mult, targets: r.targets };
-    segs.push(seg);
+    let win = null;
+    for (const r of rows) if (r.from <= a + 1e-9 && r.to >= b - 1e-9 && beats(r, win)) win = r;
+    segs.push(win ? { start: a, end: b, type: win.type, mult: win.mult, targets: win.targets }
+                  : { start: a, end: b, type: "normal", mult: 1, targets: 0 });
   }
   const merged = [];
   for (const s of segs) {
@@ -5197,6 +5221,16 @@ function buildSegments(rows, T) {
     if (p && p.type === s.type && p.mult === s.mult && p.targets === s.targets) p.end = s.end;
     else merged.push({ ...s });
   }
+  // Overlap report, for the UI's warning strip: which pairs of rows overlap, where, and which one
+  // the precedence above picks there. A property on the array, not a new return shape — headless
+  // callers (cfgFor, the tools) keep working unchanged, and JSON serialization of the segments
+  // (the sim memo key) ignores non-index properties, so scoring is untouched by construction.
+  const overlaps = [];
+  for (let i = 0; i < rows.length; i++) for (let j = i + 1; j < rows.length; j++) {
+    const lo = Math.max(rows[i].from, rows[j].from), hi = Math.min(rows[i].to, rows[j].to);
+    if (hi - lo > 1e-9) overlaps.push({ i, j, from: lo, to: hi, winner: beats(rows[j], rows[i]) ? j : i });
+  }
+  if (overlaps.length) merged.overlaps = overlaps;
   return merged;
 }
 // per-buff pin field labels; everything not listed gets the generic label
@@ -5502,9 +5536,17 @@ function readCfg() {
       }
       if (to > T) warnings.push(`${label}: clipped at the ${fmtT(T)} fight end — increase the fight length if the fight runs longer.`);
       rows.push({ type: p.type, from: Math.max(0, from), to: Math.min(T, to),
-        mult: Math.min(10, Math.max(1, +p.mult || 2)), targets: Math.min(20, Math.max(1, p.targets | 0 || 4)) });
+        mult: Math.min(10, Math.max(1, +p.mult || 2)), targets: Math.min(20, Math.max(1, p.targets | 0 || 4)), label });
     });
     if (rows.length) segments = buildSegments(rows, T);
+    // Overlapping rows are almost always a data-entry mistake, and they used to be a silent one:
+    // "last row wins" scored the same fight 4.7 % apart depending on entry order. The resolution is
+    // deterministic now (see buildSegments), but the user still needs to be told their timeline
+    // contradicts itself — the boss can't be two phases at once.
+    if (segments && segments.overlaps) for (const o of segments.overlaps) {
+      const w = rows[o.winner], l = rows[o.winner === o.i ? o.j : o.i];
+      warnings.push(`${w.label} and ${l.label} overlap ${fmtT(o.from)}–${fmtT(o.to)} — the boss can’t be both, so the planner applies ${w.label} there (untargetable beats AoE beats burn; inside a type the later-starting phase wins). Adjust the times if that isn’t the fight.`);
+    }
   }
   // ★ The buff panel folds into the stats HERE, so the engine only ever sees final numbers and there is
   // no second place where "effective spellpower" could be computed differently (the re-typed-formula

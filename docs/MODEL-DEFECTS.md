@@ -3339,11 +3339,19 @@ against itself, and `law-check` had no toll line above the floor — so none of 
 
 ### Also found, filed separately, NOT part of the toll block
 
-* **`buildSegments` resolves an overlap by "last row wins ENTIRELY"** (`:4673`), silently deleting the
-  other phase — and the result depends on **data-entry order**. Same fight, rows reordered: **202.40 vs
-  212.00 effective casts, Δ = 4.7 %**. The phase editor validates only `to > from` and `from < T`; there
-  is no overlap check and no warning. Also: the UI writes `mult` onto every row including AoE rows, and
-  the AoE damage branch ignores `seg.mult` entirely, so a burn can never apply to Arcane Explosion.
+* ✅ **FIXED 08-04 — `buildSegments` overlap resolution is ORDER-INDEPENDENT and the UI warns.** The
+  old rule was "last row wins ENTIRELY", silently deleting the other phase, so the same fight scored
+  **202.40 vs 212.00 effective casts (Δ = 4.7 %)** depending on data-entry order. The winner of each
+  elementary interval is now chosen by a TOTAL order (intermission > aoe > burn; inside a type the
+  later-starting, then earlier-ending, then stronger row — the "execute burn nested in a whole-fight
+  burn" idiom resolves the way the user means it), so permuting the rows cannot change the segments —
+  verified both orders score bit-identically, and the old rule demonstrably didn't. Overlaps are
+  reported on the returned array (`.overlaps`) and the phase editor surfaces a warning naming the
+  rows, the interval, and the winner. Non-overlapping input resolves identically to the old rule
+  (single covering row per interval): 27/27 presets carry zero overlaps and the preset plan-sweep is
+  byte-identical across the change. ⚠ Still open from the same audit: the UI writes `mult` onto every
+  row including AoE rows, and the AoE damage branch ignores `seg.mult` entirely, so a burn can never
+  apply to Arcane Explosion.
 * **`killMode:"oneSided"`** scores `(T, T+KWD]` with the last phase still in force — a fight ending in a
   10-target AoE phase books **+1.71 casts of phantom Arcane Explosion after the boss is dead**. Latent
   at the default `killMode:"none"`. `"sym"`'s kinks at `T±0.5` are missing from `bps` (7e-4 casts).

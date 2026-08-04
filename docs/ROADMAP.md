@@ -20,8 +20,10 @@
 >   with the whole ATI model rebuilt as the exact renewal law — crit-driven, haste-feedback-exact,
 >   engagement-transient-aware (ESTABLISHED-FACTS §12, RULES §14). The damage side stays normalised
 >   away, correctly. PoM remains: an allocation problem, i.e. **search work**.
-> · `buildSegments` resolves overlapping phases by "last row wins entirely" with no validation, so the
->   same fight scores 202.40 or 212.00 (4.7 %) depending on **data-entry order**. A UI/validation bug.
+> · ✅ *Fixed 08-04:* `buildSegments` resolved overlapping phases by "last row wins entirely" with no
+>   validation, so the same fight scored 202.40 or 212.00 (4.7 %) depending on **data-entry order**.
+>   Now order-independent by a total precedence (intermission > aoe > burn, then most-specific row),
+>   with the phase editor warning on every overlap. Presets/tests untouched (byte-identical sweep).
 > · `killMode:"oneSided"` books +1.71 casts of phantom Arcane Explosion after the boss dies (latent at
 >   the default), and RULES §9 Correction 3's AoE press-snap has gone inert (it lives on `eff`; the
 >   ranking reads `scoreStart`) — **that one is a search-path item and belongs to next session.**
