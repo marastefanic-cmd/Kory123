@@ -1779,3 +1779,30 @@ closed forms, why §4c's packing law can be stated at all, and why *"A beats B"*
 (the retired approach, CLAUDE.md rule 2). They are not in tension; they are the same premise stated
 twice, and each earlier attempt to "fix" one against the other re-introduced the cast lattice into a
 ranking objective §8l deliberately made lattice-free.
+
+## 18. Presence of Mind — a RULE, not a track *(settled 08-04; derivation MODEL-DEFECTS §9b)*
+
+PoM (15-pt Arcane talent, 180 s cooldown, off the GCD, next non-instant cast becomes instant) is the
+one cooldown every Arcane raider has that the planner deliberately does NOT schedule — because its
+optimal use is separable from the layout and closes to a formula:
+
+- **At steady state PoM is worth exactly ZERO.** A 3-stack Blast (1.498 s) is under the GCD at every
+  haste tested (h ∈ {0…1200} × every buff stack), so the interval is GCD-bound and deleting the cast
+  time saves nothing. Never "save it for the burst" — the burst is where it is worth the least.
+- **On a COLD RAMP it is worth `(2.5 − 1.5)/1.5 = 0.667 casts, m-independent`** — it deletes the
+  largest rung of the opener toll (1.3320 → 0.6653; the match to the documented toll is the check).
+- **Its value scales with the damage state over the ramp it covers**, exactly like the toll: with
+  Arcane Power over the opener it reaches **1.004 casts** (T=98 ladder, cluster at 0:00).
+- ⇒ **The rule: press PoM on the FIRST Arcane Blast of a cold ramp — the pull, or an intermission
+  exit — never mid-fight at 3 stacks. With more ramps than charges (one per 180 s), give the charges
+  to the ramps whose first cast a damage buff covers.** That is the whole allocation problem §9b
+  named, solved by inspection of the plan the tool already prints (every ramp start and every AP
+  window is on the timeline).
+
+**Why a rule and not a track:** PoM is off-GCD and shares no cooldown or lockout with anything the
+planner places — pressing it moves no other press, so it cannot change which layout is optimal; a
+search dimension would add cost and reach nothing the formula doesn't. ⚠ The honest second-order
+residual, recorded: PoM cheapens an EARLY opening cluster (1.181 → 0.844 casts for cluster-at-0:00 vs
+0:07 with AP down), which could in principle move a knife-edge opener — no argmax flip was
+demonstrated on the ladders (the region is a plateau), and the effect is bounded by the 0.337-cast
+spread. If a future declared test sits on that knife edge, this is the paragraph to reopen.

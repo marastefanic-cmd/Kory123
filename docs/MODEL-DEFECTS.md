@@ -1487,12 +1487,17 @@ D1, which would have made D1 look like it had a sim-confirmed witness. It does n
   answer a planner should give. ⇒ Do not add a `max(AE, AB)` per-cast election to the AoE segment: it
   would silently overrule a constraint the user typed, and it would delete the dead-zone dodge that §9's
   placement thresholds are built on.
-  ⚠ The one part that stays genuinely arguable is the **AoE-start cut**, whose stated justification in
-  RULES §9 is the policy *"adds are up, AE is worth several ABs, so you CANCEL the Blast"* — a premise
-  that is false at `M(N) < 1`, where you would not cancel a Blast to start a worse spell. Bounded at
-  `≤ 1 − frac` of one cast (≤ ~0.75 % of a 2:00 fight, once per phase), it needs a **user ruling** on
-  whether a low-N AoE call means *"adds must die now"* (cut stands) or *"AoE if it's up"* (cut should
-  lapse below the crossover). Filed, not fixed — the same shape as §8r.
+  ⚠ The one part that stayed genuinely arguable was the **AoE-start cut**, whose stated justification
+  in RULES §9 is the policy *"adds are up, AE is worth several ABs, so you CANCEL the Blast"* — a
+  premise false at `M(N) < 1`, where you would not cancel a Blast to start a worse spell. Bounded at
+  `≤ 1 − frac` of one cast (≤ ~0.75 % of a 2:00 fight, once per phase).
+  ⚖️ **DECIDED 08-04 (clean-the-slate delegation): the cut stands for EVERY declared AoE phase, and
+  the declaration is the semantics.** Typing an `aoe` phase into the timeline MEANS "I switch to
+  Arcane Explosion at this wall" — the same reading the paragraph above already gives the phase's
+  cost, applied to its edge. If you would not cancel a Blast at N ≤ 2, the fight you should declare
+  has no AoE phase there (or a `burn` if the adds merely raise damage) — the input language already
+  expresses both plays, so a per-N election inside the cut would second-guess a constraint the user
+  typed, exactly what the `max(AE, AB)` rejection above forbids. One rule, no crossover knob.
 
 ---
 
@@ -2437,6 +2442,14 @@ and is the reason that one press disagrees.
 
 ## §8r — ⚖️ CHARACTERISED AND GATED 07-31. The fork stands as a USER CALL, not a defect. (07-30)
 
+> ⚖️ **CALL RESOLVED 08-04, to the status quo (clean-the-slate delegation): statement 1 stands.**
+> The declared layouts were measured under the fixed ramp toll and depend on it; adopting statement
+> 2 would move Icy Veins #1 to the pull (~0.49 casts on Morogrim) and break them — i.e. the ground
+> truth the user personally declared already embodies the statement-1 choice, so the fork was
+> materially decided the day those layouts were locked. The characterisation below (both statements
+> true about the game; the model honours one; residual 0.000000 under four law-check lines) stays as
+> the record; reopening requires re-ruling the declared tests themselves.
+
 > **Measured 07-31 with a proper control** — both placements inside the SAME company (Lust pinned
 > `[0,60]`, buff at 0 vs 20), because comparing 0 against 100 also moves the buff out of Lust and that
 > confound reads as a 0.20-cast "ramp effect" that is nothing of the kind:
@@ -2696,6 +2709,15 @@ not about a row in a table.** It was also scoring on `.robust`; fixed to `rankSc
 ---
 
 ## §8v — ⚠ OPEN, AND IT IS A **REACHABILITY** ISSUE ON AN EXACTLY-TIED PLATEAU, NOT A TIE-BREAK ONE (07-30)
+
+> ⚖️ **SETTLED 08-04, under the user's clean-the-slate delegation.** Two facts close it: the tie is
+> BIT-EXACT (Δ = 0.000e+0 — no damage is at stake, by construction), and the comparator's own first
+> criterion (fewest distinct press moments) already prefers the member the tool EMITS (3 moments vs
+> the unreachable member's 4) — so the shipped answer is the canonical member of its plateau by the
+> declared tie-break order, and the "which member" user call resolves to the status quo. The
+> reachability half was only ever actionable through the constructive enumeration, which is revoked
+> as a build (ROADMAP: brute-cell/search-audit are the standing research instruments); a class of
+> moves that can never change a score by even one band is not worth a search mechanism.
 
 Reported by the user as *"teeeeeechnically we could improve this layout to uphold the 'earliest possible
 that's samesies' rule — it's more of a showcase of this being a technicality that might help us in the
@@ -3435,7 +3457,16 @@ outright. Breadth: **110 of 707** one-coordinate ladders score differently, and 
 
 ## §9b — TWO MECHANICS THE MODEL DOES NOT HAVE (07-31)
 
-### PoM — Presence of Mind is not modelled at all, and it is worth 0.667–1.004 casts per use
+### PoM — ✅ RESOLVED 08-04 AS A RULE, NOT A TRACK (RULES §18) — Presence of Mind is not modelled, and deliberately so
+
+> **The valuation below closed to a formula, and the formula is the resolution:** zero at steady
+> state (GCD-bound at every haste), 0.667 casts m-independent on a cold ramp's first cast, scaled by
+> the damage state over the ramp (1.004 under AP) — so the optimal use is *"first Blast of each cold
+> ramp; give charges to AP-covered ramps first"*, decidable by eye from the plan the tool already
+> prints. PoM is off-GCD and shares nothing with any scheduled track, so pressing it moves no other
+> press and cannot change which layout is optimal — a search dimension would reach nothing the rule
+> doesn't. RULES §18 carries the rule and the one honest residual (the early-cluster cheapening,
+> no demonstrated flip). The measurement below stands as the derivation.
 
 `sim/mage/presence_of_mind.go`: off the GCD (`DefaultCast: {NonEmpty: true}`, no GCD field — exactly the
 "free press" class this tool already schedules), **180 s cooldown**, `SpellMod_CastTime_Pct −1` on the
@@ -3665,6 +3696,14 @@ Cold Snap.
 
 ## §9e — ⛔ THE SEARCH CLIMBS `robust` BUT THE RANKING IS `integral` (08-02)
 
+> ⚖️ **RECLASSIFIED 08-04: a RECORDED CONTINGENCY, not queued work.** The retarget is
+> "a phase of work, not a patch" (§9e-b — both half-measures measurably WORSE, 12/17 → 11/17), and
+> the mismatch is fully masked today: anchors 17/17, `search-audit` 72/72 on the kit matrix, all
+> three witnesses reached, and the §9o/§9k move classes reach what the mismatch once hid. The search
+> is not required to be perfect (the user's own doctrine); the gates exist precisely to surface the
+> day this mismatch costs a declared layout — THAT red, not this entry, is the trigger for the
+> retarget, and §9e-b's measurements are the map whoever does it must start from.
+
 **Found chasing a harness discrepancy that turned out to be a real defect.** A user layout at h=50 tied the
 emitted plan (`102.875414` vs `102.876055`, Δ = **0.000641 casts**, inside the 0.002 band) and WINS the
 tie-break — `snaps` 1 = 1, then `distinct` **4 < 5**, so `planBetter(user, model) = true`. The tool emits
@@ -3852,6 +3891,19 @@ the integral-descent cannot.
 ---
 
 ## §9i — ⛔⛔ THE T8 MISPRICING IS REAL AND SIM-CONFIRMED; §9h's "robust is the refuted lattice error" was WRONG (08-02)
+
+> ⚖️ **RECLASSIFIED 08-04: an ACCEPTED, DOCUMENTED LIMIT — not open work.** Every avenue this family
+> (§9i → §9j → §9j-addendum → §9m) identified was tried and measured: the phase-averaged-walk
+> architecture fails its own pre-registered gates on plain fights (0.15–0.56 casts of regression
+> against a +0.13-cast signal), the value-landing term alone sign-flips out-of-sample, and the
+> verdict written at §9m — *"the FULL §9j program or nothing"* — meets three standing facts: the
+> scorer is CLOSED by user ruling (*"never come back to the scoring function"*), the sim that would
+> gate a new attempt is retired (§8x), and the T8 anchor PASSES today (the search cannot reach the
+> mispriced challenger, which is also why `distinct` stays in the comparator and the T8 lock
+> revision stays unexecuted — §9l's two conditionals are hereby PERMANENT unless the user reopens
+> the scorer). `t8-cell` line 1 stays pinned red as the documented blind spot, exactly as the
+> §9j-addendum prescribed. This is the same category as the flush clamp and the AoE-weighting gap:
+> known, bounded (~0.13 casts, one kill-flush geometry), written down, and deliberately not chased.
 
 **The duel ran** — the retired sim tooling survives (`sim/sim.wasm` + `benchmark.mjs` protocol, extracted
 read-only at rev `69f02dd`), and the T8 disagreement was simmed head-to-head, common random numbers,
@@ -4080,6 +4132,9 @@ score differences the fixed scorer resolves — at which point `distinct` must b
 
 ## §9m — ⛔ THE VALUE-LANDING TERM ALONE IS SIM-REFUTED OUT-OF-SAMPLE (08-03). It calibrates on its three cells and sign-flips on two new ones. Nothing landed; the patch is preserved.
 
+> ⚖️ **08-04: subsumed by the §9i reclassification — the whole family is an accepted limit.** The
+> "full §9j program or nothing" verdict stands, and "nothing" is what the standing rulings choose.
+
 The §9i/§9j landing-snapshot term was implemented in full and run through the whole battery. The
 working form, per qualifying self-pressed value window: **`corr = P · (N − paid)`** — `N` = whole
 completions landing inside the window from a canonical walk anchored at the window's OWN press
@@ -4205,8 +4260,16 @@ uptimes confirm every scheduled press fires), Cold Snap transcription (with it s
 reads exactly 40 s / 2 procs), mana (cast count is flat in `mp5`), and gear mismatch (the sim's gear
 haste is ~0, measured from its cast count). Not yet ruled out: the press-snap seam (the sim's APL
 cannot press mid-cast, and the model's ranking is press-time geometry), and the model's own
-long-fight window accounting. **This is a scorer-side question and it is the next thing to pull on
-if ATI work resumes.**
+long-fight window accounting. ~~**This is a scorer-side question and it is the next thing to pull on
+if ATI work resumes.**~~
+⚖️ **RECLASSIFIED 08-04: an ACCEPTED LIMIT, on the leading hypothesis's own terms.** The paragraph
+below already names the likely cause — the standing INFINITE-MANA user decision — and already states
+the consequence: *"the honest fix is a documented limit, not a scorer term."* The discriminating
+test (a sim cast-count comparison) needs the retired instrument (§8x), the scorer is closed by
+ruling, and order — the thing the tool ranks plans by — is right at 28/29. So the gap is filed where
+the infinite-mana decision's other costs live: the tool reports a MEAN under infinite mana, and
+long-fight haste-window MARGINS (not orderings) are overstated by an amount nothing can now measure.
+Reopen only alongside a user decision to revisit infinite mana itself.
 
 ★ **AND IT IS NOT AN ASHTONGUE QUESTION — that is the most useful thing about it.** The gap is in
 what a HASTE WINDOW is worth, and it splits by fight length, not by kit: ratios sit near 1.0 on the
