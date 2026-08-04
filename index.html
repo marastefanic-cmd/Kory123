@@ -1853,6 +1853,10 @@ function simulateRaw(schedule, cfg, collect) {
   for (let i = 0; i < active.length; i++) { const w = active[i]; if (w.scoreStart > 0) bpS.add(w.scoreStart); bpS.add(w.scoreStart + w.def.dur); }
   if (segs) for (const sg of segs) { bpS.add(sg.start); bpS.add(sg.end); }
   for (const [ra, rb] of rampSpans) { if (ra > 0) bpS.add(ra); bpS.add(rb); }
+  // killMode:"sym"'s window kinks live at T ± 0.5 and were MISSING from the breakpoint set, so with
+  // no slice mid falling inside the window the mode read bit-identical to "none" (measured 08-04;
+  // the ledger had it at 7e-4 casts on its case). Diagnostic-mode-only: "none" adds no points.
+  if (cfg.killMode === "sym") { bpS.add(cfg.T - 0.5); bpS.add(cfg.T + 0.5); }
   const bps = [...bpS].filter(x => x >= 0 && x <= cfg.T + KWD).sort((a, b) => a - b);
   total = 0; totalEarly = 0; robust = 0;
   let sj = 0;
@@ -1882,7 +1886,14 @@ function simulateRaw(schedule, cfg, collect) {
     if (segs) {
       while (sj < segs.length - 1 && mid >= segs[sj].end) sj++;
       segB = segs[sj];
-      if (segB.type === "intermission") { if (mid < segB.end) continue; segB = null; } // boss untargetable: no damage
+      // Past the LAST segment's end — only the killMode tail (T, T+KWD] can get here, since
+      // buildSegments always covers [0, T] — the fight is plain casting, the walk's own convention
+      // ("past the last defined phase: plain casting"). Without this the tail kept the final phase
+      // IN FORCE: a fight ending in a 10-target AoE phase booked +2.21 casts of phantom Arcane
+      // Explosion after the boss died (killMode:"oneSided"; latent at the default "none", whose
+      // killW is 0 past T). MODEL-DEFECTS' "Also found" ledger, closed 08-04.
+      if (mid >= segB.end) segB = null;
+      else if (segB.type === "intermission") continue; // boss untargetable: no damage
     }
     /* ★★ THE TOLL, SPREAD OVER THE CAST THAT INCURS IT — not charged as a lump at its start.
        Forcing the interval to a ramp cast's own span makes the effective rate `1/(C_k/m) = m/C_k`, which

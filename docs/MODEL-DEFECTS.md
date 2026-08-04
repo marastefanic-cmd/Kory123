@@ -3352,9 +3352,16 @@ against itself, and `law-check` had no toll line above the floor — so none of 
   byte-identical across the change. ⚠ Still open from the same audit: the UI writes `mult` onto every
   row including AoE rows, and the AoE damage branch ignores `seg.mult` entirely, so a burn can never
   apply to Arcane Explosion.
-* **`killMode:"oneSided"`** scores `(T, T+KWD]` with the last phase still in force — a fight ending in a
-  10-target AoE phase books **+1.71 casts of phantom Arcane Explosion after the boss is dead**. Latent
-  at the default `killMode:"none"`. `"sym"`'s kinks at `T±0.5` are missing from `bps` (7e-4 casts).
+* ✅ **FIXED 08-04 — `killMode:"oneSided"` scored `(T, T+KWD]` with the last phase still in force**: a
+  fight ending in a 10-target AoE phase booked phantom Arcane Explosion after the boss died (measured
+  +2.21 casts on the repro; the original filing said +1.71 on its case). The integral's segment scan
+  now nulls `segB` past the last segment's end — the walk's own "past the last defined phase: plain
+  casting" convention — so the tail earns the plain one-sided AB flux (+0.499 casts, identical to the
+  non-AoE-ending control's, which is the window's honest content). `"sym"`'s `T±0.5` kinks are now in
+  `bps` too — measured, the mode had been reading BIT-IDENTICAL to `"none"` (its window never
+  contained a slice midpoint), worse than the 7e-4 the filing estimated. Both were latent at the
+  default: verified inert — plan-sweep `PLAN-DIFF IDENTICAL` with `scorerMoved=0`, the whole battery
+  green.
 * ✅ **SETTLED 08-04 — the AoE press-snap (RULES §9 Correction 3) reaches the EXECUTION layer, not
   the ranking, and that split is deliberate (MECHANICS §0, which postdates the correction).** This
   entry originally read "two presses that fire at the identical instant are separated by 0.05783
