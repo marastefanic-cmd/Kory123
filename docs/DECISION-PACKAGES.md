@@ -82,7 +82,7 @@ arithmetic, not simulation. Three Lust schedules (600 s cooldown ⇒ two calls):
 |---|---|---|---|---|
 | 0:10 & 10:10 | 554.294 | 554.348 | 554.732 | **558.680** |
 | 1:00 & 11:00 | 553.639 | 553.912 | 552.970 | **557.704** |
-| 3:00 & 9:00 | 553.356 | 554.129 | 553.947 | *(solving at commit time — the follow-up commit fills it)* |
+| 3:00 & 9:00 | 553.356 | 554.129 | 553.947 | **559.338** |
 
 **The verdict, in three tiers:**
 1. **Hold beats spam, mildly and consistently** (+0.05 to +0.77 casts): pressing Icon every 180 s
@@ -94,7 +94,11 @@ arithmetic, not simulation. Three Lust schedules (600 s cooldown ⇒ two calls):
    the policies: 180 s chains as the backbone, Icon spammed OR held per segment, gem charges split
    between the opener and a terminal double, Cold Snap's extra IV spent on a mid-fight re-align,
    and a full kill-burst cluster at ~12:05.
-3. **So the ruling-ready statement is:** *alignment questions are second-order; structure
+3. **And the Lust schedule itself is the biggest lever measured here:** the mid-fight pair
+   (3:00 & 9:00 — which lands the calls on the 360 s re-alignment points) gives the best fight of
+   the three (559.34 vs 558.68 at 0:10/10:10 and 557.70 at 1:00/11:00) — worth more than every
+   spam/hold delta combined. If the raid controls the calls, that is the first thing to set.
+4. **So the ruling-ready statement is:** *alignment questions are second-order; structure
    (Lust coverage, Cold Snap placement, the terminal cluster) is first-order — plan with the tool,
    and when in doubt between spam and hold, hold.* This also answers the old open question
    "align-vs-twice breakpoint": at this length, one aligned use beats two unaligned ones for the
