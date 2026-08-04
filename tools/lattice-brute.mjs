@@ -168,6 +168,20 @@ if (process.env.LB_CHILD) {
   process.send({ top: top.map(x => ({ v: x.v, s: x.s })) });
   process.exit(0);
 }
+/* ── child mode: polish a batch ───────────────────────────────────────────────────────────────────
+   The polish is the EXPENSIVE half and it was single-threaded in the parent: a 6-coordinate layout
+   is 11⁶ ≈ 1.77M evaluations, so polishing a dozen structures costs more than sweeping 10⁸ layouts.
+   It is embarrassingly parallel over candidates, so it forks like the sweep does. */
+if (process.env.LB_POLISH) {
+  process.on('message', m => {
+    process.send({ done: m.list.map(s => { const p = polish(s); return { v: p.v, s: p.s }; }) });
+    process.exit(0);
+  });
+  // ⚠ and BLOCK — a bare handler registration falls straight through into the parent's sweep below,
+  // so every polish child re-ran the whole enumeration (and its own optimizeAsync). The handler
+  // exits the process; this await simply stops module evaluation until it does.
+  await new Promise(() => {});
+}
 
 const JOBS = +arg('jobs', 6);
 console.log(`# LATTICE BRUTE — T=${T} lust=${LUST ?? 'none'} h=${HASTE} sp=${SP} crit=${CRIT}${T5 ? ' t5two' : ''}${ATI ? ' +ATI' : ''}`);
@@ -212,8 +226,14 @@ console.log(`  grid winner   ${(all[0].v / PLAIN).toFixed(4)} casts   ${JSON.str
    offGrid, then the flattened press vector ("earliest but same"). Reporting the plateau is also what
    the §8y revision precedent requires: a ruling made without seeing it cannot invoke that precedent. */
 const t1 = Date.now();
-const polished = [];
-for (const c of cands) polished.push(polish(c.s));
+const batches = Array.from({ length: JOBS }, () => []);
+cands.forEach((c, i) => batches[i % JOBS].push(c.s));
+const polished = (await Promise.all(batches.filter(b => b.length).map(list => new Promise((res, rej) => {
+  const c = fork(fileURLToPath(import.meta.url), process.argv.slice(2), { env: { ...process.env, LB_POLISH: '1' } });
+  c.on('message', m => res(m.done));
+  c.on('error', rej);
+  c.send({ list });
+})))).flat();
 const topV = polished.reduce((m, p) => Math.max(m, p.v), -Infinity);
 const bandAbs = api.TIE_CASTS * PLAIN;
 const plateau = polished.filter(p => topV - p.v <= bandAbs)
@@ -228,17 +248,15 @@ console.log(`  plateau       ${plateau.length} layout(s) within ${api.TIE_CASTS}
 for (const p of plateau.slice(0, 8)) if (keyOf(p.s) !== keyOf(best.s))
   console.log(`     Δ${((p.v - best.v) / PLAIN).toFixed(4)}  ${JSON.stringify(p.s)}`);
 
-// the tool's own answer, for comparison — and the pair comparator decides ties
-const tool = await api.optimizeAsync(cfg, () => {});
-const tv = api.simulate(tool.best.s, cfg, false).integral;
-console.log(`\n  tool emits    ${(tv / PLAIN).toFixed(4)} casts   ${JSON.stringify(tool.best.s)}`);
-const gap = (best.v - tv) / PLAIN;
 const band = api.TIE_CASTS;
-console.log(`  brute − tool  ${gap >= 0 ? '+' : ''}${gap.toFixed(4)} casts  (tie band ${band})  ⇒ ${
-  gap > band ? '⛔ SEARCH MISS — brute force found a better layout' :
-  gap < -band ? '★ the tool BEATS the lattice (its answer is off-grid or outside the polish radius)' :
-  '✓ agree within the tie band'}`);
-
+/* ── THE DECLARED-LAYOUT CHECK — the primary use (`--check`) ──────────────────────────────────────
+   ★ THIS INSTRUMENT SIDESTEPS THE SEARCH ENTIRELY (user, 08-04): *"basically we're sidestepping the
+   search function and using the super quick scorer to bruteforce the problem, verify the winners on
+   current tests so that we can apply the same approach on figuring out new tests for new trinkets
+   and haste levels and spellpower levels and crit levels."* So the question it answers is *"is this
+   layout the global optimum of the lattice?"* — a fact about the OBJECTIVE, not about the descent.
+   That is what makes it a test-DERIVATION tool: a cell can be certified for gear the search has
+   never been audited on, and the answer does not move when the search changes. */
 const CHECK = arg('check', null);
 if (CHECK) {
   const want = {}; CHECK.split('/').forEach((part, i) => { if (part) want[TRACKS[i]] = part.split(',').map(Number); });
@@ -249,4 +267,19 @@ if (CHECK) {
   console.log(`  brute − check  ${d >= 0 ? '+' : ''}${d.toFixed(4)} casts ⇒ ${
     d > band ? '⛔ the checked layout is BEATEN by brute force' : '✓ the checked layout survives the sweep'}`);
   if (d > band) process.exit(1);
+}
+
+/* ── OPTIONAL: what the SEARCH would have emitted (`--vs-tool`) ───────────────────────────────────
+   OFF by default. Useful when auditing the SEARCH (does the descent reach what brute force proves?),
+   pure overhead when deriving a TEST. ⚠ signature is (cfg, seed, onProgress) — anchors.mjs:499 is
+   the canonical call site; passing the callback as arg 2 throws `onProgress is not a function`. */
+if (flag('vs-tool')) {
+  const tool = (await api.optimizeAsync(cfg, undefined, () => {})).s;
+  const tv = api.simulate(tool, cfg, false).integral;
+  const gap = (best.v - tv) / PLAIN;
+  console.log(`\n  tool emits    ${(tv / PLAIN).toFixed(4)} casts   ${JSON.stringify(tool)}`);
+  console.log(`  brute − tool  ${gap >= 0 ? '+' : ''}${gap.toFixed(4)} casts  (tie band ${band})  ⇒ ${
+    gap > band ? '⛔ SEARCH MISS — brute force found a better layout' :
+    gap < -band ? '★ the tool BEATS the lattice (off-grid, or outside the polish radius)' :
+    '✓ agree within the tie band'}`);
 }
