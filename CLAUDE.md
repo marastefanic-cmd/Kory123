@@ -5,10 +5,11 @@ Read this first. It orients you on the project; the `docs/` files hold the detai
 ## What this repo is
 
 A **TBC 2.4.3 Arcane-mage cooldown-overlay planner**: `index.html` (open it in a browser — no build,
-no deps). The app is still ONE self-contained file **today, but that convention is RETIRED by
-decision** — the module split (PHASE13 §5.1, carried by `docs/ROADMAP.md` §0d since PHASE13 archived
-08-04) splits it (design in `docs/archive/12-phase11-platform.md` §2), gated on plans staying
-byte-identical. Treat "single-file" as a fact about HEAD, not a constraint to defend.
+no deps). The app is ONE self-contained file. The single-file *convention* is retired by decision,
+but the module split is **REVOKED as planned work (08-04, ROADMAP §4)** — the copies-drift disease
+it targeted is gated instead (`engine-node.mjs` as the one extraction point, `cfg-contract --strict`
+and `pool-equiv` blocking in CI). Split only if a real need appears, under the byte-identical-plans
+gate (design archived in `docs/archive/12-phase11-platform.md` §2).
 
 ⛔ **THE SIMULATOR IS RETIRED (user decision, 2026-07-30)** — *"I actually want you to retire the
 simming, it's doing more harm than good. I think we have the function/equation locked down and from now
@@ -342,9 +343,11 @@ miss is §8y's, whose fix is written and blocked on a user call, and on the pre-
 ⚠ **`k=3` is the floor that matters.** On the 2:00 cell there were ZERO improving 1- and 2-coordinate
 moves and six 3-coordinate ones — a k≤2 audit calls that plan optimal.
 ⚠ **A pass is LOCAL optimality only.** T2's declared Berserking is +120 s from where the descent put it
-(§8j); no bounded neighbourhood at any k finds that. Global optimality needs the constructive
-enumeration (PHASE13 §3, carried by ROADMAP §0d) — this gate is that programme's regression net, not
-its replacement.
+(§8j); no bounded neighbourhood at any k finds that. Global optimality is deliberately NOT claimed:
+the constructive-enumeration BUILD was revoked 08-04 (ROADMAP §4) — `tools/brute-cell.mjs` (complete
+anchor-and-chain family scans, pair-graded, plateau-reporting) plus this gate and CI's
+`plan-stability` are the standing instruments, and the ladder decision package ran to completion on
+exactly them.
 ⛔ **It grades on the objective PAIR**, via the engine's exported `rankPair`/`planBetter`. Grading on
 `rankScore` alone made it report T1 — a declared test, and the argmax — as a miss "beaten by 0.000347
 casts", 5.8× inside the tie band. **Three instruments made that same mistake in one day** (§8t,
@@ -597,9 +600,15 @@ Treat maintaining them as part of the work, not an afterthought:
   archived whole on 07-30 and bannered. **Historical evidence about a retired instrument; every command
   in them is dead.** `docs/archive/README.md` explains what replaced it and what was genuinely lost
   (mana + AoE weighting are now unmeasured).
-- `docs/ROADMAP.md` — ▶▶ **THE LIVE PLAN** (since PHASE13 archived, 08-04): status, current work, and
-  open questions. Its §0d carries PHASE13's inheritance — the enumeration programme, the platform
-  track, the seven live user calls, the traps.
+- `docs/ROADMAP.md` — ▶▶ **THE LIVE PLAN** (lean since 08-04, when the slate was cleaned: every open
+  item DONE or REVOKED with reasoning). §1 status · §2 what awaits USER RULINGS
+  (`docs/DECISION-PACKAGES.md` — the length ladder and the 12:20 study) · §3 the accepted-limits
+  register · §4 the 08-04 decisions (each reversible by a sentence) · §5 the standing traps. Its
+  full predecessor is `docs/archive/19-roadmap-record-through-0804.md`, append-only.
+- `docs/DECISION-PACKAGES.md` — the executed test-derivation programmes awaiting your rulings:
+  12 ladder cells with candidates + tie plateaus + certification, and the 12:20 alignment study's
+  exact-arithmetic verdicts. Ruling a cell declares an anchor (strip + `tests/anchors.mjs`, in
+  lockstep).
 - `docs/DIARY.md` — **append-only history** of how the tool evolved: the phase arc + the
   believed→disproved corrections ledger. Read to avoid re-litigating settled mistakes.
 - `docs/archive/` — closed-phase docs, chronological with a README index (`01`–`06` = the per-phase
@@ -647,7 +656,8 @@ Treat maintaining them as part of the work, not an afterthought:
   plan-neutral by the engine block being **byte-identical**, not by assertion). ✅ **The §1.4 doc sweep
   landed. ✅ CI came up** (`.github/workflows/ci.yml`: `fast`, `page`, `plans` — two carrying negative
   controls). ⛔ **The module split, the perf ladder and the product routes were NEVER STARTED**, and
-  the eight §8 user calls are unanswered — inherited by PHASE13 §5/§6, now carried by ROADMAP §0d.
+  the eight §8 user calls went to PHASE13 §5/§6 and were RESOLVED to the status quo 08-04 under the
+  clean-the-slate delegation (ROADMAP §4).
   ⚠ **Its own header claimed "not started, nothing has changed" while all four named directories had
   changed**; the archived doc opens with a banner saying so, and six blocks inside it are bannered
   false in place (its "no CI exists" line, F9's retired constant pairing, §3.3's rate-integral-era
@@ -661,8 +671,9 @@ Treat maintaining them as part of the work, not an afterthought:
   defect (§6.9), and the cast lattice (§6.14: `STACK_CAST_REDUCTION 1/3 → 334 ms` **plus** millisecond
   rounding) all closed; cooldowns now chain from the **fire** (§6.14c, HELD 18 → 1 of 196).
   `exact-match` **25/25**, `self-consistency` **0.00e+0**.
-  ⚠ **CLOSED, NOT FINISHED** — §7's search-optimality proof programme went to PHASE13 §3 (now
-  ROADMAP §0d); the acceptance re-gather was voided with the sim.
+  ⚠ **CLOSED, NOT FINISHED** — §7's search-optimality proof programme went to PHASE13 §3; the
+  enumeration build was revoked 08-04 (ROADMAP §4 — brute-cell + the audit gates are the standing
+  instruments), and the acceptance re-gather was voided with the sim.
   ⛔ **Six of its blocks are live-sounding instructions that later sections falsified** and are
   bannered in place; the dangerous one is **§6.11e's *"`exact-match` WILL FAIL … do NOT `--update`"***,
   which was true for a few hours on 07-27 and is false now. **§6.6/§6.7's mechanism is falsified by
@@ -671,8 +682,8 @@ Treat maintaining them as part of the work, not an afterthought:
   read a tool's output, not its verdict line.
 - `docs/archive/18-phase13-post-exact-objective.md` — **Phase 13, CLOSED 08-04.** The
   post-exact-objective phase, and the last numbered phase doc: **`docs/ROADMAP.md` is the live plan
-  now** (its §0d carries what PHASE13 left open — the constructive-enumeration programme, the
-  platform track, the seven live user calls, the traps). Its §1 AoE-edge ruling (a cut, by policy —
+  now** (what PHASE13 left open was closed out later the same day — done or revoked, ROADMAP §4;
+  the rulings that remain are `docs/DECISION-PACKAGES.md`'s). Its §1 AoE-edge ruling (a cut, by policy —
   flipped twice in one day) lives on here and in RULES §9; its §2 re-measurements and §4 enforcement
   track were VOIDED with the sim; §3.1/§3.2/§3.3 closed 07-28 (the two-regime tail), **§3.9 closed
   08-04 by re-measurement** (the IV-before-Lust wrong-sign preference inverted with §8h/§8q — model,
@@ -690,10 +701,9 @@ Treat maintaining them as part of the work, not an afterthought:
   FAST ITERATION GATE** (`plan-sweep` + `plan-diff` + `plan-duel`) that replaced "re-run everything after
   every edit" — read it before designing any verification.
   ⚠ **Closed, not finished:** the unfinished §4 reclaim rungs passed to PHASE11 §3.1, then PHASE13
-  §5.3, and are **ROADMAP §0d's now**, unblocked (no freeze is in effect) but needing a **fresh CPU
-  baseline and content re-anchoring**: Phase 12 rewrote the very scoring walk that dominates the
-  profile (and 08-04's dead-code removal moved it again), so the rungs are intact and the prices are
-  not.
+  §5.3, and were **REVOKED 08-04 until a real slowness report** (ROADMAP §4) — the recorded prices
+  are stale twice over (Phase 12 rewrote the dominant walk; 08-04 removed ~20 % dead work), and the
+  standing rule holds: fresh baseline first, wall-clock compares only within a same-session pair.
 - `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
   into ROADMAP). **No plan in flight. Phase 5 (AoE phases) is COMPLETE** — verdict: an AoE phase is a
@@ -721,11 +731,11 @@ Treat maintaining them as part of the work, not an afterthought:
   **0.0000**. Never quote a `--score=point` number as a fact. Regenerate with
   `tools/facts-ladder.mjs --score=integral` / `tools/facts-pair.mjs --score=integral`.
 - `docs/MODEL-DEFECTS.md` — where the planner fails to reproduce one of those facts, with size in
-  **casts**, a reproduction, and what has already been falsified. ⚠ D1 is CLOSED (§8h–§8m); the open
-  items are **§8y** (a user call blocking move class 3d), §8o, §8r, §8v and the unfalsifiable §8n.
-  The stale line below predates that and is kept only for its list of non-defects (D1: the
-  model resolves sub-cast lattice phase as damage — three witnesses, 0.178–0.287 casts) plus a list of
-  things that are **not** defects so they are not re-filed.
+  **casts**, a reproduction, and what has already been falsified. ★ **As of 08-04 every entry is
+  ✅ closed or ⚖️ accepted/settled — the ledger carries NO open work.** The accepted limits are
+  indexed in ROADMAP §3 (the §9i T8 family, the flush clamp, §9e's recorded contingency, §8n's
+  unfalsifiability, the §9n long-fight margins under infinite mana); the file remains the ledger new
+  defects are filed in, and its non-defects list exists so nothing gets re-filed.
 - `docs/SOURCES.md` — where WoW facts come from (TBC is a solved game — look up + cite, don't
   re-derive) and the verified-facts ledger of the constants the model uses.
 - `docs/EP.md` — stat weights **two contexts**: the infinite-mana **layout** EP (closed-form model

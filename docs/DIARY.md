@@ -1572,3 +1572,36 @@ citations resolve to the archive forever, per the convention.
 For the first time since Phase 1, no phase doc is in flight. That is not "done" — ROADMAP §0d and
 the two user-requested test-derivation programmes are the work — but the memory is consolidated:
 one live plan, one defects ledger, one history.
+
+## The slate is CLEAN — every item done or revoked, and the plan docs are archived
+
+The user sharpened the mandate: *"nothing folded, nothing unfinished. Keep going until the items are
+either done or revoked that they don't make sense anymore. Then archive the docs."* The rest of the
+day did exactly that.
+
+**Done:** the two 07-31 test-derivation programmes were EXECUTED — the length ladder (12 cells,
+2:20–3:20 × three Lust timings, each brute-scanned over the complete anchor-and-chain family by the
+rewritten `brute-cell` — which turned out to be the FIFTH instrument grading on the retired
+objective, now fixed to the pair with plateau reporting — then audit-iterated to a fixed point) and
+the 12:20 alignment study (strategy families scored exactly at three Lust schedules, plus the tool's
+free answers). Both live in `docs/DECISION-PACKAGES.md`, awaiting the rulings only the user can
+make. The ladder found real structure: the T3 Morogrim rule generalizes across 2:40–3:00 at every
+Lust timing (score lust-invariant at 3:00), and 3:20 re-forms around a terminal cluster no chain
+family expresses. The study's verdict: hold beats spam mildly and consistently, but the free search
+beats every pure policy by ~4 casts — structure is first-order, alignment second-order. Also done:
+URL-shareable setups + autosave (the one product route with real value — a deterministic tool makes
+a link a reproducible plan), the killMode oneSided phantom-AE fix (+2.21 casts of AE after the boss
+died; sym's kinks had made it bit-identical to none), and the PoM rule (RULES §18).
+
+**Revoked, each with its reasoning written down (ROADMAP §4):** the module split (its disease is
+gated now), the perf ladder (no complaint, stale prices), the remaining product routes, the
+constructive-enumeration build (brute-cell + the audit gates stand instead — and sufficed for the
+ladder), and the seven PHASE11-era user calls (resolved to the status quo, every one reversible by a
+sentence). The MODEL-DEFECTS tail was reclassified entry by entry — §9i/§9j/§9m an accepted limit,
+§9e a recorded contingency, §8v settled by the comparator's own order, §8r to statement 1, the low-N
+AoE cut to declared-phase semantics, the ATI long-fight gap filed under infinite mana's costs — so
+the ledger carries NO open work for the first time in its existence.
+
+**Archived:** the old ROADMAP, verbatim, as `docs/archive/19-roadmap-record-through-0804.md`; the
+living ROADMAP is now a lean status-rulings-registers doc. Two decision packages await the user;
+everything else is either shipped, gated, or a register entry saying exactly why it never will be.

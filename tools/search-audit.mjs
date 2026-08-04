@@ -29,8 +29,9 @@
 //
 // ⚠ A PASS IS NOT OPTIMALITY. It says no move of ≤k coordinates by ≤span seconds beats this plan.
 // The declared Berserking on T2 sits +120 s from where the descent put it (§8j) — no bounded
-// neighbourhood of any k finds that. Global optimality needs the constructive enumeration
-// (docs/archive/18-phase13-post-exact-objective.md §3), and this gate is its regression net, not its replacement.
+// neighbourhood of any k finds that. Global optimality is deliberately not claimed: the constructive
+// enumeration was revoked as a build 08-04 (ROADMAP §4); `tools/brute-cell.mjs`'s complete
+// anchor-and-chain family scan is the wider standing instrument, and this gate is the regression net.
 //
 // ⚠ PINNED RAID CALLS ARE EXCLUDED from the coordinate set. They are not the planner's to move, and
 // `repair` would put them back — a candidate that gets relegalized is scored as one layout and would
