@@ -1505,3 +1505,13 @@ standing rule that the scorer is perfectible and never edited casually.
   same-instant separation and the "perfectly linear in press time" slope. Re-measured 08-04: flat
   interior, 0.000000 separation. The ledger entry was rewritten around the fresh probe rather than
   left describing an engine state that no longer exists.
+
+## The dead ramp-damage path is gone, and simulate() is ~20 % cheaper for it
+
+The last ledger item was the easiest and still worth its own commit: `rampCasts`/`rampCastDmg` — the
+pre-§8q discrete ramp-damage scoring path — had survived as pure write-only work, an O(|active|) Set
+build + sort + piecewise integration per ramp cast on every one of the ~5.7 M simulate() calls a
+long-fight optimize makes, its result read by nothing. Deleted along with its private helpers
+(`nonAB`, `segAt`, `RAMP_JITTER`); `rampSpans` stays, it feeds breakpoints. Bit-identical by
+construction and by measurement — plan-diff IDENTICAL with scorerMoved=0, anchors 17/17, every
+scorer gate green — and the same 21-cell preset sweep dropped from 133 to 107 CPU-seconds.

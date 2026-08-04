@@ -1779,58 +1779,21 @@ function simulateRaw(schedule, cfg, collect) {
   // ═══════════ exact discrete ramp — the opener & every post-gap re-engage ═══════════
   // The first MAX_STACKS Arcane Blasts after every cold start (the pull at 0 stacks — no prestack
   // modeled — and the exit of every AB gap long enough to drop the debuff) are SLOWER than the
-  // steady 3-stack cast. Model them EXACTLY: inside each ramp span the rate integral is suppressed
-  // and replaced by the discrete casts, each dealing its damage around its COMPLETION (damage lands
-  // on completion — sim-verified sampling; midpoint sampling re-created the phantom "haste
-  // compresses the ramp" credit). Cast speed is set at cast START (in-flight casts keep speed).
-  // Haste placement-independence (RULES §3) is preserved: haste shortens a span but never changes
-  // its cast COUNT, and the span hands off to the integral exactly — so haste gains nothing from
-  // covering the ramp, while a damage buff is credited for exactly the completions it truly covers.
-  // Each completion is phase-averaged over a ±half-GCD press/latency fuzz (RAMP_JITTER) so no
-  // knife-edge step enters the score (the optimizer can't game an exact boundary, and a completion
-  // sliding across a window edge as haste rises moves the score smoothly, not in cliffs).
-  const nonAB = s => !!s && (s.type === "intermission" || s.type === "aoe");
-  const segAt = tt => { if (!segs) return null; for (let i = 0; i < segs.length; i++) { const sg = segs[i]; if (tt >= sg.start && tt < sg.end) return sg; } return null; };
-  const RAMP_JITTER = g.GCD_FLOOR;
-  // A ramp cast's damage STATE is jitter-averaged around its START (ts). Sampling it across the
-  // COMPLETION over-credited every press-snapped ramp-exit window with ~half of the cast it fired
-  // after (the T=98 ramp-exit cluster phantom, ~+0.3 casts), so START is the rule that ranks with
-  // the sim at a window's FRONT edge — where the press is boundary-snapped, so "completion of the
-  // cast in progress" IS the next cast's start and the two rules coincide.
-  // ⚠ MECHANISM: this is NOT what the sim does. wowsims reads a VALUE buff (+SP, ×dmg) at cast
-  // COMPLETION, unconditionally — re-confirmed on the KT log in both directions (a cast whose AP and
-  // gem faded 1.8s before completion got NO x1.30; a cast that gained the gem 0.01s after starting
-  // still reported its +225 SP at completion). The two rules therefore DISAGREE at a window's BACK
-  // edge, where start-sampling over-credits the last partial cast by frac(D/interval) x premium.
-  // That residual is a known, deliberately UNIMPLEMENTED refinement (RULES 3b.3 + 3b-note: charging
-  // it moves the B2 deficit the wrong way, so it needs its own physics justification and sim gate).
-  // The damage TIME — kill taper, wall/AoE gating — stays at the completion (tc), preserving Phase
-  // 4's "damage lands on completion" rule (midpoint TIME sampling is what once re-created the
-  // haste-compresses-the-ramp phantom).
-  const rampCastDmg = (ts, tc) => {
-    if (nonAB(segAt(tc))) return 0;                    // completes into downtime/AoE — no AB damage
-    const sgD = segAt(tc);                             // damage context (burn mult) at the completion
-    const a = Math.max(0, ts - RAMP_JITTER / 2), b = ts + RAMP_JITTER / 2;
-    const edges = new Set([a, b]);
-    for (const w of active) { if (w.scoreStart > a && w.scoreStart < b) edges.add(w.scoreStart); const we = w.scoreStart + w.def.dur; if (we > a && we < b) edges.add(we); }
-    const es = [...edges].sort((x, y) => x - y);
-    let acc = 0;
-    for (let i = 0; i < es.length - 1; i++) {
-      const m = (es[i] + es[i + 1]) / 2;
-      acc += scanAt(m, sgD).dmg2 * (es[i + 1] - es[i]);
-    }
-    return acc / (b - a);
-  };
-  // The ramp spans/casts come straight from the board loop's recorded ramp casts — ONE source of
-  // truth: the same slow casts that set the sparse press boundaries are the ones scored discretely.
-  // Each cast's span [start, next boundary) suppresses the integral; its damage lands around its
-  // completion (jitter-smoothed above).
-  const rampSpans = [], rampCasts = [];
+  // steady 3-stack cast, and their true 2.5/2.17/1.83s lengths set the sparse press boundaries the
+  // walk above already used. Scoring-wise the ramp is the §8q TOLL below — a fixed cast count
+  // spread over an m-independent window, the integral itself running at the steady rate throughout —
+  // so all this block does is turn the walk's recorded ramp casts (`boardRamp`, the ONE source of
+  // truth) into the merged spans and breakpoints the toll windows and the integral read.
+  // ⚠ The per-ramp-cast DISCRETE damage sampling that used to live here (`rampCasts`/`rampCastDmg`,
+  // jitter-averaged around each cast) was the pre-§8q scoring path and survived only as write-only
+  // work in the hottest function — computed on every simulate(), read by nothing — deleted 08-04
+  // (MODEL-DEFECTS' "Also found" ledger). Its physics is not lost: damage-lands-on-completion is
+  // the walk's own rule, and the ramp's entire score is the toll.
+  const rampSpans = [];
   for (const rc of boardRamp) {
     const e2 = Math.min(rc.e, cfg.T + KWD);
     if (rampSpans.length && Math.abs(rampSpans[rampSpans.length - 1][1] - rc.s) < 1e-9) rampSpans[rampSpans.length - 1][1] = e2;
     else rampSpans.push([rc.s, e2]);
-    rampCasts.push({ tc: rc.c, dmg: rampCastDmg(rc.s, rc.c) });
   }
   // integrate over piecewise-constant segments: buff state changes only at window
   // edges / phase boundaries / the kill window, so a few dozen breakpoints are exact

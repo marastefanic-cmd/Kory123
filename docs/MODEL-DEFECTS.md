@@ -3375,9 +3375,14 @@ against itself, and `law-check` had no toll line above the floor — so none of 
     emitted plans by the tie-break's "earliest" (which resolves the plateau away from the wall),
     and pricing it is a user-gated SCORING change (a one-sided expectation charge at AoE-cut window
     ends, kin to the kill credit — never a lattice). RULES §9 Correction 3 carries the full status.
-* **`rampCasts` / `rampCastDmg` is DEAD CODE in the hottest function** — pushed at `:1697`, never read;
-  runs an O(|active|) Set build + sort + piecewise integration per ramp cast per `simulate()`, and
-  `simulate()` is called ~5.7 M times per long-fight optimize.
+* ✅ **FIXED 08-04 — `rampCasts` / `rampCastDmg` deleted.** It was the pre-§8q discrete ramp-damage
+  scoring path surviving as write-only work: an O(|active|) Set build + sort + piecewise integration
+  per ramp cast on EVERY `simulate()` (called ~5.7 M times per long-fight optimize), read by nothing.
+  Its private helpers (`nonAB`, `segAt`, `RAMP_JITTER`) went with it; `rampSpans` stays (a live
+  breakpoint feeder). Verified bit-identical: preset plan-sweep `PLAN-DIFF IDENTICAL` with
+  `scorerMoved=0`, anchors 17/17, full scorer battery green — and the same 21-cell sweep dropped
+  ~20 % CPU (133 s → 107 s), which is what deleting per-call dead work from the hottest function
+  should buy.
 
 ### ✅ SETTLED AT THE SOURCE, AND FIXED — the AB debuff anchors on the last LANDED COMPLETION
 

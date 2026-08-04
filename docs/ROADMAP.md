@@ -32,7 +32,9 @@
 >   exactly-flush clamp, ~0.04 casts worst case, kept out of emitted plans by the earliest
 >   tie-break — is recorded in MODEL-DEFECTS' ledger and RULES §9 C3; pricing it is a user-gated
 >   scoring decision.
-> · `rampCasts`/`rampCastDmg` is dead code in the hottest function.
+> · ✅ *Fixed 08-04:* `rampCasts`/`rampCastDmg` — the pre-§8q discrete ramp-damage path surviving as
+>   write-only work in the hottest function — deleted, bit-identical (`scorerMoved=0`), ~20 % CPU
+>   off the preset sweep.
 >
 > ---
 >
