@@ -205,6 +205,23 @@ console.log(`#   grid ${STEP}s · tracks ${TRACKS.join(',')} · use-vectors ${SI
 console.log(`#   polish ±${POLISH}s (full cartesian) on the top ${TOPN} distinct structures · ${JOBS} workers\n`);
 if (TOTAL > 4e8) die(`${TOTAL.toLocaleString()} layouts is beyond the raw regime — raise --step or shorten T (see the header's limit note).`);
 
+/* ── RESUMABILITY (`--out=file.jsonl`) — a killed run must not cost the night ─────────────────────
+   A 5-track cell is ~17 minutes and long-running background processes DO get killed (measured: a T1
+   run died at 262 bytes with no stack trace — an external kill, not a crash). An overnight programme
+   that loses a cell to that and silently redoes it is the same wasted-night failure as one that
+   crashes. So: one JSON line per finished cell, keyed by the cell's own parameters, and a run whose
+   key is already present exits immediately. A batch is then just a shell loop that can be
+   interrupted and restarted at will. */
+const OUT = arg('out', null);
+const CELLKEY = JSON.stringify({ T, LUST, SP, CRIT, HASTE, T5, ATI, KIT: KIT.join(','), STEP, POLISH, TOPN });
+if (OUT) {
+  try {
+    const prior = (await import('node:fs')).readFileSync(OUT, 'utf8').split('\n').filter(Boolean);
+    if (prior.some(l => { try { return JSON.parse(l).cell === CELLKEY; } catch { return false; } })) {
+      console.log('already done (--out has this cell) — skipping'); process.exit(0);
+    }
+  } catch { /* no file yet */ }
+}
 const t0 = Date.now();
 const slice = Math.ceil(TOTAL / JOBS);
 const kids = [];
@@ -310,6 +327,18 @@ if (CHECK) {
     : dIdeal > bandAbs / PLAIN ? '⛔ BEATEN — brute force found a strictly better layout under the exact law'
     : '⚠ beaten inside the tie band — see the plateau above'}`);
   if (beatsIt && !tiedExactly && dIdeal > bandAbs / PLAIN) process.exit(1);
+}
+
+if (OUT) {
+  const fs = await import('node:fs');
+  fs.appendFileSync(OUT, JSON.stringify({
+    cell: CELLKEY, T, lust: LUST, sp: SP, crit: CRIT, haste: HASTE, t5two: T5, ati: ATI, kit: KIT.join(','),
+    layouts: TOTAL, sweepSecs: +sweepSecs.toFixed(1), polishSecs: +polishSecs.toFixed(1),
+    best: best.s, quant: best.pair.score / PLAIN, ideal: best.pair.ideal / PLAIN,
+    plateau: plateau.length, plateauSample: plateau.slice(0, 6).map(p => p.s),
+    check: CHECK || null,
+  }) + '\n');
+  console.log(`  recorded → ${OUT}`);
 }
 
 /* ── OPTIONAL: what the SEARCH would have emitted (`--vs-tool`) ───────────────────────────────────
