@@ -654,6 +654,7 @@
       <span class="psave">
         <input id="preset-name" type="text" placeholder="Save as…" aria-label="Preset name">
         <button id="preset-save" title="Save the current setup under this name">Save</button>
+        <button id="btn-share" title="Copy a link that opens this exact setup — determinism makes the link a reproducible plan">Copy link</button>
       </span>
     </div>
     <div class="setup-grid">
@@ -7363,6 +7364,48 @@ el("in-haste").dispatchEvent(new Event("input"));
 refreshPresets("");
 renderBakedPresets(BOSS_PRESETS, "boss-chips");
 renderBakedPresets(GOLDEN_PRESETS, "golden-chips");
+/* ═══════════════ URL-shareable setups + last-setup autosave (ROADMAP §0d route 1, 08-04) ═══════════
+   A link IS a reproducible plan: the tool is deterministic (one setup ⇒ one schedule), so sharing the
+   SETUP shares the answer. The hash carries only `snapshotState()` — fight inputs, never a computed
+   plan (the presets' own rule) and never anything identifying. Autosave closes the "mid-raid refresh
+   loses the fight being planned" hole: the last setup is stored on unload/hide and restored on a
+   plain open. Precedence at boot: a #s= link beats the autosave beats defaults — a shared link must
+   open the SENDER's fight, not the receiver's leftovers. All of it is guarded: no localStorage (or a
+   malformed hash) degrades to exactly the old behavior. */
+const AUTOSAVE_KEY = "abp-last-setup";
+const stateToHash = () => "#s=" + btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(snapshotState())))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const stateFromHash = h => {
+  const m = /^#s=([A-Za-z0-9_-]+)$/.exec(h || "");
+  if (!m) return null;
+  try {
+    const b = m[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b), c => c.charCodeAt(0))));
+  } catch (_) { return null; }
+};
+{
+  const fromLink = stateFromHash(location.hash);
+  if (fromLink) applyState(fromLink);
+  else {
+    try {
+      const last = JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || "null");
+      if (last) applyState(last);
+    } catch (_) { /* no storage, or a corrupt save — defaults stand */ }
+  }
+}
+// A #s= link pasted into an ALREADY-OPEN tab changes only the hash — no reload, no boot path — so
+// apply it on hashchange too; without this the link silently loses to whatever the tab showed.
+addEventListener("hashchange", () => { const s = stateFromHash(location.hash); if (s) applyState(s); });
+const autosave = () => { try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(snapshotState())); } catch (_) {} };
+addEventListener("beforeunload", autosave);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") autosave(); });
+el("btn-share").addEventListener("click", async () => {
+  const url = location.origin + location.pathname + stateToHash();
+  history.replaceState(null, "", url);   // the address bar carries the setup from here on
+  const btn = el("btn-share"), old = btn.textContent;
+  try { await navigator.clipboard.writeText(url); btn.textContent = "Copied!"; }
+  catch (_) { btn.textContent = "Link in address bar"; }
+  setTimeout(() => { btn.textContent = old; }, 1600);
+});
 renderAssumptions();   // static — available before the first run, so the masthead link always has a target
 el("btn-assump").addEventListener("click", () => {
   el("assump").scrollIntoView({
