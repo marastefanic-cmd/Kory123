@@ -279,7 +279,7 @@ const polished = (await Promise.all(batches.filter(b => b.length).map(list => ne
    float floor — i.e. layouts the exact law cannot separate at all, which is the only honest meaning
    of "tied" and the set a §8y revision ruling has to see. */
 const bandAbs = api.TIE_CASTS * PLAIN;
-const uniq = polished.filter((p, i, a) => a.findIndex(q => keyOf(q.s) === keyOf(p.s)) === i)
+let uniq = polished.filter((p, i, a) => a.findIndex(q => keyOf(q.s) === keyOf(p.s)) === i)
                      .filter(p => polished[0] && true);
 /* ⚠ AND THE POOL MUST INCLUDE THE SWEPT BAND, NOT ONLY THE POLISHED ONE — T1, 08-04. The polish
    seeds are the top-N DISTINCT structures, and on a flat cell those can all come from one family:
@@ -289,6 +289,17 @@ const uniq = polished.filter((p, i, a) => a.findIndex(q => keyOf(q.s) === keyOf(
    `rankPair` calls cost ~2 s against a 17-minute sweep. */
 const poolSeen = new Set(uniq.map(p => keyOf(p.s)));
 for (const x of all) { const k = keyOf(x.s); if (!poolSeen.has(k)) { poolSeen.add(k); uniq.push(x); } }
+/* ⛔⛔ REFUSE CANDIDATES `repair` REWRITES — they are ALIASES, not rivals (T6, 08-04). `simulate`
+   legalises internally: a press scheduled before its cooldown is ready simply FIRES when it is ready,
+   so `iv[15,30]` and `iv[15,35]` are the SAME PLAN and score identically (100.785092 both). But their
+   press VECTORS differ, so the tie-break's earliest-press rule preferred the illegal one and reported
+   it as beating the declared layout. The candidate set must contain only layouts that are what they
+   claim to be — the same `intact` discipline `tests/anchors.mjs`'s `scorerBeats` applies for exactly
+   this reason. Cheap: a few thousand `repair` calls against a multi-minute sweep. */
+const normOf = x => Object.keys(x).sort().map(k => k + ':' + [...(x[k] || [])].sort((a, b) => a - b).join(',')).join('|');
+const before = uniq.length;
+uniq = uniq.filter(p => normOf(api.repair(JSON.parse(JSON.stringify(p.s)), cfg)) === normOf(p.s));
+if (before !== uniq.length) console.log(`  (dropped ${before - uniq.length} candidate(s) that repair rewrites — aliases, not rivals)`);
 const pairs = uniq.map(p => ({ ...p, pair: api.rankPair(p.s, cfg) }));
 let best = pairs[0];
 for (const p of pairs) if (api.planBetter(p.pair, best.pair)) best = p;
