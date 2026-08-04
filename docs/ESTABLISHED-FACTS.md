@@ -1139,7 +1139,8 @@ Consequences, each traceable to a line above. None is an axiom.
 * **"Best placement at haste h" columns.** They are argmaxes, and the old ones were argmaxes over cells
   whose noise was the size of the effect (peak-value haste moved by up to 140 rating between scores —
   Berserking 430 → 570). Compute one when you need it, from §1–§6, and state the objective you used.
-* **Mana.** The planner is infinite-mana by user decision (`docs/PLAN.md`, permanently rejected list).
+* **Mana.** The planner is infinite-mana by user decision (the permanently-rejected list — recorded in
+  CLAUDE.md's `docs/PLAN.md` pointer and ROADMAP; the plan doc itself is deleted, per its convention).
 * **Crit.** A constant multiplier on every cast; it cancels out of every ratio here. It changes what a
   cast is worth, never which plan is best.
 * **The sim's numbers.** wowsims is a *realisation at one lattice phase*; these are expectations. A

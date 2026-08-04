@@ -31,7 +31,8 @@ if (!process.argv[2]) {
 let IN;
 try { IN = JSON.parse(process.argv[2]); }
 catch (e) { console.error('evalsched.mjs: argument is not valid JSON — ' + e.message); process.exit(2); }
-const ALL_BUFFS = ["ati", "powerInfusion", "drums", "icyVeins", "skull", "isc", "scb", "arcanePower", "berserking", "mqg", "bloodlust"];
+// the canonical list, imported — a hand-retyped copy here is the drift pattern §5.7 catalogued
+import { ALL_BUFFS } from '../tools/engine-node.mjs';
 const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
 const page = await browser.newPage();
 await page.goto('file://' + path.join(REPO, 'index.html'));

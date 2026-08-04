@@ -1,21 +1,27 @@
 # `tests/` — what is actually asserted
 
-Five things are checked in this project, and it is worth being blunt about which is which, because
-they fail for different reasons and are fixed in different places.
+The blocking gate set (all in CI, several with negative controls that must FAIL before their green is
+believed), and it is worth being blunt about which is which, because they fail for different reasons
+and are fixed in different places:
 
 | | asserts | needs |
 |---|---|---|
-| `node tests/anchors.mjs` | **WHICH LAYOUT IS RIGHT** — the layouts the user declared (seventeen as of 08-03) | bare node |
-| `node tools/law-check.mjs` | the SCORER against `docs/ESTABLISHED-FACTS.md`'s closed forms | bare node |
+| `node tests/anchors.mjs` | **WHICH LAYOUT IS RIGHT** — the layouts the user declared (seventeen, T1–T17) | bare node |
+| `node tools/law-check.mjs` (± `--self-test`) | the SCORER against `docs/ESTABLISHED-FACTS.md`'s closed forms | bare node |
+| `node tools/constants-cited.mjs` (± `--self-test`) | every `GAME` constant traces to a source OUTSIDE the model — the anti-circularity link | bare node |
 | `node tools/self-consistency.mjs` | the SCORER against itself, and the board against the physics | bare node |
-| `node tools/ati-mc.mjs` | the one STOCHASTIC mechanic (the Ashtongue proc) against a direct seeded simulation of its own process (ESTABLISHED-FACTS §12) | bare node |
-| `node tools/plan-sweep.mjs …` + `node tools/search-audit.mjs …` | **the SEARCH** — that each emitted plan is a k-coordinate local optimum | bare node |
+| `node tools/toll-audit.mjs --strict` | the opener toll against its closed form, at every haste and ramp entry stack | bare node |
+| `node tools/objective-ref.mjs` | the engine against an INDEPENDENT transcription of the documented laws | bare node |
+| `node tools/ati-mc.mjs` (± `--self-test`) | the one STOCHASTIC mechanic (the Ashtongue proc) against a direct seeded simulation of its own process (ESTABLISHED-FACTS §12) | bare node |
+| `node tests/cfg-contract.mjs --strict` | every cfg constructor emits the engine's full memo-signature field set | bare node |
+| `node tools/plan-sweep.mjs …` + `node tools/search-audit.mjs …` (± `--self-test`) | **the SEARCH** — that each emitted plan is a k-coordinate local optimum | bare node |
+| CI's `plan-stability` job (plan-sweep A/B vs merge-base + `plan-diff --allow-change`) | no scorer-pinned regression and no backwards tie-break rides a change in unnoticed | bare node + git history |
+| `node tools/pool-equiv.mjs` (± `--self-test`) | the page's POOLED solve path returns byte-identical plans to the sequential path every test above runs | bare node |
 
-All five run in CI and all five are blocking. Nothing here needs a browser, a Go toolchain, a
-simulator, or a network.
+Nothing here needs a browser, a Go toolchain, a simulator, or a network.
 
-★ **The fourth one is the newest and it closes the widest hole.** Every gate above it is blind to a
-search miss: `anchors` covers seven cells, `law-check` stays correctly green (the scorer is right; the
+★ **`search-audit` closes the widest hole.** Every scorer gate is blind to a search miss: `anchors`
+covers seventeen declared cells, `law-check` stays correctly green (the scorer is right; the
 descent just never visited the answer), and `self-consistency` cannot see the search at all. All three
 defects that shipped wrong plans in this project's worst week were search misses, and one was found
 because the **user** read a plan and said it looked wrong. `search-audit` asks the objective directly.
@@ -81,8 +87,17 @@ is for the render path, not for any gate. `page-open.mjs` finds a browser under
 
 `ep-model.mjs` and `portfolio-ep.mjs` compute the **layout** stat weights by finite-differencing the
 planner's own objective, frozen and re-optimized. ⚠ Their finite-mana counterparts (`ep-finite.mjs`,
-`ep-sim.sh`, `finite-weights.json`) were wowsims finite-diff and are retired; `docs/EP.md` says which
-half survives.
+`ep-sim.sh`) were wowsims finite-diff and are deleted with the sim — but **`finite-weights.json`
+stays**: it is the LOCKED record of the last finite-mana gathering, and `docs/EP.md` cites it as the
+authoritative numbers for the gearing half. `docs/EP.md` says which half survives as a re-runnable
+instrument (the layout half only).
+
+## Data files
+
+`search-witnesses.json` — recorded search misses, consumed by `tools/search-witnesses.mjs`; a witness
+going green closes a KNOWN hole and is not a claim of optimality. `phase-portfolio.json` — the
+recorded phase-EP portfolio reading ROADMAP cites (gathered at the 0-haste reference; its own caveat
+says re-run at real gear haste before acting on it).
 
 ## `cfg-contract.mjs`
 

@@ -1515,3 +1515,36 @@ long-fight optimize makes, its result read by nothing. Deleted along with its pr
 (`nonAB`, `segAt`, `RAMP_JITTER`); `rampSpans` stays, it feeds breakpoints. Bit-identical by
 construction and by measurement — plan-diff IDENTICAL with scorerMoved=0, anchors 17/17, every
 scorer gate green — and the same 21-cell preset sweep dropped from 133 to 107 CPU-seconds.
+
+## PHASE13 §5.5 + §5.7: the owed CI gates landed, and the instrument residue re-cut
+
+Working PHASE13 toward its archive, the two CI jobs it said the repo still owed both landed with
+negative controls: `plan-stability` (plan-sweep A/B against the merge-base engine, graded by
+plan-diff's own comparator path — intended movement passes, a scorer-pinned regression or backwards
+tie-break fails, and a seeded 3-band regression is demonstrably caught) and `tools/pool-equiv.mjs`
+(the page's pooled solve path against the sequential path every other gate runs — byte-identical on
+all cells, with a vacuity guard counting real port traffic and a corruption control proving the
+comparison has teeth). The third owed job, the cached runner build, is void with the sim.
+
+The §5.7 hygiene list was then re-cut against the post-sim tree rather than worked as written: the
+whole ripple chain (`lattice-ripple`, `ripple-audit`, `floor-plateau`, `ambient-gap`,
+`unexplained-gap`) was deleted — unrunnable since 07-30 took `xval-collect` (their documented input
+producer), premises bannered dead in RULES §8's historical block, and ripple-audit failing two of its
+own pre-registered self-checks meant nothing it printed was quotable anyway. The `tools/ladders`
+orphans went with it. The three hand-retyped `ALL_BUFFS` copies in the Playwright dev scopes now
+import the canonical list from `engine-node.mjs`. `tests/README.md` describes the real gate set
+(eleven blocking checks, not five) and stops mislabeling `finite-weights.json` — it is the LIVE
+locked record EP.md cites, not a retired file. And the living docs stopped presenting four deleted
+sim-era gates (`window-span`, `snapshot-rule`, `credit-check`, `model-audit`) as runnable: every
+citation now says deleted-with-the-sim, the rules standing on what they measured — which was already
+the honest state, just not the written one.
+
+## Corrections logged
+
+- **PHASE13 §5.7's own claims drifted:** it asserted `tests/README.md` and CLAUDE.md carry a "9m07s"
+  timing (neither does — only plan-sweep's own header), and its `cfgFor`-drops-t5two finding was
+  FIXED 08-03 (cfg-contract --strict has been green and blocking in CI since) while the section still
+  presents it as open. The archive banner records both.
+- **ROADMAP presented `tools/xval-results/` as holding "36/36 tables certified by
+  xval-stamp-audit (exit 0)"** — the directory holds 6 boss transcripts and the stamp-audit tool is
+  deleted. Corrected to point at the archived record.

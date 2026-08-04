@@ -103,8 +103,9 @@ reading a field that still exists; do not "simplify" one of them away without au
 > AB started at 59.000 against an AoE opening at 60.000 completes at 60.498 and **lands** for full AB
 > damage), then **restored on policy** by user ruling. The physics measurement is still true and it is
 > not what decides it; RULES §9 carries the full reasoning.
-> ⚠⚠ **Expected consequence:** wowsims' APL cannot cancel a cast, so `model-audit` **will** show a gap at
-> an AoE wall. That is a priced divergence, not a bug.
+> ⚠⚠ **Expected consequence:** wowsims' APL cannot cancel a cast, so any sim comparison would show a
+> gap at an AoE wall. That is a priced divergence, not a bug — and with `model-audit` deleted alongside
+> the sim, nothing measures it any more (an accepted loss, recorded in CLAUDE.md).
 > ⚠⚠ **`dur === 0` ⇒ frac = 1, not 0.** Arcane Explosion is instant; a divide-by-zero guard returning 0
 > credited every AE at nothing (Kael'thas 368,018 vs 524,173, a 42 % error). `min(1, (cut−t)/dur) → 1`
 > as `dur → 0`. Guard against NaN, not against the answer.
@@ -166,7 +167,8 @@ bit-equal to recomputation; collect=true always computes fresh.
   ⚠ **`scoreStart` feeds the RANKING integral** (⛔ this said "the retired integral" — the integral ranks again since §8h, 07-30). The objective uses `start = auraAt` — the
   moment the ability truly fires (`max(eff, prevCastEnd)` for a self-press, `eff` for a raid external)
   — and the window runs its FULL duration from there. Expiring from the press instead made every
-  mid-cast window short by the slip (PHASE12 §6.11); `tools/window-span.mjs` is the gate.
+  mid-cast window short by the slip (PHASE12 §6.11); `tools/window-span.mjs` was the gate — deleted
+  with the sim, the rule standing on what it measured.
   ★ **The cooldown CHAIN anchors on the FIRE moment too (PHASE12 §6.14c, 07-27).** `lastFire[key]` (was
   `lastEff`) holds `auraAt` — where the previous use of that cooldown actually went off, i.e. the cast
   boundary the press snapped forward to — because that is when wowsims starts the cooldown. Chaining
@@ -184,8 +186,8 @@ bit-equal to recomputation; collect=true always computes fresh.
   comparison — this repo's worst failure mode).
 - **The `casts` board** (`collect` only) carries, per cast: `t, interval, cast, gcd, mult, dmg, stacks,`
   **`frac`, `credited`** `, capped, pUp, ae, multNoAti, capDn, castDn, gcdDn, sp, dmgMult`.
-  ★ `dmg` stays the cast's **FULL** damage — it is what the cast is worth, and `tools/model-audit.mjs`
-  compares it against the sim's own damage line. `frac` is the boundary credit it earned and
+  ★ `dmg` stays the cast's **FULL** damage — it is what the cast is worth, and it is what the deleted
+  `tools/model-audit.mjs` compared against the sim's own damage line. `frac` is the boundary credit it earned and
   `credited = dmg × frac` is the product the objective summed. **Anything recomputing the objective
   from this board must use `credited`, not `dmg`.**
 - **★ THE RANKING — the cast-rate integral** (this bullet said "RETIRED, kept only as a diagnostic"
@@ -634,8 +636,9 @@ hostId)` → `goldenToState(p)` → `applyState(...)`; **`#preset-strip`** "Cust
 localStorage user-saved strip (was "Boss presets"). The user presses "Find optimal overlay" to
 **compute** the plan — presets store setup, never a precomputed answer.
 - **Tests (`tests/`):** ⛔ **`exact-match.mjs` + `golden.json` are DELETED (07-28, user decision).** The
-  suite is now `tests/anchors.mjs` — **two** cases, the two layouts the user declared exactly, built
-  from their own cfg rather than from the preset arrays. So the presets no longer double as the test
-  corpus; they are UI setup only. Plan stability is `tools/plan-sweep.mjs` + `tools/plan-diff.mjs`
-  (Δscore per cell with a regression verdict, ~33 s), and the one thing that loop cannot see is the
-  render path — it runs the DOM-free engine.
+  suite is now `tests/anchors.mjs` — **seventeen** cases (T1–T17), the layouts the user declared
+  exactly, built from their own cfg rather than from the preset arrays. So the presets no longer
+  double as the test corpus; the Reference-fights strip IS the test list (user decision 07-30). Plan
+  stability is `tools/plan-sweep.mjs` + `tools/plan-diff.mjs` (Δscore per cell with a regression
+  verdict, ~1 min — and since 08-04 also CI's `plan-stability` job against the merge-base), and the
+  one thing that loop cannot see is the render path — it runs the DOM-free engine.

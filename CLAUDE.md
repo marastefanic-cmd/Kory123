@@ -285,7 +285,8 @@ printed a clean `0.00e+0` straight through all seven defects.
 
 ⚠ **With the goldens gone, the stability question needs an instrument, and it already exists.** Use
 `plan-sweep` + `plan-diff` before and after an engine change — it reports **Δscore** per cell with a
-regression verdict instead of a text diff, needs no file to maintain, and runs in ~33 s:
+regression verdict instead of a text diff, needs no file to maintain, and runs in ~45–60 s
+(re-measured 08-04; treat any timing here as same-session-pair guidance, per the PHASE9 rule):
 ```
 node tools/plan-sweep.mjs index.html A.json 3 --max-t=200   # before
 node tools/plan-sweep.mjs index.html B.json 3 --max-t=200   # after
@@ -329,7 +330,7 @@ permanent damage.
 ### ★★★★ AND IT IS NOW A GATE — `tools/search-audit.mjs` (§8u)
 
 ```
-node tools/plan-sweep.mjs index.html /tmp/b.json 3 --max-t=200   # ~30 s, the expensive half
+node tools/plan-sweep.mjs index.html /tmp/b.json 3 --max-t=200   # ~1 min, the expensive half
 node tools/search-audit.mjs /tmp/b.json --k=3                    # seconds, re-solves nothing
 node tools/search-audit.mjs /tmp/b.json --k=3 --self-test        # displaces a press; must be CAUGHT
 ```
@@ -461,8 +462,10 @@ the rule was established, not an instrument you can re-run. New rules are establ
      stands on what that gate measured; nothing re-checks it now.
   3. **One snapshot rule for both kinds of buff.** ★ **HASTE is fixed at the cast's START; VALUE
      (+SP, damage multipliers) is read at the cast's COMPLETION**, over the window `(start, end]` —
-     open left, closed right, both edges measured (`tools/snapshot-rule.mjs`). Deciding everything at
-     the start over-paid one cast per window. Gate: `tools/credit-check.mjs`.
+     open left, closed right, both edges measured (`tools/snapshot-rule.mjs` — **deleted with the sim**,
+     like `tools/credit-check.mjs`, its gate). Deciding everything at the start over-paid one cast per
+     window. The rule stands on what those gates measured; nothing re-checks it now (same status as
+     retired approach 2's `window-span`).
      ⚠ Its discriminating case is a press landing **ON a cast boundary**; on a mid-cast press the old
      defects cancelled and the broken engine passed.
   4. **Letting boundary comparisons disagree about their epsilon.** The walk's clock is a running float

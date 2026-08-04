@@ -310,7 +310,8 @@ begins already-buffed. Consequences the model must respect:
 > question**: the question was never *"does the cast land"* but *"what would the player do"*, and no sim
 > can answer that.
 > ⚠⚠ **A deliberate, PRICED divergence from the sim:** wowsims' APL cannot cancel a cast, so it finishes
-> the Blast and lands it. `model-audit` **will** show a gap at an AoE wall and that gap is **not a bug**.
+> the Blast and lands it. Any sim comparison would show a gap at an AoE wall and that gap is **not a
+> bug** — and with `model-audit` deleted alongside the sim, nothing measures it any more (accepted).
 > ⚠⚠ An **instant** cast (Arcane Explosion, `cast = 0`) takes credit **1**, not 0 — `min(1, (cut−t)/dur)
 > → 1` as `dur → 0`; the first divide-by-zero guard returned 0 and credited every AE at nothing (42 %
 > error on Kael'thas). A cast completing exactly at `T` earns a **FULL**
@@ -334,7 +335,8 @@ begins already-buffed. Consequences the model must respect:
 >    in-flight cast keeps its speed) **and value — +SP, damage multipliers — is read at the cast's
 >    COMPLETION**, over `(start, end]`. Both edges measured: a cast completing exactly on the gain is
 >    not paid, one completing exactly on the fade is. Deciding both at the cast's start over-paid one
->    cast per window (`tools/snapshot-rule.mjs`, `tools/credit-check.mjs`).
+>    cast per window (measured by `tools/snapshot-rule.mjs` / `tools/credit-check.mjs` — both deleted
+>    with the sim; the rule stands on what they measured).
 > 3. **Expiring a buff window at `press + duration`.** A self-press cannot fire while a cast is in
 >    flight, so the window must run its full duration from when the ability actually FIRES. Expiring
 >    from the press made every mid-cast window short by the slip — a whole cast in the measured case

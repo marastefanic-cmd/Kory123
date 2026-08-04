@@ -274,9 +274,12 @@
 > and **102 of 285** `blast-radius` cells (35.8 %), so the round graded plans the current engine may no
 > longer emit. **ACCEPTANCE has no current reading until a re-gather** (see its top banner).
 > The tables stand as the append-only record and the evidence trail.
-> `tools/xval-results/` holds 36/36 tables under **one protocol on one engine**
+> The 36/36 round-1 tables were gathered under **one protocol on one engine**
 > (`char=bench-gearB · engine=native:runner-ap180 · var 0.5 · emit=fire · iter 6000 · pool=1`),
-> certified by `tools/xval-stamp-audit.mjs` (exit 0).
+> certified at the time by `tools/xval-stamp-audit.mjs`. ⚠ Both are largely GONE from the tree since
+> the 07-30 sim deletion — `tools/xval-results/` retains only 6 boss transcript files and the
+> stamp-audit tool is deleted; the round's record lives in `docs/archive/11` and ACCEPTANCE
+> (archived). Do not go looking for the 36 tables here.
 >
 > | | |
 > |---|---|
@@ -293,10 +296,14 @@
 > The **KT/AoE cells DO NOT REPRODUCE**, discharging PHASE7 §5.19's standing prediction: gear A's three
 > `isc+scb` KT survivors now read 0.07 %, 0.05 % and *not a borrowed win at all*.
 >
-> ⚠ **Two instrument findings the next phase inherits.** (1) `ripple-audit` **fails two of its own
+> ⚠ **Two instrument findings the next phase inherits.** (1) `ripple-audit` **failed two of its own
 > pre-registered self-checks** (P5 monotonicity, P3 KT discrimination), so **no ripple decomposition is
-> quotable on this round** — and its `mono=0` stamp means FAILURE while the adjacent `vacuous=0` means
-> success, which is why §8.22 recorded a failing check as clean. (2) *"wasm == native"* has always meant
+> quotable on this round** — and its `mono=0` stamp meant FAILURE while the adjacent `vacuous=0` meant
+> success, which is why §8.22 recorded a failing check as clean. *(The whole ripple chain —
+> `lattice-ripple`, `ripple-audit`, `floor-plateau`, `ambient-gap`, `unexplained-gap` — was DELETED
+> 08-04: unrunnable since the 07-30 sim deletion took their input producer `xval-collect`, premises
+> bannered dead in RULES §8, and this self-check failure meant no output was quotable anyway. The
+> finding above is the record; the tools live in git history.)* (2) *"wasm == native"* has always meant
 > **within 0.05 DPS**, not bit-identity: the re-gather moved six published summary figures, one of them
 > a **verdict flip** (`scb-mqg-medlong` DEFICIT → CLEAN) off a ~1e-6 relative difference (§8.27).
 >
@@ -778,7 +785,8 @@ tie for one press is conditional on every other press staying put — moving it 
 `index.html` (git history has it; do not restore). Also decided: NO in-tool exact mode (brute-grid is a
 research instrument — generalize its findings into rules); NO finite-mana model (unreliable inputs — the
 ramp-aware per-window mana-cost chip on the infinite-mana plan is the ceiling of mana UX). The
-haste-graph reference lines stay. **Next: Phase 5 — crack AoE phases (docs/PLAN.md).**
+haste-graph reference lines stay. *(The "Next: Phase 5" pointer that closed this entry is long
+discharged — Phase 5 landed and its plan doc was deleted per the PLAN.md convention.)*
 
 ## Done — gear-haste + haste-trinket correctness (this session, user-directed)
 

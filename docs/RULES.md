@@ -285,7 +285,8 @@ a clean single-buff marginal) before calling that gap a model bug.
 
 > ⛔ **THAT EXPECTATION IS RETIRED FOR SELF-PRESSED WINDOWS (07-27, PHASE12 §6.11).** The objective is a
 > per-cast sum that reads a **value** buff at the cast's **COMPLETION**, over `(start, end]` — the sim's
-> own rule (`tools/credit-check.mjs` is the gate). A self-press fires on a cast boundary, so the model
+> own rule (measured by `tools/credit-check.mjs`, deleted with the sim; nothing re-checks the edge rule
+> now). A self-press fires on a cast boundary, so the model
 > now covers exactly `floor(D_eff/Δ)` casts too: **there is no `frac(D/Δ)` over-credit left in the
 > number that ranks.** It survives only in the retired `integral` diagnostic.
 > ⚠ **Two things still stand.** (a) The FLOOR LAW itself — the *sim's* behaviour, and the whole reason
