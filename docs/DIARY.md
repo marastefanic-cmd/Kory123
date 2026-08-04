@@ -1479,3 +1479,29 @@ the rows cannot change the segments, and the phase editor warns on every overlap
 the interval, and which one applies. Non-overlapping input (every preset, every declared test)
 provably resolves identically to the old rule; the preset sweep is byte-identical across the change,
 anchors 17/17, all scorer gates green.
+
+## Correction 3's press-snap: not inert — split, and the split is the doctrine
+
+The third item arrived worded as "the AoE press-snap has gone inert (it lives on `eff`, the ranking
+reads `scoreStart`)", and half of that dissolved under measurement. The snap is alive exactly where
+the execution model lives — presses 98 and 99 into an exact AE lattice both FIRE at 99.000 in
+`actEff`, feeding the board, the reported sum and the transcription — and the ranking's ignorance of
+it is not drift but MECHANICS §0 applied: the 07-31 canonical statement postdates the 07-25
+correction, and it forbids re-admitting a lattice to the integral. The stale ledger claim ("two
+presses that fire at the identical instant are separated by 0.05783 casts… perfectly linear in press
+time") did not reproduce: the interior is flat to the digit, same-instant presses tie at exactly
+0.000000, hanging past the wall is priced (Correction 2 intact), and the only same-instant
+separation left is across a dead zone, where it demotes dominated candidates and nothing else. What
+IS still true — and now recorded as an accepted, bounded gap rather than a defect nobody owns — is
+the exactly-flush clamp: a window ending ON the wall ties the interior instead of losing its last
+AE, ~0.04 casts worst case, kept out of emitted plans by the earliest tie-break. Pricing it would be
+a one-sided expectation charge at AoE-cut window ends (kin to the kill credit, never a lattice), and
+that is a scoring decision that belongs to the user, with its own closed form and gate, per the
+standing rule that the scorer is perfectible and never edited casually.
+
+## Corrections logged
+
+- **MODEL-DEFECTS' "Also found" ledger carried a claim the engine no longer exhibits** — the 0.05783
+  same-instant separation and the "perfectly linear in press time" slope. Re-measured 08-04: flat
+  interior, 0.000000 separation. The ledger entry was rewritten around the fresh probe rather than
+  left describing an engine state that no longer exists.

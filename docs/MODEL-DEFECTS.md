@@ -3355,13 +3355,26 @@ against itself, and `law-check` had no toll line above the floor — so none of 
 * **`killMode:"oneSided"`** scores `(T, T+KWD]` with the last phase still in force — a fight ending in a
   10-target AoE phase books **+1.71 casts of phantom Arcane Explosion after the boss is dead**. Latent
   at the default `killMode:"none"`. `"sym"`'s kinks at `T±0.5` are missing from `bps` (7e-4 casts).
-* **The AoE press-snap (RULES §9 Correction 3) no longer reaches the ranking.** It is implemented at
-  `:1194` on `eff`, which feeds only the discrete walk; since §8l the ranking reads
-  `active[].scoreStart = geoStart(e)`, which has **no AoE branch**. Two presses that fire at the identical
-  instant are separated by 0.05783 casts (29× the band) purely by their raw press second, and `rankScore`
-  is perfectly linear in press time across the phase — so it structurally cannot express "a window ending
-  flush with the wall loses its last AE", which is Correction 3's entire content. A landed, sim-gated
-  correction has become inert.
+* ✅ **SETTLED 08-04 — the AoE press-snap (RULES §9 Correction 3) reaches the EXECUTION layer, not
+  the ranking, and that split is deliberate (MECHANICS §0, which postdates the correction).** This
+  entry originally read "two presses that fire at the identical instant are separated by 0.05783
+  casts... `rankScore` is perfectly linear in press time across the phase" — **that does not
+  reproduce on the current engine**, and the re-measurement (fight: intermission [60,90] → aoe
+  [90,150] ×6, isc and AP swept one press-second at a time, h0 and h200) replaces it:
+  · the snap is ALIVE where it should be: presses 98 and 99 both fire (`actEff`) at 99.000 — fire
+    times, board, reported sum and transcription all see it;
+  · the ranking across the phase INTERIOR is **flat to the digit** — same-instant presses tie at
+    Δ = 0.000000, exact and non-exact lattices alike (correct translation invariance, not a slope);
+  · a window hanging PAST the wall is priced (−0.053 casts/s at h0), so Correction 2 is intact;
+  · same-instant presses ARE separated across a DEAD ZONE (presses 59–90 all fire at 90.000, scored
+    apart by up to 4.96 casts) — the geometry discounting window seconds that contain no casts,
+    which only ever demotes DOMINATED candidates (the same-fire family's winner has no dead
+    coverage), so no emitted plan is affected;
+  · **the one real residue is the exactly-flush clamp**: window ends 145→150 all tie, so "flush
+    loses its last AE" is unexpressed — bounded at ~E[slip] × wall slope ≈ 0.04 casts, kept out of
+    emitted plans by the tie-break's "earliest" (which resolves the plateau away from the wall),
+    and pricing it is a user-gated SCORING change (a one-sided expectation charge at AoE-cut window
+    ends, kin to the kill credit — never a lattice). RULES §9 Correction 3 carries the full status.
 * **`rampCasts` / `rampCastDmg` is DEAD CODE in the hottest function** — pushed at `:1697`, never read;
   runs an O(|active|) Set build + sort + piecewise integration per ramp cast per `simulate()`, and
   `simulate()` is called ~5.7 M times per long-fight optimize.

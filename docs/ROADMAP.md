@@ -25,8 +25,13 @@
 >   Now order-independent by a total precedence (intermission > aoe > burn, then most-specific row),
 >   with the phase editor warning on every overlap. Presets/tests untouched (byte-identical sweep).
 > · `killMode:"oneSided"` books +1.71 casts of phantom Arcane Explosion after the boss dies (latent at
->   the default), and RULES §9 Correction 3's AoE press-snap has gone inert (it lives on `eff`; the
->   ranking reads `scoreStart`) — **that one is a search-path item and belongs to next session.**
+>   the default). ✅ *Settled 08-04:* Correction 3's press-snap is ALIVE on the execution layer
+>   (fire times / board / transcription — measured) and deliberately absent from the ranking per
+>   MECHANICS §0; the stale "same-instant presses separated / linear in press time" claim did not
+>   reproduce on re-measurement (the interior is flat to the digit). The one residue — the
+>   exactly-flush clamp, ~0.04 casts worst case, kept out of emitted plans by the earliest
+>   tie-break — is recorded in MODEL-DEFECTS' ledger and RULES §9 C3; pricing it is a user-gated
+>   scoring decision.
 > · `rampCasts`/`rampCastDmg` is dead code in the hottest function.
 >
 > ---

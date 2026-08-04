@@ -1260,6 +1260,28 @@ durations the contained region shrinks to the **intersection** of the constraint
   - **Correction 3 — CONFIRMED (07-25): a press inside an AoE phase FIRES LATE, and a window that ends
     flush with the phase wall LOSES ITS LAST CAST. Never place a value window so that `press + dur`
     lands within ~1 cast-interval of the AoE phase end — sit it a second earlier and it is free.**
+    > ⚠⚠ **STATUS 08-04 — the snap governs the EXECUTION layer only, and that is now a settled
+    > consequence of MECHANICS §0, not an accident.** The fix below lives on `eff` → `auraAt` /
+    > `actEff` — fire times, the discrete board, the REPORTED per-cast sum, the transcription — and
+    > it is alive there (measured: presses 98 and 99 into an exact AE lattice both fire at 99.000).
+    > The RANKING stopped reading it when `scoreStart` became pure press geometry (§8l, and then the
+    > user's 07-31 canonical statement, which **postdates this correction** and forbids re-admitting
+    > a lattice to the integral — re-wiring this snap into `scoreStart` would be the exact "three
+    > versions of scoreStart" mistake). Re-measured on the current engine (probe recorded in
+    > MODEL-DEFECTS' "Also found" ledger): the ranking's press-time curve across the phase INTERIOR
+    > is **flat to the digit** (translation-invariant, exact and non-exact lattices alike), a window
+    > hanging PAST the wall is priced (−0.053 casts/s at h0 — Correction 2 intact), and same-instant
+    > presses are separated only across a DEAD ZONE (an intermission straddle), where the geometry
+    > correctly discounts window seconds no cast can use — the winning member of each same-fire
+    > family is the one with no dead coverage, so emitted plans are unaffected. **What remains
+    > unpriced is exactly this correction's clamp: an exactly-flush window edge ties the interior
+    > instead of losing its last AE** (~E[slip] × the wall slope ≈ 0.04 casts worst case at h0).
+    > Two mitigations keep it from reaching an emitted plan: the tie-break's "earliest" resolves the
+    > interior plateau AWAY from the wall, and no preset or declared test carries the flush
+    > geometry. Pricing it would be a SCORING change — a one-sided expectation charge at AoE-cut
+    > window ends, kin to the kill credit, never a lattice — and per MECHANICS §0 that needs its own
+    > closed form, gate, and user ruling. Until then this rule stands as PLAYER ADVICE and as the
+    > record of why the model deliberately does not express it.
     (PHASE7 §5.18; ledger `tools/duel-walk.mjs` — the instrument that produced the 102.6 % closure below,
     rebuilt and committed 07-27 after its scratchpad original was lost; predictive sweep
     `tools/cell-band.mjs`. This was §5.17's
