@@ -259,6 +259,14 @@ const polished = (await Promise.all(batches.filter(b => b.length).map(list => ne
 const bandAbs = api.TIE_CASTS * PLAIN;
 const uniq = polished.filter((p, i, a) => a.findIndex(q => keyOf(q.s) === keyOf(p.s)) === i)
                      .filter(p => polished[0] && true);
+/* ⚠ AND THE POOL MUST INCLUDE THE SWEPT BAND, NOT ONLY THE POLISHED ONE — T1, 08-04. The polish
+   seeds are the top-N DISTINCT structures, and on a flat cell those can all come from one family:
+   T1's declared layout is a GRID layout (0 and 20 are grid seconds) that the sweep scored correctly,
+   but it sits two grid steps from the nearest seed, so no ±5s polish reached it and it never entered
+   the final comparison. The sweep's own band is already in hand — pair-rank it too. A few thousand
+   `rankPair` calls cost ~2 s against a 17-minute sweep. */
+const poolSeen = new Set(uniq.map(p => keyOf(p.s)));
+for (const x of all) { const k = keyOf(x.s); if (!poolSeen.has(k)) { poolSeen.add(k); uniq.push(x); } }
 const pairs = uniq.map(p => ({ ...p, pair: api.rankPair(p.s, cfg) }));
 let best = pairs[0];
 for (const p of pairs) if (api.planBetter(p.pair, best.pair)) best = p;
