@@ -7,6 +7,10 @@
 > · the `offGrid` lattice made **plan-dependent** — the ramp-end anchor is computed at the haste the
 >   plan actually runs at the pull, not at passive gear haste (§9w);
 > · `valueSecs` added — value buffs share a second, haste buffs do not (§9x).
+> ⚠ **And on 08-05 the SCORE moved too, for Ashtongue cells only** — §10c corrected the proc
+> transient (+0.080 → +0.007 casts per engagement), so an ati-on candidate's *margin* is stale as
+> well as its plateau. Kits without the proc are untouched, measured not assumed: `plan-diff`
+> IDENTICAL with `scorerMoved = 0` over the 21-cell preset corpus.
 > A candidate here is still a legitimate *structure*; what may have moved is which exact second inside
 > its plateau the tool now names. ⇒ **re-cut a cell before declaring it.** `tools/lattice-brute.mjs`
 > imports the comparator at run time, so a fresh sweep is graded correctly by construction — and it

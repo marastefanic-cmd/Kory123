@@ -1822,8 +1822,10 @@ function simulateRaw(schedule, cfg, collect) {
      integrand (§8l). Exceeding 1 is what "the very first cast is certainly unbuffed, so it takes the
      full b" looks like once it is smeared over a continuum.
      ⛔ It does NOT touch the saturated branch — there P_down is the constant r^n and ∫ == Σ already —
-     nor `rateAt`'s steady form, which ati-mc reads exact to five decimals. Measured on the exact chain
-     (scratchpad probe, ESTABLISHED-FACTS §12.5): +0.031 → −0.003 casts on the proc transient alone. */
+     nor `rateAt`'s steady form, which ati-mc reads exact to five decimals. Measured against the EXACT
+     Markov chain over (t, rem) that ESTABLISHED-FACTS §12.3a describes (rebuildable from its algebra
+     in an hour): +0.031 → −0.003 casts on the proc transient isolated, and −0.003 is the discrete
+     mean-field walk's OWN residual, i.e. the floor rather than a new error. */
   const atiCRho = rho => Math.abs(rho - 1) < 1e-9 ? 1 : Math.log(rho) / (rho - 1);
   const atiSt = { nu: 0, strata: [] };
   const atiFold = (r0, a0, cnt) => { if (cnt > 1e-12) atiSt.strata.unshift({ r: r0, a: a0, cnt }); };
