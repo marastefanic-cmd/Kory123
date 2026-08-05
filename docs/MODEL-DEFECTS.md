@@ -4432,3 +4432,69 @@ between members the search happens to visit.
 ⚠ It must accept ONLY on a strict `planBetter` improvement with the ideal score tied — a pass that can
 move the score is a scorer change wearing a finishing-pass costume, and this project has paid for that
 shape twice (§8y part 1b, the `finishLine` floor).
+
+## §9q — ⛔ T8 IS BEATEN BY 0.094 CASTS — a SCORE miss, not a plateau question (08-04, awaiting a user ruling)
+
+Found by `tools/lattice-brute.mjs` during the corpus reaffirmation. Unlike §9p (T7), this is **outside
+the tie band by 47×**, so the §8y revision precedent does NOT cover it: it is a claim that a declared
+layout is beaten on damage, which only the user can rule on.
+
+```
+declared T8  iv[95,115] · isc[-5,115] · scb[0,120] · ap[120] · zerk[0]    ideal 108.733278
+brute best   iv[20,115] · isc[-5,115] · scb[0,120] · ap[120] · zerk[100]  ideal 108.827502   +0.094224
+```
+Both repair-INTACT (legal, distinct plans), both `snaps 1 · wastedPre 0 · offGrid 0 · invalid 0`, so
+every shape criterion ties and the gap is pure score. Verified independently of the sweep.
+
+★ **T8's HEADLINE CLAIM IS UNTOUCHED AND CONFIRMED.** The test exists for the PREPULL (`isc[-5,115]`,
+worth +0.323591 casts, 162× the band) and the brute-force winner **keeps that press exactly**. What
+moves is the part the declaration never argued about: the first Icy Veins (0:95 → 0:20, i.e. off the
+Bloodlust call and onto the intermission exit) and Berserking (0:00 → 1:40, i.e. into the Lust window
+instead of the opener). Reading T8's own comment, attention was entirely on the Icon; IV and
+Berserking were whatever the tool emitted at the time.
+
+⇒ **This is the value of exhaustive enumeration stated as cleanly as it can be**: the corpus checked
+what it was looking at, and the brute force checked what it was not. ⛔ The test is NOT edited. Until
+the user rules, T8 stands as declared and this entry is the record of the discrepancy.
+⚠ The search emits the declared layout, so this is ALSO a search miss of 0.094 casts (§8j family) —
+whichever way the ruling goes, the search cannot currently reach the better layout.
+
+## §9r — ✅ THE CORPUS REAFFIRMATION, COMPLETE (08-04/05) — 13 certified, 1 finding, 3 uncertifiable
+
+User goal: *"use the new bruteforcing tool to reaffirm that all current tests are actually the global
+optimums."* Every declared test was re-derived from scratch by exhaustive enumeration, `--check`ed
+against its declared layout, and graded on the objective PAIR with the plateau reported.
+
+| test | method | layouts | verdict |
+|---|---|---|---|
+| T1 · T6 · T12–T17 | full 5 s lattice | 217,676,160 each | ✅ **global optimum** (8 cells) |
+| T4 | full 5 s lattice | 59,772,768 | ✅ global optimum |
+| T7 | full 5 s lattice | 12,976,848 | ✅ global optimum **on the revised layout** (§9p) |
+| T2 · T3 · T5 | 10 s lattice + ±5 s polish | 46 M – 159 M | ✅ global optimum |
+| **T8** | 10 s lattice + ±5 s polish | 12 M | ⛔ **BEATEN by 0.094224 casts — §9q, awaiting a ruling** |
+| T9 · T10 · T11 | `brute-cell` family scan | 72 k – 90 k | ⚖️ **not certifiable** — see below |
+
+★ **T9/T10/T11 CANNOT BE CERTIFIED BY ANY INSTRUMENT THIS PROJECT HAS, and the reason is precise.**
+Raw enumeration is ~10¹⁸ layouts (6:20–6:30 fights, 3–4 uses per track) — hopeless. `brute-cell`'s
+anchor-and-chain scan is the fallback, and its own header states the limit: *"a layout whose tracks do
+NOT chain at their own cooldowns … is outside the family and this will miss it."* All three declared
+layouts are exactly that — their gem chains are DELAYED (`scb[5,185,365]`, 180 s apart on a 120 s
+cooldown), which is why the family argmax comes in **1.03–1.69 casts BELOW** the declared layout:
+
+```
+T9   declared 279.874759   family argmax 278.668167   (declared better by 1.206592)
+T10  declared 288.067837   family argmax 287.037259   (declared better by 1.030579)
+T11  declared 297.075872   family argmax 295.388458   (declared better by 1.687415)
+```
+⇒ the honest statement is **not** "certified" and **not** "beaten": *the declared layout beats an
+exhaustive scan of ~70–90 k anchor-and-chain layouts by more than a cast, and nothing that was
+searched rivals it.* That is real positive evidence — a deliberately-delayed chain outperforming every
+chain-at-own-cooldown layout is the finding T9/T10/T11 were declared to capture — but it is weaker
+than the short cells' certificate, and it must not be quoted as one.
+
+⚠ **Three instrument defects were found BY the corpus during this run**, each caught because a
+declared test disagreed: the quantised-max selection (ideal score must rank, §9p), the truncated
+candidate pool (the swept band must be pair-ranked too), and alias acceptance (candidates `repair`
+rewrites are the same plan). The first two produced no false verdicts; the third produced one (a
+phantom T6 revision) and was caught before it reached a ruling. ⇒ **the corpus tested the tester**,
+which is the strongest argument yet for declared layouts being the project's most valuable asset.
