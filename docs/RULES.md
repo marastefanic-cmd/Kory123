@@ -1916,7 +1916,7 @@ member — safe precisely because confinement to an ideal-EXACT tie means it can
 emitted one is exactly zero, the defect is neither in the search nor in the scorer.** Check that number
 first — `tests/anchors.mjs` prints it on every failure alongside the shape criterion that decides.
 
-## 19. ASHTONGUE MAKES HASTE WINDOWS WANT TO CHAIN 5 SECONDS APART *(08-05, user-found; derivation MODEL-DEFECTS §10a)*
+## 19. ASHTONGUE WANTS HASTE WINDOWS SEPARATED BY **AT LEAST** ONE PROC DURATION *(08-05, user-found; the "exactly" version was FALSIFIED the same day — see below)*
 
 ⚠ **This rule exists ONLY when Ashtongue is equipped.** Verified directly: with the proc off, ten
 layouts that move Icy Veins anywhere after Bloodlust — split, flush, any gap — score **bit-identically**
@@ -1926,45 +1926,60 @@ counts. Turn the proc on and the same ten spread by **0.108 casts**.
 
 ### The mechanism, measured
 
-Ashtongue's proc uptime is a TWO-LEVEL step, and the levels are exactly the renewal law's integer
-attempt counts (`n = ceil(DUR / cast interval)`, `P = 1 − (1−q)^n`, ESTABLISHED-FACTS §12):
+Ashtongue's proc uptime is a two-level quantity, and the levels are the renewal law's attempt counts
+(`P = 1 − (1−q)^n`, `n` ≈ `DUR / cast interval`, ESTABLISHED-FACTS §12):
 
-| regime | cast interval | `n` | P(up) |
+| regime | cast interval | attempts in the 5 s window | P(up) |
 |---|---|---|---|
-| passive | 1.417 s | `ceil(5/1.417)` = **4** | 0.6575 |
-| under Icy Veins | 1.173 s | `ceil(5/1.173)` = **5** | 0.7380 |
+| passive | 1.417 s | 3.53 → the engine uses **4** | 0.6575 |
+| under Icy Veins | 1.173 s | 4.26 → the engine uses **5** | 0.7380 |
 
 Solving `q` from the passive level gives 0.23499/cast, and `1−(1−q)^5 = 0.7380` reproduces the hasted
-level to four decimals — so the two observed plateaus ARE n=4 and n=5, nothing else.
+level to four decimals.
 
-★ **The state lags the haste by one proc duration at BOTH edges**, because the law counts attempts in a
+★ **The state LAGS the haste by one proc duration at BOTH edges**, because the law counts attempts in a
 TRAILING window: Icy Veins starting at 0:60 leaves P at 0.6575 until ~0:63.8; Icy Veins ending at 1:20
 leaves P at 0.7380 until ~1:24.2. ⇒ **the elevated proc state survives ~5 s past the window that earned
-it**, which is the whole rule.
+it.** That is the real content of this rule, and it is what a second haste window is trying to catch.
 
 ### The rule
 
-**Chain haste-window EDGES five seconds apart.** A window that starts one proc duration after the
-previous one ended inherits the elevated state instead of paying the ramp-in; start later and the
-carry-over has already drained.
+**Separate haste windows by at least one proc duration.** Going from flush to a 5 s gap is worth
+**+0.09 casts** on the two-Icy-Veins case; past 5 s it is flat — a plateau, not a peak.
 
-Verified by moving Bloodlust and watching the optimum follow it, which is what makes this causal rather
-than a coincidence of one fight:
+Verified causally by moving Bloodlust and watching the optimum follow it:
 
-| Bloodlust window | peak Icy Veins start | = Lust end + `ATI.DUR` |
-|---|---|---|
-| [20, 60] | **65** | 60 + 5 ✓ |
-| [10, 50] | **55** | 50 + 5 ✓ |
-| [30, 70] | **75** | 70 + 5 ✓ |
-| absent | no peak (monotone) | — |
+| Bloodlust window | optimum Icy Veins start |
+|---|---|
+| [20, 60] | 65 onward (flat shelf) |
+| [10, 50] | 55 onward |
+| [30, 70] | 75 onward |
+| absent | anchored on BERSERKING's end + 5 instead |
 
-⚠ It is not about Bloodlust specifically — with Lust absent the peak sits at the END OF BERSERKING + 5.
-Any haste window's trailing edge anchors the next one. The user found the same structure independently
-on the value cluster: at `cluster@0:45` the edges land 55 → 60 → 65 (Berserking end, Lust end, Icy Veins
-start), worth **+0.0095 casts** over `cluster@0:25`, and the three tracks must move TOGETHER (Berserking
-alone to 0:45 is −0.24).
+⇒ it is not about Bloodlust specifically: **any haste window's trailing edge anchors the next one.** The
+user found the same structure independently on the value cluster — at `cluster@0:45` the edges land
+55 → 60 → 65 (Berserking end, Lust end, Icy Veins start), worth **+0.0095 casts** over `cluster@0:25`,
+and the three tracks must move TOGETHER (Berserking alone to 0:45 is −0.24).
 
-⛔ **TRUST THE DIRECTION, NOT THE SHARPNESS — see MODEL-DEFECTS §10a.** The `ceil` makes P(up) a step
-where the real process is smooth (3.53 attempts fit in the window at passive haste, not 4), so the model
-shows a flat shelf for every gap ≥ 6 and a cliff at 5→6 that a real proc process would round off. The
-chaining direction is solid; the exact second is a modelling artifact until §10a is closed.
+### ⛔⛔ THE "EXACTLY 5" VERSION OF THIS RULE WAS WRONG, AND IT WAS THE USER WHO CAUGHT IT
+
+This section first said *"chain haste-window edges five seconds apart"* with a cliff at 5→6, on the
+strength of the shipped engine's numbers. The user asked the right question — *"what I don't understand
+is why it has to be exactly 5s and not 5 or more"* — and the answer is that **it doesn't**. Building the
+smoothed model (MODEL-DEFECTS §10a: keep `n` fractional and take the exact expectation over the window's
+phase instead of `ceil`-ing it) and re-running the identical sweep:
+
+```
+gap        0      1      2      3      4      5      6      7      8+
+shipped  0.000 -0.018 -0.012 -0.004 +0.008 +0.022 -0.034 -0.034 -0.034   ← ridge with a cliff
+smoothed 0.000 +0.005 +0.017 +0.036 +0.061 +0.091 +0.094 +0.094 +0.094   ← rises, then PLATEAUS
+```
+
+The cliff is entirely the `ceil`. Under the smoothed model the gain is **monotone up to one proc
+duration and flat thereafter**, and it is four times larger than the shipped engine reports. Same story
+on the Bloodlust-edge test: the sharp peak at 65 becomes a flat shelf across 66–69.
+
+⇒ **what survives is the direction and the ≥ threshold; what died is the sharpness and the exact
+second.** ⛔ Do not place a press on a specific second on the strength of this rule, and do not declare
+an Ashtongue anchor at all until §10a is closed — the engine that would grade it is the one this
+measurement falsified.

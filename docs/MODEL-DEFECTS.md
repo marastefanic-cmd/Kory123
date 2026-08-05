@@ -5081,6 +5081,44 @@ into a slope without adding a tunable.
 treatment, and any Ashtongue cell derived before it lands must be re-cut. ⇒ **do not declare an
 Ashtongue anchor on an exact second until this is closed** (RULES §19 carries the same warning).
 
+### ✅ THE FIX WAS BUILT AS A PROBE AND IT CONFIRMS THE DIAGNOSIS — and it falsified a rule I had
+### already written, which is the part worth keeping
+
+Rather than leave the paragraph above as a hypothesis, the smoothed form was built in a scratch copy of
+the engine (`atiNOf` keeps the fraction; `r^n` becomes the mixture `f·r^(k+1) + (1−f)·r^k`) and the
+identical sweep re-run:
+
+```
+gap        0      1      2      3      4      5      6      7      8      9     10     12
+shipped  0.000 -0.018 -0.012 -0.004 +0.008 +0.022 -0.034 -0.034 -0.034 -0.034 -0.034 -0.034
+smoothed 0.000 +0.005 +0.017 +0.036 +0.061 +0.091 +0.094 +0.094 +0.094 +0.094 +0.094 +0.094
+```
+
+**The cliff vanishes.** The only thing changed was integer → fraction, so the cliff was the `ceil` and
+nothing else. Under the smoothed model the relationship is monotone up to one proc duration and then
+FLAT — i.e. *"at least 5 s"*, not *"exactly 5 s"*. The Bloodlust-edge test agrees: the sharp peak at 65
+becomes a flat shelf across 66–69.
+
+⚠⚠ **AND IT IS NOT A SMALL CORRECTION.** At gap 6 the two models differ by **0.128 casts** (−0.034 vs
++0.094) — 64× the tie band, and a sign flip. This is not an accuracy nicety; it changes which layout
+wins.
+
+★ **The process point, which is the reason this is written down at length.** RULES §19 was drafted from
+the shipped engine's numbers and said *"chain edges exactly 5 s apart"*, with a cliff. The user asked
+*"why does it have to be exactly 5s and not 5 or more"* — and running the falsifying instrument showed
+they were right and the section was wrong. §19 now states the ≥ form and carries its own correction.
+⇒ **a rule read off the model is a hypothesis about the model, not a fact about the game**, and the
+instrument that separates them is the one that changes the model and re-measures. That is the same
+lesson §9m's addendum recorded when the user challenged the ±, and it has now happened twice on the
+same subsystem.
+
+⛔ **THE PROBE IS NOT A CANDIDATE IMPLEMENTATION.** It patches `rateAt`'s steady form and the saturated
+branch; the strata/`atiFold` machinery still uses an integer `n` (`kCap`, the window budget, the fold at
+a state change), so the build is internally inconsistent and its MAGNITUDES must not be quoted as the
+fixed model's answer. What it establishes is causal and qualitative: the cliff is the `ceil`. Landing
+the real fix means threading the fractional count through the transient too, then the full corpus +
+plan-diff treatment.
+
 ## §10b — ✅ THE DECLARED-TESTS STRIP IS HIDDEN; A LOCK THAT STOPS HOLDING RETURNS AS A CANDIDATE (08-05, user decision)
 
 User: *"the locked and verified tests can be hidden from the tool, if they ever change you'd put it up
