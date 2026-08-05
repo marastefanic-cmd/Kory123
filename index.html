@@ -324,6 +324,8 @@
   .cand-line { margin-top: 4px; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; color: var(--ink-2); line-height: 1.55; }
   .cand-line b { font-family: var(--font-ui); font-weight: 600; color: var(--ink); }
   .cand-warn { margin-top: 4px; font-size: 11.5px; color: var(--bad, #d66); }
+  .cand-row-sup { border-left-color: var(--warn, #c93); }
+  .cand-sup { color: var(--warn, #c93); border-bottom: 1px dotted currentColor; cursor: help; }
   .psave { display: flex; gap: 6px; margin-left: auto; }
   .psave input { width: 130px; font-size: 13px; padding: 5px 9px; }
   .psave button {
@@ -657,10 +659,20 @@
       <span class="pslab" title="Typical fight length, Bloodlust timing and phases for each current-tier boss. Click one to fill in the setup, then press Find optimal overlay.">Boss presets</span>
       <span class="pchips" id="boss-chips"></span>
     </div>
-    <details class="preset-strip golden-strip" id="golden-strip">
-      <summary title="The three layouts declared as ground truth. Click one to load its exact inputs, then press Find optimal overlay — the planner should reproduce the declared plan. These are the tool's own tests, not raid-night presets.">Declared tests <span class="sublab">— ground truth, click to reproduce</span></summary>
-      <span class="pchips" id="golden-chips"></span>
-    </details>
+    <!-- ⛔ THE DECLARED-TESTS STRIP IS GONE FROM THE UI — user decision, 08-05: *"the locked and
+         verified tests can be hidden from the tool, if they ever change you'd put it up as a
+         candidate."* This OVERTURNS the 07-30 decision that put them here (*"remove the current
+         reference fights and add these hard tests there instead"*), and the reasoning is the same one
+         that removed what was here before them: a locked test is settled, so showing it makes the tool
+         advertise its own scaffolding to someone who came to plan a raid night. What replaces it is the
+         Candidates strip below — a test only needs your eyes when it is UNSETTLED, and a declared
+         layout that ever stops holding surfaces there for a fresh ruling rather than sitting in a list
+         nobody re-reads.
+         ⚠⚠ `GOLDEN_PRESETS` ITSELF STAYS AND MUST STAY. It is not UI decoration: `engine-node.mjs`
+         builds `api.cases` from it (and asserts `nGolden > 0`), which is the corpus `plan-sweep`,
+         `kit-sweep`, `wall-credit`, `ep-model` and `search-witnesses` all sweep. Deleting the array
+         would silently shrink every stability gate in the project. Only the CHIPS are gone. -->
+
     <details class="preset-strip cand-strip" id="cand-strip">
       <summary title="Fights whose best layout was found by EXHAUSTIVE ENUMERATION, not by the search. Each row shows the line the enumeration says is optimal. Load it, press Find optimal overlay, and see whether the planner reproduces it — then rule.">Candidates <span class="sublab">— brute-forced, awaiting your ruling</span></summary>
       <div class="cand-rows" id="cand-rows"></div>
@@ -7735,7 +7747,12 @@ window.GOLDEN_PRESETS = GOLDEN_PRESETS;
    one day (§9u/§9w/§9x). */
 const CANDIDATE_PRESETS = [
   /* CANDIDATES:BEGIN — generated, do not edit by hand */
+  {"name":"2:00 lust 0:05 · icon+gem","T":120,"pins":{"bloodlust":[5]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[15],"berserking":[5],"icyVeins":[15,35],"isc":[15],"scb":[15]},"casts":99.916094,"plateau":887,"layouts":3276000,"eff":{"sp":1387,"crit":44,"t5two":true}},
   {"name":"2:00 lust 0:20 · gem+ati","T":120,"pins":{"bloodlust":[20]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","scb","arcanePower","berserking","ati","bloodlust"],"line":{"arcanePower":[45],"berserking":[45],"icyVeins":[65,90],"scb":[45]},"casts":103.928675,"plateau":1,"layouts":6402240,"eff":{"sp":1387,"crit":44,"t5two":true}},
+  {"name":"2:00 lust 0:20 · icon+gem","T":120,"pins":{"bloodlust":[20]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[20],"berserking":[40],"icyVeins":[0,20],"isc":[20],"scb":[20]},"casts":99.914938,"plateau":697,"layouts":3276000,"eff":{"sp":1387,"crit":44,"t5two":true}},
+  {"name":"2:00 lust 0:40 · icon+gem","T":120,"pins":{"bloodlust":[40]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[40],"berserking":[60],"icyVeins":[0,40],"isc":[40],"scb":[40]},"casts":99.914938,"plateau":732,"layouts":3276000,"eff":{"sp":1387,"crit":44,"t5two":true}},
+  {"name":"2:20 lust 0:05 · icon+gem","T":140,"pins":{"bloodlust":[5]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[5],"berserking":[130],"icyVeins":[0,120],"isc":[0,120],"scb":[5,125]},"casts":115.204633,"plateau":1,"layouts":12429120,"eff":{"sp":1387,"crit":44,"t5two":true}},
+  {"name":"2:20 lust 0:20 · icon+gem","T":140,"pins":{"bloodlust":[20]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[125],"berserking":[130],"icyVeins":[0,120],"isc":[0,120],"scb":[5,125]},"casts":114.179406,"plateau":1,"layouts":12429120,"eff":{"sp":1387,"crit":44,"t5two":true}},
   /* CANDIDATES:END */
 ];
 window.CANDIDATE_PRESETS = CANDIDATE_PRESETS;
@@ -7841,7 +7858,10 @@ buildBuffList();
 el("in-haste").dispatchEvent(new Event("input"));
 refreshPresets("");
 renderBakedPresets(BOSS_PRESETS, "boss-chips");
-renderBakedPresets(GOLDEN_PRESETS, "golden-chips");
+/* ⛔ `GOLDEN_PRESETS` IS DELIBERATELY NOT RENDERED — user decision 08-05, see the note where its strip
+   used to be in the markup. `renderBakedPresets` tolerates a missing host, so this is a one-line
+   reinstatement (`renderBakedPresets(GOLDEN_PRESETS, "golden-chips")` plus the markup) if the call is
+   ever reversed. The array stays because every stability gate sweeps it. */
 /* The candidates strip renders a ROW, not a chip, because the line IS the content — see the
    CANDIDATE_PRESETS header. Clicking loads the fight's INPUTS only, exactly like every other strip:
    the line stays on the page to read the tool's own answer against, and is never fed to it. */
@@ -7855,10 +7875,16 @@ function renderCandidates() {
     const tie = p.plateau > 1
       ? `<span class="cand-tie" title="${p.plateau} layouts are tied with this one to the float floor — the score cannot separate them, so the shape tie-break (RULES §17) named this member. Ruling here is about which member is canonical, not about damage.">plateau ${p.plateau}</span>`
       : `<span class="cand-uniq" title="The enumeration found a unique argmax: nothing in the cell's legal grid ties it. This line is simply the best one.">unique argmax</span>`;
-    return `<div class="cand-row">
+    /* §10b — a cell whose FIGHT is already declared. The declared strip is hidden (a locked test does
+       not need your eyes), so this is the only way a lock that stopped holding gets back in front of
+       you: confirming a different line here SUPERSEDES the lock rather than adding a new test. */
+    const sup = p.declared
+      ? `<span class="cand-sup" title="This exact fight is already a locked test (${esc(p.declared)}). The enumeration re-cut it and got the line below. Confirming it SUPERSEDES that lock — it does not add a new test.">supersedes ${esc(p.declared)}</span> · `
+      : "";
+    return `<div class="cand-row${p.declared ? " cand-row-sup" : ""}">
       <div class="cand-head"><span class="pchip gchip cchip" data-i="${i}" role="button" tabindex="0"
         title="Load this fight's inputs, then press Find optimal overlay and read the tool's answer against the line below">${esc(p.name)}</span>
-        <span class="cand-meta">${p.casts.toFixed(3)} effective ABs · ${tie} · ${p.layouts.toLocaleString()} layouts enumerated</span></div>
+        <span class="cand-meta">${sup}${p.casts.toFixed(3)} effective ABs · ${tie} · ${p.layouts.toLocaleString()} layouts enumerated</span></div>
       <div class="cand-line">${lineOf(p)}</div>
       <div class="cand-warn" hidden></div></div>`;
   }).join("");

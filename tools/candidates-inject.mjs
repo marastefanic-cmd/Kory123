@@ -48,6 +48,33 @@ const mTal = /arcaneImpact:\s*(\d+)/.exec(htmlSrc);
 if (!mTal) die('could not read TALENTS.arcaneImpact out of index.html — the talent block moved, and guessing the crit offset is exactly what this tool must not do');
 const TALENT_CRIT_PCT = 2 * (+mTal[1]);
 
+/* ★★★ "IF THEY EVER CHANGE YOU'D PUT IT UP AS A CANDIDATE" — user, 08-05, the other half of hiding the
+   declared-tests strip. A locked test does not need to be on the page; an UNSETTLED one does. So when a
+   re-cut cell lands on a fight that is ALREADY DECLARED, the row says so, and confirming a different
+   line there is understood as superseding the lock rather than adding a new one.
+   ⛔ The declared list is read from the ENGINE (`api.cases` beyond `nBoss`), never re-typed here — the
+   same rule that keeps every other instrument in this repo from ageing out of sync with it. Loading the
+   engine is optional: if it fails, candidates still inject, just without the cross-reference, because a
+   missing annotation must not cost the user their cells. */
+let DECLARED = [];
+try {
+  const { loadEngine } = await import('./engine-node.mjs');
+  const api = loadEngine(HTML);
+  DECLARED = api.cases.slice(api.nBoss);
+} catch (e) { console.error(`  (no declared-test cross-reference: ${String(e.message).split('\n')[0]})`); }
+const fightKey = (T, lust, kit, gear, interm) => JSON.stringify([
+  Math.round(T), lust === undefined || lust === null ? null : Math.round(lust),
+  [...kit].filter(k => k !== 'bloodlust').sort(),
+  Math.round(gear.sp), Math.round((gear.crit + Number.EPSILON) * 100) / 100, Math.round(gear.haste || 0), !!gear.t5two,
+  interm || null]);
+const declaredKey = new Map();
+for (const c of DECLARED) {
+  const g = { sp: 1387, crit: 38, haste: 0, ...(c.gear || {}) };
+  const ph = c.phases ? `${c.phases[0].from},${c.phases[0].to}` : (c.intermission ? c.intermission.join(',') : null);
+  const kit = c.kit || ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking', 'bloodlust'];
+  declaredKey.set(fightKey(c.T, (c.pins && c.pins.bloodlust) ? c.pins.bloodlust[0] : null, kit, g, ph), c.name);
+}
+
 const rows = [];
 for (const f of files) {
   if (!fs.existsSync(f)) { console.error(`  (skipping missing ${f})`); continue; }
@@ -96,6 +123,8 @@ for (const r of [...byCell.values()]) {
   const p = { name, T: r.T, ...(r.lust === undefined || r.lust === null ? {} : { pins: { bloodlust: [r.lust] } }),
               gear, kit, line, casts: +(+r.quant).toFixed(6), plateau: r.plateau || 1, layouts: r.layouts || 0,
               eff: { sp: r.sp, crit: r.crit, t5two: !!r.t5two } };
+  const already = declaredKey.get(fightKey(r.T, r.lust, kit, gear, r.interm ? String(r.interm) : null));
+  if (already) p.declared = already;             // this fight is already locked — confirming supersedes
   if (r.interm) {
     const [a, b] = String(r.interm).split(',').map(Number);
     p.phases = [{ from: a, to: b, type: 'intermission' }];

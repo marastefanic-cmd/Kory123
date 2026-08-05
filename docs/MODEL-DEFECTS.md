@@ -5080,3 +5080,40 @@ into a slope without adding a tunable.
 ⚠ It will MOVE PLANS — the 5 s ridge is 0.055 casts tall — so it needs the full corpus + plan-diff
 treatment, and any Ashtongue cell derived before it lands must be re-cut. ⇒ **do not declare an
 Ashtongue anchor on an exact second until this is closed** (RULES §19 carries the same warning).
+
+## §10b — ✅ THE DECLARED-TESTS STRIP IS HIDDEN; A LOCK THAT STOPS HOLDING RETURNS AS A CANDIDATE (08-05, user decision)
+
+User: *"the locked and verified tests can be hidden from the tool, if they ever change you'd put it up
+as a candidate."* That OVERTURNS the 07-30 decision which put them on the page in the first place
+(*"remove the current reference fights and add these hard tests there instead"*), and the reasoning is
+the same one that removed what was there before them: **a locked test is settled, so showing it makes
+the tool advertise its own scaffolding** to someone who came to plan a raid night. A test needs the
+user's eyes only while it is UNSETTLED.
+
+### What changed, and the trap it walks past
+
+- The `golden-strip` markup and its `renderBakedPresets` call are gone.
+- ⚠⚠ **`GOLDEN_PRESETS` STAYS.** It is not UI decoration: `engine-node.mjs` builds `api.cases` from it
+  and asserts `nGolden > 0`, and that array is the corpus `plan-sweep`, `kit-sweep`, `wall-credit`,
+  `ep-model` and `search-witnesses` all sweep. Deleting it while "removing the strip" would have
+  silently shrunk every stability gate in the project from 21 cells to 4 — a change no test would
+  report, because the gates would simply have less to compare. Verified after the change: `plan-diff`
+  over the corpus reads **IDENTICAL, 21 compared, changed=0**.
+- `tests/page-open.mjs`'s `solvePreset` gained a programmatic fallback. A lookup by chip text could no
+  longer reach a declared test, which would have quietly removed the ONLY check this project has on the
+  RENDER path (`plan-sweep` runs the DOM-free engine) for exactly the fights it cares most about. It now
+  tries the chips first and falls back to the same `applyState(goldenToState())` the chip handler calls.
+
+### The other half — the replacement channel
+
+*"…if they ever change you'd put it up as a candidate"* is the part that makes hiding them safe, so it
+is mechanised rather than left as an intention. `tools/candidates-inject.mjs` reads the declared list
+**from the engine** (`api.cases` beyond `nBoss`, never re-typed) and keys every cell by its FIGHT —
+length, Lust pin, kit, gear, phases. A brute-forced cell that lands on an already-declared fight is
+marked `supersedes Tn`, and the row says in as many words that confirming it overturns the lock rather
+than adding a test.
+
+⇒ the invariant that replaces "the strip IS the test list": **a declared layout that stops being what
+the enumeration finds comes back in front of the user automatically, and it arrives labelled as a
+supersession.** ⛔ The cross-reference is best-effort by design — if the engine fails to load, candidates
+still inject without it, because a missing annotation must not cost the user their cells.

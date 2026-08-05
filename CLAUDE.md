@@ -276,8 +276,23 @@ this month to accommodate objective changes), `layout-rules.mjs` (asserted a pro
 that belong in `docs/ESTABLISHED-FACTS.md` with their algebra — its R4 encoded a two-body rule as
 universal and its R3 rested on a cast count later shown to be ramp-neutral), and `monotonicity.mjs`.
 
-★ **THE UI's "Reference fights" STRIP IS NOW THE DECLARED TESTS** (user decision 07-30: *"remove the
-current reference fights and add these hard tests there instead"*). `GOLDEN_PRESETS` held fifteen plain
+⛔⛔ **AND THE DECLARED-TESTS STRIP IS NOW HIDDEN FROM THE UI — user decision 08-05**, which OVERTURNS
+the 07-30 decision recorded in the paragraph below: *"the locked and verified tests can be hidden from
+the tool, if they ever change you'd put it up as a candidate."* Same reasoning that removed what was
+there before them — a locked test is settled, so showing it makes the tool advertise its own scaffolding
+to someone who came to plan a raid night. ⇒ **the strip and `tests/anchors.mjs` are no longer in
+lockstep**, and the replacement channel is the **Candidates strip**: `tools/candidates-inject.mjs`
+cross-references every brute-forced cell against the declared list and marks any whose FIGHT is already
+locked as *"supersedes Tn"*, so a lock that stops holding comes back in front of the user for a fresh
+ruling instead of sitting in a list nobody re-reads.
+⚠⚠ **`GOLDEN_PRESETS` ITSELF STAYS AND MUST STAY** — it is not UI decoration. `engine-node.mjs` builds
+`api.cases` from it (and asserts `nGolden > 0`), which is the corpus `plan-sweep`, `kit-sweep`,
+`wall-credit`, `ep-model` and `search-witnesses` sweep; deleting it silently shrinks every stability
+gate. Only the CHIPS are gone, and reinstating them is one `renderBakedPresets` call plus the markup.
+
+★ *(historical, 07-30 — superseded above)* **THE UI's "Reference fights" STRIP IS NOW THE DECLARED
+TESTS** (user decision 07-30: *"remove the current reference fights and add these hard tests there
+instead"*). `GOLDEN_PRESETS` held fifteen plain
 length+Lust cases inherited from the deleted `exact-match` goldens — they asserted nothing after 07-28 and
 they were the first strip a visitor saw, so the tool advertised its own scaffolding. It now holds exactly
 the seventeen declared tests, T1–T17 (the preliminary "P" presets were destroyed by user ruling 08-02 —
