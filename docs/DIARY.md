@@ -1675,3 +1675,35 @@ were never checked, and both broke. The premise the user offered (*"aligning to 
 also naturally align presses"*) is false as literally implemented; what they were reaching for is
 `valueSecs`, and their objection to `distinct` — that it is "messy" — was precisely that it counted
 haste presses, which want the opposite thing.
+
+# 2026-08-05 (cont.) — and then the gate set earned its keep
+
+With the corpus green, the standing gates were re-run on the widened kit matrix, and `search-audit`
+found a score miss: `gem+skull · h200 · 2:40` with an intermission, beaten by **+0.028848 casts** —
+14× the tie band — via `icyVeins#1 & scb#1 & skull#1` all +2.
+
+The attribution was checked before anything was touched, because "did I just break this?" is the
+question a red gate asks first and the expensive way to answer it is to guess. The pre-08-05 engine
+emits the same plan and loses the same 0.028848 casts, byte for byte. So the miss is pre-existing, and
+the reason it appeared today is the nicest possible one: the 08-05 trinket-cap fix (§9t) had replaced
+the impossible three-trinket `icon+gem+skull` with `gem+skull`, so the matrix audited that kit for the
+first time. **Fixing an input-validation bug widened the covered space, and the wider space had a hole
+in it.** The matrix's value is the kits it covers; a kit nobody can equip was covering nothing.
+
+The move landscape is the §8s signature one dimension wider — every single coordinate downhill, every
+pair downhill or exactly flat, only the triple uphill. The flat pair is the interesting one:
+`{skull#1, iv#1}+2` is precisely the co-pressed-cluster move class 3 already offers, it scores exactly
+0.000000, and the comparator correctly refuses it because the shape prefers the earlier vector. The
+descent is behaving correctly at every single step; the move it needs simply is not in its vocabulary.
+
+The mechanism turned out to be a THIRD kind of coupling, alongside the value cluster's cross term
+(§8m) and the haste train's packing law (§8s): the fight **re-ramps** after an intermission longer than
+the Arcane Blast debuff, and through a ramp haste is provably worth nothing and value does less work,
+so every cooldown the plan parked on the wall wants to sit after the ramp — together. Move class 7, the
+suffix slide: for each distinct press second in the plan, slide every press at or after it. Read off
+the plan, never guessed, because the second that matters is already a press second — the plan is what
+put a press on the wall.
+
+It runs last and gated on `!moved`, the 3d position lesson, and the payoff is visible in the
+verification: `plan-diff` over the 21-cell preset corpus reads **IDENTICAL, changed=0**. A move class
+that runs after every older one has converged is inert wherever it has nothing to say.

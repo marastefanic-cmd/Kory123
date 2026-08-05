@@ -20,11 +20,19 @@ describe accepted limits and decided questions so nobody re-opens them by accide
   criterion the abolished `distinct` was a lossy proxy for). ⛔ Reinstating `distinct` is a MEASURED
   dead end, reproducible from a one-line switch: same 16/17, red relocated to T8 (§9v).
 - **Search:** every known miss is closed — `search-audit --k=3` reads **72/72** on the kit × haste
-  matrix, all three recorded witnesses are reached, and the 08-04 ladder run found the emitted plan
-  on the best-known answer in 11 of 12 fresh cells (the 12th is in the decision package, +0.0025).
+  matrix and **21/21** on the preset sweep, all three recorded witnesses are reached, and the 08-04
+  ladder run found the emitted plan on the best-known answer in 11 of 12 fresh cells (the 12th is in
+  the decision package, +0.0025).
   A pass is LOCAL optimality; the search is a bounded heuristic **by doctrine** (*"the scoring part
   has to be perfectible, the search part does not"*), and the gate set is what surfaces the day that
   stops being good enough.
+  ★ **08-05 is the cleanest example yet of the gate set doing its job**, and the shape of it is worth
+  keeping: fixing an INPUT-VALIDATION bug (§9t, the 2-trinket cap) replaced an impossible kit in the
+  matrix with a real one, the wider space turned out to have a hole, and `search-audit` named it —
+  `gem+skull · h200 · 2:40 interm`, **+0.028848 casts**. Verified pre-existing rather than assumed
+  (the pre-08-05 engine loses the same amount byte for byte), and closed by move class 7, the suffix
+  slide (§9y). ⇒ the matrix's value is the KITS IT COVERS; a kit that cannot be equipped was covering
+  nothing.
 - **CI:** three blocking jobs — the tests + closed forms, the search audit, and `plan-stability`
   (A/B vs merge-base) — plus `pool-equiv` (the page's pooled path == the tested sequential path).
   Every job carries a negative control.
