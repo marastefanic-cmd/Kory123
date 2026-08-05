@@ -751,7 +751,18 @@ Treat maintaining them as part of the work, not an afterthought:
   §5.3, and were **REVOKED 08-04 until a real slowness report** (ROADMAP §4) — the recorded prices
   are stale twice over (Phase 12 rewrote the dominant walk; 08-04 removed ~20 % dead work), and the
   standing rule holds: fresh baseline first, wall-clock compares only within a same-session pair.
-- `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
+- `docs/PLAN.md` — ▶▶ **A PLAN IS IN FLIGHT (08-05) — READ IT BEFORE TOUCHING THE ASHTONGUE MODEL.**
+  It carries the overnight goal (a one-directional bias in the ATI TRANSIENT, localised by `ati-mc`'s
+  steady rates being exact while all four full-fight/windowed checks sit above truth), the two smaller
+  queued items, and the state of the background enumerations.
+  ⛔⛔ It also carries the session's biggest mistake, and you should read that part first: **`ceil(DUR/a)`
+  in the Ashtongue law is EXACT, not a quantisation artifact.** MODEL-DEFECTS §10a claimed otherwise,
+  the claim was acted on — a correct rule rewritten, a candidate withheld — and `tools/ati-mc.mjs`
+  falsified it at 4 of 9 points two hours later. The window is anchored AT a cast on a regular lattice,
+  so the attempt count is deterministic and there is no phase to average over. (A phase-average IS right
+  for the edge memory, §9m, where the wall is placed independently of the casts — same formula, adjacent
+  problem, opposite answer.) ⇒ do not re-open it; `scratchpad/smooth.html` is the WRONG build.
+- *(what this pointer says when the plan lands)* the current executable plan, when one is in flight; **absent = no plan in flight**
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
   into ROADMAP). **No plan in flight. Phase 5 (AoE phases) is COMPLETE** — verdict: an AoE phase is a
   burn ×M(N) modifier + exit-re-ramp + SP-dilution, thresholds and sim gates in RULES §9, record in

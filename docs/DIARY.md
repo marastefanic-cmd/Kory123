@@ -1707,3 +1707,36 @@ put a press on the wall.
 It runs last and gated on `!moved`, the 3d position lesson, and the payoff is visible in the
 verification: `plan-diff` over the 21-cell preset corpus reads **IDENTICAL, changed=0**. A move class
 that runs after every older one has converged is inert wherever it has nothing to say.
+
+# 2026-08-05 (cont.) — the one I got wrong, and the instrument that was sitting right there
+
+The user asked why an Ashtongue layout wants its haste windows separated by *exactly* one proc duration
+rather than "5 or more". Good question. I answered it by finding `n = ceil(DUR/a)` in the renewal law,
+reasoning that 3.53 attempts "really" fit in a 5s window at passive haste so `ceil` must be rounding a
+smooth quantity into a step, building a phase-averaged variant, and watching the cliff turn into a
+plateau. On that basis I filed MODEL-DEFECTS §10a, **rewrote a correct rule to say the opposite**, and
+**withheld a candidate from the user's strip** so they would not rule on a line the model had supposedly
+falsified.
+
+All of it was wrong. `tools/ati-mc.mjs` — a seeded simulation of the real proc process, in CI, eleven
+seconds to run — fails the smoothed build at 4 of 9 points, including three steady rates the shipped
+model matches to five decimals. `ceil` is exact: the window is anchored AT a cast on a regular lattice,
+so attempt `k` is inside it iff `k·a < DUR` and the count is deterministic. There is no phase to average
+over.
+
+The specific trap is worth naming because it is not obvious. A phase-average IS the right move one
+subsystem over — §9m's edge memory, where the buff wall is placed independently of the cast stream, and
+where the user pushed me into exactly this formula and was right. Same algebra, adjacent problem,
+opposite answer. I generalised from "the user was right about the ± last time" to "so the ± is wrong
+here too", which is not evidence.
+
+The process failure is sharper than the modelling one. The probe I ran — rebuild, re-sweep, watch the
+cliff vanish — could only ever establish that two models DIFFER. It had no way to say which is right,
+and I wrote to four documents on the strength of it. The instrument that leaves the model was already
+written, already green, already in CI. ⇒ **when a change makes the model disagree with itself, the next
+call is the external check, not another internal comparison.**
+
+What survives is better founded than what I filed. `ati-mc`'s steady rates are exact while all four
+full-fight and windowed checks sit ABOVE truth — +0.081, +0.047, +0.079, +0.072, every one the same
+direction. A one-directional residual is not noise, and the steady form being exact localises it to the
+transient. That is the overnight goal, and it came from the instrument rather than from me.

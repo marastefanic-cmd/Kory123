@@ -5021,137 +5021,64 @@ test's 25 %. That is inert for every declared test by the cancellation argument 
 would mean either changing what the crit box means or typing 19 to get 25 — both worse. It is recorded
 here instead, and the candidates path routes around it by construction.
 
-## §10a — ⛔ THE ASHTONGUE TERM PUTS A CAST LATTICE BACK IN THE OBJECTIVE (08-05) — open
+## §10a — ⛔⛔ RETRACTED THE SAME DAY IT WAS FILED (08-05). The `ceil` is EXACT; I was wrong.
 
-Found while explaining the Ashtongue layout structure to the user, who asked the right question:
-*"what I don't understand is why it has to be exactly 5s and not 5 or more."* The answer turned out to
-be a modelling artifact rather than physics, which makes it a defect rather than a rule.
+**Filed, acted on, and then falsified by the project's own external check inside two hours. The whole
+episode stays here because the error is more instructive than the entry ever was.**
 
-### What is exact and what is not
+### What I claimed
 
-Exact, and verified to four decimals: proc uptime is `P = 1 − (1−q)^n` with `n = ceil(DUR / a)`, and the
-two observed plateaus are precisely `n = 4` (passive, a = 1.417 s) and `n = 5` (Icy Veins, a = 1.173 s),
-with `q = 0.23499` per cast solving both. The one-proc-duration lag at each window edge is the trailing
-window draining, and it is real.
+That `n = ceil(DUR / a)` in the Ashtongue renewal law is a quantisation artifact: *"at passive haste the
+real number of attempts inside a 5 s window is 3.53, not 4 — `ceil` picks 4 always, so a quantity that
+should vary smoothly with the cast interval jumps instead."* I proposed the phase-average
+`P = f·[1−r^(k+1)] + (1−f)·r^k`, built it as a probe, measured a 0.128-cast swing, and on that basis
+**rewrote RULES §19 to retract a rule that was correct**, and **withheld the Ashtongue candidate** from
+the user's strip.
 
-⛔ **`n` is an INTEGER, and that is the problem.** At passive haste the real number of attempts inside a
-5 s window is **3.53**, not 4 — sometimes 3, sometimes 4, depending where the window falls against the
-cast stream. `ceil` picks 4 always. So a quantity that should vary smoothly with the cast interval
-instead JUMPS, and the objective inherits the jump.
+### Why it is wrong
 
-### The symptom, measured
+`tools/ati-mc.mjs` — the seeded simulation of the REAL proc process, which exists precisely to check
+this model from outside — run against the smoothed build:
 
-Sweeping the gap between two Icy Veins windows (T=140, Icy Veins + Ashtongue only, so nothing else can
-confound it), Δcasts against gap 0:
+| check | shipped (`ceil`) | smoothed | MC truth |
+|---|---|---|---|
+| steady rate h=0 crit=25 | **0.69304** ✓ | 0.69110 ⛔ | 0.69302 |
+| steady rate h=0 crit=50.765 | **0.70921** ✓ | 0.70682 ⛔ | 0.70923 |
+| steady rate h=300 crit=40 | **0.83554** ✓ | 0.83183 ⛔ | 0.83556 |
+| full fight T=180 h=0 crit=25 | **123.324** ✓ | 122.990 ⛔ | 123.277 |
 
-```
-gap    0      1       2       3      4      5       6..10
-Δ    0.000 -0.018  -0.012  -0.004 +0.008 +0.022   -0.034  (identical for 6, 7, 8 and 10)
-```
+`4 check(s) failed — the engine disagrees with the process it claims to model.` The shipped `ceil` form
+reproduces the steady rates **to five decimals**; the smoothed form is off by 0.002–0.004 and fails.
 
-⚠ **Gaps 6 through 10 score IDENTICALLY.** A continuous mechanism cannot do that. It is a flat shelf
-with a cliff at 5→6, which is the signature of a step function, and it is worth 0.055 casts — 27× the
-tie band, i.e. big enough to decide layouts.
+### ★ The actual error, stated precisely, because it generalises
 
-★ **AND IT FALSIFIED THE OBVIOUS EXPLANATION, which is why this is filed rather than written up as a
-rule.** The natural story — "gap 5 lands more proc-seconds under a haste buff, where a rating buff is
-worth 1.2× more because it multiplies with a mult buff" — predicts the right SIGN and the wrong
-NUMBERS. Measured proc-seconds (hasted / passive) are **identical at 30.618 / 61.942 for every gap from
-5 to 10**, while the scores spread by 0.055. Predicted +0.0088 across that whole range; actual +0.0219
-down to −0.0336. ⇒ where the proc-time lands is NOT the mechanism; the integer attempt count is.
+A phase-average is right when a window is placed **independently** of the cast stream. It is wrong here,
+because the window is **anchored at a cast** — the question is *"is the proc up as I begin THIS cast"*,
+and the prior attempts sit at `t₀ − k·a` on a regular lattice. Attempt `k` is still inside the window
+iff `k·a < DUR`, so the count is `ceil(DUR/a)` **deterministically**. There is no phase to average over.
 
-### Why it matters beyond tidiness
+⚠ And the trap is that the phase-average IS the right move one subsystem over: §9m's addendum applies it
+to the EDGE MEMORY, where the buff wall really is placed independently of the casts, and the user was
+right to demand it there. Same formula, adjacent problem, opposite answer. ⇒ **"the user was right about
+the ± last time" is not evidence about this time**, and I treated it as if it were.
 
-MODEL-DEFECTS §8l is unambiguous: **`scoreStart` is PURE WINDOW GEOMETRY** — *"the integral is
-`∫ rate(m(t)) dt` and `m(t)` is set by press times, durations and wall events — a cast lattice has no
-business in it."* Three earlier versions smuggled one in and each cost a measured defect. The Ashtongue
-term smuggles one back in through `ceil(DUR/a)`: the ideal (unquantised) score now depends on a discrete
-attempt count. That is exactly the banned shape, and it arrived legitimately — a per-cast proc genuinely
-needs attempts — which is what makes it worth solving rather than reverting.
+### What it cost, and what was reverted
 
-### The likely fix, NOT attempted here
+- RULES §19's *"exactly one proc duration"* form was correct; my ≥ rewrite was not. **Restored**, with
+  this episode recorded at the section.
+- The Ashtongue candidate was withheld from the strip on a false premise. **Withhold lifted.**
+- The 0.128-cast "swing" was the smoothed model being wrong by that much, not the shipped model.
 
-Replace `ceil` with the exact expectation over the window's phase: with `DUR/a = k + f` (k integer,
-0 ≤ f < 1), a uniformly-placed window contains `k+1` attempts with probability `f` and `k` with
-probability `1−f`, so `P(up) = f·[1−(1−q)^(k+1)] + (1−f)·[1−(1−q)^k]`. That is the same
-smooth-the-phase-average move §9m's addendum already made for the edge memory (*"can't you average out
-the values? why do you need +-?"* — the user, and they were right then too), and it would turn the shelf
-into a slope without adding a tunable.
-⚠ It will MOVE PLANS — the 5 s ridge is 0.055 casts tall — so it needs the full corpus + plan-diff
-treatment, and any Ashtongue cell derived before it lands must be re-cut. ⇒ **do not declare an
-Ashtongue anchor on an exact second until this is closed** (RULES §19 carries the same warning).
+### ⚠ WHAT SURVIVES, and it is the real lead
 
-### ✅ THE FIX WAS BUILT AS A PROBE AND IT CONFIRMS THE DIAGNOSIS — and it falsified a rule I had
-### already written, which is the part worth keeping
+The MC baseline shows the steady state exact and **every full-fight and windowed check biased the SAME
+direction** — engine above truth by +0.081, +0.047, +0.079, +0.072. All inside tolerance, all positive.
+A one-directional residual is not noise. The steady form is exact, so **the bias lives in the
+transient**, and that is a properly-founded thing to chase — see `docs/PLAN.md`.
 
-Rather than leave the paragraph above as a hypothesis, the smoothed form was built in a scratch copy of
-the engine (`atiNOf` keeps the fraction; `r^n` becomes the mixture `f·r^(k+1) + (1−f)·r^k`) and the
-identical sweep re-run:
+★★ **THE PROCESS LESSON, which is the only reason this entry is worth its length.** I had the falsifying
+instrument in CI the whole time and did not run it before writing to the docs. The probe I DID run
+(rebuild, re-sweep, watch the cliff vanish) could only ever confirm that the two models differ — it had
+no way to say which one is right. ⇒ **when a change makes the model disagree with itself, the next call
+is the instrument that leaves the model**, not another internal comparison. `ati-mc` took eleven seconds.
 
-```
-gap        0      1      2      3      4      5      6      7      8      9     10     12
-shipped  0.000 -0.018 -0.012 -0.004 +0.008 +0.022 -0.034 -0.034 -0.034 -0.034 -0.034 -0.034
-smoothed 0.000 +0.005 +0.017 +0.036 +0.061 +0.091 +0.094 +0.094 +0.094 +0.094 +0.094 +0.094
-```
-
-**The cliff vanishes.** The only thing changed was integer → fraction, so the cliff was the `ceil` and
-nothing else. Under the smoothed model the relationship is monotone up to one proc duration and then
-FLAT — i.e. *"at least 5 s"*, not *"exactly 5 s"*. The Bloodlust-edge test agrees: the sharp peak at 65
-becomes a flat shelf across 66–69.
-
-⚠⚠ **AND IT IS NOT A SMALL CORRECTION.** At gap 6 the two models differ by **0.128 casts** (−0.034 vs
-+0.094) — 64× the tie band, and a sign flip. This is not an accuracy nicety; it changes which layout
-wins.
-
-★ **The process point, which is the reason this is written down at length.** RULES §19 was drafted from
-the shipped engine's numbers and said *"chain edges exactly 5 s apart"*, with a cliff. The user asked
-*"why does it have to be exactly 5s and not 5 or more"* — and running the falsifying instrument showed
-they were right and the section was wrong. §19 now states the ≥ form and carries its own correction.
-⇒ **a rule read off the model is a hypothesis about the model, not a fact about the game**, and the
-instrument that separates them is the one that changes the model and re-measures. That is the same
-lesson §9m's addendum recorded when the user challenged the ±, and it has now happened twice on the
-same subsystem.
-
-⛔ **THE PROBE IS NOT A CANDIDATE IMPLEMENTATION.** It patches `rateAt`'s steady form and the saturated
-branch; the strata/`atiFold` machinery still uses an integer `n` (`kCap`, the window budget, the fold at
-a state change), so the build is internally inconsistent and its MAGNITUDES must not be quoted as the
-fixed model's answer. What it establishes is causal and qualitative: the cliff is the `ceil`. Landing
-the real fix means threading the fractional count through the transient too, then the full corpus +
-plan-diff treatment.
-
-## §10b — ✅ THE DECLARED-TESTS STRIP IS HIDDEN; A LOCK THAT STOPS HOLDING RETURNS AS A CANDIDATE (08-05, user decision)
-
-User: *"the locked and verified tests can be hidden from the tool, if they ever change you'd put it up
-as a candidate."* That OVERTURNS the 07-30 decision which put them on the page in the first place
-(*"remove the current reference fights and add these hard tests there instead"*), and the reasoning is
-the same one that removed what was there before them: **a locked test is settled, so showing it makes
-the tool advertise its own scaffolding** to someone who came to plan a raid night. A test needs the
-user's eyes only while it is UNSETTLED.
-
-### What changed, and the trap it walks past
-
-- The `golden-strip` markup and its `renderBakedPresets` call are gone.
-- ⚠⚠ **`GOLDEN_PRESETS` STAYS.** It is not UI decoration: `engine-node.mjs` builds `api.cases` from it
-  and asserts `nGolden > 0`, and that array is the corpus `plan-sweep`, `kit-sweep`, `wall-credit`,
-  `ep-model` and `search-witnesses` all sweep. Deleting it while "removing the strip" would have
-  silently shrunk every stability gate in the project from 21 cells to 4 — a change no test would
-  report, because the gates would simply have less to compare. Verified after the change: `plan-diff`
-  over the corpus reads **IDENTICAL, 21 compared, changed=0**.
-- `tests/page-open.mjs`'s `solvePreset` gained a programmatic fallback. A lookup by chip text could no
-  longer reach a declared test, which would have quietly removed the ONLY check this project has on the
-  RENDER path (`plan-sweep` runs the DOM-free engine) for exactly the fights it cares most about. It now
-  tries the chips first and falls back to the same `applyState(goldenToState())` the chip handler calls.
-
-### The other half — the replacement channel
-
-*"…if they ever change you'd put it up as a candidate"* is the part that makes hiding them safe, so it
-is mechanised rather than left as an intention. `tools/candidates-inject.mjs` reads the declared list
-**from the engine** (`api.cases` beyond `nBoss`, never re-typed) and keys every cell by its FIGHT —
-length, Lust pin, kit, gear, phases. A brute-forced cell that lands on an already-declared fight is
-marked `supersedes Tn`, and the row says in as many words that confirming it overturns the lock rather
-than adding a test.
-
-⇒ the invariant that replaces "the strip IS the test list": **a declared layout that stops being what
-the enumeration finds comes back in front of the user automatically, and it arrives labelled as a
-supersession.** ⛔ The cross-reference is best-effort by design — if the engine fails to load, candidates
-still inject without it, because a missing annotation must not cost the user their cells.

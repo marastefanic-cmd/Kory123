@@ -106,17 +106,6 @@ for (const r of [...byCell.values()]) {
     console.error(`  ⛔ SKIPPED ${r.cell}: ${equipped} trinkets — that character cannot exist`);
     skipped++; continue;
   }
-  /* ⛔ ASHTONGUE CELLS ARE WITHHELD WHILE MODEL-DEFECTS §10a IS OPEN (08-05). The proc term's attempt
-     count is `ceil`-ed, which turns a smooth relationship into a step; the smoothed probe moves the
-     same cell by up to 0.128 casts and flips its sign. So a line enumerated on the shipped engine is
-     not something to ask the user to rule on — the model that graded it is the one the same day's
-     measurement falsified. Withheld, not deleted: `--ati` re-admits them for inspection, and closing
-     §10a plus a re-cut is what lifts this. ⚠ Non-Ashtongue cells are unaffected — with the proc off
-     the whole effect is provably absent (ten layouts, bit-identical scores; RULES §19). */
-  if (kit.includes('ati') && !process.argv.includes('--ati')) {
-    console.error(`  ⏸ WITHHELD ${r.cell}: Ashtongue cell, and §10a is open (pass --ati to inspect anyway)`);
-    skipped++; continue;
-  }
   const line = {};
   for (const k of Object.keys(r.best || {}).sort()) {
     if (k === 'bloodlust') continue;                   // the pin is an input, not part of the answer
