@@ -27,8 +27,12 @@
 //      cells regressions when two were improvements of +0.0058 and +0.0392 casts. plan-sweep now
 //      records `rankScore`; `robust` rides along as a diagnostic.
 //   2. The objective is a PAIR, not a number: inside `TIE_CASTS` the integral is tied and the SHAPE
-//      decides (fewest distinct press moments → earliest). A banded move is now reported as
-//      `tieBreak`, and only a banded move that ADDS press moments fails.
+//      decides. A banded move is reported as `tieBreak`, and one the comparator does NOT prefer fails.
+//      ⚠ The shape half is `snaps → wastedPre → offGrid → invalid → valueSecs → earliest press vector`
+//      (RULES §17) — this line used to say "fewest distinct press moments → earliest", and `distinct`
+//      was ABOLISHED on 08-05 (§9s). The grading below never depended on that: it loads B's engine and
+//      asks `planBetter`. Only the per-cell EXPLANATION did, and it now reads the deciding criterion
+//      off the engine's own `planShape` too.
 // Everything else still needs the head-to-head SIM duel of old plan vs
 // new plan under ONE harness; a positive ΔScore is still only the model's opinion of itself,
 // and if the scorer moved (a repricing) NO delta is attributable to the search. This tool's
@@ -84,8 +88,8 @@ for (const name of ia.keys()) {
     }
     continue;
   }
-  /* ★ THE OBJECTIVE IS A PAIR (MODEL-DEFECTS §8h): the integral, then the shape tie-break (fewest
-     distinct press moments → earliest). Grading on the integral ALONE reports every legitimate
+  /* ★ THE OBJECTIVE IS A PAIR (MODEL-DEFECTS §8h): the integral, then the shape tie-break (RULES
+     §17). Grading on the integral ALONE reports every legitimate
      tie-break move as a search regression, which it did on 07-30: Leotheras moved −0.001155 casts —
      inside `TIE_CASTS`, and from 4 distinct press moments to 3, exactly the move the tie-break is
      FOR. The band is carried per cell from the engine's own constant, never retyped here. */
@@ -128,6 +132,7 @@ if (changed.length) console.log(`DUEL WORK LIST (sim old-vs-new under ONE harnes
    ONLY as the fallback for old sweeps whose html predates the comparator export. */
 const inBand = c => c.banded && Math.abs(c.dScore) <= c.band;
 let graded = null;
+const gradedShapes = new Map();   // name → {A, B} planShape, so the report can name the deciding criterion
 try {
   const { loadEngine, cfgFor } = await import('./engine-node.mjs');
   const bHtml = process.argv.find(a => a.startsWith('--engine='))?.split('=')[1] || B.html;
@@ -140,7 +145,9 @@ try {
       if (!row) continue;
       const cfg = cfgFor(api, row);
       const rp = s => api.rankPair(api.repair(JSON.parse(JSON.stringify(s)), cfg), cfg);
-      graded.set(c.name, api.planBetter(rp(ib.get(c.name).s), rp(ia.get(c.name).s)));
+      const pa = rp(ia.get(c.name).s), pb = rp(ib.get(c.name).s);
+      graded.set(c.name, api.planBetter(pb, pa));
+      if (pa.shape && pb.shape) gradedShapes.set(c.name, { A: pa.shape, B: pb.shape });
     }
   }
 } catch { /* engine unavailable — legacy heuristic below */ }
@@ -155,9 +162,27 @@ console.log(`SCORE-AUDIT unchangedCells=${sameCells} scorerMoved=${scorerMoved}$
             `movedCells=${changed.length}${ungraded.length ? ` (${ungraded.length} carry no score)` : ''} ` +
             `→ worse=${worse.length} better=${better.length} tie=${tie.length}` +
             `${tieBreak.length ? ` tieBreak=${tieBreak.length}` : ''}${tieBad.length ? ` tieBreakWORSESHAPE=${tieBad.length}` : ''}`);
+/* ⚠ The per-cell line used to print `press moments ±n`, i.e. `distinct` — which `planBetter` stopped
+   consulting when the criterion was ABOLISHED on 08-05 (§9s). The VERDICT above was never wrong (it
+   comes from the engine's own comparator), but the explanation pointed the reader at a retired
+   criterion, which is the same drift CLAUDE.md's "import the comparator" rule exists to stop. It now
+   names whichever shape criterion actually separated the two plans, read off the engine's `planShape`,
+   and falls back to the legacy count only for sweeps whose recorded fields predate that. */
+const whySplit = c => {
+  if (!graded || !gradedShapes.has(c.name)) {
+    return Number.isFinite(c.dDistinct) ? `, press moments ${c.dDistinct > 0 ? '+' : ''}${c.dDistinct} (legacy \`distinct\`)` : '';
+  }
+  const { A: sa, B: sb } = gradedShapes.get(c.name);
+  for (const k of ['snaps', 'wastedPre', 'offGrid', 'invalid', 'valueSecs'])
+    if (sa[k] !== undefined && sa[k] !== sb[k]) return `, ${k} ${sa[k]} → ${sb[k]}`;
+  const n = Math.min(sa.ts.length, sb.ts.length);
+  for (let i = 0; i < n; i++) if (Math.abs(sa.ts[i] - sb.ts[i]) > 1e-9)
+    return `, earliest press vector at position ${i}: ${sa.ts[i]} → ${sb.ts[i]}`;
+  return ', identical shapes';
+};
 for (const c of tieBreak) console.log(`   · "${c.name}" is INSIDE the tie band (Δ ${c.dScore.toFixed(6)}, band ±${c.band.toFixed(6)})` +
-                                      `${Number.isFinite(c.dDistinct) ? `, press moments ${c.dDistinct > 0 ? '+' : ''}${c.dDistinct}` : ''} — the shape tie-break, not a score move.`);
-for (const c of tieBad) console.error(`  ⚠ "${c.name}" is inside the tie band but B has ${c.dDistinct} MORE press moment(s) — the tie-break went backwards.`);
+                                      `${whySplit(c)} — the shape tie-break, not a score move.`);
+for (const c of tieBad) console.error(`  ⚠ "${c.name}" is inside the tie band but the comparator PREFERS A${whySplit(c)} — the tie-break went backwards.`);
 if (scorerMoved) {
   console.log('⚠⚠ THE SCORER CHANGED between A and B (identical plan(s) scored differently) — a REPRICING.');
   console.log('   No ΔScore above is attributable to the search; the sign split is NOT graded.');

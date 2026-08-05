@@ -82,10 +82,16 @@ if (process.env.SWEEP_CHILD) {
       const score = typeof api.rankScore === 'function' ? api.rankScore(best.s, cfg) : undefined;
       /* The objective is a PAIR, so a diff that reads only the first half misgrades every move that
          lands inside the band and wins on shape. Carry the other half: `band` is the engine's own
-         TIE_CASTS in this cell's damage units, `distinct` the number of separate press moments. */
+         TIE_CASTS in this cell's damage units, and `shape` is the ENGINE'S OWN `planShape` — recorded
+         whole rather than as one hand-picked field.
+         ⚠ `distinct` is kept as a separate key ONLY so an old plan-diff can still read a new sweep;
+         the criterion itself was ABOLISHED on 08-05 (§9s) and nothing grades on it. Recording the
+         whole shape is the fix for the deeper problem: the previous version stored exactly one
+         criterion, so the day the comparator's order changed, every sweep on disk silently stopped
+         carrying the field that decides. */
       const band = api.TIE_CASTS !== undefined && api.plainCastOf ? api.TIE_CASTS * api.plainCastOf(cfg) : undefined;
-      const distinct = api.planShape ? api.planShape(best.s).distinct : undefined;
-      cell = { i, name: c.name, T: c.T, ms: Date.now() - t0, score, band, distinct,
+      const shape = api.planShape ? api.planShape(best.s, cfg) : undefined;
+      cell = { i, name: c.name, T: c.T, ms: Date.now() - t0, score, band, shape, distinct: shape ? shape.distinct : undefined,
                robust: best.val ?? best.score, s: best.s, bad: illegal(best.s, cfg, api.BUFFS) };
     } catch (e) {
       cell = { i, name: c.name, T: c.T, ms: Date.now() - t0, error: String((e && e.stack) || e) };
