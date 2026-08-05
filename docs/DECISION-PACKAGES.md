@@ -1,5 +1,18 @@
 # DECISION PACKAGES — awaiting your rulings (prepared 2026-08-04)
 
+> ⛔⛔ **EVERY CANDIDATE BELOW WAS GRADED UNDER A COMPARATOR THAT NO LONGER EXISTS — read this before
+> ruling on any cell.** The packages were cut on 08-04. Since then the tie-break half of the objective
+> changed three times, and each change can move which member of a plateau is canonical:
+> · `distinct` (fewest press moments) **abolished** by user ruling, 08-05 (§9s);
+> · the `offGrid` lattice made **plan-dependent** — the ramp-end anchor is computed at the haste the
+>   plan actually runs at the pull, not at passive gear haste (§9w);
+> · `valueSecs` added — value buffs share a second, haste buffs do not (§9x).
+> A candidate here is still a legitimate *structure*; what may have moved is which exact second inside
+> its plateau the tool now names. ⇒ **re-cut a cell before declaring it.** `tools/lattice-brute.mjs`
+> imports the comparator at run time, so a fresh sweep is graded correctly by construction — and it
+> SKIPS cells already present in its `--out` file, so point it at a NEW file rather than appending to
+> a pre-08-05 one. The re-derivation of the ladder is what closes this banner.
+
 > ⚖️ **RULED ON 08-04, ALL FOUR "NOT YET" — the packages stay OPEN as candidates.** Presented as four
 > questions; the user answered: ladder cells (all 12, incl. the red 3:20·0:40) — **not yet, "I have
 > an idea im writing"**; the 12:20 study — **record the verdict, revisit later** (now RULES §16);
