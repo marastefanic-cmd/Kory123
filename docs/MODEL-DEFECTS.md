@@ -4647,8 +4647,32 @@ drift). Consequences, and they are the reason this could be added while other te
 
 Cost: `planBetter` reads only `ideal`, `shape` and `ifloor` — never `score` — so the filter skips
 `rankScore`'s PHASE_N samples and costs one `simulate` per candidate, ~12× cheaper than `tryCand`.
-Bounded by `CANON_W = 12` beam × `CANON_D = 5` levels × a 12 000-candidate budget. Measured: the whole
-17-case suite went 6m→7m31s.
+Bounded by `CANON_W = 12` beam × `CANON_D = 5` levels × a 12 000-candidate budget.
+
+### ⚠ The cost is real, it is measured, and it lands where you would not guess
+
+Measured A/B against a `CANON_D = 0` build of the same engine (same machine, one competing job, so
+these are upper bounds):
+
+| cell | with the pass | without | Δ |
+|---|---|---|---|
+| 1:15 lust 0:05 | 2380 ms | 1282 ms | **+1098 ms (+86 %)** |
+| 2:00 lust 0:20 | 4388 ms | 2003 ms | **+2385 ms (+119 %)** |
+| 3:00 lust 0:20 | 19499 ms | 20379 ms | −880 ms (inside noise) |
+
+★ **The pass's cost tracks the PLATEAU's size, not the fight's length** — and the two run opposite ways,
+which is why the 3:00 cell pays nothing while the 2:00 cell pays double. It is the user's own
+observation about where plateaus live, priced: *"I expect there will be a lot of plateaus, especially
+in short fights where you use everything once."* A short fight has one use of everything, so a great
+many placements tie exactly and the beam has a large space to walk; a long fight's chains are pinned by
+cooldowns and the ordinary search dominates the clock.
+
+⛔ **Not tuned down, deliberately.** ROADMAP §4 revoked speculative performance work *until a real
+slowness report*, and that rule applies here: the knob is one line (`CANON_W`/`CANON_D`/`CANON_BUDGET`)
+and cutting it is cheap the day someone actually reports the wait. What must NOT happen is choosing the
+budget by "the anchors still pass at half" — the corpus passing is a floor, not a margin. If it is ever
+tuned, measure the DEPTH and candidate count at which each declared anchor's canonical member is first
+reached, and keep real headroom above the worst one.
 
 **Result: `13 of 17` → `14 of 17`. T7 GREEN.**
 
