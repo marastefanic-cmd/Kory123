@@ -1527,7 +1527,7 @@ T=180 cell.
 was made of turned out to be closeable in closed form; what is left is named and bounded there. Read
 §12.3a before quoting any figure in this section.
 
-### §12.3a ★★★★ THE TRANSIENT'S BIAS WAS **ONE-DIRECTIONAL**, AND TWO-THIRDS OF IT WAS ALGEBRA *(08-05)*
+### §12.3a ★★★★ THE TRANSIENT'S BIAS WAS **ONE-DIRECTIONAL**, AND NINE-TENTHS OF IT WAS ALGEBRA *(08-05)*
 
 `tools/ati-mc.mjs` read the engine HIGH on all four non-steady checks while the four steady rates were
 exact to five decimals. **A one-directional residual is not noise**, and the steady form being exact
@@ -1586,6 +1586,13 @@ it. The slice integral over a ramp cast has its own closed form, same integrand 
 
 (→ `L/(a+B)` as `k → 0`). The SCORE is untouched — same rate, same spread toll — so §8q's ladders are
 unmoved, and `plan-diff` is IDENTICAL over the 21-cell preset corpus with `scorerMoved=0`.
+
+⚠⚠ **AND THE COUPLING HAD BEEN BREAKING DETERMINISM.** `ν += made; ν −= tollR·len` is operator
+splitting — the toll landed at each slice's END — so **a breakpoint that changed nothing still changed
+the score**: inserting a `burn` phase at `mult: 1` moved it by up to **5.5e-3 casts, 2.5× the tie
+band**. Decoupling removes the splitting, and the invariant is now gated (`tools/grid-invariance.mjs`,
+blocking, with a `mult: 1.1` negative control because a blind probe also reads zero). Post-fix worst
+reading: 8.5e-13, float re-association only.
 
 **What it bought**, engine − exact chain, per engagement:
 
