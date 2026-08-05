@@ -183,7 +183,9 @@ SESSION.** Over **1,582,581** legal layouts T6's declared layout ranks **33rd**;
 `AP/Icon/gem/IV @0:15 · IV @0:35 · Berserking @0:05`, ahead by 0.000231 casts (8.6× INSIDE the tie
 band) **and ahead on the tie-break's first criterion — 3 distinct press moments against 4**, because
 Berserking rides the Bloodlust call. T6 passes today only because the SEARCH cannot reach it. It is a
-coherent plan by the project's own packing law, not an exploit. ⇒ **A USER CALL:** either T6 stands and
+coherent plan by the project's own packing law, not an exploit. ✅ **SETTLED 07-31: T6 WAS REVISED** to
+that very layout, and the criterion that decided it (`distinct`) was itself abolished 08-05 (§9s) — the
+earliest rule reproduces the same answer. ⇒ (historical) **THE USER CALL WAS:** either T6 stands and
 the tie-break needs a cluster-at-3-stacks rule (the T3 rule, applied generally), or T6 is revised — and
 (b) still satisfies the original complaint, which was that Icy Veins be co-pressed *"along with the
 other things"*, as it is at 0:15.

@@ -2784,7 +2784,13 @@ both candidates by construction, because both press only on group seconds — `{
 automatically resolved by the enumeration, and by nothing short of it.** That is the strongest argument
 yet for building it, and it arrived as a throwaway observation about a plan that is not even wrong.
 
-⚠ **WHAT IS STILL OPEN IS A USER CALL, NOT A BUG.** Once both layouts are in hand the tie-break has to
+✅ **AUTO-RESOLVED 08-05 BY §9s — this user call no longer exists.** The whole trade below is priced in
+PRESS MOMENTS, and the `distinct` criterion that counted them is ABOLISHED (user ruling). With the
+earliest-press vector deciding, `IV at 0:00` simply wins: it is earlier, and "costs a press moment" is
+no longer a cost the comparator can charge. ⇒ the user's own rule was the answer, and abolishing the
+proxy that opposed it settled the question without anyone having to choose. Kept for the reasoning.
+
+⚠ (historical) **WHAT WAS OPEN WAS A USER CALL, NOT A BUG.** Once both layouts are in hand the tie-break has to
 choose, and there is no ordering that gets both properties: the Lust pin at 0:10 forces the value cluster
 to 0:10, so **putting Icy Veins at 0:00 inherently costs a press moment**. The trade is exactly:
 
@@ -4433,7 +4439,7 @@ between members the search happens to visit.
 move the score is a scorer change wearing a finishing-pass costume, and this project has paid for that
 shape twice (§8y part 1b, the `finishLine` floor).
 
-## §9q — ⛔ T8 IS BEATEN BY 0.094 CASTS — a SCORE miss, not a plateau question (08-04, awaiting a user ruling)
+## §9q — ✅ T8 WAS BEATEN BY 0.094 CASTS — RULED AND REVISED 08-05 (was: awaiting a user ruling)
 
 Found by `tools/lattice-brute.mjs` during the corpus reaffirmation. Unlike §9p (T7), this is **outside
 the tie band by 47×**, so the §8y revision precedent does NOT cover it: it is a claim that a declared
@@ -4486,7 +4492,7 @@ against its declared layout, and graded on the objective PAIR with the plateau r
 | T4 | full 5 s lattice | 59,772,768 | ✅ global optimum |
 | T7 | full 5 s lattice | 12,976,848 | ✅ global optimum **on the revised layout** (§9p) |
 | T2 · T3 · T5 | 10 s lattice + ±5 s polish | 46 M – 159 M | ✅ global optimum |
-| **T8** | 10 s lattice + ±5 s polish | 12 M | ⛔ **BEATEN by 0.094224 casts — §9q, awaiting a ruling** |
+| **T8** | 10 s lattice + ±5 s polish | 12 M | ✅ **revised 08-05 and now GREEN** — §9q ruled, §9s freed the search |
 | T9 · T10 · T11 | `brute-cell` family scan | 72 k – 90 k | ⚖️ **not certifiable** — see below |
 
 ★ **T9/T10/T11 CANNOT BE CERTIFIED BY ANY INSTRUMENT THIS PROJECT HAS, and the reason is precise.**
