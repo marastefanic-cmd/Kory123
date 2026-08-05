@@ -306,6 +306,16 @@ that test's own inputs. **The strip and
 Docs still quote the old names in examples; treat a `no preset matching…` error as a stale doc, not a
 broken tool.
 
+★★ **AND ONE MORE GATE LANDED 08-05: `node tools/grid-invariance.mjs`.** The integral is a sum over
+piecewise-constant slices, so **a breakpoint that changes no buff state must change no score**. That
+was FALSE on the Ashtongue path until MODEL-DEFECTS §10c — inserting a `burn` phase at `mult: 1`
+moved the score by **5.5e-3 casts, 2.5× the tie band** — because the ν advance netted the opener toll
+at each slice's END. Nothing in the repo varied the grid, so nothing could have caught it, and
+`plan-diff` read IDENTICAL right next to it (the defect was gated on `cfg.enabled.ati`, and no swept
+preset enables the proc). ⇒ *"one setup ⇒ one schedule"* is not a convention if the answer depends on
+where the slices fell. Blocking in CI, with a negative control (`--self-test` uses `mult: 1.1` and
+requires the change to be SEEN — a blind probe reads zero too).
+
 ⚠ **The harness-integrity gates are a DIFFERENT KIND OF THING and the survivors stay** — they assert
 the harness is not lying, never which plan is best. Four of the five were sim gates and went with it
 (`sim-request`, `sim-duel`, `page-equiv`, `press-fire`); **`tools/self-consistency.mjs` remains** and CI

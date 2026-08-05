@@ -1788,9 +1788,15 @@ attempt happens over that cast's own span, so ν advances at `1/iv` there and th
 
 Removing the coupling had a side effect I did not predict and would not have looked for: `ν += made;
 ν −= tollR·len` is operator splitting, so the toll landed at each slice's END and **the answer depended
-on the slice grid** — 0.017 casts, found by integrating the same model at dt = 1e-4. A scorer whose value
-moves when you add a breakpoint is exactly what the determinism convention exists to forbid, and no gate
-varies the grid, so nothing was ever going to catch it.
+on the slice grid**. Directly measured — insert a `burn` phase at `mult: 1`, which changes no damage, no
+haste, no targets and no cut, and is therefore a pure grid perturbation — the old engine moves by
+**5.5e-3 casts, two and a half times the tie band**. A scorer whose value moves when you add a
+breakpoint is exactly what the determinism convention exists to forbid, and **no gate varied the grid**,
+so nothing was ever going to catch it. There is one now (`tools/grid-invariance.mjs`, blocking, with the
+mandatory negative control: a `mult: 1.1` phase must be SEEN, because a blind probe also reads zero).
+The shape worth remembering is that its ATI-OFF control is clean on both engines — which is exactly why
+`plan-diff` could read IDENTICAL with a real defect sitting next to it. **A green stability gate is
+evidence about the cells it sweeps and nothing else**, and no swept preset enables the proc.
 
 Result: +0.080 → +0.007 per engagement, worst of fourteen cells +0.090 → +0.028, steady rates untouched,
 `plan-diff` IDENTICAL with `scorerMoved = 0` over the 21-cell corpus, anchors 17/17. What is left is two

@@ -5152,10 +5152,29 @@ rate everywhere else. The toll never touches ν.
 
 ⚠⚠ **AND THE COUPLING HAD MADE THE ANSWER DEPEND ON THE SLICE GRID.** `ν += made; ν −= tollR·len` is
 operator splitting: the toll landed at the slice's END, so subdividing a toll slice changed the
-result — worth **0.017 casts** by itself, measured by integrating the same model at dt = 1e-4 instead.
-Removing the coupling removes the splitting, so `atiSlice` is now exact on its own grid. A scorer
-whose value moves when a breakpoint is added is the kind of defect the project's determinism
-convention exists to forbid, and it was invisible because no gate varies the grid.
+result — worth **0.017 casts** in the continuum limit (same model integrated at dt = 1e-4). Removing
+the coupling removes the splitting, so `atiSlice` is now exact on its own grid. A scorer whose value
+moves when a breakpoint is added is the kind of defect the project's determinism convention exists to
+forbid, and it was invisible because **no gate varied the grid**.
+
+✅ **There is one now: `tools/grid-invariance.mjs`, blocking in CI.** It inserts a `burn` phase at
+`mult: 1` — real segment boundaries into `bpS`, no change to damage, haste, targets or cuts (a burn
+edge is not a cut, RULES §9) — and requires the score not to move. Directly measured, this is what it
+reads:
+
+| setup | pre-§10c | post-§10c |
+|---|---|---|
+| ATI only, T=120 | **5.53e-3** ⛔ | 2.84e-13 ✓ |
+| ATI, low crit, T=180 | **3.04e-3** ⛔ | 2.70e-13 ✓ |
+| ATI + Lust pinned, T=120 | **4.92e-3** ⛔ | 8.53e-13 ✓ |
+| ATI across an intermission | **4.92e-3** ⛔ | 8.38e-13 ✓ |
+| no ATI (control) | 0.00e+0 ✓ | 0.00e+0 ✓ |
+
+5.5e-3 casts is **2.5× the tie band**, which is the scale at which the project resolves plans. ⚠ The
+gate's own negative control is the load-bearing half — a probe that cannot see anything also reads
+zero — so `--self-test` runs the same comparison at `mult: 1.1` and requires the change to be SEEN on
+every setup. ⇒ **the ATI-off control is the shape to notice**: it was clean before and after, which is
+why `plan-diff` could read IDENTICAL while a real defect sat next to it.
 
 ### ⛔ What this is NOT — the §8l question, asked and answered
 
@@ -5179,8 +5198,8 @@ argument, is what settles it: `plan-diff` **IDENTICAL** over the 21-cell preset 
 
 `ati-mc` ✓ 8/8 and its `--self-test` still catches the retired form on 3 lines · `law-check` ✓ all
 laws · `self-consistency` 0.00e+0, 0 structural · `constants-cited` 17/17 · `cfg-contract --strict` ✓ ·
-`anchors` **17/17** · `plan-diff` IDENTICAL (21 cells) · `search-audit --k=3` 21/21 local optima,
-0 misses · `pool-equiv` ✓.
+`anchors` **17/17** · `plan-diff` IDENTICAL (21 cells) with `scorerMoved = 0` · `search-audit --k=3`
+21/21 local optima, 0 misses · `pool-equiv` ✓ · `grid-invariance` ✓ + its self-test (new, above).
 
 ### ⚖️ What is left, named and bounded — accepted
 

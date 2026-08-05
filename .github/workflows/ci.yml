@@ -115,6 +115,20 @@ jobs:
       - name: '↳ negative control: the retired proc model must be CAUGHT'
         run: node tools/ati-mc.mjs --self-test
 
+      # ADDED 08-05 with MODEL-DEFECTS §10c. The integral is a sum over piecewise-constant slices, so
+      # a breakpoint that changes NO buff state must change NO score. It was FALSE on the Ashtongue
+      # path until that day — the ν advance netted the opener toll at each slice's END, so subdividing
+      # a toll slice moved the answer by 5.5e-3 casts, 2.5× the tie band — and nothing in the repo
+      # varied the grid, so nothing could have caught it. "One setup ⇒ one schedule" is not a
+      # convention if the answer depends on where the slices fell.
+      - name: the score does not depend on the slice grid (grid-invariance)
+        run: node tools/grid-invariance.mjs
+
+      # NEGATIVE CONTROL: the same probe with a phase that DOES change the fight (mult 1.1) must be
+      # SEEN on every setup — otherwise the zero above is a blind instrument, not a measurement.
+      - name: '↳ negative control: a REAL boundary must be SEEN'
+        run: node tools/grid-invariance.mjs --self-test
+
       # Every cfg constructor emits the engine's full memo-signature field set. The engine reads
       # `cfg.t5two ? 1.2 : 1`, so an ABSENT key and an explicit `false` are indistinguishable — an
       # incomplete constructor is a SILENT 20 % mis-valuation of the whole fight. Not hypothetical:

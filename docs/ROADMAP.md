@@ -10,7 +10,9 @@ describe accepted limits and decided questions so nobody re-opens them by accide
 
 - **Scorer:** exact (the integral-plus-tie-break pair), CLOSED by user ruling, and gated eight ways
   with negative controls — `anchors` (17/17), `law-check`, `constants-cited`, `self-consistency`
-  (+structural), `toll-audit --strict`, `objective-ref`, `ati-mc`, `cfg-contract --strict`.
+  (+structural), `toll-audit --strict`, `objective-ref`, `ati-mc`, `cfg-contract --strict`, and —
+  new 08-05 — `grid-invariance` (a breakpoint that changes no buff state must change no score; it was
+  FALSE on the Ashtongue path until §10c, by 5.5e-3 casts, and nothing in the repo varied the grid).
   ⚠ **The TIE-BREAK half moved on 08-05** and RULES §17 is the statement of record. Three things
   landed together, each with its own entry: `plateauCanon` (§9u — naming the canonical plateau member
   and REACHING it are different problems, because the plateau is connected but not monotone), the
