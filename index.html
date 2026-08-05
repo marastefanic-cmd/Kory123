@@ -5563,6 +5563,21 @@ function readCfg() {
     warnings.push(`${BUFFS[d.k].name}: pinned ${fmtT(d.t)} ignored — trinket lockout from another pinned trinket is still running.`);
     if (!fixed[d.k].length) { delete fixed[d.k]; warnings.push(`${BUFFS[d.k].name}: no usable times left — the planner will place it instead.`); }
   }
+  /* ★★ ONLY TWO TRINKET SLOTS EXIST — MODEL-DEFECTS §9t, user 08-05: *"SCB Ashtongue and Skull all
+     occupy trinket slots and you can at most have 2 equipped."* `TRINKETS` is
+     `[mqg, isc, scb, skull, ati]` and nothing anywhere enforced the cap, so ticking three produced a
+     schedule, a cast count and an expected-damage figure for a character that cannot exist — the same
+     shape of bug as an unvalidated phase overlap: the INPUT accepts the impossible and the model
+     answers it without complaint.
+     ⚠ A WARNING, NOT A REFUSAL, and that is deliberate. Comparing kits is the tool's second stated
+     payoff, `tools/kit-sweep.mjs` legitimately probes odd kits for gradients, and a hard block would
+     also strand anyone mid-edit while swapping one trinket for another. The engine is right to model
+     whatever it is handed; what was missing is the tool SAYING the setup is unplayable.
+     ⛔ Do not move this into `simulate` — cfg-building tools bypass `readCfg` on purpose. */
+  const equipped = TRINKETS.filter(k => state.enabled[k]);
+  if (equipped.length > 2)
+    warnings.push(`${equipped.length} trinkets ticked (${equipped.map(k => BUFFS[k].name).join(", ")}) — you only have 2 slots, so this plan is not playable as shown. Untick ${equipped.length - 2} to get a real one.`);
+
   // "Complicated fight": build the phase timeline; unticked leaves segments
   // null and the engine behaves exactly as the plain model.
   let segments = null;

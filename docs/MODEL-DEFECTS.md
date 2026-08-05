@@ -4574,3 +4574,9 @@ overlap bug (ROADMAP): the UI accepts an impossible setup and the model answers 
 is what makes A/B kit comparison possible); it is the INPUT layer that should refuse a third trinket,
 and `cfg`-building tools should assert it. ⛔ Do not enforce it inside `simulate` — a hard refusal
 there would break `kit-sweep`'s legitimate use of odd kits for gradient probing.
+
+✅ **LANDED 08-05 (input layer): `readCfg` now WARNS when more than two trinkets are ticked**, naming
+them and how many to untick. A warning rather than a refusal, deliberately — comparing kits is the
+tool's second stated payoff, `kit-sweep` probes odd kits on purpose, and a hard block would strand a
+user mid-edit while swapping one trinket for another. The engine still models whatever it is handed;
+what was missing was the tool SAYING the setup is unplayable. Display-only ⇒ no plan moves.
