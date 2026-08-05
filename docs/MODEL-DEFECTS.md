@@ -4898,3 +4898,59 @@ Placed directly after `invalid` and before the earliest press vector — i.e. wh
 *doing the work properly* belongs, above one about *when*. ⚠ It is still a criterion ABOVE the earliest
 rule, so it can in principle reroute any plateau; the corpus-wide run is what licenses it, not the
 argument alone.
+
+## §9y — ✅ THE SUFFIX SLIDE: a THIRD coupling mechanism, at a phase wall (08-05). Kit-matrix miss closed.
+
+Found by `search-audit --k=3` on the 72-cell kit × haste matrix, at
+**`gem+skull · h200 · 2:40 lust 0:07 · intermission 1:30–2:10`**:
+
+```
+emitted   skull[0,130] · icyVeins[47,130] · scb[7,135]      113.684203
+argmax    skull[0,132] · icyVeins[47,132] · scb[7,137]      113.713050   +0.028848 casts, 14× the band
+```
+
+⚠ **PRE-EXISTING, NOT A REGRESSION — verified rather than assumed.** The pre-08-05 engine emits the
+*same* plan and loses the *same* 0.028848 casts, byte for byte. The cell is new because `gem+skull` is
+new: the 08-05 trinket-cap fix (§9t) replaced the impossible three-trinket `icon+gem+skull` with it, so
+this is the first time the matrix has ever audited that kit. ⇒ **fixing an input-validation bug widened
+the covered space and the wider space had a hole in it**, which is the most benign way to find one.
+
+### Why no existing move class could reach it — and it is a mechanism neither §8m nor §8s describes
+
+| move | Δ casts |
+|---|---|
+| `skull#1` alone, +1 / +2 / +3 | −0.0148 / −0.0296 / −0.0444 |
+| `icyVeins#1` alone, +1 / +2 / +3 | −0.0148 / −0.0296 / −0.0444 |
+| `scb#1` alone, +1 / +2 / +3 | −0.0032 / −0.0161 / −0.0385 |
+| `{skull#1, icyVeins#1}` +2 — the class-3 cluster (they share second 130) | **exactly 0.000000** |
+| `{skull#1, scb#1}` +2 | −0.031754 |
+| `{icyVeins#1, scb#1}` +2 | −0.017424 |
+| **all three** +1 / +2 / +3…+5 | **+0.0193 / +0.0288 / +0.0288** (a plateau; earliest wins) |
+
+Every single step is downhill and every pair is downhill or exactly flat — the §8s signature. But the
+third press, `scb#1` at second 135, shares neither a SECOND with the other two (class 3) nor a window
+EDGE (class 3c), so no existing class could bring it along. ★ Note the class-3 move is *offered* and
+correctly *refused*: `{skull#1, iv#1}+2` is an exact tie, so the shape decides and prefers the earlier
+vector. The descent is behaving correctly at every step; the move it needs simply is not in its
+vocabulary.
+
+**The mechanism is the RE-RAMP.** The intermission is 40 s, longer than `DEBUFF_DUR`, so the fight
+re-ramps at 2:10. Through a ramp haste is provably worth nothing (the toll is fixed and `m` cancels —
+ESTABLISHED-FACTS §1.2) and value does less work (§9l's `invalid`), so every cooldown the plan parked
+*on* the wall wants to sit *after* the ramp — and they want it together, because moving one alone
+breaks its co-press with the others and pays the §4 cross term. That is a third coupling, distinct from
+the value cluster's (§8m: the cross term) and the haste train's (§8s: the packing law).
+
+### What landed — move class 7
+
+For each distinct press SECOND in the plan, slide every press at or after it, together. Read off the
+plan and never guessed: the second that matters is already a press second, because the plan is what put
+a press on the wall. It is a strict generalisation of class 1 (the suffix from the earliest press), it
+needs no list of phase edges, and it is a handful of candidates (distinct seconds × `SHIFTS`),
+deterministic and ascending.
+
+⚠⚠ **Gated on `!moved` and placed LAST**, after class 6 — the 3d position lesson at full strength. A
+greedy descent is not monotone in its move set, so a new move offered early makes it take a different
+locally-better step and converge elsewhere. Running last means every older class is exhausted first, so
+every previously-reachable fixed point is reached and ranked before this class speaks, and a cell where
+every suffix candidate is refused stays byte-identical by construction.

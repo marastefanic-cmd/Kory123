@@ -259,7 +259,7 @@ different Berserking placements across one 1.5 s cast interval of that same inst
   cast, so "lattice δ later" = every press, pin, segment and `T` moved δ **earlier** (`phaseShift`).
   ⚠ The opposite randomiser — presses against a fixed lattice — is a thing the player controls and
   measures nothing; it scored 0/4 on the ground-truth corpus.
-- `phaseRerank(s, cfg)` — **eight move classes**, iterated to a FIXED POINT (24-round runaway cap, not
+- `phaseRerank(s, cfg)` — **nine move classes**, iterated to a FIXED POINT (24-round runaway cap, not
   a 3-round budget — a cap of 3 was measured short once the structural times went in):
   1. whole-plan slide (±8 s)  2. per-track slide (±8 s)
   3. **co-pressed cluster slide** — tracks grouped by the SECOND they are pressed at, slid per-press
@@ -282,6 +282,14 @@ different Berserking placements across one 1.5 s cast interval of that same inst
      candidates are refused is byte-identical by construction. Closes the h400 · 3:00 kit-sweep
      misses: three coordinates coupled through repair legality AND the value cross term at once,
      invisible to 3d (chain, no partner) and to class 3 (cluster, no chain).
+  7. **suffix slide** (§9y, 08-05) — for each distinct press SECOND in the plan, slide every press at
+     or after it. A strict generalisation of class 1 (the suffix from the earliest press), gated on
+     `!moved` and running LAST. Closes the kit matrix's `gem+skull · h200 · 2:40 interm` miss
+     (+0.028848 casts): after a phase long enough to drop the AB debuff the fight RE-RAMPS, haste is
+     ramp-neutral through it and value does less work, so everything parked on the wall wants to sit
+     after the ramp — together. A THIRD coupling: not the cluster's cross term (§8m) and not the
+     packing law (§8s). Its three presses share neither a second nor a window edge, so classes 3 and
+     3c cannot bring the last one along; every single step is downhill and every pair downhill-or-flat.
   ⚠ **Single-press moves alone are provably not enough**, and neither are single-press plus clusters.
   Three of the project's four largest misses were coupled coordinates that every 1-D and 2-D step
   refused. A candidate `repair` had to relegalize is refused, so a plan is never scored as one layout

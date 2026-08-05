@@ -3423,6 +3423,55 @@ function phaseRerank(s0, cfg) {
         if (hit) break;
       }
     }
+    /* ★★★★★ 7. THE SUFFIX SLIDE — added 08-05 (MODEL-DEFECTS §9y), and it is the §8s train one
+       dimension WIDER. Class 3 groups presses that share a SECOND; class 3c groups presses whose
+       windows share an EDGE. Neither can express *"everything after this wall moves together"* — and
+       after a phase that drops the Arcane Blast debuff, that is exactly the move the fight wants.
+
+       Found by `search-audit` on the kit matrix at `gem+skull · h200 · 2:40 lust 0:07 · interm
+       1:30–2:10`, the FIRST cell of a kit that only exists because the 08-05 trinket-cap fix created
+       it (§9t) — so this is a pre-existing hole newly covered, not a regression (verified: the
+       pre-08-05 engine emits the same plan and loses the same 0.028848 casts, byte for byte).
+
+           emitted   skull[0,130] · iv[47,130] · scb[7,135]          113.684203
+           argmax    skull[0,132] · iv[47,132] · scb[7,137]          113.713050   (+0.028848, 14× the band)
+
+           skull#1 alone   +1 −0.0148   +2 −0.0296   +3 −0.0444     every single step DOWN
+           iv#1    alone   +1 −0.0148   +2 −0.0296   +3 −0.0444
+           scb#1   alone   +1 −0.0032   +2 −0.0161   +3 −0.0385
+           {skull#1, iv#1}+2   **exactly 0.000000**  ← class 3 CAN make this move and correctly refuses
+           {skull#1, scb#1}+2  −0.031754            it: an exact tie, and the shape prefers earlier
+           {iv#1, scb#1}+2     −0.017424
+           all three      +1 +0.0193   +2 +0.0288   +3..+5 +0.0288 (a plateau; the earliest wins)
+
+       ⇒ WHY THEY ARE COUPLED, and it is a third mechanism, not the cluster's and not the train's.
+       The intermission is 40 s, longer than `DEBUFF_DUR`, so the fight RE-RAMPS at 2:10. Through a
+       re-ramp haste is provably worth nothing (the toll is fixed and `m` cancels — ESTABLISHED-FACTS
+       §1.2) and value does less work (§9l's `invalid`), so every cooldown pressed onto the wall wants
+       to sit AFTER the ramp instead. They want it *together*, because moving one alone breaks its
+       co-press with the rest and pays the §4 cross term. Singles down, pairs down-or-flat, triple up.
+
+       ⇒ Read off the plan, never guessed: for each distinct press SECOND in the plan, slide every
+       press at or after it. That is a strict generalisation of class 1 (which is the suffix from the
+       earliest press) and it needs no list of phase edges — the second that matters is already a press
+       second, because the plan put a press on the wall. A handful of candidates (distinct seconds ×
+       SHIFTS), deterministic, ascending.
+       ⚠⚠ GATED ON `!moved` AND LAST, after class 6 — the 3d position lesson at full strength. A greedy
+       descent is not monotone in its move set: offered a new move early it takes a different
+       locally-better step and converges elsewhere. Running last means every older class is exhausted
+       first, so every previously-reachable fixed point is REACHED and RANKED before this class speaks,
+       and a cell where every suffix candidate is refused is byte-identical by construction. */
+    if (!moved) {
+      const secs = [...new Set(keys.flatMap(k => (s[k] || []).map(t => Math.round(t))))].sort((a, b) => a - b);
+      let hit = false;
+      for (const p of secs) {
+        const mem = [];
+        for (const k of keys) (s[k] || []).forEach((t, i) => { if (Math.round(t) >= p) mem.push({ k, i }); });
+        if (!mem.length) continue;
+        for (const d of SHIFTS) if (tryCand(shiftedAt(s, mem, d))) { moved = true; hit = true; break; }
+        if (hit) break;
+      }
+    }
     if (!moved) break;
   }
   return { s, val };
