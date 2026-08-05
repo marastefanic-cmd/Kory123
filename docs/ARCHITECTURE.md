@@ -216,10 +216,19 @@ bit-equal to recomputation; collect=true always computes fresh.
   `interval`/`tcVal`/`dur` with the floor inside each branch. The INTEGRAND carries the renewal
   steady state (`atiParamsAt` → `P = 1−(1−q)^n`, rate `1/(aP+b(1−P))` in `rateAt`) plus the
   engagement transient AND the window memory threaded through the breakpoint loop (`atiSlice` +
-  `atiSt.strata`, 08-04: an age ν advanced in closed form per slice, net of the toll, with state
-  edges folding the outgoing attempts into strata that drain out of the 5s window — gaps ride the
-  same list as procless strata). Everything is gated on `cfg.enabled.ati` — ati-off paths are
-  byte-identical (plan-diff IDENTICAL, 21/21).
+  `atiSt.strata`, 08-04: an age ν advanced in closed form per slice, with state edges folding the
+  outgoing attempts into strata that drain out of the 5s window — gaps ride the same list as procless
+  strata). Everything is gated on `cfg.enabled.ati` — ati-off paths are byte-identical (plan-diff
+  IDENTICAL, 21/21).
+  **★ Two corrections landed 08-05 (§10c / ESTABLISHED-FACTS §12.3a), both closed-form:** the decay
+  carries `atiCRho` = `ln ρ/(ρ−1)`, the factor that makes `∫₀^K c_ρ·P0·ρ^u du` identically equal the
+  attempt SUM `Σ_{k<K} P0·ρ^k` the process actually runs (⚠ a rate device — it exceeds 1 near ν=0, and
+  `atiSlice`'s Newton bracket is derived from the segment endpoints rather than assumed `[len/b,
+  len/a]` because of it); and **ν no longer nets against the opener toll** — inside a ramp cast ν
+  advances at `1/iv` (`nuRate`, its own closed-form slice integral on the linear ν clock), because ν is
+  a physical attempt counter and the toll is a *scoring* device spread over an m-independent window.
+  Removing the coupling also removed an operator-splitting artifact worth 0.017 casts that made the
+  result depend on the slice grid.
 - AoE segments: `dmg` uses AE base × `targets` × `aoeCritAmp`, interval = GCD only.
 
 > ### ★★★★ THE FINISHING TAIL IS MONOTONE, AND ITS BUDGET IS A TIE-BREAK (user ruling 07-28)

@@ -55,8 +55,17 @@ describe accepted limits and decided questions so nobody re-opens them by accide
   panel. Share links and saved presets were not reproducible; it stayed invisible because crit cancels
   out of the objective for every kit WITHOUT Ashtongue.
 - ⛔⛔ **MODEL-DEFECTS §10a was filed and RETRACTED the same day** — `ceil(DUR/a)` is exact and the
-  "smoothed" alternative is wrong. Read §10a before going near the proc model. **A plan is in flight**
-  (`docs/PLAN.md`) for what survived it: a one-directional bias in the ATI transient.
+  "smoothed" alternative is wrong. Read §10a before going near the proc model.
+- ✅ **…and §10a's surviving lead is CLOSED — §10c.** The ATI transient's one-directional bias was two
+  closed-form defects, not one: the integrand integrated a left-Riemann SUM over attempts (`c_ρ =
+  ln ρ/(ρ−1)` makes `∫ ≡ Σ` identically), and **ν had been netted against the opener toll** — ν is a
+  physical attempt counter, the toll is a *scoring* device spread over an m-independent window, and
+  coupling them also made the answer depend on the slice grid (0.017 casts of operator splitting).
+  Per-engagement bias **+0.080 → +0.007**; steady rates unmoved; `plan-diff` IDENTICAL, anchors 17/17.
+  ★ The method is the reusable part: the residual was localised by an **exact Markov chain** over
+  `(t, rem)` rather than more MC — that is what showed it constant in T, deposited by t ≈ 11 s, and
+  absent from the board walk. Algebra: ESTABLISHED-FACTS §12.3a. Still open, named and bounded:
+  ramp window shrinkage (~+0.009) and strata drain at a haste edge (≤ ~+0.018).
 
 ## §2 ▶▶ AWAITING YOUR RULINGS — `docs/DECISION-PACKAGES.md`
 
@@ -88,6 +97,9 @@ do is declare their own tests — that is the line that killed `exact-match`. Th
 - **§8n** — permanently unfalsifiable (§8x); never reopen expecting resolution.
 - **Above-h=0 ground truth is thin by design** — declared only on the 2:00 ladder (T12–T17,
   SP-pinned); everywhere else "not beaten locally" is the strongest claim made.
+- **The ATI transient's last +0.004…+0.028 casts per engagement** (§10c) — one-directional, localised
+  to two named mechanisms (ramp window shrinkage, strata drain at a haste edge), both tried in the
+  reference and both over-correcting in their crude form. Not open work; a named target if it ever is.
 
 ## §4 Decisions taken 08-04 under the clean-the-slate delegation (any one is reversible by a sentence)
 

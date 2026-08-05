@@ -1949,15 +1949,22 @@ it**, which is what the next haste window is trying to catch.
 
 ### The rule
 
-**Chain haste-window EDGES one proc duration apart.** Measured on two Icy Veins windows, Δcasts against
-flush:
+**Chain haste-window EDGES one proc duration apart.** Δcasts against flush, on
+`T=120 · Lust 0:20 · SP 1387 · crit 44 · h=0 · Tirisfal 2pc · icyVeins+scb+arcanePower+berserking`
+(the cell in `tools/cells/derive-0805.jsonl`), cluster at 0:20, Icy Veins #1 at 0:60 and #2 at
+`0:60 + 20 + gap`:
 
 ```
-gap    0      1       2       3      4      5       6      7      8+
-Δ    0.000 -0.018  -0.012  -0.004 +0.008 +0.022  -0.034 -0.034 -0.034
+gap    0      1       2       3       4       5       6      7      8+
+Δ    0.000 -0.027  -0.022  -0.013  -0.001  +0.014  -0.045 -0.045 -0.045
 ```
 
 A ridge at exactly `ATI.DUR`, with a **cliff** the second past it — not a slope, and not a plateau.
+⚠ **Re-measured 08-05 after MODEL-DEFECTS §10c** (the transient corrections). The ridge and the cliff
+are unmoved — peak at gap 5, cliff at 6 — and so is the causal table below; the MAGNITUDES shrank by
+roughly a third (the pre-§10c reading of this same scan was `−0.022/−0.015/−0.004/+0.010/+0.026/−0.040`),
+because the old engine over-credited the proc's memory. ⇒ quote the shape, and re-measure before
+quoting a number.
 
 Verified causally by moving Bloodlust and watching the optimum follow it:
 
@@ -1984,3 +1991,18 @@ right when a window is placed independently of the cast stream (which is why it 
 memory, §9m); it is wrong when the window is anchored at a cast, as it is here.
 ⇒ the "exactly" form stands, and the cliff is real. ⛔ The lesson is recorded at §10a: when a change
 makes the model disagree with ITSELF, the next call is the instrument that leaves the model.
+
+### ✅ AND §10a's SURVIVING LEAD IS NOW CLOSED — §10c (08-05)
+
+The lead was that `ati-mc` read the engine HIGH on every non-steady check while every steady rate was
+exact. Two closed-form defects, both in the TRANSIENT, both fixed: the integrand integrated a
+left-Riemann SUM (`c_ρ = ln ρ/(ρ−1)` restores it), and ν — a physical attempt counter — had been netted
+against the opener toll, which is a *scoring* device spread over an m-independent window and therefore
+the wrong SHAPE for a cast count. Per-engagement bias **+0.080 → +0.007**, steady rates untouched,
+`plan-diff` IDENTICAL. Full algebra in ESTABLISHED-FACTS §12.3a; the record, including what is still
+open (ramp window shrinkage, strata drain at an edge), in MODEL-DEFECTS §10c.
+⇒ **The standing warning at the end of the 08-05 commit — "do not declare an Ashtongue anchor on an
+exact second until §10a is closed" — is LIFTED for the reason it was raised** (the cliff's sharpness is
+not an artifact; the shape survived the correction unchanged). It still holds for the ordinary reason:
+an Ashtongue candidate must be re-cut on the current engine before it is ruled on, because
+`tools/cells/`'s cells are graded by the engine that made them.

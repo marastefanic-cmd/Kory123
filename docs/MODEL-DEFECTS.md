@@ -5082,3 +5082,117 @@ instrument in CI the whole time and did not run it before writing to the docs. T
 no way to say which one is right. ⇒ **when a change makes the model disagree with itself, the next call
 is the instrument that leaves the model**, not another internal comparison. `ati-mc` took eleven seconds.
 
+
+---
+
+## §10c — ✅ CLOSED 08-05. The ATI transient's one-directional bias was a LEFT-RIEMANN SUM plus a ν/toll coupling. −0.080 → −0.007.
+
+**This is §10a's surviving lead, chased to the end.** The lead was: `ati-mc` reads the engine HIGH on
+all four non-steady checks (+0.081, +0.047, +0.079, +0.072) while all four steady rates are exact to
+five decimals; a one-directional residual is not noise, and the steady form being exact localises it
+to the transient. Both halves turned out to be closed-form. Full algebra:
+**`docs/ESTABLISHED-FACTS.md` §12.3a** — this entry is the defect record.
+
+### The instrument, first, because it is the transferable part
+
+**An EXACT chain, not more MC.** The proc process is a finite Markov chain: after cast *k* the state is
+`(t, rem)` with `rem = max(0, DUR − (t − t_lastProc))`, both on the millisecond lattice, and
+`stacks = min(3,k)` is known from the step index. So the joint distribution propagates cast by cast in
+a plain `Map` and `E[casts by T]` comes out with **no sampling error**. It agrees with `ati-mc`'s
+200 000-run MC to ~0.001 — its noise — and resolves 1e-5.
+
+That resolution is what made the attribution possible, and none of it was reachable by MC:
+
+- **the residual is CONSTANT in T** — `+0.07980` at T = 60, 90, 120, 180, 240, 300, to five decimals ⇒
+  a per-engagement transient, not a rate error;
+- **it is fully deposited by t ≈ 11 s** (the ramp plus one proc window), from a 1 s-resolution scan;
+- **the board walk is already right** — the discrete mean-field walk reads **−0.0026** against the
+  chain ⇒ the whole charge is in the INTEGRAL, and the walk is the target to reproduce, not something
+  to also fix.
+
+⇒ **When a stochastic term needs auditing, build the chain before reaching for more runs.** The MC
+answers "do these differ"; the chain answers "by how much, where, and in which direction" — the same
+upgrade brute-forcing a cell was over a sim duel (CLAUDE.md's §8s table).
+
+★ And an **independent re-derivation** of the integrand (`scratchpad/ati-ref.mjs`, sharing no code with
+`simulate()`) reproduced the shipped engine to **1e-13** before anything was changed. Every mechanism
+below was then switched on and off in that reference and sized against the chain. Nothing was written
+into `index.html` until the reference said what it would be worth.
+
+### Defect 1 — the integrand integrates a SUM (≈55 %)
+
+The process is `Σ_{k<K} P0·ρ^k`; the integrand is `∫₀^K P0·ρ^u du`. For decaying `ρ` a left-Riemann sum
+of a decreasing function is the LARGER, by exactly `c_ρ = ln ρ/(ρ−1)`, at every K. So the continuum ran
+the proc's memory down faster than the process does and the fight read fast. `atiCRho` restores it;
+`∫₀^K c_ρ·P0·ρ^u du ≡ Σ_{k<K} P0·ρ^k` identically.
+
+Isolated on a no-ramp chain (fight starting at 3 stacks): **+0.031 → −0.0026**, and that −0.0026 is
+the mean-field walk's own floor — i.e. the mechanism is not merely reduced, it is **exhausted**.
+
+⚠ `c_ρ > 1`, so the effective `P_down` exceeds 1 for the first ~0.49 attempts. **It is a rate device,
+not a probability, and it cannot be clamped**: the only decay that stays ≤ 1 *and* integrates to the
+sum is the step function, i.e. the attempt lattice, which may not re-enter the integrand (§8l). The
+Newton bracket in `atiSlice` was `[len/b, len/a]` on the assumption the rate is bounded by the two
+lattice speeds; with `c_ρ` that assumption is false and it would have **silently clamped**. It is now
+derived from the segment's own endpoints.
+
+### Defect 2 — ν was netted against the opener toll (≈45 %)
+
+The advance ran `ν −= tollR·len`, on the reasoning that *"toll casts never happened, so they rolled no
+procs"*. The premise is right and the implementation was not: the toll is SPREAD uniformly over an
+**m-independent** nominal window (§8q) precisely so an overlapping value buff pays its share, which
+makes it the wrong SHAPE for a cast count — the real deficit is front-loaded (the first ramp cast
+alone loses 0.667 casts inside its own 2.5 s). Netted, ν read **3.09** at the ramp's end where the
+process has made exactly **3** attempts.
+
+⇒ **ν is a physical attempt counter; the toll is a scoring device.** Inside a ramp cast the walk
+already knows exactly ONE attempt is made over that cast's own span, so ν advances at `1/iv` there
+(`nuRate`, with its own closed-form slice integral on the linear ν clock) and at the integrand's own
+rate everywhere else. The toll never touches ν.
+
+⚠⚠ **AND THE COUPLING HAD MADE THE ANSWER DEPEND ON THE SLICE GRID.** `ν += made; ν −= tollR·len` is
+operator splitting: the toll landed at the slice's END, so subdividing a toll slice changed the
+result — worth **0.017 casts** by itself, measured by integrating the same model at dt = 1e-4 instead.
+Removing the coupling removes the splitting, so `atiSlice` is now exact on its own grid. A scorer
+whose value moves when a breakpoint is added is the kind of defect the project's determinism
+convention exists to forbid, and it was invisible because no gate varies the grid.
+
+### ⛔ What this is NOT — the §8l question, asked and answered
+
+Reading the ramp's attempt count off `boardRamp` is **not** a lattice re-entering the integrand. No
+cast is priced at a lattice position; the ramp spans were already breakpoints; the SCORE integrates
+the same rate and pays the same spread toll, so §8q's four-way ladder is untouched. What is read off
+the ramp is the **attempt count of a stochastic buff**, which is physics. The evidence, not the
+argument, is what settles it: `plan-diff` **IDENTICAL** over the 21-cell preset corpus with
+`scorerMoved = 0` — the change is bit-neutral wherever ATI is off, which is every declared test.
+
+### Verified
+
+| | before | after |
+|---|---|---|
+| `ati-mc` full fight T=120 crit 50.765 | +0.081 | **+0.008** |
+| `ati-mc` full fight T=180 crit 25 | +0.047 | **+0.004** |
+| `ati-mc` lust@30 T=120 | +0.079 | **+0.004** |
+| `ati-mc` lust@60 T=150 | +0.072 | **+0.011** |
+| exact chain, worst of 14 cells | +0.090 | **+0.028** |
+| exact chain, steady rates | exact | **unchanged, exact** |
+
+`ati-mc` ✓ 8/8 and its `--self-test` still catches the retired form on 3 lines · `law-check` ✓ all
+laws · `self-consistency` 0.00e+0, 0 structural · `constants-cited` 17/17 · `cfg-contract --strict` ✓ ·
+`anchors` **17/17** · `plan-diff` IDENTICAL (21 cells) · `search-audit --k=3` 21/21 local optima,
+0 misses · `pool-equiv` ✓.
+
+### ⚖️ What is left, named and bounded — accepted
+
+Still one-directional, now +0.004…+0.028 per engagement:
+- **Ramp window shrinkage (~+0.009):** a ramp cast's attempt occupies the trailing 5 s window at its
+  own counterfactual up-spacing (2.29/1.98/1.68 s at h=0), not the 3-stack `a` = 1.374 s, so fewer of
+  them fit than `atiTrim`'s `DUR − ν·a` budget believes. Closing it means folding each ramp cast into
+  the strata at its own spacing. Sized by forcing `P_down = r^min(k,n)` in the walk: +0.009.
+- **Strata drain across a haste edge (≤ ~+0.018):** every lust-bearing cell is worse than its no-lust
+  twin by that much, growing with proc memory (worst at crit 25, `r = 0.86`). `c_ρ` is applied per
+  segment with the local `ρ`, exact only at integer attempt boundaries; the kinks are not integers.
+
+Both were tried in the reference. The first overshoots to **−0.016** as implemented there, i.e. the
+mechanism is real but the crude version over-corrects — which is exactly the shape of a change that
+should not ship on one measurement. Left open with a named target rather than guessed at.

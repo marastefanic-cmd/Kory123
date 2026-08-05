@@ -1805,8 +1805,26 @@ function simulateRaw(schedule, cfg, collect) {
      dν/dt. Structural kinks (a stratum exhausting; nu reaching n, where the window saturates into
      steady state) are crossed exactly, one at a time — a handful per fight.
      ⚠ Still deliberately CONTINUOUS in nu: the discrete-exact law is a t0-anchored cast lattice, and
-     a lattice may not re-enter the integrand (§8l). The +0.030-cast/engagement continuous-smoothing
-     residual remains the one accepted approximation; the ±0.05–0.15 edge-memory term is GONE. */
+     a lattice may not re-enter the integrand (§8l). The residual left after §10c is +0.004–0.010
+     casts per engagement, against a mean-field floor of −0.003; the ±0.05–0.15 edge-memory term is
+     GONE. */
+  /* ★★★★ THE DISCRETE-SUM-EXACT DECAY — §10c (08-05), and it is the larger half of the transient bias
+     the exact chain measured. The process is a SUM over attempts, `Σ_{k<K} P0·ρ^k`; the integrand
+     integrates it, `∫_0^K P0·ρ^u du`. For a decaying ρ those differ by EXACTLY the factor
+     `(1−ρ)/(−ln ρ)` at every K — a left-Riemann sum of a decreasing function is the larger — so the
+     continuum runs the proc's memory down faster than the process does and the fight reads FAST. The
+     correction is that factor and nothing else:
+         c_ρ = ln ρ/(ρ − 1)        (→ 1 as ρ → 1)
+         ∫_0^K c_ρ·P0·ρ^u du  ==  Σ_{k<K} P0·ρ^k       identically, for every K
+     ⚠ It is a RATE DEVICE, NOT A PROBABILITY. c_ρ > 1, so the effective P_down exceeds 1 for the first
+     ~0.49 attempts. That is not a bug and it cannot be "clamped": the only decay that stays ≤ 1 and
+     integrates to the sum is the STEP function, i.e. the attempt lattice, which may not re-enter the
+     integrand (§8l). Exceeding 1 is what "the very first cast is certainly unbuffed, so it takes the
+     full b" looks like once it is smeared over a continuum.
+     ⛔ It does NOT touch the saturated branch — there P_down is the constant r^n and ∫ == Σ already —
+     nor `rateAt`'s steady form, which ati-mc reads exact to five decimals. Measured on the exact chain
+     (scratchpad probe, ESTABLISHED-FACTS §12.5): +0.031 → −0.003 casts on the proc transient alone. */
+  const atiCRho = rho => Math.abs(rho - 1) < 1e-9 ? 1 : Math.log(rho) / (rho - 1);
   const atiSt = { nu: 0, strata: [] };
   const atiFold = (r0, a0, cnt) => { if (cnt > 1e-12) atiSt.strata.unshift({ r: r0, a: a0, cnt }); };
   const atiTrim = aCur => {
@@ -1816,12 +1834,15 @@ function simulateRaw(schedule, cfg, collect) {
       budget -= atiSt.strata[i].cnt * atiSt.strata[i].a;
     }
   };
-  const atiSlice = (p, len) => {   // advance the state through a live slice; returns E[casts made]
+  /* `nuRate` (attempts per second, optional) is set when the slice lies inside a RAMP CAST: exactly
+     one proc attempt is made over that cast's own span, so ν is linear in time there rather than
+     driven by the scored rate. See the integral loop's §10c note for why the two must be separate. */
+  const atiSlice = (p, len, nuRate) => {   // advance the state through a live slice; returns E[casts made]
     let made = 0, left = len;
     for (let guard = 0; left > 1e-12 && guard < 64; guard++) {
       if (atiSt.nu >= p.n - 1e-9) {                       // window saturated by current-state attempts
         const R = 1 / (p.a + (p.b - p.a) * Math.pow(p.r, p.n));
-        made += left * R; atiSt.nu += left * R; return made;
+        made += left * R; atiSt.nu += (nuRate || R) * left; return made;
       }
       // survivors of the trailing window right now; the first stratum that does not fully fit is the
       // one draining (deeper ones are already fully outside and can never return — drop them)
@@ -1835,25 +1856,49 @@ function simulateRaw(schedule, cfg, collect) {
       if (partial >= 0) atiSt.strata.length = partial + 1;
       const rho = partial >= 0 ? p.r * Math.pow(atiSt.strata[partial].r, -p.a / atiSt.strata[partial].a) : p.r;
       const lnrho = Math.log(rho);
-      const tOf = d => Math.abs(lnrho) < 1e-12
-        ? (p.a + (p.b - p.a) * P0) * d
-        : p.a * d + (p.b - p.a) * P0 * (Math.pow(rho, d) - 1) / lnrho;
+      const B = (p.b - p.a) * P0 * atiCRho(rho);          // (b−a)·the §10c effective P_down at d = 0
       const kCap = p.n - atiSt.nu;
       const kStr = partial >= 0 ? partFit * atiSt.strata[partial].a / p.a : Infinity;
       const kink = Math.min(kCap, kStr);
+      if (nuRate) {
+        /* Inside a ramp cast ν advances linearly (one attempt per cast, over that cast's own span),
+           so the slice's cast integral has its own closed form — same integrand, different clock:
+             ∫_0^L ds/(a + B·e^{k·s}) = L/a − ln((a + B·e^{k·L})/(a + B))/(a·k),   k = nuRate·ln ρ
+           which tends to L/(a + B) as k → 0. */
+        const k = nuRate * lnrho;
+        const scoreOf = L => Math.abs(k) < 1e-12 ? L / (p.a + B)
+          : L / p.a - Math.log((p.a + B * Math.exp(k * L)) / (p.a + B)) / (p.a * k);
+        const tKinkR = kink / nuRate;
+        if (tKinkR <= left + 1e-12) {
+          made += scoreOf(Math.max(0, tKinkR)); atiSt.nu += kink; left -= Math.max(0, tKinkR);
+          if (kStr <= kCap && partial >= 0) atiSt.strata.pop();
+          continue;
+        }
+        made += scoreOf(left); atiSt.nu += nuRate * left; left = 0;
+        continue;
+      }
+      const tOf = d => Math.abs(lnrho) < 1e-12
+        ? (p.a + B) * d
+        : p.a * d + B * (Math.pow(rho, d) - 1) / lnrho;
       const tKink = tOf(kink);
       if (tKink <= left + 1e-12) {                        // cross the kink exactly and re-derive
         made += kink; atiSt.nu += kink; left -= Math.max(0, tKink);
         if (kStr <= kCap && partial >= 0) atiSt.strata.pop();
         continue;
       }
-      let lo = left / p.b, hi = left / p.a, d = left / (p.a + (p.b - p.a) * P0);
+      /* The bracket is DERIVED from the segment's own endpoints, not assumed to be [1/b, 1/a]: with
+         the §10c factor the effective P_down can exceed 1, so the interval can exceed b and the old
+         bracket would have silently clamped the solve. `d < kink` holds in this branch, so the
+         monotone ρ^u is bounded by its values at 0 and at the kink. */
+      const pe0 = B, pe1 = B * Math.pow(rho, kink);
+      const iHi = p.a + Math.max(pe0, pe1), iLo = p.a + Math.min(pe0, pe1);
+      let lo = left / iHi, hi = left / iLo, d = left / (p.a + B);
       for (let it = 0; it < 48; it++) {
         if (!(d >= lo && d <= hi)) d = (lo + hi) / 2;
         const f = tOf(d) - left;
         if (Math.abs(f) < 1e-12 || hi - lo < 1e-13) break;
         if (f > 0) hi = d; else lo = d;
-        d -= f / (p.a + (p.b - p.a) * P0 * Math.pow(rho, d));
+        d -= f / (p.a + B * Math.pow(rho, d));
       }
       d = Math.min(Math.max(d, lo), hi);
       made += d; atiSt.nu += d; left = 0;
@@ -2009,8 +2054,28 @@ function simulateRaw(schedule, cfg, collect) {
       // end is dead time — folded into the strata as a PROCLESS entry that occupies window and ages
       // out naturally. A state change folds the outgoing state's attempts into a stratum the same
       // way, so the old average drains over one window instead of snapping (the 08-04 rebuild).
-      // The advance runs NET of the opener toll: toll casts never happened, so they rolled no procs.
+      /* ★★★★ ν IS A PHYSICAL ATTEMPT COUNTER; THE OPENER TOLL IS A SCORING DEVICE — §10c (08-05), and
+         COUPLING THEM WAS THE OTHER HALF OF THE TRANSIENT BIAS. The advance used to run
+         `ν −= tollR·len`, on the reasoning that "toll casts never happened, so they rolled no procs".
+         The premise is right and the implementation was not: the toll is SPREAD uniformly over an
+         m-INDEPENDENT nominal window (§8q) precisely so an overlapping value buff pays its share —
+         which makes it the wrong SHAPE for a cast count, because the real deficit is front-loaded
+         (the first ramp cast alone loses 0.667 casts inside its own 2.5 s). Netting the two left ν
+         reading 3.09 at the ramp's end where the process has made exactly 3 attempts.
+         ⇒ the two are now separate, and each is exact in its own currency: inside a ramp cast the walk
+         already knows exactly ONE attempt is made over that cast's own span, so ν advances at
+         `1/iv` there (`nuRate`) and at the integrand's own rate everywhere else. The toll never
+         touches ν. The SCORE is untouched — it still integrates the same rate and still pays the same
+         spread toll — so §8q's ladders are unmoved.
+         ⚠ This is not a lattice re-entering the integrand (§8l): no cast is priced at a lattice
+         position, and the ramp spans are already breakpoints. What is read off the ramp is the
+         attempt COUNT of a stochastic buff, which is physics, not scoring geometry. */
       const p = atiParamsAt(stT.multDn2, stT.mult2, stT.aoe, segB);
+      let nuRate = 0;
+      for (let k2 = 0; k2 < boardRamp.length; k2++) {
+        const rc = boardRamp[k2];
+        if (mid > rc.s && mid < rc.e && rc.iv > 1e-9) { nuRate = 1 / rc.iv; break; }
+      }
       const gap = a - atiLiveEnd;
       const edged = atiPrevP && (atiPrevP.a !== p.a || atiPrevP.b !== p.b || atiPrevP.q !== p.q);
       if ((gap > EPS || edged) && atiPrevP) {
@@ -2019,9 +2084,8 @@ function simulateRaw(schedule, cfg, collect) {
         if (gap > EPS) atiFold(1, 1, gap);
       }
       atiTrim(p.a);
-      const madeCasts = atiSlice(p, len);
+      const madeCasts = atiSlice(p, len, nuRate);
       liveRate = stT.dmg2 * madeCasts / len;
-      atiSt.nu = Math.max(0, atiSt.nu - tollR * len);
       atiLiveEnd = b; atiPrevP = p;
     } else liveRate = rateAt(mid, segB);
     const contrib = (liveRate - tollR * dmgOf(stT.sp2, stT.dmgMult2, segB, false)) * len;

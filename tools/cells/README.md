@@ -23,6 +23,10 @@ same banner for the older packages, which are all stale for exactly this reason.
 
 - `derive-0805.jsonl` — cut on the 08-05 engine (after §9u/§9w/§9x/§9y, i.e. the current tie-break).
   Mostly `icon+gem` across 2:00–3:00 × Lust 0:05/0:20/0:40, plus one `gem+ati` cell.
+  ⛔ **The `gem+ati` cell is STALE as of §10c** (the Ashtongue transient corrections, same day, later).
+  Re-cut it into a new file before ruling on it. The rest of the file is unaffected and that is
+  measured, not assumed: `plan-diff` reads IDENTICAL with `scorerMoved = 0` over the 21-cell preset
+  corpus, and §10c is gated entirely on `cfg.enabled.ati`.
   ⚠ Enumerated at EFFECTIVE stats (crit 44 = typed 38 + Arcane Impact, Tirisfal on) so that loading the
   row in the page reproduces it — see MODEL-DEFECTS §9z.
 - `derive-programme.sh` — the full programme, Phase-3 practical kits first, then breadth, then the

@@ -1740,3 +1740,70 @@ What survives is better founded than what I filed. `ati-mc`'s steady rates are e
 full-fight and windowed checks sit ABOVE truth — +0.081, +0.047, +0.079, +0.072, every one the same
 direction. A one-directional residual is not noise, and the steady form being exact localises it to the
 transient. That is the overnight goal, and it came from the instrument rather than from me.
+
+# 2026-08-05 (cont.) — the lead from the retraction, chased with an exact chain
+
+The previous entry ends on the one thing that survived my retraction: `ati-mc`'s four steady rates exact
+to five decimals while all four full-fight and windowed checks sat ABOVE truth, every one the same
+direction. That is the whole of what I had. It turned out to be enough, and the reason it was enough is
+the entry.
+
+**The first move was to stop using Monte Carlo.** `ati-mc`'s 200 000 runs resolve about 0.003 casts and
+the whole residual is 0.08 — enough to say "biased", not enough to say "by how much, where". But the proc
+process is a finite Markov chain: after cast *k* the state is `(t, rem)` with
+`rem = max(0, DUR − (t − t_lastProc))`, both on the millisecond lattice, and `stacks = min(3, k)` is
+known from the step index. So the joint distribution propagates cast by cast in a plain `Map` and
+`E[casts by T]` comes out **exactly**. It agreed with the MC to 0.001 — the MC's own noise — and resolved
+1e-5.
+
+Three facts fell out of it within minutes, and none was reachable before:
+
+- the residual is **`+0.07980` at T = 60, 90, 120, 180, 240 and 300**, to five decimals ⇒ a
+  per-engagement transient, not a rate error;
+- a 1 s scan showed it **fully deposited by t ≈ 11 s** — the ramp plus one proc window;
+- the **board walk is already right** (−0.0026 against the chain) ⇒ the whole charge is in the
+  INTEGRAL, and the walk is the thing to reproduce rather than a second thing to fix.
+
+**The second move was to re-derive the integrand from scratch** — a scratch reference sharing no code
+with `simulate()` — and check it reproduced the shipped engine to 1e-13 *before* changing anything. Then
+each candidate mechanism was switched on and off there and sized against the chain. Four were tried; two
+shipped; two over-corrected and did not, which is the only reason I trust the two that did.
+
+The defects were these. **One**: the integrand integrates something the process SUMS. The proc's memory
+decays over *attempts*, `Σ_{k<K} P0·ρ^k`, and the integral `∫₀^K P0·ρ^u du` is smaller than it by exactly
+`(1−ρ)/(−ln ρ)` at every K, because a left-Riemann sum of a decreasing function is the larger. So the
+continuum ran the memory down faster than the process does and every fight read fast. The correction is
+that factor, `c_ρ = ln ρ/(ρ−1)`, and it makes the two identically equal. On an isolated no-ramp chain it
+takes the transient from +0.031 to −0.0026 — which is the walk's own floor, so the mechanism is not
+reduced, it is exhausted.
+
+**Two**, and this is the one I would not have found by staring at the proc model: ν, the attempt counter,
+was being netted against the opener toll. The comment said *"toll casts never happened, so they rolled no
+procs"* — true, and it justified the wrong arithmetic. The toll is deliberately SPREAD over an
+m-independent nominal window so that a value buff overlapping the ramp pays its share (§8q); the real
+cast deficit is front-loaded, since the first ramp cast alone loses 0.667 casts inside its own 2.5 s.
+Netted, ν read 3.09 at the ramp's end where the process has made exactly 3 attempts. **ν is physics; the
+toll is scoring. Coupling them was the defect.** Inside a ramp cast the walk already knows exactly one
+attempt happens over that cast's own span, so ν advances at `1/iv` there and the toll never touches it.
+
+Removing the coupling had a side effect I did not predict and would not have looked for: `ν += made;
+ν −= tollR·len` is operator splitting, so the toll landed at each slice's END and **the answer depended
+on the slice grid** — 0.017 casts, found by integrating the same model at dt = 1e-4. A scorer whose value
+moves when you add a breakpoint is exactly what the determinism convention exists to forbid, and no gate
+varies the grid, so nothing was ever going to catch it.
+
+Result: +0.080 → +0.007 per engagement, worst of fourteen cells +0.090 → +0.028, steady rates untouched,
+`plan-diff` IDENTICAL with `scorerMoved = 0` over the 21-cell corpus, anchors 17/17. What is left is two
+named terms — a ramp cast's attempt occupies the trailing window at its own spacing, not the 3-stack one
+(~+0.009); and the strata drain across a haste edge (≤ ~+0.018). Both were tried, both over-corrected in
+their crude form, both left alone with a target written down.
+
+★ **The correction to the ledger.** ESTABLISHED-FACTS §12.3 called its residual *"the deliberate
+discrete-vs-continuous residual, because the discrete-exact transient is a t0-anchored cast lattice and a
+lattice may not re-enter the integrand"*. That sentence was doing real work — it made an approximation
+look like a consequence of a rule, so nobody, including me, asked whether it was closeable. It is not
+true that the alternatives were a lattice: `c_ρ` is a continuous re-parameterisation, and reading a ramp
+cast's attempt count off `boardRamp` prices nothing at a lattice position. ⇒ **"this is the accepted cost
+of a principle" is a claim about a principle, and it should be checked like one.** The 0.030 figure in
+that section had already been corrected once, on 08-03, from a single cell to a ladder; twice corrected
+and still described as deliberate is what a load-bearing excuse looks like.

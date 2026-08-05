@@ -15,3 +15,6 @@ tools/xval-results/*.lock
 
 # Transient boss pre-pass logs (solve/shard phases; not a record)
 tools/xval-results/*.pre.log
+
+# session scratch (probes, before/after engine copies) — never a record
+scratchpad/

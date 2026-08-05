@@ -151,7 +151,9 @@ float precision at every haste, SP and crit, and that is now a `law-check` line.
 the exact renewal expectation (since 08-03 the proc is modeled by its closed-form steady state with
 the haste→proc→haste feedback converged and the per-engagement ramp-in threaded — ESTABLISHED-FACTS
 §12, MODEL-DEFECTS §9n, gated by law-check's ATI block + `tools/ati-mc.mjs`'s seeded
-process-simulation in CI) — so the tool reports a MEAN and says nothing about variance. (2) It is **infinite-mana**: the stack buff
+process-simulation in CI; **the transient's remaining one-directional bias was closed 08-05, §10c /
+§12.3a — +0.080 → +0.007 casts per engagement**) — so the tool reports a MEAN and says nothing about
+variance. (2) It is **infinite-mana**: the stack buff
 also raises AB mana cost 75 %/stack, so the stack count drives a sustainability constraint the model
 declines to see (a standing user decision). The one place the continuum idealisation genuinely needs a
 discrete correction — a cast in flight across a cut — is exactly where `cutsAt()` and the credit rule
@@ -752,16 +754,24 @@ Treat maintaining them as part of the work, not an afterthought:
   are stale twice over (Phase 12 rewrote the dominant walk; 08-04 removed ~20 % dead work), and the
   standing rule holds: fresh baseline first, wall-clock compares only within a same-session pair.
 - `docs/PLAN.md` — ▶▶ **A PLAN IS IN FLIGHT (08-05) — READ IT BEFORE TOUCHING THE ASHTONGUE MODEL.**
-  It carries the overnight goal (a one-directional bias in the ATI TRANSIENT, localised by `ati-mc`'s
-  steady rates being exact while all four full-fight/windowed checks sit above truth), the two smaller
-  queued items, and the state of the background enumerations.
+  ✅ Its overnight goal **LANDED**: the ATI transient's one-directional bias was TWO closed-form defects
+  (MODEL-DEFECTS §10c, algebra in ESTABLISHED-FACTS §12.3a) — the integrand integrated a left-Riemann
+  SUM over attempts, and ν, a *physical attempt counter*, had been netted against the opener toll, a
+  *scoring* device. **+0.080 → +0.007 casts per engagement**, steady rates unmoved, `plan-diff`
+  IDENTICAL, anchors 17/17. ★ The transferable part is the instrument: the residual was localised by an
+  **exact Markov chain** over `(t, rem)`, not by more MC — that is what showed it constant in T and
+  absent from the board walk. What remains in `PLAN.md` is the two smaller queued items and the state
+  of the enumerations. ⛔⛔ **AND EVERY ATI-BEARING BRUTE-FORCED CELL IS NOW STALE** — a cell is valid
+  only for the engine that graded it; re-cut before ruling. (Non-ATI cells are untouched, measured not
+  assumed.)
   ⛔⛔ It also carries the session's biggest mistake, and you should read that part first: **`ceil(DUR/a)`
   in the Ashtongue law is EXACT, not a quantisation artifact.** MODEL-DEFECTS §10a claimed otherwise,
   the claim was acted on — a correct rule rewritten, a candidate withheld — and `tools/ati-mc.mjs`
   falsified it at 4 of 9 points two hours later. The window is anchored AT a cast on a regular lattice,
   so the attempt count is deterministic and there is no phase to average over. (A phase-average IS right
   for the edge memory, §9m, where the wall is placed independently of the casts — same formula, adjacent
-  problem, opposite answer.) ⇒ do not re-open it; `scratchpad/smooth.html` is the WRONG build.
+  problem, opposite answer.) ⇒ do not re-open it; the WRONG `scratchpad/smooth.html` build is gone with
+  the scratch directory, which is where it belongs.
 - *(what this pointer says when the plan lands)* the current executable plan, when one is in flight; **absent = no plan in flight**
   (create it before a big multi-step change, delete it once that change lands, folding anything lasting
   into ROADMAP). **No plan in flight. Phase 5 (AoE phases) is COMPLETE** — verdict: an AoE phase is a
