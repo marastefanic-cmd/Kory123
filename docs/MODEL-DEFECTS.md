@@ -4406,7 +4406,8 @@ T7 (1:15, Lust 0:05, intermission 0:50–0:55), all 12,976,848 legal grid layout
 
 Identical under the ideal law to every digit, so `planBetter` falls through to `distinct` and prefers
 the second — Berserking rides the Bloodlust call instead of taking its own press. The user ruled the
-revision in (*"I agree with the revision to T7"*); the test is now RED by design, exactly as T11 is.
+revision in (*"I agree with the revision to T7"*); the test was RED by design for a day, exactly as T11
+once was. ✅ **GREEN since 08-05 — §9u.**
 
 ★ **Why it is NOT the §8j family.** §8j/§9d misses are SCORE misses — a better layout the descent
 cannot reach, worth 0.005–0.4 casts. Here the score gap is **exactly zero**: no hill-climb, at any
@@ -4438,6 +4439,11 @@ between members the search happens to visit.
 ⚠ It must accept ONLY on a strict `planBetter` improvement with the ideal score tied — a pass that can
 move the score is a scorer change wearing a finishing-pass costume, and this project has paid for that
 shape twice (§8y part 1b, the `finishLine` floor).
+
+✅ **CLOSED 08-05 BY §9u — `plateauCanon` shipped and T7 is GREEN.** The design above is what landed,
+with one thing the specification did not anticipate and which is the whole reason three earlier
+attempts failed: **the plateau is connected but not monotone**, so no pass built as a strict descent
+can traverse it. See §9u.
 
 ## §9q — ✅ T8 WAS BEATEN BY 0.094 CASTS — RULED AND REVISED 08-05 (was: awaiting a user ruling)
 
@@ -4550,8 +4556,16 @@ the revised layout's 6, but intermediate states on the path have more, so `disti
 route to it. ⛔ Do not reintroduce it; if a case ever seems to need it, the answer is a shape criterion
 with its own argument, not this one back.
 
-⚠ **T7 remains RED** (§9p) — its move is a genuine 3-coordinate relocation, not a tie-break artifact,
-so it still needs the canonicalisation pass §9p specifies.
+⚠ **T7 remained RED at the time of writing** (§9p) — its move is a genuine 3-coordinate relocation, not
+a tie-break artifact, so it still needs the canonicalisation pass §9p specifies. ✅ Which shipped the
+same day: §9u, `plateauCanon`, and T7 is green.
+
+⚠⚠ **AND THE "VERIFIED NON-DESTRUCTIVE" TABLE ABOVE IS INCOMPLETE — corrected 08-05, §9v.** It checks
+T6, T7 and T8, and the claim holds for all three. It does **not** hold for **T10 and T13**, which were
+never checked and both broke: they sit on exact ideal ties against lex-earlier members, so the earliest
+vector alone walks off them. Both are closed now (§9w for T10, §9x for T13) and neither needed
+`distinct` back — but the general lesson is the one this ledger keeps re-learning: *a verification that
+lists the cases it checked is only as strong as the cases it did not.*
 
 ## §9t — ⛔ NO 2-TRINKET EQUIP CAP: the tool plans fights that cannot be played (08-05, user-found)
 
@@ -4580,3 +4594,283 @@ them and how many to untick. A warning rather than a refusal, deliberately — c
 tool's second stated payoff, `kit-sweep` probes odd kits on purpose, and a hard block would strand a
 user mid-edit while swapping one trinket for another. The engine still models whatever it is handed;
 what was missing was the tool SAYING the setup is unplayable. Display-only ⇒ no plan moves.
+
+## §9u — ✅ THE PLATEAU IS CONNECTED BUT NOT MONOTONE (08-05). `plateauCanon` shipped; §9p closed, T7 green.
+
+§9p specified the fix as a canonicalisation pass and it was right about that. What it did not say — and
+what cost three reverted attempts before it was measured — is **why no ordinary pass could do the job.**
+
+### The measurement
+
+T7 (1:15, Lust 0:05, intermission 0:50–0:55, 1387 SP / 38 % crit), declared vs emitted:
+
+| layout | ideal casts | robust | `ts` (sorted press vector) |
+|---|---|---|---|
+| emitted `iv[7,55] · cluster@7 · zerk@27` | **66.583205** | 66.338258 | `[5,7,7,7,7,27,55]` |
+| declared `iv[15,55] · cluster@15 · zerk@5` | **66.583205** | 66.268165 | `[5,5,15,15,15,15,55]` |
+
+Bit-identical on the ranking integral (`Δ ideal = 0.000e+0`, against an `ifloor` of 1e-9 casts), and
+`planBetter` already names the declared one canonical — `5 < 7` at position 1 of the earliest vector.
+So the comparator was never the problem and neither was the score. The problem is the ROUTE.
+
+### Why every strict-improvement pass is stuck, and it is not a neighbourhood-size question
+
+Enumerating the cluster-second × Berserking-second grid under T7's own cfg gives a **large exact
+plateau** at 66.583205 — `(c,z)` ∈ {(7,27), (7,30), (7,35), (8,30), (8,35), (10,30), (10,35), (12,35),
+(15,5), (15,35), (17,5), (17,7), (20,5), (20,7)} among the pairs swept. The declared member is
+`(15,5)`. Every route from `(7,27)` to `(15,5)` inside the move set passes through a member the
+comparator ranks WORSE than where the descent stands:
+
+```
+(7,27) → (7,35)    ideal tied, ts [5,7,7,7,7,35,55]     ⛔ LATER vector — a strict descent refuses it
+(7,35) → (15,35)   ideal tied  (cluster slide +8; illegal-in-effect at z=27, where zerk sits inside
+                                the Icy Veins window the cluster is sliding onto — score drops)
+(15,35) → (15,5)   ideal tied, ts [5,5,15,15,15,15,55]  ✓ the declared layout
+```
+
+⇒ **the plateau is connected but not monotone.** `phaseRerank` is a strict-improvement descent by
+construction and must stay one — §8w's ratchet exists precisely to stop it drifting downhill one
+sub-band slice at a time — so the walk that needs a temporarily-worse step cannot live inside it.
+
+### What landed
+
+`plateauCanon(s0, cfg)` in `index.html`, called from `phaseFinish` after the descent converges. A
+bounded **beam** walk (not a gradient) over the same move classes `phaseRerank` uses, with one
+property that makes it safe: a candidate enters the frontier only if its ideal score equals the ROOT's
+to within `ifloor` (float discrimination — ⛔ NOT `TIE_CASTS`; a band here re-admits exactly the §8w
+drift). Consequences, and they are the reason this could be added while other tests were fragile:
+
+- it can never lose score — every node it visits is worth exactly what the input was worth;
+- it can never lose shape — it returns `planBetter`-or-equal to its input;
+- it is **monotone in the comparator**, so unlike a seed class or an acceptance change it *cannot
+  reroute a basin*. A cell whose plateau neighbours are all refused comes out byte-identical.
+
+Cost: `planBetter` reads only `ideal`, `shape` and `ifloor` — never `score` — so the filter skips
+`rankScore`'s PHASE_N samples and costs one `simulate` per candidate, ~12× cheaper than `tryCand`.
+Bounded by `CANON_W = 12` beam × `CANON_D = 5` levels × a 12 000-candidate budget. Measured: the whole
+17-case suite went 6m→7m31s.
+
+**Result: `13 of 17` → `14 of 17`. T7 GREEN.**
+
+### ⛔ THREE THINGS THAT DID NOT WORK, recorded so they are not retried
+
+All three were built on the belief that T7 was a SEARCH-reach problem. Measured together they made the
+suite **worse** (13/17 → 11/17 on the same corpus) and were reverted whole:
+
+1. **A coarse structure-scan seed class** in `optimizeCore` (adaptive-step cartesian over first-press
+   positions, anchors included). More starts do not help: the target is score-tied with what the search
+   already finds, so no start can be preferred.
+2. **Switching `polish()` acceptance from `.robust` to `.integral`** (7 sites). The measurement that
+   motivated it is real and worth keeping: on T7 the hill-climb's own objective prefers the WRONG
+   layout — `robust` 66.338258 (emitted) vs 66.268165 (declared) — so *"no seed and no neighbourhood
+   could ever have rescued it; the climb was pulling the other way by construction."* But retargeting
+   the climb rerouted T10 and T12's basins and is the §9e/§9e-b all-or-nothing trap in a new costume.
+3. **Anchor-pinned restarts** in `phaseFinish` (pin one track via `cfg.fixed`, re-descend the rest).
+   Same failure: a different basin, not a different plateau member.
+
+★ The through-line, and it is the generalisable part: **when the ideal gap is exactly zero, the defect
+is never in the search and never in the scorer.** Check that number FIRST — `tests/anchors.mjs` now
+prints it on every failure, alongside the shape criterion that actually decides.
+
+## §9v — ⚖️ THE `distinct` ABOLITION'S PREMISE IS FALSIFIED BY T10 AND T13 (08-05) — T10 closed by §9w, T13 open
+
+⚠ **This is a finding, not a fix. It is recorded because acting on it unilaterally would overturn a
+direct user ruling, and because the two tests it names are red today.**
+
+The user abolished the fewest-press-moments criterion on a stated premise (§9s): *"that one is messy
+and aligning to earliest possible will also naturally align presses."* Before removing it I verified
+that premise against T6, T7 and T8 — every ruling ever decided on `distinct` was reproduced by the
+earliest-press vector alone. **That verification was incomplete: T10 and T13 are counterexamples, and
+T10's is airtight.**
+
+| test | declared | what the search emits | ideal Δ |
+|---|---|---|---|
+| T10 | `iv[-10,10,190,370] · isc[10,130,250,370] · {scb,AP,zerk}[10,190,370]` | the same, with the value cluster and Berserking at **7** and Icon at `[7,127,247,370]` | **0.000e+0** |
+| T13 | `iv[5,60] · cluster@20 · zerk@25` | `iv[0,55] · isc@40 · {scb,AP,zerk}@45` | **0.000e+0** |
+
+Both are exact ties, so the comparator alone decides, and in both it prefers the emitted plan:
+
+- **T10** — `ts` declared `[-10,10,10,10,10,10,130,190,…]` vs emitted `[-10,7,7,7,7,10,127,190,…]`.
+  The emitted plan is earlier at six positions and later at NONE. ⇒ **no earliness rule of any kind can
+  prefer the declared layout** — not lexicographic, not sum (declared 3030 vs 3012), not
+  reverse-lexicographic. The only thing that separates them is press-moment count: **6 vs 7**, which is
+  exactly the abolished criterion. T10's declaration is the user's own (Debug export, "passed on the
+  first run"), and CLAUDE.md's coverage doctrine says it pins the LOGIC, so it cannot be quietly re-cut.
+- **T13** — declared 4 press moments vs emitted 5; the emitted wins on `ts` only because it opens with
+  `iv@0` against `iv@5`. ⚠ T13 is a ladder cell and the ladder is under re-derivation (ROADMAP), so
+  this one may resolve on its own; T10 will not.
+
+⚠⚠ **THE OBVIOUS OBJECTION — "just reinstate `distinct`" — AND WHY IT IS NOT OBVIOUSLY WRONG.** The
+first draft of this entry said `distinct` is *demonstrably* wrong on T8, because T8's old layout
+`iv[95,115]` has **5** press moments against the revised `iv[20,115]`'s **6**, so the criterion prefers
+the layout the user explicitly overturned (*"the first IV should have always been @20 as per the
+earliest rule"*). **That reasoning is incorrect and the correction matters**: the T8 revision is a
+SCORE finding, not a tie-break one — 108.827502 vs 108.733278, **+0.094 casts, 47× the tie band** — so
+`planBetter`'s first criterion decides it and `distinct` is never consulted. What `distinct` actually
+cost T8 was **reachability**, not the comparison: §9s measured that the descent's route to the revised
+layout passes through ideal-TIED intermediates with MORE press moments, so the criterion refused every
+step along it. That is a `phaseRerank` problem, and §9u's beam walk is exactly the instrument for
+ideal-tied intermediates — so the two may now compose. ⇒ **it is an experiment, not an argument**, and
+`index.html` carries a one-line switch (`CANON_DISTINCT`) so it can be measured on the whole corpus.
+Any criterion proposed here must keep T8 green *in emission*, which is a stronger bar than keeping it
+green in comparison.
+
+⚖️ **The shape of a real answer, and why it is hard.** The user's objection and the failing tests point
+at the same physical distinction: **value buffs want to share a second (they multiply — ESTABLISHED-FACTS
+§4's `dmg × sp = n·d·s` cross term), haste buffs want to be apart (the packing law: back to back, never
+on top of each other — §4c).** A criterion counting only VALUE press moments is derivable from that and
+fixes T13 (1 vs 2) while leaving T8 untouched (identical value presses ⇒ tie ⇒ `ts` decides ⇒ `iv@20`
+wins, as ruled). **But it does not fix T10**: both layouts there have exactly 5 value seconds
+(`{10,130,190,250,370}` vs `{7,127,190,247,370}`) — the difference is that Berserking and the cluster
+co-press with **Icy Veins #1 at 0:10**, whose second is FORCED by the Cold Snap chain (`iv#0 = [-10,10]`).
+Every candidate criterion tried against the full corpus so far either ties on T10 or breaks T8:
+
+| candidate criterion | T6 | T7 | T8 | T10 | T13 |
+|---|---|---|---|---|---|
+| `ts` alone (shipped today) | ✓ | ✓ | ✓ | ✗ | ✗ |
+| `distinct` above `ts` | ✓ | ✓ | **✗** | ✓ | ✓ |
+| `distinct` gated on equal first press | ✓ | ✓ | **✗** | ✓ | ✗ |
+| value-only press moments | ✓ | ✓ | ✓ | **tie ⇒ ✗** | ✓ |
+| press sum (total earliness) | ✓ | ✓ | ✓ | **✗** | ✓ |
+
+⇒ **The open question is narrow and worth stating precisely:** what makes `0:10` right in T10 is that
+the value cluster rides a haste press whose second the Cold Snap chain has already fixed. That is a
+*derived anchor*, not a press count — and `shapeCtxOf` already derives anchors of exactly this kind
+(the pull, pinned calls and their window ends, phase edges, ramp ends, kill-cooldown chain seconds).
+
+### ✅ T10 CLOSED BY §9w — it WAS the anchors, and one of them was computed wrong
+
+The paragraph above turned out to name the fix. T10's rival at `0:07` is on-grid **only** because the
+ramp-end anchor was computed at PASSIVE gear haste, while T10's own plan has Icy Veins running from the
+pull. Correct the ramp for the haste the plan actually has there and 7 stops being a structural second
+of that fight — `offGrid` 6 vs 0 — so `planBetter` separates the two before it ever reaches the
+earliest rule. **No new criterion, no ruling needed, and the earliest rule is untouched.** See §9w.
+
+### ⛔ T13 IS STILL OPEN, and the two measured dead ends are recorded
+
+- **The grid fix does not reach it.** Measured: declared `iv[5,60] · c@20 · z@25` and emitted
+  `iv[0,55] · isc@40 · c@45` are BOTH `offGrid 0` under the corrected grid (the emitted plan's `iv@0`
+  shortens its ramp to 6, but every one of its presses is a multiple of 5 and so on-grid anyway).
+- **Reinstating `distinct` does not fix the corpus, it RELOCATES the red.** Measured on the full suite
+  with the `CANON_DISTINCT` switch on: **16 of 17**, T10 ✓ and T13 ✓ — and **T8 turns red as a SEARCH
+  failure**, the declared layout scoring **+0.093319 casts higher** than what the descent then reaches
+  (`iv[95,115] · zerk[0]` instead of `iv[20,115] · zerk[95]`). That is §9s's reachability finding
+  reproduced exactly, and `plateauCanon` cannot rescue it because T8's route is score-IMPROVING, not a
+  plateau walk. Same count as the shipped state, one red either way — so the switch buys nothing and
+  costs a user ruling. It stays `false`; it is kept only so the measurement is one line away.
+
+What T13 needs is the distinction the table above points at — **value buffs want to share a second
+(they multiply, §4's cross term), haste buffs want to be apart (the packing law, §4c)** — expressed as
+a criterion counting only VALUE press moments (declared 1, emitted 2). That is derivable and it leaves
+T8 untouched, but it sits ABOVE the earliest rule and can therefore reroute every declared layout at
+once, so it needs its own corpus-wide measurement before it lands. ⚠ T13 is also a LADDER cell and the
+ladder is under re-derivation (ROADMAP), so it may resolve there instead; that measurement comes first.
+
+## §9w — ✅ THE RAMP WAS ALWAYS COMPUTED AT PASSIVE HASTE, EVEN WHEN THE PLAN HASTES THE PULL (08-05). T10 closed.
+
+A plain arithmetic defect in `shapeCtxOf`, invisible for as long as it was because it does not move the
+SCORE by a single cast — it moves an ANCHOR, and anchors decide the `offGrid` criterion, which decides
+plateau members.
+
+`rampLen` (the time to reach MAX_STACKS, whose ceiling is a structural anchor and whose mod-5 residue is
+therefore a whole grid class) was computed as
+
+```
+m0 = 1 + cfg.hasteRating / 1577          // gear haste, and NOTHING else
+```
+
+⇒ always the passive value, no matter what the plan presses. That is correct for a plan that opens
+cold, and simply wrong for one that does not.
+
+### The measurement (T10, 6:30, prepull Icy Veins `[-10,10,190,370]`)
+
+| | ramp casts | ramp length | ramp end | residue it puts on the grid |
+|---|---|---|---|---|
+| computed (passive, m = 1) | 2.500 + 2.166 + 1.832 | 6.498 s | **7** | 2 |
+| actual (Icy Veins up from t=0, m = 1.2) | 2.083 + 1.805 + 1.527 | 5.415 s | **6** | 1 |
+
+T10's fight has no pinned calls and no phases, so its anchor set is just `{0, T=390, rampEnd}` — which
+means the ramp end contributes the ONLY non-zero residue class, and getting it wrong is the difference
+between `{0, 2}` and `{0, 1}`. With the wrong grid the `cluster@0:07` rival is fully on-grid and the
+earliest rule then prefers it (it is earlier at six coordinates and later at none — §9v). With the
+right grid:
+
+```
+cluster@0:07   ideal 288.067837461   offGrid 6     ← 7, 127, 247 are not seconds of this fight
+cluster@0:10   ideal 288.067837461   offGrid 0     ← the declared layout
+```
+
+`planBetter` separates them on `offGrid`, three criteria above `ts`. **T10 green, and the earliest rule
+is untouched.**
+
+### What landed
+
+`rampMultAt(s, cfg, t)` — the haste multiplier at a second, from the plan's own windows, using the same
+expression the walk uses (`mult` × `1 + rating/1577`, Power Infusion overridden while Bloodlust runs).
+`shapeCtxOf(cfg, s)` now evaluates the ramp at each ramp's OWN start: `t = 0` for the opener, and the
+phase-exit second for each re-ramp (a re-ramp after an intermission runs at whatever haste is up
+*there*, which was the same defect one occurrence over).
+
+- ⛔ **Ashtongue is excluded on purpose.** Its proc is stochastic; folding it in would make the grid
+  depend on an expectation instead of on something the player can point at. Same reason the haste graph
+  gives it its own lane rather than averaging it into the line.
+- ⚠ **The context is now PLAN-dependent**, so the `SHAPE_CTX` WeakMap holds a Map keyed by the
+  multiplier rather than a single ctx. Two plans of one fight can be judged on different grids — which
+  is the correct behaviour, not a wart: a prepull haste buff really does move where that fight's
+  structural seconds are.
+- Score-neutral by construction (`shapeCtx` feeds only `offGrid`/`invalid`, never `simulate`), and
+  confirmed: `self-consistency` `0.00e+0` with **0** structural violations, `law-check` all laws
+  reproduce.
+
+★ **The generalisable lesson** is the one PHASE12 §6 already made once: *a quantity used only by a
+tie-break still has to be right.* Nothing in the corpus could see this defect, because every gate the
+project runs checks the SCORE — and the score never touched `rampLen`. It took a declared layout that
+the score could not separate from its rival to expose it.
+
+## §9x — `valueSecs`: the criterion `distinct` was a lossy proxy FOR (08-05). T13's answer.
+
+§9v left T13 with a stated shape for its answer, and this is that answer built and measured.
+
+### The argument, which is physics and not a press count
+
+The two kinds of cooldown want OPPOSITE things from a shared second, and the project has cited laws for
+both:
+
+- **VALUE buffs (`sp` / `dmg`) multiply each other.** ESTABLISHED-FACTS §4: `dmg × sp = n·d·s`. Two of
+  them on the same second earn the cross term; split across two seconds they do not. Wherever the score
+  can see this it already prices it — and where the GCD cap saturates and the score goes flat, the
+  member that keeps them together is the one whose logic generalises to the gear where the cap does not
+  bind.
+- **HASTE buffs must NOT share.** The packing law (§4c / ESTABLISHED-FACTS §5): haste windows go back to
+  back, never on top of each other, because a second haste buff inside the first is worth far less (and
+  above the cap, exactly zero). Counting a haste press toward "same second is better" pushes the wrong
+  way.
+
+⇒ **count only the seconds that carry a value press.** That single restriction is what separates this
+from `distinct`, and it is exactly the failure the user reported when they overturned T8:
+*"the first IV should have always been @20 as per the earliest rule"* — `distinct` had Icy Veins riding
+the Bloodlust call at 0:95 to save a press moment, and `valueSecs` cannot express that opinion at all
+because Icy Veins is not a value buff.
+
+### Why it is safe where `distinct` was not — the T8 reachability property
+
+§9s's finding was that `distinct` blocked the descent's ROUTE to T8's revised layout: the route's
+ideal-tied intermediates have more press moments, so every step was refused (measured: T8 goes red as a
+**SEARCH** failure, declared +0.093319 casts, when `CANON_DISTINCT` is on). `valueSecs` cannot do that
+**by construction**: T8's route moves Icy Veins (20↔95) and Berserking (0↔95), and `valueSecs` does not
+move when a haste track moves. The criterion is blind to precisely the coordinates the route travels
+along.
+
+### The measurement
+
+| test | declared | emitted before | deciding criterion |
+|---|---|---|---|
+| T13 | `iv[5,60] · cluster@20 · zerk@25` | `iv[0,55] · isc@40 · cluster@45` | `valueSecs` **1 vs 2** |
+| T8  | `iv[20,115] · zerk[95]` | — | value presses IDENTICAL ⇒ tie ⇒ `ts` picks `iv@20`, as ruled |
+| T6/T7 | cluster@15 | cluster@7 | value moments 1 each ⇒ tie ⇒ `ts`, unchanged |
+| T10 | cluster@0:10 | cluster@0:07 | value moments 5 each ⇒ tie ⇒ `offGrid` (§9w) |
+
+Placed directly after `invalid` and before the earliest press vector — i.e. where a criterion about
+*doing the work properly* belongs, above one about *when*. ⚠ It is still a criterion ABOVE the earliest
+rule, so it can in principle reroute any plateau; the corpus-wide run is what licenses it, not the
+argument alone.

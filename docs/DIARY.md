@@ -1625,3 +1625,53 @@ Lesson worth the ink: the user's question was better than my pricing. I had meas
 called it second-order, and documented it — all true — but "documented and small" is not "necessary",
 and this codebase's whole method is that exactness is cheaper than error bookkeeping wherever the
 algebra allows it. It allowed it.
+
+# 2026-08-05 — the tie-break half of the objective, three defects deep
+
+The session opened on one red test (T7) and closed with a corrected grid, a new pass and a new
+criterion. What makes the day worth recording is that all three came out of the same question —
+*"what do you do when the score cannot tell two layouts apart?"* — and that the first two answers I
+reached for were both wrong in an instructive way.
+
+**T7 was never a search problem, and three attempts to treat it as one all regressed the suite.** A
+coarse structure-scan seed class, retargeting `polish()`'s acceptance from `robust` to `integral`, and
+anchor-pinned restarts: measured together, 13/17 → 11/17, reverted whole. The measurement that
+explains them is one line — the declared and emitted layouts score `66.583205` on the ideal integral,
+*both*, bit-identical. No seed can be preferred and no neighbourhood can be climbed when the gradient
+is exactly zero. The retarget did surface something real and worth keeping: the hill-climb's own
+objective prefers the WRONG layout there (`robust` 66.338 emitted vs 66.268 declared), so the climb was
+pulling away from the answer by construction.
+
+What T7 actually needed was `plateauCanon`: **the plateau is connected but not monotone.** Every route
+from the member the descent lands on to the canonical one passes through a member that is shape-WORSE
+(`zerk 27→35`, a later press vector), so a strict-improvement pass — which `phaseRerank` must remain,
+since §8w's ratchet exists to stop it drifting — cannot take the first step at any effort. The fix is a
+beam walk confined to the ideal-EXACT plateau, which cannot move the score and is monotone in the
+comparator, so it cannot reroute a basin. 13/17 → 14/17.
+
+**T10 then exposed an arithmetic defect nothing else could see.** Its declared cluster at 0:10 is LATER
+than the emitted 0:07 at six coordinates and earlier at none, so no earliness rule of any kind can
+reach it — which looked like proof that the user's abolition of the fewest-presses criterion (08-05,
+§9s) had been premature. It was not. The rival at 0:07 was on-grid only because `shapeCtxOf` computed
+the ramp-end anchor at PASSIVE gear haste, while T10's own plan has a prepull Icy Veins running from
+the pull: 6.498 s of ramp at m=1, but 5.415 s at m=1.2, so the anchor is 6 and not 7, and 7 is not a
+structural second of that fight at all. Correct the ramp and `offGrid` reads 6 against 0. **A quantity
+used only by a tie-break still has to be right** — and no gate could catch it, because every gate this
+project runs checks the SCORE, and the score never touches `rampLen`.
+
+**T13 was the one that needed a genuinely new criterion, and the discipline was to find the right one
+rather than the one that worked.** Reinstating `distinct` fixes T10 and T13 — and turns T8 red as a
+search failure worth +0.093 casts, because its ideal-tied intermediates carry more press moments and
+the criterion refuses every step along the route. Measured, kept as a one-line switch, left off. The
+criterion that works is `valueSecs`, and its argument is physics rather than tidiness: value buffs
+(`sp`/`dmg`) MULTIPLY each other (§4's cross term) so they want the same second, while haste buffs must
+go back to back and never overlap (§4c) so they must not be counted. Restricting the count to value
+tracks is exactly what makes it safe: it is blind to Icy Veins and Berserking, which are the
+coordinates T8's route travels along.
+
+Correction to the record, made in place: my own 08-05 note claimed the `distinct` abolition was
+"VERIFIED NON-DESTRUCTIVE" against T6/T7/T8. The verification was real but incomplete — T10 and T13
+were never checked, and both broke. The premise the user offered (*"aligning to earliest possible will
+also naturally align presses"*) is false as literally implemented; what they were reaching for is
+`valueSecs`, and their objection to `distinct` — that it is "messy" — was precisely that it counted
+haste presses, which want the opposite thing.

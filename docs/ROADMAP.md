@@ -11,6 +11,14 @@ describe accepted limits and decided questions so nobody re-opens them by accide
 - **Scorer:** exact (the integral-plus-tie-break pair), CLOSED by user ruling, and gated eight ways
   with negative controls — `anchors` (17/17), `law-check`, `constants-cited`, `self-consistency`
   (+structural), `toll-audit --strict`, `objective-ref`, `ati-mc`, `cfg-contract --strict`.
+  ⚠ **The TIE-BREAK half moved on 08-05** and RULES §17 is the statement of record. Three things
+  landed together, each with its own entry: `plateauCanon` (§9u — naming the canonical plateau member
+  and REACHING it are different problems, because the plateau is connected but not monotone), the
+  plan-dependent ramp anchor (§9w — a prepull haste buff really does move a fight's structural
+  seconds, and the grid was computing them at passive haste), and `valueSecs` (§9x — value buffs share
+  a second because they multiply, haste buffs do not because they must not overlap; this is the
+  criterion the abolished `distinct` was a lossy proxy for). ⛔ Reinstating `distinct` is a MEASURED
+  dead end, reproducible from a one-line switch: same 16/17, red relocated to T8 (§9v).
 - **Search:** every known miss is closed — `search-audit --k=3` reads **72/72** on the kit × haste
   matrix, all three recorded witnesses are reached, and the 08-04 ladder run found the emitted plan
   on the best-known answer in 11 of 12 fresh cells (the 12th is in the decision package, +0.0025).

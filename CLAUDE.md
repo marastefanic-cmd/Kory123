@@ -219,8 +219,10 @@ the ranking objective in four separate places.**
    (0.7250) above *Berserking inside Bloodlust* (0.7203) against laws of 0.667 and 0.867. ⇒ **the
    integral ranks now**, and the 07-28 revert is explained not contradicted (§8h).
 2. **No tie-break**, so the integral's flat plateaus were resolved arbitrarily — which is exactly what
-   the 07-28 Hydross duel punished. ⇒ the objective is a **pair**: integral, then fewest distinct press
-   moments → earliest → the flattened press vector.
+   the 07-28 Hydross duel punished. ⇒ the objective is a **pair**: integral, then the shape.
+   ⚠ *(historical: the shape half read "fewest distinct press moments → earliest"; `distinct` was
+   ABOLISHED 08-05 by user ruling, §9s. The order is now `snaps → wastedPre → offGrid → invalid →
+   earliest press vector` — RULES §17.)*
 3. **The search could not reach the answer at all** — a ±12 s per-press neighbourhood, when the declared
    Berserking is +20 s away on T1 and +120 s on T2. Worth **0.67 casts** (§8j).
 4. **★ `scoreStart` is now PURE WINDOW GEOMETRY** (§8l, from the user's argument): the integral is
@@ -475,9 +477,18 @@ the rule was established, not an instrument you can re-run. New rules are establ
      and *"the first Icy Veins left the opening ramp"*, which is what a **flat plateau** does to a search
      with no canonical member to fall to. The integral had made those layouts exactly tied and the
      search then wandered inside the tie. **The objective is a PAIR** — integral, then the tie-break
-     (fewest distinct press moments, then earliest, then the flattened press vector). `index.html`'s
+     (`snaps → wastedPre → offGrid → invalid → the earliest press vector` — RULES §17; ⚠ this line used
+     to read *"fewest distinct press moments, then earliest"* and `distinct` was ABOLISHED 08-05 by
+     user ruling, §9s). `index.html`'s
      `planBetter` / `rankPair`. The tie band `TIE_REL = 1e-7` is float equality, **not** a tolerance:
      true plateaus are exact and the smallest real step measured is ~2e-2 casts.
+     ★★ **AND NAMING THE CANONICAL MEMBER IS NOT THE SAME AS REACHING IT** (08-05, §9u). The plateau is
+     CONNECTED but not MONOTONE: on T7 every route from the member the descent lands on to the canonical
+     one passes through a member that is shape-WORSE, so a strict-improvement descent is stuck by
+     construction — no seed, neighbourhood or effort setting helps. `plateauCanon` walks the
+     ideal-EXACT plateau with a beam instead of a gradient. ⇒ **when the ideal gap between a declared
+     layout and the emitted one is exactly zero, the defect is neither in the search nor in the
+     scorer** — `tests/anchors.mjs` now prints that number on every failure.
      ⛔ Still true: never *tune a scorer term* against the integral (§6.1–§6.3 falsified four that way).
   2. **Expiring a buff window from the PRESS time.** A self-press fires at the next cast boundary, so
      expiring at `press + duration` made every mid-cast window short by the slip — one whole cast in

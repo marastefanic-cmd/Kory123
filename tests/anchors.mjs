@@ -112,12 +112,23 @@
 //     the STRUCTURAL choice: cluster with the other presses, fewest distinct press moments, most robust
 //     to a press landing late. Same ruling as `docs/MODEL-DEFECTS.md` D2.
 //
-// ✅ ALL EIGHT PASS as of 2026-07-30 — `8 of 8` — and the CI job is BLOCKING again. MODEL-DEFECTS D1 is
-// CLOSED. Seven scoring defects fell to get there (§8h-§8m) and the through-line is one sentence: the
-// cast lattice had leaked into the RANKING objective in four separate places. The integral is now pure
-// window geometry (`∫ rate(m(t)) dt` over press times, durations and wall events), its cooldown chain
-// is geometric too, the objective is a pair (integral, then fewest press moments -> earliest), and the
-// descent can slide a co-pressed cluster (§8m) or a train of abutting windows (§8s) as a unit.
+// ✅ **ALL SEVENTEEN PASS as of 2026-08-05 — `17 of 17`** — and the CI job is BLOCKING. MODEL-DEFECTS
+// D1 is CLOSED. Seven scoring defects fell on 07-30 to get the first eight green (§8h-§8m) and the
+// through-line is one sentence: the cast lattice had leaked into the RANKING objective in four
+// separate places. The integral is now pure window geometry (`∫ rate(m(t)) dt` over press times,
+// durations and wall events), its cooldown chain is geometric too, and the descent can slide a
+// co-pressed cluster (§8m) or a train of abutting windows (§8s) as a unit.
+// ★ The last three reds all came from the objective's OTHER half — the tie-break — and each needed a
+// different kind of fix, which is why they are worth naming here (RULES §17/§18):
+//   T7  → `plateauCanon` (§9u). The plateau is CONNECTED but not MONOTONE: every route to the
+//         canonical member passes through a shape-worse one, so a strict-improvement descent is stuck
+//         at any effort. A beam walk confined to the ideal-exact plateau reaches it.
+//   T10 → the ramp anchor (§9w). `shapeCtxOf` computed the ramp at PASSIVE haste even for a plan whose
+//         own prepull Icy Veins hastes the pull, putting a spurious residue class on the grid. A
+//         quantity used only by a tie-break still has to be right.
+//   T13 → `valueSecs` (§9x). Value buffs multiply so they want the same second; haste buffs must not
+//         overlap so they are not counted. This is the criterion the abolished `distinct` was a lossy
+//         proxy for, and the restriction to value tracks is what keeps T8 reachable.
 // ⛔ IF THIS GOES RED, DO NOT LOOSEN THE ASSERTION AND DO NOT RESTORE `continue-on-error`. Run
 // `node tools/law-check.mjs` first: it asserts the scorer against the closed forms, and every one of
 // the scoring defects was found that way rather than by any plan diff. A press OUTSIDE its law is a
@@ -260,10 +271,15 @@ const CASES = [
      all 12,976,848 legal grid layouts of this fight and the comparator picked this member out of a
      490-layout exact-tie plateau. The 0.1022-cast claim that CREATED T7 is untouched and confirmed —
      67.450603 quantised IS the global optimum of the lattice; only the plateau member moved.
-     ⛔⛔ THIS TEST IS EXPECTED TO BE **RED** UNTIL THE SEARCH LEARNS THE MOVE, and that is the point,
-     exactly as with T11: the search emits the OLD layout (verified), because the two are score-tied
-     so there is no gradient to climb — reaching the canonical member is a PLATEAU-CANONICALISATION
-     problem, not a scoring one. ⛔ Fix it in the search/finishing passes. NEVER by reverting this. */
+     ⛔⛔ IT WAS RED UNTIL THE SEARCH LEARNED THE MOVE, and that was the point, exactly as with T11:
+     the search emitted the OLD layout (verified), because the two are score-tied so there is no
+     gradient to climb — reaching the canonical member is a PLATEAU-CANONICALISATION problem, not a
+     scoring one. ⛔ Fix it in the search/finishing passes. NEVER by reverting this.
+     ✅ **GREEN SINCE 08-05 — `plateauCanon` (MODEL-DEFECTS §9u).** The route out of the emitted member
+     runs through a plateau member that is shape-WORSE than where the descent stands (`zerk 27 → 35`,
+     later vector), so a strict-improvement descent can never take the first step. The new pass walks
+     the ideal-EXACT plateau with a beam instead of a gradient, and returns its comparator-best member.
+     ⚠ The old layout is no longer the search's fixed point, so this test now also guards the pass. */
   { name: 'T7 — 1:15, Bloodlust pinned 0:05, intermission 0:50-0:55, 1387 SP, 38 % crit',
     T: 75, sp: 1387, crit: 38, lust: 5, intermission: [50, 55],
     want: { icyVeins: [15, 55], isc: [15], scb: [15], arcanePower: [15], bloodlust: [5], berserking: [5] } },
@@ -538,9 +554,21 @@ const deltaLine = (want, got, cfg) => {
   const pw = api.rankPair(rep(want), cfg), pg = api.rankPair(rep(got), cfg);
   const pc = api.plainCastOf(cfg);
   const d = (pw.score - pg.score) / pc, band = (pw.band || 0) / pc;
-  const sw = api.planShape(rep(want)).distinct, sg = api.planShape(rep(got)).distinct;
+  /* ⚠ Name the criterion that ACTUALLY decides, not a retired one. This line reported `distinct`
+     (fewest press moments) for months after 08-05 abolished it (§9s), which pointed every reader at a
+     criterion `planBetter` no longer consults. `ideal` first — an EXACT tie there means no hill-climb
+     can feel the difference at all (a §9u plateau-canonicalisation gap), while a real ideal gap inside
+     the quantised band is a different animal — then the first shape criterion that separates them. */
+  const di = (pw.ideal - pg.ideal) / pc;
+  const shw = pw.shape, shg = pg.shape;
+  const crit = ['snaps', 'wastedPre', 'offGrid', 'invalid'].find(k => shw[k] !== shg[k]);
+  const why = crit ? `${crit} ${shw[crit]} vs ${shg[crit]}`
+    : (() => { const n = Math.min(shw.ts.length, shg.ts.length);
+               for (let i = 0; i < n; i++) if (Math.abs(shw.ts[i] - shg.ts[i]) > 1e-9)
+                 return `earliest press vector at position ${i}: ${shw.ts[i]} vs ${shg.ts[i]}`;
+               return 'identical shapes'; })();
   const verdict = Math.abs(d) < band
-    ? `TIED on score (|Δ| < band ${band.toFixed(6)}) ⇒ this is a TIE-BREAK gap: want has ${sw} distinct press moments, got has ${sg}`
+    ? `TIED on score (|Δ| < band ${band.toFixed(6)}; ideal Δ = ${di.toExponential(2)}) ⇒ a TIE-BREAK gap, decided by ${why}`
     : d < 0 ? 'the emitted plan SCORES HIGHER than the declared layout ⇒ a SCORER failure (see the header)'
             : 'the declared layout scores higher ⇒ a SEARCH failure (the descent never reached it)';
   return `      Δ (want − got) = ${d.toFixed(6)} casts on the RANKING integral — ${verdict}`;

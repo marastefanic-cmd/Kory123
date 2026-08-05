@@ -2756,7 +2756,7 @@ function planShape(s, cfg) {
      external caller that only reads snaps/wastedPre/distinct/sum/ts keeps working without one. */
   let offGrid = 0, invalid = 0;
   if (cfg) {
-    const ctx = shapeCtxOf(cfg);
+    const ctx = shapeCtxOf(cfg, s);   // §9w — the grid depends on the haste THIS plan runs at the pull
     for (const t of ts) if (!ctx.classes.has(((Math.round(t) % 5) + 5) % 5)) offGrid++;
     for (const k of Object.keys(s)) {
       const kind = BUFFS[k] && BUFFS[k].kind;
@@ -2769,7 +2769,28 @@ function planShape(s, cfg) {
       }
     }
   }
-  return { snaps, wastedPre, offGrid, invalid, distinct: new Set(ts.map(t => Math.floor(t + EPS))).size,
+  /* ★★★ `valueSecs` — HOW MANY SECONDS THE PLAN SPENDS ITS VALUE BUFFS ON (§9x, 08-05). Not a press
+     count: it is the physical distinction `distinct` could never make, and the one the user's own
+     objection to `distinct` was pointing at.
+       · VALUE buffs (sp / dmg) MULTIPLY each other — ESTABLISHED-FACTS §4's cross term `dmg × sp =
+         n·d·s` — so splitting them forfeits it. Sharing a second is strictly better wherever the
+         score can see it, and where the GCD cap makes the score blind, the member that keeps them
+         together is the one whose logic generalises.
+       · HASTE buffs are the opposite: the packing law (§4c) says they go BACK TO BACK, never on top
+         of one another, so counting them here would push exactly the wrong way. That is the T8
+         defect the user reported in as many words — *"the first IV should have always been @20 as per
+         the earliest rule"*, not at 0:95 riding the Bloodlust call.
+     ⇒ counting only sp/dmg tracks is what makes this criterion safe where `distinct` was not, and it
+     is also why it cannot interfere with a descent that moves Icy Veins or Berserking: it does not
+     move when they do. */
+  const valSet = new Set();
+  for (const k of Object.keys(s)) {
+    const kind = BUFFS[k] && BUFFS[k].kind;
+    if (kind !== "sp" && kind !== "dmg") continue;
+    for (const t of (s[k] || [])) valSet.add(Math.round(t));
+  }
+  return { snaps, wastedPre, offGrid, invalid, valueSecs: valSet.size,
+           distinct: new Set(ts.map(t => Math.floor(t + EPS))).size,
            sum: ts.reduce((a, b) => a + b, 0), ts };
 }
 /* ★★★ §9l — THE GRID AND THE RAMP FLOORS, derived per cfg and cached by cfg identity.
@@ -2790,20 +2811,66 @@ function planShape(s, cfg) {
    must wait out the ramp, and the same holds after an intermission (T3/T5: cluster at the re-ramp
    END). Prepull presses are `wastedPre`'s domain, not this one. A re-ramp exists only where a non-AB
    phase is long enough to drop the AB debuff (≥ DEBUFF_DUR). */
+/* ★★★★★ §9w (08-05) — THE RAMP IS AS FAST AS THE HASTE THAT IS ACTUALLY RUNNING DURING IT.
+   `rampLen` was computed at PASSIVE gear haste always, which is right for a plan that presses nothing
+   at the pull and WRONG for one that does — and "wrong" here is not cosmetic, because the ramp end is
+   an ANCHOR and its mod-5 residue is a whole grid class.
+
+   Measured on T10 (6:30, prepull Icy Veins `[-10,10,190,370]`): at passive haste the three ramp casts
+   take 2.5 + 2.166 + 1.832 = 6.498 s ⇒ ramp end 7 ⇒ residue 2 joins the grid. But the plan's own Icy
+   Veins is up from the pull, so the casts take 2.083 + 1.805 + 1.527 = 5.415 s ⇒ ramp end **6** ⇒
+   residue 1, and 7 is not a structural second of that fight at all. The consequence is exactly the
+   declared layout: with the correct grid the cluster-at-0:07 rival scores `offGrid` 6 against the
+   declared cluster-at-0:10's 0, and `planBetter` separates them BEFORE reaching the earliest rule —
+   which it must, because the two are tied on the ideal score to 1e-13 and the earliest rule prefers
+   the rival at every differing coordinate (MODEL-DEFECTS §9v/§9w).
+   ⚠ Derived, not fitted: the same expression the walk uses (`mult` × `1 + rating/1577`, PI overridden
+   by Bloodlust), evaluated at each ramp's own start second. ⛔ Ashtongue is deliberately EXCLUDED —
+   its proc is stochastic, so folding it in would make the grid depend on an expectation rather than on
+   what the player can point at. Same reason the haste graph gives it its own lane.
+   ⚠ This makes the context PLAN-dependent, so the cache is keyed by the multipliers, not by `cfg`
+   alone. Two plans of one fight can therefore be judged on different grids — which is correct: a
+   prepull haste buff really does move where that fight's structural seconds are. */
+function rampMultAt(s, cfg, t0) {
+  let rating = cfg.hasteRating || 0, mult = 1, bl = false, pi = false;
+  const consider = (k, t) => {
+    const def = BUFFS[k];
+    if (!def || !def.dur) return;
+    if (!(t <= t0 + EPS && t + def.dur > t0 + EPS)) return;   // this window covers the ramp's start
+    if (k === "ati") return;                                  // stochastic — never in the grid
+    if (k === "powerInfusion") { pi = true; return; }
+    if (def.kind === "mult") { mult *= def.value; if (k === "bloodlust") bl = true; }
+    else if (def.kind === "rating") rating += def.value;
+  };
+  for (const k of Object.keys(cfg.fixed || {})) for (const t of (cfg.fixed[k] || [])) consider(k, Math.round(t));
+  for (const k of Object.keys(s || {})) {
+    if (cfg.fixed && cfg.fixed[k]) continue;                  // already counted, and s may echo the pin
+    for (const t of (s[k] || [])) consider(k, Math.round(t));
+  }
+  if (pi && !bl) mult *= BUFFS.powerInfusion.value;
+  return mult * (1 + rating / (GAME.HASTE_RATING_PER_PCT * 100));
+}
 const SHAPE_CTX = new WeakMap();
-function shapeCtxOf(cfg) {
-  let ctx = SHAPE_CTX.get(cfg);
+function shapeCtxOf(cfg, s) {
+  const mOpen = rampMultAt(s, cfg, 0);
+  let byM = SHAPE_CTX.get(cfg);
+  if (!byM) { byM = new Map(); SHAPE_CTX.set(cfg, byM); }
+  const mKey = mOpen.toFixed(6);
+  let ctx = byM.get(mKey);
   if (ctx) return ctx;
   const g = GAME;
   const q = x => Math.round(x * 1000) / 1000;
   const ceilS = x => Math.ceil(x - 1e-9);
-  const m0 = 1 + (cfg.hasteRating || 0) / (g.HASTE_RATING_PER_PCT * 100);
-  const gcd0 = q(Math.max(g.GCD_FLOOR, g.GCD_BASE / m0));
-  let rampLen = 0;
-  for (let k = 0; k < g.AB.MAX_STACKS; k++)
-    rampLen += Math.max(q((g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * k) / m0), gcd0);
+  // §9w — the ramp's length at a given start second, under the haste actually running there.
+  const rampLenAt = m => {
+    const gcdM = q(Math.max(g.GCD_FLOOR, g.GCD_BASE / m));
+    let len = 0;
+    for (let k = 0; k < g.AB.MAX_STACKS; k++)
+      len += Math.max(q((g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * k) / m), gcdM);
+    return len;
+  };
   const anchors = new Set([0, Math.round(cfg.T)]);
-  const ramps = [{ s0: 0, F: ceilS(rampLen) }];
+  const ramps = [{ s0: 0, F: ceilS(rampLenAt(mOpen)) }];
   for (const k of Object.keys(cfg.fixed || {})) for (const t of (cfg.fixed[k] || [])) {
     const r = Math.round(t);
     anchors.add(r);
@@ -2814,8 +2881,9 @@ function shapeCtxOf(cfg) {
     anchors.add(a); anchors.add(b);
     if (sg.type !== "intermission" && sg.type !== "aoe") continue;
     if (sg.end - sg.start >= g.AB.DEBUFF_DUR - 1e-9) {
-      ramps.push({ s0: b, F: b + ceilS(rampLen) });
-      anchors.add(b + ceilS(rampLen));
+      const rl = ceilS(rampLenAt(rampMultAt(s, cfg, b)));   // a re-ramp runs at the haste up THERE
+      ramps.push({ s0: b, F: b + rl });
+      anchors.add(b + rl);
     }
   }
   anchors.add(ramps[0].F);
@@ -2829,7 +2897,7 @@ function shapeCtxOf(cfg) {
     for (let x = Tr - def.dur; x >= 0; x -= def.cd) chainSecs.add(x);
   }
   ctx = { classes: new Set([...anchors].map(a => ((a % 5) + 5) % 5)), ramps, chainSecs };
-  SHAPE_CTX.set(cfg, ctx);
+  byM.set(mKey, ctx);
   return ctx;
 }
 /* ★★★★★ §9l — THE COMPARATOR, REWRITTEN 08-03 FROM USER RULINGS. Strictly-better test; `a`/`b` are
@@ -2879,6 +2947,12 @@ function planBetter(a, b) {
      it; if a case ever seems to need it, the answer is a shape criterion with its own argument, not
      this one back. */
   if (a.shape.invalid !== b.shape.invalid) return a.shape.invalid < b.shape.invalid;          // §9l
+  /* §9x — VALUE buffs share a second because they multiply; HASTE buffs do not because they must not
+     overlap. See `planShape`'s `valueSecs` for the derivation, and MODEL-DEFECTS §9x for why this is
+     NOT `distinct` returning under a new name: it is blind to Icy Veins and Berserking, which is
+     exactly the property `distinct` lacked and T8 punished. */
+  if (a.shape.valueSecs !== b.shape.valueSecs) return a.shape.valueSecs < b.shape.valueSecs;
+  if (CANON_DISTINCT && a.shape.distinct !== b.shape.distinct) return a.shape.distinct < b.shape.distinct;
   const n = Math.min(a.shape.ts.length, b.shape.ts.length);
   for (let i = 0; i < n; i++) if (Math.abs(a.shape.ts[i] - b.shape.ts[i]) > EPS) return a.shape.ts[i] < b.shape.ts[i];
   return a.shape.ts.length < b.shape.ts.length;
@@ -2888,6 +2962,14 @@ function planBetter(a, b) {
    bit-identical or within 2 ulps — max |Δ| 2.6e-14 casts. The smallest REAL slope this must resolve
    is T16's 1.2e-3 casts/step. 1e-9 casts sits ≥10× above the measured noise (by ~4×10⁴) and 10⁶
    below the slope. ⛔ Do not widen it toward TIE_CASTS — a band here re-admits the drift. */
+/* ⚗️ EXPERIMENT SWITCH (08-05) — kept as a one-line reproduction of a MEASURED dead end, see
+   MODEL-DEFECTS §9v. `false` is the shipped state and the user's ruling. Flipping it to `true`
+   restores the abolished `distinct` criterion, which fixes T10 and T13 — and turns **T8 red as a
+   SEARCH failure**, the declared layout scoring +0.093319 casts higher than what the descent then
+   reaches. That is §9s's reachability finding reproduced exactly, and `plateauCanon` cannot rescue it
+   because T8's route is score-IMPROVING, not a plateau walk. ⇒ `distinct` does not fix the corpus, it
+   relocates the red. Leave it false. */
+const CANON_DISTINCT = false;
 const IDEAL_TIE_CASTS = 1e-9;
 const rankPair = (s, cfg) => ({ score: rankScore(s, cfg), ideal: idealScore(s, cfg), shape: planShape(s, cfg),
   band: TIE_CASTS * plainCastOf(cfg), ifloor: IDEAL_TIE_CASTS * plainCastOf(cfg) });
@@ -3345,6 +3427,154 @@ function phaseRerank(s0, cfg) {
   }
   return { s, val };
 }
+/* ★★★★★ PLATEAU CANONICALISATION — added 08-05 (MODEL-DEFECTS §9u), and it is a DIFFERENT KIND OF
+   PASS from everything above it: it never looks for a better score, only for the better member of a
+   score it already has.
+
+   ── THE DEFECT IT CLOSES ──────────────────────────────────────────────────────────────────────────
+   T7 went red the moment `distinct` was abolished (§9s) and stayed red through three attempted search
+   fixes, all reverted. The measurement says why, and it is not a search-reach problem:
+
+       declared  iv[15,55] · {isc,scb,AP}@15 · zerk@5     ideal 66.583205   ts [5,5,15,15,15,15,55]
+       emitted   iv[ 7,55] · {isc,scb,AP}@ 7 · zerk@27    ideal 66.583205   ts [5,7,7,7,7,27,55]
+
+   The two are EXACTLY tied on the ranking integral — bit-identical, not band-tied — so no hill-climb
+   can feel the difference and no seed can be "better". They are two members of one plateau, and the
+   comparator already names the declared one canonical (earliest vector: 5 < 7 at position 1). The
+   descent simply cannot WALK there, because every route out of the emitted member passes through a
+   plateau member that is shape-WORSE than where it stands:
+
+       zerk 27 → 35   ideal tied, ts [5,7,7,7,7,35,55]   ⛔ later vector — a strict descent refuses it
+       {isc,scb,AP,iv#0} +8   (only legal once zerk has left [15,35])
+       zerk 35 →  5   ideal tied, ts [5,5,15,15,15,15,55]  ✓ the declared layout
+
+   ⇒ the plateau is CONNECTED but not MONOTONE, and `phaseRerank` is a strict-improvement descent by
+   construction (it must be — §8w's ratchet exists precisely to stop it drifting). Adding "accept
+   equal-shape-worse moves" to the descent would destroy the ratchet. So the walk that needs it gets
+   its own pass, with the one property that makes it safe: **it is confined to the plateau.**
+
+   ── WHY IT CANNOT REGRESS ANYTHING ────────────────────────────────────────────────────────────────
+   A candidate enters the frontier only if its ideal score equals the ROOT's to within `ifloor` (float
+   discrimination, 1e-9 casts — not the band; a band here would re-admit exactly the §8w drift). So:
+     · it can never lose score — every node it visits is worth what the input was worth, exactly;
+     · it can never lose shape — the returned plan is `planBetter` than the input or IS the input;
+     · it is monotone in the comparator, so a test that goes red under it is a test whose declared
+       layout is comparator-DOMINATED by another plateau member — which is the §8y question ("revise
+       the layout or fix the comparator"), never a silent regression.
+   That last property is the reason this pass could be added while T10/T12 were fragile: unlike a seed
+   class or an acceptance change, it cannot reroute a basin.
+
+   ── COST, AND WHY IT IS AFFORDABLE ────────────────────────────────────────────────────────────────
+   `planBetter` reads only `ideal`, `shape` and `ifloor` — never `score` — so the plateau filter needs
+   `idealScore` (one simulate) and `planShape` (no simulate), skipping `rankScore`'s PHASE_N samples
+   entirely. That is ~12× cheaper per candidate than `tryCand`. Bounded further by a beam: `CANON_W`
+   nodes per level (ranked by the comparator itself, so the beam is biased toward the answer), `CANON_D`
+   levels, and a hard candidate budget. Deterministic throughout — fixed move order, fixed beam width,
+   comparator-sorted, no clock and no PRNG.
+   ⚠ The move set is deliberately the SAME classes phaseRerank uses (whole slide · track slide ·
+   co-pressed cluster · abutting train · single press incl. structural times · repair-closed chain).
+   Order does not matter here the way it does in the descent — this pass expands ALL candidates at a
+   node rather than taking the first accepted one — so no `!moved` gating is needed and none is used. */
+const CANON_W = 12, CANON_D = 5, CANON_BUDGET = 12000;
+function plateauCanon(s0, cfg) {
+  const keys = scheduledKeys(cfg).filter(k => !cfg.fixed[k]);
+  const PLAIN = plainCastOf(cfg), fl = IDEAL_TIE_CASTS * PLAIN;
+  // The comparator's own inputs, minus the one it never reads. See the cost note above.
+  const pairOf = s => ({ ideal: idealScore(s, cfg), shape: planShape(s, cfg), ifloor: fl });
+  const root = repair(cloneS(s0), cfg);
+  let best = root, bestV = pairOf(root);
+  const ceiling = bestV.ideal;
+  const keyOf = s => Object.keys(s).sort().map(k => k + ':' + (s[k] || []).map(t => Math.round(t)).join(',')).join('|');
+  // A candidate whose repair CHANGES the press count is a different move than the one proposed —
+  // the 3d/§6 rule, and it matters more here because this pass adopts repair's output as the node.
+  const sameCount = (a, b) => {
+    for (const k in a) { if (!b[k] || b[k].length !== a[k].length) return false; }
+    for (const k in b) { if (!a[k] || a[k].length !== b[k].length) return false; }
+    return true;
+  };
+  const SHIFTS = [-8, -7, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8];
+  const MOVES = []; for (let d = -12; d <= 12; d++) if (d) MOVES.push(d);
+  const shiftedAt = (base, mem, d) => {
+    const c = cloneS(base);
+    for (const { k, i } of mem) {
+      if (!c[k] || c[k][i] === undefined) return null;
+      const t = Math.round(c[k][i]) + d;
+      if (t < earliestPress(k, cfg) || t > cfg.T - 1) return null;
+      c[k][i] = t;
+    }
+    return c;
+  };
+  const structural = s => {
+    const out = new Set([0]);
+    const add = t => { const r = Math.round(t); if (r >= 0 && r <= cfg.T - 1) out.add(r); };
+    for (const k of scheduledKeys(cfg)) {
+      for (const t of (cfg.fixed[k] || s[k] || [])) { add(t); add(t + BUFFS[k].dur); add(t + BUFFS[k].cd); }
+      add(cfg.T - BUFFS[k].dur);
+    }
+    return [...out].sort((a, b) => a - b);
+  };
+  const candidates = s => {
+    const out = [];
+    const all = [];
+    for (const k of keys) (s[k] || []).forEach((_, i) => all.push({ k, i }));
+    for (const d of SHIFTS) out.push(shiftedAt(s, all, d));                       // 1. whole plan
+    for (const k of keys) for (const d of SHIFTS)                                 // 2. one track
+      out.push(shiftedAt(s, all.filter(p => p.k === k), d));
+    const bySec = new Map();
+    for (const p of all) { const sec = Math.round(s[p.k][p.i]); if (!bySec.has(sec)) bySec.set(sec, []); bySec.get(sec).push(p); }
+    const groups = [...bySec.entries()].sort((a, b) => a[0] - b[0]).map(([, m]) => m).filter(g => g.length > 1 && g.length < keys.length);
+    for (const mem of groups) for (const d of SHIFTS) out.push(shiftedAt(s, mem, d));   // 3. cluster
+    {                                                                             // 3c. abutting train
+      const pr = all.map(p => ({ ...p, at: Math.round(s[p.k][p.i]), end: Math.round(s[p.k][p.i]) + BUFFS[p.k].dur }));
+      const parent = pr.map((_, i) => i);
+      const find = a => { while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; };
+      for (let a = 0; a < pr.length; a++) for (let b = 0; b < pr.length; b++) {
+        if (a === b || pr[a].end !== pr[b].at) continue;
+        const ra = find(a), rb = find(b);
+        if (ra !== rb) parent[Math.max(ra, rb)] = Math.min(ra, rb);
+      }
+      const comp = new Map();
+      pr.forEach((p, i) => { const r = find(i); if (!comp.has(r)) comp.set(r, []); comp.get(r).push(p); });
+      for (const [, mem] of [...comp.entries()].sort((a, b) => a[0] - b[0]))
+        if (mem.length > 1) for (const d of SHIFTS) out.push(shiftedAt(s, mem, d));
+    }
+    const struct = structural(s);
+    for (const p of all) {                                                        // 4. one press (+3b)
+      for (const d of MOVES) out.push(shiftedAt(s, [p], d));
+      for (const t of struct) {
+        if (Math.abs(t - Math.round(s[p.k][p.i])) <= 12) continue;
+        if (t < earliestPress(p.k, cfg) || t > cfg.T - 1) continue;
+        const c = cloneS(s); c[p.k][p.i] = t; out.push(c);
+      }
+    }
+    return out;
+  };
+  let frontier = [root];
+  const seen = new Set([keyOf(root)]);
+  let budget = CANON_BUDGET;
+  for (let depth = 0; depth < CANON_D && frontier.length && budget > 0; depth++) {
+    const next = [];
+    for (const s of frontier) {
+      for (const cand of candidates(s)) {
+        if (!cand) continue;
+        if (--budget <= 0) break;
+        const rep = repair(cloneS(cand), cfg);
+        if (!sameCount(cand, rep)) continue;
+        const kk = keyOf(rep);
+        if (seen.has(kk)) continue;
+        seen.add(kk);
+        const v = pairOf(rep);
+        if (Math.abs(v.ideal - ceiling) > fl) continue;      // off the plateau — not this pass's business
+        next.push({ s: rep, v });
+        if (planBetter(v, bestV)) { bestV = v; best = rep; }
+      }
+      if (budget <= 0) break;
+    }
+    next.sort((a, b) => planBetter(a.v, b.v) ? -1 : planBetter(b.v, a.v) ? 1 : 0);
+    frontier = next.slice(0, CANON_W).map(n => n.s);
+  }
+  return best;
+}
 // ═══════════ cross-haste pooling wrapper — B1 dominance BY CONSTRUCTION (RULES §16, ACCEPTANCE) ═══
 // The per-haste search can settle in a basin a NEIGHBOR gear-haste's search would beat when its plan
 // is scored at H (the Phase-6 cross-val's "borrowed plan out-scores native" — a search miss, not a
@@ -3393,6 +3623,14 @@ function phaseFinish(best, cfg) {
   for (const start of phaseStarts(best.s, cfg)) {
     const r = phaseRerank(start, cfg);
     if (planBetter(r.val, bv)) { bv = r.val; bs = r.s; }
+  }
+  /* §9u — and THEN name the canonical member of whatever plateau the descent landed on. Runs last and
+     on the descent's winner only: it is comparator-monotone (see `plateauCanon`), so it can only
+     return `bs` or something `planBetter` than it, and a cell where every plateau neighbour is refused
+     comes out byte-identical by construction. */
+  {
+    const c = plateauCanon(bs, cfg), cv = rankPair(c, cfg);
+    if (planBetter(cv, bv)) { bv = cv; bs = c; }
   }
   if (bs === best.s) return best;
   return { ...best, s: bs, val: simulate(cloneS(bs), cfg).robust };

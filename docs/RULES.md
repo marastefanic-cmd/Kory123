@@ -1846,7 +1846,17 @@ resource criteria that are not preferences but waste:
 1. `snaps` — do not spend a Cold Snap that buys nothing (T9).
 2. `wastedPre` — do not prepull a press that funds no extra use (08-02).
 3. `offGrid` — presses classify onto the fight's own structural lattice (§9l).
-4. **the earliest press vector.** That is the rule.
+   ⚠ **The lattice depends on the PLAN, not only the fight** (§9w, 08-05): the ramp-end anchor is
+   computed at the haste actually running when that ramp runs, so a plan that hastes the pull has a
+   shorter ramp and therefore a different grid. Getting this wrong put a whole spurious residue class
+   on T10's grid.
+4. `invalid` — a VALUE press inside a ramp is not yet doing full work (§9l).
+5. `valueSecs` — **value buffs share a second; haste buffs do not** (§9x, 08-05). Value (`sp`/`dmg`)
+   buffs MULTIPLY each other (§4's cross term), so splitting them forfeits it; haste buffs must go back
+   to back and never overlap (§4c), so they are deliberately NOT counted. ⇒ fewer distinct
+   value-press seconds wins. ★ This is the criterion `distinct` was a lossy proxy for, and restricting
+   it to value tracks is exactly what fixes the lossiness the user objected to.
+6. **the earliest press vector.** That is the rule.
 
 ⛔ **`distinct` (fewest press moments) is ABOLISHED** (§9s). It was a lossy PROXY for earliest —
 co-pressing is what MAKES a vector early, so the two mostly agreed, and where they disagreed the proxy
@@ -1854,3 +1864,54 @@ could prefer a LATE cluster over an EARLY split. Every ruling it ever decided (T
 T8's Berserking second) is reproduced by the earliest vector alone. ⇒ do not reintroduce it, and do
 not describe the tool as preferring "aligned presses": it prefers EARLY presses, and alignment is a
 consequence.
+
+⚠⚠ **AND THE PREMISE OF THAT LAST SENTENCE WAS FALSIFIED BY T10 AND T13 — 08-05, MODEL-DEFECTS §9v.**
+*"Alignment is a consequence"* is the claim the abolition rests on. It was verified against T6/T7/T8
+and it holds there. It did **not** hold on T10 or T13, and the counterexamples are airtight rather than
+marginal:
+
+| | declared (ground truth) | what the tool emits | ideal Δ |
+|---|---|---|---|
+| T10 | value cluster + Berserking @ **0:10**, riding Icy Veins #1 | the same cluster @ **0:07** | **0.000e+0** |
+
+The emitted plan is earlier at six press positions and later at none — so **no earliness rule of any
+kind can reach the declared layout** (not lexicographic, not press-sum, not reverse-lexicographic). The
+only thing that separated them under the old criterion set is press-moment count, 6 vs 7.
+
+✅ **BOTH ARE CLOSED, AND NEITHER NEEDED `distinct` BACK.**
+- **T10 was an ARITHMETIC defect, not a doctrine one** (§9w): its rival at 0:07 was on-grid only
+  because the ramp-end anchor was computed at passive haste while the plan's own prepull Icy Veins
+  hastes the pull. Correct the ramp and 7 is not a structural second of that fight — `offGrid` 6 vs 0.
+- **T13 needed the criterion `distinct` was a lossy proxy FOR** (§9x): `valueSecs`, criterion 5 above.
+  Value buffs multiply and want the same second; haste buffs must not overlap and are not counted. The
+  restriction to value tracks is what makes it safe — it is blind to Icy Veins and Berserking, so it
+  cannot repeat `distinct`'s T8 failure (which was to block the descent's route by penalising
+  ideal-tied intermediates that moved a HASTE press).
+
+⛔ The measured dead end stays on the record: reinstating `distinct` reads **16 of 17** too — it just
+moves the red from T10/T13 to T8, as a **search** failure worth +0.093319 casts. §9v carries the full
+candidate table and what each one breaks.
+
+## 18. THE PLATEAU IS CONNECTED BUT NOT MONOTONE — why naming the canonical member needs its own pass *(08-05, MODEL-DEFECTS §9u)*
+
+A corollary of §17 that is easy to get wrong, and cost three reverted attempts before it was measured.
+
+Once the objective declares two layouts **exactly** tied on the ideal score, §17 names which one is
+canonical — but *naming* it and *reaching* it are different problems. Reaching it is a walk across the
+plateau, and **that walk is not downhill.** Measured on T7:
+
+```
+emitted   iv[ 7,55] · cluster@7  · zerk@27     ts [5,7,7,7,7,27,55]
+  ↓ zerk 27→35      ideal tied, ts [5,7,7,7,7,35,55]   ⛔ LATER vector — worse under §17
+  ↓ cluster +8      ideal tied  (only legal once Berserking has left the Icy Veins window)
+declared  iv[15,55] · cluster@15 · zerk@5      ts [5,5,15,15,15,15,55]  ✓ canonical
+```
+
+⇒ **a strict-improvement descent can never take the first step**, at any neighbourhood size, effort or
+seed. That is not a search-reach problem and no amount of restarting fixes it. The fix is a pass
+confined to the plateau (`plateauCanon`) that walks it with a **beam** and returns its comparator-best
+member — safe precisely because confinement to an ideal-EXACT tie means it cannot move the score.
+
+★ The diagnostic rule that generalises: **when the ideal gap between the declared layout and the
+emitted one is exactly zero, the defect is neither in the search nor in the scorer.** Check that number
+first — `tests/anchors.mjs` prints it on every failure alongside the shape criterion that decides.

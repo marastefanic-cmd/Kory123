@@ -276,6 +276,20 @@ different Berserking placements across one 1.5 s cast interval of that same inst
   Three of the project's four largest misses were coupled coordinates that every 1-D and 2-D step
   refused. A candidate `repair` had to relegalize is refused, so a plan is never scored as one layout
   and adopted as another.
+- `plateauCanon(s, cfg)` — ★★★ **08-05 (§9u), and it is NOT a descent.** Runs last, on the descent's
+  winner, and answers a different question: *which member of this plateau is canonical?* A candidate
+  enters its frontier only if its **ideal** score equals the root's to within `ifloor` (float
+  discrimination — ⛔ never `TIE_CASTS`, which would re-admit §8w's drift), so it cannot move the score
+  at all; within that confinement it runs a **beam** (`CANON_W = 12` wide, `CANON_D = 5` deep, 12 000
+  candidates max) over the same move classes above and returns the `planBetter`-best node it saw.
+  ⚠ **Why a beam and not another descent.** Measured on T7: the plateau is CONNECTED but not MONOTONE —
+  every route from the member the descent reaches to the canonical one passes through a member that is
+  shape-WORSE, so a strict-improvement pass is stuck by construction and no neighbourhood size, seed
+  class or effort setting can help. (Three attempts that assumed otherwise are recorded and reverted in
+  §9u.) Because it is **comparator-monotone** it cannot reroute a basin: a cell whose plateau
+  neighbours are all refused comes out byte-identical. Cost: `planBetter` never reads `score`, so the
+  filter skips `rankScore`'s PHASE_N samples — one `simulate` per candidate, and the 17-case suite went
+  6m → 7m31s.
 - `phaseStarts(winner, cfg)` — the point winner plus the same structural seeds the main search uses
   (naive, packed, pin-stacked, kill-anchored). One start left an outlier at 1 of 5 pins.
 - `best.val` stays in **point** units so the pooling comparison, `plan-diff` and the UI readout keep
