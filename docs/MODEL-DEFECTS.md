@@ -4453,6 +4453,21 @@ Bloodlust call and onto the intermission exit) and Berserking (0:00 → 1:40, i.
 instead of the opener). Reading T8's own comment, attention was entirely on the Icon; IV and
 Berserking were whatever the tool emitted at the time.
 
+✅ **RULED 08-05 — T8 IS REVISED TO THE BRUTE-FORCE LAYOUT.** User confirmed it in the tool (Debug
+export, locked & validated at their buffed gear: 107.466 → 107.568, +0.102 casts) and ruled it in.
+The locked layout is `iv[20,115] · isc[-5,115] · scb[0,120] · ap[120] · zerk[95]`.
+★ **The canonical Berserking second is 95, not the 100 this instrument reported.** The plateau is
+{95, 100, 105} — exactly tied at both gear levels — and 95 wins on `distinct` (it shares the second
+with the Bloodlust call: 6 press moments against 7), before the earliest rule is even reached. 95
+never entered `lattice-brute`'s candidate pool, so the instrument named a non-canonical member of a
+plateau it had correctly located: a COVERAGE gap (the pool is the top-N structures' polish bands),
+not a comparator error. Fourth instrument defect this corpus has caught.
+★★ **AND THE ICY VEINS HALF WAS ALWAYS GOVERNED BY THE EARLIEST RULE** — user, 08-05: *"the first IV
+should have always been @20 as per the earliest rule and I have mentioned that previously, but I guess
+it got lost along the way."* Measured: `iv#1 95→20` is **exactly 0.000000**, the ESTABLISHED-FACTS
+pair `Icy Veins × Bloodlust = 0.000` at h=0. A 0.000000 tie means the tie-break governed from the
+start, so the old layout was non-canonical on its own terms before any of this ran.
+
 ⇒ **This is the value of exhaustive enumeration stated as cleanly as it can be**: the corpus checked
 what it was looking at, and the brute force checked what it was not. ⛔ The test is NOT edited. Until
 the user rules, T8 stands as declared and this entry is the record of the discrepancy.

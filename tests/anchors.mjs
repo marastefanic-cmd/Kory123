@@ -267,9 +267,41 @@ const CASES = [
   { name: 'T7 — 1:15, Bloodlust pinned 0:05, intermission 0:50-0:55, 1387 SP, 38 % crit',
     T: 75, sp: 1387, crit: 38, lust: 5, intermission: [50, 55],
     want: { icyVeins: [15, 55], isc: [15], scb: [15], arcanePower: [15], bloodlust: [5], berserking: [5] } },
+  /* ★★★★★ T8 REVISED 08-05 BY USER RULING — the THIRD revision, and the only one that overturns a
+     DAMAGE claim rather than a plateau member. Brute-forced by `tools/lattice-brute.mjs`, confirmed by
+     the user in the tool (Debug export, locked & validated), and re-verified at BOTH gear levels.
+
+         was   icyVeins[95,115] · isc[-5,115] · scb[0,120] · ap[120] · zerk[0]     108.733278
+         now   icyVeins[20,115] · isc[-5,115] · scb[0,120] · ap[120] · zerk[95]    108.827502  (+0.094224)
+
+     ⚖️ WHY THIS IS LEGITIMATE DESPITE BEING OUTSIDE THE TIE BAND (47×), where §8y forbids revision:
+     §8y protects against editing a test because the TOOL disagrees. Here the tool AGREES with the old
+     layout — it still emits it — and what overturned it is an exhaustive enumeration plus the user's
+     own ruling. The old layout was never argued for: T8's declaration reasons entirely about the ICON
+     prepull, and `isc[-5,115]` is UNCHANGED, so the property this test exists to pin is untouched.
+     ★★ THE MECHANISM, AND IT IS ENTIRELY THIS FILE'S OWN CLOSED FORMS — a pure COUPLED move:
+       · `iv#1 95→20` alone = **exactly 0.000000**. That is ESTABLISHED-FACTS' named pair
+         **Icy Veins × Bloodlust = 0.000 at h=0**: outside Lust IV takes 0.667→0.8 casts/s, inside it
+         takes 0.867→1.0 (capped) — +0.133/s either way. Moving it is free.
+         ⇒ USER, 08-05: *"the first IV should have always been @20 as per the earliest rule and I have
+         mentioned that previously, but I guess it got lost along the way."* Correct, and measured: a
+         0.000000 tie means the earliest rule governed from the start.
+       · `zerk 0→95` alone = **−0.772443**, because with IV still on the Lust call the window is
+         Lust×IV = 1.56, already over the GCD cap, so Berserking there is worth **zero**.
+       · together = **+0.094224**, and the coupling term is **+0.866667** — ESTABLISHED-FACTS §5's
+         *"Berserking in Bloodlust, no Icy Veins = 0.867"*, to the digit.
+     ⇒ in one line: **T8 spent Berserking at the pull for ~0.67 casts when it could ride Bloodlust for
+     0.867, and the only thing blocking that was an Icy Veins placement that cost nothing to move.**
+     ⚠ `zerk` PLATEAU: {95, 100, 105} tie exactly (108.827502 at test gear, 107.569575 at the user's
+     buffed gear). **95 is canonical on `distinct`** — it shares the second with the Bloodlust call, 6
+     press moments against 7 — before the earliest rule is even reached. ⛔ `lattice-brute` reported
+     `zerk[100]`: 95 never entered its candidate pool. A coverage gap in the INSTRUMENT, not a tie.
+     ⛔⛔ EXPECTED **RED** UNTIL THE SEARCH REACHES IT, like T7 and T11: every single-coordinate step
+     away from the old layout is flat (IV) or sharply downhill (Berserking), so no hill-climb escapes —
+     the §8m/§8s coupled-move family. Fix it in the search. NEVER by reverting this. */
   { name: 'T8 — 2:15, Bloodlust pinned 1:35, intermission 0:15-0:20 — THE PREPULL CASE',
     T: 135, sp: 1387, crit: 38, lust: 95, intermission: [15, 20],
-    want: { isc: [-5, 115], scb: [0, 120], berserking: [0], icyVeins: [95, 115], arcanePower: [120], bloodlust: [95] } },
+    want: { isc: [-5, 115], scb: [0, 120], berserking: [95], icyVeins: [20, 115], arcanePower: [120], bloodlust: [95] } },
   /* ★ T9 — DECLARED 08-01. The first LONG fight, the first with NO Bloodlust, and the first on the
      buffed-stat pipeline (typed 1387/38/750 Int + 10 raid buffs -> 1611.8875 SP / 50.765 % crit,
      Tirisfal 2pc on). At 6:20 every cooldown comes back more than once and the 120 s and 180 s
