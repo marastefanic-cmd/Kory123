@@ -5020,3 +5020,63 @@ whatever you type, and `tests/anchors.mjs` states crit finally, so loading T1 sh
 test's 25 %. That is inert for every declared test by the cancellation argument above, and closing it
 would mean either changing what the crit box means or typing 19 to get 25 — both worse. It is recorded
 here instead, and the candidates path routes around it by construction.
+
+## §10a — ⛔ THE ASHTONGUE TERM PUTS A CAST LATTICE BACK IN THE OBJECTIVE (08-05) — open
+
+Found while explaining the Ashtongue layout structure to the user, who asked the right question:
+*"what I don't understand is why it has to be exactly 5s and not 5 or more."* The answer turned out to
+be a modelling artifact rather than physics, which makes it a defect rather than a rule.
+
+### What is exact and what is not
+
+Exact, and verified to four decimals: proc uptime is `P = 1 − (1−q)^n` with `n = ceil(DUR / a)`, and the
+two observed plateaus are precisely `n = 4` (passive, a = 1.417 s) and `n = 5` (Icy Veins, a = 1.173 s),
+with `q = 0.23499` per cast solving both. The one-proc-duration lag at each window edge is the trailing
+window draining, and it is real.
+
+⛔ **`n` is an INTEGER, and that is the problem.** At passive haste the real number of attempts inside a
+5 s window is **3.53**, not 4 — sometimes 3, sometimes 4, depending where the window falls against the
+cast stream. `ceil` picks 4 always. So a quantity that should vary smoothly with the cast interval
+instead JUMPS, and the objective inherits the jump.
+
+### The symptom, measured
+
+Sweeping the gap between two Icy Veins windows (T=140, Icy Veins + Ashtongue only, so nothing else can
+confound it), Δcasts against gap 0:
+
+```
+gap    0      1       2       3      4      5       6..10
+Δ    0.000 -0.018  -0.012  -0.004 +0.008 +0.022   -0.034  (identical for 6, 7, 8 and 10)
+```
+
+⚠ **Gaps 6 through 10 score IDENTICALLY.** A continuous mechanism cannot do that. It is a flat shelf
+with a cliff at 5→6, which is the signature of a step function, and it is worth 0.055 casts — 27× the
+tie band, i.e. big enough to decide layouts.
+
+★ **AND IT FALSIFIED THE OBVIOUS EXPLANATION, which is why this is filed rather than written up as a
+rule.** The natural story — "gap 5 lands more proc-seconds under a haste buff, where a rating buff is
+worth 1.2× more because it multiplies with a mult buff" — predicts the right SIGN and the wrong
+NUMBERS. Measured proc-seconds (hasted / passive) are **identical at 30.618 / 61.942 for every gap from
+5 to 10**, while the scores spread by 0.055. Predicted +0.0088 across that whole range; actual +0.0219
+down to −0.0336. ⇒ where the proc-time lands is NOT the mechanism; the integer attempt count is.
+
+### Why it matters beyond tidiness
+
+MODEL-DEFECTS §8l is unambiguous: **`scoreStart` is PURE WINDOW GEOMETRY** — *"the integral is
+`∫ rate(m(t)) dt` and `m(t)` is set by press times, durations and wall events — a cast lattice has no
+business in it."* Three earlier versions smuggled one in and each cost a measured defect. The Ashtongue
+term smuggles one back in through `ceil(DUR/a)`: the ideal (unquantised) score now depends on a discrete
+attempt count. That is exactly the banned shape, and it arrived legitimately — a per-cast proc genuinely
+needs attempts — which is what makes it worth solving rather than reverting.
+
+### The likely fix, NOT attempted here
+
+Replace `ceil` with the exact expectation over the window's phase: with `DUR/a = k + f` (k integer,
+0 ≤ f < 1), a uniformly-placed window contains `k+1` attempts with probability `f` and `k` with
+probability `1−f`, so `P(up) = f·[1−(1−q)^(k+1)] + (1−f)·[1−(1−q)^k]`. That is the same
+smooth-the-phase-average move §9m's addendum already made for the edge memory (*"can't you average out
+the values? why do you need +-?"* — the user, and they were right then too), and it would turn the shelf
+into a slope without adding a tunable.
+⚠ It will MOVE PLANS — the 5 s ridge is 0.055 casts tall — so it needs the full corpus + plan-diff
+treatment, and any Ashtongue cell derived before it lands must be re-cut. ⇒ **do not declare an
+Ashtongue anchor on an exact second until this is closed** (RULES §19 carries the same warning).

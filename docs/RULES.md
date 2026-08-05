@@ -1915,3 +1915,56 @@ member — safe precisely because confinement to an ideal-EXACT tie means it can
 ★ The diagnostic rule that generalises: **when the ideal gap between the declared layout and the
 emitted one is exactly zero, the defect is neither in the search nor in the scorer.** Check that number
 first — `tests/anchors.mjs` prints it on every failure alongside the shape criterion that decides.
+
+## 19. ASHTONGUE MAKES HASTE WINDOWS WANT TO CHAIN 5 SECONDS APART *(08-05, user-found; derivation MODEL-DEFECTS §10a)*
+
+⚠ **This rule exists ONLY when Ashtongue is equipped.** Verified directly: with the proc off, ten
+layouts that move Icy Veins anywhere after Bloodlust — split, flush, any gap — score **bit-identically**
+(97.963059 every one). Total Icy Veins uptime inside the fight is what matters and nothing else, because
+nothing is near the GCD cap once Icy Veins is out of Lust, so the rate curve is linear and only the AREA
+counts. Turn the proc on and the same ten spread by **0.108 casts**.
+
+### The mechanism, measured
+
+Ashtongue's proc uptime is a TWO-LEVEL step, and the levels are exactly the renewal law's integer
+attempt counts (`n = ceil(DUR / cast interval)`, `P = 1 − (1−q)^n`, ESTABLISHED-FACTS §12):
+
+| regime | cast interval | `n` | P(up) |
+|---|---|---|---|
+| passive | 1.417 s | `ceil(5/1.417)` = **4** | 0.6575 |
+| under Icy Veins | 1.173 s | `ceil(5/1.173)` = **5** | 0.7380 |
+
+Solving `q` from the passive level gives 0.23499/cast, and `1−(1−q)^5 = 0.7380` reproduces the hasted
+level to four decimals — so the two observed plateaus ARE n=4 and n=5, nothing else.
+
+★ **The state lags the haste by one proc duration at BOTH edges**, because the law counts attempts in a
+TRAILING window: Icy Veins starting at 0:60 leaves P at 0.6575 until ~0:63.8; Icy Veins ending at 1:20
+leaves P at 0.7380 until ~1:24.2. ⇒ **the elevated proc state survives ~5 s past the window that earned
+it**, which is the whole rule.
+
+### The rule
+
+**Chain haste-window EDGES five seconds apart.** A window that starts one proc duration after the
+previous one ended inherits the elevated state instead of paying the ramp-in; start later and the
+carry-over has already drained.
+
+Verified by moving Bloodlust and watching the optimum follow it, which is what makes this causal rather
+than a coincidence of one fight:
+
+| Bloodlust window | peak Icy Veins start | = Lust end + `ATI.DUR` |
+|---|---|---|
+| [20, 60] | **65** | 60 + 5 ✓ |
+| [10, 50] | **55** | 50 + 5 ✓ |
+| [30, 70] | **75** | 70 + 5 ✓ |
+| absent | no peak (monotone) | — |
+
+⚠ It is not about Bloodlust specifically — with Lust absent the peak sits at the END OF BERSERKING + 5.
+Any haste window's trailing edge anchors the next one. The user found the same structure independently
+on the value cluster: at `cluster@0:45` the edges land 55 → 60 → 65 (Berserking end, Lust end, Icy Veins
+start), worth **+0.0095 casts** over `cluster@0:25`, and the three tracks must move TOGETHER (Berserking
+alone to 0:45 is −0.24).
+
+⛔ **TRUST THE DIRECTION, NOT THE SHARPNESS — see MODEL-DEFECTS §10a.** The `ceil` makes P(up) a step
+where the real process is smooth (3.53 attempts fit in the window at passive haste, not 4), so the model
+shows a flat shelf for every gap ≥ 6 and a cliff at 5→6 that a real proc process would round off. The
+chaining direction is solid; the exact second is a modelling artifact until §10a is closed.
