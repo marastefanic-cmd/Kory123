@@ -4552,3 +4552,25 @@ with its own argument, not this one back.
 
 ⚠ **T7 remains RED** (§9p) — its move is a genuine 3-coordinate relocation, not a tie-break artifact,
 so it still needs the canonicalisation pass §9p specifies.
+
+## §9t — ⛔ NO 2-TRINKET EQUIP CAP: the tool plans fights that cannot be played (08-05, user-found)
+
+User, correcting a kit I had queued: *"SCB Ashtongue and Skull all occupy trinket slots and you can at
+most have 2 equipped."* `TRINKETS = TRINKET_TIERS.flatMap(...)` = **`[mqg, isc, scb, skull, ati]`**, the
+game gives you **two** slots, and **nothing in the tool enforces that.** `TRINKETS` is used only for UI
+grouping and for `OFF_TRINKETS` (the 20 s shared on-use lockout, correctly `[skull, mqg, isc]` — `scb`
+is gem-triggered and `ati` is passive, so neither takes the lockout, but both still take a SLOT).
+
+⇒ a user can tick all five and the planner will happily produce a schedule, a cast count and an
+expected-damage figure for a character that cannot exist. Same family as the `buildSegments`
+overlap bug (ROADMAP): the UI accepts an impossible setup and the model answers it without complaint.
+
+**What it voided here** — caught before any of it reached a ruling:
+- `kit-sweep`'s `ati+icon+gem` (ati+isc+scb) and `icon+gem+skull` (isc+scb+skull) — both three
+  trinkets. Now `ati+gem` and `gem+skull`, which are the two kits the user names as Phase-3 practical.
+- Two derivation cells (`D6-ati+icon+gem`, `E5-ati+skull+scb`) — dropped.
+
+⚠ **The fix is validation, not scoring**: the engine is right to model whatever kit it is handed (that
+is what makes A/B kit comparison possible); it is the INPUT layer that should refuse a third trinket,
+and `cfg`-building tools should assert it. ⛔ Do not enforce it inside `simulate` — a hard refusal
+there would break `kit-sweep`'s legitimate use of odd kits for gradient probing.
