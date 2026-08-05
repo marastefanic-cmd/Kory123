@@ -65,10 +65,20 @@ reading a field that still exists; do not "simplify" one of them away without au
 > board walk, one term per Arcane Blast (`dmg × frac`, `frac` being the boundary credit in the next
 > block), on **every** call rather than only when `collect` is set — but they are now the number the UI
 > REPORTS, not the number anything ranks on. Both are returned on purpose so the gap stays measurable.
-> ★ **And the objective is a PAIR:** integral first, then inside `TIE_CASTS = 0.002` casts the SHAPE
-> decides — fewest distinct press moments → earliest → the flattened press vector
-> (`rankPair`/`planBetter`, `~2369–2390`). A search with no tie-break wanders inside a plateau, which
-> is what the 07-28 revert punished.
+> ★ **And the objective is a PAIR:** integral first (on the IDEAL, unquantised form, separated by float
+> discrimination and NOT by `TIE_CASTS`), then the SHAPE decides:
+> `snaps → wastedPre → offGrid → invalid → valueSecs → the earliest press vector`
+> (`rankPair`/`planBetter`/`planShape`). A search with no tie-break wanders inside a plateau, which is
+> what the 07-28 revert punished. Statement of record: **RULES §17**.
+> ⚠ Three things about the shape half are easy to get wrong and each cost a red test on 08-05:
+>   · `distinct` (fewest press moments) is **ABOLISHED** (§9s) — this line used to name it first.
+>     Reinstating it is a measured dead end (§9v): same 16/17, red relocated to T8.
+>   · `offGrid`'s lattice is **plan-dependent** (§9w): `shapeCtxOf(cfg, s)` computes the ramp-end anchor
+>     at the haste the PLAN actually runs at the pull, because a prepull haste buff really does move a
+>     fight's structural seconds.
+>   · `valueSecs` counts only `sp`/`dmg` tracks (§9x): value buffs multiply so they want one second,
+>     haste buffs must not overlap so counting them pushes the wrong way.
+> ★★ And naming the canonical member is not the same as REACHING it — see `plateauCanon` below.
 > **Standing gates, no sim:** `node tools/self-consistency.mjs` must read `0.00e+0` **and 0 structural
 > violations**; `node tools/law-check.mjs` must reproduce the closed forms and CATCH its `--self-test`.
 > ⚠ The first alone is not enough — it compares two accounts that read the same board, and printed a
