@@ -46,6 +46,25 @@ and the plan-shape suites are **deleted** (user decision 07-28, restated twice);
 `tools/law-check.mjs` (the scorer vs the algebra) and `tools/self-consistency.mjs` (the scorer vs
 itself) — which are not claims about which layout is right.
 
+## ★★★★ WHY BREADTH OF COVERAGE IS THE POINT — user ruling, 08-05, and it governs test selection
+
+Asked whether the length ladder should be re-cut onto the Phase-3 kit instead of the Phase-2 one the
+user actually plays today, the answer was neither — it was **both, and the reason is the project's
+whole purpose**:
+
+> *"of course we keep all the tests, the point of the tool is to UNDERSTAND THE LOGIC BEHIND ALL OF IT
+> and be able to adapt to new scenarios. IF I just hard derive the tests for the current setup then I
+> don't need the tool at all."*
+
+⇒ **a test is not there to record the answer for one setup; it is there to pin a piece of the LOGIC**,
+so the model generalises to gear, kits and fights nobody has tested. Consequences that bind:
+· Never retire a declared test because its kit is no longer played — the Phase-2 cells stay when
+  Phase 3 lands, because what they pin is the logic, not the gear.
+· A kit nobody plays (the MQG pairings, odd `kit-sweep` combos) still earns coverage: it checks the
+  buff logic stays coherent where no one is looking.
+· ⛔ Deriving tests only for the current setup is the failure mode this ruling names explicitly — it
+  makes the tool redundant with a lookup table.
+
 ## The end goal (why this exists)
 
 **The planner itself is the goal** — a tool that, given what you know and control going into a fight

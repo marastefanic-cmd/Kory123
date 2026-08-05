@@ -1832,3 +1832,25 @@ and does Lust timing change it?* Answered by exact arithmetic over constructed s
 ⚠ Status: a RECORDED FINDING, not ground truth — the tool's own 12:20 answers are uncertified at
 that size (no k=3 audit was run over ~30 presses) and the user ruled "just record, revisit later"
 (08-04). No 12:20 cell is declared; the family numbers ARE exact.
+
+
+## 17. THE TIE-BREAK RULE, STATED ONCE — *"earliest but same"* *(user ruling, 08-05, standing)*
+
+⛔ **THIS IS THE ONLY TIE-BREAK DOCTRINE.** User, 08-05: *"'earliest but same' is the rule to judge
+tiebreaks. 'aligning presses' is retired."*
+
+When the objective cannot separate two layouts — the IDEAL (unquantised) score ties to the float floor
+— the canonical layout is the one whose flattened press vector is **earliest**, after the two
+resource criteria that are not preferences but waste:
+
+1. `snaps` — do not spend a Cold Snap that buys nothing (T9).
+2. `wastedPre` — do not prepull a press that funds no extra use (08-02).
+3. `offGrid` — presses classify onto the fight's own structural lattice (§9l).
+4. **the earliest press vector.** That is the rule.
+
+⛔ **`distinct` (fewest press moments) is ABOLISHED** (§9s). It was a lossy PROXY for earliest —
+co-pressing is what MAKES a vector early, so the two mostly agreed, and where they disagreed the proxy
+could prefer a LATE cluster over an EARLY split. Every ruling it ever decided (T6's revision, T7's,
+T8's Berserking second) is reproduced by the earliest vector alone. ⇒ do not reintroduce it, and do
+not describe the tool as preferring "aligned presses": it prefers EARLY presses, and alignment is a
+consequence.
