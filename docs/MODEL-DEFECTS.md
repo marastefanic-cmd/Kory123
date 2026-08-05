@@ -4954,3 +4954,69 @@ greedy descent is not monotone in its move set, so a new move offered early make
 locally-better step and converge elsewhere. Running last means every older class is exhausted first, so
 every previously-reachable fixed point is reached and ranked before this class speaks, and a cell where
 every suffix candidate is refused stays byte-identical by construction.
+
+## §9z — ✅ THE SETUP SNAPSHOT WAS MISSING TWO INPUTS THAT CHANGE THE ANSWER (08-05). Ashtongue is what exposed it.
+
+Found while building the candidates strip the user asked for (*"put it up into the html so I can
+actually see the lines and I'll confirm them"*), which is a workflow that only works if loading a row
+puts the page in the state the line was computed in. It did not.
+
+### What was wrong
+
+`snapshotState()` — what a saved preset stores, what a share link encodes, what autosave restores —
+carried gear and cooldowns but **not the Tirisfal 2-piece checkbox and not the raid-buff panel**. Both
+feed `buffedStats`, i.e. both change the SP and crit the engine is handed. And `goldenToState()` pinned
+neither, so a baked preset inherited whatever the *viewer* happened to have ticked.
+
+Two claims in this repo were therefore false:
+- *"a link IS a reproducible plan"* (the URL-sharing block's own words) — false whenever the receiver's
+  panel differed from the sender's, which is the default state of two different people;
+- *"a preset you confirm in the tool IS the locked test"* (the preset block's own words) — false unless
+  your boxes happened to match the harness's, and `tools/engine-node.mjs`'s `cfgFor` reads a missing
+  `t5two` as **false** while the page's box defaults to **checked**, so T1–T8 disagreed by default.
+
+### The measurement, on the cell the user cares about most
+
+`ati+gem`, 2:00, Lust 0:20, typed 1387 SP / 38 crit:
+
+| page state | what the engine is handed | emitted layout |
+|---|---|---|
+| raid panel ON (the default) | 1686.4 SP · 59.66 % crit · Tirisfal on | — |
+| raid panel OFF | 1387 SP · **44 %** crit · Tirisfal on | `icyVeins[65,90] · cluster@25` |
+| what the enumeration used | 1387 SP · **38 %** crit · Tirisfal off | `icyVeins[0,65] · cluster@15` |
+
+**A completely different plan.** Not a plateau member — a different structure.
+
+### ★ Why it stayed invisible for so long, and this part is theorycraft rather than plumbing
+
+**Crit cancels out of the objective.** It is a constant factor on every cast, so for every kit without
+Ashtongue the three stat states above give the SAME plan — verified directly (`icyVeins[0,20] ·
+cluster@20 · zerk@40` at both stat points, ati off). The defect could not produce a wrong answer until
+a mechanic made crit stop being constant, and exactly one does: **Ashtongue's proc rate is driven by
+crit** (ESTABLISHED-FACTS §12). ⇒ the bug was latent from the day the panel shipped and became live the
+day the proc model did — and it bites first on precisely the kits the user names as Phase-3 practical.
+⚠ The same reasoning says an AoE phase is the other exposure (`aoeCritAmp` is where crit stops dividing
+out), which no declared test currently covers.
+
+### What landed
+
+1. `snapshotState` carries `t5two`, `int` and the whole raid panel; `applyState` applies them **only
+   when present**, so an old link or saved preset degrades to the previous behaviour rather than
+   silently switching Tirisfal off.
+2. `goldenToState` pins both for every baked row: `t5two` from the preset's own gear (matching
+   `cfgFor`'s missing-is-false), and every raid buff OFF — a declared layout's SP and crit are stated
+   FINAL, so the panel would add them a second time.
+3. Candidates are enumerated at EFFECTIVE stats and presented as TYPED ones.
+   `tools/candidates-inject.mjs` converts by reading `TALENTS.arcaneImpact` out of `index.html` and
+   REFUSES to run if it cannot parse it — a silently-wrong offset is the exact failure it exists to
+   prevent.
+4. **The rows check themselves.** Each carries `eff`, the stats its enumeration used, and on load the
+   page compares `readCfg()` against them and prints a refusal banner on mismatch. Between the crit box
+   meaning your unbuffed sheet value, the talent, the Tirisfal box and the panel there are four ways
+   for "same fight" to quietly stop being true; trusting the load is not good enough.
+
+⚠ **ONE DIVERGENCE IS LEFT AND IT IS DELIBERATE.** The page adds the Arcane Impact talent (+6 crit) to
+whatever you type, and `tests/anchors.mjs` states crit finally, so loading T1 shows 31 % against the
+test's 25 %. That is inert for every declared test by the cancellation argument above, and closing it
+would mean either changing what the crit box means or typing 19 to get 25 — both worse. It is recorded
+here instead, and the candidates path routes around it by construction.

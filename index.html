@@ -311,6 +311,19 @@
   .golden-strip[open] > summary { margin-bottom: 10px; }
   .gchip { padding: 4px 13px; font-size: 12.5px; color: var(--ink-2); }
   .gchip.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); color: var(--ink); }
+  /* the candidates strip — a row, not a chip, because the enumerated LINE is the content */
+  .cand-strip > summary { cursor: pointer; font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+  .cand-strip > summary .sublab { font-family: var(--font-ui); letter-spacing: 0; text-transform: none; font-weight: 400; font-size: 12px; }
+  .cand-strip[open] > summary { margin-bottom: 10px; }
+  .cand-rows { display: flex; flex-direction: column; gap: 9px; }
+  .cand-row { border-left: 2px solid var(--grid); padding: 2px 0 2px 10px; }
+  .cand-head { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .cand-meta { font-size: 11.5px; color: var(--muted); }
+  .cand-uniq { color: var(--ok, var(--accent)); }
+  .cand-tie { color: var(--warn, var(--muted)); border-bottom: 1px dotted currentColor; cursor: help; }
+  .cand-line { margin-top: 4px; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; color: var(--ink-2); line-height: 1.55; }
+  .cand-line b { font-family: var(--font-ui); font-weight: 600; color: var(--ink); }
+  .cand-warn { margin-top: 4px; font-size: 11.5px; color: var(--bad, #d66); }
   .psave { display: flex; gap: 6px; margin-left: auto; }
   .psave input { width: 130px; font-size: 13px; padding: 5px 9px; }
   .psave button {
@@ -647,6 +660,10 @@
     <details class="preset-strip golden-strip" id="golden-strip">
       <summary title="The three layouts declared as ground truth. Click one to load its exact inputs, then press Find optimal overlay — the planner should reproduce the declared plan. These are the tool's own tests, not raid-night presets.">Declared tests <span class="sublab">— ground truth, click to reproduce</span></summary>
       <span class="pchips" id="golden-chips"></span>
+    </details>
+    <details class="preset-strip cand-strip" id="cand-strip">
+      <summary title="Fights whose best layout was found by EXHAUSTIVE ENUMERATION, not by the search. Each row shows the line the enumeration says is optimal. Load it, press Find optimal overlay, and see whether the planner reproduces it — then rule.">Candidates <span class="sublab">— brute-forced, awaiting your ruling</span></summary>
+      <div class="cand-rows" id="cand-rows"></div>
     </details>
     <div class="preset-strip" id="preset-strip">
       <span class="pslab">Custom presets</span>
@@ -7484,6 +7501,22 @@ const pressName = (a) => (a.coldSnap ? "Cold Snap → " : "") + BUFFS[a.k].name;
 const PRESET_KEY = "abp-presets";
 function lsGet() { try { return JSON.parse(localStorage.getItem(PRESET_KEY) || "{}"); } catch (_) { return null; } }
 function lsSet(o) { try { localStorage.setItem(PRESET_KEY, JSON.stringify(o)); return true; } catch (_) { return false; } }
+/* ⚠⚠ IT WAS MISSING TWO INPUTS THAT CHANGE THE ANSWER — fixed 08-05 (MODEL-DEFECTS §9z).
+   `snapshotState` is what a saved preset stores, what a share link encodes, and what autosave
+   restores. It carried gear and cooldowns but NOT the Tirisfal 2-piece box and NOT the raid-buff
+   panel — and both feed `buffedStats`, i.e. both change the SP and crit the engine is handed. So the
+   file's own claim that *"a link IS a reproducible plan"* was false whenever the receiver's panel
+   differed from the sender's, which is the default state of two different people.
+   Measured on the `ati+gem` cell (2:00, Lust 0:20, typed 1387/38): panel ON solves at 1686 SP /
+   59.7 % crit, panel OFF at 1387 / 44 — and the emitted layout is COMPLETELY different
+   (`icyVeins[0,65] · cluster@15` vs `icyVeins[65,90] · cluster@25`).
+   ★ WHY IT STAYED INVISIBLE SO LONG, and it is a real piece of theorycraft: **crit cancels out of the
+   objective** (it is a constant factor on every cast), so for every kit without Ashtongue the two
+   states give the SAME plan — verified. Ashtongue is what breaks it: its proc rate is driven by crit,
+   so crit stops being a constant and starts moving the layout. ⇒ the defect could not appear until
+   the proc model landed, and it appears first on exactly the kits the user calls Phase-3 practical.
+   ⛔ Both are stored only when PRESENT on load, so an old link or preset degrades to the previous
+   behaviour rather than silently forcing Tirisfal off. */
 function snapshotState() {
   return {
     enabled: { ...state.enabled }, coldSnap: state.coldSnap,
@@ -7492,6 +7525,9 @@ function snapshotState() {
     phases: state.phases.map(p => ({ ...p })),
     haste: el("in-haste").value, len: el("in-len").value,
     sp: el("in-sp").value, crit: el("in-crit").value,
+    int: el("in-int") ? el("in-int").value : undefined,
+    t5two: el("ck-t5") ? el("ck-t5").checked : undefined,
+    raid: Object.fromEntries(RAID_BUFFS.map(b => [b.id, buffOn(b.id)])),
   };
 }
 function applyState(s) {
@@ -7515,6 +7551,15 @@ function applyState(s) {
     inp.value = v;
     inp.classList.remove("pflash");
     if (String(was) !== String(inp.value)) { void inp.offsetWidth; inp.classList.add("pflash"); }
+  }
+  /* §9z — the two inputs the snapshot used to drop. Applied ONLY when present, so an old link or
+     saved preset keeps its previous behaviour instead of silently having Tirisfal switched off. */
+  if (s.int !== undefined && el("in-int")) el("in-int").value = s.int;
+  if (s.t5two !== undefined && el("ck-t5")) el("ck-t5").checked = !!s.t5two;
+  if (s.raid) {
+    renderBuffPanel();                                   // idempotent; the panel may not be built yet
+    for (const b of RAID_BUFFS) { const box = el("bf-" + b.id); if (box) box.checked = !!s.raid[b.id]; }
+    renderBuffSummary();
   }
   buildBuffList();
   el("in-haste").dispatchEvent(new Event("input"));
@@ -7661,6 +7706,40 @@ const GOLDEN_PRESETS = [
 ];
 window.GOLDEN_PRESETS = GOLDEN_PRESETS;
 
+/* ═══════════════ CANDIDATES — brute-forced, awaiting a ruling (08-05) ═══════════════════════════
+   ★ WHAT MAKES THESE DIFFERENT FROM A PRESET, AND WHY THEY CARRY A LINE.
+   Every other strip on this page holds INPUTS ONLY — *"never a precomputed plan"* — because a preset
+   is a fight to solve, and shipping its answer alongside it would let a stale answer masquerade as the
+   tool's. A candidate is the opposite object: it exists to be COMPARED against, so the answer is the
+   whole point. `line` is not the tool's output — it is the argmax of an EXHAUSTIVE enumeration of the
+   cell's legal grid (`tools/lattice-brute.mjs`), computed without the search in the loop at all.
+   ⇒ load the row's inputs, press Find optimal overlay, and read the two against each other. If they
+   agree, the cell is ready to declare; if they disagree, that is a search finding with a known target,
+   which is the most actionable kind this project can have.
+
+   ⚠⚠ THE `plateau` FIELD IS NOT DECORATION — it is what the §8y revision precedent requires you to
+   have SEEN before ruling. It counts the layouts tied with the winner *to the float floor*, i.e. the
+   ones the model has no power at all to separate. `plateau: 1` means the enumeration found a unique
+   argmax and the line below is simply correct. A larger number means the score is flat across that
+   many layouts and the SHAPE tie-break picked this member (RULES §17) — so a ruling there is a ruling
+   about which member is canonical, not about damage.
+
+   ⛔ NOTHING HERE IS A TEST. `tests/anchors.mjs` is untouched by this array, and the strip and the
+   test list are only in lockstep for the DECLARED strip above. A candidate becomes a test when the
+   user says so, and then it moves up. This is the "P" presets' slot — destroyed 08-02 by user ruling
+   (*"let's destroy the current Ps"*) on the stated condition that new ones come only after every lock
+   passes. They do now (17/17), which is what re-opens it.
+   ⚠ Generated by `tools/candidates-inject.mjs` from the enumeration's own JSONL — never hand-typed,
+   so a cell cannot drift from the run that produced it. Re-run it after any engine change: the
+   comparator decides which plateau member is named, and this project has changed that three times in
+   one day (§9u/§9w/§9x). */
+const CANDIDATE_PRESETS = [
+  /* CANDIDATES:BEGIN — generated, do not edit by hand */
+  {"name":"2:00 lust 0:20 · gem+ati","T":120,"pins":{"bloodlust":[20]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","scb","arcanePower","berserking","ati","bloodlust"],"line":{"arcanePower":[45],"berserking":[45],"icyVeins":[65,90],"scb":[45]},"casts":103.928675,"plateau":1,"layouts":6402240,"eff":{"sp":1387,"crit":44,"t5two":true}},
+  /* CANDIDATES:END */
+];
+window.CANDIDATE_PRESETS = CANDIDATE_PRESETS;
+
 /* ═══════════════ boss presets (baked-in, = the real phase encounters, also exact-match tested) ═══════════════ */
 // The actual current-phase raid bosses (fight length, Lust timing, and phases/AoE from the real
 // pulls — the user's logs). Same shape and same load-input-only behaviour as the debugging presets;
@@ -7712,14 +7791,25 @@ function goldenToState(p) {
   for (const [k, arr] of Object.entries(p.pins || {})) times[k] = arr.map(fmtT).join(", ");
   const rawPhases = p.phases || (p.intermission ? [{ type: "intermission", from: p.intermission[0], to: p.intermission[1] }] : []);
   const phases = rawPhases.map(x => ({ type: x.type, from: fmtT(x.from), to: fmtT(x.to), mult: x.mult || 2, targets: x.targets || 4 }));
+  /* §9z — A BAKED PRESET PINS THE WHOLE INPUT SET, INCLUDING THE TWO THAT USED TO LEAK.
+     The header above says a preset you confirm in the tool IS the locked test. That was only true if
+     your Tirisfal box and raid panel happened to match the harness's, because neither was part of the
+     preset — so the same chip solved a different fight for two different people. Both are pinned now:
+     `t5two` from the preset's own gear (`tools/engine-node.mjs`'s `cfgFor` reads a missing one as
+     FALSE, so the page must too, or T1–T8 load at gear their tests never used), and every raid buff
+     OFF, because a declared layout's SP and crit are stated FINAL — the panel would add them twice.
+     ⚠ This is what makes the candidates strip usable at all: with the panel on, the `ati+gem` cell
+     solves at 1686 SP / 59.7 % crit instead of 1387 / 44 and emits a completely different layout. */
   return {
     enabled, coldSnap: g.coldSnap !== false, times,
     complicated: phases.length > 0, phases,
     haste: String(g.haste || 0), len: fmtT(p.T), sp: String(g.sp), crit: String(g.crit),
+    t5two: !!g.t5two,
+    raid: Object.fromEntries(RAID_BUFFS.map(b => [b.id, false])),
   };
 }
 function clearGoldenActive() {
-  document.querySelectorAll("#golden-chips .gchip.active, #boss-chips .gchip.active").forEach(c => c.classList.remove("active"));
+  document.querySelectorAll("#golden-chips .gchip.active, #boss-chips .gchip.active, #cand-rows .gchip.active").forEach(c => c.classList.remove("active"));
 }
 // Render a baked preset array (Boss or Debugging) into a chip strip. Both load the fight's
 // INPUTS only (no auto-run); press "Find optimal overlay" to COMPUTE the plan — nothing preloaded.
@@ -7752,6 +7842,56 @@ el("in-haste").dispatchEvent(new Event("input"));
 refreshPresets("");
 renderBakedPresets(BOSS_PRESETS, "boss-chips");
 renderBakedPresets(GOLDEN_PRESETS, "golden-chips");
+/* The candidates strip renders a ROW, not a chip, because the line IS the content — see the
+   CANDIDATE_PRESETS header. Clicking loads the fight's INPUTS only, exactly like every other strip:
+   the line stays on the page to read the tool's own answer against, and is never fed to it. */
+function renderCandidates() {
+  const host = el("cand-rows"), strip = el("cand-strip");
+  if (!host) return;
+  if (!CANDIDATE_PRESETS.length) { if (strip) strip.style.display = "none"; return; }
+  const lineOf = p => Object.keys(p.line).sort((a, b) => (BUFFS[a] ? BUFFS[a].name : a).localeCompare(BUFFS[b] ? BUFFS[b].name : b))
+    .map(k => `<b>${esc(BUFFS[k] ? BUFFS[k].name : k)}</b> ${p.line[k].map(fmtT).join(" / ")}`).join(" · ");
+  host.innerHTML = CANDIDATE_PRESETS.map((p, i) => {
+    const tie = p.plateau > 1
+      ? `<span class="cand-tie" title="${p.plateau} layouts are tied with this one to the float floor — the score cannot separate them, so the shape tie-break (RULES §17) named this member. Ruling here is about which member is canonical, not about damage.">plateau ${p.plateau}</span>`
+      : `<span class="cand-uniq" title="The enumeration found a unique argmax: nothing in the cell's legal grid ties it. This line is simply the best one.">unique argmax</span>`;
+    return `<div class="cand-row">
+      <div class="cand-head"><span class="pchip gchip cchip" data-i="${i}" role="button" tabindex="0"
+        title="Load this fight's inputs, then press Find optimal overlay and read the tool's answer against the line below">${esc(p.name)}</span>
+        <span class="cand-meta">${p.casts.toFixed(3)} effective ABs · ${tie} · ${p.layouts.toLocaleString()} layouts enumerated</span></div>
+      <div class="cand-line">${lineOf(p)}</div>
+      <div class="cand-warn" hidden></div></div>`;
+  }).join("");
+  host.querySelectorAll(".cchip").forEach(chip => {
+    const load = () => {
+      const p = CANDIDATE_PRESETS[+chip.dataset.i];
+      applyState(goldenToState(p));
+      refreshPresets("");
+      clearGoldenActive();
+      chip.classList.add("active");
+      /* ★★★ THE ROW CHECKS ITSELF — §9z. A candidate is only confirmable if the page is about to solve
+         the SAME fight the enumeration did, and between the crit box meaning your unbuffed sheet value,
+         the Arcane Impact talent, the Tirisfal box and the raid panel there are four ways for that to
+         quietly stop being true. So rather than trusting the load, ask the page what it is actually
+         about to hand the engine and compare it to the stats the enumeration recorded. A mismatch
+         means DO NOT RULE on this row — the line was computed for a different character. */
+      const warn = chip.closest(".cand-row").querySelector(".cand-warn");
+      if (warn && p.eff) {
+        const c = readCfg();
+        const bad = [];
+        if (Math.abs(c.sp - p.eff.sp) > 1e-6) bad.push(`SP ${c.sp.toFixed(1)} vs ${p.eff.sp.toFixed(1)}`);
+        if (Math.abs(c.critPct - p.eff.crit) > 1e-6) bad.push(`crit ${c.critPct.toFixed(2)}% vs ${p.eff.crit.toFixed(2)}%`);
+        if (!!c.t5two !== !!p.eff.t5two) bad.push(`Tirisfal ${c.t5two ? "on" : "off"} vs ${p.eff.t5two ? "on" : "off"}`);
+        warn.hidden = !bad.length;
+        warn.textContent = bad.length ? `⚠ the tool would solve this at ${bad.join(", ")} — the line below was enumerated at the other one, so do not rule on it` : "";
+      }
+      el("setup").scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    chip.addEventListener("click", load);
+    chip.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); load(); } });
+  });
+}
+renderCandidates();
 /* ═══════════════ URL-shareable setups + last-setup autosave (ROADMAP §0d route 1, 08-04) ═══════════
    A link IS a reproducible plan: the tool is deterministic (one setup ⇒ one schedule), so sharing the
    SETUP shares the answer. The hash carries only `snapshotState()` — fight inputs, never a computed
