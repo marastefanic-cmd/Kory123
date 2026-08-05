@@ -47,6 +47,7 @@ const flag = k => process.argv.includes(`--${k}`);
 const HTML = arg('html', fileURLToPath(new URL('../index.html', import.meta.url)));
 const api = loadEngine(HTML);
 const B = api.BUFFS, G = api.GAME;
+let polishCapped = false;   // set when a layout exceeds the full-cartesian coordinate budget
 
 const T = +arg('T', 120), STEP = +arg('step', 5), POLISH = +arg('polish', 5), TOPN = +arg('top', 24);
 const LUST = arg('lust', undefined) === undefined ? undefined : +arg('lust');
@@ -158,6 +159,43 @@ function polish(s0) {
   const band = [];
   let worst = -Infinity;
   const cur = JSON.parse(JSON.stringify(s0));
+  const keep = () => {
+    for (const kk of TRACKS) if (cur[kk]) for (let i = 1; i < cur[kk].length; i++) if (cur[kk][i] <= cur[kk][i - 1]) return;
+    const v = score(cur);
+    if (band.length < KEEP * 4 || v > worst) {
+      band.push({ v, s: JSON.parse(JSON.stringify(cur)) });
+      if (band.length > KEEP * 8) { band.sort((a, b) => b.v - a.v); band.length = KEEP * 4; worst = band[band.length - 1].v; }
+    }
+  };
+  /* ⚠ THE FULL CARTESIAN IS (2·POLISH+1)^coords AND IT EXPLODES — T5, 08-04. A layout with three
+     two-use tracks has EIGHT coordinates, so ±5 s is 11^8 = 214M evaluations PER STRUCTURE (~9 hours
+     for one cell) against 11^5 = 161k for a five-coordinate one. Past a threshold, fall back to every
+     move of ≤3 coordinates — C(8,3)·11³ ≈ 75k, measured at 0.3 s — which is `search-audit`'s own
+     neighbourhood, chosen for the same reason: the defects this exists to catch are COUPLED TRIPLES
+     (§8m, §8s, §9o), and k=3 is the floor that catches them (on the 2:00 cell there were ZERO
+     improving 1- and 2-coordinate moves and six 3-coordinate ones).
+     ⛔ It is REPORTED, because a silent cap reads as "swept everything" when it did not. */
+  if (coords.length > 6) {
+    polishCapped = true;
+    keep();
+    for (let a = 0; a < coords.length; a++) for (let b2 = a + 1; b2 < coords.length; b2++) for (let c = b2 + 1; c < coords.length; c++) {
+      const tri = [coords[a], coords[b2], coords[c]];
+      const orig = tri.map(([k, j]) => s0[k][j]);
+      for (let d0 = -POLISH; d0 <= POLISH; d0++) for (let d1 = -POLISH; d1 <= POLISH; d1++) for (let d2 = -POLISH; d2 <= POLISH; d2++) {
+        const ds = [d0, d1, d2];
+        let ok = true;
+        for (let n = 0; n < 3; n++) {
+          const [k, j] = tri[n], t = orig[n] + ds[n];
+          if (t < -(B[k].dur - 1) || t >= T) { ok = false; break; }
+          cur[k][j] = t;
+        }
+        if (ok) keep();
+      }
+      tri.forEach(([k, j], n) => { cur[k][j] = orig[n]; });
+    }
+    band.sort((a, b) => b.v - a.v);
+    return band.slice(0, KEEP);
+  }
   const rec = d => {
     if (d === coords.length) {
       for (const k of TRACKS) if (cur[k]) for (let i = 1; i < cur[k].length; i++) if (cur[k][i] <= cur[k][i - 1]) return;
@@ -268,8 +306,13 @@ const batches = Array.from({ length: JOBS }, () => []);
 cands.forEach((c, i) => batches[i % JOBS].push(c.s));
 const polished = (await Promise.all(batches.filter(b => b.length).map(list => new Promise((res, rej) => {
   const c = fork(fileURLToPath(import.meta.url), process.argv.slice(2), { env: { ...process.env, LB_POLISH: '1' } });
-  c.on('message', m => res(m.done));
+  let got = false;
+  c.on('message', m => { got = true; res(m.done); });
   c.on('error', rej);
+  // ⛔ A child that dies before sending leaves the parent on a promise that never settles. The first
+  // version of the capped path threw inside the child (`([]) => 0` destructures a NUMBER as an array)
+  // and the run hung silently for 25 minutes. Always fail loudly instead.
+  c.on('exit', code => { if (!got) rej(new Error(`polish worker exited ${code} without a result`)); });
   c.send({ list });
 })))).flat();
 /* ★ SELECT WITH THE ENGINE'S COMPARATOR, ON THE IDEAL SCORE — not the quantised max (see polish()).
@@ -306,7 +349,8 @@ for (const p of pairs) if (api.planBetter(p.pair, best.pair)) best = p;
 const ifloor = best.pair.ifloor;
 const plateau = pairs.filter(p => Math.abs(p.pair.ideal - best.pair.ideal) <= ifloor);
 const polishSecs = (Date.now() - t1) / 1000;
-console.log(`polish: ${cands.length} structures × ±${POLISH}s in ${polishSecs.toFixed(1)}s → ${pairs.length} distinct candidates`);
+console.log(`polish: ${cands.length} structures × ±${POLISH}s in ${polishSecs.toFixed(1)}s → ${pairs.length} distinct candidates`
+  + (polishCapped ? '  ⚠ CAPPED to ≤3-coordinate moves on layouts with >6 coordinates (see polish())' : ''));
 console.log(`  BEST (planBetter) ${(best.pair.score / PLAIN).toFixed(6)} quant · ${(best.pair.ideal / PLAIN).toFixed(6)} ideal`);
 console.log(`                    ${JSON.stringify(best.s)}`);
 const qmax = pairs.reduce((m, p) => Math.max(m, p.pair.score), -Infinity);
