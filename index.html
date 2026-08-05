@@ -2863,7 +2863,21 @@ function planBetter(a, b) {
   if (a.shape.snaps !== b.shape.snaps) return a.shape.snaps < b.shape.snaps;   // keep the charge (T9)
   if (a.shape.wastedPre !== b.shape.wastedPre) return a.shape.wastedPre < b.shape.wastedPre;  // 08-02
   if (a.shape.offGrid !== b.shape.offGrid) return a.shape.offGrid < b.shape.offGrid;          // §9l
-  if (a.shape.distinct !== b.shape.distinct) return a.shape.distinct < b.shape.distinct;      // T6/T10/T13
+  /* ⛔⛔ `distinct` (FEWEST PRESS MOMENTS) IS ABOLISHED — user ruling, restated 08-05: *"I also
+     previously said to abolish the fewest presses rule, that one is messy and aligning to earliest
+     possible will also naturally align presses."* It had been marked DEPRECATED BY RULING in §9l on
+     08-03 and was still being applied here; this removes it for real.
+     ★ VERIFIED NON-DESTRUCTIVE BEFORE REMOVAL — every ruling that was ever decided on this criterion
+     is reproduced by the earliest-press vector alone, which is exactly the user's argument:
+        T6  old iv[7,37]/cluster@7/zerk@27   vs revised iv[15,35]/cluster@15/zerk@5   → earliest picks REVISED ✓
+        T7  old iv[7,55]/cluster@7/zerk@27   vs revised iv[15,55]/cluster@15/zerk@5   → earliest picks REVISED ✓
+        T8  zerk[100] vs zerk[95] (both iv[20,115])                                   → earliest picks 95      ✓
+     The mechanism is that co-pressing is what MAKES a vector early: sharing a second with an existing
+     press leaves the vector's earlier entries untouched, while giving a track its own later second
+     pushes an entry back. So "fewest moments" was a lossy proxy for "earliest", and the proxy is the
+     part that was messy — it could prefer a LATE cluster over an EARLY split. ⛔ Do not reintroduce
+     it; if a case ever seems to need it, the answer is a shape criterion with its own argument, not
+     this one back. */
   if (a.shape.invalid !== b.shape.invalid) return a.shape.invalid < b.shape.invalid;          // §9l
   const n = Math.min(a.shape.ts.length, b.shape.ts.length);
   for (let i = 0; i < n; i++) if (Math.abs(a.shape.ts[i] - b.shape.ts[i]) > EPS) return a.shape.ts[i] < b.shape.ts[i];

@@ -4513,3 +4513,36 @@ candidate pool (the swept band must be pair-ranked too), and alias acceptance (c
 rewrites are the same plan). The first two produced no false verdicts; the third produced one (a
 phantom T6 revision) and was caught before it reached a ruling. ⇒ **the corpus tested the tester**,
 which is the strongest argument yet for declared layouts being the project's most valuable asset.
+
+
+## §9s — ✅ THE `distinct` TIE-BREAK ABOLISHED (08-05, user ruling) — and it FIXED §9q's search miss
+
+User, restating a ruling the docs had recorded but the code had not applied: *"I also previously said
+to abolish the fewest presses rule, that one is messy and aligning to earliest possible will also
+naturally align presses."* §9l marked `distinct` DEPRECATED BY RULING on 08-03; `planBetter` was still
+comparing it. Now removed.
+
+★ **VERIFIED NON-DESTRUCTIVE BEFORE REMOVAL.** Every ruling ever decided on this criterion is
+reproduced by the earliest-press vector alone:
+
+| ruling | decided on `distinct` | earliest-vector picks |
+|---|---|---|
+| T6 revision (07-31) | 3 moments vs 4 | the revised layout ✓ |
+| T7 revision (08-04, §9p) | 3 moments vs 4 | the revised layout ✓ |
+| T8 canonical Berserking (08-05, §9q) | 6 moments vs 7 | `zerk[95]` ✓ |
+
+⇒ the user's argument is the mechanism: **co-pressing is what MAKES a press vector early.** Sharing a
+second with an existing press leaves the vector's earlier entries untouched; giving a track its own
+later second pushes an entry back. So `distinct` was a lossy PROXY for "earliest" — and the lossiness
+is the messy part, since it could prefer a LATE cluster over an EARLY split.
+
+★★ **AND IT CLOSED §9q's SEARCH MISS AS A SIDE EFFECT.** T8 was revised to the brute-force layout and
+was expected RED until the search learned a coupled 2-coordinate move it could not reach. With
+`distinct` gone the search reaches it unaided: **anchors 16/17, T8 PASSING.** The criterion had been
+actively steering the descent away from the better layout — the old T8 has 6 distinct moments against
+the revised layout's 6, but intermediate states on the path have more, so `distinct` penalised every
+route to it. ⛔ Do not reintroduce it; if a case ever seems to need it, the answer is a shape criterion
+with its own argument, not this one back.
+
+⚠ **T7 remains RED** (§9p) — its move is a genuine 3-coordinate relocation, not a tie-break artifact,
+so it still needs the canonicalisation pass §9p specifies.
