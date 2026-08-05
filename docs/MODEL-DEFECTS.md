@@ -5209,8 +5209,16 @@ Still one-directional, now +0.004…+0.028 per engagement:
   them fit than `atiTrim`'s `DUR − ν·a` budget believes. Closing it means folding each ramp cast into
   the strata at its own spacing. Sized by forcing `P_down = r^min(k,n)` in the walk: +0.009.
 - **Strata drain across a haste edge (≤ ~+0.018):** every lust-bearing cell is worse than its no-lust
-  twin by that much, growing with proc memory (worst at crit 25, `r = 0.86`). `c_ρ` is applied per
-  segment with the local `ρ`, exact only at integer attempt boundaries; the kinks are not integers.
+  twin by that much, growing with proc memory (worst at crit 25, `r = 0.86`). ★ **Same left-Riemann
+  family as Defect 1, in the drain direction**: a stratum's survivor count `fit = min(cnt, budget/a_s)`
+  is a continuum smear of an integer — the attempt `consumed` seconds back is inside the window iff
+  `consumed + i·a_s < DUR`, so the truth is `⌈(DUR − consumed)/a_s⌉` and the model writes
+  `(DUR − consumed)/a_s`. At 1.338 s of budget with `a_s = 2.289 s` that is **1 survivor booked as
+  0.585** — dropping memory the process still has, i.e. fast, the same direction as everything else.
+  The two agree in the uniform steady case (ν is smeared identically on the other side) and part
+  company exactly where spacings differ: a haste edge, and a ramp. ⚠ The correction is NOT `c_ρ` —
+  the drain is a cap, not a geometric decay — and no candidate has been measured against the chain.
+  This is a named mechanism, not a proposed fix.
 
 Both were tried in the reference. The first overshoots to **−0.016** as implemented there, i.e. the
 mechanism is real but the crude version over-corrects — which is exactly the shape of a change that

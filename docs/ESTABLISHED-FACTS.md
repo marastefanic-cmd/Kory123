@@ -1608,8 +1608,18 @@ floor's own sign ambiguity:
   `P_down = r^min(k,n)` forced: **+0.009** against the walk.
 - **Strata drain across a haste edge** (up to ~+0.018): every lust-bearing cell is worse than its
   no-lust twin by that much, and the gap grows with proc memory (worst at crit 25, where `r = 0.86`).
-  `c_ρ` is applied per segment with the local `ρ`, which is exact only at integer attempt boundaries;
-  the kinks are not integers.
+  ★ **The mechanism is the SAME left-Riemann family as Finding 1, in the drain direction, and naming
+  it is most of the work if anyone picks this up.** A stratum's survivor count is
+  `fit = min(cnt, budget/a_s)` — a continuum smear of an integer. The attempt sitting `consumed`
+  seconds back is inside the window iff `consumed + i·a_s < DUR`, so the true count of survivors is
+  `⌈(DUR − consumed)/a_s⌉` capped at `cnt`, and the continuum writes `(DUR − consumed)/a_s`. With a
+  budget of 1.338 s left and `a_s = 2.289 s` the truth is **1 surviving attempt** and the model books
+  **0.585** — it drops proc memory the process still has, which makes the fight read fast, the same
+  direction as everything else here. In the uniform steady case the two agree because `ν` is smeared
+  identically on the other side; they part company exactly where the spacings differ, i.e. at a haste
+  edge and across a ramp. ⚠ Stated as the mechanism, not as a verified fix — the correction is not
+  simply `c_ρ` (the drain is a *cap*, not a geometric decay) and no candidate for it has been
+  measured against the chain.
 
 Neither is worth the risk of a mechanism that cannot be validated as cleanly as these two were — but
 both are localised, so a future attempt starts from a named target rather than a hunt.

@@ -59,6 +59,12 @@ reproducible from §12.3a's algebra in an hour; the wrong build should not be.
   CANONICALISATION misses and has found two real defects already. Run it as cells land.
 - **The two named ATI residuals** (§10c's closing section) — ramp window shrinkage ~+0.009, strata
   drain at a haste edge ≤ ~+0.018. Not open work; a starting point if a gate ever demands it.
+  ★ They are probably ONE mechanism, and it is the same left-Riemann family §10c's Finding 1 closed,
+  in the drain direction: a stratum's survivor count `fit = min(cnt, budget/a_s)` is a continuum smear
+  of `⌈(DUR − consumed)/a_s⌉`. The two agree when every spacing is `a` and part company exactly where
+  they differ — a haste edge, and a ramp, which is where both residuals live. ⚠ The correction is not
+  `c_ρ` (the drain is a cap, not a geometric decay), and nothing has been measured; that is why it is
+  a lead and not a plan.
 
 ## Background work that survives a context clear
 
