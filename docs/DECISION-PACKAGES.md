@@ -123,3 +123,37 @@ the ladder.
 **Reproduction:** every ladder number is `node tools/brute-cell.mjs --T=<sec> --lust=<sec> --sp=1387
 --crit=38 --t5two=0` (the complete family scan + the tool's own solve + the plateau, one command per
 cell); the 12:20 families are exact `rankPair` scores of constructed schedules at the same gear.
+
+
+---
+
+# C. NEW-KIT TEST CANDIDATES (in flight, 08-05) — brute-forced, awaiting your rulings
+
+The declared corpus runs essentially ONE kit (Icy Veins + Icon + gem + AP + Berserking + Lust);
+**Skull, MQG, Drums, Power Infusion and Ashtongue appear in zero declared tests.** That is §8w's
+standing gap, and it is why these were derived BEFORE fixing T7's search miss: a search fix graded
+against a corpus that never exercises those tracks is a one-kit fix.
+
+★ **THE USER'S PRACTICAL FRAMING (08-05), which decides what these candidates are FOR:**
+*"you'd never really pair MQG with any of the later trinkets. In phase 2 it's undoubtedly strongest to
+run Icon + SCB (which is why that's what I have been testing the most so far), but with Phase 3
+dropping I will want to switch in Ashtongue and Skull and pair it probably with SCB and drop Icon for
+it. So the tests that are worth the most practically speaking would be Ashtongue + SCB and Skull +
+SCB. I don't think you'd ever want to run both Ashtongue and Skull, but then again it's probably good
+to work with them consistently."*
+
+⇒ so the slate splits into two tiers, and they should be ruled on differently:
+- **PRACTICAL (rule these first):** `ati+scb`, `skull+scb` — the Phase-3 kits the user will actually
+  play, at two Lust timings and one raised-gear rung. A red here would be a real bug.
+- **CONSISTENCY (worth locking, but never played):** the MQG pairings, and `ati+skull+scb`. Their
+  value is that the model handles the buff logic coherently, not that anyone runs them. ⚠ Do not let
+  a consistency cell drive a modelling decision that costs a practical one.
+
+⚠ Kit facts that shape these cells: **Ashtongue is PASSIVE** — no press, no on-use lockout — so it
+coexists with Skull and costs the search no dimension; **SCB is the gem proc**, not a trinket slot, so
+`ati + skull + scb` is a legal three-way. The Icon/Skull/MQG lockout (20 s, shared) is enforced by
+`repair`, and `lattice-brute` drops any candidate `repair` rewrites, so lockout-violating layouts
+never reach the comparator.
+
+⛔ Nothing here is declared. Candidates + plateaus land below as the sweeps finish; a ruling makes one
+an anchor (strip + `tests/anchors.mjs`, in lockstep).
