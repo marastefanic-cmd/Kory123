@@ -1953,3 +1953,18 @@ the 07-30 strip rename) — repointed and wired into CI along with search-witnes
 Status:OPEN headers in MODEL-DEFECTS corrected to their recorded closures; EP.md finally got its
 sim-retirement banner; PLAN.md landed whole and was deleted per its own header; every suite-size claim
 now defers to the anchors banner rather than repeating a number that staled twice in one file.
+
+
+# 2026-08-07 (cont.) — sixteen declarations, three relock lessons, and a 45-test suite
+
+The programme's verdicts came back and the declaration batch ran: **T30–T45**, the suite at
+forty-five. The wide-plateau cells taught the day's second lesson (the first was §10e's competitor
+depth): four exact-tie locks failed their own first suite run because the enumeration's pair-grade
+had named a lexicographically-later member than the descent's canonicalisation — on 194–807-member
+plateaus the grade is only as canonical as its candidate set — and all four were relocked from the
+comparator-canonical EMISSIONS, the T6 branch of the protocol. T43–T45 closed the ladder with
+certified emissions that are the 08-04 decision package's own 3:20 terminal-cluster rows to the
+second, found by the search on its own at current gear after it beat the step-15 grid by half a cast.
+The candidates strip now holds exactly the seven cells that stay out for measured reasons: five
+chain-refused ATI cells and the two §10f plateaus. DECISION-PACKAGES §A and §C closed; nothing in the
+project now awaits anything but the user's own rulings.

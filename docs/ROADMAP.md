@@ -8,8 +8,8 @@ describe accepted limits and decided questions so nobody re-opens them by accide
 
 ## §1 Where the tool stands
 
-- **Scorer:** exact (the integral-plus-tie-break pair), CLOSED by user ruling, and gated nine ways
-  with negative controls — `anchors` (29/29 since 08-06), `law-check`, `constants-cited`, `self-consistency`
+- **Scorer:** exact (the integral-plus-tie-break pair), CLOSED by user ruling, and gated ten ways
+  with negative controls — `anchors` (45/45 since 08-07), `wall-credit` (wired 08-07), `law-check`, `constants-cited`, `self-consistency`
   (+structural), `toll-audit --strict`, `objective-ref`, `ati-mc`, `cfg-contract --strict`, and —
   new 08-05 — `grid-invariance` (a breakpoint that changes no buff state must change no score; it was
   FALSE on the Ashtongue path until §10c, by 5.5e-3 casts, and nothing in the repo varied the grid).
@@ -98,6 +98,24 @@ the page-effective gear (§9z) — and the grid then completed to twelve the sam
 · Instrument fixes that fell out: `brute-vs-search` now distinguishes SEARCH MISS from ENUMERATION
   BEATEN (it mislabeled the direction), and `plan-diff` treats cells only-in-B as new coverage rather
   than a comparison failure (declaring a test adds presets; the A/B CI job must not go red for it).
+
+## §1d ▶▶ 08-07 — THE PROGRAMME FINISHED: T30–T45, and the suite is 45
+
+The remaining derive programme ran whole (22 cells, `tools/cells/derive-0807.jsonl`) and the §1c
+protocol declared everything that passed: **sixteen new tests** — the kit coverage (gem+skull ×2,
+icon+skull, icon+mqg, skull+mqg, icon+gem+PI), SP rungs (700/1900), the no-lust 3:00 / odd-Lust 2:40
+pair (identical layouts — the corpus's lust-irrelevance instrument), the FIRST declared cells above
+h=0 (h200/h300/h500 — model self-consistency, not world-verified play), and the 3:20 ladder (T43–T45,
+certified emissions that re-derive the 08-04 decision package's terminal-cluster rows to the second).
+The batch surfaced five search misses and closed every one the same day: **move class 10** (the §4c
+packing-train constructor — skull+mqg's −0.0815 was the worst), **class 8 variant B** (the §19 chain
+extended through Berserking), and **class 11** (the first use-count-changing class: prepull CD-chains
++ the kill-flush terminal cluster, forced by T40's `skull[−10,110]`). Four exact-tie locks were
+corrected by the suite's own first run (T38/T39/T41/T42 — emission-locked, the T6 branch; on
+194–807-member plateaus the enumeration's pair-grade is only as canonical as its candidate set).
+What stays out stays for measured reasons: the five chain-refused ATI cells (§10e) and the two §10f
+plateaus — all seven ARE the candidates strip now. `DECISION-PACKAGES` §A and §C are closed; §B
+(the 12:20 study) stays as ruled (recorded, revisit later).
 
 ## §2 ▶▶ AWAITING YOUR RULINGS — `docs/DECISION-PACKAGES.md`
 

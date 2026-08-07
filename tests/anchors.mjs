@@ -1,9 +1,9 @@
-// THE TESTS. There are FORTY-TWO: seventeen the user declared exactly (T1–T17), and twenty-five
-// BRUTE-DECLARED (T18–T29 on 08-06, T30–T42 on 08-07) under the user's standing ruling — *"if the
+// THE TESTS. There are FORTY-FIVE: seventeen the user declared exactly (T1–T17), and twenty-eight
+// BRUTE-DECLARED (T18–T29 on 08-06, T30–T45 on 08-07) under the user's standing ruling — *"if the
 // tests are bruteforced to be correct then they should actually become tests like all the other
 // ones"* — each an enumerated argmax the search demonstrably emits, or a certified emission
-// (--top=128 --check). The batch header blocks carry the certification standard; T43–T45 (3:20)
-// join when their emission certifications complete.
+// (--top=128 --check: the global optimum of its lattice). The batch header blocks carry the
+// certification standard.
 //
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // ★★★★★★ THESE ARE HARD TESTS. THEY ARE GROUND TRUTH. — user ruling, 2026-07-30, verbatim:
@@ -626,6 +626,21 @@ const CASES = [
     // 217,676,160 layouts enumerated (step 5) · plateau 807 — locked from the EMISSION (iv#1@70,
     // as T41: score-tied to the float floor, comparator-canonical by the earliest vector)
     want: {arcanePower: [10],  berserking: [60],  bloodlust: [20],  icyVeins: [0,70],  isc: [10],  scb: [10]} },
+  { name: "T43 — 3:20, Bloodlust pinned 0:05, eff 1387 SP / 44 % crit / T5-2pc — icon+gem — BRUTE-DECLARED",
+    T: 200, sp: 1387, crit: 44, t5two: true, lust: 5,
+    // certified EMISSION (--top=128 --check: GLOBAL OPTIMUM of the step-15 lattice, which the search
+    // beat by +0.57 casts) — and it is the 08-04 decision package's own 3:20 row TO THE SECOND,
+    // re-derived independently by the tool at current gear
+    want: {arcanePower: [5,185],  berserking: [0,185],  bloodlust: [5],  icyVeins: [10,180],  isc: [6,180],  scb: [6,185]} },
+  { name: "T44 — 3:20, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — icon+gem — BRUTE-DECLARED",
+    T: 200, sp: 1387, crit: 44, t5two: true, lust: 20,
+    // certified EMISSION (--top=128 --check: GLOBAL OPTIMUM of the lattice); scores IDENTICALLY to
+    // T45 (158.332481) — the 3:00 Lust-timing invariance (T25-T27) one rung up
+    want: {arcanePower: [5,185],  berserking: [7,187],  bloodlust: [20],  icyVeins: [5,180],  isc: [6,180],  scb: [7,185]} },
+  { name: "T45 — 3:20, Bloodlust pinned 0:40, eff 1387 SP / 44 % crit / T5-2pc — icon+gem — BRUTE-DECLARED",
+    T: 200, sp: 1387, crit: 44, t5two: true, lust: 40,
+    // certified EMISSION (--top=128 --check: GLOBAL OPTIMUM of the lattice)
+    want: {arcanePower: [5,185],  berserking: [7,187],  bloodlust: [40],  icyVeins: [5,180],  isc: [5,180],  scb: [6,185]} },
 ];
 
 // T3 uses a real BOSS preset, so its cfg comes from the fight table (sp 1387, crit 38, Lust pinned 0:05)

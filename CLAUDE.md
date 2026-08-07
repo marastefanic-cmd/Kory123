@@ -40,7 +40,7 @@ You enter a fight (length, Bloodlust
 timing, intermission/AoE phases) and it computes the **optimal moment to press each on-use
 cooldown** (Icy Veins, Arcane Power, Icon of the Silver Crescent, Serpent-Coil gem, Berserking),
 plus a burn timeline, a per-window activation schedule, and a copy-as-text plan. Alongside it:
-`tests/` — **twenty-nine tests** (`tests/anchors.mjs`): seventeen layouts the user declared exactly, plus twelve BRUTE-DECLARED (T18–T29, 08-06) under the standing ruling *"if the tests are bruteforced to be correct then they should actually become tests like all the other ones"* — each an enumerated argmax the search demonstrably emits (T28/T29: certified emissions, `--top=128 --check` proving the emitted layout globally optimal on the lattice). The goldens
+`tests/` — **forty-five tests** (`tests/anchors.mjs`): seventeen layouts the user declared exactly, plus twenty-eight BRUTE-DECLARED (T18–T29 on 08-06, T30–T45 on 08-07 — the full derive programme: every legal trinket pairing, PI, SP rungs, no-lust/odd-Lust fights, the first declared cells above h=0, and the 3:20 ladder) under the standing ruling *"if the tests are bruteforced to be correct then they should actually become tests like all the other ones"* — each an enumerated argmax the search demonstrably emits, or a certified emission (`--top=128 --check` proving it globally optimal on its lattice / a comparator-canonical exact-tie member, the T6 branch). What stays out stays for MEASURED reasons: five ATI cells (chain-refused, §10e) and two exact-tie plateaus (§10f), all in the candidates strip. The goldens
 and the plan-shape suites are **deleted** (user decision 07-28, restated twice); the sim gates are
 **deleted** (07-30, above). What is left beside `anchors` are the two scorer gates —
 `tools/law-check.mjs` (the scorer vs the algebra) and `tools/self-consistency.mjs` (the scorer vs
@@ -177,7 +177,7 @@ already live.
 > ⇒ **T10 vs T11 is the corpus's sharpest instrument**: the same fight one pinned press apart, one solved
 > and one missed. Keep them together; that pair is what localised §9d in four measurements.
 
-**★ There are TWENTY-NINE tests: seventeen layouts the user declared exactly, and twelve brute-declared (T18–T29, 08-06 — enumerated argmax + search-confirmed; the batch header in `tests/anchors.mjs` carries the standard, and T29's relock — caught by its own `scorerBeats` the hour it was declared, generalized into move class 9 — is the protocol working as designed)**
+**★ There are FORTY-FIVE tests: seventeen layouts the user declared exactly, and twenty-eight brute-declared (T18–T29 on 08-06, T30–T45 on 08-07 — enumerated argmax + search-confirmed, or certified emissions; the batch headers in `tests/anchors.mjs` carry the standard, and the relocks the suite's own first runs forced — T29 by its scorerBeats, T38/T39/T41/T42 by press-compare on wide exact-tie plateaus — are the protocol working as designed: the suite's two halves police each other, and a brute-declared lock that fails either is re-derived, never defended)**
 (T1–T17; T8 the prepull case, T9–T11 the long fights, T12–T17 the haste/SP ladder — T12 was revised to
 iv[15,60]/zerk@35 by explicit user ruling 08-03 with sim evidence, and T16's 10/30 is sim-confirmed at
 23.5σ, MODEL-DEFECTS §9m). The originals: T1/T2:
