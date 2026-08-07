@@ -5,8 +5,8 @@ each phase close** (the old "delete PLAN.md once the change lands" workflow). Th
 the working tree but live in git history; they're recovered here so the road taken stays **findable**
 without spelunking git. Each file is the plan **as written** (intent + rationale at the time) — a
 historical snapshot, possibly later revised or reversed. For *outcomes* and *what we got wrong*, read
-`docs/DIARY.md`; for the work still in flight, the top-level **`docs/PHASE13.md`** — the only live plan
-doc.
+`docs/DIARY.md`; for the work still in flight, the top-level **`docs/ROADMAP.md`** — the live plan
+since PHASE13 closed and was archived here (08-04, `18-…`).
 
 **Append-only. Do not prune.** When a phase closes, archive its plan doc here (see the policy in
 `CLAUDE.md`) rather than deleting it.
@@ -65,7 +65,7 @@ the fast iteration gate (`plan-sweep` + `plan-diff` + `plan-duel`) that replaced
 after every edit", cited from CLAUDE.md, `tests/`, and the tools themselves. Cited as **"PHASE9 §x"**;
 section numbers unchanged, so those citations still resolve.
 ⚠ **Closed, not finished.** The unfinished §4 reclaim rungs passed to `12-phase11-platform.md` §3.1,
-which closed without starting them either — they are **`docs/PHASE13.md` §5.3's now**. ⛔ And they need
+which closed without starting them either — they went to **PHASE13 §5.3 (`18-…` here)** and were REVOKED 08-04 until a real slowness report (`docs/ROADMAP.md` §4). ⛔ If reopened, they need
 a **fresh CPU baseline and content re-anchoring** before any rung is priced: Phase 12 rewrote the very
 scoring walk that dominates this phase's profile, so the rungs and the method are intact and the prices
 are not.
@@ -117,7 +117,7 @@ being **byte-identical** rather than by assertion. ✅ **The §1.4 doc sweep lan
 ✅ **CI came up** — three jobs, two of them carrying the negative control §9 demands.
 ⛔ **The module split itself (§2), the perf ladder (§3) and the product routes (§4) were never
 started**, and neither were the eight §8 user calls, which are still unanswered. All of it, and the
-calls verbatim, is inherited by `docs/PHASE13.md` §5/§6.
+calls verbatim, was inherited by PHASE13 §5/§6 (`18-…` here) and RESOLVED to the status quo 08-04 (`docs/ROADMAP.md` §4).
 
 ⚠ **Its own header lied about it for the whole of its life** — *"PLANNED, not started; nothing in
 `index.html`, `sim/`, `tools/` or `tests/` has changed"* — while all four had. That is the ledger's own
@@ -147,13 +147,13 @@ the fire (**HELD 18 → 1 of 196**). `exact-match` **25/25**, `self-consistency`
 
 ⚠ **Closed, not finished:** §7's search-optimality proof programme (the objective being exact makes the
 per-press decision variable an **integer**, so enumeration and branch-and-bound are well-posed for the
-first time) and the acceptance re-gather — both `docs/PHASE13.md`'s. ⚠ The **AoE edge** it left open was
+first time) and the acceptance re-gather — both went to PHASE13 (`18-…` here) — the enumeration build was revoked 08-04 (`docs/ROADMAP.md` §4; brute-cell + the audit gates stand instead); the re-gather was voided with the sim. ⚠ The **AoE edge** it left open was
 decided immediately afterwards — and then decided **again, the other way, the same day**. It was first
 removed from the cut lattice **on physics** (the boss stays targetable and the Blast measurably lands),
 then **restored on POLICY** by user ruling: an AoE phase **start IS a cut** because the player *cancels*
 the Blast to spam Arcane Explosion, which also truncates the AE lattice to the wall — something this
 phase's version never did. ⚠ So the verdict word matches what this phase shipped while the **reason and
-the behaviour do not**; read `docs/RULES.md` §9 / `docs/PHASE13.md` §1, not this doc, for what holds.
+the behaviour do not**; read `docs/RULES.md` §9 / PHASE13 §1 (`18-…` here), not this doc, for what holds.
 The same correction found that **Arcane Explosion is instant**, so the boundary credit's divide-by-zero
 guard had been paying every AE **nothing** — a 42 % error on the only AoE fight in the corpus, reachable
 by **no existing gate**.
@@ -204,6 +204,30 @@ closed forms, checked by `tools/law-check.mjs`, plus the seven declared layouts.
 lost is coverage of the model's blind spots — **mana and AoE weighting** — which nothing now measures;
 that is a known, accepted gap, not an oversight.
 
+## `18-phase13-post-exact-objective.md` — Phase 13: the open work after the objective went exact (closed 2026-08-04)
+
+The last numbered phase doc, and the first to close into a world with no successor phase doc:
+**everything it left open was closed out later the same day — done or revoked (`docs/ROADMAP.md` §4)**; the rulings that remain are `docs/DECISION-PACKAGES.md`'s. What closed it: §1 landed 07-27 (the
+AoE-edge cut, by policy); §2/§4 voided with the sim; §3.1–§3.3 closed 07-28 (the two-regime tail +
+entrant floor); **§3.9 closed 08-04 by re-measurement** (the IV-before-Lust wrong-sign preference
+inverted with §8h/§8q); §5.2 closed 08-03 (`cfg-contract --strict` blocking in CI); §5.5 closed
+08-04 (the `plan-stability` and `pool-equiv` CI gates, each with a negative control); §5.7 re-cut
+and acted on 08-04 (the unrunnable ripple chain and the ladders orphans deleted, the `ALL_BUFFS`
+copies converged, the deleted-gate citations marked). Its closure banner maps every section.
+⚠ Bannered-false blocks inside: the §9 *"never rank on the rate integral"* line (overturned 07-30 —
+the integral RANKS; the per-cast sum reports) and the §7 press-second item (proposes the fire-time
+display the 07-30 press-time ruling overturned). Citations as **"PHASE13 §x"** resolve here;
+section numbers are unchanged.
+
+## `19-roadmap-record-through-0804.md` — the ROADMAP as it stood when the slate was cleaned (archived 2026-08-04)
+
+The full pre-08-04 ROADMAP, verbatim under a banner: the phase histories, done-ledgers, session
+narratives and every measurement they cite. Archived when the user directed *"nothing folded,
+nothing unfinished — keep going until the items are either done or revoked, then archive the docs"*:
+every open item in it was closed that day (the closure map is the new lean `docs/ROADMAP.md` §4 and
+`docs/DIARY.md`'s 08-04 entries; the rulings that remain are `docs/DECISION-PACKAGES.md`'s).
+
 ---
 
-_(In flight: **`docs/PHASE13.md`** — the only live plan doc. Archive it here when it closes.)_
+_(No plan doc is in flight: **`docs/ROADMAP.md`** is the live plan — lean since 08-04. If a future
+phase opens its own doc, archive it here when it closes.)_

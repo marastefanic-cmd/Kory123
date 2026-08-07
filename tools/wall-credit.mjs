@@ -69,7 +69,11 @@ const flag = (n, d) => { const i = argv.indexOf(`--${n}`); return i < 0 ? d : ar
 const die = m => { console.error('ERROR: ' + m); process.exit(2); };
 
 const api = loadEngine(process.env.ENGINE || path.join(REPO, 'index.html'));
-const NAME = flag('preset', '2:40 lust 0:07 intermission 1:30-2:10');
+/* ⚠ The default preset name is the T5 strip entry. The old default ("2:40 lust 0:07 intermission
+   1:30-2:10") was one of the fifteen exact-match-era reference fights DELETED 07-30 when the strip
+   became the declared tests — this tool silently rotted with it (found 08-07 while wiring it into
+   CI; the "stale doc, not broken tool" note in CLAUDE.md turned out to be a stale TOOL this time). */
+const NAME = flag('preset', 'T5 · 2:40 lust 0:07 · interm 1:30-2:10');
 const kase = api.cases.find(c => c.name === NAME) || die(`no preset "${NAME}" — see window.BOSS_PRESETS / GOLDEN_PRESETS in index.html`);
 const cfg = cfgFor(api, kase);
 const walls = (cfg.segments || []).filter(s => s.type === 'intermission');

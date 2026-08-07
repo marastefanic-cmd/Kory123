@@ -1440,3 +1440,531 @@ accounting are not. Filed in MODEL-DEFECTS §9n addendum as the next thing to pu
   2-cast deficit being the opener toll), so the ORIGINAL unadjusted duels were correctly matched.
   ⇒ The project's standing caution generalises again: when an instrument and a closed form disagree,
   suspect the instrument's SETUP first. It was the setup, twice in one session.
+
+# 2026-08-04 — the search session's leftovers: §9o closed by move class 6, and the small honest fixes
+
+The 08-03 session left four named items on ROADMAP's ledger, and this session worked through them in
+the priority order set at its start. The headline is the first: **MODEL-DEFECTS §9o — the
+3-coordinate search miss at `h400 · 3:00 lust 0:20` that hit three different kits — is CLOSED**, by a
+new `phaseRerank` move class and nothing else. `simulate()` was not touched, which is the whole point
+of the standing rule: the scorer ranked the better plan correctly all along, and `law-check` stayed
+green from first measurement to final commit.
+
+## §9o — the chain-dragged cluster (move class 6)
+
+Decomposed before designing anything: the emitted plan's `scb[5,125]` is cooldown-FLUSH (gap = the
+120 s cooldown exactly), so the improving `+2` on scb#0 — two more seconds of the gem under the
+pinned Bloodlust — *forces* scb#1 out of the 125 value cluster through `repair`'s chain, and the
+Arcane Power cross term makes relocating scb#1 without AP a pure loss (−0.036 / 0.000-tie / +0.020
+casts for the components vs the composed move). Three coordinates coupled through TWO mechanisms at
+once — repair legality AND the §4 cross term — which is exactly the gap between class 3d (chain, no
+partner) and class 3 (cluster, no chain). Class 6 composes them: slide each single press, and where
+repair's closure drags other presses, offer each co-pressed partner of a dragged press riding the
+same slide. Gated on `!moved` after class 5 (the 3d position lesson at full strength), so 68 of 72
+kit-sweep cells are byte-identical by construction. The four that changed all improved — including
+`icon+mqg · h400 · 3:00` at +0.0138 casts, a cell the k=3 audit had certified as a local optimum,
+i.e. a real miss invisible to the gate that the move class caught anyway. And the descent walks
+BEYOND the audit's bounded move on all three reported cells (+0.034/+0.022/+0.032 vs
++0.020/+0.013/+0.019): offered the coupled step, it re-forms the whole opening — value cluster to
+0:10, Arcane Power to the opener, chains at 2:10. `search-audit --k=3` reads 72/72 with a clean
+self-test; anchors 17/17; preset sweep PLAN-DIFF IDENTICAL.
+
+## buildSegments: overlap resolution is order-independent now, and the UI says so
+
+The second ledger item was a plain user-facing bug: overlapping phase rows resolved by "last row wins
+entirely", so the same fight scored 202.40 or 212.00 effective casts (4.7 %) depending on nothing but
+data-entry order. The winner of each elementary interval is now chosen by a total order — physics >
+policy > value (intermission > aoe > burn), then the more specific row inside a type — so permuting
+the rows cannot change the segments, and the phase editor warns on every overlap, naming the rows,
+the interval, and which one applies. Non-overlapping input (every preset, every declared test)
+provably resolves identically to the old rule; the preset sweep is byte-identical across the change,
+anchors 17/17, all scorer gates green.
+
+## Correction 3's press-snap: not inert — split, and the split is the doctrine
+
+The third item arrived worded as "the AoE press-snap has gone inert (it lives on `eff`, the ranking
+reads `scoreStart`)", and half of that dissolved under measurement. The snap is alive exactly where
+the execution model lives — presses 98 and 99 into an exact AE lattice both FIRE at 99.000 in
+`actEff`, feeding the board, the reported sum and the transcription — and the ranking's ignorance of
+it is not drift but MECHANICS §0 applied: the 07-31 canonical statement postdates the 07-25
+correction, and it forbids re-admitting a lattice to the integral. The stale ledger claim ("two
+presses that fire at the identical instant are separated by 0.05783 casts… perfectly linear in press
+time") did not reproduce: the interior is flat to the digit, same-instant presses tie at exactly
+0.000000, hanging past the wall is priced (Correction 2 intact), and the only same-instant
+separation left is across a dead zone, where it demotes dominated candidates and nothing else. What
+IS still true — and now recorded as an accepted, bounded gap rather than a defect nobody owns — is
+the exactly-flush clamp: a window ending ON the wall ties the interior instead of losing its last
+AE, ~0.04 casts worst case, kept out of emitted plans by the earliest tie-break. Pricing it would be
+a one-sided expectation charge at AoE-cut window ends (kin to the kill credit, never a lattice), and
+that is a scoring decision that belongs to the user, with its own closed form and gate, per the
+standing rule that the scorer is perfectible and never edited casually.
+
+## Corrections logged
+
+- **MODEL-DEFECTS' "Also found" ledger carried a claim the engine no longer exhibits** — the 0.05783
+  same-instant separation and the "perfectly linear in press time" slope. Re-measured 08-04: flat
+  interior, 0.000000 separation. The ledger entry was rewritten around the fresh probe rather than
+  left describing an engine state that no longer exists.
+
+## The dead ramp-damage path is gone, and simulate() is ~20 % cheaper for it
+
+The last ledger item was the easiest and still worth its own commit: `rampCasts`/`rampCastDmg` — the
+pre-§8q discrete ramp-damage scoring path — had survived as pure write-only work, an O(|active|) Set
+build + sort + piecewise integration per ramp cast on every one of the ~5.7 M simulate() calls a
+long-fight optimize makes, its result read by nothing. Deleted along with its private helpers
+(`nonAB`, `segAt`, `RAMP_JITTER`); `rampSpans` stays, it feeds breakpoints. Bit-identical by
+construction and by measurement — plan-diff IDENTICAL with scorerMoved=0, anchors 17/17, every
+scorer gate green — and the same 21-cell preset sweep dropped from 133 to 107 CPU-seconds.
+
+## PHASE13 §5.5 + §5.7: the owed CI gates landed, and the instrument residue re-cut
+
+Working PHASE13 toward its archive, the two CI jobs it said the repo still owed both landed with
+negative controls: `plan-stability` (plan-sweep A/B against the merge-base engine, graded by
+plan-diff's own comparator path — intended movement passes, a scorer-pinned regression or backwards
+tie-break fails, and a seeded 3-band regression is demonstrably caught) and `tools/pool-equiv.mjs`
+(the page's pooled solve path against the sequential path every other gate runs — byte-identical on
+all cells, with a vacuity guard counting real port traffic and a corruption control proving the
+comparison has teeth). The third owed job, the cached runner build, is void with the sim.
+
+The §5.7 hygiene list was then re-cut against the post-sim tree rather than worked as written: the
+whole ripple chain (`lattice-ripple`, `ripple-audit`, `floor-plateau`, `ambient-gap`,
+`unexplained-gap`) was deleted — unrunnable since 07-30 took `xval-collect` (their documented input
+producer), premises bannered dead in RULES §8's historical block, and ripple-audit failing two of its
+own pre-registered self-checks meant nothing it printed was quotable anyway. The `tools/ladders`
+orphans went with it. The three hand-retyped `ALL_BUFFS` copies in the Playwright dev scopes now
+import the canonical list from `engine-node.mjs`. `tests/README.md` describes the real gate set
+(eleven blocking checks, not five) and stops mislabeling `finite-weights.json` — it is the LIVE
+locked record EP.md cites, not a retired file. And the living docs stopped presenting four deleted
+sim-era gates (`window-span`, `snapshot-rule`, `credit-check`, `model-audit`) as runnable: every
+citation now says deleted-with-the-sim, the rules standing on what they measured — which was already
+the honest state, just not the written one.
+
+## Corrections logged
+
+- **PHASE13 §5.7's own claims drifted:** it asserted `tests/README.md` and CLAUDE.md carry a "9m07s"
+  timing (neither does — only plan-sweep's own header), and its `cfgFor`-drops-t5two finding was
+  FIXED 08-03 (cfg-contract --strict has been green and blocking in CI since) while the section still
+  presents it as open. The archive banner records both.
+- **ROADMAP presented `tools/xval-results/` as holding "36/36 tables certified by
+  xval-stamp-audit (exit 0)"** — the directory holds 6 boss transcripts and the stamp-audit tool is
+  deleted. Corrected to point at the archived record.
+
+## PHASE13 is CLOSED and ARCHIVED — the roadmap is the live plan now
+
+The user asked for whatever was left in PHASE13 that made sense to do, until the doc could join the
+archive. The session's second half did that: §3.9 re-posed against the current engine and CLOSED (the
+IV-before-Lust wrong-sign preference inverted with §8h/§8q — the emitted plan now puts Icy Veins at
+0:15 with the value cluster, the in-band near-tie resolving to the call exactly as the user's rate
+argument says it should; the mechanism, in hindsight, was the §8q ramp-compression leak); §5.5's two
+owed CI gates landed with negative controls; §5.2 confirmed closed since 08-03; §5.7 re-cut against
+the post-sim tree and acted on; §6.6 voided (it named the sim's wasm); §7's press-second item
+bannered SUPERSEDED (it proposed the fire-time display the 07-30 press-time ruling overturned), the
+transfer test recorded as answered two-sidedly (h=0 layouts are SP/crit-invariant; above h=0 the
+operating point is load-bearing — T16/T17 prove SP alone moves the band), and the ripple tools
+retired. What is genuinely long-horizon moved to ROADMAP §0d, owned rather than orphaned: the
+constructive-enumeration programme (the engine both declared-test programmes need), the platform
+track, the seven live user calls, and the §8 traps. `docs/PHASE13.md` is now
+`docs/archive/18-phase13-post-exact-objective.md`, with a closure banner mapping every section and
+two stale blocks bannered false in place (§9's rate-integral ban, overturned 07-30; §7's
+press-second item). Every path reference in the living docs and tools was re-pointed; "PHASE13 §x"
+citations resolve to the archive forever, per the convention.
+
+For the first time since Phase 1, no phase doc is in flight. That is not "done" — ROADMAP §0d and
+the two user-requested test-derivation programmes are the work — but the memory is consolidated:
+one live plan, one defects ledger, one history.
+
+## The slate is CLEAN — every item done or revoked, and the plan docs are archived
+
+The user sharpened the mandate: *"nothing folded, nothing unfinished. Keep going until the items are
+either done or revoked that they don't make sense anymore. Then archive the docs."* The rest of the
+day did exactly that.
+
+**Done:** the two 07-31 test-derivation programmes were EXECUTED — the length ladder (12 cells,
+2:20–3:20 × three Lust timings, each brute-scanned over the complete anchor-and-chain family by the
+rewritten `brute-cell` — which turned out to be the FIFTH instrument grading on the retired
+objective, now fixed to the pair with plateau reporting — then audit-iterated to a fixed point) and
+the 12:20 alignment study (strategy families scored exactly at three Lust schedules, plus the tool's
+free answers). Both live in `docs/DECISION-PACKAGES.md`, awaiting the rulings only the user can
+make. The ladder found real structure: the T3 Morogrim rule generalizes across 2:40–3:00 at every
+Lust timing (score lust-invariant at 3:00), and 3:20 re-forms around a terminal cluster no chain
+family expresses. The study's verdict: hold beats spam mildly and consistently, but the free search
+beats every pure policy by ~4 casts — structure is first-order, alignment second-order. Also done:
+URL-shareable setups + autosave (the one product route with real value — a deterministic tool makes
+a link a reproducible plan), the killMode oneSided phantom-AE fix (+2.21 casts of AE after the boss
+died; sym's kinks had made it bit-identical to none), and the PoM rule (RULES §18).
+
+**Revoked, each with its reasoning written down (ROADMAP §4):** the module split (its disease is
+gated now), the perf ladder (no complaint, stale prices), the remaining product routes, the
+constructive-enumeration build (brute-cell + the audit gates stand instead — and sufficed for the
+ladder), and the seven PHASE11-era user calls (resolved to the status quo, every one reversible by a
+sentence). The MODEL-DEFECTS tail was reclassified entry by entry — §9i/§9j/§9m an accepted limit,
+§9e a recorded contingency, §8v settled by the comparator's own order, §8r to statement 1, the low-N
+AoE cut to declared-phase semantics, the ATI long-fight gap filed under infinite mana's costs — so
+the ledger carries NO open work for the first time in its existence.
+
+**Archived:** the old ROADMAP, verbatim, as `docs/archive/19-roadmap-record-through-0804.md`; the
+living ROADMAP is now a lean status-rulings-registers doc. Two decision packages await the user;
+everything else is either shipped, gated, or a register entry saying exactly why it never will be.
+
+# 2026-08-04 (cont.) — the edge-memory ± eliminated, on a one-line user challenge
+
+Walking the user through the session's decisions, they stopped at the priced ±0.05–0.15 edge-memory
+term: *"can't you average out the values? why do you need +-?"* The honest answer was that the ± was
+a shortcut dressed as a limitation — the integrand snapped to the new state's steady average at a
+buff edge while the true average transitions over one 5s window. The transition average has the same
+closed-form structure as everything else, so it is now computed: outgoing attempts become strata
+that drain out of the trailing window as new attempts displace them (gaps ride the same list as
+procless strata, making the old linear gap remnant exact too), and the walk's aging became
+per-cast-exact (`atiUpAcc`). Plain fights bit-identical (all ATI laws to the digit); ati-off
+plan-diff IDENTICAL 21/21 vs master; anchors 17/17; new windowed `ati-mc` check green with
+engine−truth +0.102 → +0.079 at lust@30 (both edge biases removed — the plan-differential half is
+what matters). Remaining, both pre-decided: the +0.03 cold-start continuous smoothing (§8l's lattice
+ban) and the all-buffs straddle convention (PHASE8 §25). MODEL-DEFECTS §9m addendum.
+
+Lesson worth the ink: the user's question was better than my pricing. I had measured the term,
+called it second-order, and documented it — all true — but "documented and small" is not "necessary",
+and this codebase's whole method is that exactness is cheaper than error bookkeeping wherever the
+algebra allows it. It allowed it.
+
+# 2026-08-05 — the tie-break half of the objective, three defects deep
+
+The session opened on one red test (T7) and closed with a corrected grid, a new pass and a new
+criterion. What makes the day worth recording is that all three came out of the same question —
+*"what do you do when the score cannot tell two layouts apart?"* — and that the first two answers I
+reached for were both wrong in an instructive way.
+
+**T7 was never a search problem, and three attempts to treat it as one all regressed the suite.** A
+coarse structure-scan seed class, retargeting `polish()`'s acceptance from `robust` to `integral`, and
+anchor-pinned restarts: measured together, 13/17 → 11/17, reverted whole. The measurement that
+explains them is one line — the declared and emitted layouts score `66.583205` on the ideal integral,
+*both*, bit-identical. No seed can be preferred and no neighbourhood can be climbed when the gradient
+is exactly zero. The retarget did surface something real and worth keeping: the hill-climb's own
+objective prefers the WRONG layout there (`robust` 66.338 emitted vs 66.268 declared), so the climb was
+pulling away from the answer by construction.
+
+What T7 actually needed was `plateauCanon`: **the plateau is connected but not monotone.** Every route
+from the member the descent lands on to the canonical one passes through a member that is shape-WORSE
+(`zerk 27→35`, a later press vector), so a strict-improvement pass — which `phaseRerank` must remain,
+since §8w's ratchet exists to stop it drifting — cannot take the first step at any effort. The fix is a
+beam walk confined to the ideal-EXACT plateau, which cannot move the score and is monotone in the
+comparator, so it cannot reroute a basin. 13/17 → 14/17.
+
+**T10 then exposed an arithmetic defect nothing else could see.** Its declared cluster at 0:10 is LATER
+than the emitted 0:07 at six coordinates and earlier at none, so no earliness rule of any kind can
+reach it — which looked like proof that the user's abolition of the fewest-presses criterion (08-05,
+§9s) had been premature. It was not. The rival at 0:07 was on-grid only because `shapeCtxOf` computed
+the ramp-end anchor at PASSIVE gear haste, while T10's own plan has a prepull Icy Veins running from
+the pull: 6.498 s of ramp at m=1, but 5.415 s at m=1.2, so the anchor is 6 and not 7, and 7 is not a
+structural second of that fight at all. Correct the ramp and `offGrid` reads 6 against 0. **A quantity
+used only by a tie-break still has to be right** — and no gate could catch it, because every gate this
+project runs checks the SCORE, and the score never touches `rampLen`.
+
+**T13 was the one that needed a genuinely new criterion, and the discipline was to find the right one
+rather than the one that worked.** Reinstating `distinct` fixes T10 and T13 — and turns T8 red as a
+search failure worth +0.093 casts, because its ideal-tied intermediates carry more press moments and
+the criterion refuses every step along the route. Measured, kept as a one-line switch, left off. The
+criterion that works is `valueSecs`, and its argument is physics rather than tidiness: value buffs
+(`sp`/`dmg`) MULTIPLY each other (§4's cross term) so they want the same second, while haste buffs must
+go back to back and never overlap (§4c) so they must not be counted. Restricting the count to value
+tracks is exactly what makes it safe: it is blind to Icy Veins and Berserking, which are the
+coordinates T8's route travels along.
+
+Correction to the record, made in place: my own 08-05 note claimed the `distinct` abolition was
+"VERIFIED NON-DESTRUCTIVE" against T6/T7/T8. The verification was real but incomplete — T10 and T13
+were never checked, and both broke. The premise the user offered (*"aligning to earliest possible will
+also naturally align presses"*) is false as literally implemented; what they were reaching for is
+`valueSecs`, and their objection to `distinct` — that it is "messy" — was precisely that it counted
+haste presses, which want the opposite thing.
+
+# 2026-08-05 (cont.) — and then the gate set earned its keep
+
+With the corpus green, the standing gates were re-run on the widened kit matrix, and `search-audit`
+found a score miss: `gem+skull · h200 · 2:40` with an intermission, beaten by **+0.028848 casts** —
+14× the tie band — via `icyVeins#1 & scb#1 & skull#1` all +2.
+
+The attribution was checked before anything was touched, because "did I just break this?" is the
+question a red gate asks first and the expensive way to answer it is to guess. The pre-08-05 engine
+emits the same plan and loses the same 0.028848 casts, byte for byte. So the miss is pre-existing, and
+the reason it appeared today is the nicest possible one: the 08-05 trinket-cap fix (§9t) had replaced
+the impossible three-trinket `icon+gem+skull` with `gem+skull`, so the matrix audited that kit for the
+first time. **Fixing an input-validation bug widened the covered space, and the wider space had a hole
+in it.** The matrix's value is the kits it covers; a kit nobody can equip was covering nothing.
+
+The move landscape is the §8s signature one dimension wider — every single coordinate downhill, every
+pair downhill or exactly flat, only the triple uphill. The flat pair is the interesting one:
+`{skull#1, iv#1}+2` is precisely the co-pressed-cluster move class 3 already offers, it scores exactly
+0.000000, and the comparator correctly refuses it because the shape prefers the earlier vector. The
+descent is behaving correctly at every single step; the move it needs simply is not in its vocabulary.
+
+The mechanism turned out to be a THIRD kind of coupling, alongside the value cluster's cross term
+(§8m) and the haste train's packing law (§8s): the fight **re-ramps** after an intermission longer than
+the Arcane Blast debuff, and through a ramp haste is provably worth nothing and value does less work,
+so every cooldown the plan parked on the wall wants to sit after the ramp — together. Move class 7, the
+suffix slide: for each distinct press second in the plan, slide every press at or after it. Read off
+the plan, never guessed, because the second that matters is already a press second — the plan is what
+put a press on the wall.
+
+It runs last and gated on `!moved`, the 3d position lesson, and the payoff is visible in the
+verification: `plan-diff` over the 21-cell preset corpus reads **IDENTICAL, changed=0**. A move class
+that runs after every older one has converged is inert wherever it has nothing to say.
+
+# 2026-08-05 (cont.) — the one I got wrong, and the instrument that was sitting right there
+
+The user asked why an Ashtongue layout wants its haste windows separated by *exactly* one proc duration
+rather than "5 or more". Good question. I answered it by finding `n = ceil(DUR/a)` in the renewal law,
+reasoning that 3.53 attempts "really" fit in a 5s window at passive haste so `ceil` must be rounding a
+smooth quantity into a step, building a phase-averaged variant, and watching the cliff turn into a
+plateau. On that basis I filed MODEL-DEFECTS §10a, **rewrote a correct rule to say the opposite**, and
+**withheld a candidate from the user's strip** so they would not rule on a line the model had supposedly
+falsified.
+
+All of it was wrong. `tools/ati-mc.mjs` — a seeded simulation of the real proc process, in CI, eleven
+seconds to run — fails the smoothed build at 4 of 9 points, including three steady rates the shipped
+model matches to five decimals. `ceil` is exact: the window is anchored AT a cast on a regular lattice,
+so attempt `k` is inside it iff `k·a < DUR` and the count is deterministic. There is no phase to average
+over.
+
+The specific trap is worth naming because it is not obvious. A phase-average IS the right move one
+subsystem over — §9m's edge memory, where the buff wall is placed independently of the cast stream, and
+where the user pushed me into exactly this formula and was right. Same algebra, adjacent problem,
+opposite answer. I generalised from "the user was right about the ± last time" to "so the ± is wrong
+here too", which is not evidence.
+
+The process failure is sharper than the modelling one. The probe I ran — rebuild, re-sweep, watch the
+cliff vanish — could only ever establish that two models DIFFER. It had no way to say which is right,
+and I wrote to four documents on the strength of it. The instrument that leaves the model was already
+written, already green, already in CI. ⇒ **when a change makes the model disagree with itself, the next
+call is the external check, not another internal comparison.**
+
+What survives is better founded than what I filed. `ati-mc`'s steady rates are exact while all four
+full-fight and windowed checks sit ABOVE truth — +0.081, +0.047, +0.079, +0.072, every one the same
+direction. A one-directional residual is not noise, and the steady form being exact localises it to the
+transient. That is the overnight goal, and it came from the instrument rather than from me.
+
+# 2026-08-05 (cont.) — the lead from the retraction, chased with an exact chain
+
+The previous entry ends on the one thing that survived my retraction: `ati-mc`'s four steady rates exact
+to five decimals while all four full-fight and windowed checks sat ABOVE truth, every one the same
+direction. That is the whole of what I had. It turned out to be enough, and the reason it was enough is
+the entry.
+
+**The first move was to stop using Monte Carlo.** `ati-mc`'s 200 000 runs resolve about 0.003 casts and
+the whole residual is 0.08 — enough to say "biased", not enough to say "by how much, where". But the proc
+process is a finite Markov chain: after cast *k* the state is `(t, rem)` with
+`rem = max(0, DUR − (t − t_lastProc))`, both on the millisecond lattice, and `stacks = min(3, k)` is
+known from the step index. So the joint distribution propagates cast by cast in a plain `Map` and
+`E[casts by T]` comes out **exactly**. It agreed with the MC to 0.001 — the MC's own noise — and resolved
+1e-5.
+
+Three facts fell out of it within minutes, and none was reachable before:
+
+- the residual is **`+0.07980` at T = 60, 90, 120, 180, 240 and 300**, to five decimals ⇒ a
+  per-engagement transient, not a rate error;
+- a 1 s scan showed it **fully deposited by t ≈ 11 s** — the ramp plus one proc window;
+- the **board walk is already right** (−0.0026 against the chain) ⇒ the whole charge is in the
+  INTEGRAL, and the walk is the thing to reproduce rather than a second thing to fix.
+
+**The second move was to re-derive the integrand from scratch** — a scratch reference sharing no code
+with `simulate()` — and check it reproduced the shipped engine to 1e-13 *before* changing anything. Then
+each candidate mechanism was switched on and off there and sized against the chain. Four were tried; two
+shipped; two over-corrected and did not, which is the only reason I trust the two that did.
+
+The defects were these. **One**: the integrand integrates something the process SUMS. The proc's memory
+decays over *attempts*, `Σ_{k<K} P0·ρ^k`, and the integral `∫₀^K P0·ρ^u du` is smaller than it by exactly
+`(1−ρ)/(−ln ρ)` at every K, because a left-Riemann sum of a decreasing function is the larger. So the
+continuum ran the memory down faster than the process does and every fight read fast. The correction is
+that factor, `c_ρ = ln ρ/(ρ−1)`, and it makes the two identically equal. On an isolated no-ramp chain it
+takes the transient from +0.031 to −0.0026 — which is the walk's own floor, so the mechanism is not
+reduced, it is exhausted.
+
+**Two**, and this is the one I would not have found by staring at the proc model: ν, the attempt counter,
+was being netted against the opener toll. The comment said *"toll casts never happened, so they rolled no
+procs"* — true, and it justified the wrong arithmetic. The toll is deliberately SPREAD over an
+m-independent nominal window so that a value buff overlapping the ramp pays its share (§8q); the real
+cast deficit is front-loaded, since the first ramp cast alone loses 0.667 casts inside its own 2.5 s.
+Netted, ν read 3.09 at the ramp's end where the process has made exactly 3 attempts. **ν is physics; the
+toll is scoring. Coupling them was the defect.** Inside a ramp cast the walk already knows exactly one
+attempt happens over that cast's own span, so ν advances at `1/iv` there and the toll never touches it.
+
+Removing the coupling had a side effect I did not predict and would not have looked for: `ν += made;
+ν −= tollR·len` is operator splitting, so the toll landed at each slice's END and **the answer depended
+on the slice grid**. Directly measured — insert a `burn` phase at `mult: 1`, which changes no damage, no
+haste, no targets and no cut, and is therefore a pure grid perturbation — the old engine moves by
+**5.5e-3 casts, two and a half times the tie band**. A scorer whose value moves when you add a
+breakpoint is exactly what the determinism convention exists to forbid, and **no gate varied the grid**,
+so nothing was ever going to catch it. There is one now (`tools/grid-invariance.mjs`, blocking, with the
+mandatory negative control: a `mult: 1.1` phase must be SEEN, because a blind probe also reads zero).
+The shape worth remembering is that its ATI-OFF control is clean on both engines — which is exactly why
+`plan-diff` could read IDENTICAL with a real defect sitting next to it. **A green stability gate is
+evidence about the cells it sweeps and nothing else**, and no swept preset enables the proc.
+
+Result: +0.080 → +0.007 per engagement, worst of fourteen cells +0.090 → +0.028, steady rates untouched,
+`plan-diff` IDENTICAL with `scorerMoved = 0` over the 21-cell corpus, anchors 17/17. What is left is two
+named terms — a ramp cast's attempt occupies the trailing window at its own spacing, not the 3-stack one
+(~+0.009); and the strata drain across a haste edge (≤ ~+0.018). Both were tried, both over-corrected in
+their crude form, both left alone with a target written down.
+
+★ **The correction to the ledger.** ESTABLISHED-FACTS §12.3 called its residual *"the deliberate
+discrete-vs-continuous residual, because the discrete-exact transient is a t0-anchored cast lattice and a
+lattice may not re-enter the integrand"*. That sentence was doing real work — it made an approximation
+look like a consequence of a rule, so nobody, including me, asked whether it was closeable. It is not
+true that the alternatives were a lattice: `c_ρ` is a continuous re-parameterisation, and reading a ramp
+cast's attempt count off `boardRamp` prices nothing at a lattice position. ⇒ **"this is the accepted cost
+of a principle" is a claim about a principle, and it should be checked like one.** The 0.030 figure in
+that section had already been corrected once, on 08-03, from a single cell to a ladder; twice corrected
+and still described as deliberate is what a load-bearing excuse looks like.
+
+# 2026-08-06 — the declaration protocol becomes a pipeline, and the enumeration gets caught out too
+
+The user closed the loop that has been circling since the candidates strip was built: *"if the tests
+are bruteforced to be correct then they should actually become tests like all the other ones."* That
+turns T7/T8's one-off precedent into the standing protocol, and the first batch went in the same day:
+**T18–T26**, nine icon+gem cells across 2:00–3:00 × three Lust timings, each an enumerated argmax the
+search demonstrably emits (or a score-tied member the comparator prefers — then the emission is what
+gets locked, T6's choice). The suite is twenty-six tests now.
+
+Running `brute-vs-search` as the confirmation gate produced the day's real finding: on two step-10
+cells **the search beat the enumeration** — +0.011 and +0.029 casts — and the tool reported it as
+"brute is +-0.011082 casts better", a garbled sign on top of an inverted verdict. The first draft had
+assumed the enumeration is always ≥ the search, which is exactly the assumption `lattice-brute`'s own
+header disclaims (bounded polish, top-16 structures). Two different findings were being collapsed into
+one label: search-below-enumeration is a SEARCH miss; search-above-enumeration means the CANDIDATE LINE
+is not an argmax and must not be ruled on. The tool now separates them, and those two cells are being
+re-certified at --top=128 with --check pinned to the emission rather than re-enumerated (T=140 at step
+5 is 1.19 billion layouts — past the raw-regime guard).
+
+The §10c re-cut of the gem+ati cell vindicated the stale-cell discipline in the most concrete way
+available: the argmax MOVED (iv[65,90]·cluster@45 → iv[60,85]·scb/AP@50·zerk@55 — the RULES §19 ridge
+softened enough to change the structure, exactly as §10c's re-measurement predicted). Ruling on the
+old line would have locked a wrong layout. And the fresh line is a live search miss (−0.010, §10d), so
+the ATI cell stays out of the batch on both halves of the standard — with the §10c residuals the same
+order as ATI plateau margins, "brute-forced to be CORRECT" is not yet a claim the instruments support
+for proc cells.
+
+One instrument fix rode along: plan-diff now treats cells present only in B as new coverage rather
+than a comparison failure — declaring a test adds its preset to the corpus, and the A/B CI job must
+not punish exactly the act the project wants most.
+
+
+# 2026-08-06 (cont.) — T27, move class 8, and two instrument bugs caught by their own fail-loud rails
+
+The 3:00·0:40 cell finished enumerating (159M layouts) and completed the 3:00 row: all three Lust
+timings score 142.140595 — the T3-Morogrim structure translating whole with the call, exactly the
+Lust-timing-invariance the 08-04 package predicted from family scans. Search-confirmed exact, declared
+as T27. The suite is twenty-seven.
+
+The `gem+ati` search miss (§10d) closed the way the diagnosis dictated: every 1-D step from the emitted
+point measures −0.03…−0.64, every partial combination likewise, and only the full five-coordinate
+rewrite is uphill (+0.010) — nothing composable. But the target is DERIVED: RULES §19's carry-over
+written as a layout (iv#0 on the pinned window's end, iv#1 one window plus one proc duration later,
+value singles and Berserking pressed to END at e + ATI.dur). Move class 8 proposes that whole structure
+at the older classes' joint fixed point, gated on `atiOn && !moved` — with the proc off it never fires,
+so proc-less cells are byte-identical by construction. The search now emits the argmax exactly;
+anchors 26/26 with the class in; the ATI candidate matches the tool's own output end to end. Its
+DECLARATION stays held on one argument: the §10c residuals (≤ +0.018) exceed the cell's 0.010 argmax
+margin, so the canonical member can still flip when they close.
+
+Two instrument findings, both caught by rails built for earlier bugs:
+· `lattice-brute`'s polish child raced `process.exit(0)` against the async IPC `send` — fine at
+  `--top=16`, dead at `--top=128` where the ~8× payload loses the race. The fail-loud exit handler
+  (added for the LAST silent-child bug) surfaced it as "exited 0 without a result" instead of a hang.
+  Fixed: exit in `send`'s callback. Same lesson one layer down — the rail worked, the exit was still
+  premature.
+· Killing background enumeration by `pgrep -f` pattern matched MY OWN compound command three times
+  this session (the pattern lives in the command line). Kill by PID, never by pattern.
+
+# 2026-08-06 (cont. 2) — the grid completes: T28/T29 from certified emissions, twelve declared in a day
+
+The two 2:20 cells resolved by certification rather than re-enumeration: full step-5 is 1.19e9 layouts
+(past the raw-regime guard), so the instrument question became *"does anything in the reachable space
+beat the tool's emission?"* — `--top=128` with `--check` pinned to it. Both came back with the tool's
+own verdict line: **"THE CHECKED LAYOUT IS THE GLOBAL OPTIMUM of the lattice (nothing found beats it
+on the pair)"** — the emission beats the enumeration's own best by the very +0.011/+0.029 that flagged
+the cells, so the emission is the best-known layout by a certification stronger than T7 carried at its
+own declaration. Locked as T28/T29; their off-grid presses (iv@0:01/0:03, AP@0:06/0:08) are the §8s
+abutting-train structure living between grid points, which is exactly why no grid argmax could match
+them.
+
+The `--top=128` run also flushed out a race that top=16 could never hit: the polish child called
+`process.exit(0)` immediately after `process.send`, and send is asynchronous — the ~8× payload lost
+the flush race and the child exited 0 with its result unsent. The fail-loud exit handler built for the
+PREVIOUS silent-child bug converted what would have been a 25-minute hang into an instant loud error.
+Fixed by exiting in send's callback. Rails catch the bugs their builders never imagined; that is what
+they are for.
+
+Twelve tests declared in one day (T18–T29), every one from an enumeration the search reproduces, and
+the day ends with one held candidate (gem+ati, blocked on the §10c residuals vs its 0.010 margin), one
+protocol (brute-forced + search-confirmed ⇒ declared), and a 29-test suite.
+
+
+# 2026-08-06 (cont. 3) — T29 relocked by its own test, and the coupling family gets its base case
+
+The first full 29-test run came back 28/29: every press-compare green, but T29's OWN scorerBeats
+caught its hour-old lock beaten by +0.019797 casts via `arcanePower#0+2 & icyVeins#0+2` — a same-delta
+press pair sitting off the step-10 certification grid, each half downhill alone. The two suite halves
+police each other, and this is the first time the scorer half caught a BRUTE-declared lock rather than
+a scoring defect: for user-declared ground truth a scorerBeats hit means the objective is wrong; for an
+instrument-declared lock it means the DECLARATION was premature, and the honest action is re-derivation,
+never defence. Iterated to the k≤3 fixed point (one round), relocked at 114.228139 — a clean 5s-grid
+layout the T=140 enumeration could never certify directly.
+
+The miss pattern — two presses coupled without sharing a second or an edge — is the §8m/§8s/§9y/§9o
+family stripped to its barest case, so instead of another shape-specific class it got the generic one:
+move class 9, every press pair slid together by one small delta, gated on the fixed point like its
+siblings. The search now emits the relocked layout exactly, in 3.5 s.
+
+
+# 2026-08-07 — the chain becomes a tool, refuses every ATI cell, and is right to; four kit misses fall to two classes
+
+The user's directive was simple — *"do whatever is left and when there's nothing more to do then merge
+it to master"* — and the day's work was the remaining derive programme (the Phase-3 kits, the coverage
+kits, the 3:20 ladder, the haste cells) plus the gem+ati declaration hold.
+
+**The hold resolved by measurement, and the measurement overturned its own first draft.** The §12.3a
+exact chain was rebuilt as a committed tool (`tools/ati-chain.mjs`), extended from bare fights to full
+layouts — press→fire at path-dependent boundaries, value at completion, the boundary credit — and
+validated to 7e-14 against the ATI-off walk. A scratchpad probe first read the gem+ati emission as
+"truth-co-optimal to 2.5e-5, declarable"; the committed tool's deeper competitor set found the real
+truth-winner sitting at engineΔ −0.119, exactly where a shallow engine-ranked top-24 never looks. The
+§10c drain residual is not one-directional and not ≤+0.018: across ONE cell's layouts it spans
+−0.074…+0.056 and FLIPS a real Berserking placement against §4c's packing law (truth wants zerk flush
+on Lust's end; the artifact prefers it overlapped, 0.119 engine-side vs −0.011 truth-side). The
+single-edge smear is provably the exact uniform-phase average (E[⌈(X−δ)/a⌉] = X/a); the error is the
+COMPOUNDING at stacked edges, where a smear of a smear loses the phases' correlations. Consequence:
+every ATI cell is chain-REFUSED (§10e), ATI cells are candidates-not-tests until that lead closes, and
+the believed→disproved ledger gains two entries in one day — the first-draft §10e itself, and RULES
+§19's ridge, demoted to a truth-plateau member. The §4c packing law, meanwhile, is VINDICATED by an
+instrument that did not exist when it was written.
+
+**The derivation batch's four search misses fell to two move classes.** Subset probes (every subset of
+the emitted→argmax coordinate differences, scored) localised the couplings: skull+mqg (−0.0815) wants
+the §4c train BUILT whole — zerk·skull·iv·iv chained from the Lust call, mqg parked on Lust's END,
+value riding a chain segment; skull+gem wants the same anchored at call−5 with iv#0 left on the pull;
+icon+skull wants a co-start block; ati+gem h200 wants the §19 chain extended THROUGH Berserking with
+the value cluster left alone. Class 10 (the packing-train constructor: anchors from class 5's own lead
+grid, keep-none/early/one variants with pin-edge placement for the kept window, co-start, permuted
+orders, values co-moved to segment starts) plus class 8's variant B closed all four. Two exact-tie
+plateaus remain that no affordable canon walk crosses (§10f, measured at 5× budget) — zero casts at
+stake, cells stay candidates, and locking either member was refused on principle: one contradicts the
+comparator, the other fails press-compare.
+
+**Housekeeping that was overdue:** wall-credit had silently rotted (its default preset name died with
+the 07-30 strip rename) — repointed and wired into CI along with search-witnesses; nine stale
+Status:OPEN headers in MODEL-DEFECTS corrected to their recorded closures; EP.md finally got its
+sim-retirement banner; PLAN.md landed whole and was deleted per its own header; every suite-size claim
+now defers to the anchors banner rather than repeating a number that staled twice in one file.
+
+
+# 2026-08-07 (cont.) — sixteen declarations, three relock lessons, and a 45-test suite
+
+The programme's verdicts came back and the declaration batch ran: **T30–T45**, the suite at
+forty-five. The wide-plateau cells taught the day's second lesson (the first was §10e's competitor
+depth): four exact-tie locks failed their own first suite run because the enumeration's pair-grade
+had named a lexicographically-later member than the descent's canonicalisation — on 194–807-member
+plateaus the grade is only as canonical as its candidate set — and all four were relocked from the
+comparator-canonical EMISSIONS, the T6 branch of the protocol. T43–T45 closed the ladder with
+certified emissions that are the 08-04 decision package's own 3:20 terminal-cluster rows to the
+second, found by the search on its own at current gear after it beat the step-15 grid by half a cast.
+The candidates strip now holds exactly the seven cells that stay out for measured reasons: five
+chain-refused ATI cells and the two §10f plateaus. DECISION-PACKAGES §A and §C closed; nothing in the
+project now awaits anything but the user's own rulings.

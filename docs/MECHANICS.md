@@ -113,6 +113,29 @@ defined pointwise at every real `t`, and the score is `∫₀ᵀ rate(t) dt`. Th
 > levels. History: MODEL-DEFECTS §8q (the ramp was the last lattice leak) and §9a F1 (the toll was flat
 > above the floor, which under-credited nothing and over-charged the ramp by up to 1.33 casts).
 
+> ### ★★ THE RAMP, RESTATED BY THE USER (08-04) — and why the "toll" IS that restatement, rearranged
+> User, reviewing the Ashtongue rebuild: *"we just have a different variable for the damage divided by
+> casting time, then the number that's the divider, the casting time, just changes after the first cast
+> finished … you know what haste is there at t=0, so you know how long the first cast will take, so for
+> the duration of the first cast you just divide damage … by the casting time at 0 AB stacks given
+> current haste, after that time subsides, you repeat."* — i.e. the momentary-rate graph of §0 with the
+> divisor stepping at each ramp cast's (haste-dependent) completion.
+> **The engine agrees with this in BOTH accounts, and the totals are one identity apart:**
+> · the BOARD WALK implements the description literally — cast by cast, each ramp cast at its own
+>   `C_k/m` with the local `m` (cooldowns, procs) read at that cast's start;
+> · the INTEGRAL books the identical total, because the user's form and the toll form are the same
+>   expression rearranged: `3 + (T − ΣC_k/m)·rate(m)` `=` `T·rate(m) − Σ(C_k − G)/G` (expand ΣC_k/m·m/G
+>   = ΣC_k/G and collect). ⇒ **the subtracted "toll" is not an estimated cast count — it is the user's
+>   own equation solved for the empty fight**, and CI asserts exactly that number at h = 0…1600
+>   (law-check's empty-fight lines, toll-audit).
+> ⚠ **The one thing the totals leave open is WHERE in time the slowness is booked**, which matters only
+> when a VALUE window partially overlaps the opener. Booking it inside each cast's own hasted span —
+> the literal reading of the description — was measured on the T3 Icy-Veins ladder and moves IV#1 to
+> 0:00 against the user's own declared 0:07 (the compression leak: the span shrinks with haste, so
+> covering the ramp becomes a bonus, violating the ramp-neutrality ruling quoted above). Booked over
+> the unhasted `ΣC_k` window, both ladders peak where declared. Same totals, different overlap pricing;
+> the declared tests chose. Reversible only as a user call, knowing T3's Icy Veins moves with it.
+
 ---
 
 ## 1. Cast time, Arcane Blast stacks, and the GCD
@@ -158,7 +181,9 @@ wowsims also rounds every cast to the millisecond (`sim/core/cast.go:137-138`), 
 **✅ Both were corrected on 2026-07-27** — the model now takes 334 ms per stack and rounds every cast
 and GCD to the millisecond, exactly as `sim/core/cast.go:137-138` does. The bare-stream drift went from
 **0.080 s to 0.005 s over 300 s**, which is the combat log's own 2-decimal printing floor: the grids
-coincide. Gate: `tools/lattice-drift.mjs`.
+coincide. ⚠ Its gate (`tools/lattice-drift.mjs`) probed wowsims and is **deleted with the sim
+(07-30)**; the rule stands on what that gate measured, and nothing re-checks it now — same status as
+the snapshot-rule and window-span gates (CLAUDE.md's retired-approaches list).
 
 ⚠ **The millisecond rounding is the part that mattered; the 334 ms constant alone moved the bare
 lattice by exactly nothing** — measured twice before the cause was understood. In steady state Arcane
@@ -235,7 +260,7 @@ begins already-buffed. Consequences the model must respect:
   raw.** If the sim shows a *free, off-GCD* buff as net-negative, open the `SIMLOG=1` combat log before
   believing it. The usual cause is a **cooldown coupling the simple analysis missed**: the press
   quantizes to the next cast boundary, its cooldown runs from that *late* fire-time, and a *later*
-  same-track use gets pushed off its window — or, per the **known harness bug** (`docs/TOOLING.md`),
+  same-track use gets pushed off its window — or, per the **known harness bug** (`docs/archive/16-sim-tooling.md`),
   **DROPPED entirely** (`APLActionSchedule` consumes the timing while the queued off-GCD cast is lost).
   Either way the buff's *own* value is fine; a *later* use is what suffered. Confirm by finding where
   each use actually fires in the log — e.g. the Vashj icon@4:00's "−4.2" was its *terminal* icon@6:00
@@ -310,7 +335,8 @@ begins already-buffed. Consequences the model must respect:
 > question**: the question was never *"does the cast land"* but *"what would the player do"*, and no sim
 > can answer that.
 > ⚠⚠ **A deliberate, PRICED divergence from the sim:** wowsims' APL cannot cancel a cast, so it finishes
-> the Blast and lands it. `model-audit` **will** show a gap at an AoE wall and that gap is **not a bug**.
+> the Blast and lands it. Any sim comparison would show a gap at an AoE wall and that gap is **not a
+> bug** — and with `model-audit` deleted alongside the sim, nothing measures it any more (accepted).
 > ⚠⚠ An **instant** cast (Arcane Explosion, `cast = 0`) takes credit **1**, not 0 — `min(1, (cut−t)/dur)
 > → 1` as `dur → 0`; the first divide-by-zero guard returned 0 and credited every AE at nothing (42 %
 > error on Kael'thas). A cast completing exactly at `T` earns a **FULL**
@@ -334,7 +360,8 @@ begins already-buffed. Consequences the model must respect:
 >    in-flight cast keeps its speed) **and value — +SP, damage multipliers — is read at the cast's
 >    COMPLETION**, over `(start, end]`. Both edges measured: a cast completing exactly on the gain is
 >    not paid, one completing exactly on the fade is. Deciding both at the cast's start over-paid one
->    cast per window (`tools/snapshot-rule.mjs`, `tools/credit-check.mjs`).
+>    cast per window (measured by `tools/snapshot-rule.mjs` / `tools/credit-check.mjs` — both deleted
+>    with the sim; the rule stands on what they measured).
 > 3. **Expiring a buff window at `press + duration`.** A self-press cannot fire while a cast is in
 >    flight, so the window must run its full duration from when the ability actually FIRES. Expiring
 >    from the press made every mid-cast window short by the slip — a whole cast in the measured case

@@ -12,7 +12,8 @@ const { page, errors, close } = await openPage();
 const perrOf = () => (errors.length ? errors[0] : null);
 
 const defaults = await page.evaluate(() => ({ gear: window.GOLDEN_DEFAULTS.gear, kit: window.GOLDEN_DEFAULTS.kit }));
-const ALL_BUFFS = ["ati", "powerInfusion", "drums", "icyVeins", "skull", "isc", "scb", "arcanePower", "berserking", "mqg", "bloodlust"];
+// the canonical list, imported — a hand-retyped copy here is the drift pattern §5.7 catalogued
+import { ALL_BUFFS } from '../tools/engine-node.mjs';
 
 for (const c of CASES) {
   const gear = { ...defaults.gear, ...(c.gear || {}) };

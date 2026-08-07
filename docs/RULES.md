@@ -3,7 +3,7 @@
 > ## ⚠ BASELINE NOTICE — every sim MAGNITUDE below is **gear-A** denominated
 >
 > Read this doc on two levels, because the 2026-07-26 gear A → gear B re-export
-> (`docs/BENCH.md` §1) hits exactly one of them.
+> (`docs/archive/14-sim-bench-practice.md` §1) hits exactly one of them.
 >
 > - **The MECHANISM of every rule survives, unconditionally.** The GCD floor, the discrete ramp,
 >   buff-into-Lust packing, SP-on-fast-casts, the AoE modifier — these are statements about TBC's
@@ -20,13 +20,15 @@
 > encodes, and re-measuring 40-odd deltas is not a prerequisite for believing the GCD floor. What is
 > *not* licensed is quoting one of these figures as a current target, a current tolerance, or the
 > other side of a gear-B comparison. When a rule's magnitude actually matters to a decision,
-> **re-measure it** — `node tools/bench.mjs --preset X --vs naive` is ~10 s from the repo alone — and
-> record the gear-B figure beside the gear-A one rather than overwriting it.
+> **re-measure it** — ⚠ the old escape hatch here (`tools/bench.mjs`) is deleted with the sim (07-30);
+> the living instruments are `tools/facts-pair.mjs`/`tools/facts-ladder.mjs --score=integral` for a
+> rule's algebraic magnitude and `tools/lattice-brute.mjs`/`tools/brute-cell.mjs` for a whole cell —
+> and record the new figure beside the old one rather than overwriting it.
 >
 > Crossover *thresholds* (§12's `~264`, `~139`, `~77`) deserve their own caution: they are functions of
 > the character's haste and SP, so they are the figures **most** likely to have moved, and the ones a
 > future phase should re-derive first. The §-ACCEPTANCE resolution-floor statistics are superseded
-> wholesale by the gear-B round (`docs/ACCEPTANCE.md`).
+> wholesale by the gear-B round (`docs/archive/17-sim-acceptance-xval.md`).
 
 Living record of the TBC Arcane cooldown rules, each with the **evidence** it was checked against. The
 one quantity to maximize is **effective ABs cast** (§1 / `MECHANICS §4`) — a **deterministic per-cast
@@ -205,7 +207,7 @@ casts**, so it should sit on the fastest part of the window.
   sim doesn't credit the truncated tail casts proportionally. The **model is right** to score pre≈post as
   a tie (it *does* credit the tail proportionally — via the boundary credit since 07-27, via the
   kill-window integral before that; the conclusion is unchanged and now exact); the gap is a sim-setup artifact
-  (cf. the Vashj drop bug, `docs/TOOLING.md`). Verified: extend the fight so the buff is interior → the gap
+  (cf. the Vashj drop bug, `docs/archive/16-sim-tooling.md`). Verified: extend the fight so the buff is interior → the gap
   vanishes to 0.00%. (AB damage is **stack-independent** — re-confirmed at source, `arcane_blast.go:55/58`
   — so this is pure cast-count, not a stack-damage effect.)
 
@@ -285,7 +287,8 @@ a clean single-buff marginal) before calling that gap a model bug.
 
 > ⛔ **THAT EXPECTATION IS RETIRED FOR SELF-PRESSED WINDOWS (07-27, PHASE12 §6.11).** The objective is a
 > per-cast sum that reads a **value** buff at the cast's **COMPLETION**, over `(start, end]` — the sim's
-> own rule (`tools/credit-check.mjs` is the gate). A self-press fires on a cast boundary, so the model
+> own rule (measured by `tools/credit-check.mjs`, deleted with the sim; nothing re-checks the edge rule
+> now). A self-press fires on a cast boundary, so the model
 > now covers exactly `floor(D_eff/Δ)` casts too: **there is no `frac(D/Δ)` over-credit left in the
 > number that ranks.** It survives only in the retired `integral` diagnostic.
 > ⚠ **Two things still stand.** (a) The FLOOR LAW itself — the *sim's* behaviour, and the whole reason
@@ -1160,7 +1163,7 @@ durations the contained region shrinks to the **intersection** of the constraint
   has no way to cancel a cast: it will finish the Blast and land it. So `tools/model-audit.mjs` **WILL**
   report a gap at an AoE wall, and any duel across one carries it. **Do not "fix" it back.** It is the
   one place the model deliberately models a **player decision the harness cannot express** — see
-  `docs/TOOLING.md` (model-audit) and `docs/PHASE13.md` §1/§2.2.
+  `docs/archive/16-sim-tooling.md` (model-audit) and `docs/archive/18-phase13-post-exact-objective.md` §1/§2.2.
 
   ⚠ *(A footnote worth keeping from step 2: the probe that first said the cast did **not** land had a
   regex requiring `Crit|Hit for` while the log read `Hit (25% Resist) for` — the third parse bug of that
@@ -1260,6 +1263,28 @@ durations the contained region shrinks to the **intersection** of the constraint
   - **Correction 3 — CONFIRMED (07-25): a press inside an AoE phase FIRES LATE, and a window that ends
     flush with the phase wall LOSES ITS LAST CAST. Never place a value window so that `press + dur`
     lands within ~1 cast-interval of the AoE phase end — sit it a second earlier and it is free.**
+    > ⚠⚠ **STATUS 08-04 — the snap governs the EXECUTION layer only, and that is now a settled
+    > consequence of MECHANICS §0, not an accident.** The fix below lives on `eff` → `auraAt` /
+    > `actEff` — fire times, the discrete board, the REPORTED per-cast sum, the transcription — and
+    > it is alive there (measured: presses 98 and 99 into an exact AE lattice both fire at 99.000).
+    > The RANKING stopped reading it when `scoreStart` became pure press geometry (§8l, and then the
+    > user's 07-31 canonical statement, which **postdates this correction** and forbids re-admitting
+    > a lattice to the integral — re-wiring this snap into `scoreStart` would be the exact "three
+    > versions of scoreStart" mistake). Re-measured on the current engine (probe recorded in
+    > MODEL-DEFECTS' "Also found" ledger): the ranking's press-time curve across the phase INTERIOR
+    > is **flat to the digit** (translation-invariant, exact and non-exact lattices alike), a window
+    > hanging PAST the wall is priced (−0.053 casts/s at h0 — Correction 2 intact), and same-instant
+    > presses are separated only across a DEAD ZONE (an intermission straddle), where the geometry
+    > correctly discounts window seconds no cast can use — the winning member of each same-fire
+    > family is the one with no dead coverage, so emitted plans are unaffected. **What remains
+    > unpriced is exactly this correction's clamp: an exactly-flush window edge ties the interior
+    > instead of losing its last AE** (~E[slip] × the wall slope ≈ 0.04 casts worst case at h0).
+    > Two mitigations keep it from reaching an emitted plan: the tie-break's "earliest" resolves the
+    > interior plateau AWAY from the wall, and no preset or declared test carries the flush
+    > geometry. Pricing it would be a SCORING change — a one-sided expectation charge at AoE-cut
+    > window ends, kin to the kill credit, never a lattice — and per MECHANICS §0 that needs its own
+    > closed form, gate, and user ruling. Until then this rule stands as PLAYER ADVICE and as the
+    > record of why the model deliberately does not express it.
     (PHASE7 §5.18; ledger `tools/duel-walk.mjs` — the instrument that produced the 102.6 % closure below,
     rebuilt and committed 07-27 after its scratchpad original was lost; predictive sweep
     `tools/cell-band.mjs`. This was §5.17's
@@ -1463,7 +1488,7 @@ it exists to get the **gearing** stat weights the infinite-mana layout EP can't 
 - **Real-gearing order: SP ≈ Int > Haste > Crit > MP5 > Spirit ≫ Mana.** Full derivation, the infinite-vs-
   finite table, the analytic cross-check, and the mana-economy the sim models (JoW / Mana Tide / Innervate
   / Vampiric-Touch +250 mp5 / Evocation / gem — **all from wowsims on the real export**, not reimplemented)
-  are in `docs/EP.md` + `docs/TOOLING.md`; locked numbers in `tests/finite-weights.json`. **A schedule-only
+  are in `docs/EP.md` + `docs/archive/16-sim-tooling.md`; locked numbers in `tests/finite-weights.json`. **A schedule-only
   conserve APL must include `autocastOtherCooldowns`** or it silently drops Innervate + Mana Tide (−6% DPS,
   starved weights) — see TOOLING ★.
 
@@ -1527,9 +1552,12 @@ its verification; MECHANICS §6 for the mechanics):
 - **The GCD floor is applied inside each branch** (`E[max(...)]` per state): at the floor a live proc
   buys exactly 0, and above the 788.5−145 ≈ 643.5 rating line procs are partly wasted (the "cap if
   Ashtongue" timeline line, §15).
-- **Every engagement starts proc-cold** — P builds over the first window exactly as
-  `P_k = 1−(1−q)^min(k−1,n)` (the walk carries the discrete law; the integrand its lattice-free
-  continuous form, threaded through the breakpoint loop and reset across intermissions).
+- **Every engagement starts proc-cold, and every buff edge is a transition, not a snap** — P builds
+  over the first window exactly as `P_k = 1−(1−q)^min(k−1,n)`, and at a state edge the old state's
+  history drains out of the 5s window as new attempts displace it (the strata machinery, 08-04 —
+  user: *"can't you average out the values?"*). The walk carries the discrete law with per-cast-exact
+  aging; the integrand its lattice-free continuous form, threaded through the breakpoint loop, with
+  intermission gaps riding the same window as procless time.
 
 It is **not** given a scheduled press: you can't pool a proc, and the scorer prices it as the exact
 expectation, so there is nothing to align a press *against* in the model. Excluding it from *scoring*
@@ -1756,3 +1784,246 @@ closed forms, why §4c's packing law can be stated at all, and why *"A beats B"*
 (the retired approach, CLAUDE.md rule 2). They are not in tension; they are the same premise stated
 twice, and each earlier attempt to "fix" one against the other re-introduced the cast lattice into a
 ranking objective §8l deliberately made lattice-free.
+
+## 18. Presence of Mind — a RULE, not a track *(settled 08-04; derivation MODEL-DEFECTS §9b)*
+
+PoM (15-pt Arcane talent, 180 s cooldown, off the GCD, next non-instant cast becomes instant) is the
+one cooldown every Arcane raider has that the planner deliberately does NOT schedule — because its
+optimal use is separable from the layout and closes to a formula:
+
+- **At steady state PoM is worth exactly ZERO.** A 3-stack Blast (1.498 s) is under the GCD at every
+  haste tested (h ∈ {0…1200} × every buff stack), so the interval is GCD-bound and deleting the cast
+  time saves nothing. Never "save it for the burst" — the burst is where it is worth the least.
+- **On a COLD RAMP it is worth `(2.5 − 1.5)/1.5 = 0.667 casts, m-independent`** — it deletes the
+  largest rung of the opener toll (1.3320 → 0.6653; the match to the documented toll is the check).
+- **Its value scales with the damage state over the ramp it covers**, exactly like the toll: with
+  Arcane Power over the opener it reaches **1.004 casts** (T=98 ladder, cluster at 0:00).
+- ⇒ **The rule: press PoM on the FIRST Arcane Blast of a cold ramp — the pull, or an intermission
+  exit — never mid-fight at 3 stacks. With more ramps than charges (one per 180 s), give the charges
+  to the ramps whose first cast a damage buff covers.** That is the whole allocation problem §9b
+  named, solved by inspection of the plan the tool already prints (every ramp start and every AP
+  window is on the timeline).
+
+**Why a rule and not a track:** PoM is off-GCD and shares no cooldown or lockout with anything the
+planner places — pressing it moves no other press, so it cannot change which layout is optimal; a
+search dimension would add cost and reach nothing the formula doesn't. ⚠ The honest second-order
+residual, recorded: PoM cheapens an EARLY opening cluster (1.181 → 0.844 casts for cluster-at-0:00 vs
+0:07 with AP down), which could in principle move a knife-edge opener — no argmax flip was
+demonstrated on the ladders (the region is a plateau), and the effect is bounded by the 0.337-cast
+spread. If a future declared test sits on that knife edge, this is the paragraph to reopen.
+
+## 16. Spam vs hold — the 12:20 alignment verdict *(recorded 08-04; REVISIT-LATER by ruling — no test declared)*
+
+The user's question (07-31): the 120 s family (Icon, gem) and the 180 s family (IV, AP, Berserking)
+re-align every `lcm = 360 s`; over 12:20 (~2.06 cycles), *spam on cooldown or hold for alignment,
+and does Lust timing change it?* Answered by exact arithmetic over constructed strategy families
+(DECISION-PACKAGES §B carries the tables; every number is a `rankPair` score, not a simulation):
+
+1. **Hold beats spam, mildly and consistently** (+0.05 to +0.77 casts at every Lust timing tested):
+   Icon every 180 s — 5 aligned uses — beats every-120 s — 7 unaligned uses. **One aligned use beats
+   two unaligned**, which closes the old "align-vs-twice breakpoint" question at this length.
+2. **Neither pure policy is the answer**: the tool's free search beats the best family by +3.6 to
+   +4.4 casts — an order of magnitude above every alignment delta — by mixing policies per segment
+   (180 s chains as the backbone, Icon spammed OR held per segment, gem split opener/terminal, Cold
+   Snap spent on a mid-fight re-align, full kill burst at ~12:05).
+3. **The Lust schedule itself is the biggest lever measured**: calls at 3:00 & 9:00 — landing on the
+   360 s re-alignment points — beat both other schedules by more than every spam/hold delta combined.
+4. ⇒ the playable rule: **structure first (Lust coverage, Cold Snap placement, the terminal
+   cluster); plan with the tool; when in doubt between spam and hold — hold.**
+
+⚠ Status: a RECORDED FINDING, not ground truth — the tool's own 12:20 answers are uncertified at
+that size (no k=3 audit was run over ~30 presses) and the user ruled "just record, revisit later"
+(08-04). No 12:20 cell is declared; the family numbers ARE exact.
+
+
+## 17. THE TIE-BREAK RULE, STATED ONCE — *"earliest but same"* *(user ruling, 08-05, standing)*
+
+⛔ **THIS IS THE ONLY TIE-BREAK DOCTRINE.** User, 08-05: *"'earliest but same' is the rule to judge
+tiebreaks. 'aligning presses' is retired."*
+
+When the objective cannot separate two layouts — the IDEAL (unquantised) score ties to the float floor
+— the canonical layout is the one whose flattened press vector is **earliest**, after the two
+resource criteria that are not preferences but waste:
+
+1. `snaps` — do not spend a Cold Snap that buys nothing (T9).
+2. `wastedPre` — do not prepull a press that funds no extra use (08-02).
+3. `offGrid` — presses classify onto the fight's own structural lattice (§9l).
+   ⚠ **The lattice depends on the PLAN, not only the fight** (§9w, 08-05): the ramp-end anchor is
+   computed at the haste actually running when that ramp runs, so a plan that hastes the pull has a
+   shorter ramp and therefore a different grid. Getting this wrong put a whole spurious residue class
+   on T10's grid.
+4. `invalid` — a VALUE press inside a ramp is not yet doing full work (§9l).
+5. `valueSecs` — **value buffs share a second; haste buffs do not** (§9x, 08-05). Value (`sp`/`dmg`)
+   buffs MULTIPLY each other (§4's cross term), so splitting them forfeits it; haste buffs must go back
+   to back and never overlap (§4c), so they are deliberately NOT counted. ⇒ fewer distinct
+   value-press seconds wins. ★ This is the criterion `distinct` was a lossy proxy for, and restricting
+   it to value tracks is exactly what fixes the lossiness the user objected to.
+6. **the earliest press vector.** That is the rule.
+
+⛔ **`distinct` (fewest press moments) is ABOLISHED** (§9s). It was a lossy PROXY for earliest —
+co-pressing is what MAKES a vector early, so the two mostly agreed, and where they disagreed the proxy
+could prefer a LATE cluster over an EARLY split. Every ruling it ever decided (T6's revision, T7's,
+T8's Berserking second) is reproduced by the earliest vector alone. ⇒ do not reintroduce it, and do
+not describe the tool as preferring "aligned presses": it prefers EARLY presses, and alignment is a
+consequence.
+
+⚠⚠ **AND THE PREMISE OF THAT LAST SENTENCE WAS FALSIFIED BY T10 AND T13 — 08-05, MODEL-DEFECTS §9v.**
+*"Alignment is a consequence"* is the claim the abolition rests on. It was verified against T6/T7/T8
+and it holds there. It did **not** hold on T10 or T13, and the counterexamples are airtight rather than
+marginal:
+
+| | declared (ground truth) | what the tool emits | ideal Δ |
+|---|---|---|---|
+| T10 | value cluster + Berserking @ **0:10**, riding Icy Veins #1 | the same cluster @ **0:07** | **0.000e+0** |
+
+The emitted plan is earlier at six press positions and later at none — so **no earliness rule of any
+kind can reach the declared layout** (not lexicographic, not press-sum, not reverse-lexicographic). The
+only thing that separated them under the old criterion set is press-moment count, 6 vs 7.
+
+✅ **BOTH ARE CLOSED, AND NEITHER NEEDED `distinct` BACK.**
+- **T10 was an ARITHMETIC defect, not a doctrine one** (§9w): its rival at 0:07 was on-grid only
+  because the ramp-end anchor was computed at passive haste while the plan's own prepull Icy Veins
+  hastes the pull. Correct the ramp and 7 is not a structural second of that fight — `offGrid` 6 vs 0.
+- **T13 needed the criterion `distinct` was a lossy proxy FOR** (§9x): `valueSecs`, criterion 5 above.
+  Value buffs multiply and want the same second; haste buffs must not overlap and are not counted. The
+  restriction to value tracks is what makes it safe — it is blind to Icy Veins and Berserking, so it
+  cannot repeat `distinct`'s T8 failure (which was to block the descent's route by penalising
+  ideal-tied intermediates that moved a HASTE press).
+
+⛔ The measured dead end stays on the record: reinstating `distinct` reads **16 of 17** too — it just
+moves the red from T10/T13 to T8, as a **search** failure worth +0.093319 casts. §9v carries the full
+candidate table and what each one breaks.
+
+## 18. THE PLATEAU IS CONNECTED BUT NOT MONOTONE — why naming the canonical member needs its own pass *(08-05, MODEL-DEFECTS §9u)*
+
+A corollary of §17 that is easy to get wrong, and cost three reverted attempts before it was measured.
+
+Once the objective declares two layouts **exactly** tied on the ideal score, §17 names which one is
+canonical — but *naming* it and *reaching* it are different problems. Reaching it is a walk across the
+plateau, and **that walk is not downhill.** Measured on T7:
+
+```
+emitted   iv[ 7,55] · cluster@7  · zerk@27     ts [5,7,7,7,7,27,55]
+  ↓ zerk 27→35      ideal tied, ts [5,7,7,7,7,35,55]   ⛔ LATER vector — worse under §17
+  ↓ cluster +8      ideal tied  (only legal once Berserking has left the Icy Veins window)
+declared  iv[15,55] · cluster@15 · zerk@5      ts [5,5,15,15,15,15,55]  ✓ canonical
+```
+
+⇒ **a strict-improvement descent can never take the first step**, at any neighbourhood size, effort or
+seed. That is not a search-reach problem and no amount of restarting fixes it. The fix is a pass
+confined to the plateau (`plateauCanon`) that walks it with a **beam** and returns its comparator-best
+member — safe precisely because confinement to an ideal-EXACT tie means it cannot move the score.
+
+★ The diagnostic rule that generalises: **when the ideal gap between the declared layout and the
+emitted one is exactly zero, the defect is neither in the search nor in the scorer.** Check that number
+first — `tests/anchors.mjs` prints it on every failure alongside the shape criterion that decides.
+
+## 19. ASHTONGUE MAKES HASTE WINDOWS WANT TO CHAIN EXACTLY ONE PROC DURATION APART *(08-05, user-found)*
+
+⚠ **This rule exists ONLY when Ashtongue is equipped.** Verified directly: with the proc off, ten
+layouts that move Icy Veins anywhere after Bloodlust — split, flush, any gap — score **bit-identically**
+(97.963059 every one). Total Icy Veins uptime inside the fight is what matters and nothing else, because
+nothing is near the GCD cap once Icy Veins is out of Lust, so the rate curve is linear and only the AREA
+counts. Turn the proc on and the same ten spread by **0.108 casts**.
+
+### The mechanism
+
+Ashtongue's proc uptime is a TWO-LEVEL step, and the levels are the renewal law's attempt counts
+(`P = 1 − (1−q)^n`, `n = ceil(DUR / a)`, ESTABLISHED-FACTS §12):
+
+| regime | cast interval | `n` | P(up) |
+|---|---|---|---|
+| passive | 1.417 s | `ceil(5/1.417)` = **4** | 0.6575 |
+| under Icy Veins | 1.173 s | `ceil(5/1.173)` = **5** | 0.7380 |
+
+Solving `q` from the passive level gives 0.23499/cast, and `1−(1−q)^5 = 0.7380` reproduces the hasted
+level to four decimals — so the two plateaus ARE n=4 and n=5.
+
+★ **`n` is exact, not rounded** — see the correction below, and MODEL-DEFECTS §10a for the full story.
+The window is anchored AT a cast and the lattice is regular, so attempt `k` sits inside it iff
+`k·a < DUR` and the count is deterministic. `tools/ati-mc.mjs` confirms the steady rates against a
+seeded simulation of the real process **to five decimals**.
+
+★ **The state LAGS the haste by one proc duration at BOTH edges**, because the law counts attempts in a
+TRAILING window: Icy Veins starting at 0:60 leaves P at 0.6575 until ~0:63.8; Icy Veins ending at 1:20
+leaves P at 0.7380 until ~1:24.2. ⇒ **the elevated proc state survives ~5 s past the window that earned
+it**, which is what the next haste window is trying to catch.
+
+### The rule
+
+**Chain haste-window EDGES one proc duration apart.** Δcasts against flush, on
+`T=120 · Lust 0:20 · SP 1387 · crit 44 · h=0 · Tirisfal 2pc · icyVeins+scb+arcanePower+berserking`
+(the cell in `tools/cells/derive-0805.jsonl`), cluster at 0:20, Icy Veins #1 at 0:60 and #2 at
+`0:60 + 20 + gap`:
+
+```
+gap    0      1       2       3       4       5       6      7      8+
+Δ    0.000 -0.027  -0.022  -0.013  -0.001  +0.014  -0.045 -0.045 -0.045
+```
+
+A ridge at exactly `ATI.DUR`, with a **cliff** the second past it — not a slope, and not a plateau.
+⚠ **Re-measured 08-05 after MODEL-DEFECTS §10c** (the transient corrections). The ridge and the cliff
+are unmoved — peak at gap 5, cliff at 6 — and so is the causal table below; the MAGNITUDES shrank by
+roughly a third (the pre-§10c reading of this same scan was `−0.022/−0.015/−0.004/+0.010/+0.026/−0.040`),
+because the old engine over-credited the proc's memory. ⇒ quote the shape, and re-measure before
+quoting a number.
+⚠⚠ **AND THE EXACT CHAIN DEMOTED THE RIDGE TO A PLATEAU MEMBER — AND CAUGHT A REAL FLIP — 08-07,
+MODEL-DEFECTS §10e.** The truth instrument (`tools/ati-chain.mjs`) says the ridge's fine structure is
+mostly the model talking to itself: at the `gem+ati` cell, iv#1 at gap 5 vs gap 10 (85 vs 90) — which
+this table separates by ~0.05 casts — are truth-TIED to **0.000025** (at fixed Berserking), so a
+player missing the ridge by 5–10 s loses nothing real, and the cliff's −0.045 sits between two
+truth-tied measured points — treat it as unestablished. ⛔ **Worse than noise, though: the same
+artifact FLIPS the Berserking placement.** The engine's emitted `zerk@55` (overlapping Lust's tail)
+is a truth-LOSER by 0.011 casts to `zerk@60` — flush on Lust's end, **exactly §4c's packing law** —
+which the engine ranks 0.119 lower. ⇒ in an ATI cell, where the emitted plan disagrees with §4c by a
+proc-sized margin, trust §4c; and no ATI cell declares as a test until §10e's compounding lead
+closes. The causal table below (the peak FOLLOWS the Lust call) is untouched — that is structure,
+not magnitude.
+
+Verified causally by moving Bloodlust and watching the optimum follow it:
+
+| Bloodlust window | peak Icy Veins start | = Lust end + `ATI.DUR` |
+|---|---|---|
+| [20, 60] | **65** | 60 + 5 ✓ |
+| [10, 50] | **55** | 50 + 5 ✓ |
+| [30, 70] | **75** | 70 + 5 ✓ |
+| absent | anchored on BERSERKING's end + 5 | — |
+
+⇒ it is not about Bloodlust specifically: **any haste window's trailing edge anchors the next one.** The
+user found the same structure independently on the value cluster — at `cluster@0:45` the edges land
+55 → 60 → 65 (Berserking end, Lust end, Icy Veins start), worth **+0.0095 casts** over `cluster@0:25`,
+and the three tracks must move TOGETHER (Berserking alone to 0:45 is −0.24).
+
+### ⚠ THIS SECTION WAS BRIEFLY REWRITTEN TO SAY "AT LEAST", AND THAT WAS MY ERROR — MODEL-DEFECTS §10a
+
+The user asked *"why does it have to be exactly 5s and not 5 or more"* — a good question — and I
+answered it by building a "smoothed" variant that replaced `ceil(DUR/a)` with a phase-average, watched
+the cliff turn into a plateau, and rewrote this section to the ≥ form. **The smoothed model is wrong.**
+`ati-mc` — the seeded simulation of the real proc process, sitting in CI the whole time — fails it at 4
+of 9 points including the steady rates the shipped model matches to five decimals. A phase-average is
+right when a window is placed independently of the cast stream (which is why it IS right for the edge
+memory, §9m); it is wrong when the window is anchored at a cast, as it is here.
+⇒ the "exactly" form stands, and the cliff is real. ⛔ The lesson is recorded at §10a: when a change
+makes the model disagree with ITSELF, the next call is the instrument that leaves the model.
+
+⚠ **§10c re-measured this ridge (08-05/06): the SHAPE holds, about a third of the magnitude went.**
+On the `gem+ati · 2:00 · lust 0:20` cell the corrected transient moved the argmax from
+`iv[65,90] · cluster@45` to `iv[60,85] · scb/AP@50 · zerk@55` — same chaining logic (windows separated
+by one proc duration; value windows END one proc duration past the pinned window's end, riding the
+carry), different member. ★ The search reaches that structure via move class 8, the proc-chain
+re-anchor, which is this rule written as a layout proposal (MODEL-DEFECTS §10d).
+
+### ✅ AND §10a's SURVIVING LEAD IS NOW CLOSED — §10c (08-05)
+
+The lead was that `ati-mc` read the engine HIGH on every non-steady check while every steady rate was
+exact. Two closed-form defects, both in the TRANSIENT, both fixed: the integrand integrated a
+left-Riemann SUM (`c_ρ = ln ρ/(ρ−1)` restores it), and ν — a physical attempt counter — had been netted
+against the opener toll, which is a *scoring* device spread over an m-independent window and therefore
+the wrong SHAPE for a cast count. Per-engagement bias **+0.080 → +0.007**, steady rates untouched,
+`plan-diff` IDENTICAL. Full algebra in ESTABLISHED-FACTS §12.3a; the record, including what is still
+open (ramp window shrinkage, strata drain at an edge), in MODEL-DEFECTS §10c.
+⇒ **The standing warning at the end of the 08-05 commit — "do not declare an Ashtongue anchor on an
+exact second until §10a is closed" — is LIFTED for the reason it was raised** (the cliff's sharpness is
+not an artifact; the shape survived the correction unchanged). It still holds for the ordinary reason:
+an Ashtongue candidate must be re-cut on the current engine before it is ruled on, because
+`tools/cells/`'s cells are graded by the engine that made them.

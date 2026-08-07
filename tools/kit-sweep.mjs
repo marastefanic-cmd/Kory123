@@ -46,14 +46,19 @@ const KITS = {
   'icon+skull':      ['icyVeins', 'isc', 'skull', 'arcanePower', 'berserking', 'bloodlust'],
   'icon+mqg':        ['icyVeins', 'isc', 'mqg', 'arcanePower', 'berserking', 'bloodlust'],
   'skull+mqg':       ['icyVeins', 'skull', 'mqg', 'arcanePower', 'berserking', 'bloodlust'],
-  'icon+gem+skull':  ['icyVeins', 'isc', 'scb', 'skull', 'arcanePower', 'berserking', 'bloodlust'],
+  /* ⛔ WAS `icon+gem+skull` — isc + scb + skull is THREE trinkets, impossible (08-05). Replaced by
+     `gem+skull`, which is one of the two Phase-3 kits the user names as practical. */
+  'gem+skull':       ['icyVeins', 'scb', 'skull', 'arcanePower', 'berserking', 'bloodlust'],
   'drums+icon+gem':  ['icyVeins', 'isc', 'scb', 'drums', 'arcanePower', 'berserking', 'bloodlust'],
   'pi+icon+gem':     ['icyVeins', 'isc', 'scb', 'powerInfusion', 'arcanePower', 'berserking', 'bloodlust'],
-  // ati is never a press (kind "proc"), but it CHANGES the landscape every press is placed on: the
-  // proc's renewal-law haste (ESTABLISHED-FACTS §12) shifts local rates and the GCD-cap margin, so
-  // the argmax can move. Added 08-03 with the exact model, so search-audit sweeps at least one
-  // proc-on kit. (Cells at crit 38 via the shape's own gear — the proc is crit-driven.)
-  'ati+icon+gem':    ['icyVeins', 'isc', 'scb', 'ati', 'arcanePower', 'berserking', 'bloodlust'],
+  /* ati is never a press (kind "proc"), but it CHANGES the landscape every press is placed on: the
+     proc's renewal-law haste (ESTABLISHED-FACTS §12) shifts local rates and the GCD-cap margin, so
+     the argmax can move. Added 08-03 with the exact model, so search-audit sweeps a proc-on kit.
+     ⛔ FIXED 08-05: this kit was `ati + isc + scb` — THREE trinkets, which is physically impossible
+     (user: *"SCB Ashtongue and Skull all occupy trinket slots and you can at most have 2 equipped"*).
+     `TRINKETS = [mqg, isc, scb, skull, ati]` and the game gives you two slots. Now `ati + scb`, which
+     is one of the two kits the user names as Phase-3 practical. See MODEL-DEFECTS §9t. */
+  'ati+gem':         ['icyVeins', 'scb', 'ati', 'arcanePower', 'berserking', 'bloodlust'],
 };
 /* ⚠ HASTE LADDER — 0 / 200 / 400 is chosen against the CROSSOVERS, not spaced for tidiness. RULES §7
    puts the IV+Berserking stack/split crossover at ~264 rating and §7a-ii puts the IV+Skull one at

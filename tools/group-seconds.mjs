@@ -5,7 +5,9 @@
 //   node tools/group-seconds.mjs --T=120 --lust=5
 //
 // ── WHAT THIS IS FOR ─────────────────────────────────────────────────────────────────────────────
-// `docs/PHASE13.md` §3 wants to replace the descent with a CONSTRUCTIVE enumeration: derive the few
+// PHASE13 §3 (archive/18) wanted to replace the descent with a CONSTRUCTIVE enumeration — REVOKED as
+// a build 08-04 (ROADMAP §4); this probe remains as the measurement instrument for that design space,
+// should it ever reopen. It derives the few
 // seconds a press could sensibly sit on, then enumerate assignments. Two claims have to hold for that
 // to be worth building, and both were measured on 2026-07-30 at **one haste level with one kit**:
 //

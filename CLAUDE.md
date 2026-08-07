@@ -5,10 +5,11 @@ Read this first. It orients you on the project; the `docs/` files hold the detai
 ## What this repo is
 
 A **TBC 2.4.3 Arcane-mage cooldown-overlay planner**: `index.html` (open it in a browser — no build,
-no deps). The app is still ONE self-contained file **today, but that convention is RETIRED by
-decision** — `docs/PHASE13.md` §5.1 splits it (design in `docs/archive/12-phase11-platform.md` §2),
-gated on plans staying byte-identical. Treat
-"single-file" as a fact about HEAD, not a constraint to defend.
+no deps). The app is ONE self-contained file. The single-file *convention* is retired by decision,
+but the module split is **REVOKED as planned work (08-04, ROADMAP §4)** — the copies-drift disease
+it targeted is gated instead (`engine-node.mjs` as the one extraction point, `cfg-contract --strict`
+and `pool-equiv` blocking in CI). Split only if a real need appears, under the byte-identical-plans
+gate (design archived in `docs/archive/12-phase11-platform.md` §2).
 
 ⛔ **THE SIMULATOR IS RETIRED (user decision, 2026-07-30)** — *"I actually want you to retire the
 simming, it's doing more harm than good. I think we have the function/equation locked down and from now
@@ -39,11 +40,30 @@ You enter a fight (length, Bloodlust
 timing, intermission/AoE phases) and it computes the **optimal moment to press each on-use
 cooldown** (Icy Veins, Arcane Power, Icon of the Silver Crescent, Serpent-Coil gem, Berserking),
 plus a burn timeline, a per-window activation schedule, and a copy-as-text plan. Alongside it:
-`tests/` — **seventeen tests** (`tests/anchors.mjs`): the seventeen layouts the user declared exactly. The goldens
+`tests/` — **forty-five tests** (`tests/anchors.mjs`): seventeen layouts the user declared exactly, plus twenty-eight BRUTE-DECLARED (T18–T29 on 08-06, T30–T45 on 08-07 — the full derive programme: every legal trinket pairing, PI, SP rungs, no-lust/odd-Lust fights, the first declared cells above h=0, and the 3:20 ladder) under the standing ruling *"if the tests are bruteforced to be correct then they should actually become tests like all the other ones"* — each an enumerated argmax the search demonstrably emits, or a certified emission (`--top=128 --check` proving it globally optimal on its lattice / a comparator-canonical exact-tie member, the T6 branch). What stays out stays for MEASURED reasons: five ATI cells (chain-refused, §10e) and two exact-tie plateaus (§10f), all in the candidates strip. The goldens
 and the plan-shape suites are **deleted** (user decision 07-28, restated twice); the sim gates are
 **deleted** (07-30, above). What is left beside `anchors` are the two scorer gates —
 `tools/law-check.mjs` (the scorer vs the algebra) and `tools/self-consistency.mjs` (the scorer vs
 itself) — which are not claims about which layout is right.
+
+## ★★★★ WHY BREADTH OF COVERAGE IS THE POINT — user ruling, 08-05, and it governs test selection
+
+Asked whether the length ladder should be re-cut onto the Phase-3 kit instead of the Phase-2 one the
+user actually plays today, the answer was neither — it was **both, and the reason is the project's
+whole purpose**:
+
+> *"of course we keep all the tests, the point of the tool is to UNDERSTAND THE LOGIC BEHIND ALL OF IT
+> and be able to adapt to new scenarios. IF I just hard derive the tests for the current setup then I
+> don't need the tool at all."*
+
+⇒ **a test is not there to record the answer for one setup; it is there to pin a piece of the LOGIC**,
+so the model generalises to gear, kits and fights nobody has tested. Consequences that bind:
+· Never retire a declared test because its kit is no longer played — the Phase-2 cells stay when
+  Phase 3 lands, because what they pin is the logic, not the gear.
+· A kit nobody plays (the MQG pairings, odd `kit-sweep` combos) still earns coverage: it checks the
+  buff logic stays coherent where no one is looking.
+· ⛔ Deriving tests only for the current setup is the failure mode this ruling names explicitly — it
+  makes the tool redundant with a lookup table.
 
 ## The end goal (why this exists)
 
@@ -131,7 +151,9 @@ float precision at every haste, SP and crit, and that is now a `law-check` line.
 the exact renewal expectation (since 08-03 the proc is modeled by its closed-form steady state with
 the haste→proc→haste feedback converged and the per-engagement ramp-in threaded — ESTABLISHED-FACTS
 §12, MODEL-DEFECTS §9n, gated by law-check's ATI block + `tools/ati-mc.mjs`'s seeded
-process-simulation in CI) — so the tool reports a MEAN and says nothing about variance. (2) It is **infinite-mana**: the stack buff
+process-simulation in CI; **the transient's remaining one-directional bias was closed 08-05, §10c /
+§12.3a — +0.080 → +0.007 casts per engagement**) — so the tool reports a MEAN and says nothing about
+variance. (2) It is **infinite-mana**: the stack buff
 also raises AB mana cost 75 %/stack, so the stack count drives a sustainability constraint the model
 declines to see (a standing user decision). The one place the continuum idealisation genuinely needs a
 discrete correction — a cast in flight across a cut — is exactly where `cutsAt()` and the credit rule
@@ -155,7 +177,7 @@ already live.
 > ⇒ **T10 vs T11 is the corpus's sharpest instrument**: the same fight one pinned press apart, one solved
 > and one missed. Keep them together; that pair is what localised §9d in four measurements.
 
-**★ There are exactly SEVENTEEN tests, and they are the seventeen layouts the user declared exactly**
+**★ There are FORTY-FIVE tests: seventeen layouts the user declared exactly, and twenty-eight brute-declared (T18–T29 on 08-06, T30–T45 on 08-07 — enumerated argmax + search-confirmed, or certified emissions; the batch headers in `tests/anchors.mjs` carry the standard, and the relocks the suite's own first runs forced — T29 by its scorerBeats, T38/T39/T41/T42 by press-compare on wide exact-tie plateaus — are the protocol working as designed: the suite's two halves police each other, and a brute-declared lock that fails either is re-derived, never defended)**
 (T1–T17; T8 the prepull case, T9–T11 the long fights, T12–T17 the haste/SP ladder — T12 was revised to
 iv[15,60]/zerk@35 by explicit user ruling 08-03 with sim evidence, and T16's 10/30 is sim-confirmed at
 23.5σ, MODEL-DEFECTS §9m). The originals: T1/T2:
@@ -182,12 +204,15 @@ SESSION.** Over **1,582,581** legal layouts T6's declared layout ranks **33rd**;
 `AP/Icon/gem/IV @0:15 · IV @0:35 · Berserking @0:05`, ahead by 0.000231 casts (8.6× INSIDE the tie
 band) **and ahead on the tie-break's first criterion — 3 distinct press moments against 4**, because
 Berserking rides the Bloodlust call. T6 passes today only because the SEARCH cannot reach it. It is a
-coherent plan by the project's own packing law, not an exploit. ⇒ **A USER CALL:** either T6 stands and
+coherent plan by the project's own packing law, not an exploit. ✅ **SETTLED 07-31: T6 WAS REVISED** to
+that very layout, and the criterion that decided it (`distinct`) was itself abolished 08-05 (§9s) — the
+earliest rule reproduces the same answer. ⇒ (historical) **THE USER CALL WAS:** either T6 stands and
 the tie-break needs a cluster-at-3-stacks rule (the T3 rule, applied generally), or T6 is revised — and
 (b) still satisfies the original complaint, which was that Icy Veins be co-pressed *"along with the
 other things"*, as it is at 0:15.
 
-✅ **`8 of 8` AS OF 2026-07-30 — every declared layout is emitted exactly, and the CI job is
+✅ **`8 of 8` AS OF 2026-07-30 (the suite then; it has since grown — the anchors banner carries the
+current count, green throughout) — every declared layout is emitted exactly, and the CI job is
 BLOCKING** (`continue-on-error` removed — that
 flag's stated exit condition was *"the day anchors goes green"*). **MODEL-DEFECTS D1 IS CLOSED.** Seven
 defects fell that day, §8h–§8m, and the through-line is one sentence: **the cast lattice had leaked into
@@ -197,8 +222,10 @@ the ranking objective in four separate places.**
    (0.7250) above *Berserking inside Bloodlust* (0.7203) against laws of 0.667 and 0.867. ⇒ **the
    integral ranks now**, and the 07-28 revert is explained not contradicted (§8h).
 2. **No tie-break**, so the integral's flat plateaus were resolved arbitrarily — which is exactly what
-   the 07-28 Hydross duel punished. ⇒ the objective is a **pair**: integral, then fewest distinct press
-   moments → earliest → the flattened press vector.
+   the 07-28 Hydross duel punished. ⇒ the objective is a **pair**: integral, then the shape.
+   ⚠ *(historical: the shape half read "fewest distinct press moments → earliest"; `distinct` was
+   ABOLISHED 08-05 by user ruling, §9s. The order is now `snaps → wastedPre → offGrid → invalid →
+   earliest press vector` — RULES §17.)*
 3. **The search could not reach the answer at all** — a ±12 s per-press neighbourhood, when the declared
    Berserking is +20 s away on T1 and +120 s on T2. Worth **0.67 casts** (§8j).
 4. **★ `scoreStart` is now PURE WINDOW GEOMETRY** (§8l, from the user's argument): the integral is
@@ -252,8 +279,23 @@ this month to accommodate objective changes), `layout-rules.mjs` (asserted a pro
 that belong in `docs/ESTABLISHED-FACTS.md` with their algebra — its R4 encoded a two-body rule as
 universal and its R3 rested on a cast count later shown to be ramp-neutral), and `monotonicity.mjs`.
 
-★ **THE UI's "Reference fights" STRIP IS NOW THE DECLARED TESTS** (user decision 07-30: *"remove the
-current reference fights and add these hard tests there instead"*). `GOLDEN_PRESETS` held fifteen plain
+⛔⛔ **AND THE DECLARED-TESTS STRIP IS NOW HIDDEN FROM THE UI — user decision 08-05**, which OVERTURNS
+the 07-30 decision recorded in the paragraph below: *"the locked and verified tests can be hidden from
+the tool, if they ever change you'd put it up as a candidate."* Same reasoning that removed what was
+there before them — a locked test is settled, so showing it makes the tool advertise its own scaffolding
+to someone who came to plan a raid night. ⇒ **the strip and `tests/anchors.mjs` are no longer in
+lockstep**, and the replacement channel is the **Candidates strip**: `tools/candidates-inject.mjs`
+cross-references every brute-forced cell against the declared list and marks any whose FIGHT is already
+locked as *"supersedes Tn"*, so a lock that stops holding comes back in front of the user for a fresh
+ruling instead of sitting in a list nobody re-reads.
+⚠⚠ **`GOLDEN_PRESETS` ITSELF STAYS AND MUST STAY** — it is not UI decoration. `engine-node.mjs` builds
+`api.cases` from it (and asserts `nGolden > 0`), which is the corpus `plan-sweep`, `kit-sweep`,
+`wall-credit`, `ep-model` and `search-witnesses` sweep; deleting it silently shrinks every stability
+gate. Only the CHIPS are gone, and reinstating them is one `renderBakedPresets` call plus the markup.
+
+★ *(historical, 07-30 — superseded above)* **THE UI's "Reference fights" STRIP IS NOW THE DECLARED
+TESTS** (user decision 07-30: *"remove the current reference fights and add these hard tests there
+instead"*). `GOLDEN_PRESETS` held fifteen plain
 length+Lust cases inherited from the deleted `exact-match` goldens — they asserted nothing after 07-28 and
 they were the first strip a visitor saw, so the tool advertised its own scaffolding. It now holds exactly
 the seventeen declared tests, T1–T17 (the preliminary "P" presets were destroyed by user ruling 08-02 —
@@ -264,6 +306,16 @@ that test's own inputs. **The strip and
 `tools/sp-sensitivity.mjs` — four of which are now DELETED with the sim; only `sp-sensitivity` remains.
 Docs still quote the old names in examples; treat a `no preset matching…` error as a stale doc, not a
 broken tool.
+
+★★ **AND ONE MORE GATE LANDED 08-05: `node tools/grid-invariance.mjs`.** The integral is a sum over
+piecewise-constant slices, so **a breakpoint that changes no buff state must change no score**. That
+was FALSE on the Ashtongue path until MODEL-DEFECTS §10c — inserting a `burn` phase at `mult: 1`
+moved the score by **5.5e-3 casts, 2.5× the tie band** — because the ν advance netted the opener toll
+at each slice's END. Nothing in the repo varied the grid, so nothing could have caught it, and
+`plan-diff` read IDENTICAL right next to it (the defect was gated on `cfg.enabled.ati`, and no swept
+preset enables the proc). ⇒ *"one setup ⇒ one schedule"* is not a convention if the answer depends on
+where the slices fell. Blocking in CI, with a negative control (`--self-test` uses `mult: 1.1` and
+requires the change to be SEEN — a blind probe reads zero too).
 
 ⚠ **The harness-integrity gates are a DIFFERENT KIND OF THING and the survivors stay** — they assert
 the harness is not lying, never which plan is best. Four of the five were sim gates and went with it
@@ -285,7 +337,8 @@ printed a clean `0.00e+0` straight through all seven defects.
 
 ⚠ **With the goldens gone, the stability question needs an instrument, and it already exists.** Use
 `plan-sweep` + `plan-diff` before and after an engine change — it reports **Δscore** per cell with a
-regression verdict instead of a text diff, needs no file to maintain, and runs in ~33 s:
+regression verdict instead of a text diff, needs no file to maintain, and runs in ~45–60 s
+(re-measured 08-04; treat any timing here as same-session-pair guidance, per the PHASE9 rule):
 ```
 node tools/plan-sweep.mjs index.html A.json 3 --max-t=200   # before
 node tools/plan-sweep.mjs index.html B.json 3 --max-t=200   # after
@@ -329,20 +382,25 @@ permanent damage.
 ### ★★★★ AND IT IS NOW A GATE — `tools/search-audit.mjs` (§8u)
 
 ```
-node tools/plan-sweep.mjs index.html /tmp/b.json 3 --max-t=200   # ~30 s, the expensive half
+node tools/plan-sweep.mjs index.html /tmp/b.json 3 --max-t=200   # ~1 min, the expensive half
 node tools/search-audit.mjs /tmp/b.json --k=3                    # seconds, re-solves nothing
 node tools/search-audit.mjs /tmp/b.json --k=3 --self-test        # displaces a press; must be CAUGHT
 ```
 It does the table above **automatically, on every swept cell**: for each emitted plan it enumerates
-every move of ≤k coordinates by ≤span seconds and asks whether any beats it. Reading **15 of 15 local
-optima** on the preset sweep and **62 of 63** on the kit × haste matrix (`tools/kit-sweep.mjs`) — the one
-miss is §8y's, whose fix is written and blocked on a user call, and on the pre-fix engine it rediscovers both of the week's reported misses to the digit
-(+0.005815 Karathress, +0.030041 Solarian) without being told they exist. CI runs it, blocking.
+every move of ≤k coordinates by ≤span seconds and asks whether any beats it. Reading **72 of 72 local
+optima, 0 score misses, 0 tie-break misses** on the kit × haste matrix (`tools/kit-sweep.mjs`) and
+clean on the full preset sweep as of 08-06 (the §8y miss this line used to carry closed 07-31 — T6
+revised by user ruling), and on the pre-fix engine it rediscovers both of the week's reported misses
+to the digit (+0.005815 Karathress, +0.030041 Solarian) without being told they exist. CI runs it,
+blocking.
 ⚠ **`k=3` is the floor that matters.** On the 2:00 cell there were ZERO improving 1- and 2-coordinate
 moves and six 3-coordinate ones — a k≤2 audit calls that plan optimal.
 ⚠ **A pass is LOCAL optimality only.** T2's declared Berserking is +120 s from where the descent put it
-(§8j); no bounded neighbourhood at any k finds that. Global optimality needs the constructive
-enumeration (`docs/PHASE13.md` §3) — this gate is that programme's regression net, not its replacement.
+(§8j); no bounded neighbourhood at any k finds that. Global optimality is deliberately NOT claimed:
+the constructive-enumeration BUILD was revoked 08-04 (ROADMAP §4) — `tools/brute-cell.mjs` (complete
+anchor-and-chain family scans, pair-graded, plateau-reporting) plus this gate and CI's
+`plan-stability` are the standing instruments, and the ladder decision package ran to completion on
+exactly them.
 ⛔ **It grades on the objective PAIR**, via the engine's exported `rankPair`/`planBetter`. Grading on
 `rankScore` alone made it report T1 — a declared test, and the argmax — as a miss "beaten by 0.000347
 casts", 5.8× inside the tie band. **Three instruments made that same mistake in one day** (§8t,
@@ -449,9 +507,18 @@ the rule was established, not an instrument you can re-run. New rules are establ
      and *"the first Icy Veins left the opening ramp"*, which is what a **flat plateau** does to a search
      with no canonical member to fall to. The integral had made those layouts exactly tied and the
      search then wandered inside the tie. **The objective is a PAIR** — integral, then the tie-break
-     (fewest distinct press moments, then earliest, then the flattened press vector). `index.html`'s
+     (`snaps → wastedPre → offGrid → invalid → the earliest press vector` — RULES §17; ⚠ this line used
+     to read *"fewest distinct press moments, then earliest"* and `distinct` was ABOLISHED 08-05 by
+     user ruling, §9s). `index.html`'s
      `planBetter` / `rankPair`. The tie band `TIE_REL = 1e-7` is float equality, **not** a tolerance:
      true plateaus are exact and the smallest real step measured is ~2e-2 casts.
+     ★★ **AND NAMING THE CANONICAL MEMBER IS NOT THE SAME AS REACHING IT** (08-05, §9u). The plateau is
+     CONNECTED but not MONOTONE: on T7 every route from the member the descent lands on to the canonical
+     one passes through a member that is shape-WORSE, so a strict-improvement descent is stuck by
+     construction — no seed, neighbourhood or effort setting helps. `plateauCanon` walks the
+     ideal-EXACT plateau with a beam instead of a gradient. ⇒ **when the ideal gap between a declared
+     layout and the emitted one is exactly zero, the defect is neither in the search nor in the
+     scorer** — `tests/anchors.mjs` now prints that number on every failure.
      ⛔ Still true: never *tune a scorer term* against the integral (§6.1–§6.3 falsified four that way).
   2. **Expiring a buff window from the PRESS time.** A self-press fires at the next cast boundary, so
      expiring at `press + duration` made every mid-cast window short by the slip — one whole cast in
@@ -461,8 +528,10 @@ the rule was established, not an instrument you can re-run. New rules are establ
      stands on what that gate measured; nothing re-checks it now.
   3. **One snapshot rule for both kinds of buff.** ★ **HASTE is fixed at the cast's START; VALUE
      (+SP, damage multipliers) is read at the cast's COMPLETION**, over the window `(start, end]` —
-     open left, closed right, both edges measured (`tools/snapshot-rule.mjs`). Deciding everything at
-     the start over-paid one cast per window. Gate: `tools/credit-check.mjs`.
+     open left, closed right, both edges measured (`tools/snapshot-rule.mjs` — **deleted with the sim**,
+     like `tools/credit-check.mjs`, its gate). Deciding everything at the start over-paid one cast per
+     window. The rule stands on what those gates measured; nothing re-checks it now (same status as
+     retired approach 2's `window-span`).
      ⚠ Its discriminating case is a press landing **ON a cast boundary**; on a mid-cast press the old
      defects cancelled and the broken engine passed.
   4. **Letting boundary comparisons disagree about their epsilon.** The walk's clock is a running float
@@ -593,7 +662,15 @@ Treat maintaining them as part of the work, not an afterthought:
   archived whole on 07-30 and bannered. **Historical evidence about a retired instrument; every command
   in them is dead.** `docs/archive/README.md` explains what replaced it and what was genuinely lost
   (mana + AoE weighting are now unmeasured).
-- `docs/ROADMAP.md` — status, current work, and open questions.
+- `docs/ROADMAP.md` — ▶▶ **THE LIVE PLAN** (lean since 08-04, when the slate was cleaned: every open
+  item DONE or REVOKED with reasoning). §1 status · §2 what awaits USER RULINGS
+  (`docs/DECISION-PACKAGES.md` — the length ladder and the 12:20 study) · §3 the accepted-limits
+  register · §4 the 08-04 decisions (each reversible by a sentence) · §5 the standing traps. Its
+  full predecessor is `docs/archive/19-roadmap-record-through-0804.md`, append-only.
+- `docs/DECISION-PACKAGES.md` — the executed test-derivation programmes awaiting your rulings:
+  12 ladder cells with candidates + tie plateaus + certification, and the 12:20 alignment study's
+  exact-arithmetic verdicts. Ruling a cell declares an anchor (strip + `tests/anchors.mjs`, in
+  lockstep).
 - `docs/DIARY.md` — **append-only history** of how the tool evolved: the phase arc + the
   believed→disproved corrections ledger. Read to avoid re-litigating settled mistakes.
 - `docs/archive/` — closed-phase docs, chronological with a README index (`01`–`06` = the per-phase
@@ -641,7 +718,8 @@ Treat maintaining them as part of the work, not an afterthought:
   plan-neutral by the engine block being **byte-identical**, not by assertion). ✅ **The §1.4 doc sweep
   landed. ✅ CI came up** (`.github/workflows/ci.yml`: `fast`, `page`, `plans` — two carrying negative
   controls). ⛔ **The module split, the perf ladder and the product routes were NEVER STARTED**, and
-  the eight §8 user calls are unanswered — all inherited by `docs/PHASE13.md` §5/§6.
+  the eight §8 user calls went to PHASE13 §5/§6 and were RESOLVED to the status quo 08-04 under the
+  clean-the-slate delegation (ROADMAP §4).
   ⚠ **Its own header claimed "not started, nothing has changed" while all four named directories had
   changed**; the archived doc opens with a banner saying so, and six blocks inside it are bannered
   false in place (its "no CI exists" line, F9's retired constant pairing, §3.3's rate-integral-era
@@ -655,25 +733,28 @@ Treat maintaining them as part of the work, not an afterthought:
   defect (§6.9), and the cast lattice (§6.14: `STACK_CAST_REDUCTION 1/3 → 334 ms` **plus** millisecond
   rounding) all closed; cooldowns now chain from the **fire** (§6.14c, HELD 18 → 1 of 196).
   `exact-match` **25/25**, `self-consistency` **0.00e+0**.
-  ⚠ **CLOSED, NOT FINISHED** — §7's search-optimality proof programme and the acceptance re-gather are
-  `docs/PHASE13.md`'s.
+  ⚠ **CLOSED, NOT FINISHED** — §7's search-optimality proof programme went to PHASE13 §3; the
+  enumeration build was revoked 08-04 (ROADMAP §4 — brute-cell + the audit gates are the standing
+  instruments), and the acceptance re-gather was voided with the sim.
   ⛔ **Six of its blocks are live-sounding instructions that later sections falsified** and are
   bannered in place; the dangerous one is **§6.11e's *"`exact-match` WILL FAIL … do NOT `--update`"***,
   which was true for a few hours on 07-27 and is false now. **§6.6/§6.7's mechanism is falsified by
   §6.9a.** ⚠ Cite the cooldown-chain fix as **§6.14c**, never "§3" (§3 is the debts table).
   ★ Its durable payload is §6's **four instruments that flattered or blinded themselves in one phase** —
   read a tool's output, not its verdict line.
-- `docs/PHASE13.md` — ▶▶ **THE LIVE PLAN, AND THE ONLY ONE.** Everything in it is genuinely open, each
-  item with one line on why, and **nothing in it changes a number the tool prints today**. §1 (the AoE
-  edge) is ✅ **decided and landed** — and it flipped **twice** in one day (shipped as a cut → removed
-  on physics → **restored on policy**, which is where it stands): an AoE phase **start IS a cut**,
-  because the Blast lands but you would **cancel** it for Arcane Explosion; a burn edge is not, because
-  you would not. ⚠ It prices a deliberate divergence from the sim (§2.2).
-  Then §2 re-measures what Phase 12 voided (ACCEPTANCE has **no current reading**; `model-audit` at
-  scale; `scorer-duel` now that its prerequisite landed; the model↔sim boundary reconciliation — ⛔ not
-  to be "fixed" by setting `--var 0`), §3 the search-optimality programme, §4 the gear-agnostic
-  enforcement (fold the import closure into `ENGINE_ID`), §5 the platform track inherited from
-  Phase 11, §6 the eight user calls **verbatim**, §7 nice-to-haves, §8 traps, §9 standing rejections.
+- `docs/archive/18-phase13-post-exact-objective.md` — **Phase 13, CLOSED 08-04.** The
+  post-exact-objective phase, and the last numbered phase doc: **`docs/ROADMAP.md` is the live plan
+  now** (what PHASE13 left open was closed out later the same day — done or revoked, ROADMAP §4;
+  the rulings that remain are `docs/DECISION-PACKAGES.md`'s). Its §1 AoE-edge ruling (a cut, by policy —
+  flipped twice in one day) lives on here and in RULES §9; its §2 re-measurements and §4 enforcement
+  track were VOIDED with the sim; §3.1/§3.2/§3.3 closed 07-28 (the two-regime tail), **§3.9 closed
+  08-04 by re-measurement** (the IV-before-Lust wrong-sign preference inverted with §8h/§8q — model,
+  closed form and the sim's recorded verdict now agree); §5.2 closed 08-03 (cfg-contract --strict
+  blocking), §5.5 closed 08-04 (the plan-stability and pool-equiv CI gates), §5.7 re-cut and acted
+  on 08-04 (the unrunnable ripple chain deleted). Its closure banner maps every section;
+  "PHASE13 §x" citations resolve there forever. ⚠ Like every archived phase doc it carries
+  bannered-false blocks — the §9 "never rank on the rate integral" line (overturned 07-30) and the
+  §7 press-second item (superseded by the press-time display ruling) are the dangerous two.
 - `docs/archive/10-phase9-performance.md` — **Phase 9, CLOSED 07-27** (performance / refactor, under a
   byte-identical-plans constraint). Measure-first: baseline profile, call census, hypothesis table with
   verdicts, refactor catalogue landed cheapest-first. Four changes landed (groom exit, `groupSeeds`,
@@ -681,13 +762,24 @@ Treat maintaining them as part of the work, not an afterthought:
   rule after measuring null**. **§5 is the phase's larger contribution and is STILL LIVE GUIDANCE: the
   FAST ITERATION GATE** (`plan-sweep` + `plan-diff` + `plan-duel`) that replaced "re-run everything after
   every edit" — read it before designing any verification.
-  ⚠ **Closed, not finished:** the unfinished §4 reclaim rungs passed to PHASE11 §3.1, which closed
-  without starting them either — they are **`docs/PHASE13.md` §5.3's now**, unblocked (no freeze is in
-  effect) but needing a **fresh CPU baseline and content re-anchoring**: Phase 12 rewrote the very
-  scoring walk that dominates the profile, so the rungs are intact and the prices are not.
+  ⚠ **Closed, not finished:** the unfinished §4 reclaim rungs passed to PHASE11 §3.1, then PHASE13
+  §5.3, and were **REVOKED 08-04 until a real slowness report** (ROADMAP §4) — the recorded prices
+  are stale twice over (Phase 12 rewrote the dominant walk; 08-04 removed ~20 % dead work), and the
+  standing rule holds: fresh baseline first, wall-clock compares only within a same-session pair.
 - `docs/PLAN.md` — the current executable plan, when one is in flight; **absent = no plan in flight**
-  (create it before a big multi-step change, delete it once that change lands, folding anything lasting
-  into ROADMAP). **No plan in flight. Phase 5 (AoE phases) is COMPLETE** — verdict: an AoE phase is a
+  (which is the state as of 08-07 — the 08-05 ATI plan landed whole and was folded: §10c's fixes in
+  MODEL-DEFECTS/ESTABLISHED-FACTS §12.3a, its queue closed by §10d/§10e, its cells record in
+  `tools/cells/README.md`, its lessons in ROADMAP §5 and DIARY).
+  ⛔⛔ Two warnings from that plan OUTLIVE it — they live at their sources now, repeated here because
+  each was once acted on wrongly: (1) **`ceil(DUR/a)` in the Ashtongue law is EXACT, not a
+  quantisation artifact** — §10a claimed otherwise, a correct rule was rewritten on the claim, and
+  `ati-mc` falsified it at 4 of 9 points two hours later; the window is anchored AT a cast on a
+  regular lattice, so there is no phase to average over (a phase-average IS right for the edge
+  memory, §9m — same formula, adjacent problem, opposite answer). Do not re-open it. (2) **Any change
+  to the proc model validates against the exact chain FIRST** — now a committed instrument,
+  `tools/ati-chain.mjs` (§10e), not a scratchpad rebuild.
+  Create the file before a big multi-step change; delete it once that change lands, folding anything
+  lasting into ROADMAP. Older folded-plan remnants: **Phase 5 (AoE phases) is COMPLETE** — verdict: an AoE phase is a
   burn ×M(N) modifier + exit-re-ramp + SP-dilution, thresholds and sim gates in RULES §9, record in
   ROADMAP (incl. the Tirisfal-2pc/AP-additivity discovery, whose two user calls are **both RESOLVED** —
   Tirisfal is the `ck-t5` checkbox, AP is additive per "trust wowsims"). Phase 4 is
@@ -712,11 +804,11 @@ Treat maintaining them as part of the work, not an afterthought:
   **0.0000**. Never quote a `--score=point` number as a fact. Regenerate with
   `tools/facts-ladder.mjs --score=integral` / `tools/facts-pair.mjs --score=integral`.
 - `docs/MODEL-DEFECTS.md` — where the planner fails to reproduce one of those facts, with size in
-  **casts**, a reproduction, and what has already been falsified. ⚠ D1 is CLOSED (§8h–§8m); the open
-  items are **§8y** (a user call blocking move class 3d), §8o, §8r, §8v and the unfalsifiable §8n.
-  The stale line below predates that and is kept only for its list of non-defects (D1: the
-  model resolves sub-cast lattice phase as damage — three witnesses, 0.178–0.287 casts) plus a list of
-  things that are **not** defects so they are not re-filed.
+  **casts**, a reproduction, and what has already been falsified. ★ **As of 08-04 every entry is
+  ✅ closed or ⚖️ accepted/settled — the ledger carries NO open work.** The accepted limits are
+  indexed in ROADMAP §3 (the §9i T8 family, the flush clamp, §9e's recorded contingency, §8n's
+  unfalsifiability, the §9n long-fight margins under infinite mana); the file remains the ledger new
+  defects are filed in, and its non-defects list exists so nothing gets re-filed.
 - `docs/SOURCES.md` — where WoW facts come from (TBC is a solved game — look up + cite, don't
   re-derive) and the verified-facts ledger of the constants the model uses.
 - `docs/EP.md` — stat weights **two contexts**: the infinite-mana **layout** EP (closed-form model

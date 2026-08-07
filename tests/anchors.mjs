@@ -1,4 +1,9 @@
-// THE TESTS. There are SEVENTEEN, and they are the layouts the user declared exactly.
+// THE TESTS. There are FORTY-FIVE: seventeen the user declared exactly (T1–T17), and twenty-eight
+// BRUTE-DECLARED (T18–T29 on 08-06, T30–T45 on 08-07) under the user's standing ruling — *"if the
+// tests are bruteforced to be correct then they should actually become tests like all the other
+// ones"* — each an enumerated argmax the search demonstrably emits, or a certified emission
+// (--top=128 --check: the global optimum of its lattice). The batch header blocks carry the
+// certification standard.
 //
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // ★★★★★★ THESE ARE HARD TESTS. THEY ARE GROUND TRUTH. — user ruling, 2026-07-30, verbatim:
@@ -20,8 +25,11 @@
 //      wrong**. Fix in `simulate()`. ⛔ NEVER by editing the layout.
 //
 // ⛔⛔ THERE IS NO THIRD OPTION. A red here is never "the test is too strict" and never "the layout
-// drifted". These eight were each declared by the user after reading the plan, and the contested ones
-// were settled by BRUTE-FORCE ARGMAX rather than by assertion. Adjusting one to match the tool would
+// drifted". The original eight (T1–T8) were each declared by the user after reading the plan, the
+// contested ones settled by BRUTE-FORCE ARGMAX rather than by assertion, and the later batches keep
+// the same standard (user rulings for T9–T17; enumerated-argmax + search-confirmation for T18+, per
+// the 08-06 protocol — with the chain certificate on top for ATI cells, MODEL-DEFECTS §10e).
+// Adjusting one to match the tool would
 // destroy the only ground truth the project has — which is exactly what killed `exact-match`.
 //
 // ── ⚠ THEY WERE ALL h = 0 UNTIL T12 (08-02). THE LIMIT IS NOW PARTLY LIFTED. ─────────────────────
@@ -112,12 +120,24 @@
 //     the STRUCTURAL choice: cluster with the other presses, fewest distinct press moments, most robust
 //     to a press landing late. Same ruling as `docs/MODEL-DEFECTS.md` D2.
 //
-// ✅ ALL EIGHT PASS as of 2026-07-30 — `8 of 8` — and the CI job is BLOCKING again. MODEL-DEFECTS D1 is
-// CLOSED. Seven scoring defects fell to get there (§8h-§8m) and the through-line is one sentence: the
-// cast lattice had leaked into the RANKING objective in four separate places. The integral is now pure
-// window geometry (`∫ rate(m(t)) dt` over press times, durations and wall events), its cooldown chain
-// is geometric too, the objective is a pair (integral, then fewest press moments -> earliest), and the
-// descent can slide a co-pressed cluster (§8m) or a train of abutting windows (§8s) as a unit.
+// ✅ **ALL PASS** (17/17 as of 2026-08-05; 29/29 as of 08-06 with the brute-declared batch) — and
+// the CI job is BLOCKING. MODEL-DEFECTS
+// D1 is CLOSED. Seven scoring defects fell on 07-30 to get the first eight green (§8h-§8m) and the
+// through-line is one sentence: the cast lattice had leaked into the RANKING objective in four
+// separate places. The integral is now pure window geometry (`∫ rate(m(t)) dt` over press times,
+// durations and wall events), its cooldown chain is geometric too, and the descent can slide a
+// co-pressed cluster (§8m) or a train of abutting windows (§8s) as a unit.
+// ★ The last three reds all came from the objective's OTHER half — the tie-break — and each needed a
+// different kind of fix, which is why they are worth naming here (RULES §17/§18):
+//   T7  → `plateauCanon` (§9u). The plateau is CONNECTED but not MONOTONE: every route to the
+//         canonical member passes through a shape-worse one, so a strict-improvement descent is stuck
+//         at any effort. A beam walk confined to the ideal-exact plateau reaches it.
+//   T10 → the ramp anchor (§9w). `shapeCtxOf` computed the ramp at PASSIVE haste even for a plan whose
+//         own prepull Icy Veins hastes the pull, putting a spurious residue class on the grid. A
+//         quantity used only by a tie-break still has to be right.
+//   T13 → `valueSecs` (§9x). Value buffs multiply so they want the same second; haste buffs must not
+//         overlap so they are not counted. This is the criterion the abolished `distinct` was a lossy
+//         proxy for, and the restriction to value tracks is what keeps T8 reachable.
 // ⛔ IF THIS GOES RED, DO NOT LOOSEN THE ASSERTION AND DO NOT RESTORE `continue-on-error`. Run
 // `node tools/law-check.mjs` first: it asserts the scorer against the closed forms, and every one of
 // the scoring defects was found that way rather than by any plan diff. A press OUTSIDE its law is a
@@ -242,12 +262,71 @@ const CASES = [
   { name: 'T6 — 2:00, Bloodlust pinned 0:05, h=0, 1387 SP, 38 % crit',
     T: 120, sp: 1387, crit: 38, lust: 5,
     want: { icyVeins: [15, 35], isc: [15], scb: [15], arcanePower: [15], bloodlust: [5], berserking: [5] } },
+  /* ★★★★ T7 REVISED 08-04 BY USER RULING — *"I agree with the revision to T7"* — and it is the SECOND
+     revision in the corpus, made for exactly the reason the FIRST one was (T6, 07-31). Both are the
+     same shape: Berserking stops needing its own press and rides the raid's Bloodlust call, the
+     cluster slides onto the 5s grid with it, and the layout loses a distinct press moment.
+
+         was   icyVeins[7,55]  cluster@7   zerk@27     4 distinct press moments (5, 7, 27, 55)
+         now   icyVeins[15,55] cluster@15  zerk@5      3 distinct press moments (5, 15, 55)
+
+     ⚖️ LEGITIMACY, against the §8y precedent (revision allowed ONLY inside the tie band): the two are
+     not merely inside the band, they are EXACTLY EQUAL under the ideal law — both 67.452203 casts,
+     `snaps` 1 = 1, `wastedPre` 0 = 0, `offGrid` 0 = 0, `invalid` 0 = 0. The scorer has no power at all
+     to separate them, so no damage claim was overturned; only which member of an exact plateau is
+     canonical, decided by `distinct` — the same criterion, at the same position in the hierarchy,
+     that decided T6.
+     ★ FOUND BY BRUTE FORCE, not by the tool preferring itself: `tools/lattice-brute.mjs` enumerated
+     all 12,976,848 legal grid layouts of this fight and the comparator picked this member out of a
+     490-layout exact-tie plateau. The 0.1022-cast claim that CREATED T7 is untouched and confirmed —
+     67.450603 quantised IS the global optimum of the lattice; only the plateau member moved.
+     ⛔⛔ IT WAS RED UNTIL THE SEARCH LEARNED THE MOVE, and that was the point, exactly as with T11:
+     the search emitted the OLD layout (verified), because the two are score-tied so there is no
+     gradient to climb — reaching the canonical member is a PLATEAU-CANONICALISATION problem, not a
+     scoring one. ⛔ Fix it in the search/finishing passes. NEVER by reverting this.
+     ✅ **GREEN SINCE 08-05 — `plateauCanon` (MODEL-DEFECTS §9u).** The route out of the emitted member
+     runs through a plateau member that is shape-WORSE than where the descent stands (`zerk 27 → 35`,
+     later vector), so a strict-improvement descent can never take the first step. The new pass walks
+     the ideal-EXACT plateau with a beam instead of a gradient, and returns its comparator-best member.
+     ⚠ The old layout is no longer the search's fixed point, so this test now also guards the pass. */
   { name: 'T7 — 1:15, Bloodlust pinned 0:05, intermission 0:50-0:55, 1387 SP, 38 % crit',
     T: 75, sp: 1387, crit: 38, lust: 5, intermission: [50, 55],
-    want: { icyVeins: [7, 55], isc: [7], scb: [7], arcanePower: [7], bloodlust: [5], berserking: [27] } },
+    want: { icyVeins: [15, 55], isc: [15], scb: [15], arcanePower: [15], bloodlust: [5], berserking: [5] } },
+  /* ★★★★★ T8 REVISED 08-05 BY USER RULING — the THIRD revision, and the only one that overturns a
+     DAMAGE claim rather than a plateau member. Brute-forced by `tools/lattice-brute.mjs`, confirmed by
+     the user in the tool (Debug export, locked & validated), and re-verified at BOTH gear levels.
+
+         was   icyVeins[95,115] · isc[-5,115] · scb[0,120] · ap[120] · zerk[0]     108.733278
+         now   icyVeins[20,115] · isc[-5,115] · scb[0,120] · ap[120] · zerk[95]    108.827502  (+0.094224)
+
+     ⚖️ WHY THIS IS LEGITIMATE DESPITE BEING OUTSIDE THE TIE BAND (47×), where §8y forbids revision:
+     §8y protects against editing a test because the TOOL disagrees. Here the tool AGREES with the old
+     layout — it still emits it — and what overturned it is an exhaustive enumeration plus the user's
+     own ruling. The old layout was never argued for: T8's declaration reasons entirely about the ICON
+     prepull, and `isc[-5,115]` is UNCHANGED, so the property this test exists to pin is untouched.
+     ★★ THE MECHANISM, AND IT IS ENTIRELY THIS FILE'S OWN CLOSED FORMS — a pure COUPLED move:
+       · `iv#1 95→20` alone = **exactly 0.000000**. That is ESTABLISHED-FACTS' named pair
+         **Icy Veins × Bloodlust = 0.000 at h=0**: outside Lust IV takes 0.667→0.8 casts/s, inside it
+         takes 0.867→1.0 (capped) — +0.133/s either way. Moving it is free.
+         ⇒ USER, 08-05: *"the first IV should have always been @20 as per the earliest rule and I have
+         mentioned that previously, but I guess it got lost along the way."* Correct, and measured: a
+         0.000000 tie means the earliest rule governed from the start.
+       · `zerk 0→95` alone = **−0.772443**, because with IV still on the Lust call the window is
+         Lust×IV = 1.56, already over the GCD cap, so Berserking there is worth **zero**.
+       · together = **+0.094224**, and the coupling term is **+0.866667** — ESTABLISHED-FACTS §5's
+         *"Berserking in Bloodlust, no Icy Veins = 0.867"*, to the digit.
+     ⇒ in one line: **T8 spent Berserking at the pull for ~0.67 casts when it could ride Bloodlust for
+     0.867, and the only thing blocking that was an Icy Veins placement that cost nothing to move.**
+     ⚠ `zerk` PLATEAU: {95, 100, 105} tie exactly (108.827502 at test gear, 107.569575 at the user's
+     buffed gear). **95 is canonical on `distinct`** — it shares the second with the Bloodlust call, 6
+     press moments against 7 — before the earliest rule is even reached. ⛔ `lattice-brute` reported
+     `zerk[100]`: 95 never entered its candidate pool. A coverage gap in the INSTRUMENT, not a tie.
+     ⛔⛔ EXPECTED **RED** UNTIL THE SEARCH REACHES IT, like T7 and T11: every single-coordinate step
+     away from the old layout is flat (IV) or sharply downhill (Berserking), so no hill-climb escapes —
+     the §8m/§8s coupled-move family. Fix it in the search. NEVER by reverting this. */
   { name: 'T8 — 2:15, Bloodlust pinned 1:35, intermission 0:15-0:20 — THE PREPULL CASE',
     T: 135, sp: 1387, crit: 38, lust: 95, intermission: [15, 20],
-    want: { isc: [-5, 115], scb: [0, 120], berserking: [0], icyVeins: [95, 115], arcanePower: [120], bloodlust: [95] } },
+    want: { isc: [-5, 115], scb: [0, 120], berserking: [95], icyVeins: [20, 115], arcanePower: [120], bloodlust: [95] } },
   /* ★ T9 — DECLARED 08-01. The first LONG fight, the first with NO Bloodlust, and the first on the
      buffed-stat pipeline (typed 1387/38/750 Int + 10 raid buffs -> 1611.8875 SP / 50.765 % crit,
      Tirisfal 2pc on). At 6:20 every cooldown comes back more than once and the 120 s and 180 s
@@ -371,6 +450,197 @@ const CASES = [
     kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking', 'bloodlust'],
     want: { icyVeins: [-10, 10, 190, 370], isc: [10, 130, 250, 370], scb: [10, 190, 370],
             arcanePower: [10, 190, 370], berserking: [0, 190, 370], bloodlust: [10] } },
+  /* ★★★★★ T18–T26 — THE FIRST BRUTE-DECLARED BATCH (08-06), under the user's standing ruling:
+     *"if the tests are bruteforced to be correct then they should actually become tests like all the
+     other ones."* That generalises the standard T7 and T8 were locked at — pinned to a BRUTE-FORCE
+     ARGMAX, not to what the optimizer happened to say — into the declaration protocol itself. A cell
+     qualifies when BOTH halves hold:
+       1. `tools/lattice-brute.mjs` enumerated its full legal grid (step 5, or step 10 where noted)
+          and the layout below is the argmax the comparator names, AND
+       2. `tools/brute-vs-search.mjs` confirms the tool EMITS a layout that matches or score-ties it —
+          so the test asserts something the search actually does, not an aspiration.
+     Where the emission ties the grid argmax but differs from it (a plateau), the EMISSION is locked —
+     the same choice T6's revision made: the comparator names the canonical member, and the enumeration
+     certifies its score. `plateau` in each comment is how many layouts tie to the float floor; a big
+     number means the score genuinely cannot separate them and the shape rule (RULES §17) is what picked.
+     ⚠ GEAR IS THE PAGE'S EFFECTIVE STATE, per MODEL-DEFECTS §9z: crit 44 = typed 38 + Arcane Impact,
+     Tirisfal ON — so a row loaded in the tool reproduces the fight these were certified on. That is
+     also why T18/T19 do not collide with T6/T1: same fights at DIFFERENT gear pin different logic.
+     ⚠ This block described three exclusions when T18–T26 landed; all three RESOLVED the same day:
+       · 2:20 lust 0:05 / 0:20 — the search had BEATEN the step-10/top-16 enumeration (+0.011/+0.029).
+         Re-certified at `--top=128` with `--check` pinned to the emission and declared as T28/T29.
+       · 3:00 lust 0:40 — enumerated (159M layouts) and declared as T27.
+       · the `gem+ati` cell — its §10d search miss is CLOSED (move class 8); the cell is fully
+         search-confirmed and sits in the candidates strip. Its DECLARATION alone is held: the §10c
+         residuals (≤ +0.018 casts) exceed its 0.010 argmax margin, so the canonical member could
+         still flip when they close. One user sentence overrides the hold. */
+  { name: "T18 — 2:00, Bloodlust pinned 0:05, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 5,
+    // 3,276,000 layouts enumerated · plateau 887 · locked from the grid argmax (search emits it verbatim)
+    want: {arcanePower: [15],  berserking: [5],  bloodlust: [5],  icyVeins: [15,35],  isc: [15],  scb: [15]} },
+  { name: "T19 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 20,
+    // 3,276,000 layouts enumerated · plateau 697 · locked from the grid argmax (search emits it verbatim)
+    want: {arcanePower: [20],  berserking: [40],  bloodlust: [20],  icyVeins: [0,20],  isc: [20],  scb: [20]} },
+  { name: "T20 — 2:00, Bloodlust pinned 0:40, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 40,
+    // 3,276,000 layouts enumerated · plateau 732 · locked from the grid argmax (search emits it verbatim)
+    want: {arcanePower: [40],  berserking: [60],  bloodlust: [40],  icyVeins: [0,40],  isc: [40],  scb: [40]} },
+  { name: "T21 — 2:20, Bloodlust pinned 0:40, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 140, sp: 1387, crit: 44, t5two: true, lust: 40,
+    // 12,429,120 layouts enumerated · plateau 1 · locked from the search emission, score-tied with the grid argmax and comparator-canonical
+    want: {arcanePower: [125],  berserking: [125],  bloodlust: [40],  icyVeins: [0,120],  isc: [0,120],  scb: [5,125]} },
+  { name: "T22 — 2:40, Bloodlust pinned 0:05, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 160, sp: 1387, crit: 44, t5two: true, lust: 5,
+    // 45,986,292 layouts enumerated · plateau 155 · locked from the search emission, score-tied with the grid argmax and comparator-canonical
+    want: {arcanePower: [7],  berserking: [127],  bloodlust: [5],  icyVeins: [7,127],  isc: [7,127],  scb: [7,127]} },
+  { name: "T23 — 2:40, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 160, sp: 1387, crit: 44, t5two: true, lust: 20,
+    // 45,986,292 layouts enumerated · plateau 22 · locked from the grid argmax (search emits it verbatim)
+    want: {arcanePower: [20],  berserking: [140],  bloodlust: [20],  icyVeins: [20,140],  isc: [20,140],  scb: [20,140]} },
+  { name: "T24 — 2:40, Bloodlust pinned 0:40, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 160, sp: 1387, crit: 44, t5two: true, lust: 40,
+    // 45,986,292 layouts enumerated · plateau 217 · locked from the search emission, score-tied with the grid argmax and comparator-canonical
+    want: {arcanePower: [7],  berserking: [7],  bloodlust: [40],  icyVeins: [7,127],  isc: [7,127],  scb: [7,127]} },
+  { name: "T25 — 3:00, Bloodlust pinned 0:05, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 180, sp: 1387, crit: 44, t5two: true, lust: 5,
+    // 159,038,208 layouts enumerated · plateau 425 · locked from the search emission, score-tied with the grid argmax and comparator-canonical
+    want: {arcanePower: [7],  berserking: [127],  bloodlust: [5],  icyVeins: [7,127],  isc: [7,127],  scb: [7,127]} },
+  { name: "T26 — 3:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 180, sp: 1387, crit: 44, t5two: true, lust: 20,
+    // 159,038,208 layouts enumerated · plateau 334 · locked from the grid argmax (search emits it verbatim)
+    want: {arcanePower: [20],  berserking: [140],  bloodlust: [20],  icyVeins: [20,140],  isc: [20,140],  scb: [20,140]} },
+  { name: "T27 — 3:00, Bloodlust pinned 0:40, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 180, sp: 1387, crit: 44, t5two: true, lust: 40,
+    // 159,038,208 layouts enumerated (08-06, --top=24) · plateau 26 · locked from the grid argmax
+    // (search emits it verbatim). Completes the 3:00 row: all three Lust timings score 142.140595 —
+    // the T3-Morogrim structure translates WHOLE with the call, Lust-timing-invariant.
+    want: {arcanePower: [40],  berserking: [160],  bloodlust: [40],  icyVeins: [40,160],  isc: [40,160],  scb: [40,160]} },
+  /* ★★ T28/T29 — the two cells where the SEARCH BEAT THE ENUMERATION, declared from the EMISSION
+     after certification (08-06). At step 10 / top 16 the grid argmax sat 0.011 / 0.029 casts BELOW
+     what the tool emits — the instrument's bounded-polish limit, not an engine defect (full step-5
+     re-enumeration is 1.19e9 layouts, past the raw-regime guard). Re-certified at `--top=128` with
+     `--check` pinned to the emission: **the enumeration finds NOTHING that beats it on the pair** —
+     the tool's own line reads "THE CHECKED LAYOUT IS THE GLOBAL OPTIMUM of the lattice". So the
+     emission is the best-known layout by a certification STRONGER than the one T7 carried at its own
+     declaration, and it is what gets locked. ⚠ Off-grid presses (iv@0:01/0:03, AP@0:06/0:08) are
+     genuine — the packing law's abutting-train structure (§8s family) living between grid points. */
+  { name: "T28 — 2:20, Bloodlust pinned 0:05, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 140, sp: 1387, crit: 44, t5two: true, lust: 5,
+    want: {arcanePower: [6],  berserking: [125],  bloodlust: [5],  icyVeins: [1,120],  isc: [0,120],  scb: [5,125]} },
+  /* ⚠ T29 WAS RELOCKED THE HOUR IT WAS DECLARED — its own scorerBeats caught the first lock beaten
+     by +0.019797 casts via `arcanePower#0+2 & icyVeins#0+2`, a same-delta press PAIR neither the
+     search vocabulary nor the step-10 certification could see (off that grid; each half downhill
+     alone). Iterated to its k≤3 · ±{1,2,3,5} fixed point in one round and relocked from THAT — a
+     clean 5s-grid layout the T=140 enumeration could never certify directly (step 5 is 1.19e9
+     layouts). The miss became move class 9 (the generic same-delta pair slide), and the search now
+     emits this layout exactly. ⇒ the suite's two halves policing each OTHER is the protocol working:
+     press-compare certifies the search, scorerBeats certifies the lock, and a brute-declared lock
+     that fails the second is re-derived, never defended. */
+  { name: "T29 — 2:20, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 140, sp: 1387, crit: 44, t5two: true, lust: 20,
+    want: {arcanePower: [10],  berserking: [10],  bloodlust: [20],  icyVeins: [5,120],  isc: [0,120],  scb: [5,125]} },
+
+  /* ★★★★★ T30–T45 — THE KIT/COVERAGE BATCH (08-07), the derive programme finished under the same
+     §1c protocol as T18–T29: every cell is an enumerated argmax the search demonstrably emits, or a
+     certified EMISSION (`--top=128 --check`: nothing on the enumerated lattice beats it — the
+     T28/T29 standard). This is the coverage doctrine (CLAUDE.md) executed to the end of the
+     programme: the user's Phase-3 practical kits first (gem+skull), then every other legal trinket
+     pairing, the raid externals, SP rungs, the no-lust and odd-Lust fights, high haste, and the 3:20
+     ladder. Notes that bind:
+     · The kit cells pin BUFF LOGIC where nobody plays (mqg pairings, PI) — a kit nobody plays still
+       earns coverage, per the standing ruling ("the point of the tool is to UNDERSTAND THE LOGIC").
+     · T40–T42 are the FIRST DECLARED CELLS ABOVE h=0. They pin the model's self-consistency
+       (enumerated argmax + search reach) at h ∈ {200, 300, 500}, NOT world-verified play — the
+       "high-haste plans are unverified" caveat is about the WORLD and it stands (CLAUDE.md).
+       T40's argmax presses Skull TWICE via a prepull (skull[−10,110]) with the whole terminal
+       cluster kill-flushed — the shape that forced move class 11 (the first use-count-changing
+       class) into the vocabulary.
+     · T38/T39 are the same layout with and without a Bloodlust call — at 2:40+ the icon+gem optimum
+       ignores a 1:00 Lust entirely (plateaus 602/194 wide). T44/T45 score IDENTICALLY (158.332481)
+       — the 3:00 Lust-invariance (T25–T27) one rung up.
+     · T43–T45 re-derive the 08-04 decision-package's 3:20 terminal-cluster structures TO THE SECOND
+       at current gear — the tool found the study's rows on its own (the step-15 grid was beaten by
+       +0.46..0.57 casts; the emissions are certified against it).
+     · Three cells from the programme are deliberately NOT here: the two §10f exact-tie plateaus
+       (zero casts at stake, canonical member unreachable — candidates) and every ATI-bearing cell
+       (§10e: chain-refused, 5 of 5 — the integrand's edge-compounding artifact exceeds their argmax
+       margins; candidates until that lead closes). */
+  { name: "T30 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — gem+skull — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 20, kit: ['icyVeins', 'scb', 'skull', 'arcanePower', 'berserking', 'bloodlust'],
+    // 217,676,160 layouts enumerated (step 5) · plateau 2 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [45],  berserking: [15],  bloodlust: [20],  icyVeins: [0,45],  scb: [45],  skull: [25]} },
+  { name: "T31 — 2:00, Bloodlust pinned 0:05, eff 1387 SP / 44 % crit / T5-2pc — gem+skull — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 5, kit: ['icyVeins', 'scb', 'skull', 'arcanePower', 'berserking', 'bloodlust'],
+    // certified EMISSION (--top=128 --check: nothing on the lattice beats it) — the T28/T29 standard
+    want: {arcanePower: [7],  berserking: [42],  bloodlust: [5],  icyVeins: [2,45],  scb: [7],  skull: [22]} },
+  { name: "T32 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — icon+skull — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 20, kit: ['icyVeins', 'isc', 'skull', 'arcanePower', 'berserking', 'bloodlust'],
+    // 3,276,000 layouts enumerated (step 10) · plateau 110 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [30],  berserking: [10],  bloodlust: [20],  icyVeins: [0,30],  isc: [30],  skull: [10]} },
+  { name: "T33 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — icon+mqg — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 20, kit: ['icyVeins', 'isc', 'mqg', 'arcanePower', 'berserking', 'bloodlust'],
+    // 3,057,600 layouts enumerated (step 10) · plateau 772 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [20],  berserking: [40],  bloodlust: [20],  icyVeins: [0,20],  isc: [20],  mqg: [0]} },
+  { name: "T34 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — skull+mqg — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 20, kit: ['icyVeins', 'skull', 'mqg', 'arcanePower', 'berserking', 'bloodlust'],
+    // 3,057,600 layouts enumerated (step 10) · plateau 2 · grid argmax, search emits it (bvs 08-07);
+    // the cell that forced move class 10 (the §4c packing-train constructor): its argmax is the
+    // whole train zerk[20,30]·skull[30,50]·iv[50,70]·iv[70,90] with mqg parked on Lust's END —
+    // a 3-coordinate all-or-nothing from the old vocabulary's fixed point, −0.0815 casts missed
+    want: {arcanePower: [50],  berserking: [20],  bloodlust: [20],  icyVeins: [50,70],  mqg: [60],  skull: [30]} },
+  { name: "T35 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — icon+gem+PI — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 20, kit: ['icyVeins', 'isc', 'scb', 'powerInfusion', 'arcanePower', 'berserking', 'bloodlust'],
+    // 45,864,000 layouts enumerated (step 10) · plateau 418 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [20],  berserking: [40],  bloodlust: [20],  icyVeins: [0,20],  isc: [20],  powerInfusion: [0],  scb: [20]} },
+  { name: "T36 — 2:00, Bloodlust pinned 0:20, eff 1900 SP / 44 % crit / T5-2pc — icon+gem — BRUTE-DECLARED",
+    T: 120, sp: 1900, crit: 44, t5two: true, lust: 20,
+    // 217,676,160 layouts enumerated (step 5) · plateau 326 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [20],  berserking: [40],  bloodlust: [20],  icyVeins: [0,20],  isc: [20],  scb: [20]} },
+  { name: "T37 — 2:00, Bloodlust pinned 0:05, eff 700 SP / 44 % crit / T5-2pc — icon+gem — BRUTE-DECLARED",
+    T: 120, sp: 700, crit: 44, t5two: true, lust: 5,
+    // 217,676,160 layouts enumerated (step 5) · plateau 409 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [15],  berserking: [5],  bloodlust: [5],  icyVeins: [15,35],  isc: [15],  scb: [15]} },
+  { name: "T38 — 3:00, no Bloodlust, eff 1387 SP / 44 % crit / T5-2pc — icon+gem — BRUTE-DECLARED",
+    T: 180, sp: 1387, crit: 44, t5two: true, kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking'],
+    // 159,038,208 layouts enumerated (step 10) · plateau 602 — locked from the EMISSION: score-tied
+    // with the grid argmax to the float floor (Δ = 2e-14) and comparator-CANONICAL (earliest vector;
+    // the enumeration's pair-grade is only as canonical as its candidate set on a 602-member plateau)
+    want: {arcanePower: [7],  berserking: [7],  icyVeins: [7,127],  isc: [7,127],  scb: [7,127]} },
+  { name: "T39 — 2:40, Bloodlust pinned 1:00, eff 1387 SP / 44 % crit / T5-2pc — icon+gem — BRUTE-DECLARED",
+    T: 160, sp: 1387, crit: 44, t5two: true, lust: 60,
+    // 45,986,292 layouts enumerated (step 10) · plateau 194 — locked from the EMISSION (score-tied
+    // to the float floor, comparator-canonical; same layout as T38 with the 1:00 Lust ignored)
+    want: {arcanePower: [7],  berserking: [7],  bloodlust: [60],  icyVeins: [7,127],  isc: [7,127],  scb: [7,127]} },
+  { name: "T40 — 2:00, Bloodlust pinned 0:20, eff 1600 SP / 51 % crit / T5-2pc, h200 — gem+skull — BRUTE-DECLARED",
+    T: 120, sp: 1600, crit: 51, t5two: true, lust: 20, haste: 200, kit: ['icyVeins', 'scb', 'skull', 'arcanePower', 'berserking', 'bloodlust'],
+    // 217,676,160 layouts enumerated (step 5) · plateau 138 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [100],  berserking: [100],  bloodlust: [20],  icyVeins: [0,100],  scb: [100],  skull: [-10,110]} },
+  { name: "T41 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc, h300 — icon+gem — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 20, haste: 300,
+    // 217,676,160 layouts enumerated (step 5) · plateau 763 — locked from the EMISSION (iv#1@70:
+    // score-tied to the float floor with the grid's 75, comparator-canonical by the earliest vector)
+    want: {arcanePower: [20],  berserking: [60],  bloodlust: [20],  icyVeins: [0,70],  isc: [20],  scb: [20]} },
+  { name: "T42 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc, h500 — icon+gem — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 20, haste: 500,
+    // 217,676,160 layouts enumerated (step 5) · plateau 807 — locked from the EMISSION (iv#1@70,
+    // as T41: score-tied to the float floor, comparator-canonical by the earliest vector)
+    want: {arcanePower: [10],  berserking: [60],  bloodlust: [20],  icyVeins: [0,70],  isc: [10],  scb: [10]} },
+  { name: "T43 — 3:20, Bloodlust pinned 0:05, eff 1387 SP / 44 % crit / T5-2pc — icon+gem — BRUTE-DECLARED",
+    T: 200, sp: 1387, crit: 44, t5two: true, lust: 5,
+    // certified EMISSION (--top=128 --check: GLOBAL OPTIMUM of the step-15 lattice, which the search
+    // beat by +0.57 casts) — and it is the 08-04 decision package's own 3:20 row TO THE SECOND,
+    // re-derived independently by the tool at current gear
+    want: {arcanePower: [5,185],  berserking: [0,185],  bloodlust: [5],  icyVeins: [10,180],  isc: [6,180],  scb: [6,185]} },
+  { name: "T44 — 3:20, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — icon+gem — BRUTE-DECLARED",
+    T: 200, sp: 1387, crit: 44, t5two: true, lust: 20,
+    // certified EMISSION (--top=128 --check: GLOBAL OPTIMUM of the lattice); scores IDENTICALLY to
+    // T45 (158.332481) — the 3:00 Lust-timing invariance (T25-T27) one rung up
+    want: {arcanePower: [5,185],  berserking: [7,187],  bloodlust: [20],  icyVeins: [5,180],  isc: [6,180],  scb: [7,185]} },
+  { name: "T45 — 3:20, Bloodlust pinned 0:40, eff 1387 SP / 44 % crit / T5-2pc — icon+gem — BRUTE-DECLARED",
+    T: 200, sp: 1387, crit: 44, t5two: true, lust: 40,
+    // certified EMISSION (--top=128 --check: GLOBAL OPTIMUM of the lattice)
+    want: {arcanePower: [5,185],  berserking: [7,187],  bloodlust: [40],  icyVeins: [5,180],  isc: [5,180],  scb: [6,185]} },
 ];
 
 // T3 uses a real BOSS preset, so its cfg comes from the fight table (sp 1387, crit 38, Lust pinned 0:05)
@@ -484,9 +754,21 @@ const deltaLine = (want, got, cfg) => {
   const pw = api.rankPair(rep(want), cfg), pg = api.rankPair(rep(got), cfg);
   const pc = api.plainCastOf(cfg);
   const d = (pw.score - pg.score) / pc, band = (pw.band || 0) / pc;
-  const sw = api.planShape(rep(want)).distinct, sg = api.planShape(rep(got)).distinct;
+  /* ⚠ Name the criterion that ACTUALLY decides, not a retired one. This line reported `distinct`
+     (fewest press moments) for months after 08-05 abolished it (§9s), which pointed every reader at a
+     criterion `planBetter` no longer consults. `ideal` first — an EXACT tie there means no hill-climb
+     can feel the difference at all (a §9u plateau-canonicalisation gap), while a real ideal gap inside
+     the quantised band is a different animal — then the first shape criterion that separates them. */
+  const di = (pw.ideal - pg.ideal) / pc;
+  const shw = pw.shape, shg = pg.shape;
+  const crit = ['snaps', 'wastedPre', 'offGrid', 'invalid'].find(k => shw[k] !== shg[k]);
+  const why = crit ? `${crit} ${shw[crit]} vs ${shg[crit]}`
+    : (() => { const n = Math.min(shw.ts.length, shg.ts.length);
+               for (let i = 0; i < n; i++) if (Math.abs(shw.ts[i] - shg.ts[i]) > 1e-9)
+                 return `earliest press vector at position ${i}: ${shw.ts[i]} vs ${shg.ts[i]}`;
+               return 'identical shapes'; })();
   const verdict = Math.abs(d) < band
-    ? `TIED on score (|Δ| < band ${band.toFixed(6)}) ⇒ this is a TIE-BREAK gap: want has ${sw} distinct press moments, got has ${sg}`
+    ? `TIED on score (|Δ| < band ${band.toFixed(6)}; ideal Δ = ${di.toExponential(2)}) ⇒ a TIE-BREAK gap, decided by ${why}`
     : d < 0 ? 'the emitted plan SCORES HIGHER than the declared layout ⇒ a SCORER failure (see the header)'
             : 'the declared layout scores higher ⇒ a SEARCH failure (the descent never reached it)';
   return `      Δ (want − got) = ${d.toFixed(6)} casts on the RANKING integral — ${verdict}`;
@@ -550,7 +832,7 @@ for (const c of BOSS_CASES) {
 const N = CASES.length + BOSS_CASES.length;
 console.log(`${N - failures} of ${N} passed.`);
 if (failures) {
-  console.log('\n⛔ All eight were GREEN on 07-30, so a failure here is a REGRESSION. Run `node tools/law-check.mjs`');
+  console.log('\n⛔ The whole suite was GREEN when each test was declared, so a failure here is a REGRESSION. Run `node tools/law-check.mjs`');
   console.log('   first — every scoring defect this project has found was caught by a closed form, never by a');
   console.log('   plan diff. A press OUTSIDE its law is a scoring defect; a press on the wrong member of a');
   console.log('   plateau is a tie-break defect; a press the search never visited is a SEARCH defect (§8j,');

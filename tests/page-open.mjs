@@ -82,13 +82,22 @@ export async function openPage({ file = 'index.html' } = {}) {
 // hence the explicit open + in-page .click() rather than page.click().
 export async function solvePreset(page, chipText, { timeout = 180000 } = {}) {
   await page.evaluate(() => document.querySelectorAll('details').forEach(d => { d.open = true; }));
+  /* ⚠ FALLS BACK TO A PROGRAMMATIC LOAD, added 08-05. The declared tests stopped being rendered as
+     chips that day (user decision — a locked test does not need to be on the page), so a lookup by chip
+     text can no longer reach them. That would have quietly removed the ONLY check this project has on
+     the render path for exactly the fights it cares most about. So: try the chips first (that is still
+     the real user gesture and worth exercising), and fall back to the same `applyState(goldenToState())`
+     the chip handler calls. Same code path, one click short. */
   const found = await page.evaluate(t => {
-    const n = [...document.querySelectorAll('.pchips .pchip')].find(x => x.textContent.includes(t));
-    if (!n) return false;
-    n.click();
-    return true;
+    const n = [...document.querySelectorAll('.pchips .pchip, #cand-rows .cchip')].find(x => x.textContent.includes(t));
+    if (n) { n.click(); return 'chip'; }
+    const all = [...(window.BOSS_PRESETS || []), ...(window.GOLDEN_PRESETS || []), ...(window.CANDIDATE_PRESETS || [])];
+    const p = all.find(x => x.name.includes(t));
+    if (!p) return false;
+    applyState(goldenToState(p));
+    return 'programmatic';
   }, chipText);
-  if (!found) throw new Error(`no preset chip matching ${JSON.stringify(chipText)} — see GOLDEN_PRESETS / BOSS_PRESETS in index.html`);
+  if (!found) throw new Error(`no preset matching ${JSON.stringify(chipText)} — see BOSS_PRESETS / GOLDEN_PRESETS / CANDIDATE_PRESETS in index.html`);
   await page.evaluate(() => document.getElementById('btn-run').click());
   await page.waitForFunction(() => !!window.__run, null, { timeout });
   return page.evaluate(() => planText(window.__run));

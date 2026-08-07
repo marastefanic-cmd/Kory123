@@ -65,10 +65,20 @@ reading a field that still exists; do not "simplify" one of them away without au
 > board walk, one term per Arcane Blast (`dmg × frac`, `frac` being the boundary credit in the next
 > block), on **every** call rather than only when `collect` is set — but they are now the number the UI
 > REPORTS, not the number anything ranks on. Both are returned on purpose so the gap stays measurable.
-> ★ **And the objective is a PAIR:** integral first, then inside `TIE_CASTS = 0.002` casts the SHAPE
-> decides — fewest distinct press moments → earliest → the flattened press vector
-> (`rankPair`/`planBetter`, `~2369–2390`). A search with no tie-break wanders inside a plateau, which
-> is what the 07-28 revert punished.
+> ★ **And the objective is a PAIR:** integral first (on the IDEAL, unquantised form, separated by float
+> discrimination and NOT by `TIE_CASTS`), then the SHAPE decides:
+> `snaps → wastedPre → offGrid → invalid → valueSecs → the earliest press vector`
+> (`rankPair`/`planBetter`/`planShape`). A search with no tie-break wanders inside a plateau, which is
+> what the 07-28 revert punished. Statement of record: **RULES §17**.
+> ⚠ Three things about the shape half are easy to get wrong and each cost a red test on 08-05:
+>   · `distinct` (fewest press moments) is **ABOLISHED** (§9s) — this line used to name it first.
+>     Reinstating it is a measured dead end (§9v): same 16/17, red relocated to T8.
+>   · `offGrid`'s lattice is **plan-dependent** (§9w): `shapeCtxOf(cfg, s)` computes the ramp-end anchor
+>     at the haste the PLAN actually runs at the pull, because a prepull haste buff really does move a
+>     fight's structural seconds.
+>   · `valueSecs` counts only `sp`/`dmg` tracks (§9x): value buffs multiply so they want one second,
+>     haste buffs must not overlap so counting them pushes the wrong way.
+> ★★ And naming the canonical member is not the same as REACHING it — see `plateauCanon` below.
 > **Standing gates, no sim:** `node tools/self-consistency.mjs` must read `0.00e+0` **and 0 structural
 > violations**; `node tools/law-check.mjs` must reproduce the closed forms and CATCH its `--self-test`.
 > ⚠ The first alone is not enough — it compares two accounts that read the same board, and printed a
@@ -103,8 +113,9 @@ reading a field that still exists; do not "simplify" one of them away without au
 > AB started at 59.000 against an AoE opening at 60.000 completes at 60.498 and **lands** for full AB
 > damage), then **restored on policy** by user ruling. The physics measurement is still true and it is
 > not what decides it; RULES §9 carries the full reasoning.
-> ⚠⚠ **Expected consequence:** wowsims' APL cannot cancel a cast, so `model-audit` **will** show a gap at
-> an AoE wall. That is a priced divergence, not a bug.
+> ⚠⚠ **Expected consequence:** wowsims' APL cannot cancel a cast, so any sim comparison would show a
+> gap at an AoE wall. That is a priced divergence, not a bug — and with `model-audit` deleted alongside
+> the sim, nothing measures it any more (an accepted loss, recorded in CLAUDE.md).
 > ⚠⚠ **`dur === 0` ⇒ frac = 1, not 0.** Arcane Explosion is instant; a divide-by-zero guard returning 0
 > credited every AE at nothing (Kael'thas 368,018 vs 524,173, a 42 % error). `min(1, (cut−t)/dur) → 1`
 > as `dur → 0`. Guard against NaN, not against the answer.
@@ -166,7 +177,8 @@ bit-equal to recomputation; collect=true always computes fresh.
   ⚠ **`scoreStart` feeds the RANKING integral** (⛔ this said "the retired integral" — the integral ranks again since §8h, 07-30). The objective uses `start = auraAt` — the
   moment the ability truly fires (`max(eff, prevCastEnd)` for a self-press, `eff` for a raid external)
   — and the window runs its FULL duration from there. Expiring from the press instead made every
-  mid-cast window short by the slip (PHASE12 §6.11); `tools/window-span.mjs` is the gate.
+  mid-cast window short by the slip (PHASE12 §6.11); `tools/window-span.mjs` was the gate — deleted
+  with the sim, the rule standing on what it measured.
   ★ **The cooldown CHAIN anchors on the FIRE moment too (PHASE12 §6.14c, 07-27).** `lastFire[key]` (was
   `lastEff`) holds `auraAt` — where the previous use of that cooldown actually went off, i.e. the cast
   boundary the press snapped forward to — because that is when wowsims starts the cooldown. Chaining
@@ -184,8 +196,8 @@ bit-equal to recomputation; collect=true always computes fresh.
   comparison — this repo's worst failure mode).
 - **The `casts` board** (`collect` only) carries, per cast: `t, interval, cast, gcd, mult, dmg, stacks,`
   **`frac`, `credited`** `, capped, pUp, ae, multNoAti, capDn, castDn, gcdDn, sp, dmgMult`.
-  ★ `dmg` stays the cast's **FULL** damage — it is what the cast is worth, and `tools/model-audit.mjs`
-  compares it against the sim's own damage line. `frac` is the boundary credit it earned and
+  ★ `dmg` stays the cast's **FULL** damage — it is what the cast is worth, and it is what the deleted
+  `tools/model-audit.mjs` compared against the sim's own damage line. `frac` is the boundary credit it earned and
   `credited = dmg × frac` is the product the objective summed. **Anything recomputing the objective
   from this board must use `credited`, not `dmg`.**
 - **★ THE RANKING — the cast-rate integral** (this bullet said "RETIRED, kept only as a diagnostic"
@@ -203,9 +215,20 @@ bit-equal to recomputation; collect=true always computes fresh.
   counterfactual up-lattice age + `atiDead` intermission time) yields `pUp` per cast, blended into
   `interval`/`tcVal`/`dur` with the floor inside each branch. The INTEGRAND carries the renewal
   steady state (`atiParamsAt` → `P = 1−(1−q)^n`, rate `1/(aP+b(1−P))` in `rateAt`) plus the
-  engagement transient threaded through the breakpoint loop (`atiAdvance`, an age ν advanced in
-  closed form per slice, net of the toll, reset across intermissions). Everything is gated on
-  `cfg.enabled.ati` — ati-off paths are byte-identical (plan-diff IDENTICAL, 21/21).
+  engagement transient AND the window memory threaded through the breakpoint loop (`atiSlice` +
+  `atiSt.strata`, 08-04: an age ν advanced in closed form per slice, with state edges folding the
+  outgoing attempts into strata that drain out of the 5s window — gaps ride the same list as procless
+  strata). Everything is gated on `cfg.enabled.ati` — ati-off paths are byte-identical (plan-diff
+  IDENTICAL, 21/21).
+  **★ Two corrections landed 08-05 (§10c / ESTABLISHED-FACTS §12.3a), both closed-form:** the decay
+  carries `atiCRho` = `ln ρ/(ρ−1)`, the factor that makes `∫₀^K c_ρ·P0·ρ^u du` identically equal the
+  attempt SUM `Σ_{k<K} P0·ρ^k` the process actually runs (⚠ a rate device — it exceeds 1 near ν=0, and
+  `atiSlice`'s Newton bracket is derived from the segment endpoints rather than assumed `[len/b,
+  len/a]` because of it); and **ν no longer nets against the opener toll** — inside a ramp cast ν
+  advances at `1/iv` (`nuRate`, its own closed-form slice integral on the linear ν clock), because ν is
+  a physical attempt counter and the toll is a *scoring* device spread over an m-independent window.
+  Removing the coupling also removed an operator-splitting artifact worth 0.017 casts that made the
+  result depend on the slice grid.
 - AoE segments: `dmg` uses AE base × `targets` × `aoeCritAmp`, interval = GCD only.
 
 > ### ★★★★ THE FINISHING TAIL IS MONOTONE, AND ITS BUDGET IS A TIE-BREAK (user ruling 07-28)
@@ -245,8 +268,8 @@ different Berserking placements across one 1.5 s cast interval of that same inst
   cast, so "lattice δ later" = every press, pin, segment and `T` moved δ **earlier** (`phaseShift`).
   ⚠ The opposite randomiser — presses against a fixed lattice — is a thing the player controls and
   measures nothing; it scored 0/4 on the ground-truth corpus.
-- `phaseRerank(s, cfg)` — **five move classes**, iterated to a FIXED POINT (24-round runaway cap, not a
-  3-round budget — a cap of 3 was measured short once the structural times went in):
+- `phaseRerank(s, cfg)` — **eleven move classes**, iterated to a FIXED POINT (24-round runaway cap, not
+  a 3-round budget — a cap of 3 was measured short once the structural times went in):
   1. whole-plan slide (±8 s)  2. per-track slide (±8 s)
   3. **co-pressed cluster slide** — tracks grouped by the SECOND they are pressed at, slid per-press
      (MODEL-DEFECTS §8m). Reaches T2/T3, which no single-coordinate step can: every one is downhill
@@ -256,10 +279,53 @@ different Berserking placements across one 1.5 s cast interval of that same inst
      SEPARATE on purpose; merging lets a cluster be swallowed by a train it abuts.
   4. per-press move (±12 s) plus the **structural candidate times** — every window edge, cooldown
      return and raid call already in the plan, which is how a press reaches a time 20-120 s away (§8j).
+  3d. **cooldown-chain closure** (§8y, user-ratified 07-31) — a slide whose chain push `repair` itself
+     legalizes, accepted only count-preserving. ⛔ Runs LAST of the per-round classes; run earlier it
+     rerouted a basin by 0.18 casts (greedy descent is not monotone in its move set).
+  5. **band-structure re-anchor** (§9h→§9k) — the whole C/D-family rewrite (value on the call, IV at
+     call−g / window end, Berserking on IV's tail), proposed ONLY at the older classes' joint fixed
+     point (`!moved`). Reaches T13.
+  6. **chain-dragged cluster** (§9o, 08-04) — for a single-press slide whose `repair` closure MOVES
+     other presses, offer each co-pressed partner of a dragged press riding the same slide (each
+     alone, then all together). Also gated on `!moved`, after class 5, so every cell where its
+     candidates are refused is byte-identical by construction. Closes the h400 · 3:00 kit-sweep
+     misses: three coordinates coupled through repair legality AND the value cross term at once,
+     invisible to 3d (chain, no partner) and to class 3 (cluster, no chain).
+  7. **suffix slide** (§9y, 08-05) — for each distinct press SECOND in the plan, slide every press at
+     or after it. A strict generalisation of class 1 (the suffix from the earliest press), gated on
+     `!moved` and running LAST. Closes the kit matrix's `gem+skull · h200 · 2:40 interm` miss
+     (+0.028848 casts): after a phase long enough to drop the AB debuff the fight RE-RAMPS, haste is
+     ramp-neutral through it and value does less work, so everything parked on the wall wants to sit
+     after the ramp — together. A THIRD coupling: not the cluster's cross term (§8m) and not the
+     packing law (§8s). Its three presses share neither a second nor a window edge, so classes 3 and
+     3c cannot bring the last one along; every single step is downhill and every pair downhill-or-flat.
+  8. **proc-chain re-anchor** (§10d, 08-06) — Ashtongue only, gated on `atiOn && !moved`, LAST. The
+     §19 carry-over as a whole-structure proposal: iv#0 on the pinned window's end, iv#1 one window
+     plus one proc duration later, value singles and Berserking pressed to END at `e + ATI.dur`.
+     Closes a five-coordinate rewrite whose every partial move is downhill (−0.03…−0.64 around a
+     +0.010 target). With the proc off it never fires — proc-less cells byte-identical by construction.
+  9. **same-delta press pair** (T29, 08-06) — the §8m/§8s/§9y/§9o coupling family's generic base
+     case: ANY two presses slid together by one small delta, whether or not they share a second or an
+     edge. Found when T29's own scorerBeats caught its first lock beaten +0.0198 by `AP#0+2 & iv#0+2`
+     — each half downhill alone, invisible to every shape-specific class. Gated on `!moved`, LAST.
   ⚠ **Single-press moves alone are provably not enough**, and neither are single-press plus clusters.
   Three of the project's four largest misses were coupled coordinates that every 1-D and 2-D step
   refused. A candidate `repair` had to relegalize is refused, so a plan is never scored as one layout
   and adopted as another.
+- `plateauCanon(s, cfg)` — ★★★ **08-05 (§9u), and it is NOT a descent.** Runs last, on the descent's
+  winner, and answers a different question: *which member of this plateau is canonical?* A candidate
+  enters its frontier only if its **ideal** score equals the root's to within `ifloor` (float
+  discrimination — ⛔ never `TIE_CASTS`, which would re-admit §8w's drift), so it cannot move the score
+  at all; within that confinement it runs a **beam** (`CANON_W = 12` wide, `CANON_D = 5` deep, 12 000
+  candidates max) over the same move classes above and returns the `planBetter`-best node it saw.
+  ⚠ **Why a beam and not another descent.** Measured on T7: the plateau is CONNECTED but not MONOTONE —
+  every route from the member the descent reaches to the canonical one passes through a member that is
+  shape-WORSE, so a strict-improvement pass is stuck by construction and no neighbourhood size, seed
+  class or effort setting can help. (Three attempts that assumed otherwise are recorded and reverted in
+  §9u.) Because it is **comparator-monotone** it cannot reroute a basin: a cell whose plateau
+  neighbours are all refused comes out byte-identical. Cost: `planBetter` never reads `score`, so the
+  filter skips `rankScore`'s PHASE_N samples — one `simulate` per candidate, and the 17-case suite went
+  6m → 7m31s.
 - `phaseStarts(winner, cfg)` — the point winner plus the same structural seeds the main search uses
   (naive, packed, pin-stacked, kill-anchored). One start left an outlier at 1 of 5 pins.
 - `best.val` stays in **point** units so the pooling comparison, `plan-diff` and the UI readout keep
@@ -605,8 +671,11 @@ reads). A fresh "Find optimal overlay" run calls `customReset()`.
   debugging session — human-readable input header + model plan text/stats + custom plan text/stats
   + deltas + validation state, then a machine block: `{input, model, custom, evalsched}` with intent
   schedules, fire times, totals, and baseline/naive references. The `evalsched` object is **directly
-  runnable** as `node tests/evalsched.mjs '<json>'` (round-trip verified: identical totals), and the
-  notes point at the TOOLING sim workflow (`genapl`, `_prestack:0`) for "sim my custom timeline".
+  runnable** as `node tests/evalsched.mjs '<json>'` (round-trip verified: identical totals). ⚠ This
+  paragraph used to add that the export's notes point at the TOOLING sim workflow (`genapl`,
+  `_prestack:0`) for "sim my custom timeline" — that workflow is deleted with the sim (07-30), and
+  the page itself carries no such pointer (grepped 08-07); evaluating a custom timeline is
+  `evalsched` alone now.
 
 ## Presets & tests — two baked strips, both the fight table
 `index.html` defines **two** baked preset arrays + `GOLDEN_DEFAULTS` (near the localStorage-preset
@@ -622,8 +691,11 @@ hostId)` → `goldenToState(p)` → `applyState(...)`; **`#preset-strip`** "Cust
 localStorage user-saved strip (was "Boss presets"). The user presses "Find optimal overlay" to
 **compute** the plan — presets store setup, never a precomputed answer.
 - **Tests (`tests/`):** ⛔ **`exact-match.mjs` + `golden.json` are DELETED (07-28, user decision).** The
-  suite is now `tests/anchors.mjs` — **two** cases, the two layouts the user declared exactly, built
-  from their own cfg rather than from the preset arrays. So the presets no longer double as the test
-  corpus; they are UI setup only. Plan stability is `tools/plan-sweep.mjs` + `tools/plan-diff.mjs`
-  (Δscore per cell with a regression verdict, ~33 s), and the one thing that loop cannot see is the
-  render path — it runs the DOM-free engine.
+  suite is now `tests/anchors.mjs` — the user-declared layouts (T1–T17) plus the brute-declared
+  batches (T18+, the 08-06 protocol; the suite's own banner carries the current count), each built
+  from its own cfg rather than from the preset arrays. So the presets no longer
+  double as the test corpus; the strip chips are HIDDEN since 08-05 (`GOLDEN_PRESETS` stays — it is
+  the gates' corpus), superseding the 07-30 strip-lockstep decision. Plan
+  stability is `tools/plan-sweep.mjs` + `tools/plan-diff.mjs` (Δscore per cell with a regression
+  verdict, ~1 min — and since 08-04 also CI's `plan-stability` job against the merge-base), and the
+  one thing that loop cannot see is the render path — it runs the DOM-free engine.

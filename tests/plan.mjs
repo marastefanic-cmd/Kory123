@@ -3,7 +3,8 @@
 //   node plan.mjs '[{name,T,pins,gear,kit,intermission,phases}, ...]'
 import { openPage } from './page-open.mjs';
 const CASES = JSON.parse(process.argv[2] || '[]');
-const ALL_BUFFS = ["ati", "powerInfusion", "drums", "icyVeins", "skull", "isc", "scb", "arcanePower", "berserking", "mqg", "bloodlust"];
+// the canonical list, imported — a hand-retyped copy here is the drift pattern §5.7 catalogued
+import { ALL_BUFFS } from '../tools/engine-node.mjs';
 
 // ⚠ Over HTTP, never file:// — a Blob Web Worker cannot start on an opaque origin, so the
 // optimizer silently never runs. See tests/page-open.mjs.

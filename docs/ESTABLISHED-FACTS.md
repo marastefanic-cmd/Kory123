@@ -1097,9 +1097,12 @@ The interaction of any set `S` is Möbius inversion over its subsets:
 
     I(S) = Σ_{R ⊆ S} (−1)^{|S|−|R|} · V(R)
 
-and every term is one of §4's five forms. `tools/rules-audit.mjs` checks the expansion closes to
-`0.000e+0`. **There is no triple-specific law**: Icy Veins + Icon + Arcane Power is `haste×sp`,
-`haste×dmg`, `dmg×sp` and one third-order term, all already given.
+and every term is one of §4's five forms. `tools/rules-audit.mjs` is the on-demand instrument for
+this — `node tools/rules-audit.mjs --spec '{"T":120,"sp":1000,"critPct":25,"pins":{"bloodlust":[20]}}'
+--layout '<the plan>'` prints the expansion and its residual, which closes to `0.000e+0` when the
+facts corpus captures every mechanism the engine prices (⚠ an analysis tool, not a CI gate — it has
+no pass/fail exit; read its residual line). **There is no triple-specific law**: Icy Veins + Icon +
+Arcane Power is `haste×sp`, `haste×dmg`, `dmg×sp` and one third-order term, all already given.
 
 ---
 
@@ -1139,11 +1142,12 @@ Consequences, each traceable to a line above. None is an axiom.
 * **"Best placement at haste h" columns.** They are argmaxes, and the old ones were argmaxes over cells
   whose noise was the size of the effect (peak-value haste moved by up to 140 rating between scores —
   Berserking 430 → 570). Compute one when you need it, from §1–§6, and state the objective you used.
-* **Mana.** The planner is infinite-mana by user decision (`docs/PLAN.md`, permanently rejected list).
+* **Mana.** The planner is infinite-mana by user decision (the permanently-rejected list — recorded in
+  CLAUDE.md's `docs/PLAN.md` pointer and ROADMAP; the plan doc itself is deleted, per its convention).
 * **Crit.** A constant multiplier on every cast; it cancels out of every ratio here. It changes what a
   cast is worth, never which plan is best.
 * **The sim's numbers.** wowsims is a *realisation at one lattice phase*; these are expectations. A
-  disagreement of order 0.2 casts is **predicted**, not a defect (`docs/TOOLING.md`). Use the sim to
+  disagreement of order 0.2 casts is **predicted**, not a defect (`docs/archive/16-sim-tooling.md`). Use the sim to
   anchor the physics, never to arbitrate a sub-cast margin.
 
 # 9. TWO CAVEATS ON THE ARITHMETIC BEHIND THIS FILE
@@ -1522,21 +1526,155 @@ lone-window ladder (`ati-ramp-ladder`, 15 000 MC runs/arm) reads +0.0668 on an 8
 on a 300 s one, i.e. a roughly CONSTANT per-engagement charge, which is what a start-up transient
 should look like. Corrected 08-03 on measurement; the original figure was taken from a single
 T=180 cell.
+⚠⚠ **AND IT WAS CUT TO +0.004…+0.028 ON 08-05 — §12.3a below.** Two of the three things that residual
+was made of turned out to be closeable in closed form; what is left is named and bounded there. Read
+§12.3a before quoting any figure in this section.
+
+### §12.3a ★★★★ THE TRANSIENT'S BIAS WAS **ONE-DIRECTIONAL**, AND NINE-TENTHS OF IT WAS ALGEBRA *(08-05)*
+
+`tools/ati-mc.mjs` read the engine HIGH on all four non-steady checks while the four steady rates were
+exact to five decimals. **A one-directional residual is not noise**, and the steady form being exact
+localised it to the transient. Two exact corrections followed. Both are algebra over `q` and the
+lattice — no fitted constant enters either.
+
+**The instrument that settled it is an EXACT chain, not more MC.** The process is a finite Markov
+chain — after cast *k* the state is `(t, rem)` with `rem = max(0, DUR − (t − t_lastProc))`, both on the
+millisecond lattice, and `stacks = min(3, k)` is known from the step index — so the joint distribution
+propagates cast by cast and `E[casts by T]` comes out with **no sampling error at all**. It agrees with
+`ati-mc`'s 200 000-run MC to ~0.001 (its noise), and it resolves 1e-5, which is what made the
+attribution below possible. ⇒ **when a stochastic term needs auditing, build the chain before reaching
+for more runs.**
+
+**Finding 0 — the residual is CONSTANT in T** (`+0.07980` at T = 60, 90, 120, 180, 240, 300 to five
+decimals, at crit 50.765/h=0), and it is fully deposited by t ≈ 11 s. So it is a per-engagement
+transient, not a rate error — and the **board walk is already right**: the discrete mean-field walk
+reads **−0.0026** against the chain, so the whole charge lives in the INTEGRAL.
+
+**Finding 1 — a left-Riemann sum, worth ~55 % of it.** The process is a SUM over attempts,
+`Σ_{k<K} P0·ρ^k`; the integrand integrates it, `∫₀^K P0·ρ^u du`. For a decaying `ρ` a left-Riemann sum
+of a decreasing function is the LARGER, by exactly
+
+```
+c_ρ = ln ρ / (ρ − 1)        (→ 1 as ρ → 1;  1.1647 at h=0, crit 50.765)
+∫₀^K c_ρ·P0·ρ^u du  ≡  Σ_{k<K} P0·ρ^k          for EVERY K, identically
+```
+
+so the continuum ran the proc's memory down faster than the process does, and the fight read fast.
+`index.html` now carries `atiCRho`. ⚠ It is a **rate device, not a probability**: `c_ρ > 1`, so the
+effective `P_down` exceeds 1 for the first ~0.49 attempts. That cannot be clamped — the only decay
+that stays ≤ 1 *and* integrates to the sum is the step function, i.e. the attempt lattice, which may
+not re-enter the integrand (§8l). Exceeding 1 is what *"the very first cast is certainly unbuffed, so
+it takes the full b"* looks like smeared over a continuum. ⛔ It does **not** touch the saturated
+branch (there `P_down` is the constant `r^n` and `∫ ≡ Σ` already) nor the steady form.
+Isolated on a no-ramp chain (fight starts at 3 stacks), it moves the transient
+**+0.031 → −0.0026** — and that −0.0026 is *the same number the mean-field walk carries*, i.e. the
+floor, not a new error.
+
+**Finding 2 — ν had been netted against the opener toll, worth the other ~45 %.** The advance ran
+`ν −= tollR·len` on the reasoning that *"toll casts never happened, so they rolled no procs"*. The
+premise is right; the implementation was not. The toll is SPREAD uniformly over an **m-independent**
+nominal window (§8q) precisely so an overlapping value buff pays its share — which makes it the wrong
+SHAPE for a cast count, because the real deficit is front-loaded (the first ramp cast alone loses
+0.667 casts inside its own 2.5 s). Netted, ν read **3.09** at the ramp's end where the process has made
+exactly **3** attempts.
+
+⇒ **ν is a physical attempt counter; the toll is a scoring device. Coupling them was the defect.**
+Inside a ramp cast the walk already knows exactly ONE attempt is made over that cast's own span, so ν
+advances at `1/iv` there and at the integrand's own rate everywhere else, and the toll never touches
+it. The slice integral over a ramp cast has its own closed form, same integrand on a linear ν clock:
+
+```
+∫₀^L ds/(a + B·e^{k·s}) = L/a − ln((a + B·e^{k·L})/(a + B))/(a·k),   k = ν̇·ln ρ,  B = (b−a)·c_ρ·P0
+```
+
+(→ `L/(a+B)` as `k → 0`). The SCORE is untouched — same rate, same spread toll — so §8q's ladders are
+unmoved, and `plan-diff` is IDENTICAL over the 21-cell preset corpus with `scorerMoved=0`.
+
+⚠⚠ **AND THE COUPLING HAD BEEN BREAKING DETERMINISM.** `ν += made; ν −= tollR·len` is operator
+splitting — the toll landed at each slice's END — so **a breakpoint that changed nothing still changed
+the score**: inserting a `burn` phase at `mult: 1` moved it by up to **5.5e-3 casts, 2.5× the tie
+band**. Decoupling removes the splitting, and the invariant is now gated (`tools/grid-invariance.mjs`,
+blocking, with a `mult: 1.1` negative control because a blind probe also reads zero). Post-fix worst
+reading: 8.5e-13, float re-association only.
+
+**What it bought**, engine − exact chain, per engagement:
+
+| case | before | after |
+|---|---|---|
+| T=120 h=0 crit 50.765 | +0.0798 | **+0.0069** |
+| T=180 h=0 crit 25 | +0.0473 | **+0.0044** |
+| T=120 h=300 crit 40 | +0.0638 | **+0.0038** |
+| T=120 h=600 crit 40 | +0.0547 | **−0.0018** |
+| lust@30 T=120 crit 50.765 | +0.0803 | **+0.0048** |
+| lust@60 T=150 crit 38 | +0.0753 | **+0.0135** |
+| lust@40 T=180 crit 25 | +0.0732 | **+0.0279** ← worst remaining |
+
+**What is left, named.** Two terms, both still one-directional and both now smaller than the mean-field
+floor's own sign ambiguity:
+- **Ramp window shrinkage** (~+0.009): a ramp cast's attempt occupies the trailing 5 s window at its
+  OWN counterfactual up-spacing (2.29/1.98/1.68 s at h=0), not at the 3-stack `a` = 1.374 s, so fewer
+  ramp attempts fit than `atiTrim`'s `DUR − ν·a` budget believes. Closing it means folding each ramp
+  cast into the strata at its own spacing. Measured by running the walk with
+  `P_down = r^min(k,n)` forced: **+0.009** against the walk.
+- **Strata drain across a haste edge** (up to ~+0.018): every lust-bearing cell is worse than its
+  no-lust twin by that much, and the gap grows with proc memory (worst at crit 25, where `r = 0.86`).
+  ★ **The mechanism is the SAME left-Riemann family as Finding 1, in the drain direction, and naming
+  it is most of the work if anyone picks this up.** A stratum's survivor count is
+  `fit = min(cnt, budget/a_s)` — a continuum smear of an integer. The attempt sitting `consumed`
+  seconds back is inside the window iff `consumed + i·a_s < DUR`, so the true count of survivors is
+  `⌈(DUR − consumed)/a_s⌉` capped at `cnt`, and the continuum writes `(DUR − consumed)/a_s`. With a
+  budget of 1.338 s left and `a_s = 2.289 s` the truth is **1 surviving attempt** and the model books
+  **0.585** — it drops proc memory the process still has, which makes the fight read fast, the same
+  direction as everything else here. In the uniform steady case the two agree because `ν` is smeared
+  identically on the other side; they part company exactly where the spacings differ, i.e. at a haste
+  edge and across a ramp. ⚠ Stated as the mechanism, not as a verified fix — the correction is not
+  simply `c_ρ` (the drain is a *cap*, not a geometric decay) and no candidate for it has been
+  measured against the chain.
+
+⚖️ **MEASURED AND BOUNDED 08-07 — and it is BIGGER at stacked edges than this section's bound
+(MODEL-DEFECTS §10e, the section of record).** The chain was rebuilt as a committed tool
+(`tools/ati-chain.mjs`, now scoring full layouts) and the drain term measured where it is worst:
+across the layouts of ONE edge-dense `gem+ati` cell the residual spans **−0.074 … +0.056 casts** —
+not one-directional, not ≤ +0.018 — and it FLIPS a real Berserking placement against §4c's packing
+law (truth wants zerk flush on Lust's end; the artifact prefers it overlapped, by 0.119 engine-side
+vs −0.011 truth-side). Two pieces of algebra bound what a fix could be: **a lone edge is already
+priced exactly** — the continuum's `fit = (DUR − consumed)/a_s` is the uniform-phase average of the
+integer truth, `E[⌈(X−δ)/a⌉] = X/a` identically for `δ ~ U[0,a)` — and the error lives in the
+COMPOUNDING: a second edge inside the same 5 s window smears an already-smeared state, and a smear of
+a smear is not the phase-average of the compound process (the edges' phase correlations are lost;
+recovering them needs the joint distribution, i.e. the chain itself). ⇒ a named lead with a measured
+bound (±0.07 at edge-dense ATI layouts), no closed-form candidate; and every ATI-bearing declaration
+now requires the chain's certificate that its emitted layout is truth-co-optimal — **which all three
+ATI cells currently FAIL** (§10e item 4): ATI cells are candidates, not tests, until the compounding
+lead closes.
 
 ### §12.4 Priced and NOT modeled — the honest edges
 
-- **Window-edge P-memory:** proc history crossing a buff edge re-equilibrates instantly in the
-  integrand (the walk's product handles it naturally). MC-priced at ±0.05–0.15 casts per edge pair,
-  second-order between plans, and smaller than the pre-existing accepted in-flight-straddle
-  convention at every window edge (the boundary-charge story, PHASE8 §25).
-- **Gap < 5 s memory** across an intermission: linear `(dur−gap)/a` remnant, an approximation
-  (real intermissions are ≥ 20 s, where it is exact — full reset).
+- ✅ **Window-edge P-memory — MODELED EXACTLY since 08-04** (user challenge: *"can't you average out
+  the values? why do you need ±?"* — the ± was a shortcut, not a necessity). The integrand now
+  carries the transition average: at a state edge the outgoing attempts become a STRATUM that drains
+  out of the trailing 5 s window exactly as new attempts displace it, each advance segment still
+  closed-form (`P_down(d) = P0·ρ^d`, the same Newton inversion). The walk's history aging became
+  per-cast-exact in the same change (each past attempt ages by the intervening casts' OWN up
+  intervals — the `atiUpAcc` accumulator). Measured on the windowed MC check (`ati-mc`, lust@30
+  T=120): engine−truth +0.102 → +0.079, the removed part being both edge biases; what remains is the
+  cold-start smoothing (+0.03, §12.3) plus the pre-existing all-buffs in-flight-straddle convention
+  (the boundary-charge story, PHASE8 §25 — not an ATI term).
+  ⚠ **Superseded in part by §12.3a (08-05):** that "+0.079 remains" was itself two-thirds closeable,
+  and the edge cells now read +0.005…+0.028. The *edge* term is still the largest survivor — see
+  §12.3a's "what is left" — so this bullet's ✅ means "no longer snapping", not "exact".
+- ✅ **Gap < 5 s memory** across an intermission — also exact since 08-04, by the same device: a gap
+  rides the strata list as a PROCLESS entry `{r:1, a:1, cnt:gap}` that occupies window and ages out
+  naturally (the walk's `atiDead` aging was already exact).
 - **q → 1 limit:** the continuous transient loses the one down-speed first cast, ≤ (b−a) once per
   engagement, reachable only at extreme-crit AoE.
 - **Variance:** the model reports a MEAN (standing project limit — CLAUDE.md).
 - End-to-end budget, asserted by `tools/ati-mc.mjs` on every run: steady rates match the true
   process at MC tolerance (8e-4); full fights (real ramp + transient vs toll + ν) within **0.25
-  casts**, measured 0.05–0.08 — against ~1 cast for the retired model.
+  casts** — measured 0.05–0.08 before 08-05, **0.004–0.011 after §12.3a**, against ~1 cast for the
+  retired model. ⚠ The gate's tolerances were NOT tightened to match: they are the documented budget,
+  and the negative control (`--self-test`) is what makes them mean anything. It still catches the
+  retired down-lattice form, on 3 lines.
 
 ### §12.5 ★★★★ VERIFIED AGAINST wowsims — the proc model against the simulator that implements it *(08-03, user-requested)*
 

@@ -311,6 +311,21 @@
   .golden-strip[open] > summary { margin-bottom: 10px; }
   .gchip { padding: 4px 13px; font-size: 12.5px; color: var(--ink-2); }
   .gchip.active { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, var(--panel)); color: var(--ink); }
+  /* the candidates strip — a row, not a chip, because the enumerated LINE is the content */
+  .cand-strip > summary { cursor: pointer; font-size: 11px; font-weight: 600; color: var(--muted); letter-spacing: 0.06em; text-transform: uppercase; }
+  .cand-strip > summary .sublab { font-family: var(--font-ui); letter-spacing: 0; text-transform: none; font-weight: 400; font-size: 12px; }
+  .cand-strip[open] > summary { margin-bottom: 10px; }
+  .cand-rows { display: flex; flex-direction: column; gap: 9px; }
+  .cand-row { border-left: 2px solid var(--grid); padding: 2px 0 2px 10px; }
+  .cand-head { display: flex; align-items: center; gap: 9px; flex-wrap: wrap; }
+  .cand-meta { font-size: 11.5px; color: var(--muted); }
+  .cand-uniq { color: var(--ok, var(--accent)); }
+  .cand-tie { color: var(--warn, var(--muted)); border-bottom: 1px dotted currentColor; cursor: help; }
+  .cand-line { margin-top: 4px; font-family: var(--font-mono, ui-monospace, monospace); font-size: 12px; color: var(--ink-2); line-height: 1.55; }
+  .cand-line b { font-family: var(--font-ui); font-weight: 600; color: var(--ink); }
+  .cand-warn { margin-top: 4px; font-size: 11.5px; color: var(--bad, #d66); }
+  .cand-row-sup { border-left-color: var(--warn, #c93); }
+  .cand-sup { color: var(--warn, #c93); border-bottom: 1px dotted currentColor; cursor: help; }
   .psave { display: flex; gap: 6px; margin-left: auto; }
   .psave input { width: 130px; font-size: 13px; padding: 5px 9px; }
   .psave button {
@@ -644,9 +659,23 @@
       <span class="pslab" title="Typical fight length, Bloodlust timing and phases for each current-tier boss. Click one to fill in the setup, then press Find optimal overlay.">Boss presets</span>
       <span class="pchips" id="boss-chips"></span>
     </div>
-    <details class="preset-strip golden-strip" id="golden-strip">
-      <summary title="The three layouts declared as ground truth. Click one to load its exact inputs, then press Find optimal overlay — the planner should reproduce the declared plan. These are the tool's own tests, not raid-night presets.">Declared tests <span class="sublab">— ground truth, click to reproduce</span></summary>
-      <span class="pchips" id="golden-chips"></span>
+    <!-- ⛔ THE DECLARED-TESTS STRIP IS GONE FROM THE UI — user decision, 08-05: *"the locked and
+         verified tests can be hidden from the tool, if they ever change you'd put it up as a
+         candidate."* This OVERTURNS the 07-30 decision that put them here (*"remove the current
+         reference fights and add these hard tests there instead"*), and the reasoning is the same one
+         that removed what was here before them: a locked test is settled, so showing it makes the tool
+         advertise its own scaffolding to someone who came to plan a raid night. What replaces it is the
+         Candidates strip below — a test only needs your eyes when it is UNSETTLED, and a declared
+         layout that ever stops holding surfaces there for a fresh ruling rather than sitting in a list
+         nobody re-reads.
+         ⚠⚠ `GOLDEN_PRESETS` ITSELF STAYS AND MUST STAY. It is not UI decoration: `engine-node.mjs`
+         builds `api.cases` from it (and asserts `nGolden > 0`), which is the corpus `plan-sweep`,
+         `kit-sweep`, `wall-credit`, `ep-model` and `search-witnesses` all sweep. Deleting the array
+         would silently shrink every stability gate in the project. Only the CHIPS are gone. -->
+
+    <details class="preset-strip cand-strip" id="cand-strip">
+      <summary title="Fights whose best layout was found by EXHAUSTIVE ENUMERATION, not by the search. Each row shows the line the enumeration says is optimal. Load it, press Find optimal overlay, and see whether the planner reproduces it — then rule.">Candidates <span class="sublab">— brute-forced, awaiting your ruling</span></summary>
+      <div class="cand-rows" id="cand-rows"></div>
     </details>
     <div class="preset-strip" id="preset-strip">
       <span class="pslab">Custom presets</span>
@@ -654,6 +683,7 @@
       <span class="psave">
         <input id="preset-name" type="text" placeholder="Save as…" aria-label="Preset name">
         <button id="preset-save" title="Save the current setup under this name">Save</button>
+        <button id="btn-share" title="Copy a link that opens this exact setup — determinism makes the link a reproducible plan">Copy link</button>
       </span>
     </div>
     <div class="setup-grid">
@@ -1035,8 +1065,11 @@ function simulateRaw(schedule, cfg, collect) {
   // phases (higher q, GCD lattice) ride through naturally.
   const atiOn = !!cfg.enabled.ati;
   const atiScale = ATI.rating / (g.HASTE_RATING_PER_PCT * 100);
-  const atiHist = []; // per completed cast: {noQ, dead: atiDead at its completion}; bounded at 16
+  const atiHist = []; // per completed cast: {noQ, u: up-age accumulator, dead}; bounded at 16
   let atiDead = 0;    // cumulative no-cast (intermission) time — ages the history across gaps
+  let atiUpAcc = 0;   // cumulative counterfactual up-interval of every completed cast (08-04): each
+                      // past attempt ages by the intervening casts' OWN up intervals, not the current
+                      // cast's — exact across haste edges, identical in a homogeneous stretch
   const segs = cfg.segments || null; // "complicated fight" phases; null = plain fight, identical to the old model
   let si = 0;
   // ══════════ BOUNDARY CREDIT — one rule at every cut (PHASE12 §9, user ruling 07-27) ══════════
@@ -1439,15 +1472,16 @@ function simulateRaw(schedule, cfg, collect) {
     };
     const dn = stepFor(multDn);
     const up = atiOn ? stepFor(multUp) : dn;
-    // P(proc up at THIS cast's start) — walk the history newest-first; the entry k completions back
-    // sits at counterfactual up-lattice age k·(this cast's own up interval) plus the real dead time
-    // between it and now. Ages are monotone going back, so the first too-old entry ends the walk.
-    // Strict `< dur` matches n = ceil(dur/a): an attempt at exactly the expiry instant is spent.
+    // P(proc up at THIS cast's start) — walk the history newest-first; each entry's counterfactual
+    // age is the sum of the intervening casts' OWN up intervals (the atiUpAcc accumulator — exact
+    // across haste edges) plus the real dead time between it and now. Ages are monotone going back,
+    // so the first too-old entry ends the walk. Strict `< dur` matches n = ceil(dur/a): an attempt
+    // at exactly the expiry instant is spent.
     let pUp = 0;
     if (atiOn && atiHist.length) {
       let noProc = 1;
-      for (let j = atiHist.length - 1, k = 0; j >= 0; j--, k++) {
-        if (k * up.interval + (atiDead - atiHist[j].dead) >= ATI.dur - EPS) break;
+      for (let j = atiHist.length - 1; j >= 0; j--) {
+        if (atiUpAcc - atiHist[j].u + (atiDead - atiHist[j].dead) >= ATI.dur - EPS) break;
         noProc *= atiHist[j].noQ;
       }
       pUp = 1 - noProc;
@@ -1536,7 +1570,8 @@ function simulateRaw(schedule, cfg, collect) {
     if (atiOn) {
       // this cast's completion is one proc attempt — effective crit incl. the Potency lift, and on
       // AoE any of the N hits' crits can trigger the 50% roll (atiProcQ; no ICD, §9b)
-      atiHist.push({ noQ: 1 - atiProcQ(crit, isAoe ? seg.targets : 1), dead: atiDead });
+      atiUpAcc += up.interval;
+      atiHist.push({ noQ: 1 - atiProcQ(crit, isAoe ? seg.targets : 1), u: atiUpAcc, dead: atiDead });
       if (atiHist.length > 16) atiHist.shift(); // bounded: only the last ceil(dur/a) ≤ 6 entries can ever count
     }
     // casting blocks presses only while the cast is in flight; the GCD-idle
@@ -1748,89 +1783,148 @@ function simulateRaw(schedule, cfg, collect) {
     }
     return dmg2 / intervalAt(multDn2, aoe, g.AB.MAX_STACKS);
   };
-  /* ★★ THE ASHTONGUE ENGAGEMENT TRANSIENT — closed-form age advance (ESTABLISHED-FACTS §12.3). After
-     a cold start (the pull, or an intermission long enough to spend the history) the proc has no
-     attempts behind it: exactly, the k-th cast is up with P_k = 1−(1−q)^min(k−1,n). The lattice-free
-     continuous form is an age ODE, dν/dt = 1/(a + (b−a)·r^min(ν,n)) with P(t) = 1−r^min(ν,n) — and
-     both of its integrals are closed-form: t(ν) = a·ν + (b−a)(1−r^ν)/(−ln r) inverts by Newton
-     (monotone increasing, concave ⇒ the under-shooting initial guess converges from below), and
-     ∫ rate dt over a slice is just Δν, because the rate IS dν/dt. Below ν=n the slice is transient,
-     above it steady (linear); a slice straddling ν=n splits exactly at t(n).
-     ⚠ Deliberately CONTINUOUS: the discrete-exact transient is a t0-anchored cast lattice, and a
-     lattice may not re-enter the integrand (§8l — three versions of scoreStart each paid for that).
-     Priced by MC (PLAN §2): ν-threading recovers +0.100 of the +0.130-cast cold-start error; the
-     +0.030 residual is this continuous smoothing, accepted and documented. */
-  const atiAdvance = (nu, len, p) => {
-    const R = 1 / (p.a + (p.b - p.a) * Math.pow(p.r, p.n));
-    if (nu >= p.n) return { nu: nu + len * R, casts: len * R };
-    const lnr = Math.log(p.r);
-    const tOf = x => p.a * (x - nu) + (p.b - p.a) * (Math.pow(p.r, nu) - Math.pow(p.r, x)) / (-lnr);
-    const tToN = tOf(p.n);
-    if (len >= tToN - 1e-12) { const extra = (len - tToN) * R; return { nu: p.n + extra, casts: (p.n - nu) + extra }; }
-    let x = nu + len / (p.a + (p.b - p.a) * Math.pow(p.r, nu));
-    for (let it = 0; it < 24; it++) {
-      const f = tOf(x) - len, fp = p.a + (p.b - p.a) * Math.pow(p.r, x);
-      const nx = x - f / fp;
-      if (Math.abs(nx - x) < 1e-12) { x = nx; break; }
-      x = nx;
+  /* ★★ THE ASHTONGUE TRANSIENT **AND WINDOW MEMORY** — closed-form, exact-in-expectation
+     (ESTABLISHED-FACTS §12.3; rebuilt 08-04 on a direct user challenge — *"can't you average out the
+     values? why do you need ±?"* — the ± was the integrand snapping to the NEW state's steady average
+     at a buff edge while the true average transitions over one 5s window as the OLD state's history
+     drains out. That was a shortcut, not a necessity: the transition average has the same closed-form
+     structure, so it is now computed. The board walk always had this exactly; the two accounts now
+     agree at edges too.)
+     STATE, threaded through the breakpoint loop in time order:
+       nu      — attempts made in the CURRENT haste/q state (the age ODE, as before)
+       strata  — older attempts still inside the trailing 5s window, newest→oldest, each {r, a, cnt}:
+                 cnt attempts of per-attempt no-proc factor r at counterfactual up-spacing a. An
+                 intermission gap rides the same list as a PROCLESS stratum {r:1, a:1, cnt:gap} — it
+                 occupies window and ages out with it, which is exactly what a gap does to memory.
+     P_down at any instant = r^min(nu,n) × Π strata r_s^(surviving_s), survivors filling the window
+     budget dur − nu·a newest-first — history drains exactly as new attempts displace it, across any
+     number of state changes. Within an advance segment P_down(d) = P0·ρ^d with
+     ρ = r · r_part^(−a/a_part) (only the one partially-expelled stratum decays), so
+     t(d) = a·d + (b−a)·P0·(ρ^d − 1)/ln ρ stays invertible (bisection-safeguarded Newton; the rate is
+     bounded in [1/b, 1/a], which brackets d) and ∫ rate dt over the advance is just d — the rate IS
+     dν/dt. Structural kinks (a stratum exhausting; nu reaching n, where the window saturates into
+     steady state) are crossed exactly, one at a time — a handful per fight.
+     ⚠ Still deliberately CONTINUOUS in nu: the discrete-exact law is a t0-anchored cast lattice, and
+     a lattice may not re-enter the integrand (§8l). The residual left after §10c is +0.004–0.010
+     casts per engagement, against a mean-field floor of −0.003; the ±0.05–0.15 edge-memory term is
+     GONE. */
+  /* ★★★★ THE DISCRETE-SUM-EXACT DECAY — §10c (08-05), and it is the larger half of the transient bias
+     the exact chain measured. The process is a SUM over attempts, `Σ_{k<K} P0·ρ^k`; the integrand
+     integrates it, `∫_0^K P0·ρ^u du`. For a decaying ρ those differ by EXACTLY the factor
+     `(1−ρ)/(−ln ρ)` at every K — a left-Riemann sum of a decreasing function is the larger — so the
+     continuum runs the proc's memory down faster than the process does and the fight reads FAST. The
+     correction is that factor and nothing else:
+         c_ρ = ln ρ/(ρ − 1)        (→ 1 as ρ → 1)
+         ∫_0^K c_ρ·P0·ρ^u du  ==  Σ_{k<K} P0·ρ^k       identically, for every K
+     ⚠ It is a RATE DEVICE, NOT A PROBABILITY. c_ρ > 1, so the effective P_down exceeds 1 for the first
+     ~0.49 attempts. That is not a bug and it cannot be "clamped": the only decay that stays ≤ 1 and
+     integrates to the sum is the STEP function, i.e. the attempt lattice, which may not re-enter the
+     integrand (§8l). Exceeding 1 is what "the very first cast is certainly unbuffed, so it takes the
+     full b" looks like once it is smeared over a continuum.
+     ⛔ It does NOT touch the saturated branch — there P_down is the constant r^n and ∫ == Σ already —
+     nor `rateAt`'s steady form, which ati-mc reads exact to five decimals. Measured against the EXACT
+     Markov chain over (t, rem) that ESTABLISHED-FACTS §12.3a describes (rebuildable from its algebra
+     in an hour): +0.031 → −0.003 casts on the proc transient isolated, and −0.003 is the discrete
+     mean-field walk's OWN residual, i.e. the floor rather than a new error. */
+  const atiCRho = rho => Math.abs(rho - 1) < 1e-9 ? 1 : Math.log(rho) / (rho - 1);
+  const atiSt = { nu: 0, strata: [] };
+  const atiFold = (r0, a0, cnt) => { if (cnt > 1e-12) atiSt.strata.unshift({ r: r0, a: a0, cnt }); };
+  const atiTrim = aCur => {
+    let budget = ATI.dur - atiSt.nu * aCur;
+    for (let i = 0; i < atiSt.strata.length; i++) {
+      if (budget <= 1e-12) { atiSt.strata.length = i; return; }
+      budget -= atiSt.strata[i].cnt * atiSt.strata[i].a;
     }
-    return { nu: x, casts: x - nu };
+  };
+  /* `nuRate` (attempts per second, optional) is set when the slice lies inside a RAMP CAST: exactly
+     one proc attempt is made over that cast's own span, so ν is linear in time there rather than
+     driven by the scored rate. See the integral loop's §10c note for why the two must be separate. */
+  const atiSlice = (p, len, nuRate) => {   // advance the state through a live slice; returns E[casts made]
+    let made = 0, left = len;
+    for (let guard = 0; left > 1e-12 && guard < 64; guard++) {
+      if (atiSt.nu >= p.n - 1e-9) {                       // window saturated by current-state attempts
+        const R = 1 / (p.a + (p.b - p.a) * Math.pow(p.r, p.n));
+        made += left * R; atiSt.nu += (nuRate || R) * left; return made;
+      }
+      // survivors of the trailing window right now; the first stratum that does not fully fit is the
+      // one draining (deeper ones are already fully outside and can never return — drop them)
+      let budget = ATI.dur - atiSt.nu * p.a, P0 = Math.pow(p.r, atiSt.nu), partial = -1, partFit = 0;
+      for (let i = 0; i < atiSt.strata.length; i++) {
+        const s = atiSt.strata[i], fit = Math.min(s.cnt, Math.max(0, budget) / s.a);
+        P0 *= Math.pow(s.r, fit);
+        budget -= s.cnt * s.a;
+        if (fit < s.cnt - 1e-12) { partial = i; partFit = fit; break; }
+      }
+      if (partial >= 0) atiSt.strata.length = partial + 1;
+      const rho = partial >= 0 ? p.r * Math.pow(atiSt.strata[partial].r, -p.a / atiSt.strata[partial].a) : p.r;
+      const lnrho = Math.log(rho);
+      const B = (p.b - p.a) * P0 * atiCRho(rho);          // (b−a)·the §10c effective P_down at d = 0
+      const kCap = p.n - atiSt.nu;
+      const kStr = partial >= 0 ? partFit * atiSt.strata[partial].a / p.a : Infinity;
+      const kink = Math.min(kCap, kStr);
+      if (nuRate) {
+        /* Inside a ramp cast ν advances linearly (one attempt per cast, over that cast's own span),
+           so the slice's cast integral has its own closed form — same integrand, different clock:
+             ∫_0^L ds/(a + B·e^{k·s}) = L/a − ln((a + B·e^{k·L})/(a + B))/(a·k),   k = nuRate·ln ρ
+           which tends to L/(a + B) as k → 0. */
+        const k = nuRate * lnrho;
+        const scoreOf = L => Math.abs(k) < 1e-12 ? L / (p.a + B)
+          : L / p.a - Math.log((p.a + B * Math.exp(k * L)) / (p.a + B)) / (p.a * k);
+        const tKinkR = kink / nuRate;
+        if (tKinkR <= left + 1e-12) {
+          made += scoreOf(Math.max(0, tKinkR)); atiSt.nu += kink; left -= Math.max(0, tKinkR);
+          if (kStr <= kCap && partial >= 0) atiSt.strata.pop();
+          continue;
+        }
+        made += scoreOf(left); atiSt.nu += nuRate * left; left = 0;
+        continue;
+      }
+      const tOf = d => Math.abs(lnrho) < 1e-12
+        ? (p.a + B) * d
+        : p.a * d + B * (Math.pow(rho, d) - 1) / lnrho;
+      const tKink = tOf(kink);
+      if (tKink <= left + 1e-12) {                        // cross the kink exactly and re-derive
+        made += kink; atiSt.nu += kink; left -= Math.max(0, tKink);
+        if (kStr <= kCap && partial >= 0) atiSt.strata.pop();
+        continue;
+      }
+      /* The bracket is DERIVED from the segment's own endpoints, not assumed to be [1/b, 1/a]: with
+         the §10c factor the effective P_down can exceed 1, so the interval can exceed b and the old
+         bracket would have silently clamped the solve. `d < kink` holds in this branch, so the
+         monotone ρ^u is bounded by its values at 0 and at the kink. */
+      const pe0 = B, pe1 = B * Math.pow(rho, kink);
+      const iHi = p.a + Math.max(pe0, pe1), iLo = p.a + Math.min(pe0, pe1);
+      let lo = left / iHi, hi = left / iLo, d = left / (p.a + B);
+      for (let it = 0; it < 48; it++) {
+        if (!(d >= lo && d <= hi)) d = (lo + hi) / 2;
+        const f = tOf(d) - left;
+        if (Math.abs(f) < 1e-12 || hi - lo < 1e-13) break;
+        if (f > 0) hi = d; else lo = d;
+        d -= f / (p.a + B * Math.pow(rho, d));
+      }
+      d = Math.min(Math.max(d, lo), hi);
+      made += d; atiSt.nu += d; left = 0;
+    }
+    return made;
   };
   // ═══════════ exact discrete ramp — the opener & every post-gap re-engage ═══════════
   // The first MAX_STACKS Arcane Blasts after every cold start (the pull at 0 stacks — no prestack
   // modeled — and the exit of every AB gap long enough to drop the debuff) are SLOWER than the
-  // steady 3-stack cast. Model them EXACTLY: inside each ramp span the rate integral is suppressed
-  // and replaced by the discrete casts, each dealing its damage around its COMPLETION (damage lands
-  // on completion — sim-verified sampling; midpoint sampling re-created the phantom "haste
-  // compresses the ramp" credit). Cast speed is set at cast START (in-flight casts keep speed).
-  // Haste placement-independence (RULES §3) is preserved: haste shortens a span but never changes
-  // its cast COUNT, and the span hands off to the integral exactly — so haste gains nothing from
-  // covering the ramp, while a damage buff is credited for exactly the completions it truly covers.
-  // Each completion is phase-averaged over a ±half-GCD press/latency fuzz (RAMP_JITTER) so no
-  // knife-edge step enters the score (the optimizer can't game an exact boundary, and a completion
-  // sliding across a window edge as haste rises moves the score smoothly, not in cliffs).
-  const nonAB = s => !!s && (s.type === "intermission" || s.type === "aoe");
-  const segAt = tt => { if (!segs) return null; for (let i = 0; i < segs.length; i++) { const sg = segs[i]; if (tt >= sg.start && tt < sg.end) return sg; } return null; };
-  const RAMP_JITTER = g.GCD_FLOOR;
-  // A ramp cast's damage STATE is jitter-averaged around its START (ts). Sampling it across the
-  // COMPLETION over-credited every press-snapped ramp-exit window with ~half of the cast it fired
-  // after (the T=98 ramp-exit cluster phantom, ~+0.3 casts), so START is the rule that ranks with
-  // the sim at a window's FRONT edge — where the press is boundary-snapped, so "completion of the
-  // cast in progress" IS the next cast's start and the two rules coincide.
-  // ⚠ MECHANISM: this is NOT what the sim does. wowsims reads a VALUE buff (+SP, ×dmg) at cast
-  // COMPLETION, unconditionally — re-confirmed on the KT log in both directions (a cast whose AP and
-  // gem faded 1.8s before completion got NO x1.30; a cast that gained the gem 0.01s after starting
-  // still reported its +225 SP at completion). The two rules therefore DISAGREE at a window's BACK
-  // edge, where start-sampling over-credits the last partial cast by frac(D/interval) x premium.
-  // That residual is a known, deliberately UNIMPLEMENTED refinement (RULES 3b.3 + 3b-note: charging
-  // it moves the B2 deficit the wrong way, so it needs its own physics justification and sim gate).
-  // The damage TIME — kill taper, wall/AoE gating — stays at the completion (tc), preserving Phase
-  // 4's "damage lands on completion" rule (midpoint TIME sampling is what once re-created the
-  // haste-compresses-the-ramp phantom).
-  const rampCastDmg = (ts, tc) => {
-    if (nonAB(segAt(tc))) return 0;                    // completes into downtime/AoE — no AB damage
-    const sgD = segAt(tc);                             // damage context (burn mult) at the completion
-    const a = Math.max(0, ts - RAMP_JITTER / 2), b = ts + RAMP_JITTER / 2;
-    const edges = new Set([a, b]);
-    for (const w of active) { if (w.scoreStart > a && w.scoreStart < b) edges.add(w.scoreStart); const we = w.scoreStart + w.def.dur; if (we > a && we < b) edges.add(we); }
-    const es = [...edges].sort((x, y) => x - y);
-    let acc = 0;
-    for (let i = 0; i < es.length - 1; i++) {
-      const m = (es[i] + es[i + 1]) / 2;
-      acc += scanAt(m, sgD).dmg2 * (es[i + 1] - es[i]);
-    }
-    return acc / (b - a);
-  };
-  // The ramp spans/casts come straight from the board loop's recorded ramp casts — ONE source of
-  // truth: the same slow casts that set the sparse press boundaries are the ones scored discretely.
-  // Each cast's span [start, next boundary) suppresses the integral; its damage lands around its
-  // completion (jitter-smoothed above).
-  const rampSpans = [], rampCasts = [];
+  // steady 3-stack cast, and their true 2.5/2.17/1.83s lengths set the sparse press boundaries the
+  // walk above already used. Scoring-wise the ramp is the §8q TOLL below — a fixed cast count
+  // spread over an m-independent window, the integral itself running at the steady rate throughout —
+  // so all this block does is turn the walk's recorded ramp casts (`boardRamp`, the ONE source of
+  // truth) into the merged spans and breakpoints the toll windows and the integral read.
+  // ⚠ The per-ramp-cast DISCRETE damage sampling that used to live here (`rampCasts`/`rampCastDmg`,
+  // jitter-averaged around each cast) was the pre-§8q scoring path and survived only as write-only
+  // work in the hottest function — computed on every simulate(), read by nothing — deleted 08-04
+  // (MODEL-DEFECTS' "Also found" ledger). Its physics is not lost: damage-lands-on-completion is
+  // the walk's own rule, and the ramp's entire score is the toll.
+  const rampSpans = [];
   for (const rc of boardRamp) {
     const e2 = Math.min(rc.e, cfg.T + KWD);
     if (rampSpans.length && Math.abs(rampSpans[rampSpans.length - 1][1] - rc.s) < 1e-9) rampSpans[rampSpans.length - 1][1] = e2;
     else rampSpans.push([rc.s, e2]);
-    rampCasts.push({ tc: rc.c, dmg: rampCastDmg(rc.s, rc.c) });
   }
   // integrate over piecewise-constant segments: buff state changes only at window
   // edges / phase boundaries / the kill window, so a few dozen breakpoints are exact
@@ -1889,10 +1983,14 @@ function simulateRaw(schedule, cfg, collect) {
   for (let i = 0; i < active.length; i++) { const w = active[i]; if (w.scoreStart > 0) bpS.add(w.scoreStart); bpS.add(w.scoreStart + w.def.dur); }
   if (segs) for (const sg of segs) { bpS.add(sg.start); bpS.add(sg.end); }
   for (const [ra, rb] of rampSpans) { if (ra > 0) bpS.add(ra); bpS.add(rb); }
+  // killMode:"sym"'s window kinks live at T ± 0.5 and were MISSING from the breakpoint set, so with
+  // no slice mid falling inside the window the mode read bit-identical to "none" (measured 08-04;
+  // the ledger had it at 7e-4 casts on its case). Diagnostic-mode-only: "none" adds no points.
+  if (cfg.killMode === "sym") { bpS.add(cfg.T - 0.5); bpS.add(cfg.T + 0.5); }
   const bps = [...bpS].filter(x => x >= 0 && x <= cfg.T + KWD).sort((a, b) => a - b);
   total = 0; totalEarly = 0; robust = 0;
   let sj = 0;
-  let atiNu = 0, atiLiveEnd = 0; // engagement age + last live-slice end, threaded through the loop (atiOn only)
+  let atiPrevP = null, atiLiveEnd = 0; // previous live slice's ATI params + end, threaded through the loop (atiOn only)
   for (let i = 0; i < bps.length - 1; i++) {
     const a = bps[i], b = bps[i + 1], len = b - a;
     if (len < 1e-9) continue;
@@ -1918,7 +2016,14 @@ function simulateRaw(schedule, cfg, collect) {
     if (segs) {
       while (sj < segs.length - 1 && mid >= segs[sj].end) sj++;
       segB = segs[sj];
-      if (segB.type === "intermission") { if (mid < segB.end) continue; segB = null; } // boss untargetable: no damage
+      // Past the LAST segment's end — only the killMode tail (T, T+KWD] can get here, since
+      // buildSegments always covers [0, T] — the fight is plain casting, the walk's own convention
+      // ("past the last defined phase: plain casting"). Without this the tail kept the final phase
+      // IN FORCE: a fight ending in a 10-target AoE phase booked +2.21 casts of phantom Arcane
+      // Explosion after the boss died (killMode:"oneSided"; latent at the default "none", whose
+      // killW is 0 past T). MODEL-DEFECTS' "Also found" ledger, closed 08-04.
+      if (mid >= segB.end) segB = null;
+      else if (segB.type === "intermission") continue; // boss untargetable: no damage
     }
     /* ★★ THE TOLL, SPREAD OVER THE CAST THAT INCURS IT — not charged as a lump at its start.
        Forcing the interval to a ramp cast's own span makes the effective rate `1/(C_k/m) = m/C_k`, which
@@ -1946,18 +2051,44 @@ function simulateRaw(schedule, cfg, collect) {
     const stT = scanAt(mid, segB);
     let liveRate;
     if (atiOn) {
-      // Thread the Ashtongue engagement age through the loop: slices arrive in time order and
+      // Thread the Ashtongue window memory through the loop: slices arrive in time order and
       // intermission slices `continue` above, so a gap between this slice's start and the last live
-      // end is dead time. The history survives it only partially — ν ← min(ν, (dur − gap)/a), the
-      // linear remnant of a 5s memory (gap ≥ dur ⇒ full reset, matching the walk's atiDead aging).
-      // The advance runs NET of the opener toll: toll casts never happened, so they rolled no procs.
+      // end is dead time — folded into the strata as a PROCLESS entry that occupies window and ages
+      // out naturally. A state change folds the outgoing state's attempts into a stratum the same
+      // way, so the old average drains over one window instead of snapping (the 08-04 rebuild).
+      /* ★★★★ ν IS A PHYSICAL ATTEMPT COUNTER; THE OPENER TOLL IS A SCORING DEVICE — §10c (08-05), and
+         COUPLING THEM WAS THE OTHER HALF OF THE TRANSIENT BIAS. The advance used to run
+         `ν −= tollR·len`, on the reasoning that "toll casts never happened, so they rolled no procs".
+         The premise is right and the implementation was not: the toll is SPREAD uniformly over an
+         m-INDEPENDENT nominal window (§8q) precisely so an overlapping value buff pays its share —
+         which makes it the wrong SHAPE for a cast count, because the real deficit is front-loaded
+         (the first ramp cast alone loses 0.667 casts inside its own 2.5 s). Netting the two left ν
+         reading 3.09 at the ramp's end where the process has made exactly 3 attempts.
+         ⇒ the two are now separate, and each is exact in its own currency: inside a ramp cast the walk
+         already knows exactly ONE attempt is made over that cast's own span, so ν advances at
+         `1/iv` there (`nuRate`) and at the integrand's own rate everywhere else. The toll never
+         touches ν. The SCORE is untouched — it still integrates the same rate and still pays the same
+         spread toll — so §8q's ladders are unmoved.
+         ⚠ This is not a lattice re-entering the integrand (§8l): no cast is priced at a lattice
+         position, and the ramp spans are already breakpoints. What is read off the ramp is the
+         attempt COUNT of a stochastic buff, which is physics, not scoring geometry. */
       const p = atiParamsAt(stT.multDn2, stT.mult2, stT.aoe, segB);
+      let nuRate = 0;
+      for (let k2 = 0; k2 < boardRamp.length; k2++) {
+        const rc = boardRamp[k2];
+        if (mid > rc.s && mid < rc.e && rc.iv > 1e-9) { nuRate = 1 / rc.iv; break; }
+      }
       const gap = a - atiLiveEnd;
-      if (gap > EPS) atiNu = Math.min(atiNu, Math.max(0, (ATI.dur - gap) / p.a));
-      const adv = atiAdvance(atiNu, len, p);
-      liveRate = stT.dmg2 * adv.casts / len;
-      atiNu = Math.max(0, adv.nu - tollR * len);
-      atiLiveEnd = b;
+      const edged = atiPrevP && (atiPrevP.a !== p.a || atiPrevP.b !== p.b || atiPrevP.q !== p.q);
+      if ((gap > EPS || edged) && atiPrevP) {
+        atiFold(atiPrevP.r, atiPrevP.a, Math.min(atiSt.nu, atiPrevP.n));
+        atiSt.nu = 0;
+        if (gap > EPS) atiFold(1, 1, gap);
+      }
+      atiTrim(p.a);
+      const madeCasts = atiSlice(p, len, nuRate);
+      liveRate = stT.dmg2 * madeCasts / len;
+      atiLiveEnd = b; atiPrevP = p;
     } else liveRate = rateAt(mid, segB);
     const contrib = (liveRate - tollR * dmgOf(stT.sp2, stT.dmgMult2, segB, false)) * len;
     if (b <= cfg.T + 1e-9) total += contrib;
@@ -2720,7 +2851,7 @@ function planShape(s, cfg) {
      external caller that only reads snaps/wastedPre/distinct/sum/ts keeps working without one. */
   let offGrid = 0, invalid = 0;
   if (cfg) {
-    const ctx = shapeCtxOf(cfg);
+    const ctx = shapeCtxOf(cfg, s);   // §9w — the grid depends on the haste THIS plan runs at the pull
     for (const t of ts) if (!ctx.classes.has(((Math.round(t) % 5) + 5) % 5)) offGrid++;
     for (const k of Object.keys(s)) {
       const kind = BUFFS[k] && BUFFS[k].kind;
@@ -2733,7 +2864,28 @@ function planShape(s, cfg) {
       }
     }
   }
-  return { snaps, wastedPre, offGrid, invalid, distinct: new Set(ts.map(t => Math.floor(t + EPS))).size,
+  /* ★★★ `valueSecs` — HOW MANY SECONDS THE PLAN SPENDS ITS VALUE BUFFS ON (§9x, 08-05). Not a press
+     count: it is the physical distinction `distinct` could never make, and the one the user's own
+     objection to `distinct` was pointing at.
+       · VALUE buffs (sp / dmg) MULTIPLY each other — ESTABLISHED-FACTS §4's cross term `dmg × sp =
+         n·d·s` — so splitting them forfeits it. Sharing a second is strictly better wherever the
+         score can see it, and where the GCD cap makes the score blind, the member that keeps them
+         together is the one whose logic generalises.
+       · HASTE buffs are the opposite: the packing law (§4c) says they go BACK TO BACK, never on top
+         of one another, so counting them here would push exactly the wrong way. That is the T8
+         defect the user reported in as many words — *"the first IV should have always been @20 as per
+         the earliest rule"*, not at 0:95 riding the Bloodlust call.
+     ⇒ counting only sp/dmg tracks is what makes this criterion safe where `distinct` was not, and it
+     is also why it cannot interfere with a descent that moves Icy Veins or Berserking: it does not
+     move when they do. */
+  const valSet = new Set();
+  for (const k of Object.keys(s)) {
+    const kind = BUFFS[k] && BUFFS[k].kind;
+    if (kind !== "sp" && kind !== "dmg") continue;
+    for (const t of (s[k] || [])) valSet.add(Math.round(t));
+  }
+  return { snaps, wastedPre, offGrid, invalid, valueSecs: valSet.size,
+           distinct: new Set(ts.map(t => Math.floor(t + EPS))).size,
            sum: ts.reduce((a, b) => a + b, 0), ts };
 }
 /* ★★★ §9l — THE GRID AND THE RAMP FLOORS, derived per cfg and cached by cfg identity.
@@ -2754,20 +2906,66 @@ function planShape(s, cfg) {
    must wait out the ramp, and the same holds after an intermission (T3/T5: cluster at the re-ramp
    END). Prepull presses are `wastedPre`'s domain, not this one. A re-ramp exists only where a non-AB
    phase is long enough to drop the AB debuff (≥ DEBUFF_DUR). */
+/* ★★★★★ §9w (08-05) — THE RAMP IS AS FAST AS THE HASTE THAT IS ACTUALLY RUNNING DURING IT.
+   `rampLen` was computed at PASSIVE gear haste always, which is right for a plan that presses nothing
+   at the pull and WRONG for one that does — and "wrong" here is not cosmetic, because the ramp end is
+   an ANCHOR and its mod-5 residue is a whole grid class.
+
+   Measured on T10 (6:30, prepull Icy Veins `[-10,10,190,370]`): at passive haste the three ramp casts
+   take 2.5 + 2.166 + 1.832 = 6.498 s ⇒ ramp end 7 ⇒ residue 2 joins the grid. But the plan's own Icy
+   Veins is up from the pull, so the casts take 2.083 + 1.805 + 1.527 = 5.415 s ⇒ ramp end **6** ⇒
+   residue 1, and 7 is not a structural second of that fight at all. The consequence is exactly the
+   declared layout: with the correct grid the cluster-at-0:07 rival scores `offGrid` 6 against the
+   declared cluster-at-0:10's 0, and `planBetter` separates them BEFORE reaching the earliest rule —
+   which it must, because the two are tied on the ideal score to 1e-13 and the earliest rule prefers
+   the rival at every differing coordinate (MODEL-DEFECTS §9v/§9w).
+   ⚠ Derived, not fitted: the same expression the walk uses (`mult` × `1 + rating/1577`, PI overridden
+   by Bloodlust), evaluated at each ramp's own start second. ⛔ Ashtongue is deliberately EXCLUDED —
+   its proc is stochastic, so folding it in would make the grid depend on an expectation rather than on
+   what the player can point at. Same reason the haste graph gives it its own lane.
+   ⚠ This makes the context PLAN-dependent, so the cache is keyed by the multipliers, not by `cfg`
+   alone. Two plans of one fight can therefore be judged on different grids — which is correct: a
+   prepull haste buff really does move where that fight's structural seconds are. */
+function rampMultAt(s, cfg, t0) {
+  let rating = cfg.hasteRating || 0, mult = 1, bl = false, pi = false;
+  const consider = (k, t) => {
+    const def = BUFFS[k];
+    if (!def || !def.dur) return;
+    if (!(t <= t0 + EPS && t + def.dur > t0 + EPS)) return;   // this window covers the ramp's start
+    if (k === "ati") return;                                  // stochastic — never in the grid
+    if (k === "powerInfusion") { pi = true; return; }
+    if (def.kind === "mult") { mult *= def.value; if (k === "bloodlust") bl = true; }
+    else if (def.kind === "rating") rating += def.value;
+  };
+  for (const k of Object.keys(cfg.fixed || {})) for (const t of (cfg.fixed[k] || [])) consider(k, Math.round(t));
+  for (const k of Object.keys(s || {})) {
+    if (cfg.fixed && cfg.fixed[k]) continue;                  // already counted, and s may echo the pin
+    for (const t of (s[k] || [])) consider(k, Math.round(t));
+  }
+  if (pi && !bl) mult *= BUFFS.powerInfusion.value;
+  return mult * (1 + rating / (GAME.HASTE_RATING_PER_PCT * 100));
+}
 const SHAPE_CTX = new WeakMap();
-function shapeCtxOf(cfg) {
-  let ctx = SHAPE_CTX.get(cfg);
+function shapeCtxOf(cfg, s) {
+  const mOpen = rampMultAt(s, cfg, 0);
+  let byM = SHAPE_CTX.get(cfg);
+  if (!byM) { byM = new Map(); SHAPE_CTX.set(cfg, byM); }
+  const mKey = mOpen.toFixed(6);
+  let ctx = byM.get(mKey);
   if (ctx) return ctx;
   const g = GAME;
   const q = x => Math.round(x * 1000) / 1000;
   const ceilS = x => Math.ceil(x - 1e-9);
-  const m0 = 1 + (cfg.hasteRating || 0) / (g.HASTE_RATING_PER_PCT * 100);
-  const gcd0 = q(Math.max(g.GCD_FLOOR, g.GCD_BASE / m0));
-  let rampLen = 0;
-  for (let k = 0; k < g.AB.MAX_STACKS; k++)
-    rampLen += Math.max(q((g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * k) / m0), gcd0);
+  // §9w — the ramp's length at a given start second, under the haste actually running there.
+  const rampLenAt = m => {
+    const gcdM = q(Math.max(g.GCD_FLOOR, g.GCD_BASE / m));
+    let len = 0;
+    for (let k = 0; k < g.AB.MAX_STACKS; k++)
+      len += Math.max(q((g.AB.BASE_CAST - g.AB.STACK_CAST_REDUCTION * k) / m), gcdM);
+    return len;
+  };
   const anchors = new Set([0, Math.round(cfg.T)]);
-  const ramps = [{ s0: 0, F: ceilS(rampLen) }];
+  const ramps = [{ s0: 0, F: ceilS(rampLenAt(mOpen)) }];
   for (const k of Object.keys(cfg.fixed || {})) for (const t of (cfg.fixed[k] || [])) {
     const r = Math.round(t);
     anchors.add(r);
@@ -2778,8 +2976,9 @@ function shapeCtxOf(cfg) {
     anchors.add(a); anchors.add(b);
     if (sg.type !== "intermission" && sg.type !== "aoe") continue;
     if (sg.end - sg.start >= g.AB.DEBUFF_DUR - 1e-9) {
-      ramps.push({ s0: b, F: b + ceilS(rampLen) });
-      anchors.add(b + ceilS(rampLen));
+      const rl = ceilS(rampLenAt(rampMultAt(s, cfg, b)));   // a re-ramp runs at the haste up THERE
+      ramps.push({ s0: b, F: b + rl });
+      anchors.add(b + rl);
     }
   }
   anchors.add(ramps[0].F);
@@ -2793,7 +2992,7 @@ function shapeCtxOf(cfg) {
     for (let x = Tr - def.dur; x >= 0; x -= def.cd) chainSecs.add(x);
   }
   ctx = { classes: new Set([...anchors].map(a => ((a % 5) + 5) % 5)), ramps, chainSecs };
-  SHAPE_CTX.set(cfg, ctx);
+  byM.set(mKey, ctx);
   return ctx;
 }
 /* ★★★★★ §9l — THE COMPARATOR, REWRITTEN 08-03 FROM USER RULINGS. Strictly-better test; `a`/`b` are
@@ -2827,8 +3026,28 @@ function planBetter(a, b) {
   if (a.shape.snaps !== b.shape.snaps) return a.shape.snaps < b.shape.snaps;   // keep the charge (T9)
   if (a.shape.wastedPre !== b.shape.wastedPre) return a.shape.wastedPre < b.shape.wastedPre;  // 08-02
   if (a.shape.offGrid !== b.shape.offGrid) return a.shape.offGrid < b.shape.offGrid;          // §9l
-  if (a.shape.distinct !== b.shape.distinct) return a.shape.distinct < b.shape.distinct;      // T6/T10/T13
+  /* ⛔⛔ `distinct` (FEWEST PRESS MOMENTS) IS ABOLISHED — user ruling, restated 08-05: *"I also
+     previously said to abolish the fewest presses rule, that one is messy and aligning to earliest
+     possible will also naturally align presses."* It had been marked DEPRECATED BY RULING in §9l on
+     08-03 and was still being applied here; this removes it for real.
+     ★ VERIFIED NON-DESTRUCTIVE BEFORE REMOVAL — every ruling that was ever decided on this criterion
+     is reproduced by the earliest-press vector alone, which is exactly the user's argument:
+        T6  old iv[7,37]/cluster@7/zerk@27   vs revised iv[15,35]/cluster@15/zerk@5   → earliest picks REVISED ✓
+        T7  old iv[7,55]/cluster@7/zerk@27   vs revised iv[15,55]/cluster@15/zerk@5   → earliest picks REVISED ✓
+        T8  zerk[100] vs zerk[95] (both iv[20,115])                                   → earliest picks 95      ✓
+     The mechanism is that co-pressing is what MAKES a vector early: sharing a second with an existing
+     press leaves the vector's earlier entries untouched, while giving a track its own later second
+     pushes an entry back. So "fewest moments" was a lossy proxy for "earliest", and the proxy is the
+     part that was messy — it could prefer a LATE cluster over an EARLY split. ⛔ Do not reintroduce
+     it; if a case ever seems to need it, the answer is a shape criterion with its own argument, not
+     this one back. */
   if (a.shape.invalid !== b.shape.invalid) return a.shape.invalid < b.shape.invalid;          // §9l
+  /* §9x — VALUE buffs share a second because they multiply; HASTE buffs do not because they must not
+     overlap. See `planShape`'s `valueSecs` for the derivation, and MODEL-DEFECTS §9x for why this is
+     NOT `distinct` returning under a new name: it is blind to Icy Veins and Berserking, which is
+     exactly the property `distinct` lacked and T8 punished. */
+  if (a.shape.valueSecs !== b.shape.valueSecs) return a.shape.valueSecs < b.shape.valueSecs;
+  if (CANON_DISTINCT && a.shape.distinct !== b.shape.distinct) return a.shape.distinct < b.shape.distinct;
   const n = Math.min(a.shape.ts.length, b.shape.ts.length);
   for (let i = 0; i < n; i++) if (Math.abs(a.shape.ts[i] - b.shape.ts[i]) > EPS) return a.shape.ts[i] < b.shape.ts[i];
   return a.shape.ts.length < b.shape.ts.length;
@@ -2838,6 +3057,14 @@ function planBetter(a, b) {
    bit-identical or within 2 ulps — max |Δ| 2.6e-14 casts. The smallest REAL slope this must resolve
    is T16's 1.2e-3 casts/step. 1e-9 casts sits ≥10× above the measured noise (by ~4×10⁴) and 10⁶
    below the slope. ⛔ Do not widen it toward TIE_CASTS — a band here re-admits the drift. */
+/* ⚗️ EXPERIMENT SWITCH (08-05) — kept as a one-line reproduction of a MEASURED dead end, see
+   MODEL-DEFECTS §9v. `false` is the shipped state and the user's ruling. Flipping it to `true`
+   restores the abolished `distinct` criterion, which fixes T10 and T13 — and turns **T8 red as a
+   SEARCH failure**, the declared layout scoring +0.093319 casts higher than what the descent then
+   reaches. That is §9s's reachability finding reproduced exactly, and `plateauCanon` cannot rescue it
+   because T8's route is score-IMPROVING, not a plateau walk. ⇒ `distinct` does not fix the corpus, it
+   relocates the red. Leave it false. */
+const CANON_DISTINCT = false;
 const IDEAL_TIE_CASTS = 1e-9;
 const rankPair = (s, cfg) => ({ score: rankScore(s, cfg), ideal: idealScore(s, cfg), shape: planShape(s, cfg),
   band: TIE_CASTS * plainCastOf(cfg), ifloor: IDEAL_TIE_CASTS * plainCastOf(cfg) });
@@ -3213,9 +3440,543 @@ function phaseRerank(s0, cfg) {
         }
       }
     }
+    /* ★★★★★ 6. THE CHAIN-DRAGGED CLUSTER — added 08-04 (MODEL-DEFECTS §9o), and it is the SAME
+       lesson as 3d one coupling deeper. 3d closes the cooldown chain when a slide FORCES a later use
+       of the same track to move; what it cannot see is that the forced press may be a MEMBER OF A
+       VALUE CLUSTER, so the closed candidate splits a cluster the plan deliberately built and scores
+       downhill — the move the descent actually needs brings a cluster partner along. Measured on
+       `icon+gem · h400 · 3:00 lust 0:20` (and identically on pi+ / ati+, +0.013…+0.020 casts,
+       6–10× the band):
+           emitted   scb[5,125] · AP@125 · {isc#1,iv#1} also @125     (scb gap = cd, FLUSH)
+           argmax    scb[7,127] · AP@127 · {isc#1,iv#1} stay
+           scb#0+2 alone            −0.036   (chain pushes scb#1 to 127, splitting it from AP)
+           {AP, scb#1}+2 alone       0.000   (the cluster's placement is a flat plateau)
+           all three together       +0.020   ✓ — and zero improving 1- or 2-coordinate moves exist
+       The +2 buys scb#0 two more seconds under the pinned Bloodlust (value stacks on haste), the
+       chain makes that inseparable from relocating scb#1, and the AP cross term makes relocating
+       scb#1 without AP a pure loss — three coordinates coupled through TWO different mechanisms at
+       once (repair legality + the §4 cross term), which is why neither 3d (chain, no partner) nor
+       class 3 (cluster, no chain) can compose the move.
+       ⇒ So: slide each single press; where `repair`'s closure MOVES other presses, read those
+       presses' co-pressed partners off the CURRENT plan and offer each partner riding the same
+       slide (each alone, then all together). Everything is derived — the chain from `repair`
+       itself, the partners from the plan's own press seconds — and deterministic (keys order,
+       SHIFTS order, one adoption per round).
+       ⚠⚠ GATED ON `!moved`, AFTER class 5 — the 3d position lesson at full strength: the descent
+       first converges under every older class, so every previously-reachable fixed point is REACHED
+       and RANKED before this class speaks, and a cell where every chain-dragged candidate is
+       refused stays byte-identical by construction.
+       ⚠ Count-preserving like 3d: `repair` also DROPS presses, and a slide that deletes a use is a
+       different move than the one proposed. A closure that moves nothing is skipped — a plain slide
+       is class 2/3/4's job, and re-offering it here would only re-rank refused moves. */
+    if (!moved) {
+      const singles = [];
+      for (const k of keys) (s[k] || []).forEach((_, i) => singles.push([{ k, i }]));
+      let hit = false;
+      for (const mem of singles) {
+        for (const d of SHIFTS) {
+          const slid = shiftedAt(s, mem, d);
+          if (!slid) continue;
+          const closed = repair(cloneS(slid), cfg);
+          let ok = true;
+          const dragged = [];
+          for (const k in slid) {
+            if (!closed[k] || closed[k].length !== slid[k].length) { ok = false; break; }
+            for (let j = 0; j < slid[k].length; j++)
+              if (Math.abs(closed[k][j] - slid[k][j]) > 1e-9) dragged.push({ k, j });
+          }
+          if (!ok || !dragged.length) continue;
+          // partners: presses sharing a dragged press's second in the CURRENT plan — the cluster
+          // the closure is about to split — excluding the mover and the dragged presses themselves
+          const partners = [];
+          for (const dp of dragged) {
+            const sec = Math.round(s[dp.k][dp.j]);
+            for (const k of keys) (s[k] || []).forEach((t, i) => {
+              if (Math.round(t) !== sec) return;
+              if ((k === dp.k && i === dp.j) || mem.some(m => m.k === k && m.i === i)) return;
+              if (dragged.some(q => q.k === k && q.j === i)) return;
+              if (!partners.some(p => p.k === k && p.i === i)) partners.push({ k, i });
+            });
+          }
+          if (!partners.length) continue;
+          const variants = partners.map(p => [p]);
+          if (partners.length > 1) variants.push(partners);
+          for (const extra of variants) {
+            const slid2 = shiftedAt(s, [...mem, ...extra], d);
+            if (!slid2) continue;
+            const closed2 = repair(cloneS(slid2), cfg);
+            let ok2 = true, same2 = true;
+            for (const k in slid2) {
+              if (!closed2[k] || closed2[k].length !== slid2[k].length) { ok2 = false; break; }
+              for (let j = 0; j < slid2[k].length; j++) if (Math.abs(closed2[k][j] - slid2[k][j]) > 1e-9) same2 = false;
+            }
+            if (!ok2 || same2) continue;
+            if (tryCand(closed2)) { moved = true; hit = true; break; }
+          }
+          if (hit) break;
+        }
+        if (hit) break;
+      }
+    }
+    /* ★★★★★ 7. THE SUFFIX SLIDE — added 08-05 (MODEL-DEFECTS §9y), and it is the §8s train one
+       dimension WIDER. Class 3 groups presses that share a SECOND; class 3c groups presses whose
+       windows share an EDGE. Neither can express *"everything after this wall moves together"* — and
+       after a phase that drops the Arcane Blast debuff, that is exactly the move the fight wants.
+
+       Found by `search-audit` on the kit matrix at `gem+skull · h200 · 2:40 lust 0:07 · interm
+       1:30–2:10`, the FIRST cell of a kit that only exists because the 08-05 trinket-cap fix created
+       it (§9t) — so this is a pre-existing hole newly covered, not a regression (verified: the
+       pre-08-05 engine emits the same plan and loses the same 0.028848 casts, byte for byte).
+
+           emitted   skull[0,130] · iv[47,130] · scb[7,135]          113.684203
+           argmax    skull[0,132] · iv[47,132] · scb[7,137]          113.713050   (+0.028848, 14× the band)
+
+           skull#1 alone   +1 −0.0148   +2 −0.0296   +3 −0.0444     every single step DOWN
+           iv#1    alone   +1 −0.0148   +2 −0.0296   +3 −0.0444
+           scb#1   alone   +1 −0.0032   +2 −0.0161   +3 −0.0385
+           {skull#1, iv#1}+2   **exactly 0.000000**  ← class 3 CAN make this move and correctly refuses
+           {skull#1, scb#1}+2  −0.031754            it: an exact tie, and the shape prefers earlier
+           {iv#1, scb#1}+2     −0.017424
+           all three      +1 +0.0193   +2 +0.0288   +3..+5 +0.0288 (a plateau; the earliest wins)
+
+       ⇒ WHY THEY ARE COUPLED, and it is a third mechanism, not the cluster's and not the train's.
+       The intermission is 40 s, longer than `DEBUFF_DUR`, so the fight RE-RAMPS at 2:10. Through a
+       re-ramp haste is provably worth nothing (the toll is fixed and `m` cancels — ESTABLISHED-FACTS
+       §1.2) and value does less work (§9l's `invalid`), so every cooldown pressed onto the wall wants
+       to sit AFTER the ramp instead. They want it *together*, because moving one alone breaks its
+       co-press with the rest and pays the §4 cross term. Singles down, pairs down-or-flat, triple up.
+
+       ⇒ Read off the plan, never guessed: for each distinct press SECOND in the plan, slide every
+       press at or after it. That is a strict generalisation of class 1 (which is the suffix from the
+       earliest press) and it needs no list of phase edges — the second that matters is already a press
+       second, because the plan put a press on the wall. A handful of candidates (distinct seconds ×
+       SHIFTS), deterministic, ascending.
+       ⚠⚠ GATED ON `!moved` AND LAST, after class 6 — the 3d position lesson at full strength. A greedy
+       descent is not monotone in its move set: offered a new move early it takes a different
+       locally-better step and converges elsewhere. Running last means every older class is exhausted
+       first, so every previously-reachable fixed point is REACHED and RANKED before this class speaks,
+       and a cell where every suffix candidate is refused is byte-identical by construction. */
+    if (!moved) {
+      const secs = [...new Set(keys.flatMap(k => (s[k] || []).map(t => Math.round(t))))].sort((a, b) => a - b);
+      let hit = false;
+      for (const p of secs) {
+        const mem = [];
+        for (const k of keys) (s[k] || []).forEach((t, i) => { if (Math.round(t) >= p) mem.push({ k, i }); });
+        if (!mem.length) continue;
+        for (const d of SHIFTS) if (tryCand(shiftedAt(s, mem, d))) { moved = true; hit = true; break; }
+        if (hit) break;
+      }
+    }
+    /* ★★★★★ 8. THE PROC-CHAIN RE-ANCHOR — added 08-06 (MODEL-DEFECTS §10d), Ashtongue only, and it
+       is class 5's lesson applied to the §19 proc-carry structure. On `gem+ati · 2:00 · lust 0:20`
+       the argmax is a FIVE-coordinate rewrite of what the descent reaches:
+
+           emitted   iv[65,90] · {scb,AP,zerk}@25          103.828572
+           argmax    iv[60,85] · scb/AP@50 · zerk@55       103.838635   (+0.010063, ~5× the band)
+
+       Measured: every 1-D step from the emitted point is −0.03..−0.64, every 2-, 3- and 4-coordinate
+       stepping stone is −0.03..−0.64 as well — only the whole rewrite is uphill. No bounded descent
+       and no per-press structural time composes it (§10d has the full table).
+       ⇒ But the target is DERIVED, not searched-for. It is RULES §19's carry-over written as a layout:
+       the proc-elevated state survives one proc duration past the window that earned it, so
+         · Icy Veins #0 sits ON the pinned window's end `e` (haste out of the raid haste, §4c);
+         · Icy Veins #1 follows at `e + dur(iv) + ATI.dur` — windows separated by exactly the carry;
+         · every VALUE single ENDS at `e + ATI.dur`, i.e. presses at `e + ATI.dur − dur(k)`, spending
+           its window across the seam where the proc uptime is still elevated;
+         · Berserking likewise ends at `e + ATI.dur` (haste beside haste, never inside — §4c).
+       Everything from the cfg and the constants table; nothing enumerated, nothing tuned.
+       ⚠⚠ GATED ON `atiOn && !moved` AND RUNNING LAST — the 3d/§9y position lesson, plus a stronger
+       property: with Ashtongue OFF this class never fires, so every proc-less cell is byte-identical
+       BY CONSTRUCTION (the §19 measurement — ten layouts, bit-identical without the proc — is why
+       the structure means nothing there). One candidate per pinned call, deterministic. */
+    if (!moved && cfg.enabled && cfg.enabled.ati) {
+      const ivK = "icyVeins", zkK = "berserking";
+      const pins = [];
+      for (const pk of Object.keys(cfg.fixed || {}))
+        for (const t of (cfg.fixed[pk] || [])) pins.push(Math.round(t) + BUFFS[pk].dur);
+      pins.sort((a, b) => a - b);
+      let hit = false;
+      for (const e of pins) {
+        /* Two variants per pin, tried in order. A is the original §10d shape: the iv chain with every
+           value single (and Berserking) ENDING at e + ATI.dur. B (added 08-07, the `ati+gem h200`
+           miss): the SAME iv chain but the value singles UNTOUCHED and Berserking CONTINUING the
+           chain — pressed at the last Icy Veins press + dur + carry, i.e. the §19 structure extended
+           through the next haste window instead of closed at the seam. At h200 the argmax is exactly
+           that (iv[60,85] · zerk@110 with the cluster left at its own basin, +0.019 casts, every 1-
+           and 2-coordinate partial downhill — the subset probe is in the 08-07 batch record); at h0
+           variant A still wins and B is refused, so both cells emit their argmax from one vocabulary. */
+        for (const variant of ["A", "B"]) {
+          const cand = cloneS(s);
+          if (keys.includes(ivK) && (cand[ivK] || []).length) {
+            cand[ivK] = cand[ivK].map(t => Math.round(t));
+            cand[ivK][0] = e;
+            for (let j = 1; j < cand[ivK].length; j++)
+              cand[ivK][j] = cand[ivK][j - 1] + BUFFS[ivK].dur + ATI.dur;
+            cand[ivK].sort((a, b) => a - b);
+          }
+          if (variant === "A") {
+            for (const k of keys) {
+              if (k === ivK) continue;
+              const kind = BUFFS[k].kind;
+              const value = kind === "sp" || kind === "dmg";
+              if ((value || k === zkK) && (cand[k] || []).length === 1)
+                cand[k] = [e + ATI.dur - BUFFS[k].dur];
+            }
+          } else if (keys.includes(zkK) && (cand[zkK] || []).length === 1 && (cand[ivK] || []).length) {
+            cand[zkK] = [cand[ivK][cand[ivK].length - 1] + BUFFS[ivK].dur + ATI.dur];
+          } else continue;
+          let legal = true;
+          for (const k of keys) for (const t of (cand[k] || []))
+            if (t < earliestPress(k, cfg) || t > cfg.T - 1) { legal = false; break; }
+          if (!legal) continue;
+          if (tryCand(cand)) { moved = true; hit = true; break; }
+        }
+        if (hit) break;
+      }
+      if (hit) { /* adopted — the round continues from the new fixed point */ }
+    }
+    /* ★★★★ 9. THE SAME-DELTA PRESS PAIR — added 08-06 (T29). The §8s/§9y coupling in its BAREST form:
+       two presses that share NEITHER a second (class 3) NOR a window edge (class 3c) can still be
+       coupled — on T29 the audit found `arcanePower#0+2 & icyVeins#0+2` worth **+0.0198 casts** from
+       the search's own fixed point, with each half downhill alone. Nothing in the vocabulary moves an
+       arbitrary press PAIR together, so the family that keeps producing misses one shape at a time
+       (§8m cluster → §8s train → §9y suffix → §9o chain-drag) gets its generic base case: every
+       press pair, slid by the SAME small delta (the measured couplings are all same-direction).
+       Gated on `!moved` and running LAST — the standing position lesson — so it only ever extends the
+       older classes' fixed point, and a cell where every pair is refused is byte-identical. Cost:
+       ~C(nP,2)·|D| tryCands at the fixed point only. */
+    if (!moved) {
+      const press = [];
+      for (const k of keys) (s[k] || []).forEach((_, i) => press.push({ k, i }));
+      const bySec = new Map();
+      for (const pmem of press) { const sec = Math.round(s[pmem.k][pmem.i]);
+        if (!bySec.has(sec)) bySec.set(sec, []); bySec.get(sec).push(pmem); }
+      let hit = false;
+      for (let a = 0; a < press.length && !hit; a++) {
+        for (let b = a + 1; b < press.length && !hit; b++) {
+          // co-second pairs are class 3's move; re-offering them here only re-ranks refused slides
+          if (Math.round(s[press[a].k][press[a].i]) === Math.round(s[press[b].k][press[b].i])) continue;
+          for (const d of [-5, -3, -2, -1, 1, 2, 3, 5]) {
+            if (tryCand(shiftedAt(s, [press[a], press[b]], d))) { moved = true; hit = true; break; }
+          }
+        }
+      }
+    }
+    /* ★★★★★ 10. THE PACKING-TRAIN CONSTRUCTOR — added 08-07, and it is §4c BUILT rather than slid.
+       The 08-07 derivation batch found three kit cells whose argmax is a whole packing train the
+       vocabulary can only preserve, never CREATE — the subset probes (batch record) read:
+         skull+mqg  −0.0815: minimal improving move iv#0→50 & iv#1→70 & AP→50, i.e. the full chain
+                    zerk[20,30]·skull[30,50]·iv[50,70]·iv[70,90] anchored on the Lust CALL, with mqg
+                    left in place and the value single riding a chain segment's start;
+         skull+gem  −0.0185: the same shape anchored at call−5 with iv#0 left at the pull —
+                    5 coordinates, NO improving subset short of all five;
+         icon+skull −0.0148: a CO-START block (zerk and skull pressed together at call−10, ending on
+                    the call) with iv#1 abutting the block's end — again all-five-or-nothing.
+       Class 3c slides an EXISTING abutting train as a unit; nothing proposes the train from scratch,
+       and every partial construction is downhill (that is what a coupled optimum means). So build it:
+         · windows = every haste-kind press (mult/rating), ≤5 of them or the class stands down;
+         · anchors = the pinned calls' lead grid (call − {0,5,10,15} — class 5's own grid) and the
+           pinned window ends, plus the pull;
+         · keep-sets — the train needn't take every window: keep NONE, keep the presses already
+           earlier than the anchor (the skull+gem shape: iv#0 stays on the pull), or keep any ONE
+           window in place (the skull+mqg shape: mqg stays put);
+         · orders — all permutations when ≤4 windows chain (24), three canonical orders when 5 do;
+         · co-start — the icon+skull shape: first use of each track pressed together AT the anchor,
+           later uses chained off the block's end (the ⩽-anchor keep-set pairs with this);
+         · value singles co-move to ONE shared position among the first chain-segment starts, or stay
+           (value stacks on value — ESTABLISHED-FACTS §4, the same argument class 5 makes).
+       Everything is derived from §4c and the cfg; nothing is enumerated from the cell.
+       ⚠⚠ GATED ON `!moved` AND RUNNING LAST, after class 9 — the standing position lesson — so it
+       only ever extends the joint fixed point, adopts one candidate per round through the same
+       ratcheted `tryCand`, and a cell where every proposal is refused is byte-identical. Cost is a
+       few thousand tryCands at the fixed point only (~1 s worst case, measured on the 5-window kit;
+       0 on kits with <2 haste windows). */
+    if (!moved) {
+      const hasteP = [];
+      for (const k of keys) {
+        const kind = BUFFS[k].kind;
+        if (kind !== "mult" && kind !== "rating") continue;
+        (s[k] || []).forEach((_, i) => hasteP.push({ k, i, dur: BUFFS[k].dur }));
+      }
+      const valueK = keys.filter(k => (BUFFS[k].kind === "sp" || BUFFS[k].kind === "dmg") && (s[k] || []).length === 1);
+      if (hasteP.length >= 2 && hasteP.length <= 5) {
+        const anchors = new Set([0]);
+        for (const pk of Object.keys(cfg.fixed || {}))
+          for (const t of (cfg.fixed[pk] || [])) {
+            const c0 = Math.round(t);
+            for (const g of [0, 5, 10, 15]) anchors.add(c0 - g);
+            anchors.add(c0 + BUFFS[pk].dur);
+          }
+        const perms = arr => arr.length <= 1 ? [arr] :
+          arr.flatMap((x, i) => perms([...arr.slice(0, i), ...arr.slice(i + 1)]).map(p => [x, ...p]));
+        const ordersOf = chain => chain.length <= 4 ? perms(chain)
+          : [chain,
+             [...chain].sort((x, y) => x.dur - y.dur || Math.round(s[x.k][x.i]) - Math.round(s[y.k][y.i])),
+             [...chain].sort((x, y) => y.dur - x.dur || Math.round(s[x.k][x.i]) - Math.round(s[y.k][y.i]))];
+        let hit = false;
+        for (const A of [...anchors].sort((x, y) => x - y)) {
+          if (A < 0) continue;
+          // keep-sets: none · everything already earlier than the anchor · each single window — the
+          // kept window either stays where it is or moves to a pinned window's edge (the same "haste
+          // rides the raid window's edges" argument class 5 makes; the skull+mqg argmax parks mqg on
+          // the Lust END while the train chains around it, and no chain position can express that)
+          const pinEdges = [];
+          for (const pk of Object.keys(cfg.fixed || {}))
+            for (const t of (cfg.fixed[pk] || [])) pinEdges.push(Math.round(t), Math.round(t) + BUFFS[pk].dur);
+          const keepSets = [{ tag: "none", test: () => false, pos: [null] },
+                            { tag: "early", test: p => Math.round(s[p.k][p.i]) < A, pos: [null] }];
+          for (let w = 0; w < hasteP.length; w++)
+            keepSets.push({ tag: "one", test: p => p === hasteP[w], kept: hasteP[w], pos: [null, ...pinEdges] });
+          for (const ks2 of keepSets) {
+            const chainWins = hasteP.filter(p => !ks2.test(p));
+            if (chainWins.length < 2) continue;
+            const coStarts = ks2.tag === "early" ? [false, true] : [false];
+            for (const keptPos of ks2.pos)
+            for (const coStart of coStarts) {
+              for (const ord of ordersOf(chainWins)) {
+                const cand = cloneS(s);
+                for (const k of keys) cand[k] = cand[k].map(t2 => Math.round(t2));
+                if (keptPos !== null && ks2.kept) cand[ks2.kept.k][ks2.kept.i] = keptPos;
+                const segStarts = [];
+                if (!coStart) {
+                  let tcur = A;
+                  for (const p of ord) { cand[p.k][p.i] = tcur; segStarts.push(tcur); tcur += p.dur; }
+                } else {
+                  const firsts = [], laters = [], seenK = new Set();
+                  for (const p of ord) { if (seenK.has(p.k)) laters.push(p); else { seenK.add(p.k); firsts.push(p); } }
+                  if (!firsts.length) continue;
+                  let tcur = A + Math.max(...firsts.map(p => p.dur));
+                  for (const p of firsts) cand[p.k][p.i] = A;
+                  segStarts.push(A);
+                  for (const p of laters) { cand[p.k][p.i] = tcur; segStarts.push(tcur); tcur += p.dur; }
+                }
+                for (const k of keys) cand[k].sort((x, y) => x - y);
+                for (const vp of [null, ...segStarts.slice(0, 4)]) {
+                  const c2 = cloneS(cand);
+                  if (vp !== null) for (const k of valueK) c2[k] = [vp];
+                  let legal = true;
+                  for (const k of keys) { for (const t2 of (c2[k] || []))
+                    if (t2 < earliestPress(k, cfg) || t2 > cfg.T - 1) { legal = false; break; } if (!legal) break; }
+                  if (!legal) continue;
+                  if (tryCand(c2)) { moved = true; hit = true; break; }
+                }
+                if (hit) break;
+              }
+              if (hit) break;
+            }
+            if (hit) break;
+          }
+          if (hit) break;
+        }
+      }
+    }
+    /* ★★★★ 11. THE PREPULL CHAIN RE-ANCHOR — added 08-07 (the `skull+gem h200` miss), and it is the
+       first class that changes a track's USE COUNT. `maxUses` allocates ⌊T/sep⌋+1 uses, but every
+       seed places them post-pull, so the last lands AT T and `repair` drops it before the descent
+       ever runs — the (n+1)-use basin is unreachable from birth. At h200 the argmax presses Skull
+       TWICE via a prepull (`skull[−10, 110]`, exactly CD-spaced, the terminal window half-spent past
+       the kill and still worth it), and no move class can add a press. ⇒ when a track's current count
+       sits BELOW its cap, propose the whole CD-chain re-anchored from the RULES §7b prepull grid
+       (strictly inside (−dur, 0), 5 s steps — the same grid the declared T10 prepull double sits on).
+       Icy Veins is excluded on purpose: its chain has Cold Snap arithmetic and belongs to 3d and the
+       §9d relocation. Gated `!moved`, running LAST — the standing position lesson. */
+    if (!moved) {
+      let hit = false;
+      for (const k of keys) {
+        if (k === "icyVeins") continue;
+        const cap = maxUses(k, cfg);
+        const cur = (s[k] || []).length;
+        if (!cur || cur >= cap) continue;
+        const r = trackRule(k, cfg);
+        for (const a of [-5, -10, -15]) {
+          if (a <= -BUFFS[k].dur + 1 || a < earliestPress(k, cfg)) continue;
+          const times = [];
+          for (let t2 = a; t2 <= cfg.T - 1 && times.length < Math.min(cap, 64); t2 += r.sep) times.push(t2);
+          if (times.length <= cur) continue;
+          const cand = cloneS(s);
+          cand[k] = times;
+          if (tryCand(cand)) { moved = true; hit = true; break; }
+          /* Variant B — the chain PLUS the kill-flush terminal cluster, because the h200 argmax is a
+             5-unit all-or-nothing (measured: every 4-subset is −0.45…−0.63 while the whole move is
+             +0.0049): skull re-chained to the prepull AND every other track's LAST press co-pressed
+             at `T − dur(longest moved window)`, the windows flushing into the kill together — the
+             kill-end mirror of the opener cluster. Derived from the plan, not enumerated: the moved
+             set is each unfixed track's final use, the co-second is the engine's own kill-flush
+             anchor for the longest of them. */
+          const candB = cloneS(cand);
+          const movedLast = [];
+          for (const k2 of keys) {
+            if (k2 === k || !(candB[k2] || []).length) continue;
+            movedLast.push(k2);
+          }
+          if (movedLast.length) {
+            const durMax = Math.max(...movedLast.map(k2 => BUFFS[k2].dur));
+            const cs = cfg.T - durMax;
+            for (const k2 of movedLast) {
+              candB[k2] = candB[k2].map(t2 => Math.round(t2));
+              candB[k2][candB[k2].length - 1] = cs;
+              candB[k2].sort((x, y) => x - y);
+            }
+            let legal = true;
+            for (const k2 of keys) { for (const t2 of (candB[k2] || []))
+              if (t2 < earliestPress(k2, cfg) || t2 > cfg.T - 1) { legal = false; break; } if (!legal) break; }
+            if (legal && tryCand(candB)) { moved = true; hit = true; break; }
+          }
+        }
+        if (hit) break;
+      }
+    }
     if (!moved) break;
   }
   return { s, val };
+}
+/* ★★★★★ PLATEAU CANONICALISATION — added 08-05 (MODEL-DEFECTS §9u), and it is a DIFFERENT KIND OF
+   PASS from everything above it: it never looks for a better score, only for the better member of a
+   score it already has.
+
+   ── THE DEFECT IT CLOSES ──────────────────────────────────────────────────────────────────────────
+   T7 went red the moment `distinct` was abolished (§9s) and stayed red through three attempted search
+   fixes, all reverted. The measurement says why, and it is not a search-reach problem:
+
+       declared  iv[15,55] · {isc,scb,AP}@15 · zerk@5     ideal 66.583205   ts [5,5,15,15,15,15,55]
+       emitted   iv[ 7,55] · {isc,scb,AP}@ 7 · zerk@27    ideal 66.583205   ts [5,7,7,7,7,27,55]
+
+   The two are EXACTLY tied on the ranking integral — bit-identical, not band-tied — so no hill-climb
+   can feel the difference and no seed can be "better". They are two members of one plateau, and the
+   comparator already names the declared one canonical (earliest vector: 5 < 7 at position 1). The
+   descent simply cannot WALK there, because every route out of the emitted member passes through a
+   plateau member that is shape-WORSE than where it stands:
+
+       zerk 27 → 35   ideal tied, ts [5,7,7,7,7,35,55]   ⛔ later vector — a strict descent refuses it
+       {isc,scb,AP,iv#0} +8   (only legal once zerk has left [15,35])
+       zerk 35 →  5   ideal tied, ts [5,5,15,15,15,15,55]  ✓ the declared layout
+
+   ⇒ the plateau is CONNECTED but not MONOTONE, and `phaseRerank` is a strict-improvement descent by
+   construction (it must be — §8w's ratchet exists precisely to stop it drifting). Adding "accept
+   equal-shape-worse moves" to the descent would destroy the ratchet. So the walk that needs it gets
+   its own pass, with the one property that makes it safe: **it is confined to the plateau.**
+
+   ── WHY IT CANNOT REGRESS ANYTHING ────────────────────────────────────────────────────────────────
+   A candidate enters the frontier only if its ideal score equals the ROOT's to within `ifloor` (float
+   discrimination, 1e-9 casts — not the band; a band here would re-admit exactly the §8w drift). So:
+     · it can never lose score — every node it visits is worth what the input was worth, exactly;
+     · it can never lose shape — the returned plan is `planBetter` than the input or IS the input;
+     · it is monotone in the comparator, so a test that goes red under it is a test whose declared
+       layout is comparator-DOMINATED by another plateau member — which is the §8y question ("revise
+       the layout or fix the comparator"), never a silent regression.
+   That last property is the reason this pass could be added while T10/T12 were fragile: unlike a seed
+   class or an acceptance change, it cannot reroute a basin.
+
+   ── COST, AND WHY IT IS AFFORDABLE ────────────────────────────────────────────────────────────────
+   `planBetter` reads only `ideal`, `shape` and `ifloor` — never `score` — so the plateau filter needs
+   `idealScore` (one simulate) and `planShape` (no simulate), skipping `rankScore`'s PHASE_N samples
+   entirely. That is ~12× cheaper per candidate than `tryCand`. Bounded further by a beam: `CANON_W`
+   nodes per level (ranked by the comparator itself, so the beam is biased toward the answer), `CANON_D`
+   levels, and a hard candidate budget. Deterministic throughout — fixed move order, fixed beam width,
+   comparator-sorted, no clock and no PRNG.
+   ⚠ The move set is deliberately the SAME classes phaseRerank uses (whole slide · track slide ·
+   co-pressed cluster · abutting train · single press incl. structural times · repair-closed chain).
+   Order does not matter here the way it does in the descent — this pass expands ALL candidates at a
+   node rather than taking the first accepted one — so no `!moved` gating is needed and none is used. */
+const CANON_W = 12, CANON_D = 5, CANON_BUDGET = 12000;
+function plateauCanon(s0, cfg) {
+  const keys = scheduledKeys(cfg).filter(k => !cfg.fixed[k]);
+  const PLAIN = plainCastOf(cfg), fl = IDEAL_TIE_CASTS * PLAIN;
+  // The comparator's own inputs, minus the one it never reads. See the cost note above.
+  const pairOf = s => ({ ideal: idealScore(s, cfg), shape: planShape(s, cfg), ifloor: fl });
+  const root = repair(cloneS(s0), cfg);
+  let best = root, bestV = pairOf(root);
+  const ceiling = bestV.ideal;
+  const keyOf = s => Object.keys(s).sort().map(k => k + ':' + (s[k] || []).map(t => Math.round(t)).join(',')).join('|');
+  // A candidate whose repair CHANGES the press count is a different move than the one proposed —
+  // the 3d/§6 rule, and it matters more here because this pass adopts repair's output as the node.
+  const sameCount = (a, b) => {
+    for (const k in a) { if (!b[k] || b[k].length !== a[k].length) return false; }
+    for (const k in b) { if (!a[k] || a[k].length !== b[k].length) return false; }
+    return true;
+  };
+  const SHIFTS = [-8, -7, -6, -5, -4, -3, -2, -1, 1, 2, 3, 4, 5, 6, 7, 8];
+  const MOVES = []; for (let d = -12; d <= 12; d++) if (d) MOVES.push(d);
+  const shiftedAt = (base, mem, d) => {
+    const c = cloneS(base);
+    for (const { k, i } of mem) {
+      if (!c[k] || c[k][i] === undefined) return null;
+      const t = Math.round(c[k][i]) + d;
+      if (t < earliestPress(k, cfg) || t > cfg.T - 1) return null;
+      c[k][i] = t;
+    }
+    return c;
+  };
+  const structural = s => {
+    const out = new Set([0]);
+    const add = t => { const r = Math.round(t); if (r >= 0 && r <= cfg.T - 1) out.add(r); };
+    for (const k of scheduledKeys(cfg)) {
+      for (const t of (cfg.fixed[k] || s[k] || [])) { add(t); add(t + BUFFS[k].dur); add(t + BUFFS[k].cd); }
+      add(cfg.T - BUFFS[k].dur);
+    }
+    return [...out].sort((a, b) => a - b);
+  };
+  const candidates = s => {
+    const out = [];
+    const all = [];
+    for (const k of keys) (s[k] || []).forEach((_, i) => all.push({ k, i }));
+    for (const d of SHIFTS) out.push(shiftedAt(s, all, d));                       // 1. whole plan
+    for (const k of keys) for (const d of SHIFTS)                                 // 2. one track
+      out.push(shiftedAt(s, all.filter(p => p.k === k), d));
+    const bySec = new Map();
+    for (const p of all) { const sec = Math.round(s[p.k][p.i]); if (!bySec.has(sec)) bySec.set(sec, []); bySec.get(sec).push(p); }
+    const groups = [...bySec.entries()].sort((a, b) => a[0] - b[0]).map(([, m]) => m).filter(g => g.length > 1 && g.length < keys.length);
+    for (const mem of groups) for (const d of SHIFTS) out.push(shiftedAt(s, mem, d));   // 3. cluster
+    {                                                                             // 3c. abutting train
+      const pr = all.map(p => ({ ...p, at: Math.round(s[p.k][p.i]), end: Math.round(s[p.k][p.i]) + BUFFS[p.k].dur }));
+      const parent = pr.map((_, i) => i);
+      const find = a => { while (parent[a] !== a) { parent[a] = parent[parent[a]]; a = parent[a]; } return a; };
+      for (let a = 0; a < pr.length; a++) for (let b = 0; b < pr.length; b++) {
+        if (a === b || pr[a].end !== pr[b].at) continue;
+        const ra = find(a), rb = find(b);
+        if (ra !== rb) parent[Math.max(ra, rb)] = Math.min(ra, rb);
+      }
+      const comp = new Map();
+      pr.forEach((p, i) => { const r = find(i); if (!comp.has(r)) comp.set(r, []); comp.get(r).push(p); });
+      for (const [, mem] of [...comp.entries()].sort((a, b) => a[0] - b[0]))
+        if (mem.length > 1) for (const d of SHIFTS) out.push(shiftedAt(s, mem, d));
+    }
+    const struct = structural(s);
+    for (const p of all) {                                                        // 4. one press (+3b)
+      for (const d of MOVES) out.push(shiftedAt(s, [p], d));
+      for (const t of struct) {
+        if (Math.abs(t - Math.round(s[p.k][p.i])) <= 12) continue;
+        if (t < earliestPress(p.k, cfg) || t > cfg.T - 1) continue;
+        const c = cloneS(s); c[p.k][p.i] = t; out.push(c);
+      }
+    }
+    return out;
+  };
+  let frontier = [root];
+  const seen = new Set([keyOf(root)]);
+  let budget = CANON_BUDGET;
+  for (let depth = 0; depth < CANON_D && frontier.length && budget > 0; depth++) {
+    const next = [];
+    for (const s of frontier) {
+      for (const cand of candidates(s)) {
+        if (!cand) continue;
+        if (--budget <= 0) break;
+        const rep = repair(cloneS(cand), cfg);
+        if (!sameCount(cand, rep)) continue;
+        const kk = keyOf(rep);
+        if (seen.has(kk)) continue;
+        seen.add(kk);
+        const v = pairOf(rep);
+        if (Math.abs(v.ideal - ceiling) > fl) continue;      // off the plateau — not this pass's business
+        next.push({ s: rep, v });
+        if (planBetter(v, bestV)) { bestV = v; best = rep; }
+      }
+      if (budget <= 0) break;
+    }
+    next.sort((a, b) => planBetter(a.v, b.v) ? -1 : planBetter(b.v, a.v) ? 1 : 0);
+    frontier = next.slice(0, CANON_W).map(n => n.s);
+  }
+  return best;
 }
 // ═══════════ cross-haste pooling wrapper — B1 dominance BY CONSTRUCTION (RULES §16, ACCEPTANCE) ═══
 // The per-haste search can settle in a basin a NEIGHBOR gear-haste's search would beat when its plan
@@ -3265,6 +4026,14 @@ function phaseFinish(best, cfg) {
   for (const start of phaseStarts(best.s, cfg)) {
     const r = phaseRerank(start, cfg);
     if (planBetter(r.val, bv)) { bv = r.val; bs = r.s; }
+  }
+  /* §9u — and THEN name the canonical member of whatever plateau the descent landed on. Runs last and
+     on the descent's winner only: it is comparator-monotone (see `plateauCanon`), so it can only
+     return `bs` or something `planBetter` than it, and a cell where every plateau neighbour is refused
+     comes out byte-identical by construction. */
+  {
+    const c = plateauCanon(bs, cfg), cv = rankPair(c, cfg);
+    if (planBetter(cv, bv)) { bv = cv; bs = c; }
   }
   if (bs === best.s) return best;
   return { ...best, s: bs, val: simulate(cloneS(bs), cfg).robust };
@@ -5100,18 +5869,42 @@ const state = {
   complicated: false,
   phases: [], // {type:'intermission'|'burn'|'aoe', from:'1:30', to:'2:00', mult:2, targets:4}
 };
-// Paint phase rows over a "normal" base fight; later rows win on overlap.
+// Paint phase rows over a "normal" base fight.
+// ⚠ OVERLAPS RESOLVE BY PRECEDENCE, NOT BY DATA-ENTRY ORDER (fixed 08-04; MODEL-DEFECTS' "Also
+// found" ledger). The old rule was "last row wins entirely", so the SAME fight scored 202.40 or
+// 212.00 effective casts (4.7 %) depending on which order the user typed the rows in — a scoring
+// input silently keyed to entry order. Now the winning row for each elementary interval is chosen
+// by a TOTAL order, so permuting the rows cannot change the segments:
+//   1. physics > policy > value: intermission (boss untargetable) > aoe > burn;
+//   2. inside a type, the later-STARTING row (a narrower window nested inside a broader one is
+//      the more specific instruction — the "execute burn inside a whole-fight burn" idiom);
+//   3. then the earlier-ENDING (again: more specific), then the stronger (mult, then targets).
+// Non-overlapping rows — every preset and declared test — have one covering row per interval, so
+// this resolves identically to the old rule there (verified: 27/27 presets carry zero overlaps,
+// and the preset plan-sweep is byte-identical across the change). Detected overlaps are reported
+// on the returned array (`.overlaps`) so the UI can warn; headless callers just ignore it.
 function buildSegments(rows, T) {
   const pts = new Set([0, T]);
   for (const r of rows) { pts.add(r.from); pts.add(r.to); }
   const xs = [...pts].filter(x => x >= 0 && x <= T).sort((a, b) => a - b);
+  const RANK = { intermission: 3, aoe: 2, burn: 1 };
+  const beats = (r, s) => {
+    if (!s) return true;
+    const tr = RANK[r.type] || 0, ts = RANK[s.type] || 0;
+    if (tr !== ts) return tr > ts;
+    if (r.from !== s.from) return r.from > s.from;
+    if (r.to !== s.to) return r.to < s.to;
+    if ((r.mult || 1) !== (s.mult || 1)) return (r.mult || 1) > (s.mult || 1);
+    return (r.targets || 0) > (s.targets || 0);
+  };
   const segs = [];
   for (let i = 0; i < xs.length - 1; i++) {
     const a = xs[i], b = xs[i + 1];
     if (b - a < 1e-9) continue;
-    let seg = { start: a, end: b, type: "normal", mult: 1, targets: 0 };
-    for (const r of rows) if (r.from <= a + 1e-9 && r.to >= b - 1e-9) seg = { start: a, end: b, type: r.type, mult: r.mult, targets: r.targets };
-    segs.push(seg);
+    let win = null;
+    for (const r of rows) if (r.from <= a + 1e-9 && r.to >= b - 1e-9 && beats(r, win)) win = r;
+    segs.push(win ? { start: a, end: b, type: win.type, mult: win.mult, targets: win.targets }
+                  : { start: a, end: b, type: "normal", mult: 1, targets: 0 });
   }
   const merged = [];
   for (const s of segs) {
@@ -5119,6 +5912,16 @@ function buildSegments(rows, T) {
     if (p && p.type === s.type && p.mult === s.mult && p.targets === s.targets) p.end = s.end;
     else merged.push({ ...s });
   }
+  // Overlap report, for the UI's warning strip: which pairs of rows overlap, where, and which one
+  // the precedence above picks there. A property on the array, not a new return shape — headless
+  // callers (cfgFor, the tools) keep working unchanged, and JSON serialization of the segments
+  // (the sim memo key) ignores non-index properties, so scoring is untouched by construction.
+  const overlaps = [];
+  for (let i = 0; i < rows.length; i++) for (let j = i + 1; j < rows.length; j++) {
+    const lo = Math.max(rows[i].from, rows[j].from), hi = Math.min(rows[i].to, rows[j].to);
+    if (hi - lo > 1e-9) overlaps.push({ i, j, from: lo, to: hi, winner: beats(rows[j], rows[i]) ? j : i });
+  }
+  if (overlaps.length) merged.overlaps = overlaps;
   return merged;
 }
 // per-buff pin field labels; everything not listed gets the generic label
@@ -5401,6 +6204,21 @@ function readCfg() {
     warnings.push(`${BUFFS[d.k].name}: pinned ${fmtT(d.t)} ignored — trinket lockout from another pinned trinket is still running.`);
     if (!fixed[d.k].length) { delete fixed[d.k]; warnings.push(`${BUFFS[d.k].name}: no usable times left — the planner will place it instead.`); }
   }
+  /* ★★ ONLY TWO TRINKET SLOTS EXIST — MODEL-DEFECTS §9t, user 08-05: *"SCB Ashtongue and Skull all
+     occupy trinket slots and you can at most have 2 equipped."* `TRINKETS` is
+     `[mqg, isc, scb, skull, ati]` and nothing anywhere enforced the cap, so ticking three produced a
+     schedule, a cast count and an expected-damage figure for a character that cannot exist — the same
+     shape of bug as an unvalidated phase overlap: the INPUT accepts the impossible and the model
+     answers it without complaint.
+     ⚠ A WARNING, NOT A REFUSAL, and that is deliberate. Comparing kits is the tool's second stated
+     payoff, `tools/kit-sweep.mjs` legitimately probes odd kits for gradients, and a hard block would
+     also strand anyone mid-edit while swapping one trinket for another. The engine is right to model
+     whatever it is handed; what was missing is the tool SAYING the setup is unplayable.
+     ⛔ Do not move this into `simulate` — cfg-building tools bypass `readCfg` on purpose. */
+  const equipped = TRINKETS.filter(k => state.enabled[k]);
+  if (equipped.length > 2)
+    warnings.push(`${equipped.length} trinkets ticked (${equipped.map(k => BUFFS[k].name).join(", ")}) — you only have 2 slots, so this plan is not playable as shown. Untick ${equipped.length - 2} to get a real one.`);
+
   // "Complicated fight": build the phase timeline; unticked leaves segments
   // null and the engine behaves exactly as the plain model.
   let segments = null;
@@ -5424,9 +6242,17 @@ function readCfg() {
       }
       if (to > T) warnings.push(`${label}: clipped at the ${fmtT(T)} fight end — increase the fight length if the fight runs longer.`);
       rows.push({ type: p.type, from: Math.max(0, from), to: Math.min(T, to),
-        mult: Math.min(10, Math.max(1, +p.mult || 2)), targets: Math.min(20, Math.max(1, p.targets | 0 || 4)) });
+        mult: Math.min(10, Math.max(1, +p.mult || 2)), targets: Math.min(20, Math.max(1, p.targets | 0 || 4)), label });
     });
     if (rows.length) segments = buildSegments(rows, T);
+    // Overlapping rows are almost always a data-entry mistake, and they used to be a silent one:
+    // "last row wins" scored the same fight 4.7 % apart depending on entry order. The resolution is
+    // deterministic now (see buildSegments), but the user still needs to be told their timeline
+    // contradicts itself — the boss can't be two phases at once.
+    if (segments && segments.overlaps) for (const o of segments.overlaps) {
+      const w = rows[o.winner], l = rows[o.winner === o.i ? o.j : o.i];
+      warnings.push(`${w.label} and ${l.label} overlap ${fmtT(o.from)}–${fmtT(o.to)} — the boss can’t be both, so the planner applies ${w.label} there (untargetable beats AoE beats burn; inside a type the later-starting phase wins). Adjust the times if that isn’t the fight.`);
+    }
   }
   // ★ The buff panel folds into the stats HERE, so the engine only ever sees final numbers and there is
   // no second place where "effective spellpower" could be computed differently (the re-typed-formula
@@ -7012,6 +7838,22 @@ const pressName = (a) => (a.coldSnap ? "Cold Snap → " : "") + BUFFS[a.k].name;
 const PRESET_KEY = "abp-presets";
 function lsGet() { try { return JSON.parse(localStorage.getItem(PRESET_KEY) || "{}"); } catch (_) { return null; } }
 function lsSet(o) { try { localStorage.setItem(PRESET_KEY, JSON.stringify(o)); return true; } catch (_) { return false; } }
+/* ⚠⚠ IT WAS MISSING TWO INPUTS THAT CHANGE THE ANSWER — fixed 08-05 (MODEL-DEFECTS §9z).
+   `snapshotState` is what a saved preset stores, what a share link encodes, and what autosave
+   restores. It carried gear and cooldowns but NOT the Tirisfal 2-piece box and NOT the raid-buff
+   panel — and both feed `buffedStats`, i.e. both change the SP and crit the engine is handed. So the
+   file's own claim that *"a link IS a reproducible plan"* was false whenever the receiver's panel
+   differed from the sender's, which is the default state of two different people.
+   Measured on the `ati+gem` cell (2:00, Lust 0:20, typed 1387/38): panel ON solves at 1686 SP /
+   59.7 % crit, panel OFF at 1387 / 44 — and the emitted layout is COMPLETELY different
+   (`icyVeins[0,65] · cluster@15` vs `icyVeins[65,90] · cluster@25`).
+   ★ WHY IT STAYED INVISIBLE SO LONG, and it is a real piece of theorycraft: **crit cancels out of the
+   objective** (it is a constant factor on every cast), so for every kit without Ashtongue the two
+   states give the SAME plan — verified. Ashtongue is what breaks it: its proc rate is driven by crit,
+   so crit stops being a constant and starts moving the layout. ⇒ the defect could not appear until
+   the proc model landed, and it appears first on exactly the kits the user calls Phase-3 practical.
+   ⛔ Both are stored only when PRESENT on load, so an old link or preset degrades to the previous
+   behaviour rather than silently forcing Tirisfal off. */
 function snapshotState() {
   return {
     enabled: { ...state.enabled }, coldSnap: state.coldSnap,
@@ -7020,6 +7862,9 @@ function snapshotState() {
     phases: state.phases.map(p => ({ ...p })),
     haste: el("in-haste").value, len: el("in-len").value,
     sp: el("in-sp").value, crit: el("in-crit").value,
+    int: el("in-int") ? el("in-int").value : undefined,
+    t5two: el("ck-t5") ? el("ck-t5").checked : undefined,
+    raid: Object.fromEntries(RAID_BUFFS.map(b => [b.id, buffOn(b.id)])),
   };
 }
 function applyState(s) {
@@ -7043,6 +7888,15 @@ function applyState(s) {
     inp.value = v;
     inp.classList.remove("pflash");
     if (String(was) !== String(inp.value)) { void inp.offsetWidth; inp.classList.add("pflash"); }
+  }
+  /* §9z — the two inputs the snapshot used to drop. Applied ONLY when present, so an old link or
+     saved preset keeps its previous behaviour instead of silently having Tirisfal switched off. */
+  if (s.int !== undefined && el("in-int")) el("in-int").value = s.int;
+  if (s.t5two !== undefined && el("ck-t5")) el("ck-t5").checked = !!s.t5two;
+  if (s.raid) {
+    renderBuffPanel();                                   // idempotent; the panel may not be built yet
+    for (const b of RAID_BUFFS) { const box = el("bf-" + b.id); if (box) box.checked = !!s.raid[b.id]; }
+    renderBuffSummary();
   }
   buildBuffList();
   el("in-haste").dispatchEvent(new Event("input"));
@@ -7186,8 +8040,94 @@ const GOLDEN_PRESETS = [
     gear: { sp: 700, crit: 37.39038949275363, haste: 33, t5two: true } },
   { name: "T17 · 2:00 lust 0:20 · h=33 sp1217", T: 120, pins: { bloodlust: [20] },
     gear: { sp: 1217.3875, crit: 37.39038949275363, haste: 33, t5two: true } },
+  /* ── T18–T26 — the brute-declared batch (08-06). DATA ONLY: the declared strip is hidden
+     (§10b), but this array is the corpus every stability gate sweeps, so a declared test
+     must be in it. ⚠ gear is the page-EFFECTIVE state (crit 44 = typed 38 + Arcane Impact,
+     Tirisfal on) — the §9z convention, matching tests/anchors.mjs and the enumeration. */
+  { name: "T18 · 2:00 lust 0:05 · eff44 t5", T: 120, pins: { bloodlust: [5] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T19 · 2:00 lust 0:20 · eff44 t5", T: 120, pins: { bloodlust: [20] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T20 · 2:00 lust 0:40 · eff44 t5", T: 120, pins: { bloodlust: [40] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T21 · 2:20 lust 0:40 · eff44 t5", T: 140, pins: { bloodlust: [40] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T22 · 2:40 lust 0:05 · eff44 t5", T: 160, pins: { bloodlust: [5] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T23 · 2:40 lust 0:20 · eff44 t5", T: 160, pins: { bloodlust: [20] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T24 · 2:40 lust 0:40 · eff44 t5", T: 160, pins: { bloodlust: [40] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T25 · 3:00 lust 0:05 · eff44 t5", T: 180, pins: { bloodlust: [5] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T26 · 3:00 lust 0:20 · eff44 t5", T: 180, pins: { bloodlust: [20] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T27 · 3:00 lust 0:40 · eff44 t5", T: 180, pins: { bloodlust: [40] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T28 · 2:20 lust 0:05 · eff44 t5", T: 140, pins: { bloodlust: [5] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T29 · 2:20 lust 0:20 · eff44 t5", T: 140, pins: { bloodlust: [20] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  // T30–T45 — the 08-07 kit/coverage batch (tests/anchors.mjs carries the certification standard).
+  // These presets ARE the corpus the stability gates sweep; the strip chips stay hidden (08-05).
+  { name: "T30 · 2:00 lust 0:20 · gem+skull", T: 120, pins: { bloodlust: [20] }, kit: ['icyVeins', 'scb', 'skull', 'arcanePower', 'berserking', 'bloodlust'], gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T31 · 2:00 lust 0:05 · gem+skull", T: 120, pins: { bloodlust: [5] }, kit: ['icyVeins', 'scb', 'skull', 'arcanePower', 'berserking', 'bloodlust'], gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T32 · 2:00 lust 0:20 · icon+skull", T: 120, pins: { bloodlust: [20] }, kit: ['icyVeins', 'isc', 'skull', 'arcanePower', 'berserking', 'bloodlust'], gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T33 · 2:00 lust 0:20 · icon+mqg", T: 120, pins: { bloodlust: [20] }, kit: ['icyVeins', 'isc', 'mqg', 'arcanePower', 'berserking', 'bloodlust'], gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T34 · 2:00 lust 0:20 · skull+mqg", T: 120, pins: { bloodlust: [20] }, kit: ['icyVeins', 'skull', 'mqg', 'arcanePower', 'berserking', 'bloodlust'], gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T35 · 2:00 lust 0:20 · icon+gem+PI", T: 120, pins: { bloodlust: [20] }, kit: ['icyVeins', 'isc', 'scb', 'powerInfusion', 'arcanePower', 'berserking', 'bloodlust'], gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T36 · 2:00 lust 0:20 · sp1900", T: 120, pins: { bloodlust: [20] }, gear: { sp: 1900, crit: 44, t5two: true } },
+  { name: "T37 · 2:00 lust 0:05 · sp700", T: 120, pins: { bloodlust: [5] }, gear: { sp: 700, crit: 44, t5two: true } },
+  { name: "T38 · 3:00 no-lust · icon+gem", T: 180, kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking'], gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T39 · 2:40 lust 1:00 · icon+gem", T: 160, pins: { bloodlust: [60] }, gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T40 · 2:00 lust 0:20 · gem+skull h200", T: 120, pins: { bloodlust: [20] }, kit: ['icyVeins', 'scb', 'skull', 'arcanePower', 'berserking', 'bloodlust'], gear: { sp: 1600, crit: 51, t5two: true, haste: 200 } },
+  { name: "T41 · 2:00 lust 0:20 · h300", T: 120, pins: { bloodlust: [20] }, gear: { sp: 1387, crit: 44, t5two: true, haste: 300 } },
+  { name: "T42 · 2:00 lust 0:20 · h500", T: 120, pins: { bloodlust: [20] }, gear: { sp: 1387, crit: 44, t5two: true, haste: 500 } },
+  { name: "T43 · 3:20 lust 0:05 · eff44 t5", T: 200, pins: { bloodlust: [5] }, gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T44 · 3:20 lust 0:20 · eff44 t5", T: 200, pins: { bloodlust: [20] }, gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T45 · 3:20 lust 0:40 · eff44 t5", T: 200, pins: { bloodlust: [40] }, gear: { sp: 1387, crit: 44, t5two: true } },
 ];
 window.GOLDEN_PRESETS = GOLDEN_PRESETS;
+
+/* ═══════════════ CANDIDATES — brute-forced, awaiting a ruling (08-05) ═══════════════════════════
+   ★ WHAT MAKES THESE DIFFERENT FROM A PRESET, AND WHY THEY CARRY A LINE.
+   Every other strip on this page holds INPUTS ONLY — *"never a precomputed plan"* — because a preset
+   is a fight to solve, and shipping its answer alongside it would let a stale answer masquerade as the
+   tool's. A candidate is the opposite object: it exists to be COMPARED against, so the answer is the
+   whole point. `line` is not the tool's output — it is the argmax of an EXHAUSTIVE enumeration of the
+   cell's legal grid (`tools/lattice-brute.mjs`), computed without the search in the loop at all.
+   ⇒ load the row's inputs, press Find optimal overlay, and read the two against each other. If they
+   agree, the cell is ready to declare; if they disagree, that is a search finding with a known target,
+   which is the most actionable kind this project can have.
+
+   ⚠⚠ THE `plateau` FIELD IS NOT DECORATION — it is what the §8y revision precedent requires you to
+   have SEEN before ruling. It counts the layouts tied with the winner *to the float floor*, i.e. the
+   ones the model has no power at all to separate. `plateau: 1` means the enumeration found a unique
+   argmax and the line below is simply correct. A larger number means the score is flat across that
+   many layouts and the SHAPE tie-break picked this member (RULES §17) — so a ruling there is a ruling
+   about which member is canonical, not about damage.
+
+   ⛔ NOTHING HERE IS A TEST. `tests/anchors.mjs` is untouched by this array, and the strip and the
+   test list are only in lockstep for the DECLARED strip above. A candidate becomes a test when the
+   user says so, and then it moves up. This is the "P" presets' slot — destroyed 08-02 by user ruling
+   (*"let's destroy the current Ps"*) on the stated condition that new ones come only after every lock
+   passes. They do now (17/17), which is what re-opens it.
+   ⚠ Generated by `tools/candidates-inject.mjs` from the enumeration's own JSONL — never hand-typed,
+   so a cell cannot drift from the run that produced it. Re-run it after any engine change: the
+   comparator decides which plateau member is named, and this project has changed that three times in
+   one day (§9u/§9w/§9x). */
+const CANDIDATE_PRESETS = [
+  /* CANDIDATES:BEGIN — generated, do not edit by hand */
+  {"name":"2:00 lust 0:05 · gem+ati","T":120,"pins":{"bloodlust":[5]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","scb","arcanePower","berserking","ati","bloodlust"],"line":{"arcanePower":[35],"berserking":[40],"icyVeins":[45,70],"scb":[35]},"casts":103.831084,"plateau":1,"layouts":6402240,"eff":{"sp":1387,"crit":44,"t5two":true}},
+  {"name":"2:00 lust 0:20 · gem+ati","T":120,"pins":{"bloodlust":[20]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","scb","arcanePower","berserking","ati","bloodlust"],"line":{"arcanePower":[50],"berserking":[55],"icyVeins":[60,85],"scb":[50]},"casts":103.820231,"plateau":1,"layouts":6402240,"eff":{"sp":1387,"crit":44,"t5two":true}},
+  {"name":"2:00 lust 0:20 · gem+ati · h200 · sp1600 · crit45","T":120,"pins":{"bloodlust":[20]},"gear":{"sp":1600,"crit":45,"haste":200,"t5two":true},"kit":["icyVeins","scb","arcanePower","berserking","ati","bloodlust"],"line":{"arcanePower":[26],"berserking":[110],"icyVeins":[60,85],"scb":[26]},"casts":114.733333,"plateau":20,"layouts":6402240,"eff":{"sp":1600,"crit":51,"t5two":true}},
+  {"name":"2:00 lust 0:20 · icon+ati","T":120,"pins":{"bloodlust":[20]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","arcanePower","berserking","ati","bloodlust"],"line":{"arcanePower":[50],"berserking":[55],"icyVeins":[60,85],"isc":[45]},"casts":103.597398,"plateau":1,"layouts":7255872,"eff":{"sp":1387,"crit":44,"t5two":true}},
+  {"name":"2:00 lust 0:20 · icon+gem","T":120,"pins":{"bloodlust":[20]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","drums","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[40],"berserking":[40],"drums":[20],"icyVeins":[0,50],"isc":[40],"scb":[40]},"casts":101.264808,"plateau":112,"layouts":58968000,"eff":{"sp":1387,"crit":44,"t5two":true}},
+  {"name":"3:00 lust 0:20 · gem+ati","T":180,"pins":{"bloodlust":[20]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","scb","arcanePower","berserking","ati","bloodlust"],"line":{"arcanePower":[27],"berserking":[155],"icyVeins":[125,150],"scb":[27,150]},"casts":147.342808,"plateau":5,"layouts":3313296,"eff":{"sp":1387,"crit":44,"t5two":true}},
+  {"name":"3:00 lust 0:20 · gem+skull","T":180,"pins":{"bloodlust":[20]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","scb","skull","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[20],"berserking":[160],"icyVeins":[15,160],"scb":[20,160],"skull":[35,160]},"casts":143.428115,"plateau":75,"layouts":159038208,"eff":{"sp":1387,"crit":44,"t5two":true}},
+  /* CANDIDATES:END */
+];
+window.CANDIDATE_PRESETS = CANDIDATE_PRESETS;
 
 /* ═══════════════ boss presets (baked-in, = the real phase encounters, also exact-match tested) ═══════════════ */
 // The actual current-phase raid bosses (fight length, Lust timing, and phases/AoE from the real
@@ -7240,14 +8180,25 @@ function goldenToState(p) {
   for (const [k, arr] of Object.entries(p.pins || {})) times[k] = arr.map(fmtT).join(", ");
   const rawPhases = p.phases || (p.intermission ? [{ type: "intermission", from: p.intermission[0], to: p.intermission[1] }] : []);
   const phases = rawPhases.map(x => ({ type: x.type, from: fmtT(x.from), to: fmtT(x.to), mult: x.mult || 2, targets: x.targets || 4 }));
+  /* §9z — A BAKED PRESET PINS THE WHOLE INPUT SET, INCLUDING THE TWO THAT USED TO LEAK.
+     The header above says a preset you confirm in the tool IS the locked test. That was only true if
+     your Tirisfal box and raid panel happened to match the harness's, because neither was part of the
+     preset — so the same chip solved a different fight for two different people. Both are pinned now:
+     `t5two` from the preset's own gear (`tools/engine-node.mjs`'s `cfgFor` reads a missing one as
+     FALSE, so the page must too, or T1–T8 load at gear their tests never used), and every raid buff
+     OFF, because a declared layout's SP and crit are stated FINAL — the panel would add them twice.
+     ⚠ This is what makes the candidates strip usable at all: with the panel on, the `ati+gem` cell
+     solves at 1686 SP / 59.7 % crit instead of 1387 / 44 and emits a completely different layout. */
   return {
     enabled, coldSnap: g.coldSnap !== false, times,
     complicated: phases.length > 0, phases,
     haste: String(g.haste || 0), len: fmtT(p.T), sp: String(g.sp), crit: String(g.crit),
+    t5two: !!g.t5two,
+    raid: Object.fromEntries(RAID_BUFFS.map(b => [b.id, false])),
   };
 }
 function clearGoldenActive() {
-  document.querySelectorAll("#golden-chips .gchip.active, #boss-chips .gchip.active").forEach(c => c.classList.remove("active"));
+  document.querySelectorAll("#golden-chips .gchip.active, #boss-chips .gchip.active, #cand-rows .gchip.active").forEach(c => c.classList.remove("active"));
 }
 // Render a baked preset array (Boss or Debugging) into a chip strip. Both load the fight's
 // INPUTS only (no auto-run); press "Find optimal overlay" to COMPUTE the plan — nothing preloaded.
@@ -7279,7 +8230,108 @@ buildBuffList();
 el("in-haste").dispatchEvent(new Event("input"));
 refreshPresets("");
 renderBakedPresets(BOSS_PRESETS, "boss-chips");
-renderBakedPresets(GOLDEN_PRESETS, "golden-chips");
+/* ⛔ `GOLDEN_PRESETS` IS DELIBERATELY NOT RENDERED — user decision 08-05, see the note where its strip
+   used to be in the markup. `renderBakedPresets` tolerates a missing host, so this is a one-line
+   reinstatement (`renderBakedPresets(GOLDEN_PRESETS, "golden-chips")` plus the markup) if the call is
+   ever reversed. The array stays because every stability gate sweeps it. */
+/* The candidates strip renders a ROW, not a chip, because the line IS the content — see the
+   CANDIDATE_PRESETS header. Clicking loads the fight's INPUTS only, exactly like every other strip:
+   the line stays on the page to read the tool's own answer against, and is never fed to it. */
+function renderCandidates() {
+  const host = el("cand-rows"), strip = el("cand-strip");
+  if (!host) return;
+  if (!CANDIDATE_PRESETS.length) { if (strip) strip.style.display = "none"; return; }
+  const lineOf = p => Object.keys(p.line).sort((a, b) => (BUFFS[a] ? BUFFS[a].name : a).localeCompare(BUFFS[b] ? BUFFS[b].name : b))
+    .map(k => `<b>${esc(BUFFS[k] ? BUFFS[k].name : k)}</b> ${p.line[k].map(fmtT).join(" / ")}`).join(" · ");
+  host.innerHTML = CANDIDATE_PRESETS.map((p, i) => {
+    const tie = p.plateau > 1
+      ? `<span class="cand-tie" title="${p.plateau} layouts are tied with this one to the float floor — the score cannot separate them, so the shape tie-break (RULES §17) named this member. Ruling here is about which member is canonical, not about damage.">plateau ${p.plateau}</span>`
+      : `<span class="cand-uniq" title="The enumeration found a unique argmax: nothing in the cell's legal grid ties it. This line is simply the best one.">unique argmax</span>`;
+    /* §10b — a cell whose FIGHT is already declared. The declared strip is hidden (a locked test does
+       not need your eyes), so this is the only way a lock that stopped holding gets back in front of
+       you: confirming a different line here SUPERSEDES the lock rather than adding a new test. */
+    const sup = p.declared
+      ? `<span class="cand-sup" title="This exact fight is already a locked test (${esc(p.declared)}). The enumeration re-cut it and got the line below. Confirming it SUPERSEDES that lock — it does not add a new test.">supersedes ${esc(p.declared)}</span> · `
+      : "";
+    return `<div class="cand-row${p.declared ? " cand-row-sup" : ""}">
+      <div class="cand-head"><span class="pchip gchip cchip" data-i="${i}" role="button" tabindex="0"
+        title="Load this fight's inputs, then press Find optimal overlay and read the tool's answer against the line below">${esc(p.name)}</span>
+        <span class="cand-meta">${sup}${p.casts.toFixed(3)} effective ABs · ${tie} · ${p.layouts.toLocaleString()} layouts enumerated</span></div>
+      <div class="cand-line">${lineOf(p)}</div>
+      <div class="cand-warn" hidden></div></div>`;
+  }).join("");
+  host.querySelectorAll(".cchip").forEach(chip => {
+    const load = () => {
+      const p = CANDIDATE_PRESETS[+chip.dataset.i];
+      applyState(goldenToState(p));
+      refreshPresets("");
+      clearGoldenActive();
+      chip.classList.add("active");
+      /* ★★★ THE ROW CHECKS ITSELF — §9z. A candidate is only confirmable if the page is about to solve
+         the SAME fight the enumeration did, and between the crit box meaning your unbuffed sheet value,
+         the Arcane Impact talent, the Tirisfal box and the raid panel there are four ways for that to
+         quietly stop being true. So rather than trusting the load, ask the page what it is actually
+         about to hand the engine and compare it to the stats the enumeration recorded. A mismatch
+         means DO NOT RULE on this row — the line was computed for a different character. */
+      const warn = chip.closest(".cand-row").querySelector(".cand-warn");
+      if (warn && p.eff) {
+        const c = readCfg();
+        const bad = [];
+        if (Math.abs(c.sp - p.eff.sp) > 1e-6) bad.push(`SP ${c.sp.toFixed(1)} vs ${p.eff.sp.toFixed(1)}`);
+        if (Math.abs(c.critPct - p.eff.crit) > 1e-6) bad.push(`crit ${c.critPct.toFixed(2)}% vs ${p.eff.crit.toFixed(2)}%`);
+        if (!!c.t5two !== !!p.eff.t5two) bad.push(`Tirisfal ${c.t5two ? "on" : "off"} vs ${p.eff.t5two ? "on" : "off"}`);
+        warn.hidden = !bad.length;
+        warn.textContent = bad.length ? `⚠ the tool would solve this at ${bad.join(", ")} — the line below was enumerated at the other one, so do not rule on it` : "";
+      }
+      el("setup").scrollIntoView({ behavior: "smooth", block: "start" });
+    };
+    chip.addEventListener("click", load);
+    chip.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); load(); } });
+  });
+}
+renderCandidates();
+/* ═══════════════ URL-shareable setups + last-setup autosave (ROADMAP §0d route 1, 08-04) ═══════════
+   A link IS a reproducible plan: the tool is deterministic (one setup ⇒ one schedule), so sharing the
+   SETUP shares the answer. The hash carries only `snapshotState()` — fight inputs, never a computed
+   plan (the presets' own rule) and never anything identifying. Autosave closes the "mid-raid refresh
+   loses the fight being planned" hole: the last setup is stored on unload/hide and restored on a
+   plain open. Precedence at boot: a #s= link beats the autosave beats defaults — a shared link must
+   open the SENDER's fight, not the receiver's leftovers. All of it is guarded: no localStorage (or a
+   malformed hash) degrades to exactly the old behavior. */
+const AUTOSAVE_KEY = "abp-last-setup";
+const stateToHash = () => "#s=" + btoa(String.fromCharCode(...new TextEncoder().encode(JSON.stringify(snapshotState())))).replace(/\+/g, "-").replace(/\//g, "_").replace(/=+$/, "");
+const stateFromHash = h => {
+  const m = /^#s=([A-Za-z0-9_-]+)$/.exec(h || "");
+  if (!m) return null;
+  try {
+    const b = m[1].replace(/-/g, "+").replace(/_/g, "/");
+    return JSON.parse(new TextDecoder().decode(Uint8Array.from(atob(b), c => c.charCodeAt(0))));
+  } catch (_) { return null; }
+};
+{
+  const fromLink = stateFromHash(location.hash);
+  if (fromLink) applyState(fromLink);
+  else {
+    try {
+      const last = JSON.parse(localStorage.getItem(AUTOSAVE_KEY) || "null");
+      if (last) applyState(last);
+    } catch (_) { /* no storage, or a corrupt save — defaults stand */ }
+  }
+}
+// A #s= link pasted into an ALREADY-OPEN tab changes only the hash — no reload, no boot path — so
+// apply it on hashchange too; without this the link silently loses to whatever the tab showed.
+addEventListener("hashchange", () => { const s = stateFromHash(location.hash); if (s) applyState(s); });
+const autosave = () => { try { localStorage.setItem(AUTOSAVE_KEY, JSON.stringify(snapshotState())); } catch (_) {} };
+addEventListener("beforeunload", autosave);
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "hidden") autosave(); });
+el("btn-share").addEventListener("click", async () => {
+  const url = location.origin + location.pathname + stateToHash();
+  history.replaceState(null, "", url);   // the address bar carries the setup from here on
+  const btn = el("btn-share"), old = btn.textContent;
+  try { await navigator.clipboard.writeText(url); btn.textContent = "Copied!"; }
+  catch (_) { btn.textContent = "Link in address bar"; }
+  setTimeout(() => { btn.textContent = old; }, 1600);
+});
 renderAssumptions();   // static — available before the first run, so the masthead link always has a target
 el("btn-assump").addEventListener("click", () => {
   el("assump").scrollIntoView({
