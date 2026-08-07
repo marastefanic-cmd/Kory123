@@ -1912,3 +1912,44 @@ The miss pattern — two presses coupled without sharing a second or an edge —
 family stripped to its barest case, so instead of another shape-specific class it got the generic one:
 move class 9, every press pair slid together by one small delta, gated on the fixed point like its
 siblings. The search now emits the relocked layout exactly, in 3.5 s.
+
+
+# 2026-08-07 — the chain becomes a tool, refuses every ATI cell, and is right to; four kit misses fall to two classes
+
+The user's directive was simple — *"do whatever is left and when there's nothing more to do then merge
+it to master"* — and the day's work was the remaining derive programme (the Phase-3 kits, the coverage
+kits, the 3:20 ladder, the haste cells) plus the gem+ati declaration hold.
+
+**The hold resolved by measurement, and the measurement overturned its own first draft.** The §12.3a
+exact chain was rebuilt as a committed tool (`tools/ati-chain.mjs`), extended from bare fights to full
+layouts — press→fire at path-dependent boundaries, value at completion, the boundary credit — and
+validated to 7e-14 against the ATI-off walk. A scratchpad probe first read the gem+ati emission as
+"truth-co-optimal to 2.5e-5, declarable"; the committed tool's deeper competitor set found the real
+truth-winner sitting at engineΔ −0.119, exactly where a shallow engine-ranked top-24 never looks. The
+§10c drain residual is not one-directional and not ≤+0.018: across ONE cell's layouts it spans
+−0.074…+0.056 and FLIPS a real Berserking placement against §4c's packing law (truth wants zerk flush
+on Lust's end; the artifact prefers it overlapped, 0.119 engine-side vs −0.011 truth-side). The
+single-edge smear is provably the exact uniform-phase average (E[⌈(X−δ)/a⌉] = X/a); the error is the
+COMPOUNDING at stacked edges, where a smear of a smear loses the phases' correlations. Consequence:
+every ATI cell is chain-REFUSED (§10e), ATI cells are candidates-not-tests until that lead closes, and
+the believed→disproved ledger gains two entries in one day — the first-draft §10e itself, and RULES
+§19's ridge, demoted to a truth-plateau member. The §4c packing law, meanwhile, is VINDICATED by an
+instrument that did not exist when it was written.
+
+**The derivation batch's four search misses fell to two move classes.** Subset probes (every subset of
+the emitted→argmax coordinate differences, scored) localised the couplings: skull+mqg (−0.0815) wants
+the §4c train BUILT whole — zerk·skull·iv·iv chained from the Lust call, mqg parked on Lust's END,
+value riding a chain segment; skull+gem wants the same anchored at call−5 with iv#0 left on the pull;
+icon+skull wants a co-start block; ati+gem h200 wants the §19 chain extended THROUGH Berserking with
+the value cluster left alone. Class 10 (the packing-train constructor: anchors from class 5's own lead
+grid, keep-none/early/one variants with pin-edge placement for the kept window, co-start, permuted
+orders, values co-moved to segment starts) plus class 8's variant B closed all four. Two exact-tie
+plateaus remain that no affordable canon walk crosses (§10f, measured at 5× budget) — zero casts at
+stake, cells stay candidates, and locking either member was refused on principle: one contradicts the
+comparator, the other fails press-compare.
+
+**Housekeeping that was overdue:** wall-credit had silently rotted (its default preset name died with
+the 07-30 strip rename) — repointed and wired into CI along with search-witnesses; nine stale
+Status:OPEN headers in MODEL-DEFECTS corrected to their recorded closures; EP.md finally got its
+sim-retirement banner; PLAN.md landed whole and was deleted per its own header; every suite-size claim
+now defers to the anchors banner rather than repeating a number that staled twice in one file.
