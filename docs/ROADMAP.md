@@ -21,10 +21,13 @@ describe accepted limits and decided questions so nobody re-opens them by accide
   a second because they multiply, haste buffs do not because they must not overlap; this is the
   criterion the abolished `distinct` was a lossy proxy for). ⛔ Reinstating `distinct` is a MEASURED
   dead end, reproducible from a one-line switch: same 16/17, red relocated to T8 (§9v).
-- **Search:** every known miss is closed — `search-audit --k=3` reads **72/72** on the kit × haste
-  matrix and **21/21** on the preset sweep, all three recorded witnesses are reached, and the 08-04
-  ladder run found the emitted plan on the best-known answer in 11 of 12 fresh cells (the 12th is in
-  the decision package, +0.0025).
+- **Search:** every known SCORE miss is closed — `search-audit --k=3` reads **72/72** on the kit ×
+  haste matrix and clean on the preset sweep, all three recorded witnesses are reached (now a CI
+  gate), and the 08-07 derivation batch's four fresh kit-cell misses (worst −0.0815, skull+mqg) fell
+  to move classes 8b/10 the same day — eleven move classes became twelve-ish (8 gained a variant, 10
+  is the §4c packing-train constructor). ⚠ The one search limit that REMAINS is not a score miss:
+  §10f's two exact-tie plateaus (0.000000 casts at stake) whose canonical member no affordable walk
+  reaches — registered, cells stay candidates.
   A pass is LOCAL optimality; the search is a bounded heuristic **by doctrine** (*"the scoring part
   has to be perfectible, the search part does not"*), and the gate set is what surfaces the day that
   stops being good enough.
@@ -131,6 +134,8 @@ do is declare their own tests — that is the line that killed `exact-match`. Th
 - **§9e** (inner passes climb `robust`) — a recorded contingency, fully masked by the gates; a gate
   going red for it is the trigger, §9e-b's measurements are the map.
 - **§8n** — permanently unfalsifiable (§8x); never reopen expecting resolution.
+- **§10f — two exact-tie plateaus the canon walk cannot cross** (skull+gem 3:00, drums 2:00) — zero
+  casts at stake, comparator-preferred members unreachable at 5× budget; the cells stay candidates.
 - **Above-h=0 ground truth is thin by design** — declared only on the 2:00 ladder (T12–T17,
   SP-pinned); everywhere else "not beaten locally" is the strongest claim made.
 - **The ATI transient's last +0.004…+0.028 casts per engagement** (§10c) — one-directional, localised

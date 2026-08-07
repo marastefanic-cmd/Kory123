@@ -3716,18 +3716,27 @@ function phaseRerank(s0, cfg) {
         let hit = false;
         for (const A of [...anchors].sort((x, y) => x - y)) {
           if (A < 0) continue;
-          // keep-sets: none · everything already earlier than the anchor · each single window
-          const keepSets = [{ tag: "none", test: () => false },
-                            { tag: "early", test: p => Math.round(s[p.k][p.i]) < A }];
-          for (let w = 0; w < hasteP.length; w++) keepSets.push({ tag: "one", test: p => p === hasteP[w] });
+          // keep-sets: none · everything already earlier than the anchor · each single window — the
+          // kept window either stays where it is or moves to a pinned window's edge (the same "haste
+          // rides the raid window's edges" argument class 5 makes; the skull+mqg argmax parks mqg on
+          // the Lust END while the train chains around it, and no chain position can express that)
+          const pinEdges = [];
+          for (const pk of Object.keys(cfg.fixed || {}))
+            for (const t of (cfg.fixed[pk] || [])) pinEdges.push(Math.round(t), Math.round(t) + BUFFS[pk].dur);
+          const keepSets = [{ tag: "none", test: () => false, pos: [null] },
+                            { tag: "early", test: p => Math.round(s[p.k][p.i]) < A, pos: [null] }];
+          for (let w = 0; w < hasteP.length; w++)
+            keepSets.push({ tag: "one", test: p => p === hasteP[w], kept: hasteP[w], pos: [null, ...pinEdges] });
           for (const ks2 of keepSets) {
             const chainWins = hasteP.filter(p => !ks2.test(p));
             if (chainWins.length < 2) continue;
             const coStarts = ks2.tag === "early" ? [false, true] : [false];
+            for (const keptPos of ks2.pos)
             for (const coStart of coStarts) {
               for (const ord of ordersOf(chainWins)) {
                 const cand = cloneS(s);
                 for (const k of keys) cand[k] = cand[k].map(t2 => Math.round(t2));
+                if (keptPos !== null && ks2.kept) cand[ks2.kept.k][ks2.kept.i] = keptPos;
                 const segStarts = [];
                 if (!coStart) {
                   let tcur = A;

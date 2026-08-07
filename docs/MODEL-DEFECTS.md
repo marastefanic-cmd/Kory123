@@ -5357,3 +5357,31 @@ Four findings:
 category as `lattice-brute`. ⚠⚠ And it shares the model's own blind spots by construction where it
 REUSES conventions (externals at the call, the toll-free per-cast account): what it does NOT share is
 the mean-field proc smear, which is the one thing it exists to check.
+
+## §10f — ⚖️ TWO PLATEAUS THE CANON WALK CANNOT CROSS (08-07) — the §9p family's measured reach limit; zero casts at stake; the cells stay candidates
+
+The 08-07 derivation batch closed four search SCORE misses (classes 8b/10 — the packing-train
+constructor and the proc-chain extension; subset-probe diagnoses in the batch record) and left
+exactly two cells the search cannot canonicalise:
+
+| cell | emitted (exact tie) | canonical (comparator-preferred) | coords apart |
+|---|---|---|---|
+| skull+gem · 3:00 L0:20 | `skull[20,155] · iv[40,155] · AP@40 · scb[40,160] · zerk@160` | `iv[15,160] · scb[20,160] · skull[35,160] · AP@20 · zerk@160` | 6 |
+| drums · 2:00 L0:20 | `isc@20 · iv[10,60] · drums@30 · AP@20 · scb@20 · zerk@30` | `iv[0,50] · isc/scb/AP@40 · drums@20 · zerk@40` | 7 |
+
+Both pairs are ideal-EXACT ties — **the score gap is 0.000000 casts** — and `planBetter` prefers the
+enumeration's member, so this is §9p's defect class (the search keeps the member it reached), at a
+distance no affordable walk crosses. ⚠ Measured, not assumed: `plateauCanon` at its shipped knobs
+AND at 2× beam width, +3 depth, 5× budget, with the class-9 pair moves added to its move set (the
+08-07 scratch experiment) reaches NEITHER — the plateau routes out of the emitted members are not
+composed of small tie-preserving steps in any vocabulary tried.
+
+**Disposition, and the line it holds:** the two cells are NOT declared. Locking the EMISSION (the
+T6/T28 pattern) is refused on principle here — the emission is comparator-WORSE, so the lock would
+enshrine a member the tool's own tie-break contradicts, invisible to `scorerBeats` only because the
+canonical member sits outside its ≤3-coordinate horizon. Locking the CANONICAL member fails
+press-compare (the search cannot emit it). ⇒ both stay in the candidates strip; the §1c protocol
+simply does not fire. The doctrine covers the rest: *"the scoring part has to be perfectible and the
+search part does not"* — and this limit is not even scoring; no plan loses a single cast to it.
+Reopening this costs: a plateau-jump proposal generator (constructor-style candidates inside
+`plateauCanon`, budgeted), or nothing — it is presentation, not physics.
