@@ -181,7 +181,9 @@ wowsims also rounds every cast to the millisecond (`sim/core/cast.go:137-138`), 
 **✅ Both were corrected on 2026-07-27** — the model now takes 334 ms per stack and rounds every cast
 and GCD to the millisecond, exactly as `sim/core/cast.go:137-138` does. The bare-stream drift went from
 **0.080 s to 0.005 s over 300 s**, which is the combat log's own 2-decimal printing floor: the grids
-coincide. Gate: `tools/lattice-drift.mjs`.
+coincide. ⚠ Its gate (`tools/lattice-drift.mjs`) probed wowsims and is **deleted with the sim
+(07-30)**; the rule stands on what that gate measured, and nothing re-checks it now — same status as
+the snapshot-rule and window-span gates (CLAUDE.md's retired-approaches list).
 
 ⚠ **The millisecond rounding is the part that mattered; the 334 ms constant alone moved the bare
 lattice by exactly nothing** — measured twice before the cause was understood. In steady state Arcane
@@ -258,7 +260,7 @@ begins already-buffed. Consequences the model must respect:
   raw.** If the sim shows a *free, off-GCD* buff as net-negative, open the `SIMLOG=1` combat log before
   believing it. The usual cause is a **cooldown coupling the simple analysis missed**: the press
   quantizes to the next cast boundary, its cooldown runs from that *late* fire-time, and a *later*
-  same-track use gets pushed off its window — or, per the **known harness bug** (`docs/TOOLING.md`),
+  same-track use gets pushed off its window — or, per the **known harness bug** (`docs/archive/16-sim-tooling.md`),
   **DROPPED entirely** (`APLActionSchedule` consumes the timing while the queued off-GCD cast is lost).
   Either way the buff's *own* value is fine; a *later* use is what suffered. Confirm by finding where
   each use actually fires in the log — e.g. the Vashj icon@4:00's "−4.2" was its *terminal* icon@6:00

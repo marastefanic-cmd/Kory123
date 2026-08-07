@@ -1097,9 +1097,12 @@ The interaction of any set `S` is Möbius inversion over its subsets:
 
     I(S) = Σ_{R ⊆ S} (−1)^{|S|−|R|} · V(R)
 
-and every term is one of §4's five forms. `tools/rules-audit.mjs` checks the expansion closes to
-`0.000e+0`. **There is no triple-specific law**: Icy Veins + Icon + Arcane Power is `haste×sp`,
-`haste×dmg`, `dmg×sp` and one third-order term, all already given.
+and every term is one of §4's five forms. `tools/rules-audit.mjs` is the on-demand instrument for
+this — `node tools/rules-audit.mjs --spec '{"T":120,"sp":1000,"critPct":25,"pins":{"bloodlust":[20]}}'
+--layout '<the plan>'` prints the expansion and its residual, which closes to `0.000e+0` when the
+facts corpus captures every mechanism the engine prices (⚠ an analysis tool, not a CI gate — it has
+no pass/fail exit; read its residual line). **There is no triple-specific law**: Icy Veins + Icon +
+Arcane Power is `haste×sp`, `haste×dmg`, `dmg×sp` and one third-order term, all already given.
 
 ---
 
@@ -1144,7 +1147,7 @@ Consequences, each traceable to a line above. None is an axiom.
 * **Crit.** A constant multiplier on every cast; it cancels out of every ratio here. It changes what a
   cast is worth, never which plan is best.
 * **The sim's numbers.** wowsims is a *realisation at one lattice phase*; these are expectations. A
-  disagreement of order 0.2 casts is **predicted**, not a defect (`docs/TOOLING.md`). Use the sim to
+  disagreement of order 0.2 casts is **predicted**, not a defect (`docs/archive/16-sim-tooling.md`). Use the sim to
   anchor the physics, never to arbitrate a sub-cast margin.
 
 # 9. TWO CAVEATS ON THE ARITHMETIC BEHIND THIS FILE
@@ -1628,8 +1631,18 @@ floor's own sign ambiguity:
   simply `c_ρ` (the drain is a *cap*, not a geometric decay) and no candidate for it has been
   measured against the chain.
 
-Neither is worth the risk of a mechanism that cannot be validated as cleanly as these two were — but
-both are localised, so a future attempt starts from a named target rather than a hunt.
+⚖️ **RESOLVED 08-07 — measured, explained, and CLOSED as an accepted limit rather than fixed
+(MODEL-DEFECTS §10e).** The chain was rebuilt as a committed tool (`tools/ati-chain.mjs`, now scoring
+full layouts) and the drain term measured where it is worst: **+0.049 casts of differential at a
+STACKED proc-chain edge** (the `gem+ati` cell — the §19 ridge's residual preference for the abutting
+Icy Veins is ~100 % artifact; truth calls iv#1 ∈ {80…95} a plateau within 0.003). And the reason no
+candidate was ever measured turned out to be algebra, not missing effort: the continuum's
+`fit = (DUR − consumed)/a_s` **is exactly the uniform-phase average of the integer truth** —
+`E[⌈(X−δ)/a⌉] = X/a` identically for `δ ~ U[0,a)` — so the integrand is already the correct
+phase-average, and what remains is phase NON-uniformity at edges, which is cast-lattice information
+§8l bans from the integrand. ⇒ no in-model fix exists; the bound is recorded (≤ ~+0.06 at stacked
+proc-chain edges, ≤ +0.018 elsewhere); and every ATI-bearing declaration now requires the chain's
+certificate that its emitted layout is truth-co-optimal (§10e item 3).
 
 ### §12.4 Priced and NOT modeled — the honest edges
 

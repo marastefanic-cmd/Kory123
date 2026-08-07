@@ -11,7 +11,7 @@ It maximizes one number — **effective Arcane Blasts cast** (`docs/MECHANICS.md
 local search plus finishing passes. That is a very good plan rather than a proven-optimal one: the
 schedule space is far too large to enumerate, so "optimal" here means *the best layout this search
 finds*, locked against a 25-fight exact-match corpus and calibrated against wowsims. The known residual
-is recorded in `docs/ACCEPTANCE.md`.
+is recorded in `docs/archive/17-sim-acceptance-xval.md`.
 
 **Use it:** open `index.html` in any browser (no install, no network needed).
 

@@ -3,7 +3,7 @@
 > ## ⚠ BASELINE NOTICE — every sim MAGNITUDE below is **gear-A** denominated
 >
 > Read this doc on two levels, because the 2026-07-26 gear A → gear B re-export
-> (`docs/BENCH.md` §1) hits exactly one of them.
+> (`docs/archive/14-sim-bench-practice.md` §1) hits exactly one of them.
 >
 > - **The MECHANISM of every rule survives, unconditionally.** The GCD floor, the discrete ramp,
 >   buff-into-Lust packing, SP-on-fast-casts, the AoE modifier — these are statements about TBC's
@@ -20,13 +20,15 @@
 > encodes, and re-measuring 40-odd deltas is not a prerequisite for believing the GCD floor. What is
 > *not* licensed is quoting one of these figures as a current target, a current tolerance, or the
 > other side of a gear-B comparison. When a rule's magnitude actually matters to a decision,
-> **re-measure it** — `node tools/bench.mjs --preset X --vs naive` is ~10 s from the repo alone — and
-> record the gear-B figure beside the gear-A one rather than overwriting it.
+> **re-measure it** — ⚠ the old escape hatch here (`tools/bench.mjs`) is deleted with the sim (07-30);
+> the living instruments are `tools/facts-pair.mjs`/`tools/facts-ladder.mjs --score=integral` for a
+> rule's algebraic magnitude and `tools/lattice-brute.mjs`/`tools/brute-cell.mjs` for a whole cell —
+> and record the new figure beside the old one rather than overwriting it.
 >
 > Crossover *thresholds* (§12's `~264`, `~139`, `~77`) deserve their own caution: they are functions of
 > the character's haste and SP, so they are the figures **most** likely to have moved, and the ones a
 > future phase should re-derive first. The §-ACCEPTANCE resolution-floor statistics are superseded
-> wholesale by the gear-B round (`docs/ACCEPTANCE.md`).
+> wholesale by the gear-B round (`docs/archive/17-sim-acceptance-xval.md`).
 
 Living record of the TBC Arcane cooldown rules, each with the **evidence** it was checked against. The
 one quantity to maximize is **effective ABs cast** (§1 / `MECHANICS §4`) — a **deterministic per-cast
@@ -205,7 +207,7 @@ casts**, so it should sit on the fastest part of the window.
   sim doesn't credit the truncated tail casts proportionally. The **model is right** to score pre≈post as
   a tie (it *does* credit the tail proportionally — via the boundary credit since 07-27, via the
   kill-window integral before that; the conclusion is unchanged and now exact); the gap is a sim-setup artifact
-  (cf. the Vashj drop bug, `docs/TOOLING.md`). Verified: extend the fight so the buff is interior → the gap
+  (cf. the Vashj drop bug, `docs/archive/16-sim-tooling.md`). Verified: extend the fight so the buff is interior → the gap
   vanishes to 0.00%. (AB damage is **stack-independent** — re-confirmed at source, `arcane_blast.go:55/58`
   — so this is pure cast-count, not a stack-damage effect.)
 
@@ -1161,7 +1163,7 @@ durations the contained region shrinks to the **intersection** of the constraint
   has no way to cancel a cast: it will finish the Blast and land it. So `tools/model-audit.mjs` **WILL**
   report a gap at an AoE wall, and any duel across one carries it. **Do not "fix" it back.** It is the
   one place the model deliberately models a **player decision the harness cannot express** — see
-  `docs/TOOLING.md` (model-audit) and `docs/archive/18-phase13-post-exact-objective.md` §1/§2.2.
+  `docs/archive/16-sim-tooling.md` (model-audit) and `docs/archive/18-phase13-post-exact-objective.md` §1/§2.2.
 
   ⚠ *(A footnote worth keeping from step 2: the probe that first said the cast did **not** land had a
   regex requiring `Crit|Hit for` while the log read `Hit (25% Resist) for` — the third parse bug of that
@@ -1486,7 +1488,7 @@ it exists to get the **gearing** stat weights the infinite-mana layout EP can't 
 - **Real-gearing order: SP ≈ Int > Haste > Crit > MP5 > Spirit ≫ Mana.** Full derivation, the infinite-vs-
   finite table, the analytic cross-check, and the mana-economy the sim models (JoW / Mana Tide / Innervate
   / Vampiric-Touch +250 mp5 / Evocation / gem — **all from wowsims on the real export**, not reimplemented)
-  are in `docs/EP.md` + `docs/TOOLING.md`; locked numbers in `tests/finite-weights.json`. **A schedule-only
+  are in `docs/EP.md` + `docs/archive/16-sim-tooling.md`; locked numbers in `tests/finite-weights.json`. **A schedule-only
   conserve APL must include `autocastOtherCooldowns`** or it silently drops Innervate + Mana Tide (−6% DPS,
   starved weights) — see TOOLING ★.
 
@@ -1965,6 +1967,16 @@ are unmoved — peak at gap 5, cliff at 6 — and so is the causal table below; 
 roughly a third (the pre-§10c reading of this same scan was `−0.022/−0.015/−0.004/+0.010/+0.026/−0.040`),
 because the old engine over-credited the proc's memory. ⇒ quote the shape, and re-measure before
 quoting a number.
+⚠⚠ **AND THE EXACT CHAIN DEMOTED THE RIDGE TO A PLATEAU MEMBER — 08-07, MODEL-DEFECTS §10e.** The
+truth instrument (`tools/ati-chain.mjs`) says the ridge's fine structure is mostly the model talking
+to itself: at the `gem+ati` cell, iv#1 at gap 5 vs gap 10 (85 vs 90) — which this table separates by
+~0.05 casts — are truth-TIED to **0.000025**, and gaps {0, 5, 10, 15} all sit inside a 0.003
+truth-plateau. The residual preference for the abutting second is the strata-drain artifact at
+stacked edges, not physics. What SURVIVES: anchoring the chain at the carry is truth-co-optimal (it
+loses nothing), so the §19 shape stays the canonical prescription — but a player missing the ridge by
+5–10 s loses nothing real, and the cliff's −0.045 sits between two truth-tied measured points, so
+treat it as unestablished. The causal table below (the peak FOLLOWS the Lust call) is untouched —
+that is structure, not magnitude.
 
 Verified causally by moving Bloodlust and watching the optimum follow it:
 

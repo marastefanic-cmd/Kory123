@@ -23,12 +23,28 @@ same banner for the older packages, which are all stale for exactly this reason.
 
 - `derive-0805.jsonl` — cut on the 08-05 engine (after §9u/§9w/§9x/§9y, i.e. the current tie-break).
   Mostly `icon+gem` across 2:00–3:00 × Lust 0:05/0:20/0:40, plus one `gem+ati` cell.
-  ⛔ **The `gem+ati` cell is STALE as of §10c** (the Ashtongue transient corrections, same day, later).
-  Re-cut it into a new file before ruling on it. The rest of the file is unaffected and that is
-  measured, not assumed: `plan-diff` reads IDENTICAL with `scorerMoved = 0` over the 21-cell preset
-  corpus, and §10c is gated entirely on `cfg.enabled.ati`.
+  ⛔ **Its `gem+ati` cell is STALE as of §10c** (the Ashtongue transient corrections, same day, later)
+  — ✅ and that re-cut is DONE: `derive-0806.jsonl` is the same cell on the §10c engine (the argmax
+  moved structure, exactly as §10c's re-measure predicted — MODEL-DEFECTS §10d). The rest of the file
+  is unaffected and that is measured, not assumed: `plan-diff` reads IDENTICAL with `scorerMoved = 0`
+  over the 21-cell preset corpus, and §10c is gated entirely on `cfg.enabled.ati`.
   ⚠ Enumerated at EFFECTIVE stats (crit 44 = typed 38 + Arcane Impact, Tirisfal on) so that loading the
-  row in the page reproduces it — see MODEL-DEFECTS §9z.
+  row in the page reproduces it — see MODEL-DEFECTS §9z. (Every later file inherits this convention.)
+- `declared-0806.jsonl` — the ARCHIVE behind the brute-declared batch T18–T29: the twelve
+  2:00–3:00 × Lust grid cells exactly as enumerated/certified on the 08-06 engine (incl. the
+  `--top=128 --check` re-certifications of the two 2:20 cells). Frozen with the declaration; a future
+  engine change does not stale a declared test (anchors carries the lock), it stales *candidates*.
+- `derive-0806.jsonl` — the §10c-engine re-cut of the `gem+ati` cell (see above). Its declaration
+  additionally carries the exact-chain certificate (`tools/ati-chain.mjs` — MODEL-DEFECTS §10e:
+  ATI cells declare only when the emission is truth-co-optimal, because the integrand's drain
+  artifact at proc-chain edges exceeds typical argmax margins).
+- `derive-0807.jsonl` — the remaining programme, cut 08-07 on the final engine (scorer unchanged
+  since §10c; move classes 8–9 are search-only, so gradings survive them): the Phase-3 practical
+  kits (skull+gem, ati+gem variants), the coverage kits, the 3:20 ladder, SP rungs, and the
+  high-haste cells. Committed progressively while the programme runs — a container reclaim must not
+  cost the night.
 - `derive-programme.sh` — the full programme, Phase-3 practical kits first, then breadth, then the
   200M-layout haste cells. Resumable: re-running skips what is already in the `--out` file.
+  ⚠ Its A7/A8 lines predate the 4e8 raw-regime guard — at T=180 run them `--step=10` (the 08-07 run
+  did; T28/T29's certification precedent covers the coarser grid).
 - `nonati.sh` — the cheap non-Ashtongue subset, which is what produced most of `derive-0805.jsonl`.

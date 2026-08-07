@@ -671,8 +671,11 @@ reads). A fresh "Find optimal overlay" run calls `customReset()`.
   debugging session — human-readable input header + model plan text/stats + custom plan text/stats
   + deltas + validation state, then a machine block: `{input, model, custom, evalsched}` with intent
   schedules, fire times, totals, and baseline/naive references. The `evalsched` object is **directly
-  runnable** as `node tests/evalsched.mjs '<json>'` (round-trip verified: identical totals), and the
-  notes point at the TOOLING sim workflow (`genapl`, `_prestack:0`) for "sim my custom timeline".
+  runnable** as `node tests/evalsched.mjs '<json>'` (round-trip verified: identical totals). ⚠ This
+  paragraph used to add that the export's notes point at the TOOLING sim workflow (`genapl`,
+  `_prestack:0`) for "sim my custom timeline" — that workflow is deleted with the sim (07-30), and
+  the page itself carries no such pointer (grepped 08-07); evaluating a custom timeline is
+  `evalsched` alone now.
 
 ## Presets & tests — two baked strips, both the fight table
 `index.html` defines **two** baked preset arrays + `GOLDEN_DEFAULTS` (near the localStorage-preset

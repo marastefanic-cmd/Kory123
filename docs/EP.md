@@ -1,8 +1,20 @@
 # EP.md — stat weights, two ways (and why we don't need a bespoke calculator)
 
+> ⛔⛔ **THE SIM ROUTE IN THIS FILE IS RETIRED (07-30, with the simulator — CLAUDE.md).** Every command
+> naming `tools/genapl.mjs`, `tests/ep-sim.sh`, `tools/genconserve.mjs`, `tests/ep-finite.mjs`,
+> `tests/mana-value.mjs`, the runner patches, or `docs/TOOLING.md` (now `docs/archive/16-sim-tooling.md`)
+> is **dead** — the files are deleted and a `command not found` is this doc being historical, not your
+> setup being broken. **What survives as live instrument: the MODEL route** (`tests/ep-model.mjs`,
+> closed-form partials + finite difference on `simulate().total`, envelope-theorem argument) — the
+> infinite-mana **layout** EP. **What survives as archived MEASUREMENT: every number below**
+> (`tests/finite-weights.json` is still on disk) — the finite-mana gearing weights, the haste-folklore
+> correction, the value-of-mana bracket. They were measured on the retired instrument and cannot be
+> re-measured; quote them as provenance-dated facts (ROADMAP §3 registers "mana is unmeasured" as the
+> accepted limit this leaves).
+
 Goal: an **EP / stat-weight** number (how much a point of each stat is worth, normalised to spell
-power) for a given setup, planned by *its own* ideal cooldown usage. We get it two independent ways that
-**cross-check** each other — and neither is a heavy new subsystem.
+power) for a given setup, planned by *its own* ideal cooldown usage. We got it two independent ways that
+**cross-check** each other — and neither was a heavy new subsystem.
 
 ## The model route — EP in closed form from the effective-damage integral
 
@@ -52,7 +64,7 @@ planner at gear±Δ; if the schedule changed, you're on a breakpoint).
 Compute it: `tests/ep-model.mjs "<preset name>"` finite-differences `simulate().total` on the page
 (frozen **and** re-optimised), normalised to SP=1.
 
-## The sim route — finite-difference wowsims on the same optimal schedule
+## The sim route — finite-difference wowsims on the same optimal schedule *(RETIRED — historical record; see the banner)*
 
 Feed wowsims the planner's optimal schedule as a forced-schedule APL (`tools/genapl.mjs` already emits it
 — `APLActionSchedule` per cooldown, which the web UI's Rotation → APL also supports) and either use its
@@ -76,7 +88,7 @@ reverted "phantom triple-stack the pull" incentive; RULES §3, `index.html` foot
 model haste (1.471 > frozen 1.432) moves *toward* the sim — this setup sits on a haste breakpoint (the
 optimizer reported the schedule changing under ±100 haste), exactly the envelope-theorem case above.
 
-## The model's layout EP is an INFINITE-MANA ceiling — the real gearing weights are COMPUTED (finite-mana)
+## The model's layout EP is an INFINITE-MANA ceiling — the real gearing weights WERE COMPUTED (finite-mana) *(the measurement stands; the instrument is retired)*
 
 The model route (and the sim route on the AB-spam APL) assume infinite mana, so its weights are the
 **layout / time-limited** EP. Real Arcane play is **mana-managed** — you **conserve** (Frostbolt filler
@@ -128,7 +140,7 @@ the fraction of casting that is genuinely mana-limited, ≈ ⅓ here. So haste k
 - **Intermissions** shift it back: 60s of downtime on a 420s fight drops haste EP **1.02 → 0.92** (less
   casting time) and lifts MP5 EP **0.70 → 0.84** (bank regen in the dead zone, burn it in the next burst).
 
-### The value of mana (analytic cross-check, `tests/mana-value.mjs` — the "option C" route)
+### The value of mana (analytic cross-check — the "option C" route; its `tests/mana-value.mjs` is deleted with the sim)
 
 At the conserve margin the mage trades Frostbolt for sustained 3-stack Arcane Blast:
 `valueOfMana = (DPS_AB − DPS_FB)/(drain_AB − drain_FB) = (2242 − 1404)/(458 − 79) ≈ **2.2 dmg/mana**`
@@ -144,8 +156,8 @@ authoritative there.) Locked numbers: `tests/finite-weights.json`.
 layout-first principle below); the finite weights are a *reading* off the sim, not a change to the planner.
 
 ## Practical notes / caveats
-- **Trust-anchor the APL first** (build it, sim it, confirm the DPS matches the tool's expectation)
-  before trusting weights — same discipline as any sim gating (`TOOLING`).
+- *(historical)* **Trust-anchor the APL first** (build it, sim it, confirm the DPS matches the tool's
+  expectation) before trusting weights — the sim-gating discipline (`docs/archive/16-sim-tooling.md`).
 - **Intellect is THROUGHPUT for Arcane — plus a big mana part when mana-bound (both now VALIDATED).**
   `1 int` gives, at 5/5 Mind Mastery + 5/5 Arcane Mind (`sim/mage/talents.go`): `×1.15` int (Arcane Mind),
   then **+0.29 spell power** (Mind Mastery `0.05·rank` SP/int) **and +0.317 crit rating** (int→crit

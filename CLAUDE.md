@@ -386,10 +386,12 @@ node tools/search-audit.mjs /tmp/b.json --k=3                    # seconds, re-s
 node tools/search-audit.mjs /tmp/b.json --k=3 --self-test        # displaces a press; must be CAUGHT
 ```
 It does the table above **automatically, on every swept cell**: for each emitted plan it enumerates
-every move of ≤k coordinates by ≤span seconds and asks whether any beats it. Reading **15 of 15 local
-optima** on the preset sweep and **62 of 63** on the kit × haste matrix (`tools/kit-sweep.mjs`) — the one
-miss is §8y's, whose fix is written and blocked on a user call, and on the pre-fix engine it rediscovers both of the week's reported misses to the digit
-(+0.005815 Karathress, +0.030041 Solarian) without being told they exist. CI runs it, blocking.
+every move of ≤k coordinates by ≤span seconds and asks whether any beats it. Reading **72 of 72 local
+optima, 0 score misses, 0 tie-break misses** on the kit × haste matrix (`tools/kit-sweep.mjs`) and
+clean on the full preset sweep as of 08-06 (the §8y miss this line used to carry closed 07-31 — T6
+revised by user ruling), and on the pre-fix engine it rediscovers both of the week's reported misses
+to the digit (+0.005815 Karathress, +0.030041 Solarian) without being told they exist. CI runs it,
+blocking.
 ⚠ **`k=3` is the floor that matters.** On the 2:00 cell there were ZERO improving 1- and 2-coordinate
 moves and six 3-coordinate ones — a k≤2 audit calls that plan optimal.
 ⚠ **A pass is LOCAL optimality only.** T2's declared Berserking is +120 s from where the descent put it

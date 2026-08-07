@@ -11,7 +11,7 @@ into one document, neither reads cleanly, and the facts file becomes hard to tru
 
 1. A defect here means: **the sim satisfies an established fact and the model does not.** That is the
    only thing that qualifies. A model/sim gap where the SIM is the odd one out is a harness problem,
-   not a model defect, and belongs in `docs/TOOLING.md`.
+   not a model defect, and belongs in `docs/archive/16-sim-tooling.md`.
 2. Sizes are quoted in **casts**, not percentages — a percentage of a single cooldown's value sounds
    enormous when the cooldown is small. One cast at Baseline A is 2242.1 damage.
 3. Before fixing, reproduce. Every entry carries the exact command.
@@ -20,8 +20,10 @@ into one document, neither reads cleanly, and the facts file becomes hard to tru
 
 ## D1 — the model resolves sub-cast lattice phase as though it were damage
 
-**Status: OPEN, MECHANISM ESTABLISHED 07-28. ⚠ And the name above is now MISLEADING — read
-*"★★★★★★ THE MECHANISM"* below before anything else in this entry.** In short: the scorer is **not**
+**Status: ✅ CLOSED 07-30 — §8h–§8m: the cast lattice had leaked into the ranking objective in four
+places, and removing it turned anchors green (`8 of 8` that day). This header read OPEN long after CI
+and `tests/anchors.mjs` both recorded the closure; corrected 08-07. ⚠ The name above is MISLEADING —
+read *"★★★★★★ THE MECHANISM"* below before anything else in this entry.** In short: the scorer is **not**
 booking phase as damage. It is exact, and it reproduces wowsims' cast count to **0.002 casts** once
 both are handed the same fight. The defect is one layer up — the fight it is handed is
 **over-specified**, and the ranking resolves a sub-second input the user cannot supply. Several
@@ -73,7 +75,7 @@ GCDs and `slip` is structurally zero. Swept across the same lattice period at 0.
 returns **1462.30 DPS at every single offset** — not "flat within noise", identical to the last printed
 digit, which is what a snapped aura looks like and what no genuinely varying quantity looks like.
 
-⇒ Filed as a harness limitation in `docs/TOOLING.md`. **Do not re-file it here**, and do not "fix" the
+⇒ Filed as a harness limitation in `docs/archive/16-sim-tooling.md`. **Do not re-file it here**, and do not "fix" the
 model by snapping raid externals to a cast boundary — that would be copying the harness's artifact into
 the engine. `isExternal` setting `auraAt = e.ts` with no snapping is correct: someone else presses
 Bloodlust, and their cast does not wait for your global cooldown.
@@ -119,7 +121,9 @@ witnesses (0.185 and 0.287 casts) are outside the band it can reach.
 
 ## D2 — the model emits the uglier of two BIT-IDENTICAL layouts
 
-**Status: OPEN. Mechanism established, fix specified (two parts), not yet landed. Two witnesses.**
+**Status: ✅ CLOSED 07-30 — the objective became a PAIR (integral + shape tie-break, §8h item 2 /
+RULES §17), which is exactly the "fix specified" below; §9u's `plateauCanon` later made the canonical
+member reachable when the plateau is not monotone. Header corrected 08-07.**
 
 ★ **No scoring change is needed.** Both witnesses are *exact* ties — the scorer is right about the
 number and wrong only about which of several identically-scoring layouts it emits. That makes the fix
@@ -1023,7 +1027,7 @@ plan movement**, and it will bite the first encounter with a ~7-second movement 
 ⚠ Same rule covers an **AoE phase**: Arcane Explosion neither builds nor refreshes the AB debuff, so an
 AoE window is a gap in the AB stream and its exit takes the identical branch.
 
-## 9. What is still open
+## 9. What is still open *(⚖️ 08-07 header note: nothing here is — this section predates the 07-30 rewrite. Item 1's route (a) IS §8l, implemented exactly and O(1); item 2's duel residuals were denominated in the retired per-phase account and are voided by the same rewrite plus the sim's retirement; item 3's wall question is answered by the boundary credit — PHASE12 §9 / RULES §9, a wall is already a one-sided phase window. Kept as the record of the road.)*
 
 1. **Cost.** The phase-mean is N× `simulate()`. It cannot go into the search at N=48 as-is. Two routes:
    charge each haste-window edge and the kill their phase *expectation* analytically inside the walk
@@ -1057,7 +1061,7 @@ assumes. D3's mechanism was wrong in every particular.
 
 ### What it actually is — and it is already documented, as a HARNESS limitation
 
-This is `docs/TOOLING.md`'s *"the sim cannot start an external's aura off a cast boundary"*, seen from
+This is `docs/archive/16-sim-tooling.md`'s *"the sim cannot start an external's aura off a cast boundary"*, seen from
 the other side. At h=0 casts sit on `…19.498, 20.998…`, so a Lust **called at 20**:
 
     model   aura [20, 60]        usable [20.998, 60]      — the 0.998 s slip is LOST (rule 5)
@@ -1170,7 +1174,10 @@ overcap numbers need re-deriving with it.
 
 ## ★★★★★★ LOCALISED — the model MISCOUNTS CASTS by ~1 on a mid-ramp Icy Veins (07-28)
 
-**Status: OPEN, and it supersedes the objective debate below as the first thing to fix.**
+**Status: ✅ OBSOLETE since 07-30 — the mechanism lived in the retired per-cast ranking path. Since
+§8l/§8q the ranking integral carries no cast lattice and the ramp is a fixed toll, so a mid-ramp
+window cannot be quantised to a whole cast in the path that ranks. (The board walk still quantises —
+by design; it reports, it does not rank.) Header corrected 08-07.**
 
 Reverse-engineering the ground-truth disagreement to its arithmetic, as the user asked (*"it should just
 be an equation… figure out the reverse engineering towards the known solution"*). Example 1
@@ -1339,9 +1346,13 @@ floor. Two different smoothings of the same single-phase artifact, both pointing
 
 ## ⚠⚠ THE SCORER OVER-RESOLVES — most of its margin is not executable
 
-**Status: OPEN, and it is the most consequential open item in this file.** Not a defect in what the
-scorer computes — the objective is exact and `self-consistency` reads `0.00e+0`. A defect in what it is
-asked to *rank*: a single lattice phase, when a real pull is a distribution over phases.
+**Status: ✅ RESOLVED 07-30 by §8l — the ranking objective became the phase EXPECTATION in closed
+form** (`∫ rate dt`, pure window geometry: *"the integral IS the phase expectation, exactly"* —
+`index.html`'s own banner), which is route (a) of "What is still open" below implemented exactly, at
+O(1). Header corrected 08-07; the diagnosis below is the record of WHY the phase-free integral was
+the right destination. Original text: not a defect in what the scorer computes — the objective is
+exact and `self-consistency` reads `0.00e+0` — but in what it was asked to *rank*: a single lattice
+phase, when a real pull is a distribution over phases.
 
 User, 2026-07-28: *"I don't fully wanna trust the outputs yet, because the current scorer says that my
 suggested changes are worse. But they just aren't. They might be under specific clippings and whatnot."*
@@ -1394,7 +1405,8 @@ arithmetic, not in the model. The original entry is kept below for its history.
 
 ## ⚠ Superseded — a pull advantage at h=0 that should not exist
 
-**Status: OPEN QUESTION, not yet classified.** At h=0, pressing a haste cooldown at the pull is worth
+**Status: ✅ CLOSED 07-28 — reclassified REAL, not a defect (the section above records the closure);
+kept for the measurement. Header corrected 08-07.** At h=0, pressing a haste cooldown at the pull is worth
 **+2.078 % (model)** over any interior placement — **0.0554 of a cast**. The sim shows a pull advantage
 of the same order (~2.1 % at the coarser resolution it was gathered at).
 
@@ -1990,7 +2002,7 @@ lower on the per-cast sum. That sum is the number §8h proved mispriced, so a dr
 of harm — but it is not evidence of improvement either, and `plan-diff` says so itself
 (*"scorer identity is UNPROVABLE here — grade these with a duel"*). The four presets sim-checked above
 all agree; **the remaining twelve have not been duelled.** That is the open verification debt from this
-change, and `docs/ACCEPTANCE.md` still has no current reading.
+change, and `docs/archive/17-sim-acceptance-xval.md` still has no current reading.
 
 ### ★ The lasting lesson, and it is about instruments
 
@@ -2003,10 +2015,14 @@ a 3.6 % error.
 
 ---
 
-## §8n — ⛔ OPEN: the 07-30 change REGRESSES the preset corpus. 13σ, sim-measured.
+## §8n — ⚖️ ACCEPTED (unfalsifiable since the sim retired): the 07-30 change regressed the preset corpus on the per-cast SUM. 13σ, sim-measured — against the number §8h proved mispriced.
 
-**Status: OPEN and unresolved. `docs/ACCEPTANCE.md` still has no current reading and this makes the gap
-worse, not better.** §8m's verification table used the WRONG INSTRUMENT and its conclusion must be
+**Status: ⚖️ ACCEPTED-LIMIT, registered in ROADMAP §3 ("§8n's unfalsifiability") — header corrected
+08-07. The duel evidence was denominated in the retired per-cast sum and the instrument that could
+re-run it is gone; what remains actionable is the closed-form account (law-check), which the 07-30
+change satisfies and the old engine did not. Original header text: OPEN and unresolved;
+`docs/archive/17-sim-acceptance-xval.md` still has no current reading and this makes the gap worse,
+not better.** §8m's verification table used the WRONG INSTRUMENT and its conclusion must be
 corrected here.
 
 ### ★ THE CORRECTION FIRST
@@ -2436,7 +2452,7 @@ the declared layout, so it stands. §8p (haste × +SP ~⅓ too generous in the c
 and is the reason that one press disagrees.
 
 ⚠ **Open debt:** the full preset corpus has not been re-swept or duelled since this change.
-`docs/ACCEPTANCE.md` still has no current reading.
+`docs/archive/17-sim-acceptance-xval.md` still has no current reading.
 
 ---
 
@@ -2708,7 +2724,7 @@ not about a row in a table.** It was also scoring on `.robust`; fixed to `rankSc
 
 ---
 
-## §8v — ⚠ OPEN, AND IT IS A **REACHABILITY** ISSUE ON AN EXACTLY-TIED PLATEAU, NOT A TIE-BREAK ONE (07-30)
+## §8v — ⚖️ SETTLED 08-04 (was: a **REACHABILITY** issue on an exactly-tied plateau, not a tie-break one — 07-30)
 
 > ⚖️ **SETTLED 08-04, under the user's clean-the-slate delegation.** Two facts close it: the tie is
 > BIT-EXACT (Δ = 0.000e+0 — no damage is at stake, by construction), and the comparator's own first
@@ -4037,7 +4053,7 @@ REACHABILITY (a coupled multi-row move class); T12 is a basin miss whose declare
 
 ---
 
-## §9k — ⛔ T16'S RESIDUAL IS THE COMPARATOR ROUNDING A REAL SLOPE (08-03) — pending a user decision
+## §9k — ⚖️ T16'S RESIDUAL WAS THE COMPARATOR ROUNDING A REAL SLOPE (08-03) — resolved the same day: the user ruled with sim evidence (T16 revised to 10/30, §9m, 23.5σ) and the band-shrink mission is dead
 
 The band-structure re-anchor move class (landed with this entry) turned T13 green and transformed T16:
 the emission improved +0.0352 casts to `iv[8,60]/zerk@28`, an in-band tie with the declared
@@ -4696,7 +4712,7 @@ suite **worse** (13/17 → 11/17 on the same corpus) and were reverted whole:
 is never in the search and never in the scorer.** Check that number FIRST — `tests/anchors.mjs` now
 prints it on every failure, alongside the shape criterion that actually decides.
 
-## §9v — ⚖️ THE `distinct` ABOLITION'S PREMISE IS FALSIFIED BY T10 AND T13 (08-05) — T10 closed by §9w, T13 open
+## §9v — ⚖️ THE `distinct` ABOLITION'S PREMISE IS FALSIFIED BY T10 AND T13 (08-05) — T10 closed by §9w, T13 closed by §9x (`valueSecs`)
 
 ⚠ **This is a finding, not a fix. It is recorded because acting on it unilaterally would overturn a
 direct user ruling, and because the two tests it names are red today.**
@@ -5269,7 +5285,61 @@ the older classes' joint fixed point, `tryCand` judges, and it is gated on `atiO
 it never fires, so every proc-less cell is byte-identical BY CONSTRUCTION (the §19 measurement is why
 the structure means nothing there). Verified: the search now emits the argmax exactly (103.838635).
 
-⚠ **The DECLARATION hold on ATI cells stands** — it was never only about search reach. The §10c
-residuals (≤ +0.018) exceed this cell's 0.010 argmax margin, so which plateau member is "correct" can
-still flip when they close. The cell sits in the candidates strip, now matching the tool's own output;
-declare it when the residuals are bounded below the margins being locked.
+⚠ *(historical, superseded by §10e the next day)* **The DECLARATION hold on ATI cells stands** — it
+was never only about search reach. The §10c residuals (≤ +0.018) exceed this cell's 0.010 argmax
+margin, so which plateau member is "correct" can still flip when they close. The cell sits in the
+candidates strip, now matching the tool's own output; declare it when the residuals are bounded below
+the margins being locked. ⇒ **§10e did exactly that measurement (08-07)**: the residual differential
+at this cell is +0.049 — the fear was RIGHT — and the resolution is the chain-certification standard
+recorded there, under which this cell IS declarable (its emission is truth-co-optimal to 2.5e-5).
+
+## §10e — ⚖️ THE DRAIN RESIDUAL, MEASURED AT A PROC-CHAIN EDGE — the §19 ridge's remaining margin is ARTIFACT, the emitted layout is truth-co-optimal anyway, and the residual is now an EXPLAINED accepted limit (08-07)
+
+The instrument §12.3a said was missing now exists: `tools/ati-chain.mjs`, the exact `(t, rem)` Markov
+chain rebuilt as a committed tool and extended to full LAYOUTS (press→fire at path-dependent
+boundaries, value windows at completion, the boundary credit — every engine execution convention
+replicated, validated to 7e-14 against the ATI-off walk and to ±0.0007 against §12.3a's published
+residual table, with a dead-proc-branch negative control). Chain-ranking the engine's top 24 layouts
+around the `gem+ati` argmax:
+
+| layout | engine Δ vs argmax | chain E | engine − chain |
+|---|---|---|---|
+| `iv[60,85] · scb/AP@50 · zerk@55` (engine argmax) | 0.000000 | 103.763966 | **+0.056** |
+| `iv[60,90] · …` (truth top) | −0.049392 | 103.763990 | **+0.007** |
+| `iv[60,95] · …` | −0.047001 | 103.763430 | +0.010 |
+| `iv[60,80] · …` | −0.011887 | 103.760842 | +0.048 |
+
+Three findings, one resolution:
+
+1. **The §19 ridge's residual preference is ~100 % artifact.** The engine separates iv#1@85 from
+   iv#1@90 by 0.049 casts; the truth chain says they differ by **0.000025** — a dead tie. The whole
+   structure family (iv#1 ∈ {80, 85, 90, 95}) is a truth-plateau within 0.003. The engine's
+   preference for the abutting second (window start exactly on the proc carry's end) is the
+   strata-drain residual compounding at STACKED edges — the carry's fold at 80 is still draining when
+   iv#1's edge folds again at 85. At +0.056 it is **3× the ≤+0.018 bound** §12.3a recorded, because
+   that bound was measured on bare/Lust fights and IV windows add haste edges.
+2. **⛔ And the residual is NOT fixable in-model — settled by algebra, not fatigue.** The continuum's
+   drain `fit = (DUR − consumed)/a_s` is EXACTLY the uniform-phase average of the true integer
+   survivor count: `E[⌈(X−δ)/a⌉] = X/a` identically for `δ ~ U[0, a)`. The integrand is already the
+   correct phase-average; what remains is the truth's phase NON-uniformity at proc-chain edges (a
+   self-press fires ON a completion boundary, so its edge phase is correlated with the lattice) plus
+   the count↔phase covariance — and pricing either requires the cast lattice, which may not re-enter
+   the integrand (§8l). §12.3a's *"the correction is not simply c_ρ … no candidate has been
+   measured"* is upgraded: **any in-model candidate is structurally barred**, because the only
+   information that separates the continuum from the truth is banned by the project's own
+   architecture. The residual moves from "lead" to **explained accepted limit with a measured bound**
+   (≤ ~+0.06 at stacked proc-chain edges, ≤ +0.018 elsewhere, per-engagement).
+3. **✓ The declaration standard for ATI cells gains a second certifier.** A proc-less cell's scorer
+   is exact, so brute-forced = correct. An ATI cell's enumeration is graded by an integrand with a
+   measured artifact bigger than typical argmax margins — so *"brute-forced to be CORRECT"* needs the
+   chain: **declare only if the emitted layout sits within the tie band (`rankPair().band`, imported)
+   of the chain's truth-top over the engine-ranked competitor set.** For `gem+ati` the emission reads
+   0.000025 from the truth-top — truth-co-optimal — so locking it locks a correct answer whose
+   engine-side margin happens to be partly artifact: exactly the T6/T28 pattern (the comparator
+   canonicalises among ties; the EMISSION is locked). A cell whose emission is a truth-LOSER is not
+   declared, and the tool prints which layout truth prefers.
+
+⚠ The chain is a declaration-time instrument (minutes-to-hours per cell), NOT a CI gate — same
+category as `lattice-brute`. ⚠⚠ And it shares the model's own blind spots by construction where it
+REUSES conventions (externals at the call, the toll-free per-cast account): what it does NOT share is
+the mean-field proc smear, which is the one thing it exists to check.

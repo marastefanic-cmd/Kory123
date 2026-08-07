@@ -8,8 +8,8 @@ describe accepted limits and decided questions so nobody re-opens them by accide
 
 ## §1 Where the tool stands
 
-- **Scorer:** exact (the integral-plus-tie-break pair), CLOSED by user ruling, and gated eight ways
-  with negative controls — `anchors` (17/17), `law-check`, `constants-cited`, `self-consistency`
+- **Scorer:** exact (the integral-plus-tie-break pair), CLOSED by user ruling, and gated nine ways
+  with negative controls — `anchors` (29/29 since 08-06), `law-check`, `constants-cited`, `self-consistency`
   (+structural), `toll-audit --strict`, `objective-ref`, `ati-mc`, `cfg-contract --strict`, and —
   new 08-05 — `grid-invariance` (a breakpoint that changes no buff state must change no score; it was
   FALSE on the Ashtongue path until §10c, by 5.5e-3 casts, and nothing in the repo varied the grid).
@@ -78,7 +78,7 @@ That generalises T7/T8's per-cell precedent into the standing protocol: a cell b
 (1) `lattice-brute` enumerates its grid and names the argmax, AND (2) `brute-vs-search` confirms the
 tool emits it (or a score-tied, comparator-canonical member — then the EMISSION is locked, T6's
 choice). First batch: **T18–T26**, nine `icon+gem` cells across 2:00–3:00 × Lust 0:05/0:20/0:40 at
-the page-effective gear (§9z). The suite is 26 tests.
+the page-effective gear (§9z) — and the grid then completed to twelve the same day (below).
 · The grid COMPLETED the same day: T27 (3:00·0:40, 159M layouts, exact), and T28/T29 (the two 2:20
   cells where the search had BEATEN the step-10/top-16 enumeration by +0.011/+0.029 casts — an
   instrument-coverage finding, resolved by re-certifying at `--top=128` with `--check` pinned to the
