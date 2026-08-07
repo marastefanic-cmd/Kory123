@@ -37,11 +37,14 @@ a cell, it becomes an anchor: the Reference-fights strip and `tests/anchors.mjs`
 > ✅ **SUBSTANTIALLY SUPERSEDED 08-06 by the brute-declared batch T18–T26.** Under the user's ruling
 > (*"if the tests are bruteforced to be correct then they should actually become tests"*), the
 > 2:00–3:00 × three-Lust grid was re-enumerated at the CURRENT engine and page-effective gear
-> (crit 44 · Tirisfal on, §9z) and declared directly — no per-cell ruling needed any more. What
-> remains open from this package: **3:20 (all three Lust timings)** — the terminal-cluster shape this
-> package found is real and still undeclared — and 2:20 lust 0:05/0:20, pending re-certification.
-> The table below is kept as the record of the structures found; its exact seconds are stale twice
-> over (comparator + gear).
+> (crit 44 · Tirisfal on, §9z) and declared directly — no per-cell ruling needed any more.
+> ✅ **AND CLOSED WHOLE ON 08-07**: the 2:20 cells were re-certified and declared (T28/T29), and the
+> **3:20 rows are T43–T45** — the tool re-derived this package's terminal-cluster structures **to the
+> second** at current gear (its lust-0:05 emission is literally the table row below), beat the
+> step-15 enumeration by +0.46..0.57 casts with them, and the emissions were certified
+> (`--top=128 --check`). This package's ladder half has nothing left to rule on; the table below is
+> the historical record of the structures found, its exact seconds stale (comparator + gear) but its
+> SHAPES confirmed by the current engine on its own.
 
 **Instrument:** `tools/brute-cell.mjs` (rewritten 08-04 to grade on the objective pair and report
 plateaus — it had been the fifth instrument to grade on the retired sum), one complete
@@ -153,7 +156,22 @@ cell); the 12:20 families are exact `rankPair` scores of constructed schedules a
 
 ---
 
-# C. NEW-KIT TEST CANDIDATES (in flight, 08-05) — brute-forced, awaiting your rulings
+# C. NEW-KIT TEST CANDIDATES — ✅ EXECUTED AND SUBSTANTIALLY DECLARED 08-07 (was: in flight, 08-05)
+
+> ✅ **The programme this section promised ran to completion on 08-07** (`tools/cells/derive-0807.jsonl`,
+> 22 cells) and the §1c protocol declared everything that passed both halves: **T30–T42** cover
+> gem+skull (both Lust timings and h200), icon+skull, icon+mqg, skull+mqg, icon+gem+PI, the SP rungs
+> (700/1900), the no-lust 3:00, the odd-Lust 2:40, and h300/h500 — the §8w kit gap is closed for
+> every press-based track. Three closures short of "all of it", each principled:
+> · **The ATI tier is chain-REFUSED, 5 of 5 cells** (MODEL-DEFECTS §10e) — the practical `ati+scb`
+>   kits the user named are search-confirmed but the integrand's edge-compounding artifact exceeds
+>   their argmax margins, so declaring would lock layouts the truth instrument contradicts. They sit
+>   in the candidates strip; one user sentence can still declare one as a RULING, overruling §10e
+>   knowingly.
+> · **Two exact-tie plateau cells** (skull+gem 3:00, drums 2:00) are §10f — zero casts at stake,
+>   canonical member unreachable; candidates.
+> · **Drums/PI**: PI declared (T35); the drums cell is one of the §10f pair.
+> The tier framing below (practical vs consistency) did its job and is kept as the record.
 
 The declared corpus runs essentially ONE kit (Icy Veins + Icon + gem + AP + Berserking + Lust);
 **Skull, MQG, Drums, Power Infusion and Ashtongue appear in zero declared tests.** That is §8w's
@@ -181,5 +199,6 @@ coexists with Skull and costs the search no dimension; **SCB is the gem proc**, 
 `repair`, and `lattice-brute` drops any candidate `repair` rewrites, so lockout-violating layouts
 never reach the comparator.
 
-⛔ Nothing here is declared. Candidates + plateaus land below as the sweeps finish; a ruling makes one
-an anchor (strip + `tests/anchors.mjs`, in lockstep).
+⚖️ *(This line read "⛔ Nothing here is declared" until 08-07 — see the banner above: the sweeps
+finished, the §1c protocol declared T30–T42, and what stays undeclared stays for measured reasons,
+§10e/§10f.)*

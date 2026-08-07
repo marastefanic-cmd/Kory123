@@ -1,7 +1,9 @@
-// THE TESTS. There are TWENTY-NINE: seventeen the user declared exactly (T1–T17), and twelve
-// BRUTE-DECLARED (T18–T29) under the user's 08-06 ruling — *"if the tests are bruteforced to be
-// correct then they should actually become tests like all the other ones"* — each an enumerated
-// argmax the search demonstrably emits. Their header block carries the certification standard.
+// THE TESTS. There are FORTY-TWO: seventeen the user declared exactly (T1–T17), and twenty-five
+// BRUTE-DECLARED (T18–T29 on 08-06, T30–T42 on 08-07) under the user's standing ruling — *"if the
+// tests are bruteforced to be correct then they should actually become tests like all the other
+// ones"* — each an enumerated argmax the search demonstrably emits, or a certified emission
+// (--top=128 --check). The batch header blocks carry the certification standard; T43–T45 (3:20)
+// join when their emission certifications complete.
 //
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // ★★★★★★ THESE ARE HARD TESTS. THEY ARE GROUND TRUTH. — user ruling, 2026-07-30, verbatim:
@@ -538,6 +540,87 @@ const CASES = [
   { name: "T29 — 2:20, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
     T: 140, sp: 1387, crit: 44, t5two: true, lust: 20,
     want: {arcanePower: [10],  berserking: [10],  bloodlust: [20],  icyVeins: [5,120],  isc: [0,120],  scb: [5,125]} },
+
+  /* ★★★★★ T30–T45 — THE KIT/COVERAGE BATCH (08-07), the derive programme finished under the same
+     §1c protocol as T18–T29: every cell is an enumerated argmax the search demonstrably emits, or a
+     certified EMISSION (`--top=128 --check`: nothing on the enumerated lattice beats it — the
+     T28/T29 standard). This is the coverage doctrine (CLAUDE.md) executed to the end of the
+     programme: the user's Phase-3 practical kits first (gem+skull), then every other legal trinket
+     pairing, the raid externals, SP rungs, the no-lust and odd-Lust fights, high haste, and the 3:20
+     ladder. Notes that bind:
+     · The kit cells pin BUFF LOGIC where nobody plays (mqg pairings, PI) — a kit nobody plays still
+       earns coverage, per the standing ruling ("the point of the tool is to UNDERSTAND THE LOGIC").
+     · T40–T42 are the FIRST DECLARED CELLS ABOVE h=0. They pin the model's self-consistency
+       (enumerated argmax + search reach) at h ∈ {200, 300, 500}, NOT world-verified play — the
+       "high-haste plans are unverified" caveat is about the WORLD and it stands (CLAUDE.md).
+       T40's argmax presses Skull TWICE via a prepull (skull[−10,110]) with the whole terminal
+       cluster kill-flushed — the shape that forced move class 11 (the first use-count-changing
+       class) into the vocabulary.
+     · T38/T39 are the same layout with and without a Bloodlust call — at 2:40+ the icon+gem optimum
+       ignores a 1:00 Lust entirely (plateaus 602/194 wide). T44/T45 score IDENTICALLY (158.332481)
+       — the 3:00 Lust-invariance (T25–T27) one rung up.
+     · T43–T45 re-derive the 08-04 decision-package's 3:20 terminal-cluster structures TO THE SECOND
+       at current gear — the tool found the study's rows on its own (the step-15 grid was beaten by
+       +0.46..0.57 casts; the emissions are certified against it).
+     · Three cells from the programme are deliberately NOT here: the two §10f exact-tie plateaus
+       (zero casts at stake, canonical member unreachable — candidates) and every ATI-bearing cell
+       (§10e: chain-refused, 5 of 5 — the integrand's edge-compounding artifact exceeds their argmax
+       margins; candidates until that lead closes). */
+  { name: "T30 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — gem+skull — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 20, kit: ['icyVeins', 'scb', 'skull', 'arcanePower', 'berserking', 'bloodlust'],
+    // 217,676,160 layouts enumerated (step 5) · plateau 2 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [45],  berserking: [15],  bloodlust: [20],  icyVeins: [0,45],  scb: [45],  skull: [25]} },
+  { name: "T31 — 2:00, Bloodlust pinned 0:05, eff 1387 SP / 44 % crit / T5-2pc — gem+skull — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 5, kit: ['icyVeins', 'scb', 'skull', 'arcanePower', 'berserking', 'bloodlust'],
+    // certified EMISSION (--top=128 --check: nothing on the lattice beats it) — the T28/T29 standard
+    want: {arcanePower: [7],  berserking: [42],  bloodlust: [5],  icyVeins: [2,45],  scb: [7],  skull: [22]} },
+  { name: "T32 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — icon+skull — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 20, kit: ['icyVeins', 'isc', 'skull', 'arcanePower', 'berserking', 'bloodlust'],
+    // 3,276,000 layouts enumerated (step 10) · plateau 110 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [30],  berserking: [10],  bloodlust: [20],  icyVeins: [0,30],  isc: [30],  skull: [10]} },
+  { name: "T33 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — icon+mqg — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 20, kit: ['icyVeins', 'isc', 'mqg', 'arcanePower', 'berserking', 'bloodlust'],
+    // 3,057,600 layouts enumerated (step 10) · plateau 772 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [20],  berserking: [40],  bloodlust: [20],  icyVeins: [0,20],  isc: [20],  mqg: [0]} },
+  { name: "T34 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — skull+mqg — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 20, kit: ['icyVeins', 'skull', 'mqg', 'arcanePower', 'berserking', 'bloodlust'],
+    // 3,057,600 layouts enumerated (step 10) · plateau 2 · grid argmax, search emits it (bvs 08-07);
+    // the cell that forced move class 10 (the §4c packing-train constructor): its argmax is the
+    // whole train zerk[20,30]·skull[30,50]·iv[50,70]·iv[70,90] with mqg parked on Lust's END —
+    // a 3-coordinate all-or-nothing from the old vocabulary's fixed point, −0.0815 casts missed
+    want: {arcanePower: [50],  berserking: [20],  bloodlust: [20],  icyVeins: [50,70],  mqg: [60],  skull: [30]} },
+  { name: "T35 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — icon+gem+PI — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 20, kit: ['icyVeins', 'isc', 'scb', 'powerInfusion', 'arcanePower', 'berserking', 'bloodlust'],
+    // 45,864,000 layouts enumerated (step 10) · plateau 418 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [20],  berserking: [40],  bloodlust: [20],  icyVeins: [0,20],  isc: [20],  powerInfusion: [0],  scb: [20]} },
+  { name: "T36 — 2:00, Bloodlust pinned 0:20, eff 1900 SP / 44 % crit / T5-2pc — icon+gem — BRUTE-DECLARED",
+    T: 120, sp: 1900, crit: 44, t5two: true, lust: 20,
+    // 217,676,160 layouts enumerated (step 5) · plateau 326 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [20],  berserking: [40],  bloodlust: [20],  icyVeins: [0,20],  isc: [20],  scb: [20]} },
+  { name: "T37 — 2:00, Bloodlust pinned 0:05, eff 700 SP / 44 % crit / T5-2pc — icon+gem — BRUTE-DECLARED",
+    T: 120, sp: 700, crit: 44, t5two: true, lust: 5,
+    // 217,676,160 layouts enumerated (step 5) · plateau 409 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [15],  berserking: [5],  bloodlust: [5],  icyVeins: [15,35],  isc: [15],  scb: [15]} },
+  { name: "T38 — 3:00, no Bloodlust, eff 1387 SP / 44 % crit / T5-2pc — icon+gem — BRUTE-DECLARED",
+    T: 180, sp: 1387, crit: 44, t5two: true, kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking'],
+    // 159,038,208 layouts enumerated (step 10) · plateau 602 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [130],  berserking: [130],  icyVeins: [7,130],  isc: [7,130],  scb: [7,130]} },
+  { name: "T39 — 2:40, Bloodlust pinned 1:00, eff 1387 SP / 44 % crit / T5-2pc — icon+gem — BRUTE-DECLARED",
+    T: 160, sp: 1387, crit: 44, t5two: true, lust: 60,
+    // 45,986,292 layouts enumerated (step 10) · plateau 194 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [130],  berserking: [130],  bloodlust: [60],  icyVeins: [7,130],  isc: [7,130],  scb: [7,130]} },
+  { name: "T40 — 2:00, Bloodlust pinned 0:20, eff 1600 SP / 51 % crit / T5-2pc, h200 — gem+skull — BRUTE-DECLARED",
+    T: 120, sp: 1600, crit: 51, t5two: true, lust: 20, haste: 200, kit: ['icyVeins', 'scb', 'skull', 'arcanePower', 'berserking', 'bloodlust'],
+    // 217,676,160 layouts enumerated (step 5) · plateau 138 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [100],  berserking: [100],  bloodlust: [20],  icyVeins: [0,100],  scb: [100],  skull: [-10,110]} },
+  { name: "T41 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc, h300 — icon+gem — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 20, haste: 300,
+    // 217,676,160 layouts enumerated (step 5) · plateau 763 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [20],  berserking: [60],  bloodlust: [20],  icyVeins: [0,75],  isc: [20],  scb: [20]} },
+  { name: "T42 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc, h500 — icon+gem — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 20, haste: 500,
+    // 217,676,160 layouts enumerated (step 5) · plateau 807 · grid argmax, search emits it (bvs 08-07)
+    want: {arcanePower: [10],  berserking: [60],  bloodlust: [20],  icyVeins: [0,75],  isc: [10],  scb: [10]} },
 ];
 
 // T3 uses a real BOSS preset, so its cfg comes from the fight table (sp 1387, crit 38, Lust pinned 0:05)
