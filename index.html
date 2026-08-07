@@ -3597,26 +3597,41 @@ function phaseRerank(s0, cfg) {
       pins.sort((a, b) => a - b);
       let hit = false;
       for (const e of pins) {
-        const cand = cloneS(s);
-        if (keys.includes(ivK) && (cand[ivK] || []).length) {
-          cand[ivK] = cand[ivK].map(t => Math.round(t));
-          cand[ivK][0] = e;
-          for (let j = 1; j < cand[ivK].length; j++)
-            cand[ivK][j] = cand[ivK][j - 1] + BUFFS[ivK].dur + ATI.dur;
-          cand[ivK].sort((a, b) => a - b);
+        /* Two variants per pin, tried in order. A is the original §10d shape: the iv chain with every
+           value single (and Berserking) ENDING at e + ATI.dur. B (added 08-07, the `ati+gem h200`
+           miss): the SAME iv chain but the value singles UNTOUCHED and Berserking CONTINUING the
+           chain — pressed at the last Icy Veins press + dur + carry, i.e. the §19 structure extended
+           through the next haste window instead of closed at the seam. At h200 the argmax is exactly
+           that (iv[60,85] · zerk@110 with the cluster left at its own basin, +0.019 casts, every 1-
+           and 2-coordinate partial downhill — the subset probe is in the 08-07 batch record); at h0
+           variant A still wins and B is refused, so both cells emit their argmax from one vocabulary. */
+        for (const variant of ["A", "B"]) {
+          const cand = cloneS(s);
+          if (keys.includes(ivK) && (cand[ivK] || []).length) {
+            cand[ivK] = cand[ivK].map(t => Math.round(t));
+            cand[ivK][0] = e;
+            for (let j = 1; j < cand[ivK].length; j++)
+              cand[ivK][j] = cand[ivK][j - 1] + BUFFS[ivK].dur + ATI.dur;
+            cand[ivK].sort((a, b) => a - b);
+          }
+          if (variant === "A") {
+            for (const k of keys) {
+              if (k === ivK) continue;
+              const kind = BUFFS[k].kind;
+              const value = kind === "sp" || kind === "dmg";
+              if ((value || k === zkK) && (cand[k] || []).length === 1)
+                cand[k] = [e + ATI.dur - BUFFS[k].dur];
+            }
+          } else if (keys.includes(zkK) && (cand[zkK] || []).length === 1 && (cand[ivK] || []).length) {
+            cand[zkK] = [cand[ivK][cand[ivK].length - 1] + BUFFS[ivK].dur + ATI.dur];
+          } else continue;
+          let legal = true;
+          for (const k of keys) for (const t of (cand[k] || []))
+            if (t < earliestPress(k, cfg) || t > cfg.T - 1) { legal = false; break; }
+          if (!legal) continue;
+          if (tryCand(cand)) { moved = true; hit = true; break; }
         }
-        for (const k of keys) {
-          if (k === ivK) continue;
-          const kind = BUFFS[k].kind;
-          const value = kind === "sp" || kind === "dmg";
-          if ((value || k === zkK) && (cand[k] || []).length === 1)
-            cand[k] = [e + ATI.dur - BUFFS[k].dur];
-        }
-        let legal = true;
-        for (const k of keys) for (const t of (cand[k] || []))
-          if (t < earliestPress(k, cfg) || t > cfg.T - 1) { legal = false; break; }
-        if (!legal) continue;
-        if (tryCand(cand)) { moved = true; hit = true; break; }
+        if (hit) break;
       }
       if (hit) { /* adopted — the round continues from the new fixed point */ }
     }
@@ -3644,6 +3659,105 @@ function phaseRerank(s0, cfg) {
           for (const d of [-5, -3, -2, -1, 1, 2, 3, 5]) {
             if (tryCand(shiftedAt(s, [press[a], press[b]], d))) { moved = true; hit = true; break; }
           }
+        }
+      }
+    }
+    /* ★★★★★ 10. THE PACKING-TRAIN CONSTRUCTOR — added 08-07, and it is §4c BUILT rather than slid.
+       The 08-07 derivation batch found three kit cells whose argmax is a whole packing train the
+       vocabulary can only preserve, never CREATE — the subset probes (batch record) read:
+         skull+mqg  −0.0815: minimal improving move iv#0→50 & iv#1→70 & AP→50, i.e. the full chain
+                    zerk[20,30]·skull[30,50]·iv[50,70]·iv[70,90] anchored on the Lust CALL, with mqg
+                    left in place and the value single riding a chain segment's start;
+         skull+gem  −0.0185: the same shape anchored at call−5 with iv#0 left at the pull —
+                    5 coordinates, NO improving subset short of all five;
+         icon+skull −0.0148: a CO-START block (zerk and skull pressed together at call−10, ending on
+                    the call) with iv#1 abutting the block's end — again all-five-or-nothing.
+       Class 3c slides an EXISTING abutting train as a unit; nothing proposes the train from scratch,
+       and every partial construction is downhill (that is what a coupled optimum means). So build it:
+         · windows = every haste-kind press (mult/rating), ≤5 of them or the class stands down;
+         · anchors = the pinned calls' lead grid (call − {0,5,10,15} — class 5's own grid) and the
+           pinned window ends, plus the pull;
+         · keep-sets — the train needn't take every window: keep NONE, keep the presses already
+           earlier than the anchor (the skull+gem shape: iv#0 stays on the pull), or keep any ONE
+           window in place (the skull+mqg shape: mqg stays put);
+         · orders — all permutations when ≤4 windows chain (24), three canonical orders when 5 do;
+         · co-start — the icon+skull shape: first use of each track pressed together AT the anchor,
+           later uses chained off the block's end (the ⩽-anchor keep-set pairs with this);
+         · value singles co-move to ONE shared position among the first chain-segment starts, or stay
+           (value stacks on value — ESTABLISHED-FACTS §4, the same argument class 5 makes).
+       Everything is derived from §4c and the cfg; nothing is enumerated from the cell.
+       ⚠⚠ GATED ON `!moved` AND RUNNING LAST, after class 9 — the standing position lesson — so it
+       only ever extends the joint fixed point, adopts one candidate per round through the same
+       ratcheted `tryCand`, and a cell where every proposal is refused is byte-identical. Cost is a
+       few thousand tryCands at the fixed point only (~1 s worst case, measured on the 5-window kit;
+       0 on kits with <2 haste windows). */
+    if (!moved) {
+      const hasteP = [];
+      for (const k of keys) {
+        const kind = BUFFS[k].kind;
+        if (kind !== "mult" && kind !== "rating") continue;
+        (s[k] || []).forEach((_, i) => hasteP.push({ k, i, dur: BUFFS[k].dur }));
+      }
+      const valueK = keys.filter(k => (BUFFS[k].kind === "sp" || BUFFS[k].kind === "dmg") && (s[k] || []).length === 1);
+      if (hasteP.length >= 2 && hasteP.length <= 5) {
+        const anchors = new Set([0]);
+        for (const pk of Object.keys(cfg.fixed || {}))
+          for (const t of (cfg.fixed[pk] || [])) {
+            const c0 = Math.round(t);
+            for (const g of [0, 5, 10, 15]) anchors.add(c0 - g);
+            anchors.add(c0 + BUFFS[pk].dur);
+          }
+        const perms = arr => arr.length <= 1 ? [arr] :
+          arr.flatMap((x, i) => perms([...arr.slice(0, i), ...arr.slice(i + 1)]).map(p => [x, ...p]));
+        const ordersOf = chain => chain.length <= 4 ? perms(chain)
+          : [chain,
+             [...chain].sort((x, y) => x.dur - y.dur || Math.round(s[x.k][x.i]) - Math.round(s[y.k][y.i])),
+             [...chain].sort((x, y) => y.dur - x.dur || Math.round(s[x.k][x.i]) - Math.round(s[y.k][y.i]))];
+        let hit = false;
+        for (const A of [...anchors].sort((x, y) => x - y)) {
+          if (A < 0) continue;
+          // keep-sets: none · everything already earlier than the anchor · each single window
+          const keepSets = [{ tag: "none", test: () => false },
+                            { tag: "early", test: p => Math.round(s[p.k][p.i]) < A }];
+          for (let w = 0; w < hasteP.length; w++) keepSets.push({ tag: "one", test: p => p === hasteP[w] });
+          for (const ks2 of keepSets) {
+            const chainWins = hasteP.filter(p => !ks2.test(p));
+            if (chainWins.length < 2) continue;
+            const coStarts = ks2.tag === "early" ? [false, true] : [false];
+            for (const coStart of coStarts) {
+              for (const ord of ordersOf(chainWins)) {
+                const cand = cloneS(s);
+                for (const k of keys) cand[k] = cand[k].map(t2 => Math.round(t2));
+                const segStarts = [];
+                if (!coStart) {
+                  let tcur = A;
+                  for (const p of ord) { cand[p.k][p.i] = tcur; segStarts.push(tcur); tcur += p.dur; }
+                } else {
+                  const firsts = [], laters = [], seenK = new Set();
+                  for (const p of ord) { if (seenK.has(p.k)) laters.push(p); else { seenK.add(p.k); firsts.push(p); } }
+                  if (!firsts.length) continue;
+                  let tcur = A + Math.max(...firsts.map(p => p.dur));
+                  for (const p of firsts) cand[p.k][p.i] = A;
+                  segStarts.push(A);
+                  for (const p of laters) { cand[p.k][p.i] = tcur; segStarts.push(tcur); tcur += p.dur; }
+                }
+                for (const k of keys) cand[k].sort((x, y) => x - y);
+                for (const vp of [null, ...segStarts.slice(0, 4)]) {
+                  const c2 = cloneS(cand);
+                  if (vp !== null) for (const k of valueK) c2[k] = [vp];
+                  let legal = true;
+                  for (const k of keys) { for (const t2 of (c2[k] || []))
+                    if (t2 < earliestPress(k, cfg) || t2 > cfg.T - 1) { legal = false; break; } if (!legal) break; }
+                  if (!legal) continue;
+                  if (tryCand(c2)) { moved = true; hit = true; break; }
+                }
+                if (hit) break;
+              }
+              if (hit) break;
+            }
+            if (hit) break;
+          }
+          if (hit) break;
         }
       }
     }
