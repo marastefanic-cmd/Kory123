@@ -603,24 +603,29 @@ const CASES = [
     want: {arcanePower: [15],  berserking: [5],  bloodlust: [5],  icyVeins: [15,35],  isc: [15],  scb: [15]} },
   { name: "T38 — 3:00, no Bloodlust, eff 1387 SP / 44 % crit / T5-2pc — icon+gem — BRUTE-DECLARED",
     T: 180, sp: 1387, crit: 44, t5two: true, kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking'],
-    // 159,038,208 layouts enumerated (step 10) · plateau 602 · grid argmax, search emits it (bvs 08-07)
-    want: {arcanePower: [130],  berserking: [130],  icyVeins: [7,130],  isc: [7,130],  scb: [7,130]} },
+    // 159,038,208 layouts enumerated (step 10) · plateau 602 — locked from the EMISSION: score-tied
+    // with the grid argmax to the float floor (Δ = 2e-14) and comparator-CANONICAL (earliest vector;
+    // the enumeration's pair-grade is only as canonical as its candidate set on a 602-member plateau)
+    want: {arcanePower: [7],  berserking: [7],  icyVeins: [7,127],  isc: [7,127],  scb: [7,127]} },
   { name: "T39 — 2:40, Bloodlust pinned 1:00, eff 1387 SP / 44 % crit / T5-2pc — icon+gem — BRUTE-DECLARED",
     T: 160, sp: 1387, crit: 44, t5two: true, lust: 60,
-    // 45,986,292 layouts enumerated (step 10) · plateau 194 · grid argmax, search emits it (bvs 08-07)
-    want: {arcanePower: [130],  berserking: [130],  bloodlust: [60],  icyVeins: [7,130],  isc: [7,130],  scb: [7,130]} },
+    // 45,986,292 layouts enumerated (step 10) · plateau 194 — locked from the EMISSION (score-tied
+    // to the float floor, comparator-canonical; same layout as T38 with the 1:00 Lust ignored)
+    want: {arcanePower: [7],  berserking: [7],  bloodlust: [60],  icyVeins: [7,127],  isc: [7,127],  scb: [7,127]} },
   { name: "T40 — 2:00, Bloodlust pinned 0:20, eff 1600 SP / 51 % crit / T5-2pc, h200 — gem+skull — BRUTE-DECLARED",
     T: 120, sp: 1600, crit: 51, t5two: true, lust: 20, haste: 200, kit: ['icyVeins', 'scb', 'skull', 'arcanePower', 'berserking', 'bloodlust'],
     // 217,676,160 layouts enumerated (step 5) · plateau 138 · grid argmax, search emits it (bvs 08-07)
     want: {arcanePower: [100],  berserking: [100],  bloodlust: [20],  icyVeins: [0,100],  scb: [100],  skull: [-10,110]} },
   { name: "T41 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc, h300 — icon+gem — BRUTE-DECLARED",
     T: 120, sp: 1387, crit: 44, t5two: true, lust: 20, haste: 300,
-    // 217,676,160 layouts enumerated (step 5) · plateau 763 · grid argmax, search emits it (bvs 08-07)
-    want: {arcanePower: [20],  berserking: [60],  bloodlust: [20],  icyVeins: [0,75],  isc: [20],  scb: [20]} },
+    // 217,676,160 layouts enumerated (step 5) · plateau 763 — locked from the EMISSION (iv#1@70:
+    // score-tied to the float floor with the grid's 75, comparator-canonical by the earliest vector)
+    want: {arcanePower: [20],  berserking: [60],  bloodlust: [20],  icyVeins: [0,70],  isc: [20],  scb: [20]} },
   { name: "T42 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc, h500 — icon+gem — BRUTE-DECLARED",
     T: 120, sp: 1387, crit: 44, t5two: true, lust: 20, haste: 500,
-    // 217,676,160 layouts enumerated (step 5) · plateau 807 · grid argmax, search emits it (bvs 08-07)
-    want: {arcanePower: [10],  berserking: [60],  bloodlust: [20],  icyVeins: [0,75],  isc: [10],  scb: [10]} },
+    // 217,676,160 layouts enumerated (step 5) · plateau 807 — locked from the EMISSION (iv#1@70,
+    // as T41: score-tied to the float floor, comparator-canonical by the earliest vector)
+    want: {arcanePower: [10],  berserking: [60],  bloodlust: [20],  icyVeins: [0,70],  isc: [10],  scb: [10]} },
 ];
 
 // T3 uses a real BOSS preset, so its cfg comes from the fight table (sp 1387, crit 38, Lust pinned 0:05)
