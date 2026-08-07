@@ -3770,6 +3770,62 @@ function phaseRerank(s0, cfg) {
         }
       }
     }
+    /* ★★★★ 11. THE PREPULL CHAIN RE-ANCHOR — added 08-07 (the `skull+gem h200` miss), and it is the
+       first class that changes a track's USE COUNT. `maxUses` allocates ⌊T/sep⌋+1 uses, but every
+       seed places them post-pull, so the last lands AT T and `repair` drops it before the descent
+       ever runs — the (n+1)-use basin is unreachable from birth. At h200 the argmax presses Skull
+       TWICE via a prepull (`skull[−10, 110]`, exactly CD-spaced, the terminal window half-spent past
+       the kill and still worth it), and no move class can add a press. ⇒ when a track's current count
+       sits BELOW its cap, propose the whole CD-chain re-anchored from the RULES §7b prepull grid
+       (strictly inside (−dur, 0), 5 s steps — the same grid the declared T10 prepull double sits on).
+       Icy Veins is excluded on purpose: its chain has Cold Snap arithmetic and belongs to 3d and the
+       §9d relocation. Gated `!moved`, running LAST — the standing position lesson. */
+    if (!moved) {
+      let hit = false;
+      for (const k of keys) {
+        if (k === "icyVeins") continue;
+        const cap = maxUses(k, cfg);
+        const cur = (s[k] || []).length;
+        if (!cur || cur >= cap) continue;
+        const r = trackRule(k, cfg);
+        for (const a of [-5, -10, -15]) {
+          if (a <= -BUFFS[k].dur + 1 || a < earliestPress(k, cfg)) continue;
+          const times = [];
+          for (let t2 = a; t2 <= cfg.T - 1 && times.length < Math.min(cap, 64); t2 += r.sep) times.push(t2);
+          if (times.length <= cur) continue;
+          const cand = cloneS(s);
+          cand[k] = times;
+          if (tryCand(cand)) { moved = true; hit = true; break; }
+          /* Variant B — the chain PLUS the kill-flush terminal cluster, because the h200 argmax is a
+             5-unit all-or-nothing (measured: every 4-subset is −0.45…−0.63 while the whole move is
+             +0.0049): skull re-chained to the prepull AND every other track's LAST press co-pressed
+             at `T − dur(longest moved window)`, the windows flushing into the kill together — the
+             kill-end mirror of the opener cluster. Derived from the plan, not enumerated: the moved
+             set is each unfixed track's final use, the co-second is the engine's own kill-flush
+             anchor for the longest of them. */
+          const candB = cloneS(cand);
+          const movedLast = [];
+          for (const k2 of keys) {
+            if (k2 === k || !(candB[k2] || []).length) continue;
+            movedLast.push(k2);
+          }
+          if (movedLast.length) {
+            const durMax = Math.max(...movedLast.map(k2 => BUFFS[k2].dur));
+            const cs = cfg.T - durMax;
+            for (const k2 of movedLast) {
+              candB[k2] = candB[k2].map(t2 => Math.round(t2));
+              candB[k2][candB[k2].length - 1] = cs;
+              candB[k2].sort((x, y) => x - y);
+            }
+            let legal = true;
+            for (const k2 of keys) { for (const t2 of (candB[k2] || []))
+              if (t2 < earliestPress(k2, cfg) || t2 > cfg.T - 1) { legal = false; break; } if (!legal) break; }
+            if (legal && tryCand(candB)) { moved = true; hit = true; break; }
+          }
+        }
+        if (hit) break;
+      }
+    }
     if (!moved) break;
   }
   return { s, val };
