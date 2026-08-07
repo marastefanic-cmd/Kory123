@@ -105,7 +105,14 @@ do is declare their own tests — that is the line that killed `exact-match`. Th
   candidate layout, its tie plateau (the §8y precedent requires you to have seen it), and its
   certification (beats the complete anchor-and-chain family; audit-fixed-point). Ruling a cell
   declares it as a new anchor (the strip and `tests/anchors.mjs` move in lockstep, as always).
-  ⚠ Also queued for a ruling there: no declared layout anywhere runs with **Ashtongue enabled**.
+  ✅ *(08-06/08-07: substantially superseded — the 2:00–3:00 rows are declared as T18–T29 under the
+  §1c protocol, and the 3:20 rows re-enumerated at page-effective gear are in the 08-07 batch.)*
+  ⚠ Also queued for a ruling there: no declared layout anywhere runs with **Ashtongue enabled** —
+  ⛔ *and since 08-07 that is a MEASURED hold, not a queue item: the exact chain refuses every ATI
+  cell (§10e — the emissions are truth-losers by 0.007–0.016 casts under the edge-compounding
+  artifact), so ATI cells stay candidates until that lead closes. One user sentence can still
+  declare one as a RULING (your prerogative, like any declaration) — but the tool's own certifier
+  will keep saying no, and the §10e record is what you would be overruling.*
 - **B. The 12:20 alignment study** — spam-on-cooldown vs hold-for-alignment vs gem-on-the-Lusts,
   scored exactly at three Lust timings, plus the tool's own (much better) free answer. The study's
   verdict and its honest limits are in the package.
@@ -129,6 +136,12 @@ do is declare their own tests — that is the line that killed `exact-match`. Th
 - **The ATI transient's last +0.004…+0.028 casts per engagement** (§10c) — one-directional, localised
   to two named mechanisms (ramp window shrinkage, strata drain at a haste edge), both tried in the
   reference and both over-correcting in their crude form. Not open work; a named target if it ever is.
+  ⚠ **Re-bounded 08-07 (§10e): at edge-DENSE layouts (IV/zerk windows stacking edges inside one 5 s
+  memory window) the residual compounds to ±0.07 and flips a real Berserking placement against §4c.**
+  The single-edge smear is provably the phase-average (exact); the compounding is the named lead. The
+  practical containment: ATI cells never declare as tests (the chain certifier gates them), the §19
+  guidance says trust §4c over a proc-sized disagreement, and the end-user cost of an emitted ATI
+  plan is ~0.011–0.016 real casts.
 
 ## §4 Decisions taken 08-04 under the clean-the-slate delegation (any one is reversible by a sentence)
 
@@ -167,7 +180,10 @@ do is declare their own tests — that is the line that killed `exact-match`. Th
 golden-corpus green ≠ off-corpus safe · a second definition of anything needs a freshness gate in
 the same commit · every new CI job needs a negative control before its green is believed · cache
 keys must cover the engine hash + the FULL cfg signature · never derive the wowsims URL from the Go
-module path · wall-clock numbers compare only within a same-session pair · and the one earned four
+module path · wall-clock numbers compare only within a same-session pair · any change to the proc
+model validates against the exact chain FIRST (`tools/ati-chain.mjs` — the §10a retraction and the
+§10e first-draft are both this trap sprung; and when an instrument certifies against a competitor
+set, the set's DEPTH is part of the claim) · and the one earned four
 times over: **an instrument that flatters or blinds itself — read a tool's OUTPUT, not its verdict
 line, and give every instrument a control that must fail.**
 
