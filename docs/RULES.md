@@ -1967,16 +1967,18 @@ are unmoved — peak at gap 5, cliff at 6 — and so is the causal table below; 
 roughly a third (the pre-§10c reading of this same scan was `−0.022/−0.015/−0.004/+0.010/+0.026/−0.040`),
 because the old engine over-credited the proc's memory. ⇒ quote the shape, and re-measure before
 quoting a number.
-⚠⚠ **AND THE EXACT CHAIN DEMOTED THE RIDGE TO A PLATEAU MEMBER — 08-07, MODEL-DEFECTS §10e.** The
-truth instrument (`tools/ati-chain.mjs`) says the ridge's fine structure is mostly the model talking
-to itself: at the `gem+ati` cell, iv#1 at gap 5 vs gap 10 (85 vs 90) — which this table separates by
-~0.05 casts — are truth-TIED to **0.000025**, and gaps {0, 5, 10, 15} all sit inside a 0.003
-truth-plateau. The residual preference for the abutting second is the strata-drain artifact at
-stacked edges, not physics. What SURVIVES: anchoring the chain at the carry is truth-co-optimal (it
-loses nothing), so the §19 shape stays the canonical prescription — but a player missing the ridge by
-5–10 s loses nothing real, and the cliff's −0.045 sits between two truth-tied measured points, so
-treat it as unestablished. The causal table below (the peak FOLLOWS the Lust call) is untouched —
-that is structure, not magnitude.
+⚠⚠ **AND THE EXACT CHAIN DEMOTED THE RIDGE TO A PLATEAU MEMBER — AND CAUGHT A REAL FLIP — 08-07,
+MODEL-DEFECTS §10e.** The truth instrument (`tools/ati-chain.mjs`) says the ridge's fine structure is
+mostly the model talking to itself: at the `gem+ati` cell, iv#1 at gap 5 vs gap 10 (85 vs 90) — which
+this table separates by ~0.05 casts — are truth-TIED to **0.000025** (at fixed Berserking), so a
+player missing the ridge by 5–10 s loses nothing real, and the cliff's −0.045 sits between two
+truth-tied measured points — treat it as unestablished. ⛔ **Worse than noise, though: the same
+artifact FLIPS the Berserking placement.** The engine's emitted `zerk@55` (overlapping Lust's tail)
+is a truth-LOSER by 0.011 casts to `zerk@60` — flush on Lust's end, **exactly §4c's packing law** —
+which the engine ranks 0.119 lower. ⇒ in an ATI cell, where the emitted plan disagrees with §4c by a
+proc-sized margin, trust §4c; and no ATI cell declares as a test until §10e's compounding lead
+closes. The causal table below (the peak FOLLOWS the Lust call) is untouched — that is structure,
+not magnitude.
 
 Verified causally by moving Bloodlust and watching the optimum follow it:
 

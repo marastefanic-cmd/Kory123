@@ -34,10 +34,12 @@ same banner for the older packages, which are all stale for exactly this reason.
   2:00–3:00 × Lust grid cells exactly as enumerated/certified on the 08-06 engine (incl. the
   `--top=128 --check` re-certifications of the two 2:20 cells). Frozen with the declaration; a future
   engine change does not stale a declared test (anchors carries the lock), it stales *candidates*.
-- `derive-0806.jsonl` — the §10c-engine re-cut of the `gem+ati` cell (see above). Its declaration
-  additionally carries the exact-chain certificate (`tools/ati-chain.mjs` — MODEL-DEFECTS §10e:
-  ATI cells declare only when the emission is truth-co-optimal, because the integrand's drain
-  artifact at proc-chain edges exceeds typical argmax margins).
+- `derive-0806.jsonl` — the §10c-engine re-cut of the `gem+ati` cell (see above). ⛔ **CHAIN-REFUSED
+  08-07, like every ATI cell so far** (`tools/ati-chain.mjs` — MODEL-DEFECTS §10e): the integrand's
+  edge-compounding artifact spans ±0.07 casts across this cell's layouts and flips the Berserking
+  placement against §4c, so the emission is a truth-loser by 0.011 and **ATI cells are candidates,
+  not tests**, until the §10e lead closes. The enumeration itself stays valid as a record of the
+  ENGINE's argmax; what it cannot certify is correctness.
 - `derive-0807.jsonl` — the remaining programme, cut 08-07 on the final engine (scorer unchanged
   since §10c; move classes 8–9 are search-only, so gradings survive them): the Phase-3 practical
   kits (skull+gem, ati+gem variants), the coverage kits, the 3:20 ladder, SP rungs, and the

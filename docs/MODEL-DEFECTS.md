@@ -5289,55 +5289,69 @@ the structure means nothing there). Verified: the search now emits the argmax ex
 was never only about search reach. The §10c residuals (≤ +0.018) exceed this cell's 0.010 argmax
 margin, so which plateau member is "correct" can still flip when they close. The cell sits in the
 candidates strip, now matching the tool's own output; declare it when the residuals are bounded below
-the margins being locked. ⇒ **§10e did exactly that measurement (08-07)**: the residual differential
-at this cell is +0.049 — the fear was RIGHT — and the resolution is the chain-certification standard
-recorded there, under which this cell IS declarable (its emission is truth-co-optimal to 2.5e-5).
+the margins being locked. ⇒ **§10e did exactly that measurement (08-07)**: the residual spread at
+this cell is ±0.07 casts across layouts — the fear was RIGHT, and BIGGER than feared — and the
+resolution is the chain-certification standard recorded there, under which this cell is **REFUSED**
+(the emission is a truth-loser by 0.011; the truth winner is the §4c packing-law placement the
+engine's proc artifact ranks 0.119 lower). ATI cells stay candidates, not tests.
 
-## §10e — ⚖️ THE DRAIN RESIDUAL, MEASURED AT A PROC-CHAIN EDGE — the §19 ridge's remaining margin is ARTIFACT, the emitted layout is truth-co-optimal anyway, and the residual is now an EXPLAINED accepted limit (08-07)
+## §10e — ⚖️ THE DRAIN RESIDUAL AT STACKED EDGES: ±0.07 per-engagement, it FLIPS a real preference, and the chain certifier REFUSES every ATI cell (08-07)
+
+⚠⚠ **THIS SECTION WAS WRITTEN TWICE IN ONE DAY AND THE FIRST VERSION WAS WRONG — read this history
+first, it is the section's own best lesson.** The first draft (from a scratchpad probe) concluded the
+`gem+ati` emission was *"truth-co-optimal to 2.5e-5"* and declarable. That conclusion was an artifact
+of the probe's own top-24 engine-ranked cutoff: the layouts the engine most under-prices are exactly
+the ones a shallow engine-ranked set never chain-ranks. The committed tool's deeper set found the
+real truth-winner sitting at engineΔ **−0.119** — outside the scratchpad's horizon. ⇒ when an
+instrument certifies against a competitor set, the set's DEPTH is part of the claim.
 
 The instrument §12.3a said was missing now exists: `tools/ati-chain.mjs`, the exact `(t, rem)` Markov
 chain rebuilt as a committed tool and extended to full LAYOUTS (press→fire at path-dependent
 boundaries, value windows at completion, the boundary credit — every engine execution convention
 replicated, validated to 7e-14 against the ATI-off walk and to ±0.0007 against §12.3a's published
-residual table, with a dead-proc-branch negative control). Chain-ranking the engine's top 24 layouts
-around the `gem+ati` argmax:
+residual table, with a dead-proc-branch negative control). Its verdicts on all three ATI cells cut so
+far, each `⛔ NOT CERTIFIED` (run: `node tools/ati-chain.mjs --cells=…`, exit 1):
 
-| layout | engine Δ vs argmax | chain E | engine − chain |
-|---|---|---|---|
-| `iv[60,85] · scb/AP@50 · zerk@55` (engine argmax) | 0.000000 | 103.763966 | **+0.056** |
-| `iv[60,90] · …` (truth top) | −0.049392 | 103.763990 | **+0.007** |
-| `iv[60,95] · …` | −0.047001 | 103.763430 | +0.010 |
-| `iv[60,80] · …` | −0.011887 | 103.760842 | +0.048 |
+| cell | emission | truth winner | truth gap | engine's error on the winner |
+|---|---|---|---|---|
+| gem+ati · 2:00 L0:20 | `iv[60,85] · scb/AP@50 · zerk@55` | same but **zerk@60** | 0.0112 | ranked **−0.119** below emission |
+| gem+ati · 2:00 L0:05 | `iv[45,70] · scb/AP@35 · zerk@40` | same but **zerk@45** | 0.0157 | ranked −0.119 below |
+| gem+ati · 3:00 L0:20 | `AP/scb@27 · iv[125,150] · scb#1@150 · zerk@155` | 1-s shifts (AP/scb@28, scb#1@155) | 0.0071 | ranked −0.001 below |
 
-Three findings, one resolution:
+Four findings:
 
-1. **The §19 ridge's residual preference is ~100 % artifact.** The engine separates iv#1@85 from
-   iv#1@90 by 0.049 casts; the truth chain says they differ by **0.000025** — a dead tie. The whole
-   structure family (iv#1 ∈ {80, 85, 90, 95}) is a truth-plateau within 0.003. The engine's
-   preference for the abutting second (window start exactly on the proc carry's end) is the
-   strata-drain residual compounding at STACKED edges — the carry's fold at 80 is still draining when
-   iv#1's edge folds again at 85. At +0.056 it is **3× the ≤+0.018 bound** §12.3a recorded, because
-   that bound was measured on bare/Lust fights and IV windows add haste edges.
-2. **⛔ And the residual is NOT fixable in-model — settled by algebra, not fatigue.** The continuum's
-   drain `fit = (DUR − consumed)/a_s` is EXACTLY the uniform-phase average of the true integer
-   survivor count: `E[⌈(X−δ)/a⌉] = X/a` identically for `δ ~ U[0, a)`. The integrand is already the
-   correct phase-average; what remains is the truth's phase NON-uniformity at proc-chain edges (a
-   self-press fires ON a completion boundary, so its edge phase is correlated with the lattice) plus
-   the count↔phase covariance — and pricing either requires the cast lattice, which may not re-enter
-   the integrand (§8l). §12.3a's *"the correction is not simply c_ρ … no candidate has been
-   measured"* is upgraded: **any in-model candidate is structurally barred**, because the only
-   information that separates the continuum from the truth is banned by the project's own
-   architecture. The residual moves from "lead" to **explained accepted limit with a measured bound**
-   (≤ ~+0.06 at stacked proc-chain edges, ≤ +0.018 elsewhere, per-engagement).
-3. **✓ The declaration standard for ATI cells gains a second certifier.** A proc-less cell's scorer
-   is exact, so brute-forced = correct. An ATI cell's enumeration is graded by an integrand with a
-   measured artifact bigger than typical argmax margins — so *"brute-forced to be CORRECT"* needs the
-   chain: **declare only if the emitted layout sits within the tie band (`rankPair().band`, imported)
-   of the chain's truth-top over the engine-ranked competitor set.** For `gem+ati` the emission reads
-   0.000025 from the truth-top — truth-co-optimal — so locking it locks a correct answer whose
-   engine-side margin happens to be partly artifact: exactly the T6/T28 pattern (the comparator
-   canonicalises among ties; the EMISSION is locked). A cell whose emission is a truth-LOSER is not
-   declared, and the tool prints which layout truth prefers.
+1. **The residual is NOT one-directional and NOT ≤ +0.018 — it spans −0.074 … +0.056 across layouts
+   of ONE cell.** The emission (`zerk@55`, Berserking overlapping Bloodlust's tail — edge-dense)
+   carries engine−truth **+0.056**; the truth winner (`zerk@60`, flush after Lust) carries **−0.074**.
+   The §12.3a bound was measured on bare/Lust fights; every IV/zerk window adds haste edges, and the
+   error compounds per edge inside one 5 s memory window.
+2. **★★ It flips a REAL preference, and the flip runs AGAINST the packing law.** Truth says
+   Berserking belongs flush on Lust's end — **§4c's own prescription** — by 0.011 casts. The engine's
+   proc term prefers the overlapped placement by 0.119, because edge-dense layouts inflate the
+   artifact in their own favour. ⇒ the chain VINDICATES §4c against the proc model: in ATI cells,
+   when the engine's placement disagrees with the packing law by a proc-sized margin, trust the law.
+   (The §19 ridge finding from the first draft still holds where it was measured: at FIXED zerk, iv#1
+   ∈ {85, 90} remain truth-tied to 2.5e-5 — the ridge preference is still artifact.)
+3. **The single-edge algebra stands; the COMPOUNDING is the open mechanism.** Per edge, the
+   continuum's drain `fit = (DUR − consumed)/a_s` is exactly the uniform-phase average of the integer
+   truth (`E[⌈(X−δ)/a⌉] = X/a` for `δ ~ U[0, a)`), so a lone edge is priced right in expectation and
+   the first draft's "structurally barred" verdict was TOO STRONG. What the integrand does at a
+   SECOND edge inside the same 5 s window is smear an already-smeared state — and a smear of a smear
+   is not the phase-average of the compound process (the correlations between the edges' phases are
+   lost, and re-deriving them needs the joint distribution, i.e. the chain). ⇒ recorded as a NAMED
+   LEAD with a measured bound (±0.07 at edge-dense ATI layouts), not open work: no closed-form
+   candidate exists, §12.3a's validation standard applies to any future attempt, and the practical
+   consequence is fully contained by finding 4.
+4. **✓ The declaration standard for ATI cells now has teeth, and it bit.** A proc-less cell's scorer
+   is exact, so brute-forced = correct. An ATI cell's enumeration is graded by an integrand whose
+   artifact exceeds its argmax margins — so *"brute-forced to be CORRECT"* additionally requires the
+   chain certificate: **the emission must sit within the tie band (`rankPair().band`, imported) of
+   the chain's truth-top over the competitor set.** All three ATI cells are REFUSED under it. ⇒ **no
+   ATI cell declares as a test until the compounding lead closes**; they stay in the candidates strip
+   with their enumerations intact, and the search half of their pipeline (class 8, brute-vs-search ✓)
+   remains closed — this is a scorer-fidelity hold, not a search hold. ⚠ The end-user impact is
+   bounded and small: the emitted plans mis-place Berserking by ~5 s against truth, worth ~0.011–0.016
+   REAL casts — but the tool may not lock a test on a number its own truth instrument contradicts.
 
 ⚠ The chain is a declaration-time instrument (minutes-to-hours per cell), NOT a CI gate — same
 category as `lattice-brute`. ⚠⚠ And it shares the model's own blind spots by construction where it

@@ -1631,18 +1631,22 @@ floor's own sign ambiguity:
   simply `c_ρ` (the drain is a *cap*, not a geometric decay) and no candidate for it has been
   measured against the chain.
 
-⚖️ **RESOLVED 08-07 — measured, explained, and CLOSED as an accepted limit rather than fixed
-(MODEL-DEFECTS §10e).** The chain was rebuilt as a committed tool (`tools/ati-chain.mjs`, now scoring
-full layouts) and the drain term measured where it is worst: **+0.049 casts of differential at a
-STACKED proc-chain edge** (the `gem+ati` cell — the §19 ridge's residual preference for the abutting
-Icy Veins is ~100 % artifact; truth calls iv#1 ∈ {80…95} a plateau within 0.003). And the reason no
-candidate was ever measured turned out to be algebra, not missing effort: the continuum's
-`fit = (DUR − consumed)/a_s` **is exactly the uniform-phase average of the integer truth** —
-`E[⌈(X−δ)/a⌉] = X/a` identically for `δ ~ U[0,a)` — so the integrand is already the correct
-phase-average, and what remains is phase NON-uniformity at edges, which is cast-lattice information
-§8l bans from the integrand. ⇒ no in-model fix exists; the bound is recorded (≤ ~+0.06 at stacked
-proc-chain edges, ≤ +0.018 elsewhere); and every ATI-bearing declaration now requires the chain's
-certificate that its emitted layout is truth-co-optimal (§10e item 3).
+⚖️ **MEASURED AND BOUNDED 08-07 — and it is BIGGER at stacked edges than this section's bound
+(MODEL-DEFECTS §10e, the section of record).** The chain was rebuilt as a committed tool
+(`tools/ati-chain.mjs`, now scoring full layouts) and the drain term measured where it is worst:
+across the layouts of ONE edge-dense `gem+ati` cell the residual spans **−0.074 … +0.056 casts** —
+not one-directional, not ≤ +0.018 — and it FLIPS a real Berserking placement against §4c's packing
+law (truth wants zerk flush on Lust's end; the artifact prefers it overlapped, by 0.119 engine-side
+vs −0.011 truth-side). Two pieces of algebra bound what a fix could be: **a lone edge is already
+priced exactly** — the continuum's `fit = (DUR − consumed)/a_s` is the uniform-phase average of the
+integer truth, `E[⌈(X−δ)/a⌉] = X/a` identically for `δ ~ U[0,a)` — and the error lives in the
+COMPOUNDING: a second edge inside the same 5 s window smears an already-smeared state, and a smear of
+a smear is not the phase-average of the compound process (the edges' phase correlations are lost;
+recovering them needs the joint distribution, i.e. the chain itself). ⇒ a named lead with a measured
+bound (±0.07 at edge-dense ATI layouts), no closed-form candidate; and every ATI-bearing declaration
+now requires the chain's certificate that its emitted layout is truth-co-optimal — **which all three
+ATI cells currently FAIL** (§10e item 4): ATI cells are candidates, not tests, until the compounding
+lead closes.
 
 ### §12.4 Priced and NOT modeled — the honest edges
 
