@@ -1895,3 +1895,20 @@ they are for.
 Twelve tests declared in one day (T18–T29), every one from an enumeration the search reproduces, and
 the day ends with one held candidate (gem+ati, blocked on the §10c residuals vs its 0.010 margin), one
 protocol (brute-forced + search-confirmed ⇒ declared), and a 29-test suite.
+
+
+# 2026-08-06 (cont. 3) — T29 relocked by its own test, and the coupling family gets its base case
+
+The first full 29-test run came back 28/29: every press-compare green, but T29's OWN scorerBeats
+caught its hour-old lock beaten by +0.019797 casts via `arcanePower#0+2 & icyVeins#0+2` — a same-delta
+press pair sitting off the step-10 certification grid, each half downhill alone. The two suite halves
+police each other, and this is the first time the scorer half caught a BRUTE-declared lock rather than
+a scoring defect: for user-declared ground truth a scorerBeats hit means the objective is wrong; for an
+instrument-declared lock it means the DECLARATION was premature, and the honest action is re-derivation,
+never defence. Iterated to the k≤3 fixed point (one round), relocked at 114.228139 — a clean 5s-grid
+layout the T=140 enumeration could never certify directly.
+
+The miss pattern — two presses coupled without sharing a second or an edge — is the §8m/§8s/§9y/§9o
+family stripped to its barest case, so instead of another shape-specific class it got the generic one:
+move class 9, every press pair slid together by one small delta, gated on the fixed point like its
+siblings. The search now emits the relocked layout exactly, in 3.5 s.

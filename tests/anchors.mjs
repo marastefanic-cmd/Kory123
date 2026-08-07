@@ -522,9 +522,18 @@ const CASES = [
   { name: "T28 — 2:20, Bloodlust pinned 0:05, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
     T: 140, sp: 1387, crit: 44, t5two: true, lust: 5,
     want: {arcanePower: [6],  berserking: [125],  bloodlust: [5],  icyVeins: [1,120],  isc: [0,120],  scb: [5,125]} },
+  /* ⚠ T29 WAS RELOCKED THE HOUR IT WAS DECLARED — its own scorerBeats caught the first lock beaten
+     by +0.019797 casts via `arcanePower#0+2 & icyVeins#0+2`, a same-delta press PAIR neither the
+     search vocabulary nor the step-10 certification could see (off that grid; each half downhill
+     alone). Iterated to its k≤3 · ±{1,2,3,5} fixed point in one round and relocked from THAT — a
+     clean 5s-grid layout the T=140 enumeration could never certify directly (step 5 is 1.19e9
+     layouts). The miss became move class 9 (the generic same-delta pair slide), and the search now
+     emits this layout exactly. ⇒ the suite's two halves policing each OTHER is the protocol working:
+     press-compare certifies the search, scorerBeats certifies the lock, and a brute-declared lock
+     that fails the second is re-derived, never defended. */
   { name: "T29 — 2:20, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
     T: 140, sp: 1387, crit: 44, t5two: true, lust: 20,
-    want: {arcanePower: [8],  berserking: [10],  bloodlust: [20],  icyVeins: [3,120],  isc: [0,120],  scb: [5,125]} },
+    want: {arcanePower: [10],  berserking: [10],  bloodlust: [20],  icyVeins: [5,120],  isc: [0,120],  scb: [5,125]} },
 ];
 
 // T3 uses a real BOSS preset, so its cfg comes from the fight table (sp 1387, crit 38, Lust pinned 0:05)

@@ -3620,6 +3620,33 @@ function phaseRerank(s0, cfg) {
       }
       if (hit) { /* adopted — the round continues from the new fixed point */ }
     }
+    /* ★★★★ 9. THE SAME-DELTA PRESS PAIR — added 08-06 (T29). The §8s/§9y coupling in its BAREST form:
+       two presses that share NEITHER a second (class 3) NOR a window edge (class 3c) can still be
+       coupled — on T29 the audit found `arcanePower#0+2 & icyVeins#0+2` worth **+0.0198 casts** from
+       the search's own fixed point, with each half downhill alone. Nothing in the vocabulary moves an
+       arbitrary press PAIR together, so the family that keeps producing misses one shape at a time
+       (§8m cluster → §8s train → §9y suffix → §9o chain-drag) gets its generic base case: every
+       press pair, slid by the SAME small delta (the measured couplings are all same-direction).
+       Gated on `!moved` and running LAST — the standing position lesson — so it only ever extends the
+       older classes' fixed point, and a cell where every pair is refused is byte-identical. Cost:
+       ~C(nP,2)·|D| tryCands at the fixed point only. */
+    if (!moved) {
+      const press = [];
+      for (const k of keys) (s[k] || []).forEach((_, i) => press.push({ k, i }));
+      const bySec = new Map();
+      for (const pmem of press) { const sec = Math.round(s[pmem.k][pmem.i]);
+        if (!bySec.has(sec)) bySec.set(sec, []); bySec.get(sec).push(pmem); }
+      let hit = false;
+      for (let a = 0; a < press.length && !hit; a++) {
+        for (let b = a + 1; b < press.length && !hit; b++) {
+          // co-second pairs are class 3's move; re-offering them here only re-ranks refused slides
+          if (Math.round(s[press[a].k][press[a].i]) === Math.round(s[press[b].k][press[b].i])) continue;
+          for (const d of [-5, -3, -2, -1, 1, 2, 3, 5]) {
+            if (tryCand(shiftedAt(s, [press[a], press[b]], d))) { moved = true; hit = true; break; }
+          }
+        }
+      }
+    }
     if (!moved) break;
   }
   return { s, val };

@@ -268,7 +268,7 @@ different Berserking placements across one 1.5 s cast interval of that same inst
   cast, so "lattice δ later" = every press, pin, segment and `T` moved δ **earlier** (`phaseShift`).
   ⚠ The opposite randomiser — presses against a fixed lattice — is a thing the player controls and
   measures nothing; it scored 0/4 on the ground-truth corpus.
-- `phaseRerank(s, cfg)` — **ten move classes**, iterated to a FIXED POINT (24-round runaway cap, not
+- `phaseRerank(s, cfg)` — **eleven move classes**, iterated to a FIXED POINT (24-round runaway cap, not
   a 3-round budget — a cap of 3 was measured short once the structural times went in):
   1. whole-plan slide (±8 s)  2. per-track slide (±8 s)
   3. **co-pressed cluster slide** — tracks grouped by the SECOND they are pressed at, slid per-press
@@ -304,6 +304,10 @@ different Berserking placements across one 1.5 s cast interval of that same inst
      plus one proc duration later, value singles and Berserking pressed to END at `e + ATI.dur`.
      Closes a five-coordinate rewrite whose every partial move is downhill (−0.03…−0.64 around a
      +0.010 target). With the proc off it never fires — proc-less cells byte-identical by construction.
+  9. **same-delta press pair** (T29, 08-06) — the §8m/§8s/§9y/§9o coupling family's generic base
+     case: ANY two presses slid together by one small delta, whether or not they share a second or an
+     edge. Found when T29's own scorerBeats caught its first lock beaten +0.0198 by `AP#0+2 & iv#0+2`
+     — each half downhill alone, invisible to every shape-specific class. Gated on `!moved`, LAST.
   ⚠ **Single-press moves alone are provably not enough**, and neither are single-press plus clusters.
   Three of the project's four largest misses were coupled coordinates that every 1-D and 2-D step
   refused. A candidate `repair` had to relegalize is refused, so a plan is never scored as one layout

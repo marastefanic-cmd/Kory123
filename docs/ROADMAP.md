@@ -83,6 +83,11 @@ the page-effective gear (§9z). The suite is 26 tests.
   cells where the search had BEATEN the step-10/top-16 enumeration by +0.011/+0.029 casts — an
   instrument-coverage finding, resolved by re-certifying at `--top=128` with `--check` pinned to the
   emission: nothing beats it, so the emission is locked). **The suite is 29 tests.**
+· **T29 was relocked the hour it was declared** — its own scorerBeats caught the first lock beaten
+  (+0.0198, a same-delta press pair off the certification grid). Re-derived to the audit fixed point,
+  relocked, and the miss became move class 9 (the generic same-delta pair slide) — the two suite
+  halves policing each other is the protocol working, and a brute-declared lock that fails the scorer
+  half is re-derived, never defended.
 · The `gem+ati` cell's §10d search miss is CLOSED — move class 8, the proc-chain re-anchor (RULES §19
   written as a layout proposal, gated on `atiOn` so proc-less cells are byte-identical by
   construction). The cell is fully search-confirmed; its DECLARATION alone is held, because the §10c
