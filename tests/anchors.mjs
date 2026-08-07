@@ -1,5 +1,5 @@
 // THE TESTS. There are TWENTY-NINE: seventeen the user declared exactly (T1–T17), and twelve
-// BRUTE-DECLARED (T18–T26) under the user's 08-06 ruling — *"if the tests are bruteforced to be
+// BRUTE-DECLARED (T18–T29) under the user's 08-06 ruling — *"if the tests are bruteforced to be
 // correct then they should actually become tests like all the other ones"* — each an enumerated
 // argmax the search demonstrably emits. Their header block carries the certification standard.
 //
@@ -23,8 +23,11 @@
 //      wrong**. Fix in `simulate()`. ⛔ NEVER by editing the layout.
 //
 // ⛔⛔ THERE IS NO THIRD OPTION. A red here is never "the test is too strict" and never "the layout
-// drifted". These eight were each declared by the user after reading the plan, and the contested ones
-// were settled by BRUTE-FORCE ARGMAX rather than by assertion. Adjusting one to match the tool would
+// drifted". The original eight (T1–T8) were each declared by the user after reading the plan, the
+// contested ones settled by BRUTE-FORCE ARGMAX rather than by assertion, and the later batches keep
+// the same standard (user rulings for T9–T17; enumerated-argmax + search-confirmation for T18+, per
+// the 08-06 protocol — with the chain certificate on top for ATI cells, MODEL-DEFECTS §10e).
+// Adjusting one to match the tool would
 // destroy the only ground truth the project has — which is exactly what killed `exact-match`.
 //
 // ── ⚠ THEY WERE ALL h = 0 UNTIL T12 (08-02). THE LIMIT IS NOW PARTLY LIFTED. ─────────────────────
@@ -115,7 +118,8 @@
 //     the STRUCTURAL choice: cluster with the other presses, fewest distinct press moments, most robust
 //     to a press landing late. Same ruling as `docs/MODEL-DEFECTS.md` D2.
 //
-// ✅ **ALL SEVENTEEN PASS as of 2026-08-05 — `17 of 17`** — and the CI job is BLOCKING. MODEL-DEFECTS
+// ✅ **ALL PASS** (17/17 as of 2026-08-05; 29/29 as of 08-06 with the brute-declared batch) — and
+// the CI job is BLOCKING. MODEL-DEFECTS
 // D1 is CLOSED. Seven scoring defects fell on 07-30 to get the first eight green (§8h-§8m) and the
 // through-line is one sentence: the cast lattice had leaked into the RANKING objective in four
 // separate places. The integral is now pure window geometry (`∫ rate(m(t)) dt` over press times,
@@ -725,7 +729,7 @@ for (const c of BOSS_CASES) {
 const N = CASES.length + BOSS_CASES.length;
 console.log(`${N - failures} of ${N} passed.`);
 if (failures) {
-  console.log('\n⛔ All eight were GREEN on 07-30, so a failure here is a REGRESSION. Run `node tools/law-check.mjs`');
+  console.log('\n⛔ The whole suite was GREEN when each test was declared, so a failure here is a REGRESSION. Run `node tools/law-check.mjs`');
   console.log('   first — every scoring defect this project has found was caught by a closed form, never by a');
   console.log('   plan diff. A press OUTSIDE its law is a scoring defect; a press on the wrong member of a');
   console.log('   plateau is a tie-break defect; a press the search never visited is a SEARCH defect (§8j,');

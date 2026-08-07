@@ -7,7 +7,9 @@
 # it's doing more harm than good... we have the function/equation locked down and from now on we're
 # better off on our own"*), so `sim/`, the harness tools and those gates are gone from the repo.
 # What remains is the whole of what this project now checks, and it needs no browser, no Go toolchain
-# and no network beyond the checkout: **the seventeen declared layouts** and **the closed forms**.
+# and no network beyond the checkout: **the declared layouts** and **the closed forms**. (Counts are
+# deliberately not repeated here — they staled twice in this header alone; `tests/anchors.mjs`'s own
+# banner carries the current suite size.)
 #
 # ── ★ EVERY JOB CARRIES A NEGATIVE CONTROL, AND THAT IS NOT OPTIONAL ─────────────────────────────
 # PHASE11's own rule: *"every new CI job needs a negative control (a deliberately-broken input that
@@ -17,7 +19,8 @@
 # run it and require it to FAIL.
 #
 # ── THE TWO KINDS OF CHECK, AND THEY MUST NOT BE CONFUSED ────────────────────────────────────────
-# `anchors` asserts WHICH LAYOUT IS RIGHT — eight layouts the user declared. `law-check` and
+# `anchors` asserts WHICH LAYOUT IS RIGHT — layouts the user declared exactly, plus the
+# brute-declared batch (enumerated argmax + search-confirmed, the 08-06 protocol). `law-check` and
 # `self-consistency` assert something PRIOR: that the scorer agrees with the algebra the whole project
 # is derived from, and with itself. A layout test cannot catch a mispriced buff (the goldens absorbed
 # four for weeks); a closed form cannot tell you which plan a mage should press.
@@ -37,11 +40,11 @@ concurrency:
 
 jobs:
   the-tests:
-    name: THE TESTS (the seventeen declared layouts) + the closed forms
+    name: THE TESTS (the declared layouts) + the closed forms
     # ✅ BLOCKING as of 2026-07-30. This job carried `continue-on-error: true` with a stated exit
     # condition — *"flip it to false the day anchors goes green"* — because `docs/MODEL-DEFECTS.md` D1
-    # was open and the declared layouts were its target. D1 closed (§8h–§8m), anchors reads **8 of 8**,
-    # so the condition is met and the flag is gone.
+    # was open and the declared layouts were its target. D1 closed (§8h–§8m), anchors read 8 of 8 that
+    # day (the suite has grown since), so the condition is met and the flag is gone.
     # ⛔ If this goes red, the correct response is NOT to restore `continue-on-error`. Run
     # `law-check` first and read which KIND of defect it is:
     #   · a press OUTSIDE its closed form  → a SCORING defect (law-check goes red with it)
@@ -59,7 +62,7 @@ jobs:
           node-version: '22'
 
       # No browser, no rig, no golden file — it runs the real optimizer and compares press times.
-      - name: the seventeen declared layouts
+      - name: the declared layouts (anchors)
         run: node tests/anchors.mjs
 
       # The SCORER against the algebra, which is prior to any question about layouts. Every scoring
@@ -138,11 +141,20 @@ jobs:
       - name: every cfg constructor is complete (cfg-contract --strict)
         run: node tests/cfg-contract.mjs --strict
 
+      # WIRED 08-07. The boundary-credit regression gate (PHASE12 §9's rule: every cast is credited
+      # exactly the fraction of itself that fits before its next cut, intermission wall and kill
+      # alike). The docs called it a gate since 07-27 but nothing ran it — and it had silently rotted
+      # (its default preset name was deleted with the reference-fights strip on 07-30). Repointed to
+      # the T5 strip entry and wired the same day. It refuses to pass on a fight that exercises
+      # nothing, which is its own vacuity control.
+      - name: every cast is credited its fraction before the cut (wall-credit)
+        run: node tools/wall-credit.mjs
+
   the-search:
     name: THE SEARCH (is every emitted plan a local optimum?)
     # ★★★★ ADDED 2026-07-30, and it closes the gap every other gate in this repo has.
     # The three defects that shipped WRONG PLANS this week — MODEL-DEFECTS §8j, §8m, §8s — were all
-    # SEARCH misses, and not one was visible to anything above: `anchors` covers 8 declared cells,
+    # SEARCH misses, and not one was visible to anything above: `anchors` covered 8 declared cells then,
     # `law-check` stayed correctly green (the scorer was right; the descent never visited the answer),
     # and `self-consistency` cannot see the search at all. §8s was found because the USER read two
     # plans and said they looked wrong. That is not a gate.
@@ -172,6 +184,12 @@ jobs:
       - name: '↳ negative control: a displaced press must be CAUGHT'
         run: node tools/search-audit.mjs /tmp/sweep.json --k=3 --self-test
 
+      # WIRED 08-07. The known-search-miss gate: the three recorded witness plans (each a miss a
+      # human once had to find by reading a plan) must be REACHED by the search from a bare clone.
+      # ROADMAP §1 claimed this as part of the gate set; until today nothing re-checked it.
+      - name: the recorded witnesses are reached (search-witnesses)
+        run: node tools/search-witnesses.mjs
+
       # ★ ADDED 2026-08-04 (PHASE13 §5.5's third owed job). The page runs every REAL solve through a
       # worker pool; every test above runs the sequential path. This reproduces the page's exact pool
       # protocol in node (worker_threads polish servers over transferred MessagePorts, adopted via the
@@ -187,7 +205,7 @@ jobs:
 
   plan-stability:
     name: PLAN STABILITY (A/B vs the merge-base engine)
-    # ★ ADDED 2026-08-04 — the job PHASE13 §5.5 said CI still owed. `anchors` asserts the 17 declared
+    # ★ ADDED 2026-08-04 — the job PHASE13 §5.5 said CI still owed. `anchors` asserts the declared
     # cells and `the-search` asserts local optimality of whatever HEAD emits — neither notices when a
     # change quietly moves a plan on the OTHER presets, which is exactly the hole PHASE9 §5.15 closed
     # by hand and nothing has watched since the goldens were deleted. This job solves every preset on

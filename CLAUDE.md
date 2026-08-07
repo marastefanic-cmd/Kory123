@@ -211,7 +211,8 @@ the tie-break needs a cluster-at-3-stacks rule (the T3 rule, applied generally),
 (b) still satisfies the original complaint, which was that Icy Veins be co-pressed *"along with the
 other things"*, as it is at 0:15.
 
-✅ **`8 of 8` AS OF 2026-07-30 — every declared layout is emitted exactly, and the CI job is
+✅ **`8 of 8` AS OF 2026-07-30 (the suite then; it has since grown — the anchors banner carries the
+current count, green throughout) — every declared layout is emitted exactly, and the CI job is
 BLOCKING** (`continue-on-error` removed — that
 flag's stated exit condition was *"the day anchors goes green"*). **MODEL-DEFECTS D1 IS CLOSED.** Seven
 defects fell that day, §8h–§8m, and the through-line is one sentence: **the cast lattice had leaked into

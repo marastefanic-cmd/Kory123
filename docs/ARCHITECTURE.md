@@ -691,9 +691,11 @@ hostId)` → `goldenToState(p)` → `applyState(...)`; **`#preset-strip`** "Cust
 localStorage user-saved strip (was "Boss presets"). The user presses "Find optimal overlay" to
 **compute** the plan — presets store setup, never a precomputed answer.
 - **Tests (`tests/`):** ⛔ **`exact-match.mjs` + `golden.json` are DELETED (07-28, user decision).** The
-  suite is now `tests/anchors.mjs` — **seventeen** cases (T1–T17), the layouts the user declared
-  exactly, built from their own cfg rather than from the preset arrays. So the presets no longer
-  double as the test corpus; the Reference-fights strip IS the test list (user decision 07-30). Plan
+  suite is now `tests/anchors.mjs` — the user-declared layouts (T1–T17) plus the brute-declared
+  batches (T18+, the 08-06 protocol; the suite's own banner carries the current count), each built
+  from its own cfg rather than from the preset arrays. So the presets no longer
+  double as the test corpus; the strip chips are HIDDEN since 08-05 (`GOLDEN_PRESETS` stays — it is
+  the gates' corpus), superseding the 07-30 strip-lockstep decision. Plan
   stability is `tools/plan-sweep.mjs` + `tools/plan-diff.mjs` (Δscore per cell with a regression
   verdict, ~1 min — and since 08-04 also CI's `plan-stability` job against the merge-base), and the
   one thing that loop cannot see is the render path — it runs the DOM-free engine.
