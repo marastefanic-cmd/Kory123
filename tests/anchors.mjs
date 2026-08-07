@@ -1,4 +1,7 @@
-// THE TESTS. There are SEVENTEEN, and they are the layouts the user declared exactly.
+// THE TESTS. There are TWENTY-SIX: seventeen the user declared exactly (T1–T17), and nine
+// BRUTE-DECLARED (T18–T26) under the user's 08-06 ruling — *"if the tests are bruteforced to be
+// correct then they should actually become tests like all the other ones"* — each an enumerated
+// argmax the search demonstrably emits. Their header block carries the certification standard.
 //
 // ══════════════════════════════════════════════════════════════════════════════════════════════════
 // ★★★★★★ THESE ARE HARD TESTS. THEY ARE GROUND TRUTH. — user ruling, 2026-07-30, verbatim:
@@ -441,6 +444,64 @@ const CASES = [
     kit: ['icyVeins', 'isc', 'scb', 'arcanePower', 'berserking', 'bloodlust'],
     want: { icyVeins: [-10, 10, 190, 370], isc: [10, 130, 250, 370], scb: [10, 190, 370],
             arcanePower: [10, 190, 370], berserking: [0, 190, 370], bloodlust: [10] } },
+  /* ★★★★★ T18–T26 — THE FIRST BRUTE-DECLARED BATCH (08-06), under the user's standing ruling:
+     *"if the tests are bruteforced to be correct then they should actually become tests like all the
+     other ones."* That generalises the standard T7 and T8 were locked at — pinned to a BRUTE-FORCE
+     ARGMAX, not to what the optimizer happened to say — into the declaration protocol itself. A cell
+     qualifies when BOTH halves hold:
+       1. `tools/lattice-brute.mjs` enumerated its full legal grid (step 5, or step 10 where noted)
+          and the layout below is the argmax the comparator names, AND
+       2. `tools/brute-vs-search.mjs` confirms the tool EMITS a layout that matches or score-ties it —
+          so the test asserts something the search actually does, not an aspiration.
+     Where the emission ties the grid argmax but differs from it (a plateau), the EMISSION is locked —
+     the same choice T6's revision made: the comparator names the canonical member, and the enumeration
+     certifies its score. `plateau` in each comment is how many layouts tie to the float floor; a big
+     number means the score genuinely cannot separate them and the shape rule (RULES §17) is what picked.
+     ⚠ GEAR IS THE PAGE'S EFFECTIVE STATE, per MODEL-DEFECTS §9z: crit 44 = typed 38 + Arcane Impact,
+     Tirisfal ON — so a row loaded in the tool reproduces the fight these were certified on. That is
+     also why T18/T19 do not collide with T6/T1: same fights at DIFFERENT gear pin different logic.
+     ⛔ NOT in this batch, each for its own reason and each tracked:
+       · 2:20 lust 0:05 / 0:20 — the search BEAT the step-10 enumeration (+0.011 / +0.029 casts), so
+         those lines were not argmaxes; re-cut at step 5 before declaring.
+       · 3:00 lust 0:40 — never enumerated (the container died first).
+       · the `gem+ati` cell — a live SEARCH MISS on the §10c engine (−0.010 casts, MODEL-DEFECTS §10d):
+         the enumeration's argmax is not reached by the search yet. Fix the search, then declare. */
+  { name: "T18 — 2:00, Bloodlust pinned 0:05, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 5,
+    // 3,276,000 layouts enumerated · plateau 887 · locked from the grid argmax (search emits it verbatim)
+    want: {arcanePower: [15],  berserking: [5],  bloodlust: [5],  icyVeins: [15,35],  isc: [15],  scb: [15]} },
+  { name: "T19 — 2:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 20,
+    // 3,276,000 layouts enumerated · plateau 697 · locked from the grid argmax (search emits it verbatim)
+    want: {arcanePower: [20],  berserking: [40],  bloodlust: [20],  icyVeins: [0,20],  isc: [20],  scb: [20]} },
+  { name: "T20 — 2:00, Bloodlust pinned 0:40, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 120, sp: 1387, crit: 44, t5two: true, lust: 40,
+    // 3,276,000 layouts enumerated · plateau 732 · locked from the grid argmax (search emits it verbatim)
+    want: {arcanePower: [40],  berserking: [60],  bloodlust: [40],  icyVeins: [0,40],  isc: [40],  scb: [40]} },
+  { name: "T21 — 2:20, Bloodlust pinned 0:40, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 140, sp: 1387, crit: 44, t5two: true, lust: 40,
+    // 12,429,120 layouts enumerated · plateau 1 · locked from the search emission, score-tied with the grid argmax and comparator-canonical
+    want: {arcanePower: [125],  berserking: [125],  bloodlust: [40],  icyVeins: [0,120],  isc: [0,120],  scb: [5,125]} },
+  { name: "T22 — 2:40, Bloodlust pinned 0:05, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 160, sp: 1387, crit: 44, t5two: true, lust: 5,
+    // 45,986,292 layouts enumerated · plateau 155 · locked from the search emission, score-tied with the grid argmax and comparator-canonical
+    want: {arcanePower: [7],  berserking: [127],  bloodlust: [5],  icyVeins: [7,127],  isc: [7,127],  scb: [7,127]} },
+  { name: "T23 — 2:40, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 160, sp: 1387, crit: 44, t5two: true, lust: 20,
+    // 45,986,292 layouts enumerated · plateau 22 · locked from the grid argmax (search emits it verbatim)
+    want: {arcanePower: [20],  berserking: [140],  bloodlust: [20],  icyVeins: [20,140],  isc: [20,140],  scb: [20,140]} },
+  { name: "T24 — 2:40, Bloodlust pinned 0:40, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 160, sp: 1387, crit: 44, t5two: true, lust: 40,
+    // 45,986,292 layouts enumerated · plateau 217 · locked from the search emission, score-tied with the grid argmax and comparator-canonical
+    want: {arcanePower: [7],  berserking: [7],  bloodlust: [40],  icyVeins: [7,127],  isc: [7,127],  scb: [7,127]} },
+  { name: "T25 — 3:00, Bloodlust pinned 0:05, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 180, sp: 1387, crit: 44, t5two: true, lust: 5,
+    // 159,038,208 layouts enumerated · plateau 425 · locked from the search emission, score-tied with the grid argmax and comparator-canonical
+    want: {arcanePower: [7],  berserking: [127],  bloodlust: [5],  icyVeins: [7,127],  isc: [7,127],  scb: [7,127]} },
+  { name: "T26 — 3:00, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 180, sp: 1387, crit: 44, t5two: true, lust: 20,
+    // 159,038,208 layouts enumerated · plateau 334 · locked from the grid argmax (search emits it verbatim)
+    want: {arcanePower: [20],  berserking: [140],  bloodlust: [20],  icyVeins: [20,140],  isc: [20,140],  scb: [20,140]} },
 ];
 
 // T3 uses a real BOSS preset, so its cfg comes from the fight table (sp 1387, crit 38, Lust pinned 0:05)

@@ -197,7 +197,13 @@ if (scorerMoved) {
 
 // Could-not-compare beats every other verdict: an error cell or a corpus mismatch means the
 // comparison did not cover what it claims to have covered.
-if (errs.length || onlyA.length || onlyB.length) {
+/* ⚠ ASYMMETRIC ON PURPOSE — 08-06. `onlyA` (a cell REMOVED between A and B) stays fatal: silent
+   corpus shrinkage is precisely what this gate exists to catch, since every downstream verdict
+   quietly weakens when the corpus does. `onlyB` (a cell ADDED in B) is NEW COVERAGE — declaring a
+   test adds its preset to GOLDEN_PRESETS, so the A/B CI job would otherwise go red on every
+   declaration, punishing exactly the act the project wants. New cells are reported, excluded from
+   the comparison, and do not fail the run. */
+if (errs.length || onlyA.length) {
   console.error('PLAN-DIFF-INCOMPLETE — the counts above do NOT cover the whole corpus.');
   process.exit(2);
 }

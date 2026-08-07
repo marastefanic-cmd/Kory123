@@ -1813,3 +1813,34 @@ cast's attempt count off `boardRamp` prices nothing at a lattice position. ⇒ *
 of a principle" is a claim about a principle, and it should be checked like one.** The 0.030 figure in
 that section had already been corrected once, on 08-03, from a single cell to a ladder; twice corrected
 and still described as deliberate is what a load-bearing excuse looks like.
+
+# 2026-08-06 — the declaration protocol becomes a pipeline, and the enumeration gets caught out too
+
+The user closed the loop that has been circling since the candidates strip was built: *"if the tests
+are bruteforced to be correct then they should actually become tests like all the other ones."* That
+turns T7/T8's one-off precedent into the standing protocol, and the first batch went in the same day:
+**T18–T26**, nine icon+gem cells across 2:00–3:00 × three Lust timings, each an enumerated argmax the
+search demonstrably emits (or a score-tied member the comparator prefers — then the emission is what
+gets locked, T6's choice). The suite is twenty-six tests now.
+
+Running `brute-vs-search` as the confirmation gate produced the day's real finding: on two step-10
+cells **the search beat the enumeration** — +0.011 and +0.029 casts — and the tool reported it as
+"brute is +-0.011082 casts better", a garbled sign on top of an inverted verdict. The first draft had
+assumed the enumeration is always ≥ the search, which is exactly the assumption `lattice-brute`'s own
+header disclaims (bounded polish, top-16 structures). Two different findings were being collapsed into
+one label: search-below-enumeration is a SEARCH miss; search-above-enumeration means the CANDIDATE LINE
+is not an argmax and must not be ruled on. The tool now separates them, and those two cells are being
+re-certified at --top=128 with --check pinned to the emission rather than re-enumerated (T=140 at step
+5 is 1.19 billion layouts — past the raw-regime guard).
+
+The §10c re-cut of the gem+ati cell vindicated the stale-cell discipline in the most concrete way
+available: the argmax MOVED (iv[65,90]·cluster@45 → iv[60,85]·scb/AP@50·zerk@55 — the RULES §19 ridge
+softened enough to change the structure, exactly as §10c's re-measurement predicted). Ruling on the
+old line would have locked a wrong layout. And the fresh line is a live search miss (−0.010, §10d), so
+the ATI cell stays out of the batch on both halves of the standard — with the §10c residuals the same
+order as ATI plateau margins, "brute-forced to be CORRECT" is not yet a claim the instruments support
+for proc cells.
+
+One instrument fix rode along: plan-diff now treats cells present only in B as new coverage rather
+than a comparison failure — declaring a test adds its preset to the corpus, and the A/B CI job must
+not punish exactly the act the project wants most.

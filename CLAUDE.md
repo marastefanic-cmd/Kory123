@@ -40,7 +40,7 @@ You enter a fight (length, Bloodlust
 timing, intermission/AoE phases) and it computes the **optimal moment to press each on-use
 cooldown** (Icy Veins, Arcane Power, Icon of the Silver Crescent, Serpent-Coil gem, Berserking),
 plus a burn timeline, a per-window activation schedule, and a copy-as-text plan. Alongside it:
-`tests/` — **seventeen tests** (`tests/anchors.mjs`): the seventeen layouts the user declared exactly. The goldens
+`tests/` — **twenty-six tests** (`tests/anchors.mjs`): seventeen layouts the user declared exactly, plus nine BRUTE-DECLARED (T18–T26, 08-06) under the standing ruling *"if the tests are bruteforced to be correct then they should actually become tests like all the other ones"* — each an enumerated argmax the search demonstrably emits. The goldens
 and the plan-shape suites are **deleted** (user decision 07-28, restated twice); the sim gates are
 **deleted** (07-30, above). What is left beside `anchors` are the two scorer gates —
 `tools/law-check.mjs` (the scorer vs the algebra) and `tools/self-consistency.mjs` (the scorer vs
@@ -177,7 +177,7 @@ already live.
 > ⇒ **T10 vs T11 is the corpus's sharpest instrument**: the same fight one pinned press apart, one solved
 > and one missed. Keep them together; that pair is what localised §9d in four measurements.
 
-**★ There are exactly SEVENTEEN tests, and they are the seventeen layouts the user declared exactly**
+**★ There are TWENTY-SIX tests: seventeen layouts the user declared exactly, and nine brute-declared (T18–T26, 08-06 — enumerated argmax + search-confirmed; the batch header in `tests/anchors.mjs` carries the standard)**
 (T1–T17; T8 the prepull case, T9–T11 the long fights, T12–T17 the haste/SP ladder — T12 was revised to
 iv[15,60]/zerk@35 by explicit user ruling 08-03 with sim evidence, and T16's 10/30 is sim-confirmed at
 23.5σ, MODEL-DEFECTS §9m). The originals: T1/T2:

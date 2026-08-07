@@ -34,6 +34,15 @@ a cell, it becomes an anchor: the Reference-fights strip and `tests/anchors.mjs`
 
 ## A. THE LENGTH LADDER — 12 cells, simple fights, default gear (1387 SP · 38 % crit · h0)
 
+> ✅ **SUBSTANTIALLY SUPERSEDED 08-06 by the brute-declared batch T18–T26.** Under the user's ruling
+> (*"if the tests are bruteforced to be correct then they should actually become tests"*), the
+> 2:00–3:00 × three-Lust grid was re-enumerated at the CURRENT engine and page-effective gear
+> (crit 44 · Tirisfal on, §9z) and declared directly — no per-cell ruling needed any more. What
+> remains open from this package: **3:20 (all three Lust timings)** — the terminal-cluster shape this
+> package found is real and still undeclared — and 2:20 lust 0:05/0:20, pending re-certification.
+> The table below is kept as the record of the structures found; its exact seconds are stale twice
+> over (comparator + gear).
+
 **Instrument:** `tools/brute-cell.mjs` (rewritten 08-04 to grade on the objective pair and report
 plateaus — it had been the fifth instrument to grade on the retired sum), one complete
 anchor-and-chain family scan per cell (~10⁵ layouts), then the k≤3 · ±3 s neighbourhood audit of the

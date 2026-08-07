@@ -5223,3 +5223,27 @@ Still one-directional, now +0.004…+0.028 per engagement:
 Both were tried in the reference. The first overshoots to **−0.016** as implemented there, i.e. the
 mechanism is real but the crude version over-corrects — which is exactly the shape of a change that
 should not ship on one measurement. Left open with a named target rather than guessed at.
+
+
+## §10d — ⛔ THE `gem+ati` SEARCH MISS, RE-MEASURED ON THE §10c ENGINE (08-06) — open, and it gates the ATI declaration
+
+The user found this pre-§10c (*"the enumerator says 45, but the model in the tool outputs 25"*,
++0.0095 casts then). §10c moved every ATI score, so the first queued step was re-measuring rather than
+fixing against a stale margin. Both sides moved and the miss SURVIVES:
+
+| | layout | ideal casts |
+|---|---|---|
+| enumeration argmax (§10c engine, 6.4M layouts, plateau 1) | `iv[60,85] · scb/AP@50 · zerk@55` | **103.838635** |
+| what the search emits | `iv[65,90] · cluster@25` | 103.828572 |
+
+**−0.010063 casts, ~5× the tie band.** Note the STRUCTURE changed with §10c: the pre-§10c argmax was
+`iv[65,90] · cluster@45` (Lust-end + one proc duration, RULES §19's ridge); the corrected transient
+prefers Icy Veins flush on Lust's end with Berserking split off to its own second. The ridge softened
+exactly as §10c's re-measure predicted (~⅓ of its magnitude gone), enough to move the argmax.
+
+⚠ **This is why the ATI cell is NOT in the T18–T26 brute-declared batch, on either half of the
+standard**: the search does not emit the argmax (half 2 fails outright), and the two named §10c
+residuals (ramp ~+0.009, strata drain ≤ +0.018) are the same order as this cell's 0.010 margin — so
+"brute-forced to be CORRECT" is not yet established for ATI cells the way it is for proc-less ones,
+where the scorer is exact. Close the residuals or bound them below the margins involved, fix the
+search reach (§8j/§9y family — the move classes, never `simulate()`), then declare.

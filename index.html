@@ -7781,6 +7781,28 @@ const GOLDEN_PRESETS = [
     gear: { sp: 700, crit: 37.39038949275363, haste: 33, t5two: true } },
   { name: "T17 · 2:00 lust 0:20 · h=33 sp1217", T: 120, pins: { bloodlust: [20] },
     gear: { sp: 1217.3875, crit: 37.39038949275363, haste: 33, t5two: true } },
+  /* ── T18–T26 — the brute-declared batch (08-06). DATA ONLY: the declared strip is hidden
+     (§10b), but this array is the corpus every stability gate sweeps, so a declared test
+     must be in it. ⚠ gear is the page-EFFECTIVE state (crit 44 = typed 38 + Arcane Impact,
+     Tirisfal on) — the §9z convention, matching tests/anchors.mjs and the enumeration. */
+  { name: "T18 · 2:00 lust 0:05 · eff44 t5", T: 120, pins: { bloodlust: [5] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T19 · 2:00 lust 0:20 · eff44 t5", T: 120, pins: { bloodlust: [20] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T20 · 2:00 lust 0:40 · eff44 t5", T: 120, pins: { bloodlust: [40] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T21 · 2:20 lust 0:40 · eff44 t5", T: 140, pins: { bloodlust: [40] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T22 · 2:40 lust 0:05 · eff44 t5", T: 160, pins: { bloodlust: [5] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T23 · 2:40 lust 0:20 · eff44 t5", T: 160, pins: { bloodlust: [20] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T24 · 2:40 lust 0:40 · eff44 t5", T: 160, pins: { bloodlust: [40] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T25 · 3:00 lust 0:05 · eff44 t5", T: 180, pins: { bloodlust: [5] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T26 · 3:00 lust 0:20 · eff44 t5", T: 180, pins: { bloodlust: [20] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
 ];
 window.GOLDEN_PRESETS = GOLDEN_PRESETS;
 
@@ -7813,18 +7835,7 @@ window.GOLDEN_PRESETS = GOLDEN_PRESETS;
    one day (§9u/§9w/§9x). */
 const CANDIDATE_PRESETS = [
   /* CANDIDATES:BEGIN — generated, do not edit by hand */
-  {"name":"2:00 lust 0:05 · icon+gem","T":120,"pins":{"bloodlust":[5]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[15],"berserking":[5],"icyVeins":[15,35],"isc":[15],"scb":[15]},"casts":99.916094,"plateau":887,"layouts":3276000,"eff":{"sp":1387,"crit":44,"t5two":true}},
-  {"name":"2:00 lust 0:20 · gem+ati","T":120,"pins":{"bloodlust":[20]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","scb","arcanePower","berserking","ati","bloodlust"],"line":{"arcanePower":[45],"berserking":[45],"icyVeins":[65,90],"scb":[45]},"casts":103.928675,"plateau":1,"layouts":6402240,"eff":{"sp":1387,"crit":44,"t5two":true}},
-  {"name":"2:00 lust 0:20 · icon+gem","T":120,"pins":{"bloodlust":[20]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[20],"berserking":[40],"icyVeins":[0,20],"isc":[20],"scb":[20]},"casts":99.914938,"plateau":697,"layouts":3276000,"eff":{"sp":1387,"crit":44,"t5two":true}},
-  {"name":"2:00 lust 0:40 · icon+gem","T":120,"pins":{"bloodlust":[40]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[40],"berserking":[60],"icyVeins":[0,40],"isc":[40],"scb":[40]},"casts":99.914938,"plateau":732,"layouts":3276000,"eff":{"sp":1387,"crit":44,"t5two":true}},
-  {"name":"2:20 lust 0:05 · icon+gem","T":140,"pins":{"bloodlust":[5]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[5],"berserking":[130],"icyVeins":[0,120],"isc":[0,120],"scb":[5,125]},"casts":115.204633,"plateau":1,"layouts":12429120,"eff":{"sp":1387,"crit":44,"t5two":true}},
-  {"name":"2:20 lust 0:20 · icon+gem","T":140,"pins":{"bloodlust":[20]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[125],"berserking":[130],"icyVeins":[0,120],"isc":[0,120],"scb":[5,125]},"casts":114.179406,"plateau":1,"layouts":12429120,"eff":{"sp":1387,"crit":44,"t5two":true}},
-  {"name":"2:20 lust 0:40 · icon+gem","T":140,"pins":{"bloodlust":[40]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[125],"berserking":[130],"icyVeins":[0,120],"isc":[0,120],"scb":[5,125]},"casts":114.179406,"plateau":1,"layouts":12429120,"eff":{"sp":1387,"crit":44,"t5two":true}},
-  {"name":"2:40 lust 0:05 · icon+gem","T":160,"pins":{"bloodlust":[5]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[10],"berserking":[130],"icyVeins":[10,130],"isc":[10,130],"scb":[10,130]},"casts":128.807262,"plateau":155,"layouts":45986292,"eff":{"sp":1387,"crit":44,"t5two":true}},
-  {"name":"2:40 lust 0:20 · icon+gem","T":160,"pins":{"bloodlust":[20]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[20],"berserking":[140],"icyVeins":[20,140],"isc":[20,140],"scb":[20,140]},"casts":128.807262,"plateau":22,"layouts":45986292,"eff":{"sp":1387,"crit":44,"t5two":true}},
-  {"name":"2:40 lust 0:40 · icon+gem","T":160,"pins":{"bloodlust":[40]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[130],"berserking":[130],"icyVeins":[7,130],"isc":[7,130],"scb":[7,130]},"casts":127.627792,"plateau":217,"layouts":45986292,"eff":{"sp":1387,"crit":44,"t5two":true}},
-  {"name":"3:00 lust 0:05 · icon+gem","T":180,"pins":{"bloodlust":[5]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[10],"berserking":[130],"icyVeins":[10,130],"isc":[10,130],"scb":[10,130]},"casts":142.140595,"plateau":425,"layouts":159038208,"eff":{"sp":1387,"crit":44,"t5two":true}},
-  {"name":"3:00 lust 0:20 · icon+gem","T":180,"pins":{"bloodlust":[20]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","isc","scb","arcanePower","berserking","bloodlust"],"line":{"arcanePower":[20],"berserking":[140],"icyVeins":[20,140],"isc":[20,140],"scb":[20,140]},"casts":142.140595,"plateau":334,"layouts":159038208,"eff":{"sp":1387,"crit":44,"t5two":true}},
+  {"name":"2:00 lust 0:20 · gem+ati","T":120,"pins":{"bloodlust":[20]},"gear":{"sp":1387,"crit":38,"t5two":true},"kit":["icyVeins","scb","arcanePower","berserking","ati","bloodlust"],"line":{"arcanePower":[50],"berserking":[55],"icyVeins":[60,85],"scb":[50]},"casts":103.820231,"plateau":1,"layouts":6402240,"eff":{"sp":1387,"crit":44,"t5two":true}},
   /* CANDIDATES:END */
 ];
 window.CANDIDATE_PRESETS = CANDIDATE_PRESETS;

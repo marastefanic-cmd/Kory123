@@ -39,7 +39,7 @@ if (!rows.length) die('no cells found');
 const norm = s => Object.keys(s).sort().filter(k => (s[k] || []).length)
   .map(k => k + ':' + [...s[k]].sort((a, b) => a - b).join(',')).join('|');
 
-let miss = 0, canon = 0, ok = 0;
+let miss = 0, canon = 0, ok = 0, beaten = 0;
 console.log(`# BRUTE vs SEARCH — ${rows.length} cell(s)\n`);
 for (const r of rows) {
   const kit = (r.kit || '').split(',').filter(Boolean);
@@ -59,7 +59,22 @@ for (const r of rows) {
   const pb = api.rankPair(r.best, cfg), pe = api.rankPair(emitted, cfg);
   const d = (pb.ideal - pe.ideal) / PLAIN;
   if (norm(emitted) === norm(r.best)) { ok++; console.log(`  ✓ ${tag}`); continue; }
-  if (Math.abs(pb.ideal - pe.ideal) > pb.ifloor) {
+  /* ⛔⛔ A REAL IDEAL GAP HAS TWO DIRECTIONS AND THEY ARE OPPOSITE FINDINGS — fixed 08-06 after this
+     tool printed "brute is +-0.011082 casts better" on a cell where the SEARCH had won. The first
+     draft assumed the enumeration is always ≥ the search, which is exactly the assumption
+     `lattice-brute`'s own header disclaims: the sweep's winner is the best GRID layout under a
+     bounded polish (`--top`, ≤3-coordinate cap), so a continuous search can legitimately beat it —
+     measured twice on step-10 cells the same day (+0.011082, +0.028914).
+       · search BELOW the enumeration → a SEARCH miss (§8j family): fix the move/seed classes.
+       · search ABOVE the enumeration → the ENUMERATION is beaten: the candidate line is NOT the
+         argmax and must not be presented for ruling — re-cut the cell at a finer step / wider top.
+     Collapsing them mislabels an instrument-coverage problem as an engine defect. */
+  if (pe.ideal > pb.ideal + pb.ifloor) {
+    beaten++;
+    console.log(`  ⛔ ENUMERATION BEATEN  ${tag}   the search is +${(-d).toFixed(6)} casts better — re-cut this cell (finer step / higher --top); do NOT rule on its line`);
+    console.log(`       brute   ${JSON.stringify(r.best)}`);
+    console.log(`       search  ${JSON.stringify(emitted)}`);
+  } else if (pb.ideal > pe.ideal + pb.ifloor) {
     miss++;
     console.log(`  ⛔ SCORE MISS  ${tag}   brute is +${d.toFixed(6)} casts better`);
     console.log(`       brute   ${JSON.stringify(r.best)}`);
@@ -71,8 +86,9 @@ for (const r of rows) {
     console.log(`       search  ${JSON.stringify(emitted)}`);
   } else { ok++; console.log(`  ✓ ${tag}  (different layout, but the search's is at least as good)`); }
 }
-console.log(`\nBRUTE-VS-SEARCH cells=${rows.length} ok=${ok} scoreMisses=${miss} canonicalMisses=${canon}`);
+console.log(`\nBRUTE-VS-SEARCH cells=${rows.length} ok=${ok} scoreMisses=${miss} canonicalMisses=${canon} enumerationBeaten=${beaten}`);
+if (beaten) console.log(`⛔ ${beaten} cell(s) where the SEARCH beat the enumeration — those candidate lines are not argmaxes; re-cut them.`);
 console.log(miss || canon
   ? `⛔ the search does not reproduce ${miss + canon} brute-forced cell(s) — each is a defect with a KNOWN target.`
-  : '✓ the search reproduces every brute-forced cell.');
-process.exit(miss || canon ? 1 : 0);
+  : beaten ? '' : '✓ the search reproduces every brute-forced cell.');
+process.exit(miss || canon || beaten ? 1 : 0);

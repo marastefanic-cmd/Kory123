@@ -69,6 +69,25 @@ describe accepted limits and decided questions so nobody re-opens them by accide
   absent from the board walk. Algebra: ESTABLISHED-FACTS §12.3a. Still open, named and bounded:
   ramp window shrinkage (~+0.009) and strata drain at a haste edge (≤ ~+0.018).
 
+## §1c ▶▶ 08-06 — THE DECLARATION PROTOCOL CHANGED, by user ruling
+
+> *"if the tests are bruteforced to be correct then they should actually become tests like all the
+> other ones"*
+
+That generalises T7/T8's per-cell precedent into the standing protocol: a cell becomes a test when
+(1) `lattice-brute` enumerates its grid and names the argmax, AND (2) `brute-vs-search` confirms the
+tool emits it (or a score-tied, comparator-canonical member — then the EMISSION is locked, T6's
+choice). First batch: **T18–T26**, nine `icon+gem` cells across 2:00–3:00 × Lust 0:05/0:20/0:40 at
+the page-effective gear (§9z). The suite is 26 tests.
+· Excluded with reasons, each tracked: 2:20 lust 0:05/0:20 (the search BEAT the step-10 enumeration —
+  an instrument-coverage finding, being re-certified at --top=128), 3:00 lust 0:40 (never enumerated),
+  and the `gem+ati` cell (live search miss on the §10c engine, −0.010 casts, §10d — and the §10c
+  residuals are the same order as ATI plateau margins, so "brute-forced CORRECT" is not yet
+  established for proc cells at all).
+· Instrument fixes that fell out: `brute-vs-search` now distinguishes SEARCH MISS from ENUMERATION
+  BEATEN (it mislabeled the direction), and `plan-diff` treats cells only-in-B as new coverage rather
+  than a comparison failure (declaring a test adds presets; the A/B CI job must not go red for it).
+
 ## §2 ▶▶ AWAITING YOUR RULINGS — `docs/DECISION-PACKAGES.md`
 
 The two test-derivation programmes you asked for by name (07-31) are **executed**; what they cannot

@@ -47,6 +47,16 @@ adjacent problem, opposite answer.)
 reclaim; the WRONG `smooth.html` build is gone with it, and so are the §10c probes. The probes are
 reproducible from §12.3a's algebra in an hour; the wrong build should not be.
 
+## ✅ 08-06 — THE DECLARATION BATCH LANDED (see ROADMAP §1c)
+
+T18–T26 declared under the user's ruling; the suite is 26 tests. Still pending from that programme:
+- **2:20 lust 0:05 / 0:20** — re-certification at `--top=128` with `--check` pinned to the emission
+  (the search beat the step-10/top-16 enumeration; T=140 step 5 is 1.19e9 layouts, past the guard).
+- **3:00 lust 0:40** — enumerating.
+- **The `gem+ati` cell** — blocked on §10d (search miss, −0.010) and on the §10c residuals being the
+  same order as ATI plateau margins. Fix the search reach first; do not declare ATI cells until the
+  scorer's residuals are below the margins being locked.
+
 ## ▶▶ WHAT IS STILL QUEUED
 
 - **A user-found search miss.** On `2:00 · Lust 0:20 · gem+ati` the tool emits `cluster@0:25`; the
