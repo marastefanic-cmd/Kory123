@@ -268,7 +268,7 @@ different Berserking placements across one 1.5 s cast interval of that same inst
   cast, so "lattice δ later" = every press, pin, segment and `T` moved δ **earlier** (`phaseShift`).
   ⚠ The opposite randomiser — presses against a fixed lattice — is a thing the player controls and
   measures nothing; it scored 0/4 on the ground-truth corpus.
-- `phaseRerank(s, cfg)` — **nine move classes**, iterated to a FIXED POINT (24-round runaway cap, not
+- `phaseRerank(s, cfg)` — **ten move classes**, iterated to a FIXED POINT (24-round runaway cap, not
   a 3-round budget — a cap of 3 was measured short once the structural times went in):
   1. whole-plan slide (±8 s)  2. per-track slide (±8 s)
   3. **co-pressed cluster slide** — tracks grouped by the SECOND they are pressed at, slid per-press
@@ -299,6 +299,11 @@ different Berserking placements across one 1.5 s cast interval of that same inst
      after the ramp — together. A THIRD coupling: not the cluster's cross term (§8m) and not the
      packing law (§8s). Its three presses share neither a second nor a window edge, so classes 3 and
      3c cannot bring the last one along; every single step is downhill and every pair downhill-or-flat.
+  8. **proc-chain re-anchor** (§10d, 08-06) — Ashtongue only, gated on `atiOn && !moved`, LAST. The
+     §19 carry-over as a whole-structure proposal: iv#0 on the pinned window's end, iv#1 one window
+     plus one proc duration later, value singles and Berserking pressed to END at `e + ATI.dur`.
+     Closes a five-coordinate rewrite whose every partial move is downhill (−0.03…−0.64 around a
+     +0.010 target). With the proc off it never fires — proc-less cells byte-identical by construction.
   ⚠ **Single-press moves alone are provably not enough**, and neither are single-press plus clusters.
   Three of the project's four largest misses were coupled coordinates that every 1-D and 2-D step
   refused. A candidate `repair` had to relegalize is refused, so a plan is never scored as one layout

@@ -53,9 +53,11 @@ T18–T26 declared under the user's ruling; the suite is 26 tests. Still pending
 - **2:20 lust 0:05 / 0:20** — re-certification at `--top=128` with `--check` pinned to the emission
   (the search beat the step-10/top-16 enumeration; T=140 step 5 is 1.19e9 layouts, past the guard).
 - **3:00 lust 0:40** — enumerating.
-- **The `gem+ati` cell** — blocked on §10d (search miss, −0.010) and on the §10c residuals being the
-  same order as ATI plateau margins. Fix the search reach first; do not declare ATI cells until the
-  scorer's residuals are below the margins being locked.
+- **The `gem+ati` cell** — ✅ the §10d search half is CLOSED (move class 8, the proc-chain re-anchor:
+  the search now emits the §10c argmax exactly, and `brute-vs-search` reads ✓ on the cell). The
+  DECLARATION hold stands on one argument only: the §10c residuals (≤ +0.018) exceed the cell's
+  0.010 argmax margin, so which plateau member is "correct" can still flip when they close. One user
+  sentence overrides; otherwise close the residuals first.
 
 ## ▶▶ WHAT IS STILL QUEUED
 

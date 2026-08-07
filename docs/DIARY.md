@@ -1844,3 +1844,54 @@ for proc cells.
 One instrument fix rode along: plan-diff now treats cells present only in B as new coverage rather
 than a comparison failure — declaring a test adds its preset to the corpus, and the A/B CI job must
 not punish exactly the act the project wants most.
+
+
+# 2026-08-06 (cont.) — T27, move class 8, and two instrument bugs caught by their own fail-loud rails
+
+The 3:00·0:40 cell finished enumerating (159M layouts) and completed the 3:00 row: all three Lust
+timings score 142.140595 — the T3-Morogrim structure translating whole with the call, exactly the
+Lust-timing-invariance the 08-04 package predicted from family scans. Search-confirmed exact, declared
+as T27. The suite is twenty-seven.
+
+The `gem+ati` search miss (§10d) closed the way the diagnosis dictated: every 1-D step from the emitted
+point measures −0.03…−0.64, every partial combination likewise, and only the full five-coordinate
+rewrite is uphill (+0.010) — nothing composable. But the target is DERIVED: RULES §19's carry-over
+written as a layout (iv#0 on the pinned window's end, iv#1 one window plus one proc duration later,
+value singles and Berserking pressed to END at e + ATI.dur). Move class 8 proposes that whole structure
+at the older classes' joint fixed point, gated on `atiOn && !moved` — with the proc off it never fires,
+so proc-less cells are byte-identical by construction. The search now emits the argmax exactly;
+anchors 26/26 with the class in; the ATI candidate matches the tool's own output end to end. Its
+DECLARATION stays held on one argument: the §10c residuals (≤ +0.018) exceed the cell's 0.010 argmax
+margin, so the canonical member can still flip when they close.
+
+Two instrument findings, both caught by rails built for earlier bugs:
+· `lattice-brute`'s polish child raced `process.exit(0)` against the async IPC `send` — fine at
+  `--top=16`, dead at `--top=128` where the ~8× payload loses the race. The fail-loud exit handler
+  (added for the LAST silent-child bug) surfaced it as "exited 0 without a result" instead of a hang.
+  Fixed: exit in `send`'s callback. Same lesson one layer down — the rail worked, the exit was still
+  premature.
+· Killing background enumeration by `pgrep -f` pattern matched MY OWN compound command three times
+  this session (the pattern lives in the command line). Kill by PID, never by pattern.
+
+# 2026-08-06 (cont. 2) — the grid completes: T28/T29 from certified emissions, twelve declared in a day
+
+The two 2:20 cells resolved by certification rather than re-enumeration: full step-5 is 1.19e9 layouts
+(past the raw-regime guard), so the instrument question became *"does anything in the reachable space
+beat the tool's emission?"* — `--top=128` with `--check` pinned to it. Both came back with the tool's
+own verdict line: **"THE CHECKED LAYOUT IS THE GLOBAL OPTIMUM of the lattice (nothing found beats it
+on the pair)"** — the emission beats the enumeration's own best by the very +0.011/+0.029 that flagged
+the cells, so the emission is the best-known layout by a certification stronger than T7 carried at its
+own declaration. Locked as T28/T29; their off-grid presses (iv@0:01/0:03, AP@0:06/0:08) are the §8s
+abutting-train structure living between grid points, which is exactly why no grid argmax could match
+them.
+
+The `--top=128` run also flushed out a race that top=16 could never hit: the polish child called
+`process.exit(0)` immediately after `process.send`, and send is asynchronous — the ~8× payload lost
+the flush race and the child exited 0 with its result unsent. The fail-loud exit handler built for the
+PREVIOUS silent-child bug converted what would have been a 25-minute hang into an instant loud error.
+Fixed by exiting in send's callback. Rails catch the bugs their builders never imagined; that is what
+they are for.
+
+Twelve tests declared in one day (T18–T29), every one from an enumeration the search reproduces, and
+the day ends with one held candidate (gem+ati, blocked on the §10c residuals vs its 0.010 margin), one
+protocol (brute-forced + search-confirmed ⇒ declared), and a 29-test suite.

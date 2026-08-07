@@ -79,11 +79,14 @@ That generalises T7/T8's per-cell precedent into the standing protocol: a cell b
 tool emits it (or a score-tied, comparator-canonical member — then the EMISSION is locked, T6's
 choice). First batch: **T18–T26**, nine `icon+gem` cells across 2:00–3:00 × Lust 0:05/0:20/0:40 at
 the page-effective gear (§9z). The suite is 26 tests.
-· Excluded with reasons, each tracked: 2:20 lust 0:05/0:20 (the search BEAT the step-10 enumeration —
-  an instrument-coverage finding, being re-certified at --top=128), 3:00 lust 0:40 (never enumerated),
-  and the `gem+ati` cell (live search miss on the §10c engine, −0.010 casts, §10d — and the §10c
-  residuals are the same order as ATI plateau margins, so "brute-forced CORRECT" is not yet
-  established for proc cells at all).
+· The grid COMPLETED the same day: T27 (3:00·0:40, 159M layouts, exact), and T28/T29 (the two 2:20
+  cells where the search had BEATEN the step-10/top-16 enumeration by +0.011/+0.029 casts — an
+  instrument-coverage finding, resolved by re-certifying at `--top=128` with `--check` pinned to the
+  emission: nothing beats it, so the emission is locked). **The suite is 29 tests.**
+· The `gem+ati` cell's §10d search miss is CLOSED — move class 8, the proc-chain re-anchor (RULES §19
+  written as a layout proposal, gated on `atiOn` so proc-less cells are byte-identical by
+  construction). The cell is fully search-confirmed; its DECLARATION alone is held, because the §10c
+  residuals (≤ +0.018) exceed its 0.010 argmax margin. One user sentence overrides.
 · Instrument fixes that fell out: `brute-vs-search` now distinguishes SEARCH MISS from ENUMERATION
   BEATEN (it mislabeled the direction), and `plan-diff` treats cells only-in-B as new coverage rather
   than a comparison failure (declaring a test adds presets; the A/B CI job must not go red for it).

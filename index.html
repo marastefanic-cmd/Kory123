@@ -3567,6 +3567,59 @@ function phaseRerank(s0, cfg) {
         if (hit) break;
       }
     }
+    /* ★★★★★ 8. THE PROC-CHAIN RE-ANCHOR — added 08-06 (MODEL-DEFECTS §10d), Ashtongue only, and it
+       is class 5's lesson applied to the §19 proc-carry structure. On `gem+ati · 2:00 · lust 0:20`
+       the argmax is a FIVE-coordinate rewrite of what the descent reaches:
+
+           emitted   iv[65,90] · {scb,AP,zerk}@25          103.828572
+           argmax    iv[60,85] · scb/AP@50 · zerk@55       103.838635   (+0.010063, ~5× the band)
+
+       Measured: every 1-D step from the emitted point is −0.03..−0.64, every 2-, 3- and 4-coordinate
+       stepping stone is −0.03..−0.64 as well — only the whole rewrite is uphill. No bounded descent
+       and no per-press structural time composes it (§10d has the full table).
+       ⇒ But the target is DERIVED, not searched-for. It is RULES §19's carry-over written as a layout:
+       the proc-elevated state survives one proc duration past the window that earned it, so
+         · Icy Veins #0 sits ON the pinned window's end `e` (haste out of the raid haste, §4c);
+         · Icy Veins #1 follows at `e + dur(iv) + ATI.dur` — windows separated by exactly the carry;
+         · every VALUE single ENDS at `e + ATI.dur`, i.e. presses at `e + ATI.dur − dur(k)`, spending
+           its window across the seam where the proc uptime is still elevated;
+         · Berserking likewise ends at `e + ATI.dur` (haste beside haste, never inside — §4c).
+       Everything from the cfg and the constants table; nothing enumerated, nothing tuned.
+       ⚠⚠ GATED ON `atiOn && !moved` AND RUNNING LAST — the 3d/§9y position lesson, plus a stronger
+       property: with Ashtongue OFF this class never fires, so every proc-less cell is byte-identical
+       BY CONSTRUCTION (the §19 measurement — ten layouts, bit-identical without the proc — is why
+       the structure means nothing there). One candidate per pinned call, deterministic. */
+    if (!moved && cfg.enabled && cfg.enabled.ati) {
+      const ivK = "icyVeins", zkK = "berserking";
+      const pins = [];
+      for (const pk of Object.keys(cfg.fixed || {}))
+        for (const t of (cfg.fixed[pk] || [])) pins.push(Math.round(t) + BUFFS[pk].dur);
+      pins.sort((a, b) => a - b);
+      let hit = false;
+      for (const e of pins) {
+        const cand = cloneS(s);
+        if (keys.includes(ivK) && (cand[ivK] || []).length) {
+          cand[ivK] = cand[ivK].map(t => Math.round(t));
+          cand[ivK][0] = e;
+          for (let j = 1; j < cand[ivK].length; j++)
+            cand[ivK][j] = cand[ivK][j - 1] + BUFFS[ivK].dur + ATI.dur;
+          cand[ivK].sort((a, b) => a - b);
+        }
+        for (const k of keys) {
+          if (k === ivK) continue;
+          const kind = BUFFS[k].kind;
+          const value = kind === "sp" || kind === "dmg";
+          if ((value || k === zkK) && (cand[k] || []).length === 1)
+            cand[k] = [e + ATI.dur - BUFFS[k].dur];
+        }
+        let legal = true;
+        for (const k of keys) for (const t of (cand[k] || []))
+          if (t < earliestPress(k, cfg) || t > cfg.T - 1) { legal = false; break; }
+        if (!legal) continue;
+        if (tryCand(cand)) { moved = true; hit = true; break; }
+      }
+      if (hit) { /* adopted — the round continues from the new fixed point */ }
+    }
     if (!moved) break;
   }
   return { s, val };
@@ -7802,6 +7855,12 @@ const GOLDEN_PRESETS = [
   { name: "T25 · 3:00 lust 0:05 · eff44 t5", T: 180, pins: { bloodlust: [5] },
     gear: { sp: 1387, crit: 44, t5two: true } },
   { name: "T26 · 3:00 lust 0:20 · eff44 t5", T: 180, pins: { bloodlust: [20] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T27 · 3:00 lust 0:40 · eff44 t5", T: 180, pins: { bloodlust: [40] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T28 · 2:20 lust 0:05 · eff44 t5", T: 140, pins: { bloodlust: [5] },
+    gear: { sp: 1387, crit: 44, t5two: true } },
+  { name: "T29 · 2:20 lust 0:20 · eff44 t5", T: 140, pins: { bloodlust: [20] },
     gear: { sp: 1387, crit: 44, t5two: true } },
 ];
 window.GOLDEN_PRESETS = GOLDEN_PRESETS;

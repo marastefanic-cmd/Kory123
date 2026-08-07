@@ -1992,6 +1992,13 @@ memory, §9m); it is wrong when the window is anchored at a cast, as it is here.
 ⇒ the "exactly" form stands, and the cliff is real. ⛔ The lesson is recorded at §10a: when a change
 makes the model disagree with ITSELF, the next call is the instrument that leaves the model.
 
+⚠ **§10c re-measured this ridge (08-05/06): the SHAPE holds, about a third of the magnitude went.**
+On the `gem+ati · 2:00 · lust 0:20` cell the corrected transient moved the argmax from
+`iv[65,90] · cluster@45` to `iv[60,85] · scb/AP@50 · zerk@55` — same chaining logic (windows separated
+by one proc duration; value windows END one proc duration past the pinned window's end, riding the
+carry), different member. ★ The search reaches that structure via move class 8, the proc-chain
+re-anchor, which is this rule written as a layout proposal (MODEL-DEFECTS §10d).
+
 ### ✅ AND §10a's SURVIVING LEAD IS NOW CLOSED — §10c (08-05)
 
 The lead was that `ati-mc` read the engine HIGH on every non-steady check while every steady rate was

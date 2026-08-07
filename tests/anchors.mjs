@@ -1,4 +1,4 @@
-// THE TESTS. There are TWENTY-SIX: seventeen the user declared exactly (T1–T17), and nine
+// THE TESTS. There are TWENTY-NINE: seventeen the user declared exactly (T1–T17), and twelve
 // BRUTE-DECLARED (T18–T26) under the user's 08-06 ruling — *"if the tests are bruteforced to be
 // correct then they should actually become tests like all the other ones"* — each an enumerated
 // argmax the search demonstrably emits. Their header block carries the certification standard.
@@ -460,12 +460,14 @@ const CASES = [
      ⚠ GEAR IS THE PAGE'S EFFECTIVE STATE, per MODEL-DEFECTS §9z: crit 44 = typed 38 + Arcane Impact,
      Tirisfal ON — so a row loaded in the tool reproduces the fight these were certified on. That is
      also why T18/T19 do not collide with T6/T1: same fights at DIFFERENT gear pin different logic.
-     ⛔ NOT in this batch, each for its own reason and each tracked:
-       · 2:20 lust 0:05 / 0:20 — the search BEAT the step-10 enumeration (+0.011 / +0.029 casts), so
-         those lines were not argmaxes; re-cut at step 5 before declaring.
-       · 3:00 lust 0:40 — never enumerated (the container died first).
-       · the `gem+ati` cell — a live SEARCH MISS on the §10c engine (−0.010 casts, MODEL-DEFECTS §10d):
-         the enumeration's argmax is not reached by the search yet. Fix the search, then declare. */
+     ⚠ This block described three exclusions when T18–T26 landed; all three RESOLVED the same day:
+       · 2:20 lust 0:05 / 0:20 — the search had BEATEN the step-10/top-16 enumeration (+0.011/+0.029).
+         Re-certified at `--top=128` with `--check` pinned to the emission and declared as T28/T29.
+       · 3:00 lust 0:40 — enumerated (159M layouts) and declared as T27.
+       · the `gem+ati` cell — its §10d search miss is CLOSED (move class 8); the cell is fully
+         search-confirmed and sits in the candidates strip. Its DECLARATION alone is held: the §10c
+         residuals (≤ +0.018 casts) exceed its 0.010 argmax margin, so the canonical member could
+         still flip when they close. One user sentence overrides the hold. */
   { name: "T18 — 2:00, Bloodlust pinned 0:05, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
     T: 120, sp: 1387, crit: 44, t5two: true, lust: 5,
     // 3,276,000 layouts enumerated · plateau 887 · locked from the grid argmax (search emits it verbatim)
@@ -502,6 +504,27 @@ const CASES = [
     T: 180, sp: 1387, crit: 44, t5two: true, lust: 20,
     // 159,038,208 layouts enumerated · plateau 334 · locked from the grid argmax (search emits it verbatim)
     want: {arcanePower: [20],  berserking: [140],  bloodlust: [20],  icyVeins: [20,140],  isc: [20,140],  scb: [20,140]} },
+  { name: "T27 — 3:00, Bloodlust pinned 0:40, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 180, sp: 1387, crit: 44, t5two: true, lust: 40,
+    // 159,038,208 layouts enumerated (08-06, --top=24) · plateau 26 · locked from the grid argmax
+    // (search emits it verbatim). Completes the 3:00 row: all three Lust timings score 142.140595 —
+    // the T3-Morogrim structure translates WHOLE with the call, Lust-timing-invariant.
+    want: {arcanePower: [40],  berserking: [160],  bloodlust: [40],  icyVeins: [40,160],  isc: [40,160],  scb: [40,160]} },
+  /* ★★ T28/T29 — the two cells where the SEARCH BEAT THE ENUMERATION, declared from the EMISSION
+     after certification (08-06). At step 10 / top 16 the grid argmax sat 0.011 / 0.029 casts BELOW
+     what the tool emits — the instrument's bounded-polish limit, not an engine defect (full step-5
+     re-enumeration is 1.19e9 layouts, past the raw-regime guard). Re-certified at `--top=128` with
+     `--check` pinned to the emission: **the enumeration finds NOTHING that beats it on the pair** —
+     the tool's own line reads "THE CHECKED LAYOUT IS THE GLOBAL OPTIMUM of the lattice". So the
+     emission is the best-known layout by a certification STRONGER than the one T7 carried at its own
+     declaration, and it is what gets locked. ⚠ Off-grid presses (iv@0:01/0:03, AP@0:06/0:08) are
+     genuine — the packing law's abutting-train structure (§8s family) living between grid points. */
+  { name: "T28 — 2:20, Bloodlust pinned 0:05, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 140, sp: 1387, crit: 44, t5two: true, lust: 5,
+    want: {arcanePower: [6],  berserking: [125],  bloodlust: [5],  icyVeins: [1,120],  isc: [0,120],  scb: [5,125]} },
+  { name: "T29 — 2:20, Bloodlust pinned 0:20, eff 1387 SP / 44 % crit / T5-2pc — BRUTE-DECLARED",
+    T: 140, sp: 1387, crit: 44, t5two: true, lust: 20,
+    want: {arcanePower: [8],  berserking: [10],  bloodlust: [20],  icyVeins: [3,120],  isc: [0,120],  scb: [5,125]} },
 ];
 
 // T3 uses a real BOSS preset, so its cfg comes from the fight table (sp 1387, crit 38, Lust pinned 0:05)

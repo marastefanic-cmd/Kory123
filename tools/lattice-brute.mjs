@@ -233,8 +233,14 @@ if (process.env.LB_CHILD) {
    It is embarrassingly parallel over candidates, so it forks like the sweep does. */
 if (process.env.LB_POLISH) {
   process.on('message', m => {
-    process.send({ done: m.list.flatMap(s => polish(s)) });
-    process.exit(0);
+    /* EXIT ONLY AFTER THE MESSAGE FLUSHES — 08-06. `process.send` is asynchronous; an immediate
+       `process.exit(0)` races the IPC flush and WINS once the payload is big enough. Measured: every
+       `--top=16` run fine, the first `--top=128` run dead — the child exited 0 with the message
+       unsent, and the parent's fail-loudly exit handler (added for the LAST silent-child bug) turned
+       it into "polish worker exited 0 without a result". Same lesson one layer down: the fail-loud
+       handler worked, the exit was still premature. `send`'s callback fires once the message is
+       handed to the channel, which is the earliest exit that cannot lose it. */
+    process.send({ done: m.list.flatMap(s => polish(s)) }, () => process.exit(0));
   });
   // ⚠ and BLOCK — a bare handler registration falls straight through into the parent's sweep below,
   // so every polish child re-ran the whole enumeration (and its own optimizeAsync). The handler

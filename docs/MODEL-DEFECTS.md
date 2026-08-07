@@ -5247,3 +5247,29 @@ residuals (ramp ~+0.009, strata drain ≤ +0.018) are the same order as this cel
 "brute-forced to be CORRECT" is not yet established for ATI cells the way it is for proc-less ones,
 where the scorer is exact. Close the residuals or bound them below the margins involved, fix the
 search reach (§8j/§9y family — the move classes, never `simulate()`), then declare.
+
+### ✅ THE SEARCH HALF IS CLOSED — move class 8, the proc-chain re-anchor (08-06)
+
+The diagnosis table that dictated the fix (every probe a cheap `rankPair`, no solves):
+
+| move from the emitted point | Δ casts |
+|---|---|
+| any single coordinate, any distance probed | −0.03 … −0.64 |
+| value pair → 50 alone | −0.644 |
+| value pair + zerk → 50/55 (iv stays) | −0.358 |
+| iv both −5 alone | −0.034 |
+| cluster@45 all three (the old §19 shape) | +0.003 — a stepping stone, but +20 s is outside every slide range |
+| **the full five-coordinate rewrite** | **+0.010** |
+
+No bounded descent composes a five-coordinate rewrite whose every partial is downhill. But the target
+is DERIVED, not searched-for — it is RULES §19's carry-over written as a layout: iv#0 on the pinned
+window's end `e`; iv#1 at `e + dur + ATI.dur` (windows separated by exactly the proc carry); every
+value single and Berserking pressed to END at `e + ATI.dur`. Class 8 proposes that whole structure at
+the older classes' joint fixed point, `tryCand` judges, and it is gated on `atiOn` — with the proc off
+it never fires, so every proc-less cell is byte-identical BY CONSTRUCTION (the §19 measurement is why
+the structure means nothing there). Verified: the search now emits the argmax exactly (103.838635).
+
+⚠ **The DECLARATION hold on ATI cells stands** — it was never only about search reach. The §10c
+residuals (≤ +0.018) exceed this cell's 0.010 argmax margin, so which plateau member is "correct" can
+still flip when they close. The cell sits in the candidates strip, now matching the tool's own output;
+declare it when the residuals are bounded below the margins being locked.
