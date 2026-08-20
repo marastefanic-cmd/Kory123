@@ -9,6 +9,13 @@ record of how deployment works and the development discipline it implies.
 **auto-redeploys on every push/merge** to it (live in ~30–60s). There is no manual
 deploy step.
 
+⚠ **A deploy skipped is a deploy LOST — learned 08-07.** When the Netlify account is out of build
+credits, pushes to `master` do not queue: the builds are dropped, and restoring credits does NOT
+retro-build the commits that landed during the outage — the live site silently stays at the last
+successful deploy while `master` runs ahead (it sat a week behind once, through a 45-test release).
+The remedy is simply the next push to `master` (any merged PR, this doc-line's own merge included);
+after any credits outage, land one and confirm the site caught up.
+
 Therefore: **never develop directly on `master`.** Any change — engine, UI, docs —
 is made on a **branch off `master`**, then merged back via PR. Merging to `master`
 *is* shipping. This keeps the live site from ever showing half-finished work, and
