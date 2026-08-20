@@ -620,6 +620,11 @@
   }
   #phase-add:hover { color: var(--ink); border-color: var(--accent); }
   .capsheet { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 14px 16px; }
+  .kitpool { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 4px; }
+  .statw-vals { font-variant-numeric: tabular-nums; }
+  .statw-note { color: var(--muted, #888); font-size: 0.92em; }
+  #kitcmp .gen-bar { margin: 10px 0; }
+  #kitcmp-box table td:nth-child(2), #kitcmp-box table td:nth-child(3) { text-align: right; font-variant-numeric: tabular-nums; }
   .capsheet summary {
     cursor: pointer; font-family: var(--font-display); font-size: 15px; font-weight: 600;
     color: var(--gold); letter-spacing: 0.06em; text-transform: uppercase;
@@ -759,6 +764,7 @@
         <div class="tiles" id="tiles-custom"></div>
       </div>
       <div class="sense" id="sense" hidden></div>
+      <div class="sense" id="statw" hidden></div>
       <div class="viz" id="viz" hidden>
         <div class="toolbar">
           <h3>Burn timeline</h3>
@@ -797,6 +803,24 @@
         “Rating to cap” is how much more gear haste would put that combo at the 1.0s GCD floor — <em>capped</em> means the combo is already there.</p>
         <div class="tablebox" id="capbox"></div>
       </details>
+  </section>
+
+  <section class="results" id="kitcmp-card">
+    <details class="capsheet" id="kitcmp" open>
+      <summary>Which trinkets? — compare pairs on absolute at-kill damage</summary>
+      <p class="note">Each pair is planned by its <em>own</em> optimal overlay on this exact fight — same
+      length, calls, phases, gear and raid buffs — then ranked on <strong>absolute expected damage at the
+      kill</strong>. That is the right currency for deciding what to equip: “effective ABs” is normalized
+      to each setup's own plain cast (it isolates <em>scheduling</em> by dividing out flat SP and crit),
+      which makes it the objective <em>within</em> a setup and a blind instrument <em>across</em> setups.</p>
+      <div class="kitpool" id="kitcmp-pool"></div>
+      <div class="gen-bar">
+        <button class="run" id="btn-kitcmp" type="button">Compare pairs</button>
+        <div class="progress" id="kitcmp-prog"><i></i></div>
+      </div>
+      <p class="note" id="kitcmp-note" hidden></p>
+      <div class="tablebox" id="kitcmp-box"></div>
+    </details>
   </section>
 
   <footer class="assump" id="assump" hidden></footer>
@@ -6394,12 +6418,103 @@ el("btn-run").addEventListener("click", async () => {
   btn.disabled = false; btn.textContent = "Find optimal overlay"; prog.classList.remove("busy"); bar.style.width = "0";
 });
 
+/* ═══════════ WHICH TRINKETS? — setup comparison on ABSOLUTE at-kill damage (shipped 08-07) ═══════════
+   CLAUDE.md's payoff 2, and the currency is the whole point (the ruling it records): each pair is
+   planned by its OWN ideal overlay and compared on ABSOLUTE expected damage — never on effective
+   casts, which is normalized to each setup's own plain cast precisely so it can isolate scheduling,
+   making it the right objective WITHIN a setup and a blind one ACROSS setups. §9t's own text is the
+   architectural license: "the engine is right to model whatever kit it is handed — that is what
+   makes A/B kit comparison possible; it is the INPUT layer that should refuse a third trinket."
+   Here every candidate is a legal PAIR by construction, so the cap never trips.
+   ⚠ DISPLAY-ONLY BY CONSTRUCTION: nothing here writes `lastRun`, touches the objective, the search,
+   or any preset — each variant is `readCfg()` with the five slot-takers' `enabled` (and any pins of
+   a dropped trinket) rewritten, solved through the same `runOptimize` path as the main button at the
+   same `starts`, because a comparison built on weaker solves could misrank. Determinism carries
+   through: same inputs ⇒ same pairs order ⇒ same solves ⇒ same table. */
+const KITCMP_POOL = ["isc", "scb", "skull", "mqg", "ati"];   // the five slot-takers (§9t)
+function kitCmpCfg(base, pair) {
+  const cfg = JSON.parse(JSON.stringify(base));
+  for (const k of KITCMP_POOL) {
+    cfg.enabled[k] = pair.includes(k);
+    if (!pair.includes(k) && cfg.fixed && cfg.fixed[k]) delete cfg.fixed[k];
+  }
+  cfg.warnings = [];
+  return cfg;
+}
+function renderKitCmpPool() {
+  const host = el("kitcmp-pool");
+  if (!host) return;
+  host.innerHTML = KITCMP_POOL.map(k =>
+    `<label class="check"><input type="checkbox" data-kit="${k}" checked> ${esc(BUFFS[k].name)}</label>`).join(" ");
+}
+document.addEventListener("DOMContentLoaded", renderKitCmpPool);
+el("btn-kitcmp").addEventListener("click", async () => {
+  const base = readCfg();
+  if (!isFinite(base.T) || base.T < 30 || base.T > 900) {
+    el("kitcmp-note").hidden = false;
+    el("kitcmp-note").textContent = "Enter a fight length between 0:30 and 15:00 first.";
+    return;
+  }
+  const pool = [...el("kitcmp-pool").querySelectorAll("input:checked")].map(i => i.dataset.kit);
+  if (pool.length < 2) {
+    el("kitcmp-note").hidden = false;
+    el("kitcmp-note").textContent = "Pick at least two trinkets to compare.";
+    return;
+  }
+  const pairs = [];
+  for (let i = 0; i < pool.length; i++) for (let j = i + 1; j < pool.length; j++) pairs.push([pool[i], pool[j]]);
+  const btn = el("btn-kitcmp"), runBtn = el("btn-run"), prog = el("kitcmp-prog"), bar = prog.querySelector("i");
+  btn.disabled = true; runBtn.disabled = true; prog.classList.add("busy");
+  el("kitcmp-note").hidden = true; el("kitcmp-box").innerHTML = "";
+  const rows = [];
+  for (let i = 0; i < pairs.length; i++) {
+    const cfg = kitCmpCfg(base, pairs[i]);
+    let pMax = 0;
+    btn.textContent = `Pair ${i + 1}/${pairs.length}…`;
+    const best = await runOptimize(cfg, 14, p => {
+      pMax = Math.max(pMax, p || 0);
+      bar.style.width = (((i + pMax) / pairs.length) * 100).toFixed(0) + "%";
+    });
+    rows.push({ pair: pairs[i], dmg: simulate(best.s, cfg).integral, best, cfg });
+  }
+  rows.sort((a, b) => b.dmg - a.dmg);
+  const top = rows[0].dmg;
+  const current = KITCMP_POOL.filter(k => state.enabled[k]).sort().join("+");
+  const nameOf = pair => pair.map(k => BUFFS[k].name).join(" + ");
+  el("kitcmp-box").innerHTML = `<table><thead><tr>
+      <th>trinket pair</th><th>at-kill damage</th><th>vs best</th><th></th>
+    </tr></thead><tbody>` + rows.map((r, i) => {
+      const isCur = r.pair.slice().sort().join("+") === current;
+      const d = (r.dmg / top - 1) * 100;
+      return `<tr${isCur ? ' style="font-weight:600"' : ""}>
+        <td>${esc(nameOf(r.pair))}${isCur ? " · equipped" : ""}${r.pair.includes("ati") ? " ⚠" : ""}</td>
+        <td>${Math.round(r.dmg).toLocaleString("en-US")}</td>
+        <td>${i === 0 ? "best" : d.toFixed(2) + " %"}</td>
+        <td><button type="button" class="tbtn" data-load="${r.pair.join(",")}">Load</button></td>
+      </tr>`;
+    }).join("") + `</tbody></table>`;
+  const anyAti = rows.some(r => r.pair.includes("ati"));
+  el("kitcmp-note").hidden = false;
+  el("kitcmp-note").textContent =
+    "Damage is the model's expected at-kill total for your typed gear and raid buffs — compare rows, not the raw number." +
+    (anyAti ? " ⚠ Ashtongue rows inherit the proc model's edge bias (MODEL-DEFECTS §10e, worth ~±0.1 % here): treat a smaller gap as a tie." : "");
+  el("kitcmp-box").querySelectorAll("[data-load]").forEach(b => b.addEventListener("click", () => {
+    const pair = b.dataset.load.split(",");
+    for (const k of KITCMP_POOL) state.enabled[k] = pair.includes(k);
+    markPresetDirty();
+    buildBuffList();
+    el("btn-run").click();
+  }));
+  btn.disabled = false; runBtn.disabled = false; btn.textContent = "Compare pairs";
+  prog.classList.remove("busy"); bar.style.width = "0";
+});
+
 function render(run) {
   customReset(); // a fresh optimize invalidates any hand-edited timeline
   const wb = el("warnbar");
   wb.hidden = !run.cfg.warnings.length;
   wb.innerHTML = run.cfg.warnings.map(w => `<div>${esc(w)}</div>`).join("");
-  renderTiles(run); renderSensitivity(run); renderTimeline(run); renderSchedule(run); renderCapSheet(run.cfg);
+  renderTiles(run); renderSensitivity(run); renderStatWeights(run); renderTimeline(run); renderSchedule(run); renderCapSheet(run.cfg);
   window.__run = run; // debug/test hook
   el("results").scrollIntoView({
     behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
@@ -7513,6 +7628,50 @@ function unlockThresholds(cfg) {
   return out.sort((a, b) => a.T - b.T);
 }
 function ordinal(n) { return n === 2 ? "2nd" : n === 3 ? "3rd" : n + "th"; }
+/* ═══════════ STAT WEIGHTS FOR THIS SETUP — the layout EP, in-page (shipped 08-07) ═══════════
+   EP.md's surviving MODEL route: central finite differences on `simulate().total` (raw damage) at
+   stat±Δ with the schedule FROZEN, normalized to SP = 1. The envelope theorem is what licenses the
+   frozen schedule: the plan below is the optimizer's own optimum, so the re-optimizing derivative
+   equals the frozen partial to first order — EXCEPT near a haste breakpoint (where the optimal
+   schedule jumps, e.g. Icy Veins sliding out of Lust), which is why the haste line carries the
+   re-check note. Cost: six simulate() calls, ~ms — cheap enough to render with every result.
+   ⚠ These are the INFINITE-MANA LAYOUT weights — scheduling/throughput value, the model's own
+   currency. They are NOT the finite-mana gearing weights (mana is deliberately unmeasured since the
+   sim retired — ROADMAP §3); EP.md archives the last measured finite table. The Int line is the
+   documented closed form (5/5 Mind Mastery SP + int→crit, EP.md), not a finite difference — the
+   page's Int box feeds `buffedStats` BEFORE the engine, so differencing cfg.sp cannot see it. */
+// (CRIT_RATING_PER_PCT is the buff panel's own constant, declared once above — the freshness-gate
+// doctrine: a second definition here is exactly the drift trap ROADMAP §5 names.)
+function renderStatWeights(run) {
+  const host = el("statw");
+  if (!host) return;
+  const { cfg, best } = run;
+  const at = patch => {
+    const c = JSON.parse(JSON.stringify(cfg));
+    Object.assign(c, patch);
+    c.warnings = [];
+    return simulate(best.s, c).total;
+  };
+  const D_SP = 50, D_CRIT = 1, D_H = 30;
+  const spW = (at({ sp: cfg.sp + D_SP }) - at({ sp: cfg.sp - D_SP })) / (2 * D_SP);
+  const critHi = Math.min(100, cfg.critPct + D_CRIT), critLo = Math.max(0, cfg.critPct - D_CRIT);
+  const critW = ((at({ critPct: critHi }) - at({ critPct: critLo })) / (critHi - critLo)) / CRIT_RATING_PER_PCT;
+  const hLo = Math.max(0, cfg.hasteRating - D_H), hHi = cfg.hasteRating + D_H;
+  const hasteW = (at({ hasteRating: hHi }) - at({ hasteRating: hLo })) / (hHi - hLo);
+  if (!(spW > 0)) { host.hidden = true; return; }   // degenerate fight (e.g. all intermission) — say nothing
+  const critEP = critW / spW, hasteEP = hasteW / spW;
+  const intEP = 0.29 + 0.317 * critEP;
+  const f = x => x.toFixed(3);
+  host.hidden = false;
+  host.innerHTML = `<strong>Stat weights for this setup</strong> (layout EP, SP = 1.000 — this plan,
+    this fight): <span class="statw-vals">crit ${f(critEP)}/rating · haste ${f(hasteEP)}/rating ·
+    int ≈ ${f(intEP)} (closed form)</span><br>
+    <span class="statw-note">Infinite-mana <em>scheduling</em> value at your typed gear — for cooldown-layout and
+    throughput questions, not a full gearing EP (mana is deliberately not modeled). Frozen-schedule by
+    the envelope theorem; near a haste breakpoint the true haste weight is slightly higher — re-plan at
+    gear ±${D_H} and compare if you sit on one. Which trinkets to equip is the comparison card's question
+    below, on absolute damage — not these weights.</span>`;
+}
 function renderSensitivity(run) {
   const { cfg } = run;
   const host = el("sense");

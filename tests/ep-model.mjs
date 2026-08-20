@@ -26,7 +26,9 @@ const out = await page.evaluate(async ({ CASE, CRIT_RATING_PER_PCT, D }) => {
   let segments = null;
   if (c.phases) segments = buildSegments(c.phases.map(p=>({from:p.from,to:p.to,type:p.type,mult:p.mult||1,targets:p.targets||0})), c.T);
   else if (c.intermission) segments = buildSegments([{from:c.intermission[0],to:c.intermission[1],type:'intermission',mult:1,targets:0}], c.T);
-  const mkcfg = (dsp,dcr,dha) => ({ T:c.T, hasteRating:(gear.haste||0)+dha, sp:gear.sp+dsp, critPct:gear.crit+dcr, enabled, fixed:c.pins||{}, warnings:[], coldSnap:gear.coldSnap!==false, segments });
+  // t5two added 08-07 — this inline constructor had the §5.2 incomplete-cfg shape (invisible to
+  // cfg-contract because it lives inside an evaluate string): eff44/t5 presets solved at the wrong gear.
+  const mkcfg = (dsp,dcr,dha) => ({ T:c.T, hasteRating:(gear.haste||0)+dha, sp:gear.sp+dsp, critPct:gear.crit+dcr, enabled, fixed:c.pins||{}, warnings:[], coldSnap:gear.coldSnap!==false, t5two:!!gear.t5two, segments });
 
   const base = mkcfg(0,0,0);
   const best = await optimizeAsync(base, 14, ()=>{});      // optimal schedule at base
