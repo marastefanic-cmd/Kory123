@@ -43,6 +43,10 @@ describe accepted limits and decided questions so nobody re-opens them by accide
   Every job carries a negative control.
 - **Product:** deployed on Netlify from `master`, `index.html` alone; URL-shareable setups +
   last-setup autosave shipped 08-04. Overlapping phase rows resolve order-independently and warn.
+  The **"Which trinkets?" comparison card shipped 08-07** (CLAUDE.md payoff 2): each pair from the
+  five-trinket pool planned by its own optimum, ranked on ABSOLUTE at-kill damage — never effective
+  casts, per the standing currency ruling — with the §10e uncertainty footnoted on Ashtongue rows.
+  Display-only (engine block byte-identical); `tests/kitcmp-probe.mjs` is the on-demand browser check.
 
 ## §1b ▶▶ WHAT 08-05 CHANGED, in one place
 

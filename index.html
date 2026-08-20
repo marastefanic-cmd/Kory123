@@ -620,6 +620,9 @@
   }
   #phase-add:hover { color: var(--ink); border-color: var(--accent); }
   .capsheet { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 14px 16px; }
+  .kitpool { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 4px; }
+  #kitcmp .gen-bar { margin: 10px 0; }
+  #kitcmp-box table td:nth-child(2), #kitcmp-box table td:nth-child(3) { text-align: right; font-variant-numeric: tabular-nums; }
   .capsheet summary {
     cursor: pointer; font-family: var(--font-display); font-size: 15px; font-weight: 600;
     color: var(--gold); letter-spacing: 0.06em; text-transform: uppercase;
@@ -797,6 +800,24 @@
         “Rating to cap” is how much more gear haste would put that combo at the 1.0s GCD floor — <em>capped</em> means the combo is already there.</p>
         <div class="tablebox" id="capbox"></div>
       </details>
+  </section>
+
+  <section class="results" id="kitcmp-card">
+    <details class="capsheet" id="kitcmp" open>
+      <summary>Which trinkets? — compare pairs on absolute at-kill damage</summary>
+      <p class="note">Each pair is planned by its <em>own</em> optimal overlay on this exact fight — same
+      length, calls, phases, gear and raid buffs — then ranked on <strong>absolute expected damage at the
+      kill</strong>. That is the right currency for deciding what to equip: “effective ABs” is normalized
+      to each setup's own plain cast (it isolates <em>scheduling</em> by dividing out flat SP and crit),
+      which makes it the objective <em>within</em> a setup and a blind instrument <em>across</em> setups.</p>
+      <div class="kitpool" id="kitcmp-pool"></div>
+      <div class="gen-bar">
+        <button class="run" id="btn-kitcmp" type="button">Compare pairs</button>
+        <div class="progress" id="kitcmp-prog"><i></i></div>
+      </div>
+      <p class="note" id="kitcmp-note" hidden></p>
+      <div class="tablebox" id="kitcmp-box"></div>
+    </details>
   </section>
 
   <footer class="assump" id="assump" hidden></footer>
@@ -6392,6 +6413,97 @@ el("btn-run").addEventListener("click", async () => {
   lastRun = { cfg, baseline, naive, naiveR, best, optR };
   render(lastRun);
   btn.disabled = false; btn.textContent = "Find optimal overlay"; prog.classList.remove("busy"); bar.style.width = "0";
+});
+
+/* ═══════════ WHICH TRINKETS? — setup comparison on ABSOLUTE at-kill damage (shipped 08-07) ═══════════
+   CLAUDE.md's payoff 2, and the currency is the whole point (the ruling it records): each pair is
+   planned by its OWN ideal overlay and compared on ABSOLUTE expected damage — never on effective
+   casts, which is normalized to each setup's own plain cast precisely so it can isolate scheduling,
+   making it the right objective WITHIN a setup and a blind one ACROSS setups. §9t's own text is the
+   architectural license: "the engine is right to model whatever kit it is handed — that is what
+   makes A/B kit comparison possible; it is the INPUT layer that should refuse a third trinket."
+   Here every candidate is a legal PAIR by construction, so the cap never trips.
+   ⚠ DISPLAY-ONLY BY CONSTRUCTION: nothing here writes `lastRun`, touches the objective, the search,
+   or any preset — each variant is `readCfg()` with the five slot-takers' `enabled` (and any pins of
+   a dropped trinket) rewritten, solved through the same `runOptimize` path as the main button at the
+   same `starts`, because a comparison built on weaker solves could misrank. Determinism carries
+   through: same inputs ⇒ same pairs order ⇒ same solves ⇒ same table. */
+const KITCMP_POOL = ["isc", "scb", "skull", "mqg", "ati"];   // the five slot-takers (§9t)
+function kitCmpCfg(base, pair) {
+  const cfg = JSON.parse(JSON.stringify(base));
+  for (const k of KITCMP_POOL) {
+    cfg.enabled[k] = pair.includes(k);
+    if (!pair.includes(k) && cfg.fixed && cfg.fixed[k]) delete cfg.fixed[k];
+  }
+  cfg.warnings = [];
+  return cfg;
+}
+function renderKitCmpPool() {
+  const host = el("kitcmp-pool");
+  if (!host) return;
+  host.innerHTML = KITCMP_POOL.map(k =>
+    `<label class="check"><input type="checkbox" data-kit="${k}" checked> ${esc(BUFFS[k].name)}</label>`).join(" ");
+}
+document.addEventListener("DOMContentLoaded", renderKitCmpPool);
+el("btn-kitcmp").addEventListener("click", async () => {
+  const base = readCfg();
+  if (!isFinite(base.T) || base.T < 30 || base.T > 900) {
+    el("kitcmp-note").hidden = false;
+    el("kitcmp-note").textContent = "Enter a fight length between 0:30 and 15:00 first.";
+    return;
+  }
+  const pool = [...el("kitcmp-pool").querySelectorAll("input:checked")].map(i => i.dataset.kit);
+  if (pool.length < 2) {
+    el("kitcmp-note").hidden = false;
+    el("kitcmp-note").textContent = "Pick at least two trinkets to compare.";
+    return;
+  }
+  const pairs = [];
+  for (let i = 0; i < pool.length; i++) for (let j = i + 1; j < pool.length; j++) pairs.push([pool[i], pool[j]]);
+  const btn = el("btn-kitcmp"), runBtn = el("btn-run"), prog = el("kitcmp-prog"), bar = prog.querySelector("i");
+  btn.disabled = true; runBtn.disabled = true; prog.classList.add("busy");
+  el("kitcmp-note").hidden = true; el("kitcmp-box").innerHTML = "";
+  const rows = [];
+  for (let i = 0; i < pairs.length; i++) {
+    const cfg = kitCmpCfg(base, pairs[i]);
+    let pMax = 0;
+    btn.textContent = `Pair ${i + 1}/${pairs.length}…`;
+    const best = await runOptimize(cfg, 14, p => {
+      pMax = Math.max(pMax, p || 0);
+      bar.style.width = (((i + pMax) / pairs.length) * 100).toFixed(0) + "%";
+    });
+    rows.push({ pair: pairs[i], dmg: simulate(best.s, cfg).integral, best, cfg });
+  }
+  rows.sort((a, b) => b.dmg - a.dmg);
+  const top = rows[0].dmg;
+  const current = KITCMP_POOL.filter(k => state.enabled[k]).sort().join("+");
+  const nameOf = pair => pair.map(k => BUFFS[k].name).join(" + ");
+  el("kitcmp-box").innerHTML = `<table><thead><tr>
+      <th>trinket pair</th><th>at-kill damage</th><th>vs best</th><th></th>
+    </tr></thead><tbody>` + rows.map((r, i) => {
+      const isCur = r.pair.slice().sort().join("+") === current;
+      const d = (r.dmg / top - 1) * 100;
+      return `<tr${isCur ? ' style="font-weight:600"' : ""}>
+        <td>${esc(nameOf(r.pair))}${isCur ? " · equipped" : ""}${r.pair.includes("ati") ? " ⚠" : ""}</td>
+        <td>${Math.round(r.dmg).toLocaleString("en-US")}</td>
+        <td>${i === 0 ? "best" : d.toFixed(2) + " %"}</td>
+        <td><button type="button" class="tbtn" data-load="${r.pair.join(",")}">Load</button></td>
+      </tr>`;
+    }).join("") + `</tbody></table>`;
+  const anyAti = rows.some(r => r.pair.includes("ati"));
+  el("kitcmp-note").hidden = false;
+  el("kitcmp-note").textContent =
+    "Damage is the model's expected at-kill total for your typed gear and raid buffs — compare rows, not the raw number." +
+    (anyAti ? " ⚠ Ashtongue rows inherit the proc model's edge bias (MODEL-DEFECTS §10e, worth ~±0.1 % here): treat a smaller gap as a tie." : "");
+  el("kitcmp-box").querySelectorAll("[data-load]").forEach(b => b.addEventListener("click", () => {
+    const pair = b.dataset.load.split(",");
+    for (const k of KITCMP_POOL) state.enabled[k] = pair.includes(k);
+    markPresetDirty();
+    buildBuffList();
+    el("btn-run").click();
+  }));
+  btn.disabled = false; runBtn.disabled = false; btn.textContent = "Compare pairs";
+  prog.classList.remove("busy"); bar.style.width = "0";
 });
 
 function render(run) {

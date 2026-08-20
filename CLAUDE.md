@@ -84,9 +84,12 @@ levels, not tuned to today's cases.
 
 Additional payoffs the same engine unlocks (nice-to-haves, not the point):
 - A **haste-agnostic ideal APL** (cooldown usage that adapts to gear).
-- **Setup comparison** — with each setup planned by its *own* ideal cooldown usage, compare them on
+- **Setup comparison** — ✅ **SHIPPED 08-07 as the page's "Which trinkets?" card**: every pair from a
+  chosen pool of the five slot-takers (§9t) is planned by its *own* ideal cooldown usage through the
+  same solve path as the main button, then ranked on
   **absolute at-kill damage** to decide *which trinkets/gear to
-  bring* to a fight. ⚠ **NOT on the effective-AB count** — this line used to say exactly that, and it
+  bring* to a fight (display-only — the engine block is untouched; `tests/kitcmp-probe.mjs` is the
+  on-demand browser check). ⚠ **NOT on the effective-AB count** — this line used to say exactly that, and it
   contradicted the user-directed ruling in ROADMAP payoff 2 / EP.md. Effective-casts is normalized to
   *each setup's own* plain AB: it divides out flat SP and crit precisely so it can isolate scheduling,
   which makes it the right objective **within** a setup and a blind one **across** setups, where raw

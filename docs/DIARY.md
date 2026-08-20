@@ -1968,3 +1968,17 @@ second, found by the search on its own at current gear after it beat the step-15
 The candidates strip now holds exactly the seven cells that stay out for measured reasons: five
 chain-refused ATI cells and the two §10f plateaus. DECISION-PACKAGES §A and §C closed; nothing in the
 project now awaits anything but the user's own rulings.
+
+
+# 2026-08-07 (cont. 2) — the "Which trinkets?" card: payoff 2 ships
+
+With the release stuck behind a Netlify credits outage for a week (DEPLOYMENT.md carries that lesson
+now: a deploy skipped is a deploy lost), the slack went into the payoff CLAUDE.md had listed unshipped
+since the beginning: setup comparison. The page grew a "Which trinkets?" card — every pair from the
+five slot-takers, each planned by its OWN optimum through the same solve path as the main button, then
+ranked on ABSOLUTE at-kill damage, the currency the standing ruling reserves for cross-setup questions
+(effective casts divides out exactly the SP/crit throughput a trinket swap is mostly made of). Ashtongue
+rows footnote the §10e bias. Display-only by construction — the engine block is byte-identical, checked
+against HEAD — and the browser probe (tests/kitcmp-probe.mjs, over HTTP per the file:// trap) asserts
+the table, the sort, the footnote, and that Load round-trips into a real solve. Its first output was
+already worth the build: at 1:00 default gear, gem+ati > icon+ati > icon+gem by ~1 %.

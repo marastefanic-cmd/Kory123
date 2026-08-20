@@ -583,6 +583,15 @@ Multi-start, then a stack of finishing passes run once. Fixed-seed PRNG ⇒ dete
 ## Phases & rendering
 - `buildSegments(rows, T)` (~4792): turns phase rows into `{start,end,type,mult,targets}` segments;
   types `normal | intermission | burn | aoe`. Consumed by `simulate` and the renderer.
+- **"Which trinkets?" card** (`#kitcmp`, its own section after `#results`; shipped 08-07 —
+  CLAUDE.md payoff 2): checkboxes over the five slot-takers (§9t), `btn-kitcmp` solves every pair
+  SEQUENTIALLY through the same `runOptimize` path and `starts` as the main button (weaker solves
+  could misrank), then renders a table ranked on **absolute at-kill damage** (`simulate().integral`,
+  raw damage units — never effective casts across setups, the standing currency ruling), with a Load
+  button per row (`state.enabled` → `buildBuffList()` → `btn-run.click()`). Variant cfgs are
+  `readCfg()` with the five trinkets' `enabled` (and dropped trinkets' pins) rewritten —
+  `kitCmpCfg`. Display-only by construction: nothing writes `lastRun` or touches the engine block.
+  Ashtongue rows carry the §10e footnote. On-demand browser check: `tests/kitcmp-probe.mjs`.
 - `renderTimeline(run)` (~5464): one inline SVG (fluid `width:100%`, no page horizontal scroll) —
   **deterministic** haste step-curve (`multNoAti` — no averaged Ashtongue proc, RULES §14) + area fill,
   three reference lines (the **GCD cap**, **"cap if Ashtongue" ≈ +40.8%** when ATI on, **+25% "4× FB"**
