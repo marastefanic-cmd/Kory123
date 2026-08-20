@@ -1982,3 +1982,17 @@ rows footnote the §10e bias. Display-only by construction — the engine block 
 against HEAD — and the browser probe (tests/kitcmp-probe.mjs, over HTTP per the file:// trap) asserts
 the table, the sort, the footnote, and that Load round-trips into a real solve. Its first output was
 already worth the build: at 1:00 default gear, gem+ati > icon+ati > icon+gem by ~1 %.
+
+
+# 2026-08-07 (cont. 3) — the layout EP joins the page, and the probe catches ep-model's own §5.2
+
+The second slack-week feature: a "Stat weights for this setup" line under every result — EP.md's
+surviving model route (frozen-schedule central differences on the raw damage total, licensed by the
+envelope theorem, six simulate calls) with the infinite-mana caveat printed in place rather than left
+in a doc nobody opens mid-raid-prep. Cross-checking it against tests/ep-model.mjs found two things:
+the first duplicate-declaration crash was caught by the browser probe within minutes (the buff panel
+already owned CRIT_RATING_PER_PCT — the second-definition trap, sprung and defused), and ep-model's
+own inline cfg constructor turned out to OMIT t5two — the §5.2 incomplete-constructor shape, invisible
+to cfg-contract because it lives inside a page.evaluate string. Fixed; eff44/T5 presets now EP at the
+right gear. The residual tile-vs-ep-model difference on T1 is the documented §9z divergence (the page
+solves at page-effective gear), directionally consistent at a few percent.

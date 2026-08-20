@@ -621,6 +621,8 @@
   #phase-add:hover { color: var(--ink); border-color: var(--accent); }
   .capsheet { background: var(--surface); border: 1px solid var(--hairline); border-radius: 10px; padding: 14px 16px; }
   .kitpool { display: flex; flex-wrap: wrap; gap: 6px 16px; margin: 10px 0 4px; }
+  .statw-vals { font-variant-numeric: tabular-nums; }
+  .statw-note { color: var(--muted, #888); font-size: 0.92em; }
   #kitcmp .gen-bar { margin: 10px 0; }
   #kitcmp-box table td:nth-child(2), #kitcmp-box table td:nth-child(3) { text-align: right; font-variant-numeric: tabular-nums; }
   .capsheet summary {
@@ -762,6 +764,7 @@
         <div class="tiles" id="tiles-custom"></div>
       </div>
       <div class="sense" id="sense" hidden></div>
+      <div class="sense" id="statw" hidden></div>
       <div class="viz" id="viz" hidden>
         <div class="toolbar">
           <h3>Burn timeline</h3>
@@ -6511,7 +6514,7 @@ function render(run) {
   const wb = el("warnbar");
   wb.hidden = !run.cfg.warnings.length;
   wb.innerHTML = run.cfg.warnings.map(w => `<div>${esc(w)}</div>`).join("");
-  renderTiles(run); renderSensitivity(run); renderTimeline(run); renderSchedule(run); renderCapSheet(run.cfg);
+  renderTiles(run); renderSensitivity(run); renderStatWeights(run); renderTimeline(run); renderSchedule(run); renderCapSheet(run.cfg);
   window.__run = run; // debug/test hook
   el("results").scrollIntoView({
     behavior: matchMedia("(prefers-reduced-motion: reduce)").matches ? "auto" : "smooth",
@@ -7625,6 +7628,50 @@ function unlockThresholds(cfg) {
   return out.sort((a, b) => a.T - b.T);
 }
 function ordinal(n) { return n === 2 ? "2nd" : n === 3 ? "3rd" : n + "th"; }
+/* ═══════════ STAT WEIGHTS FOR THIS SETUP — the layout EP, in-page (shipped 08-07) ═══════════
+   EP.md's surviving MODEL route: central finite differences on `simulate().total` (raw damage) at
+   stat±Δ with the schedule FROZEN, normalized to SP = 1. The envelope theorem is what licenses the
+   frozen schedule: the plan below is the optimizer's own optimum, so the re-optimizing derivative
+   equals the frozen partial to first order — EXCEPT near a haste breakpoint (where the optimal
+   schedule jumps, e.g. Icy Veins sliding out of Lust), which is why the haste line carries the
+   re-check note. Cost: six simulate() calls, ~ms — cheap enough to render with every result.
+   ⚠ These are the INFINITE-MANA LAYOUT weights — scheduling/throughput value, the model's own
+   currency. They are NOT the finite-mana gearing weights (mana is deliberately unmeasured since the
+   sim retired — ROADMAP §3); EP.md archives the last measured finite table. The Int line is the
+   documented closed form (5/5 Mind Mastery SP + int→crit, EP.md), not a finite difference — the
+   page's Int box feeds `buffedStats` BEFORE the engine, so differencing cfg.sp cannot see it. */
+// (CRIT_RATING_PER_PCT is the buff panel's own constant, declared once above — the freshness-gate
+// doctrine: a second definition here is exactly the drift trap ROADMAP §5 names.)
+function renderStatWeights(run) {
+  const host = el("statw");
+  if (!host) return;
+  const { cfg, best } = run;
+  const at = patch => {
+    const c = JSON.parse(JSON.stringify(cfg));
+    Object.assign(c, patch);
+    c.warnings = [];
+    return simulate(best.s, c).total;
+  };
+  const D_SP = 50, D_CRIT = 1, D_H = 30;
+  const spW = (at({ sp: cfg.sp + D_SP }) - at({ sp: cfg.sp - D_SP })) / (2 * D_SP);
+  const critHi = Math.min(100, cfg.critPct + D_CRIT), critLo = Math.max(0, cfg.critPct - D_CRIT);
+  const critW = ((at({ critPct: critHi }) - at({ critPct: critLo })) / (critHi - critLo)) / CRIT_RATING_PER_PCT;
+  const hLo = Math.max(0, cfg.hasteRating - D_H), hHi = cfg.hasteRating + D_H;
+  const hasteW = (at({ hasteRating: hHi }) - at({ hasteRating: hLo })) / (hHi - hLo);
+  if (!(spW > 0)) { host.hidden = true; return; }   // degenerate fight (e.g. all intermission) — say nothing
+  const critEP = critW / spW, hasteEP = hasteW / spW;
+  const intEP = 0.29 + 0.317 * critEP;
+  const f = x => x.toFixed(3);
+  host.hidden = false;
+  host.innerHTML = `<strong>Stat weights for this setup</strong> (layout EP, SP = 1.000 — this plan,
+    this fight): <span class="statw-vals">crit ${f(critEP)}/rating · haste ${f(hasteEP)}/rating ·
+    int ≈ ${f(intEP)} (closed form)</span><br>
+    <span class="statw-note">Infinite-mana <em>scheduling</em> value at your typed gear — for cooldown-layout and
+    throughput questions, not a full gearing EP (mana is deliberately not modeled). Frozen-schedule by
+    the envelope theorem; near a haste breakpoint the true haste weight is slightly higher — re-plan at
+    gear ±${D_H} and compare if you sit on one. Which trinkets to equip is the comparison card's question
+    below, on absolute damage — not these weights.</span>`;
+}
 function renderSensitivity(run) {
   const { cfg } = run;
   const host = el("sense");

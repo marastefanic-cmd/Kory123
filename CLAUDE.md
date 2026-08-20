@@ -97,7 +97,10 @@ Additional payoffs the same engine unlocks (nice-to-haves, not the point):
   the two currencies exist; do not collapse them (PHASE11 §1.4 item 3).
 - An **EP / stat-weight calculator** that re-optimizes the plan at each `stat±Δ`. ⚠ Its finite-mana
   half was wowsims finite-diff and is retired with the sim; the infinite-mana **layout** EP is
-  closed-form model partials and survives (`docs/EP.md`).
+  closed-form model partials and survives (`docs/EP.md`) — ✅ **and is IN THE PAGE since 08-07**: the
+  results carry a "Stat weights for this setup" line (frozen-schedule central differences on
+  `simulate().total`, envelope-theorem argument, ~6 simulate calls; `tests/statw-probe.mjs` is the
+  on-demand browser check), with the infinite-mana caveat spelled out in place.
 
 ## How to run the tests
 
