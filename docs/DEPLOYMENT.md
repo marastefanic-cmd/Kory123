@@ -14,7 +14,9 @@ credits, pushes to `master` do not queue: the builds are dropped, and restoring 
 retro-build the commits that landed during the outage — the live site silently stays at the last
 successful deploy while `master` runs ahead (it sat a week behind once, through a 45-test release).
 The remedy is simply the next push to `master` (any merged PR, this doc-line's own merge included);
-after any credits outage, land one and confirm the site caught up.
+after any credits outage, land one and confirm the site caught up. (Exercised for real when the
+credits returned: the catch-up merge carried this very paragraph's update, and the site jumped from
+a pre-Ashtongue build straight to the 45-test release plus the comparison card in one deploy.)
 
 Therefore: **never develop directly on `master`.** Any change — engine, UI, docs —
 is made on a **branch off `master`**, then merged back via PR. Merging to `master`
